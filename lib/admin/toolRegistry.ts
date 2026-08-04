@@ -832,7 +832,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     escribe: ['docs/roadmap/tareas-pendientes.md'],
     runbook: 'docs/runbooks/tareas-pendientes.md',
     notas:
-      '`ficha <id> [--texto <fichero.md>]` (o por stdin). Lo cita `reserve` en lugar del ' +
+      '`ficha <id> [--texto <fichero.md>]` (o por stdin) · `reubicar [--apply]` para devolver a su ' +
+      'sección las que ya quedaron fuera. Lo cita `reserve` en lugar del ' +
       '«escríbela a mano» de antes. **Nace de que a mano NO sale bien:** el fichero pasa de ' +
       '11.000 líneas y la frase `## Abiertas` aparece DENTRO del texto de varias fichas (las que ' +
       'hablan de este problema), antes que el encabezado real — así que un `index()`, un `sed` o ' +
@@ -846,7 +847,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'si desaparecería alguna ficha previa. ⚠️ **NO reduce los conflictos de git** —todas las ' +
       'sesiones insertan en el mismo punto— y no pretende hacerlo: eso se resuelve al fusionar ' +
       'conservando LOS DOS lados. Criterio puro en `lib/backlog/insertarFicha.cjs` (11 tests). ' +
-      'Funciona igual en local y en un trabajador remoto (texto + una consulta a RDS).',
+      '`reubicar` las manda al FINAL de «## Abiertas» (arriba escriben las sesiones las fichas ' +
+      'NUEVAS: meter 27 ahí es chocar con quien esté creando una) y NO toca las cerradas ' +
+      'huérfanas — su sitio sería «## Hechas» y hay TRES secciones así, elegir una es adivinar. ' +
+      'Trinquete en `backlogRegistry.guardrail`: «ninguna ficha VIVA fuera de sección», nacido en ' +
+      'verde tras reubicar las 27. Funciona igual en local y en un trabajador remoto (texto + una ' +
+      'consulta a RDS).',
   },
   embudo_preguntas_sesiones: {
     titulo: 'Preguntar a Manuel sin que tenga que entrar en la terminal de cada sesión (el embudo)',

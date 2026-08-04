@@ -275,3 +275,31 @@ describe('guardarraíl — las fichas cerradas no se quedan en «## Abiertas»',
     expect({ fichasCerradasEnAbiertas: malas }).toEqual({ fichasCerradasEnAbiertas: [] })
   })
 })
+
+/**
+ * Ninguna ficha VIVA puede quedarse fuera de sección. [T-515]
+ *
+ * `parseMarkdown.cjs` las ve igual (desde T-382 manda la cabecera, no la posición), así que el
+ * CLI nunca las perdió — lo que se pierde es la persona: quien abre el fichero y baja a
+ * «## Abiertas» no las encuentra. El 04/08 había **58 huérfanas, 27 vivas y cinco 🔴** ahí
+ * arriba, acumuladas por insertar a mano.
+ *
+ * Nace en VERDE (las 27 se reubicaron), o sea que es un trinquete: cualquier subida es una
+ * regresión demostrable. Se arregla con `node scripts/backlog.cjs reubicar --apply`, y se evita
+ * de entrada creando la ficha con `backlog.cjs ficha`, que no puede colocarla mal.
+ *
+ * Las CERRADAS huérfanas (31) se quedan fuera de este guardarraíl a propósito: su sitio sería
+ * «## Hechas» y hay tres secciones con ese nombre, así que elegir una es adivinar — y una ficha
+ * cerrada mal colocada no le cuesta nada a nadie.
+ */
+describe('guardarraíl — ninguna ficha VIVA fuera de sección', () => {
+  it('el preámbulo no tiene fichas abiertas', () => {
+    const lineas = md.split("\n")
+    const fin = lineas.findIndex((l: string) => /^##\s/.test(l) && !/^###/.test(l))
+    const preambulo = fin < 0 ? lineas : lineas.slice(0, fin)
+    const vivas = preambulo
+      .filter((l: string) => /^###\s+.*\[T-\d+\]/.test(l) && !l.includes('✅'))
+      .map((l: string) => l.slice(0, 90))
+    expect({ fichasVivasHuerfanas: vivas }).toEqual({ fichasVivasHuerfanas: [] })
+  })
+})

@@ -1577,6 +1577,33 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`   ahora:  node scripts/backlog.cjs sync`);
     }
 
+    // ── DEVOLVER A SU SECCIÓN LAS FICHAS HUÉRFANAS (T-515) ───────────────────────────────────
+    // El rastro acumulado de insertar a mano: 58 fichas fuera de toda sección el 04/08, 27 de
+    // ellas VIVAS y cinco 🔴. El CLI las sigue viendo (manda la cabecera, no la posición), pero
+    // quien abre el fichero y baja a «## Abiertas» no las encuentra.
+    else if (cmd === 'reubicar') {
+      const { reubicarHuerfanas } = require('../lib/backlog/insertarFicha.cjs');
+      // `arg()` devuelve null a un flag SIN valor (es su contrato, documentado arriba). Los
+      // booleanos van por `includes`, como `--all` y el `--apply` de `reap`. Escrito con
+      // `arg('--apply')` no aplicaba nunca — falló hacia el lado seguro, pero no hacía su trabajo.
+      const APLICAR = process.argv.includes('--apply');
+      const md = fs.readFileSync(MD, 'utf8');
+      const r = reubicarHuerfanas(md);
+      if (!r.ok) { console.error(`❌ no se ha tocado nada (${r.motivo})`); process.exit(2); }
+      if (!r.movidas.length) {
+        console.log('✅ ninguna ficha VIVA fuera de sección.');
+        if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas: se dejan — su sitio sería «## Hechas» y hay tres)`);
+        return;
+      }
+      console.log(`${APLICAR ? '✍️  moviendo' : '🔍 SIMULACIÓN (usa --apply para escribir)'} ${r.movidas.length} ficha(s) VIVA(s) al final de «## Abiertas»:`);
+      for (const id of r.movidas) console.log(`   · ${id}`);
+      if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas se quedan donde están, a propósito)`);
+      if (APLICAR) {
+        fs.writeFileSync(MD, r.md);
+        console.log('✅ escrito. Ninguna ficha se ha perdido (comprobado antes de escribir).');
+      }
+    }
+
     // ── EL EMBUDO DE PREGUNTAS (T-493) ───────────────────────────────────────────────────────
     // Manuel no puede entrar en 2-10 terminales a ver si alguien le necesita. Antes de esto una
     // duda moría en la terminal, o se colaba en el `resume_check` de una tarea PAUSADA donde
@@ -1668,7 +1695,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);

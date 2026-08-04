@@ -40,6 +40,25 @@ desaparecería alguna ficha previa (el guardarraíl de ids solo mira unicidad, y
 ⚠️ **No reduce los conflictos de git** y no lo pretende: todas las sesiones insertan en el mismo
 punto del mismo fichero. Eso se resuelve al fusionar conservando **los dos lados**.
 
+### Si alguna se quedó fuera: `reubicar`
+
+```bash
+node scripts/backlog.cjs reubicar            # simula
+node scripts/backlog.cjs reubicar --apply    # escribe
+```
+
+Devuelve las fichas VIVAS huérfanas **al final de `## Abiertas`** (no al principio: arriba es donde
+todas las sesiones escriben las fichas nuevas, y meter ahí un puñado es chocar con quien esté
+creando una). **No toca las cerradas** huérfanas: su sitio sería `## Hechas` y hay TRES secciones
+con ese nombre, así que elegir una es adivinar — y una ficha cerrada mal colocada no le cuesta nada
+a nadie, mientras que una abierta invisible sí.
+
+Comprueba antes de escribir que no desaparece ninguna ficha. La pasada del 04/08 movió 27 (cinco
+🔴) dejando **498 fichas y 10.701 líneas con contenido, idénticas antes y después**.
+
+Lo vigila el guardarraíl «ninguna ficha VIVA fuera de sección» (`backlogRegistry.guardrail`), que
+nació en verde: cualquier subida es una regresión.
+
 **Nunca elijas el id mirando el markdown.** La fuente de verdad de los ids es la **tabla
 `backlog_tasks`**, igual que para el claim: con 2-10 sesiones en paralelo, otra puede haber creado
 T-196 hace diez minutos y no haber pusheado todavía su ficha. Tú ves el número libre en el fichero,

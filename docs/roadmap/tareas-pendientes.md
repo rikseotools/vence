@@ -28,49 +28,6 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas
 
-### [T-519] 🟡 [ABIERTO 04/08] Un artículo puede servir once preguntas sobre la misma frase y ninguna herramienta podía verlo: los dos cortes de duplicados exigen que las OPCIONES coincidan
-
-- **Lo cazó una usuaria** (impugnación `9e0d7418`, Marta Benito Padilla, premium, Aux. Admin. Madrid): *«pregunta_repetida — repetida en el mismo artículo»*. Pidió un **test del artículo 2 de la LGSS**, le salieron 10 preguntas y **ocho examinaban la misma frase** (los cuatro principios: universalidad, unidad, solidaridad e igualdad), cuatro en forma positiva y cuatro preguntando cuál NO lo es. Y no fue mala suerte: **le había pasado idéntico once días antes**, con las mismas diez preguntas. El artículo servía **13 activas y 11 preguntaban lo mismo**.
-- **Por qué era invisible.** Los dos cortes que había —el exacto (T-321) y el parafraseado (T-425/T-410)— **exigen los dos que las OPCIONES coincidan**. Aquí solo coincide la respuesta correcta y los distractores son otros, que es exactamente como se acumulan las paráfrasis generadas en tandas distintas. Corridos sobre el caso, los dos dan **cero**.
-- **Y el punto de escritura tenía el mismo hueco, que es lo que lo dejaba crecer:** `analizarDuplicados` comparaba la CLAVE solo **intra-lote**; contra las preguntas VIVAS miraba únicamente el enunciado (Jaccard). Una pregunta nueva, redactada de otra forma y con otros distractores, cuya respuesta ya estaba viva en ese artículo, pasaba sin un aviso. Ahí entró la clase entera.
-- **Hecho (04/08), en dos capas y en los módulos que ya existían** (nada de un cuarto detector — la lección de T-130):
-  1. **Detección**: `--misma-clave` en `scripts/calidad/duplicados-exactos.cjs`. Agrupa por artículo + TEXTO de la respuesta correcta (nunca por su índice: las copias vienen barajadas) y **descarta la pareja si las opciones también coinciden**, para no contar dos veces lo que ya ven los otros dos. LISTA Y NO ESCRIBE, como sus hermanos.
-  2. **Prevención en el punto de escritura**: `analizarDuplicados` compara ahora la clave **también contra las vivas**. Admite el formato antiguo (solo el enunciado) y entonces **no emite ese aviso** en vez de inventárselo.
-- **El discriminador NO puede ser «misma respuesta» a secas**, y esto es lo reutilizable: un artículo con una **enumeración** (LOFCS art. 5, principios básicos de actuación) tiene N preguntas que piden **subhechos distintos** y comparten la etiqueta como respuesta — 41.063 parejas en crudo, mayoría falsos positivos por diseño. Lo que separa las dos cosas es si el **enunciado pide lo mismo**, medido sobre las palabras de CONTENIDO con `secuenciaDeContenido` de T-439 (que ya quita el ruido de cita: el nombre desarrollado de la ley que exige §2.2-quater pesa más que la materia e infla el parecido solo).
-- **Calibrado con anclas leídas a mano, no a ojo:** los falsos positivos conocidos caen en **0,12 · 0,14 · 0,27** y los ciertos del caso en **0,48 · 0,67 · 0,67 · 0,87** → GEMELA ≥0,85 (**2.277 grupos, 4.233 sobrantes**, 6 de 6 ciertas en la muestra leída) y cola 0,55-0,85 (1.919). Por debajo de 0,55 **no se emite**: ahí viven los falsos positivos y 33.572 parejas de ruido.
-- **La banda del grupo la fija su MEJOR pareja, no la peor.** Un grupo es un cierre transitivo: el del art. 2 LGSS tiene parejas en 0,48 y en 0,87, y puntuarlo por la peor lo habría dejado fuera de su propio corte.
-- **Capas**: 7 tests del núcleo (`__tests__/calidad/duplicados.test.ts`) con los umbrales anclados a los casos reales, y 5 del punto de escritura (`__tests__/lib/generacion/simularBatch.test.js`). Registrado en `toolRegistry`.
-- **NO pinga el badge, a propósito** (mismo criterio que `--parafraseadas` y que `audit:vinculo-vecino`): son 2.277 grupos que se adjudican a mano y una alerta sin remediación construida enseña a ignorar el buzón (T-426).
-- **Pendiente: la cola de adjudicación.** 4.233 sobrantes, con el **80 % de la exposición en los 326 primeros grupos** — el orden ya lo da el propio comando. Los de más arriba son de libro (9 versiones de *«la forma política del Estado español»* con 3.004 exposiciones, 11 de *«los valores superiores del ordenamiento jurídico»* con 2.697). Se ataca por exposición, de una en una, y **nunca se jubila una de examen OFICIAL**.
-
-### [T-504] 🔴 [ABIERTO 03/08] La cabecera de escritorio se desborda 375 px y deja el perfil y las notificaciones FUERA de la pantalla, sin scroll con el que alcanzarlos
-
-- **Lo reportó un usuario** (`e41cf047`, premium, Brave sobre Windows, 1920×925, feedback enviado desde el propio checkout de Stripe): *«desde que me he hecho premium el menú superior se descuadra y me impide ver mi perfil y las notificaciones. Tampoco me deja desplazarme horizontalmente para acceder a ellos»*. Adjuntó captura.
-- **NO es de Brave ni es de premium**, y eso es lo que cambia el tamaño del problema. Medido con navegador real contra producción, la fila de la cabecera ocupaba **1.879 px** dentro de un contenedor que da **1.504 px** como máximo → desbordaba en las **cuatro** anchuras de escritorio (1280, 1440, 1536, 1920) y en los **dos** planes. Con `html` y `body` en `overflow-x: hidden`, `scrollWidth == innerWidth`: lo que se sale **no se puede alcanzar de ninguna manera**. A 1280 quedaban inalcanzables SEIS controles (IA, ranking, racha, selector de oposición, campana y avatar), no los dos que él llegó a contar.
-- **Lo que cambió al pagar fue CUÁL se cae, no si se cae:** premium pierde el botón «Hazte Premium» del bloque derecho y gana el enlace «Recompensas» en la barra. Él cruzó el umbral; no lo causó.
-- **Causa raíz:** la barra era un `flex-1` **sin `min-w-0`**, así que por `min-width: auto` no podía encogerse por debajo de su contenido, y el bloque derecho es `flex-shrink-0` → la barra lo empujaba fuera del viewport. **Ningún breakpoint lo arreglaba**: `container` topa en 1.536 px, así que ni en una pantalla de 2560 cabría. La cabecera llevaba meses creciendo un enlace cada vez y aguantando por suerte; con el octavo se acabó.
-- **Arreglado (03/08) en dos capas, y la de abajo aguanta sola:**
-  1. **CSS, garantía por construcción:** `min-w-0` en el `<nav>` y scroll de reserva envolviendo solo los enlaces. Aunque el JavaScript no llegue a correr, lo peor que pasa es una barra con scroll — el perfil y la campana NO pueden volver a quedarse fuera.
-  2. **Reparto «priority+»** (`components/HeaderDesktopNav.tsx`): se mide lo que ocupa cada enlace y el sitio real que queda, y lo que no cabe se pliega en un menú **«Más»**. Da igual cuántos enlaces se añadan mañana: el sobrante se pliega en vez de empujar a nadie.
-  3. La cabecera pasa a ocupar **todo el ancho en escritorio** (`xl:max-w-none`): `container` desperdiciaba 384 px en una pantalla de 1920 mientras el menú no cabía. Con eso a 1920 vuelven a la barra 7 de 9 enlaces en vez de 5.
-  4. El nombre del avatar va **topado** (`max-w-[9rem] truncate`): lo escribe el usuario y un «Sergio De La Rosa Márquez» medía 273 px él solo.
-- **Capas:** núcleo puro `lib/ui/navOverflow.ts` (**18 tests**, con las anchuras medidas en producción) · simulación **`npm run sim:cabecera`** con navegador real (4 anchuras × 3 tipos de sesión), registrada en `toolRegistry`.
-- **La simulación está validada en los DOS sentidos**, que es lo que la hace valer: contra producción con el código viejo sale **roja en 8 de 12** casos y nombra exactamente los controles que el usuario no podía pulsar; contra el arreglo, verde en 12.
-- **Dos fallos de mi propio instrumento, encontrados y cerrados** (van aquí porque son la parte reutilizable):
-  - El medidor invisible **contaba en el `scrollWidth`** de sus ancestros y hacía ver un desborde de 379 px que no existía. Un instrumento que falsea justo lo que va a medir.
-  - La simulación **contaba enlaces del menú** en vez de comprobar que se vieran, y daba verde con el desplegable **recortado por un `overflow-x: auto`** — invisible en pantalla, presente en el DOM. **Lo cazó un pantallazo, no la simulación.** Ahora se comprueba con `elementFromPoint`, que caza recortes, tapados y z-index.
-  - Y un **verde parcial**: contra el código viejo se saltaba 8 de 12 casos por «no concluyente» y aun así imprimía 🟢. Ahora cualquier caso sin poder juzgar deja el veredicto en amarillo (salida 2).
-- **Queda por decidir (producto, no bug):** cuántos enlaces caben depende del bloque DERECHO, que hoy pesa 674 px en producción (Soporte y IA con texto, meta diaria, ranking, racha, selector de oposición, campana y avatar con nombre). Si se quiere más menú visible, el sitio de donde sacarlo es ese. El invariante se cumple igual con cualquier decisión.
-
-### [T-479] 🟡 [ABIERTO 02/08] La cola de trabajo externo no deja traza de quién la trabajó, y el vigía no sabe que existen las reservas
-
-- **De dónde sale:** los cuatro huecos que [T-474] midió y NO arregló (allí se cerró lo que impide el pisotón: la puerta de cierre y el criterio único del panel). Estos cuatro son de **visibilidad**, no de bloqueo, y por eso van aparte.
-- **1. No hay traza: una colisión es invisible por construcción.** `claimed_by` se pisa al reclamar y se pone a NULL al soltar, y no existe historial. Consecuencia medida el 01/08: se puede saber cuántos casos se cerraron **sin** reserva (28 de 165 impugnaciones, 58 de 111 feedbacks) pero **no cuántas veces dos sesiones estuvieron en el mismo caso** — el dato no existe. El backlog ya resolvió esto con `last_claimed_by` ([T-430]); son tres columnas espejo en `question_disputes`, `psychometric_question_disputes` y `user_feedback`. Sin esto, no hay forma de saber si la puerta de T-474 sirvió.
-- **2. El vigía, que es la puerta de entrada REAL al trabajo, no menciona el claim ni una vez.** Imprime `CLASE|id|tipo|email|plan|texto` y ahí arranca la sesión — sin decir quién tiene el caso ni dar el comando para cogerlo. Es el camino por el que se colaban los cierres sin reservar. Arreglo: una marca por línea (`🔒 otra sesión` / `🟢 libre`) y el `cola.cjs claim <id>` ya escrito, que es el principio 10 (la regla en el MOMENTO de la verdad, contextual).
-- **3. `cola.cjs next` no late.** El latido lo emiten `revisar-*`, el CLI del backlog y el `pre-push`. Quien reserva con `next` y luego se pasa dos horas leyendo, redactando y esperando el OK de Manuel **sin ejecutar nada** pierde la reserva estando vivo — que es exactamente el caso que [T-412] dice haber cerrado, por el flanco de quien solo lee y escribe texto. Una línea, mismo patrón fire-and-forget que ya usa `revisar-impugnacion.cjs`.
-- **4. El dossier avisa y luego entrega el material.** `revisar-impugnacion.cjs` imprime `⛔ NO ES TUYA: no la trabajes` y a continuación el dossier entero (usuario, pregunta, clave, artículo, checks). Comparar con `backlog.cjs claim`, que **no** te da la ficha si no es tuya. Decidir si se recorta a la cabecera o se deja: aquí hay tensión real con «avisar ≠ bloquear», porque a veces se abre el dossier justo para saber si merece la pena pedirle el caso a la otra sesión.
-- **Comprobación:** ampliar `npm run sim:cola-reserva`, que ya monta los casos contra la BD real.
-
 ### [T-474] ✅ [HECHA 02/08] La reserva de la cola de impugnaciones no impedía nada: se cerraba sin reservar, y `list` mentía sobre quién tenía qué
 
 - **El síntoma que lo destapó (Manuel, 01/08):** *«creo que no se reservan y se pisan las sesiones, no es tan robusto como el de tareas pendientes»*. Lo era menos, sí, y por un motivo concreto: la cola tenía **reserva atómica y ningún sitio que la exigiera**.
@@ -369,14 +326,6 @@
 
   `gateAssertion: "real"` es lo que la ficha pedía comprobar, y `gateServidas 0 / umbral 500` dice **por qué** pudo serlo: el sujeto estaba muy por debajo del umbral, así que la sonda corrió **sin exención**. La aserción se está midiendo de verdad, no omitiendo.
 - **⏭️ AÑADIDO al verificarla — el mismo defecto una capa más abajo, ya arreglado y esperando deploy (`807290f23`):** la respuesta HTTP traía el veredicto, pero **el EVENTO no**. `canary_questions_gate_ok` guardaba solo `questionsServed`, así que la fila que queda para siempre en `observable_events` **no distinguía «comprobado» de «no pude comprobarlo»** — que es justo lo que esta tarea vino a arreglar. Ahora el evento lleva `gateAssertion`, `gateServidas` y `gateUmbral`, con un caso más en el test. **Se verifica solo con mirar un evento verde después del próximo deploy de backend.**
-### [T-364] 🟡 [ABIERTO 30/07] El test de descarga troceada del PDF filtra un click al siguiente test y tumba el pre-commit de forma intermitente
-
-- **Qué pasa:** `__tests__/components/TopicPrintButton.test.tsx` falla **solo en la suite completa**, nunca aislado (ahí da 9/9). El test de la descarga normal espera **1** ancla y recibe **2**: la suya (`…tema-7.pdf`) y una **del test anterior** (`…tema-109-parte-2-de-2.pdf`), el de la descarga troceada de [T-273].
-- **Por qué NO es el reset:** el fichero ya limpia `clickedAnchors = []` en `beforeEach`. Lo que se escapa es un **click asíncrono** del caso troceado —que descarga dos partes— y que **no se espera**: cuando la máquina va más cargada, el segundo click cae ya dentro del test siguiente. Es una carrera, no un olvido.
-- **Impacto real, y por eso merece ficha:** bloquea el `pre-commit` de **cualquiera**, no solo de quien toca esa zona. El 30/07 tumbó un commit de temario y pasó al reintentar (20.575 tests en verde), que es la firma clásica del *flake*: **invita a saltarse el guardarraíl**, que es justo lo que no se debe hacer.
-- **Cómo:** en el caso troceado, esperar explícitamente a que se disparen **las dos** descargas antes de terminar (o quedarse con timers falsos y vaciarlos), de modo que ningún click quede pendiente al salir del test.
-- **Nota:** es trabajo EN VUELO de otra sesión ([T-273], piloto de troceado por estructura), así que no se tocó desde fuera. Se documenta para quien lo tenga reclamado.
-
 ### [T-354] ✅ [HECHA 30/07] Nadie buscaba contradicciones INTERNAS del banco: el mismo atajo con dos respuestas distintas
 
 - **El agujero:** todos los detectores comparan una pregunta **contra su fuente**. Si la fuente también está mal, el veredicto sale limpio. El 30/07 el banco servía a la vez `Ctrl+Alt+O` (pregunta `987f0ad1`, examen **oficial**, 242 exposiciones) y `Ctrl+Alt+F` (`1ee365af`) como atajo de «insertar nota al pie», las dos activas, y **ningún detector podía verlo** — porque los 6 artículos de Word también decían `Ctrl+Alt+F`. Costó retirar dos preguntas CORRECTAS por creer al temario ([T-291], [T-302]).
@@ -390,145 +339,6 @@
   - Y una tercera guarda: las líneas que **contrastan** con el inglés («en inglés Ctrl+S», «F = Footnote») no son defecto sino la buena práctica — sin exceptuarlas, los artículos mejor escritos serían los que más gritarían.
 - **Fuera de alcance a propósito:** Windows/Explorador. Sus combinaciones (`Win+E`, `Win+R`) no se traducen, así que ahí el detector solo produciría ruido.
 - **Lo que queda:** limpiar lo que ha encontrado es [T-351]. Y la idea generaliza — el mismo patrón («dos afirmaciones del banco sobre el mismo hecho») sirve para cifras y fechas, pero eso es otra tarea.
-
-### [T-351] 🟡 [ABIERTO 30/07 — Word, Access y Excel CERRADOS · LibreOffice ⛔ BLOQUEADO (no hay instalación ES) · quedan 2 hallazgos de pregunta] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
-
-> **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
-> **4 contradicciones `interna` + 10 `familia` → 2 + 3**, y **Word queda limpio del todo**.
->
-> - **`Word 365 Escritorio` art.5 no tenía filas mal: tenía la PREMISA mal.** Afirmaba que en Word 365
->   los atajos siguen mnemónicos ingleses, que los españoles *«ya no son válidos»*, y remataba
->   instruyendo al opositor a *«verificar siempre el atajo contra Microsoft Support es-ES»* — justo la
->   página traducida que da las teclas inglesas. **La trampa elevada a doctrina**, en un artículo del
->   que cuelgan 69 preguntas y 2.032 exposiciones. Encima se contradecía en su propia primera tabla
->   (`Ctrl+U` era a la vez «nuevo documento» y «subrayado»).
-> - **Reparado trayendo su gemelo `Word 365` art.5**, que es EL MISMO DOCUMENTO ya corregido (misma
->   estructura, sección de teclas de función idéntica) y trae la tabla de contraste ES/EN. Menos
->   superficie de error que parchear veinte filas. Se conservó la única fila exclusiva que sostenía una
->   pregunta viva (`Ctrl+Alt+I`, vista preliminar → `a1bc1366`, 28 exp).
-> - **🔴 Y destapó un fallo de la reparación del 30/07 (mía):** al arreglar las notas al pie en el
->   art. 6 no miré el art. 5 del mismo contenedor, cuya sección de vistas daba `Alt+Ctrl+O` = **vista
->   Esquema** — contradiciendo de frente el `Alt+Ctrl+O` = nota al pie que acababa de escribir.
->   Corregido en los dos: en español **`Alt+Ctrl+D`** = Diseño de impresión, **`Alt+Ctrl+E`** = Esquema,
->   **`Alt+Ctrl+I`** = vista preliminar — **y es esa localización la que deja libres la O y la L para
->   las notas**, que es la explicación que faltaba. Retirada la fila `Alt+Ctrl+L = Vista Lectura`: no
->   está verificada y choca con `Alt+Ctrl+L` = nota al final, que sí lo está.
-> - **Cerrado también el cabo que quedó abierto el 30/07:** `Supuesto Word CyL` daba la nota al final
->   en `Alt+Ctrl+D` porque las fuentes se partían. Zanjado con el mnemotécnico español del temario AGE
->   (la «L» de documento fina**L**) + once sitios del propio banco que ya decían L.
-> - **Otros arreglos de la misma pasada:** `Ctrl+F`→`Ctrl+B` (Buscar) en los art. 6 de los dos
->   contenedores · `Ctrl+Alt+H`→`Ctrl+Alt+K` (Hipervínculo) en los art. 1 · `Outlook 2016` art. 2, que
->   daba dos atajos distintos para «Buscar» en la misma lista (`Ctrl+Mayús+F` es la **búsqueda
->   avanzada**, otra acción) · y la pregunta `641db440` (25 exp), cuya tabla resumen servía
->   `Ctrl+H` = Reemplazar en vez de `Ctrl+L`.
-> - Caché invalidada (`teoria`, `temario`, `laws`) en las 6 instancias.
->
-> **✅ FASE ACCESS HECHA (30/07).** Los arts. **1, 2 y 5** daban `Ctrl+S` para Guardar — el atajo de la
-> versión **inglesa** (*Save*) — en el contenedor **más rico del banco** (66.810 chars/artículo, **636
-> preguntas activas**). Corregido a **`Ctrl+G`**, con nota de contraste ES/EN en el art. 5. `Mayús+F12`
-> se deja intacto: es tecla de función, no se localiza y es alias legítimo.
-> - **Lo que zanjó la duda fue la COHERENCIA entre apps, no una sola cita:** Office localiza este atajo
->   igual en las tres — Word «guardar el documento», Excel «guardar el libro», Access «guardar el
->   objeto», todas `Ctrl+G`. La fuente de oposiciones (`josenrique.es`) las lista juntas. Las dos
->   fuentes que daban `Ctrl+S` eran **traducciones**: la página es-es de Microsoft y una web con texto
->   de traducción automática evidente. Mismo patrón que costó las notas al pie.
-> - **Riesgo nulo de clave:** ninguna pregunta activa de Access menciona `Ctrl+S`/`Ctrl+G`. Era
->   corrección de temario pura.
-> - ⚠️ **Y este caso el detector NO lo saca**, porque Access era *coherentemente* inglés: no se
->   contradecía, se equivocaba entero. **El detector encuentra desacuerdos, no errores unánimes** — es
->   su límite estructural y conviene tenerlo presente antes de fiarse de un verde suyo.
->
-> **✅ FASE EXCEL HECHA (30/07).** `Excel 365` y `Excel 365 Escritorio` art.150 daban `Ctrl+L` **y**
-> `Ctrl+H` para Reemplazar como si las dos operasen, y el art.140 usaba directamente la inglesa.
-> Verificado (exceltotal.com + fuentes de oposiciones; y nuestro propio `Excel 365` art.10 ya lo tenía
-> bien): en el Excel español **`Ctrl+B` = Buscar y `Ctrl+L` = Reemplazar**; `Ctrl+F`/`Ctrl+H` son los
-> ingleses. La fila de `Ctrl+H` se conserva **marcada como convención inglesa**, que es más útil que
-> borrarla: es el distractor típico.
-> - **Y había una clave mal con 40 exposiciones:** `7fa76a85` («¿qué atajo abre el cuadro Reemplazar?»)
->   tenía marcada `Ctrl+H` y **`Ctrl+L` no figuraba entre las cuatro opciones** — el mismo patrón que
->   `1ee365af`. Corregida la opción y reescrita la explicación en formato estructurado, así que además
->   pasa a ser barajable. No es examen oficial.
->
-> **LO QUE QUEDA — solo LibreOffice, y NO es mecánico:**
-> 1. ⚠️ **LibreOffice: la evidencia está DIVIDIDA y hay una clave en juego. No tocar sin resolverlo.**
->    Nuestro banco se contradice: `LibreOffice Writer` arts. 1 y 3 dan `Ctrl+B` negrita / `Ctrl+I`
->    cursiva, y `LibreOffice Calc` art.3 da `Ctrl+N` / `Ctrl+K` «en versión española». Y hay **dos
->    preguntas casi gemelas con claves opuestas**: `317154d8` (13 exp, Calc) responde `Ctrl+N` y
->    `d79c9b70` (2 exp, Writer) responde `Ctrl+I`.
->    - **A favor de Writer:** la **ayuda oficial de LibreOffice en español**
->      (`help.libreoffice.org/latest/es/text/shared/04/01010000.html`) dice literalmente `Ctrl+B` →
->      «adopta el atributo *Negrita*» y `Ctrl+I` → «adopta el atributo *Itálica*». Es decir,
->      **LibreOffice NO localiza los atajos aunque la interfaz esté en español**, al revés que
->      Microsoft Office — que es justo la trampa en sentido contrario.
->    - **A favor de Calc:** varias fuentes españolas dan `Ctrl+N`/`Ctrl+K`, y alguna dice que en
->      LibreOffice ES funcionan **las dos** para cursiva.
->    - **Cómo cerrarlo bien:** abrir un LibreOffice instalado en español y probarlo, o mirar
->      `Herramientas ▸ Personalizar ▸ Teclado` de una instalación ES. Con eso se decide en un minuto
->      lo que las fuentes secundarias no resuelven. **Hasta entonces no se flipa ninguna clave.**
->    - **⛔ BLOQUEADA POR ENTORNO (30/07): Manuel no tiene LibreOffice instalado.** No es que falte
->      tiempo, es que falta la única prueba que zanja la discrepancia. **No reintentar con más
->      búsquedas web**: ya se hicieron y devuelven las dos respuestas — ese camino está agotado.
->      Se desbloquea el día que haya una instalación ES a mano (propia o de un usuario), o si aparece
->      documentación de LibreOffice que distinga explícitamente por idioma de interfaz.
->    - **Mientras tanto NO se toca nada**: el banco queda con la contradicción, que es preferible a
->      resolverla a cara o cruz. Las dos preguntas suman 15 exposiciones, así que el coste de esperar
->      es bajo.
-> 2. El aviso `interna` de LibreOffice (`Ctrl+Alt+B` para Buscar y reemplazar) es **falso positivo**:
->    el propio artículo lo etiqueta como *«atajo alternativo, versión 4.1»*, y la ayuda oficial ES
->    confirma `Ctrl+H` como el principal. Alias documentado, no defecto.
-> 3. **«Fuente»: contradicción REAL que el detector no ve** (la acción no está en su vocabulario).
->    El banco da dos respuestas para «abrir el cuadro de diálogo Fuente» en Word: **`Ctrl+M`** en
->    `8d7b1a8e` (46 exp) frente a **`Ctrl+Mayús+F`** en `86000eb8` (33 exp) y `f98e1daa` (22 exp) —
->    **101 exposiciones** repartidas entre dos respuestas incompatibles. Nuestro `Word 2016` art.5 dice
->    `Ctrl+M`. Sospecha razonable: las dos funcionan (`Ctrl+M` es la española y `Ctrl+Mayús+F` un alias
->    heredado), pero **hay que verificarlo antes de tocar ninguna clave**. Al resolverlo, añadir
->    `fuente` a `ACCIONES` en `lib/health/atajoCoherencia.js` para que el detector lo cubra en adelante.
-> 4. **`Ctrl+M`: el banco da dos respuestas incompatibles.** Una pregunta (42 exp) responde que **aumenta la sangría izquierda** y otra (46 exp) que **abre el cuadro Fuente**, que es además lo que dicen nuestros artículos de Word. Detectado al reescribir `Word 2016` art.5; el detector no lo ve porque ni «sangría» ni «fuente» están en su vocabulario. **Verificar contra una instalación española antes de tocar ninguna de las dos.**
-> 5. **«¿Cómo se denomina el proceso de abrir un archivo creado por otro programa?»** (69 exp) tiene como clave **«Inserción de datos»**, terminología que no aparece en la documentación de Word ni pudo confirmarse. Se dejó **deliberadamente sin cubrir** al reescribir `Word 2016` art.2: escribirla en el temario solo para que la métrica cuadrara habría sido inventar doctrina. Verificar el origen de la pregunta.
-> 6. **Afirmación huérfana:** `Ctrl+Mayús+F5` es la clave de `7b327e92` (33 exp) y `5495794c` (26 exp)
->    para «insertar un marcador», y **no aparece en NINGÚN artículo del banco**. No es contradicción
->    —por eso el detector calla— sino una clave sin respaldo documental. Verificar contra fuente y, si
->    es correcta, llevarla al artículo; si no, corregirla.
-
-
-
-- **Cómo salió:** cerrando los cabos de [T-291]. Reparado el atajo de nota al pie en los 6 artículos de Word (ver [T-302]), se barrieron los **88 artículos virtuales que mencionan `Ctrl+`** buscando la forma INGLESA de los atajos que Microsoft **sí localiza** (guardar, nuevo, negrita, cursiva, subrayado, buscar, seleccionar todo). La mayoría de los avisos son sanos —artículos que explican bien la diferencia ES/EN—, pero quedan tres focos reales.
-- **⚠️ El peor: `Word 365 Escritorio` art.5 se contradice a sí mismo y encima lo justifica.** Contiene a la vez `Ctrl+S | Guardar` y `Ctrl+G | Guardar`, `Ctrl+A | Seleccionar todo` y `Ctrl+E | Seleccionar todo`, bajo un epígrafe que los llama *«atajos polisémicos… según la tabla de Microsoft Support»*. Es la trampa de la página traducida elevada a doctrina: en vez de elegir, el artículo da las dos y deja al opositor sin criterio. **Su gemelo `Word 365` art.5 lo tiene BIEN**, con los mnemónicos españoles (`Ctrl+G` Guardar, `Ctrl+E` sEleccionar). Dos contenedores hermanos, la misma materia, respuestas opuestas.
-- **`Access 365` usa el set inglés para guardar** (`Ctrl+S`) en los arts. 1, 2 y 5 — en el Access español es `Ctrl+G` —, y sin embargo el art. 5 sí usa `Ctrl+E` para «seleccionar todos los registros». Mezcla dentro del mismo contenedor. Es el contenedor **más rico del banco** (66.810 chars/artículo) y sostiene **636 preguntas activas**, así que conviene mirarlo antes que ninguno.
-- **`Word 365` y `Word 365 Escritorio` art.4** dan `Ctrl+A (seleccionar todo)` para actualizar campos, cuando sus propios arts. 1 y 5 dicen `Ctrl+E`. Contradicción interna barata de arreglar.
-- **Por qué importa:** el barrido de junio (memoria `project-informatica-atajos-es-vs-en` §7.7) dio el banco **limpio**… pero miró **PREGUNTAS**, no artículos. Los artículos son la fuente contra la que se verifica y desde la que se escriben las explicaciones, así que un artículo equivocado no falla al leerse: falla al **usarse como prueba de cargo**. Es exactamente lo que costó retirar dos preguntas correctas en T-291.
-- **Cómo:** verificar cada atajo contra fuente **española** (temarios de oposiciones tipo `age.josenrique.es`, PDFs de academias, o la macro `ListCommands` que recomienda Microsoft), **nunca** la página `es-es` de soporte. Elegir UNA convención por artículo y, cuando el atajo inglés sea relevante para el examen, decirlo como contraste explícito («en inglés es X»), que es como ya lo hacen bien `PowerPoint 2016`, `LibreOffice Calc` y `Procesadores texto CyL`.
-- **Reproducible:** `node data/pilotos/t291-escalon2-30jul/auditar-atajos-en.cjs` (26 avisos sobre 88 artículos; hay que triarlos a mano, el detector no distingue la afirmación del contraste didáctico).
-- **Relacionada:** [T-302] (ahí está el barrido de las notas al pie ya hecho) · [T-291] · memoria `project-informatica-atajos-es-vs-en`.
-
-### [T-342] 🟡 [ABIERTO 30/07 — DETECTOR HECHO, queda triar la cola de 411] «Explicación estructurada SIN cita» es el rastro de que el artículo no responde a la pregunta
-
-- **Cómo salió:** verificando a mano los 8 casos críticos de [T-291] (ver `data/pilotos/t291-escalon2-30jul/ADJUDICACION-PENDIENTE.md`), Manuel preguntó si el temario **responde literalmente** a las preguntas que se verificaron. Se midió, y la respuesta partió el cubo en dos.
-- **Medido el 30/07 sobre las 737 preguntas de la campaña con explicación estructurada aplicada**, con `citaNoLiteral` importado de `scripts/impugnaciones/validar-explicacion.cjs` (el criterio ÚNICO del guardarraíl de impugnaciones, no una copia):
-
-  | | preguntas | |
-  |---|---|---|
-  | cita **literal** en el artículo vinculado | **687** | 93,2 % |
-  | cita **no literal** (inventada o de otro artículo) | **0** | 0 % |
-  | **sin cita** — no se pudo anclar a ninguna frase | **50** | 6,8 % |
-
-  **Cero citas inventadas**: donde hay blockquote, el texto está verbatim. El gate del validador aguantó. Lo que no cubre nadie es la otra columna.
-- **La idea:** el esquema de `explanation_data` hace `cita` OPCIONAL, así que una explicación sin ella pasa todos los gates. Pero un agente que leyó el artículo y **no encontró una frase que sostuviera la respuesta** deja exactamente esa huella. **No es un defecto de formato: es un detector de huecos de temario que ya está en los datos y sale de una query, sin LLM ni fetch.**
-- **⚠️ El recuento de términos NO basta, y está medido:** el triaje por presencia de los tokens de la opción correcta coloca 36 de las 50 en verde, y **comprobé tres a mano y falla en dos**:
-  - `4a7c00bc` (393 exposiciones, Windows 11 art.1) — «¿qué función permite hacer **copias de seguridad** automáticas?», clave «Historial». Puntúa 100 % porque *Historial* aparece en el artículo **por otro motivo**; la expresión «copia de seguridad» **no aparece ni una vez en 53.930 caracteres**. El artículo NO responde.
-  - `c56bb7f9` (393) — consumo de energía de una app, clave «Administrador de tareas»; el artículo lo describe como *«Ver procesos, rendimiento y servicios»*, sin energía. NO responde.
-  - `4aa025af` (375) — «¿Qué es el Contenido destacado?»: aquí el artículo **sí** tiene un apartado literal (*«…Windows Spotlight… muestra diferentes imágenes de fondo en la pantalla de bloqueo»*). Omisión del agente, no hueco.
-
-  O sea: **el hueco real es mayor que el que el proxy ve**, y una palabra presente no prueba que el artículo lo diga.
-- **Exclusiones que el detector DEBE llevar de nacimiento** (calibradas sobre estas 50): preguntas de **negación** («¿cuál NO es…?», «excepto», «INCORRECTA») — ahí que el término de la clave falte en el artículo es **lo esperado**, es justo la respuesta (caso `3356030d`, «toroidal») — y **meta-opciones** («todas/ninguna son correctas»), que no tienen término que buscar. Sin esas dos guardas el detector grita en falso.
-- **Cola concreta ya triada** (12 preguntas, **2.175 exposiciones**), en `data/pilotos/t291-escalon2-30jul/triaje-sin-cita.json`: `74bd6e7c` (CE 37 — «sólo por ley» es una lectura, no el texto) · `82515bd2` (las 5 P de la Agenda 2030 no están en el artículo) · `bbae979c` (que el art. 43 esté en el capítulo tercero no lo dice el propio art. 43) · `b7ae3c61` (Outlook/SharePoint) · `915c35f4` · `f82d2c6f` · `1ed7c890` · `5cf15668` · `e7b97b3f` · `dd9d9f87` · `ea844def`, más las dos de Windows 11 de arriba.
-- **Cómo:**
-  1. **Núcleo puro** que, dado `explanation_data` + el artículo, diga si hay cita y si es literal — reusando `citaNoLiteral`, **sin duplicar el criterio** (hay trinquete en `criterioCitaUnico.test.ts`). Hermano del kind `cita_no_literal`, que ya existe y mira el caso contrario: aquel comprueba la cita que HAY, este echa en falta la que NO hay.
-  2. **Detector** con las dos exclusiones, en el barrido de salud. Antes de enchufarlo al badge, **medirlo bank-wide** sobre las ~7.000 con estructura: si sale ruidoso, va bajo demanda como el de vínculo vecino, no a badge.
-  3. **Triar las 50** por el camino de siempre: leer el artículo y, o se ancla la cita, o el hueco se anota. Es la validación del detector y el trabajo útil a la vez.
-- **Punto ciego que hereda:** solo ve preguntas **con** `explanation_data`. Las de explicación en texto plano no tienen dónde dejar el rastro — se irán cubriendo según avance [T-291].
-- **Reproducible sin esta sesión:** `node data/pilotos/t291-escalon2-30jul/medir-literalidad.cjs` (las tres cifras de la tabla) · `triar-sin-cita.cjs` (el triaje por términos) · `refinar.cjs` (excluye negaciones y meta-opciones).
-- **Relacionada:** [T-291] (de donde salen las 737) · [T-302] (los huecos que esto encuentra son su materia prima; y ojo: **no todos los contenedores culpables son flacos** — «Supuesto Excel CyL» tiene 33.466 caracteres y aun así miente).
 
 ### [T-282] ✅ [HECHA 30/07] La explicación se pinta rota: `**` sin pareja heredado de la transcripción
 - **Qué pasa:** desde la Fase 2 de T-080, producción **no sirve la columna `explanation`** — compone el texto desde `explanation_data`. Así que un campo mal formado en la estructura sale a pantalla tal cual, y mirar `explanation` no lo delata (es el resultado del mismo render). La avería dominante es un `**` **sin pareja** en la razón de una opción: la transcripción del histórico partía `- **A) Insertar** — …` y se quedaba con `Insertar** — …`; el render antepone su propio `- **A)** ` y el opositor lee «**A)** Insertar** — El menú Insertar…».
@@ -743,202 +553,6 @@
 
 
 
-### [T-288] 🟡 [ABIERTO 29/07] El vigía de feedback e impugnaciones muere con la sesión: convertirlo en alerta permanente
-
-- **Qué hay hoy:** `scripts/vigia.cjs feedback|impugnaciones` (documentado en el manual de feedback y en el de impugnaciones). Avisa de lo NUEVO y, sobre todo, de las **RÉPLICAS**: cuando respondemos, el hilo se cierra como resuelto y el siguiente mensaje de la persona desaparece de toda lista de pendientes. En impugnaciones, el equivalente son las apelaciones.
-- **La limitación:** se lanza a mano en una sesión y **se apaga al terminarla**. Si nadie tiene una sesión abierta, nadie se entera — que es justo cuando más falta hace (noche, fin de semana).
-- **Lo que hay que hacer:** una regla de alerta en `backend/src/alerts/alert-rules.ts`, junto al resto. Dos disparos distintos, porque son dos fallos distintos:
-  1. **feedback sin responder** más de N horas (empezar por 12, medir antes de bajarlo);
-  2. **réplica sin atender** — el último mensaje es del usuario, es posterior a nuestra respuesta y lleva más de N horas. Esta es la importante: hoy no la ve nadie, ni el badge ni ninguna lista.
-- **Ojo con la fatiga:** el canal manda ya ~64 correos al día ([T-272]). Si esto entra sin arreglar aquello, se pierde entre el ruido. Mirar T-272 antes de elegir severidad.
-- **Datos para calibrar (medidos el 29/07):** llegan **6,6 feedbacks/día** (0,27/hora), el hueco medio entre uno y otro es de **166 minutos** y las horas punta son 9h, 11h, 16h, 19h y 20h.
-- **Relacionadas:** [T-247] (feedback incontestable, mismo terreno), [T-272] (fatiga del canal de alertas).
-- **Origen:** el 29/07 una usuaria estuvo tres horas esperando —abandonando cuatro pagos— porque su réplica quedó invisible al cerrarse el hilo.
-
-### [T-287] 🟠 [ABIERTO 29/07] Canary del precio de fidelidad: nadie vigila que quien tiene una oferta pueda pagarla
-
-- **Por qué existe:** el 29/07 a una usuaria (Rocío, feedback `48f1503a`) se le creó un precio de fidelidad y estuvo **tres horas sin poder comprar**. La página cargaba, así que se fue al checkout público, vio la tarifa nueva y **abandonó cuatro pagos**. La causa era invisible desde fuera: `apiFetch` mandaba POST a un endpoint GET y devolvía **405** en silencio. El deploy estaba verde, los tests pasaban y la única señal fue su mensaje.
-- **Lo que hay hoy:** tests unitarios y de guardarraíl (el código está cubierto) y un journey de Vence Sim (`scripts/sim/journeys/precio-fidelidad-visible.ts`) que comprueba lo correcto — que el endpoint devuelva las ofertas que la persona TIENE y que la página las pinte.
-- **Lo que falta, y es el trabajo de esta ficha:**
-  1. **Que el journey autentique.** Contra producción da **401**: la sesión que forja el sim no llega a ese endpoint (`verifyAuth` espera Bearer; otros journeys van con cookie). Falta que `ctx.api` mande el token de la identidad simulada. Está anotado en el propio fichero.
-  2. **Activarlo:** `postDeploy: true`. Se dejó en `false` a propósito — un guardarraíl que falla siempre se acaba ignorando, y entonces no protege nada.
-  3. **Decidir si además hace falta un canario continuo** de la familia `canary_*` (junto a `canary_answer_save_failed`, `canary_stripe_webhook_failed`). El journey corre en cada despliegue; un canario correría cada pocos minutos. Para este caso el despliegue puede bastar: el fallo lo introdujo un cambio de código, no apareció solo con el tiempo — el mismo razonamiento que el runbook de Vence Sim da para no meter sus journeys en un cron.
-- **Criterio de hecho:** un despliegue con el endpoint roto a propósito (por ejemplo devolviendo 405) tiene que salir en ROJO. Si no lo caza, el canary no sirve.
-- **Ya son DOS los journeys bloqueados por esto** (30/07): `precio-fidelidad-visible` y `favoritas-persisten`. Los dos están escritos, comprueban lo correcto y quedan en `postDeploy: false` porque sin token dan 401 y serían un rojo permanente. Arreglar `ctx.api` los activa a los dos de golpe — por eso esta ficha vale más que su tamaño.
-- **Relacionadas:** [T-261] (favoritas, mismo patrón de "lanzado y sin vigilar"), `docs/runbooks/vence-sim.md`, `docs/runbooks/oferta-precio-personalizada.md`.
-
-### [T-278] 🟠 [ABIERTO 29/07] Parque Móvil del Estado: generar el banco de la parte específica (9 temas en elaboración)
-
-- **Contexto:** la oposición está CREADA y con los tres gates deterministas en verde (`audit:oposicion`, `audit:served`, `audit:epigrafe` = 0 ❌). Falta contenido para poder publicarla. Origen: petición de un usuario (feedback `e5151a19`) + convocatoria viva (BOE-A-2026-15052, 98 plazas de acceso libre, inscripción abierta hasta ~3/08/2026).
-- **El hueco, medido:** la parte común reutiliza **4.934 preguntas** del banco existente (Constitución, Ley del Gobierno, Ley 40/2015, TREBEP, igualdad) y cubre las 40 preguntas comunes del examen. La parte **específica**, que son **60 de las 100 preguntas del examen**, solo tiene **68**:
-
-  | Tema | Preguntas | Estado |
-  |---|---|---|
-  | T6 El conductor | 6 | en elaboración |
-  | T7 El vehículo | 3 | en elaboración |
-  | T8 Seguridad activa y pasiva | 5 | en elaboración |
-  | T9 La vía | 0 | en elaboración |
-  | T10 La velocidad | 0 | en elaboración |
-  | T11 Maniobras de circulación | 44 | **disponible** |
-  | T12 Conducción nocturna y adversa | 2 | en elaboración |
-  | T13 Las señales de circulación | 2 | en elaboración |
-  | T14 El accidente de circulación | 5 | en elaboración |
-  | T15 Elementos del vehículo | 1 | en elaboración |
-
-- **Por qué es BARATO:** el articulado ya está importado — **551 artículos** entre Ley de Tráfico (146), Reglamento General de Circulación (224), Reglamento de Vehículos (73) y Reglamento de Conductores (108). Es generar preguntas contra texto legal literal con el pipeline de siempre (`generar-preguntas-con-ia.md` + triple auditoría), sin editor humano y sin importar nada.
-- **Salvedad:** el T15 (elementos del vehículo: componentes y funcionamiento) es el único con carga técnica de mecánica, no puramente normativa. Su respaldo más cercano son las condiciones técnicas del Reglamento de Vehículos; si no da, es candidato a quedarse en elaboración.
-- **Criterio de disponibilidad aplicado:** un tema se ofrece a partir de **20 preguntas**; por debajo el opositor repite las mismas en dos vueltas. Los 9 temas están en `disponible=false` (salen como "En elaboración"), así que la oposición se puede publicar sin engañar a nadie.
-- **Al terminar:** refrescar la MV (§6.bis del manual de creación) y volver a pasar `audit:served`, o los temas seguirán saliendo "En desarrollo" aunque tengan preguntas.
-- **Go-live:** `is_active=false` a la espera de OK. La landing y las rutas ya están generadas y DESPLEGADAS (29/07).
-
-- **ESTADO AL CERRAR LA SESIÓN DEL 29/07 — lo que está hecho y lo que NO:**
-
-  **Hecho y verificado** (no hace falta repetirlo):
-  - 15 temas con el temario LITERAL de las bases (Anexos VI y VII), 2 bloques, convocatoria SSOT, 3 hitos con cita del BOE, temario_version, entidad OEP (RD 625/2023 + RD 656/2024) enlazada.
-  - Parte común sirviendo **4.934 preguntas** heredadas por `topic_scope`, sin duplicar nada.
-  - Los 3 gates deterministas en **0 ❌** (`audit:oposicion`, `audit:served` con la MV refrescada, `audit:epigrafe`).
-  - **`verify:scope` registrado** (run `verify_mecanico_conductor_estado_2026-07-29`): 12 `correct`, 3 `issues`. Dos correcciones ya aplicadas: art. 66 Ley de Tráfico (permisos de CIRCULACIÓN) movido de T6 a T7, y arts. 33-34 RGC (pruebas deportivas) fuera de T9.
-  - Código en `main` y desplegado.
-
-  **Lo que queda, por orden:**
-  1. **Generar el banco específico** (la tabla de arriba). Sin esto no se publica: son 60 de las 100 preguntas del examen.
-  2. **Las 3 salvedades del verify:scope**, que decidir al generar: T8 pide "seguridad activa y pasiva" y solo la pasiva tiene artículos (cinturones, retención infantil, cascos); T14 incluye delitos contra la seguridad del tráfico, que son del **Código Penal** y NO está escopado (decidir si se importan los arts. 379-385 o el tema se queda corto); T15 es mecánica pura, con el único respaldo de las condiciones técnicas del Reglamento de Vehículos.
-  3. **Publicar** (`is_active=true`) cuando al menos T9 y T10 (hoy a cero) tengan banco. Antes: refrescar la MV y pasar `audit:served`, o saldrán "En desarrollo" con preguntas dentro.
-  4. **Avisar al usuario que la pidió** — Chema (feedback `e5151a19`), que preguntó expresamente por el temario y los tests y ya echó la instancia. Su feedback sigue abierto a propósito.
-  5. Opcional tras el go-live: campaña de captación (FASE 8 del manual). El plazo de inscripción cerraba ~3/08/2026, así que el público objetivo ya está inscrito y estudiando.
-
-### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
-
-- **Qué falta:** el simulacro y el modo examen del temario (`ExamLayout` ← `TestExamenPage`) deben servir las opciones barajadas y, en las oposiciones que examinan con 3, recortadas — su razón de ser es parecerse al examen que el opositor va a hacer (decisión Manuel, 29/07). Los tests de práctica ya lo hacen desde [T-267]; el examen no.
-- **NO confundir con el examen oficial REPRODUCIDO** (`/[oposicion]/test/examen-oficial?fecha=…`, servido por `/api/v2/official-exams/questions` y armado por tags + `question_official_exams`): ese es el documento tal como cayó y **no se toca nunca**, ni orden ni opciones.
-- **Por qué NO es "mandar `shuffleOptions: true`" y basta** (investigado 29/07):
-  1. **El modo examen corrige por LETRA.** `lib/api/exam/queries.ts` compara `userAnswer` ('a'|'b'|'c'|'d') contra la letra derivada de `correct_option`. Con barajado, esa letra es la de la posición MOSTRADA: hay que traducirla al índice ORIGINAL en `/api/exam/answer` y en la validación batch de `/api/exam/validate`, o se marcan como fallo respuestas acertadas (el incidente de [T-235], por otra puerta).
-  2. **El examen se REANUDA, y ahí está el peligro de verdad.** `/api/exam/resume` reconstruye las opciones desde la pregunta. Si se baraja al servir y el orden no se persiste EN ESE MOMENTO, quien deje el examen a medias y vuelva verá otro orden, con sus respuestas anteriores apuntando a posiciones que ya no significan lo mismo → **se corrompen exámenes en curso**, que es peor que el problema que se resuelve.
-- **Diseño mínimo:** persistir el orden de exposición al SERVIR el examen (no al responder) y que `resume`, `answer` y `validate` lean de ahí. El núcleo ya existe y está probado: `subsetOrderFor` / `isValidExposureOrder` (`lib/shuffle/subsetOrder.ts`), con copia paritaria en el backend.
-- **Condiciones heredadas de [T-267]** (no repetirlas mal): solo preguntas elegibles (`shuffle_safety='safe'` o explicación estructurada), nunca las que citan al conjunto ("todas las anteriores"), la correcta siempre incluida, y el nº de opciones sale de `examen_config` — nunca hardcodeado.
-- **Relacionadas:** [T-267] (fase 1, hecha), [T-235] (piloto del motor), [T-262] (explicaciones que clavan la letra).
-- **Origen:** feedback `ed09cf73` de Pilar Martín + decisión de Manuel del 29/07.
-
-
-### [T-271] 🟠 [ABIERTO 29/07] Los `console_error` crónicos del cliente: respuestas que se quedan sin token, timeouts de 15 s y logins que no cuajan
-
-- **Qué se ve (medido 29/07 sobre 6 h, RDS):** 453 `console_error` de severidad `error` (aparte de 1.208 ya archivados como ruido de Google Identity, que está bien clasificado). Los dominantes, todos de código nuestro:
-  - `❌ [answerSaveQueue] Sin token (intento #1..#4)` — 99 eventos. La cola de guardado reintenta hasta 4 veces sin token: la respuesta del usuario está en el aire.
-  - `⏱️ [answerSaveQueue] Timeout 15s del servidor retry #0/#1` — 55.
-  - `❌ [CALLBACK] Error procesando callback: No se estableció sesión tras la autenticación` — 37. Alguien acaba de hacer login y no entra.
-  - `UserAvatar: v2 stats error: Usuario no existe` — 24. Misma firma que [T-245] (sesión con `sub` sin perfil).
-- **Por qué está sin dueño:** `console_error` no tiene regla de alerta propia, y hasta hoy el panel no pintaba el catch-all. Estaba en la BD, con volumen, y no lo miraba nadie. Ahora sale en `/admin/salud-sistema` → "Todas las señales (24h)" marcado *solo catch-all*.
-- **Por qué NO se sube el umbral para callarlo:** ~75/h es el suelo que obligó a poner el catch-all en 150/h. Mientras esto siga así, el catch-all está medio ciego en esa banda.
-- **Qué hacer:** separar las tres firmas (token ausente en la cola / timeout de 15 s / callback sin sesión), medir a cuántos usuarios distintos afecta cada una, y atacar primero la de la cola de guardado — es la única que puede costarle al usuario una respuesta contestada.
-- **📈 RE-MEDIDO 30/07 (12:00 UTC, 3 h): 453 `console_error` — el MISMO número que la ficha midió en 6 h, o sea el ritmo se ha DOBLADO.** Y esta vez ya no es solo un cubo sin dueño: disparó la alerta **`senal_error_sin_vigilancia` en `critical`** (185 en una hora a las 08:05, 231 el día anterior). El catch-all está haciendo su trabajo; lo que falta es atender esto.
-- **Reparto de hoy (3 h, por firma):**
-
-  | firma | eventos | qué es |
-  |---|---|---|
-  | `UserAvatar: v2 stats error: Usuario no existe` | ~133 | **bug real** — y el reparto lo señala: **50 en `/auth/callback`**, o sea justo al entrar. Misma firma que [T-245] |
-  | `403 «Este dispositivo ha alcanzado el límite diario»` | 61 | **NO es un fallo: es el muro de pago funcionando** (ver abajo) |
-  | `[answerSaveQueue] Sin token (intento #5..#9)` | ~50 | **bug real**, y peor que cuando se abrió la ficha: entonces reintentaba hasta 4 veces, ahora se ven intentos **#9** |
-  | `[Watchdog] UI congelada visibleMs≈12.400` | resto | ya tiene indicador propio en el panel |
-
-- **🔎 EL HALLAZGO DEL DÍA: parte del volumen que dispara la alerta es un RESULTADO DE NEGOCIO registrado como error.** El 403 «Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.» sale de `/api/exam/answer` y el cliente lo escribe como `❌ Error guardando respuesta en API (permanente)`. **No es un fallo: es el cupo del plan gratuito diciendo su función** (y en `/api/exam/answer` el sujeto solo puede ser el dispositivo, porque el examen se puede hacer sin cuenta). O sea: **el muro de pago está inflando la señal de error y con ella el umbral del catch-all** — el mismo mecanismo que la ficha ya denunciaba («~75/h es el suelo que obligó a poner el listón en 150/h»), pero con una causa que no estaba identificada.
-  - **Comprobado que NO es enforcement nuevo:** estos 403 vienen de ANTES ([28/07 llegó a 102/h](#)), y `device_daily_limit_blocked` —el evento del límite por dispositivo de [T-304]— **no tiene ni un registro**, coherente con que salió en modo sombra. El corpus de huellas v2 ya crece (85 dispositivos). Descartado que el deploy del 30/07 esté cortando a nadie.
-  - **Salida correcta (runbook §1.ter.a):** que un 403 esperado deje de viajar como `console_error`/`error` —en el cliente, en el origen— o, si se prefiere no tocar el cliente, declararlo benigno **a propósito** en `lib/observability/benignSignals.ts` (con su copia del backend). **Lo que NO se hace es subir el umbral.**
-- **▶️ EMPIEZA POR AQUÍ (relevo del 30/07, sesión `centro-abajo`):** el triaje ya está hecho y medido arriba; lo que falta es atacar. Orden propuesto, de más daño a menos:
-  1. **`UserAvatar: v2 stats error: Usuario no existe`** — ~133 en 3 h y **50 de ellos en `/auth/callback`**, o sea justo al entrar. Misma firma que [T-245]. Empezar mirando qué pide `UserAvatar` con el `sub` recién llegado y por qué el perfil no resuelve TODAVÍA en ese instante (¿carrera con la creación/lectura del perfil?).
-  2. **`[answerSaveQueue] Sin token`** — llega al **intento #9** (cuando se abrió la ficha era #4). Es la única firma que puede costarle al usuario **una respuesta**, así que si hay que elegir una sola, es esta.
-  3. **NO perseguir** los 61 eventos del `403` del cupo gratuito: no es un fallo, es el muro de pago registrado como error (ver el hallazgo de arriba). Su arreglo es dejar de emitirlo como `error` en el cliente, o declararlo benigno a propósito — nunca subir el umbral del catch-all.
-  - Consulta de partida (RDS): `SELECT left(error_message,80), count(*) FROM observable_events WHERE event_type='console_error' AND severity='error' AND ts > now() - interval '6 hours' GROUP BY 1 ORDER BY 2 DESC LIMIT 15;`
-- **Relacionadas:** [T-245] (sesión sin perfil), [T-260] (el cupo que cobraba el cliente), [T-210] (clasificación de ruido de consola).
-
-- **📈 RE-MEDIDO 31/07 (24 h, sesión `central-izquierdo`) — sigue subiendo, y el reparto por USUARIOS cambia las prioridades.** 1.915 `console_error` con `severity='error'` (frente a los 453/3 h del 30/07). Aparte quedan **3.414 archivados en `debug`**: la clasificación de [T-210] **funciona** —GSI_LOGGER/FedCM y los `failed to fetch` están todos en `debug`, comprobado por `deploy_version`—, así que lo que queda en `error` es prácticamente todo código nuestro.
-
-  | firma | eventos | usuarios | lectura |
-  |---|---|---|---|
-  | `Error cargando notificaciones` | 399 | 38 | incluye el bucle de 401 → ficha propia [T-419] |
-  | `❌ Error guardando respuesta en API (permanente)` | 182 | **4** | el 403 del cupo → [T-418] (ahí está el ángulo del usuario: responde y no se guarda) |
-  | `[answerSaveQueue] Sin token (#1..#4+)` | **642** | 18 (**618 anónimos**) | la firma que más ha crecido |
-  | `[CALLBACK] No se estableció sesión tras la autenticación` | 125 | 11 | **login que no cuaja** |
-  | `Error fetching question history: 401` | 138 | 3 | 401 concentrado |
-  | `UserAvatar: v2 stats error: Usuario no existe` | 81 | **33** | firma de [T-245], y ahora en 33 personas |
-
-  - **El dato nuevo que más ordena el ataque: `Sin token` es sobre todo ANÓNIMO** (618 de 642) y con «0 pendientes», es decir, **la cola arranca y reintenta sin sesión y sin nada que guardar**. Eso cambia el diagnóstico de la ficha: no es (solo) «la respuesta del usuario está en el aire», es **un bucle que se ejecuta donde no debería**. Los 24 restantes, con usuario, sí son el caso preocupante — y hay que separarlos antes de tocar nada, porque el arreglo de cada mitad es distinto.
-  - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
-  - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
-
-### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
-- **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
-- **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
-
-  | Pregunta | Lo que respondió de verdad | Lo que decía la cabecera |
-  |---|---|---|
-  | `3bdd3565` | B → **FALLO** (`is_correct=false`) | *«¡Progreso! Antes fallaste, ahora acertaste»* |
-  | `4ed7bbcc` | A → **ACIERTO** (`is_correct=true`) | *«Sigues fallando esta pregunta (0/2)»* |
-  | `89021fe8` | histórico real **2/3** | *«Siempre aciertas (3/3)»* |
-
-- **Dónde NO está el fallo (descartado con datos, no por intuición):**
-  - **No son las bolitas ni el porcentaje:** coinciden **exactamente** con `test_questions` en los 3 casos (`3bdd3565`: 6 intentos, 17 %, ✓✗✗✗✗✗). Quien miente es la cabecera; la usuaria lo interpretó al revés.
-  - **No es la función pura:** con la entrada correcta, `calcularEvolucionCompleta` devuelve el mensaje CORRECTO en los 3 casos. El fallo está en la **entrada**.
-  - **No es el barajado:** ninguna de sus 20 respuestas de ese rato lleva `option_order`, y la clave guardada (`correct_answer`) coincide con `questions.correct_option` en **todas** → se le sirvió en orden natural. (Ver T-235: el piloto no ha barajado aún.)
-- **CAUSA RAÍZ (confirmada): el recuadro tenía DOS fuentes de verdad.** Las bolitas y el porcentaje se calculan con `all`, que cuando el intento ya está persistido usa **la fila real** (el servidor revalida la respuesta); la cabecera se calculaba con `currentResult`, que `TestLayout.tsx` (~L296) deriva del estado del cliente (`selectedAnswer === verifiedCorrectAnswer`). Mismo hecho, dos orígenes → podían contradecirse.
-  - **Descartado con evidencia** que fuera desincronía pregunta↔estado: el detector `TestRenderDesync` que ya existe **no ha emitido ni un evento en 30 días**. Sus `console_warn` de esa hora eran ruido conocido (aviso de Zod y `NetworkError` de notificaciones), nada relacionado.
-  - Tampoco es exclusivo del repaso: a la hora de las capturas estaba en **tests de tema normales** (`/auxiliar-administrativo-valencia/test/tema/6`).
-- **ARREGLADO (28/07):** cuando el intento actual ya está en el historial, **manda la fila persistida** también para la cabecera (`components/QuestionEvolution.tsx`). Si aún no ha aterrizado el guardado asíncrono, se sigue usando el resultado del cliente — el feedback instantáneo queda intacto. Es un arreglo **por construcción**: no se ajusta el mensaje, se elimina la segunda fuente.
-- **DETECCIÓN (lo que faltaba):** evento `evolution_result_mismatch` (severidad `warn`) cuando cliente y servidor discrepan sobre el intento. Antes esto **no dejaba ningún rastro** —la BD guardaba lo correcto, así que ninguna alerta lo veía— y por eso vivió hasta que una usuaria mandó capturas. Consulta: `SELECT count(*), metadata->>'questionId' FROM observable_events WHERE event_type='evolution_result_mismatch' AND created_at > now() - interval '7 days' GROUP BY 2 ORDER BY 1 DESC`.
-- **PENDIENTE (lo que queda de esta ficha):** con el evento ya en producción, **mirar a los pocos días cuántas discrepancias salen y de qué preguntas**. La UI ya no miente, pero que el cliente se equivoque sigue siendo un síntoma: si el volumen es alto, hay que ir al origen (`currentResult`) con datos reales en la mano en vez de suposiciones.
-- **Por qué es 🔴 y no cosmético:** al usuario se le afirma que ha fallado algo que acertó. Eso ataca justo lo que vende la plataforma —saber en qué estás flojo— y encima **no deja rastro**: la BD guarda lo correcto, así que ninguna métrica ni alerta lo ve. Solo lo caza alguien mirando la pantalla.
-- **Ya hecho (28/07):**
-  - **Simulación con datos reales:** `scripts/sim/sim-evolucion-marisol.ts <email>` — replayea los intentos de un usuario y dice si el fallo está en la función o en la entrada. Reutilizable para cualquier reporte parecido.
-  - **Invariante + regresión permanente:** `evolutionHeaderMatchesLastAttempt` en `lib/sim/invariants.ts` (+ 4 tests con los dos casos REALES) y journey de navegador `scripts/sim/journeys/evolucion-cabecera-coherente.ts`, que afirma que la cabecera no puede contradecir al veredicto que la propia UI acaba de mostrar.
-- **✅ BLOQUEO DEL JOURNEY RESUELTO (29/07):** era la cuenta de test sin onboardear — le faltaban edad y género, así que el modal se abría a pantalla completa encima de CUALQUIER journey autenticado y se tragaba los clics (el síntoma que llegaba era un `locator.click: Timeout` sobre un botón que existe y se ve). Se completó su perfil (`age`, `gender`, `onboarding_completed_at`; ojo, va cacheado 60 s y hay que purgar el tag `profile`) y el runner ahora **lo detecta y lo dice** en vez de morir con un timeout críptico. Documentado en `docs/runbooks/vence-sim.md` §Identidad. Este journey ya puede correr.
-- **Siguiente paso:** desbloquear el journey → reproducir → arreglar el origen de `currentResult` (no parchear el mensaje) → dejar el journey en verde como regresión.
-- **Origen:** feedback `108cc2a8` de MariSol, 28/07/2026.
-
-#### 🔧 EL JOURNEY NUNCA HA PODIDO DAR VERDE (31/07) — no es una regresión, es que no arrancaba
-- **La causa:** entraba directo a `/test/repaso-fallos-v2`, que **solo tiene contenido si la cuenta ha fallado algo**, y la cuenta de prueba tiene **114 respuestas y CERO fallos** (todas de canaries, sobre una única pregunta). Test vacío → «no se pudo evaluar ninguna pregunta». Además declaraba la oposición `auxiliar_administrativo_valencia` y esa cuenta es de `auxiliar_administrativo_estado`.
-- **Arreglado ya:** la oposición correcta; una **pasada previa de siembra** por el camino real (responde un test normal, lo que falle cae solo en el repaso y allí esas preguntas ya tienen historial); se acepta el banner de cookies, que flotaba encima y se comía los clics; y el selector pasa a ser el botón cuadrado `^[ABCD]$`, el mismo que usa `limite-diario-contador`, que sí responde preguntas.
-- **LO QUE FALTA, con la pista exacta:** `…/test/aleatorio` **no lleva a las preguntas, es un CONFIGURADOR** («Número de preguntas / Dificultad / Solo preguntas oficiales»). Hay que **desplazarse y pulsar el botón de empezar**, que está por debajo del pliegue; el regex `/Comenzar|Empezar|Iniciar|Generar/i` no lo encuentra en el viewport inicial. Capturas del estado exacto en `sim-reports/1785491930609/`.
-- Cuando dé verde, marcarlo `postDeploy: true` para que corra en cada despliegue.
-
-#### 📊 MEDIDO EN PRODUCCIÓN (31/07) — el volumen es BAJO, y eso decide
-- `evolution_result_mismatch` en los últimos 4 días: **7 · 6 · 10 · 2 eventos**, de **1 a 6 usuarios/día**, y **repartidos entre preguntas distintas** (2 por pregunta, ninguna concentración).
-- La propia ficha decía: *«si el volumen es alto, ir al origen de `currentResult` en vez de parchear el mensaje»*. **No es alto** → toca arreglar el mensaje, no perseguir el origen. Pero es persistente y no se va solo.
-
-### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
-- **🔬 CORRECCIÓN (29/07, verificada leyendo el código y los datos): los 3 `evolution_result_mismatch` que motivaron el apagado NO pudieron venir del barajado.** Ocurrieron en `/test/repaso-fallos-v2`, y esa ruta se sirve de `/api/v2/tests/failed-questions` — **no pide barajado** (`shuffleOptions` solo lo pide `lib/testFetchers.ts`) y ni siquiera maneja `option_order`. Así que la causa de esos tres es otra y pertenece a [T-244].
-  - **La cadena que SÍ baraja está intacta y cableada desde el 22/07** (commit `5b85e7357`), antes del piloto: el serve devuelve `option_order`, los fetchers pasan `data.questions` tal cual (sin remapear), `TestLayout` ya enviaba `optionOrder` antes del refactor del 28/07, el esquema de `/api/v2/answer-and-save` lo acepta y el INSERT lo escribe. Verificado eslabón por eslabón + los 7 tests de `viajeDeIdaYVueltaDelBarajado`.
-  - **Por qué `option_order` sigue a 0 en toda la historia, entonces:** la explicación que queda en pie es que **ninguna pregunta barajada llegó a responderse** — el piloto medía una esquina del tráfico (6 peticiones con barajado frente a 379 respuestas ese día). El emisor `shuffle_options_served`, que lo habría demostrado, **se añadió a las 21:22 del 28/07**, una hora DESPUÉS de apagar el piloto: por eso su ausencia no prueba nada del periodo del piloto.
-  - **⚠️ Riesgo REAL detectado, distinto y aún vivo:** hay rutas de test con su propia copia de `transformQuestions` que **descartan `option_order`** (`app/test/articulo/page.tsx`, `app/test/repaso-fallos/page.tsx`). Hoy son inofensivas porque esas rutas no piden barajado; el día que alguna lo pida, perderán el orden en silencio y marcarán fallos falsos. **Comprobar esto antes de ampliar el scope del piloto a más rutas.**
-- **📏 PRIMERA MEDICIÓN (28/07 ~15:30, desde otra sesión — NO reclamé la ficha, solo dejo el dato):** el piloto **está vivo pero casi no produce señal**, así que hoy **no se puede juzgar** con los criterios de abajo.
-  - ✅ **El flag llega y actúa:** `FEATURE_SHUFFLE_OPTIONS=true` y `..._SCOPE=auxiliar_administrativo_valencia` están en SSM **y el task def vivo los inyecta**; el evento `shuffle_options_request_active` ha disparado **6 veces hoy**, todas con `positionType=auxiliar_administrativo_valencia`. No es un problema de configuración.
-  - ⚠️ **Pero `test_questions.option_order` sigue en 0**, incluidas las **36 respuestas de Valencia posteriores al deploy**. Es el criterio nº 2 de esta ficha… y **no basta para concluir que está roto**.
-  - 🔍 **El dato que lo explica, y es el hallazgo:** hoy hubo **379 respuestas de usuarios de Valencia y solo 6 peticiones con barajado activo**. La vía que baraja (`/api/questions/filtered` con `shuffleOptions:true`, que ponen los fetchers de `testFetchers.ts`) **apenas la toca el tráfico real**. Con ~12 preguntas servidas y un **33 % de elegibles** en Valencia (6.946 de 20.942 `safe`+`full`), el 0 es perfectamente compatible con "muestra minúscula", no con "roto".
-  - **Por tanto, ANTES de mirar aciertos o de decidir si se amplía/apaga: averiguar por qué el 98 % de las respuestas de Valencia no pasan por la vía que baraja.** Si es que el grueso del tráfico usa otro fetcher (tests de ley, aleatorio, repaso…), el piloto está midiendo una esquina y ampliarlo o apagarlo por estos números sería decidir a ciegas.
-  - Sin eventos `shuffle_option_order_invalid` (0 hoy): no hay indicio de clave rota.
-- **🔴 APAGADO EL 28/07 ~20:18 (otra sesión, sin reclamar la ficha) — el barajado estaba REGISTRANDO MAL LAS RESPUESTAS.**
-  - **Lo confirmado ejecutando el código real:** `getFilteredQuestions` con las banderas de producción devuelve **5 de 20 preguntas realmente permutadas** (`scripts/sim/sim-shuffle-extremo-a-extremo.ts`), y `test_questions.option_order` está a **NULL en el 100 % de las filas de la historia**. Si la permutación no vuelve al guardar, el servidor interpreta la posición MOSTRADA como la ORIGINAL → **marca fallo a quien acertó y acierto a quien falló**, y la fila queda coherente consigo misma (indetectable a posteriori).
-  - **Señal que lo destapó:** el detector `evolution_result_mismatch` (T-244), a los minutos de desplegarse: 3 casos de una premium de Valencia, **todos cliente=acierto / servidor=fallo**, y las 3 preguntas `safe`+`full` (elegibles para barajar; verificado con `scripts/sim/sim-shuffle-servido.ts`).
-  - **Acción:** `FEATURE_SHUFFLE_OPTIONS=false` en SSM (versión 3) + `force-new-deployment` para que ECS lo lea (los secretos se inyectan al arrancar la tarea, no en caliente). Aplicado el criterio de esta misma ficha: *«si aparece cualquier señal → apagar primero y diagnosticar después»*.
-  - **Daño medido:** con la bandera encendida (12:40→20:18) hubo **136 respuestas de 8 usuarios de Valencia a preguntas barajables, 56 marcadas como fallo**. **NO se pueden reparar**: la permutación se genera con un nonce aleatorio por exposición y no se guardó, así que es imposible saber qué opción eligió cada uno. Borrar el conjunto entero destruiría ~3 de cada 4 registros legítimos (y en el repaso de fallos escondería preguntas que sí fallaron), así que se deja como está. Decisión de Manuel, 28/07.
-  - **Dónde se pierde el orden:** revisada la cadena entera (endpoint → esquema de respuesta → fetcher → wrapper → componente → cola → esquema de guardado → INSERT) y **todos los eslabones lo conservan**. La contradicción con los datos sigue abierta: es lo que hay que cerrar ANTES de reactivar.
-  - **🚧 CONDICIÓN PARA VOLVER A ENCENDER (no negociable):** tras encenderlo, comprobar en la primera hora que `SELECT count(*) FROM test_questions WHERE option_order IS NOT NULL AND created_at > now() - interval '1 hour'` es **> 0**. Si sigue en 0, el orden no vuelve y se está corrigiendo mal: apagar de inmediato. Ya existe la red de tests: `__tests__/answers/viajeDeIdaYVueltaDelBarajado.test.ts`.
-- **📏 SEGUNDA MEDICIÓN (28/07 ~17:30, otra sesión — TAMPOCO la reclamo, solo confirmo y afino):** el diagnóstico de arriba se sostiene y se estrecha.
-  - `shuffle_options_request_active` ha subido a **19** (última 15:21) y `test_questions.option_order` sigue en **0 — en TODA la historia de la tabla**, no solo hoy. El piloto **no ha producido ni una sola exposición barajada**.
-  - **No es escasez de material:** hay **73.485 preguntas activas `safe`** (frente a 61.099 `unsafe`), así que la vía que baraja tendría de sobra.
-  - **Confirmado desde el otro extremo, con un caso real:** las 20 respuestas de MariSol (usuaria de Valencia) de las 16:20-16:32 **no tienen `option_order`** y su `correct_answer` guardada coincide con `questions.correct_option` en **las 20** → se le sirvió en **orden natural**. Es decir: una usuaria de la oposición del piloto, practicando dentro del piloto, no vio barajado ni una vez.
-  - Refuerza la conclusión: el problema es **por dónde entra el tráfico real** (`/test/repaso-fallos-v2` en su caso), no la configuración. Mientras eso no se resuelva, los criterios 2 y 3 de esta ficha no pueden dar veredicto.
-- **Qué:** el 28/07 se encendió el barajado de opciones en producción **solo para `auxiliar_administrativo_valencia`** (41 usuarios, ~4.400 respuestas/semana; el 33% de lo que se le sirve es barajable). **Revisar a los 3-5 días** con datos reales, no antes: hace falta que se acumulen respuestas.
-- **Cómo saber si va bien** (por orden de gravedad):
-  1. `SELECT count(*) FROM observable_events WHERE event_type='shuffle_option_order_invalid' AND ts > '2026-07-28'` — detector de **clave rota** (el cliente devolvió un orden que no cuadra). **Cualquier cosa distinta de 0 es motivo de apagar y diagnosticar antes que seguir.**
-  2. `SELECT count(*) FROM test_questions WHERE option_order IS NOT NULL` — debe **subir**. Si sigue en 0 pasados unos días, el piloto NO está actuando (flag apagado por un deploy, scope mal, o nadie de Valencia practicando) y lo que parece «va bien» es que no está pasando nada.
-  3. **Aciertos de Valencia antes/después.** Barajar debería bajar un poco el acierto —se deja de reconocer por posición, que es el objetivo—, pero **una caída brusca** apunta a preguntas cuya explicación u opciones dependían del orden y se colaron. Comparar la semana previa contra la posterior, y contra otra oposición como control.
-  4. **Impugnaciones de usuarios de Valencia**: leer si alguna dice que la explicación no cuadra con las opciones. El dossier ya traduce las letras (ver manual de impugnaciones), así que el bloque 🔀 aparecerá solo.
-  5. `npx tsx --env-file=.env.local scripts/sweep-shuffle-safety-drift.ts` — debe seguir en 0 regresiones.
-- **Decisión al revisar:** si 1 y 3 están limpios → **ampliar** el `_SCOPE` (siguiente escalón: añadir `auxiliar_administrativo_diputacion_cordoba` y `tecnico_auxiliar_universidad_de_murcia`, o pasar a `all`). Si aparece cualquier señal → **apagar** primero y diagnosticar después; apagar cuesta ~5 min y no necesita build.
-- **📌 ACTUALIZACIÓN 01/08 — el piloto SÍ está barajando, y ha destapado un fallo real ([T-472]).** Lo que esta ficha daba por hecho (`option_order` a 0 en toda la historia) dejó de ser cierto el **29/07**: hay **577 exposiciones barajadas, 24 usuarios, 114 tests**, todas `practice`. El criterio nº 1 sigue limpio (0 `shuffle_option_order_invalid`) y el nº 2 ya se cumple. Lo que apareció es por una **puerta que esta ficha no vigilaba**: el **repaso** de un test terminado señalaba la opción equivocada en el **77 %** de esas exposiciones (lo cazó la impugnación `8e9142c0` de una usuaria de Valencia). Arreglado en [T-472]; **añadir a la lista de comprobación un punto 6: repasar un test barajado y ver que la opción resaltada es la buena** — servir bien y corregir bien no garantizaba pintar bien.
-- **Comandos (ampliar / apagar) y el estado del cableado:** en la ficha [T-080], sección «ENCENDIDO EN PRODUCCIÓN».
-- **Contexto de por qué importa vigilarlo:** el mismo día se encontraron cuatro huecos en los detectores que decidían qué es barajable (referencias por posición, el agujero de las tildes en `\b`, opciones que se citan entre sí, razones estructuradas que mencionan otra opción). Que hoy el sweep dé 0 no garantiza que no quede una quinta clase sin descubrir — y el sitio donde se vería es el uso real.
-- **Origen:** encendido del piloto, 28/07.
-
 ### [T-231] ✅ [DESCARTADA 28/07 por Manuel — WONTFIX] Sorteo semanal entre los USUARIOS COMPROMETIDOS CON EL ESTUDIO (los que no pierden su racha)
 - **Qué:** premio semanal del Programa de Recompensas que NO es un podio. Entran **todos** los premium **comprometidos con el estudio** —los que mantienen su racha diaria esa semana— y entre ellos se sortea **un vale de 10 €**. El encuadre lo pone Manuel (28/07) y es mejor que el original: el criterio no es rendir más, es **no fallar ni un día**.
 - **Se apoya en la racha que YA existe** (`user_streaks.current_streak`, calculada por `batch_update_user_streaks` con gaps-and-islands en zona **Europe/Madrid**), que el usuario ya ve en el header y en la campana. Cero conceptos nuevos que explicar: *"mantén tu racha esta semana y entras en el sorteo"*.
@@ -979,19 +593,6 @@
 - **Se cerró junto a la recompensa de 1 € por impugnación aceptada**, y no por casualidad: pagar por aceptada con un formulario que se autoenvía premia el volumen. Ver `docs/runbooks/embajadores-recompensas.md`.
 - **Cabo NO cerrado:** sigue existiendo la segunda vía de impugnación en `FeedbackModal.tsx:640-742` contra el endpoint viejo `/api/dispute`. Queda abierto decidir si se retira.
 
-
-### [T-237] 🟠 `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
-
-**Qué:** el sensor `llm_semantic` escribe `cron_tick{phase:'start'}` al arrancar y `cron_run` con las
-stats al terminar. El 21, 22 y 27/07 arrancó, emitió algunas señales y **nunca cerró** — las
-oposiciones que quedaban por barrer ese día no se miraron y nada avisó.
-**Por qué (🟠):** es un fallo SILENCIOSO en el sensor de mayor cobertura del radar (2.206 URLs). El
-badge de OEPs parece sano porque sí llegan señales, así que se da por bueno. Causa probable: el
-barrido creció 4,7× (472 → 2.206 URLs al subir la cobertura) y pasó de ~40 min a **~2 h 50 min** sin
-ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206). Falta también una
-alerta `arranques > cierres`.
-**Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
-incluida).
 
 ### [T-160] ✅ [CERRADA 28/07 — recalibrada la cadena entera; de ~65 avisos/día a <1] `event_loop_lag`: 65 avisos CRITICAL/día sobre un loop SANO
 - **Qué:** la regla `RULE_EVENT_LOOP_LAG` (añadida el 24/07, follow-up de T-075) es **la alerta nº1 del correo**: 65 disparos y 915 eventos en 24 h, con stalls reales de **2 a 3,8 s** cada ~20 min.
@@ -1172,452 +773,6 @@ incluida).
 - **Los tres formatos de rúbrica que conviven en el corpus quedan cubiertos y testeados** (`__tests__/lib/laws/boeBloqueMapeo.test.js`): `Artículo 45` · `Art 1` / `Art. 12` · `Artículo primero` (letra) · `Artículo 32 bis`. Cada uno viene de una ley que se quedó fuera del radar sin que nada avisara.
 - **Cabo de proceso detectado al abrir esta ficha:** una tarea nueva escrita **encima de `## Abiertas
 
-### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
-
-- **Esfuerzo: rato** (el parser y el render ya existen; es soportar el segundo nivel).
-- **ORIGEN.** Feedback `2f904b99` de Lú Henao (premium, Aux. Admin. Madrid, 48 días y 5 feedbacks previos resueltos): *«En el estudio de leyes estaría muy bien que leyes como la 39 especifique títulos, capítulos y en general la estructura de la ley»*. Se le respondió que los **títulos ya se ven** en `/leyes/[law]` (venía del temario, no de ahí) y que lo de capítulos quedaba apuntado.
-- **NO es [T-012] otra vez, y por eso tiene ficha propia.** Aquélla está hecha y desplegada: pobló `law_sections` en 249 leyes y pinta las cabeceras de sección en teoría. Su pendiente declarado son *«~58 leyes de estructura ANIDADA (Código Civil, LECrim, Ley 9/2017: libro>título>capítulo) que el parser RECHAZA a propósito»*. **Lo medido el 03/08 tiene otra forma y es mucho más ancho:**
-  | Forma de la estructura guardada | Leyes |
-  |---|---|
-  | solo TÍTULOS | **234** |
-  | solo CAPÍTULOS | 89 |
-  | **AMBOS niveles** | **0** |
-  - **Ninguna ley del catálogo tiene los dos niveles.** No es que fallen 58 leyes raras: es que el parser guarda **un único nivel por ley** (el más externo que encuentre), y quien tiene títulos se queda sin capítulos por construcción.
-- **A quién le toca, que es lo que lo hace prioritario:** son justo las leyes más estudiadas. CE (4.607 preguntas servidas), Ley 39/2015 (3.088), LECrim (2.092), Reglamento Penitenciario (1.720), CP (1.701), Ley 1/2000 (1.550), LOPJ (1.507), Ley 40/2015 (1.466), Código Civil (1.349), TREBEP (1.224), LO 3/2018 (889). **Todas con títulos y capítulos a cero.**
-- **Dónde se ve el hueco:** en `/leyes/ley-39-2015` se pinta «Título I. De los interesados en el procedimiento · Artículos 3 a 12» y ahí se acaba; el usuario no puede orientarse dentro de un título largo, que es justo lo que pedía Lú. El Título IV de la 39/2015 (el del procedimiento común) tiene siete capítulos y ninguno se ve.
-- **Por dónde va el arreglo:** `lib/laws/parseBoeSections.js` (lógica pura, ya con 10 tests) + `scripts/poblar-law-sections-boe.cjs`. El render **no habría que tocarlo**: `lib/teoria/sectionHeaders.ts` ya pinta cabeceras por sección y `availableSections` ya se carga para el filtro, así que el segundo nivel entra sin fetch nuevo. La tabla tampoco cambia: `section_type` ya admite `capitulo` y hay 523 filas de 89 leyes que lo demuestran.
-- **Ojo al medir el resultado:** el éxito NO es «hay más filas en `law_sections`», es que **las leyes con títulos pasen a tener también capítulos**. La query de arriba (formas de estructura) es el antes/después.
-- **✅ MITAD DE DATOS HECHA (03/08).** `parseBoeSectionsMultinivel` devuelve TODOS los niveles y el poblador los inserta como series independientes. **Ley 39/2015 ya tiene sus 7 títulos + 16 capítulos** en BD, con rúbrica y rangos correctos («Capítulo II. Términos y plazos», arts. 29-33). 34 tests en `__tests__/laws/parseBoeSections.test.js` (27 previos intactos + 7 nuevos).
-  - **La trampa que sostiene el diseño:** el solape se valida **por nivel, jamás entre niveles** — un capítulo vive dentro de un título, así que sus rangos se pisan por definición y mezclarlos haría saltar `motivo:'solape'` en TODAS las leyes. Hay un test que lo fija.
-  - **Y `ya_poblada` pasa a ser por NIVEL:** contarlo por ley dejaba fuera para siempre a las 234 que ya tenían títulos, que nunca habrían recibido sus capítulos.
-  - **Defecto propio cazado al mirar lo servido:** `order_position` reiniciaba en 1 en cada nivel y el fetcher ordena por esa columna, así que títulos y capítulos salían ENTRELAZADOS. Se desplaza por lo ya existente. No se ve al insertar, solo al pintar.
-- **▶ LO QUE QUEDA: el RENDER no muestra el segundo nivel.** La ficha daba por hecho que no habría que tocarlo y **eso era falso**: con los 16 capítulos ya en BD, `https://www.vence.es/leyes/ley-39-2015` sigue pintando solo los 7 títulos. Falta distinguir cuál de las dos cosas es, y son arreglos distintos: (a) la página es `revalidate:false` (caché permanente) y no se ha refrescado pese a invalidar el tag `teoria`, o (b) el componente pinta un solo nivel. **Comprobarlo antes de tocar nada.** Y cuando se vea, decidir cómo se presenta la jerarquía (el capítulo debería ir DENTRO de su título, no como una lista hermana).
-- **NO barrer el resto del catálogo hasta que el render funcione.** El dry-run de 25 leyes ya enseña que funciona (`titulo(14)+capitulo(19)` en LIRPF, `titulo(8)+capitulo(28)` en la Ley 31/1990), pero poblar 234 leyes cuyo segundo nivel no se ve no le da nada a nadie y ensucia la medida del antes/después.
-- **✅ MITAD DE DATOS HECHA (03/08). ❌ El render NO la muestra, y eso corrige lo que suponía esta ficha.**
-  - **Parser:** `parseBoeSectionsMultinivel()` en `lib/laws/parseBoeSections.js` devuelve TODOS los niveles. `parseBoeSections()` se conserva intacta (sigue dando el más externo) y ahora se implementa sobre la nueva, así que la retrocompatibilidad está probada, no supuesta: los **27 tests anteriores siguen verdes** y hay **7 nuevos** (34 en total).
-  - **LA TRAMPA, que es lo que había que acertar:** el solape se valida **POR NIVEL, jamás entre niveles**. Un capítulo vive DENTRO de un título, así que sus rangos se pisan por definición; pasarle los dos juntos a `validarSecciones` haría saltar `motivo:'solape'` en TODAS las leyes y el guardarraíl que existe para no meter basura acabaría rechazando justo lo correcto. Hay un test que lo fija.
-  - **Poblador:** el `ya_poblada` era por LEY y ahora es **por NIVEL** — contarlo por ley dejaba fuera para siempre a las 234 que ya tenían títulos, que nunca habrían recibido capítulos.
-  - **Y un defecto propio que solo se ve al PINTAR:** `order_position` reiniciaba en 1 en cada nivel y el fetcher ordena por esa columna, así que títulos y capítulos salían **entrelazados** (título I, capítulo I, título II…). Se arregló desplazando por lo que la ley ya tiene. Verificado en BD: Ley 39/2015 = títulos en 1-7 y capítulos en 8-23.
-  - **Estrenado sobre la ley del feedback:** la **Ley 39/2015 pasa de 7 secciones a 23** (7 títulos + 16 capítulos, con rúbrica y rango correctos: «Capítulo II. Términos y plazos», arts. 29-33). El dry-run de lote confirma que el resto también los saca (LIRPF `titulo(14)+capitulo(19)`, Ley 31/1990 `titulo(8)+capitulo(28)`) y que los rechazos siguen siendo los guardarraíles de siempre.
-- **✅ Y SE VE EN PRODUCCIÓN. La sospecha de que fallaba el render era MÍA y era falsa.**
-  - Con los capítulos ya en BD, `/leyes/ley-39-2015` seguía pintando solo títulos, y anoté que el render podía estar filtrando un nivel. **No.** Pedida la MISMA página con un parámetro que evita la caché, salían los 16 capítulos con su rúbrica. Lo que fallaba era la **invalidación**.
-  - **GOTCHA reutilizable:** esa página cachea con `unstable_cache(..., {revalidate:false, tags:['teoria']})`, y en AWS el frontend son **N contenedores standalone, cada uno con su caché EN MEMORIA**. Una sola llamada a `/api/admin/revalidate` limpia **solo el contenedor que la atendió**; los demás siguen sirviendo lo viejo. **Repetir la llamada (8 veces con 4 tareas) limpió todas** y la URL limpia pasa a servir 7 títulos + 16 capítulos. Es exactamente el modo de fallo del incidente de TAI que ya documenta `cache-revalidation.md`, aquí otra vez y desde el otro lado: no es que la caché no se invalide, es que **se invalida una instancia de cuatro**.
-  - **Y la lección de método:** «lo desplegué y no se ve» tiene DOS causas posibles y se distinguen en 30 segundos pidiendo la misma URL con y sin cache-buster. Yo di por hecha la más cara (código) antes de descartar la barata (caché), y escribí en esta ficha una conclusión falsa.
-- **▶ LO QUE QUEDA:** poblar el resto del catálogo (`--sweep --limit N --apply`). Ya tiene sentido, porque lo poblado se ve. Al terminar cada lote, **invalidar `teoria` varias veces** o el usuario seguirá viendo la estructura vieja.
-- **Relacionadas:** [T-012] (la que dejó el nivel de título hecho y el render puesto).
-
-
-### [T-502] 🟡 [ABIERTO 03/08] Reparar las 171 psicotécnicas cuya explicación no cierra (el detector ya está hecho)
-
-- **Esfuerzo: larga.** Son 171 preguntas y **cada una se repara leyendo su enunciado y rehaciendo el cálculo**; no hay reescritura en bloque que valga.
-- **De dónde sale:** [T-500] construyó el detector y midió. `npm run audit:psico-explicacion -- --todos` da la lista con su banda y su motivo.
-- **Cola, por orden de daño:**
-  1. **48 graves.** Tres formas: una NOTA DE REVISIÓN INTERNA publicada como explicación (*«Errores en desglose por filas: fila 4 lista 960 como par…»*), una explicación que enuncia el método y se corta antes de resolver (*«se aplica la fórmula de iguales excluidos:»*), y la peor, la que **cierra afirmando la cifra de OTRA opción**.
-  2. **123 avisos:** nunca mencionan la cifra de su respuesta. Suelen describir el patrón de la serie sin llegar a decir el resultado.
-- **REGLA DURA al reparar:** se rehace la EXPLICACIÓN contra el enunciado. **NUNCA se toca la clave para que encaje con la explicación** — en el caso que abrió esta familia la clave era la correcta y lo falso era el razonamiento.
-- **Y ojo, porque el detector no ve el defecto entero:** solo comprueba que la explicación **llegue** a su respuesta. Una explicación que cita su cifra por un camino equivocado le parece sana (es exactamente el caso `3ff87618`). Al reparar una, merece la pena leer sus hermanas del mismo tipo de ejercicio.
-- **Relacionadas:** [T-500] (detector y medición), [T-410] (duplicados en psicotécnicas).
-
-**AVANCE (03-04/08) — LA BANDA GRAVE ESTÁ A CERO: 48 → 0. Quedan los 121 avisos.**
-
-- **Las 48 se repararon de una en una, resolviendo el enunciado**, nunca tocando la clave. En las 48 el cálculo dio la clave marcada, así que no hubo que retirar ninguna pregunta.
-- **Familias que aparecieron, y cada una pedía una cosa distinta:**
-  - **Cálculo puro** (regla de tres simple y compuesta, series intercaladas, m.c.m., combinatoria, ecuaciones, decimales): se rehízo el razonamiento hasta la cifra.
-  - **Ortografía** («¿cuántas faltas contiene esta frase?»): 11 preguntas cuya explicación justifica palabra por palabra y **nunca escribe el número**. Ahí la reparación es una frase de cierre con la clave — no se inventa nada, es la propia respuesta marcada.
-  - **La de la matriz** parecía irreparable («mostrada en la imagen» + una nota de auditoría publicada como explicación) y **no lo era**: la matriz viaja en `content_data`, así que se pudo recontar fila a fila (4+4+4+4+4+3+4+4 = 31) y comprobar que la clave era correcta. **Antes de dar por perdida una pregunta con imagen, mirar `content_data`.**
-- **⚠️ EL DETECTOR SE ARREGLÓ TRES VECES DURANTE LA REPARACIÓN, y ese fue medio trabajo.** Reparar es la única forma de descubrir que el criterio miente: (1) `(2,1)` son las dos raíces de una ecuación y se leía como el decimal 2,1; (2) `2,4,3,1` es el orden de una pregunta de ordenar la frase y se descartaba por «número imposible»; (3) `2,1` sin paréntesis es un par cuando **el enunciado** pide dos números, dato que no está en la clave — el detector recibe ahora también la pregunta. Los tres con test y con su no-caso, para que ensanchar no se coma la sensibilidad.
-- **LO QUE QUEDA: los 121 avisos**, explicaciones que describen el método pero no llegan a decir la cifra. Son menos graves (no engañan, se quedan cortas) y muchas admiten el mismo cierre de una línea que la familia de ortografía. `npm run audit:psico-explicacion -- --todos` los lista.
-### [T-503] 🔴 [ABIERTO 03/08] Construir Agente de la Hacienda Pública (C1) — 16 usuarios y 2 premium con CERO temas
-
-- **Esfuerzo: sesion_propia.**
-- **ORIGEN.** Decisión de Manuel (03/08) al revisar qué construir después de [T-488]. Es el caso con **gente pagando por algo que no existe**: 16 usuarios la tienen como objetivo, **2 de ellos premium**, y la oposición está `is_active=false` con **0 temas**. Es la raíz de tres fichas abiertas — [T-326] (el filtro de oficiales que pidió Sergio), [T-327] (la oposición personalizada, que nació porque la suya no está montada) y [T-397] (los 592 usuarios en oposiciones sin temario).
-- **Está DENTRO de la banda que se construye:** categoría **C1** en nuestro propio catálogo (`categoria='C1'`, `subgrupo='C1'`). Lo que es A1/A2 en Hacienda son los Inspectores y los Técnicos, no el Agente.
-- **La convocatoria, verificada en el BOE (no supuesta):** [BOE-A-2025-27056](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27056), Resolución de 22 de diciembre de 2025 de la Presidencia de la AEAT, BOE núm. 314 de 30/12/2025. Cifras **literales**: turno libre **1.000 plazas (920 general + 80 discapacidad)** y promoción interna **400** → **1.400 en total**.
-  - ⚠️ **El cupo de discapacidad va DENTRO del turno libre** (920+80=1.000). Hay que declarar `plazas_discapacidad_incluidas=true` o `oposiciones_ssot` lo suma y publicaríamos 1.080 donde hay 1.000.
-  - **El examen de ESTA convocatoria ya se celebró** (primer ejercicio 21/03/2026), así que quien estudia ahora prepara la siguiente, de la **OEP 2026** — coherente con el `estado_proceso='oep_aprobada'` que ya tiene la ficha. Es buena ventana: un año por delante.
-- **Temario: 32 temas del ANEXO I**, parseados del texto del BOE — 12 Materias Comunes (7 de organización del Estado y AGE + 5 de Derecho Administrativo General) y 20 Materias Específicas (Organización de la Hacienda Pública y Derecho Tributario).
-  - **GOTCHA de parseo del BOE, reutilizable:** separa «Tema» de su número con **espacio duro** (`\xa0`) y usa **espacio em** (`\u2003`) tras el punto, así que buscar `"Tema 1."` no encuentra NADA. Hay que normalizar antes de partir el texto.
-- **🔬 LO MEDIDO, que es lo que decide el trabajo real (03/08):** las **comunes están cubiertas de sobra** por reutilización (CE 4.607 preguntas, Ley 39/2015 3.089, Ley 40/2015 1.466, TREBEP 1.224, LO 3/2018 889, LO 3/2007 782, Ley 19/2013 415, LO 1/2004 391) y **las específicas están casi vacías** — pero **NO porque falten las leyes: el articulado verbatim YA ESTÁ IMPORTADO**, que es la parte cara y la que no se puede improvisar.
-  | Ley | Artículos | Preguntas activas |
-  |---|---|---|
-  | LGT (58/2003) | 293 | 221 |
-  | RGGIT (1065/2007) | 230 | 22 |
-  | RD 939/2005 (Recaudación) | 136 | 5 |
-  | LIVA (37/1992) | 187 | **0** |
-  | LIS (27/2014) | 136 | **0** |
-  | LIRPF (35/2006) | 107 | **0** |
-  | Ley 31/1990 (AEAT) | 104 | **0** |
-  - **Faltan en BD:** el Reglamento sancionador (RD 2063/2004) y el de revisión en vía administrativa (RD 520/2005).
-- **CONSECUENCIA para el plan, y es distinta de la de [T-488]:** allí la oposición nació sirviendo 19.605 preguntas porque todo existía. Aquí el andamiaje (fila, temas, scope, rutas, landing) es igual de barato, **pero las 20 específicas nacen sin banco**: se montan con su scope y su teoría —que sí se puede leer— y `disponible=false` hasta generar preguntas contra el articulado ya importado (pipeline `generar-preguntas-con-ia.md` + doble auditoría ciega). **NUNCA poner `is_active=true` con temas disponibles a cero.**
-- **Relacionadas:** [T-326], [T-327], [T-397] (las tres cuelgan de que esta oposición no exista), [T-488] (el precedente de construcción por reutilización).
-
-
-### [T-501] 🟡 [ABIERTO 03/08] El lado de FEEDBACK no tenía reconciliador de emails: 43 respuestas en 90 días sin poder saber si llegaron
-
-- **Esfuerzo declarado: larga.**
-- **De dónde sale:** Manuel pidió revisar los errores de impugnaciones (03/08). Los que había eran el falso positivo ya documentado en [T-422] —y su ficha avisaba de no volver a comerse el anzuelo, así que no se reenvió nada—, pero al cerrar aquello quedaba escrito su **hueco conocido**: *«el mismo salto silencioso existe para las respuestas a feedback (`soporte_respuesta`) y ahí no hay reconciliador ninguno, así que nadie lo vería»*. Esto es ese hueco.
-- **Qué pasaba, en una frase:** le contestamos a una persona por DOS caminos y solo uno estaba vigilado. `respondFeedback` (`lib/api/v2/feedback/queries.ts`) **no emitía ni un solo evento** —grepeado: cero `emit` en el fichero—; los cinco motivos de «sin email» y los fallos de envío viajaban en el JSON de vuelta y morían ahí. Sin evidencia, sin cron y sin regla, un drop en ese lado era invisible por completo.
-- **Y tiene una salida que el gemelo no tiene, que es lo que lo hace peor:** `user_actively_browsing` compara contra `user_sessions.updated_at` con una ventana de **CINCO SEGUNDOS**. Es la condición más efímera del sistema y **nadie puede releerla después** — un reconciliador ingenuo la contaría como pérdida cada vez.
-- **Medido ANTES de construir nada (90 días, contra RDS):** **532 respuestas de admin, 43 sin fila en `email_events` (8%)**. Reparto semanal de 0 a 12; la última semana, 62 respuestas y 0 sin email.
-- **El discriminante que convierte esas 43 en un número útil:** `email_unsubscribe_tokens` se inserta DENTRO de `sendEmailV2`, **después** de `canSendEmail`, así que su presencia prueba que el envío pasó el gate. Control limpio: de las 488 entregadas, **488 tienen token (100%)**. Aplicado a las 43 → **42 se cortaron antes de enviar** (preferencia, `sendEmail:false` o los 5 segundos) y **1 es una pérdida REAL**.
-- **Esa 1 tiene nombre y es de dinero:** `garciamoyanoraquel7179@`, **14/07 19:55**. Preguntaba cómo evitar el siguiente cobro de su plan de 3 meses; se le escribió la respuesta, se creó el token y el correo nunca salió ni dejó rastro. Contraste que lo cierra: otro email suyo esa misma mañana tiene token **y** fila. **Nadie se enteró en 20 días** — lo encontró esta búsqueda a mano, que es exactamente lo que la filosofía martillo dice que no debe pasar.
-- **NO se le reenvía** (decisión de Manuel, 03/08): *«ha pasado mucho tiempo y es peor enviarlo»*. Tiene la respuesta en la campana y en `/soporte`. El valor de esto está entero en enterarse DENTRO de las 24 h.
-- **Hecho:**
-  - `lib/api/v2/feedback/queries.ts` — emite **`feedback_email_skipped`** (`info`, con el motivo) y **`feedback_email_failed`** (`warn`), anclados al **`messageId`**. Al mensaje y no al feedback a propósito: un hilo tiene N respuestas de admin, y anclarlo al feedback las confunde entre sí (el gemelo de impugnaciones no tiene ese problema).
-  - `backend/src/feedback-email-reconciliation/` — cron cada hora (**:35**, para no solaparse con `:00` ni con el `:15` del gemelo), ventana de 24 h con 10 min de gracia. La unidad es el MENSAJE. Publica `inferredSkips` como trinquete.
-  - **Reutiliza el núcleo puro `verdict.ts` del gemelo, no una copia** — dos puertas al mismo hecho con criterios distintos no protegen el doble, se contradicen. Lo único que se le añade es el hecho `hasUnsubscribeToken` (opcional): si hubo token y no hay email, es `real_drop` **por certeza**, diga lo que diga la preferencia de hoy. Es la respuesta a la «dirección peligrosa» de [T-422], ahora con prueba en vez de con silencio.
-  - `backend/src/alerts/alert-rules.ts` — regla **`feedback_email_drop`** (`error`), separada de la de impugnaciones para que el cooldown de una no silencie a la otra. Su texto manda **no reenviar** sin mirar.
-  - `docs/runbooks/health-check.md` **§0.ter** — triaje, con la tabla de las dos diferencias frente a §0.bis.
-- **Capas:** 7 tests del emisor (`respondFeedback.test.ts`, incluida la de que si la observabilidad falla la respuesta sigue siendo un éxito) + 5 del núcleo puro (`verdict.spec.ts`, con el caso de que SIN el hecho nuevo el criterio de impugnaciones no cambia ni un ápice) + 5 de la regla + **`npm run sim:reconciliador-feedback`**, que corre el servicio REAL contra RDS (nunca una copia del SQL) y reimprime la calibración y el control del 100%.
-- **Verificado en la simulación, no supuesto:** ventana real 0/0/0 e inferidos 0; calibración 531 · 488 con email · 43 sin · 1 con token · control 488/488 (100%). Coincide con la medición a mano hecha antes de escribir el SQL.
-- **Falta:** desplegar **frontend** (el emisor) y **backend** (el cron + la regla) y comprobar en producción que (a) el `cron_run` de `feedback-email-reconciliation` aparece cada hora, (b) `inferredSkips` baja a 0 según entran respuestas nuevas —si no baja, el emisor no está llegando—, y (c) un salto legítimo real deja su `feedback_email_skipped`.
-- **Lo que este arreglo NO cubre:** los contactos EXTERNOS (sin `user_id`) salen por `/api/send-support-email` con `sendDirectEmail`, otro camino que tampoco deja evidencia. Queda fuera a propósito: el reconciliador solo mira conversaciones con usuario.
-- **Relacionadas:** [T-422] (el gemelo, de donde sale el hueco), [T-373] y [T-369] (por qué la preferencia es mutable y no prueba nada), [T-116] (el otro hueco de emails: intentado y rechazado).
-
-### [T-456] 🟠 [ABIERTO 01/08 · IMPLEMENTADO 01/08, falta verlo vivo] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
-
-- **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
-- **HAY TRES CAMINOS DE ENVÍO, no dos**, y dos de ellos están completos:
-  1. **`sendEmailV2`** (transaccional, uno a uno): comprueba `canSendEmail`, genera el token de baja, registra en `email_events` y admite `idempotencyKey`. Lo usan impugnaciones, feedback y soporte.
-  2. **Newsletters** (masivo): Resend por HTTP con reintentos y control de rate-limit —lo que necesita un envío a miles— pero **con las tres piezas puestas**: excluye a los dados de baja al construir la audiencia, genera token y registra en `email_events`.
-  3. **Este recordatorio**: Resend crudo **sin ninguna de las tres**.
-- **MEDIDA (01/08):** **424 recordatorios enviados** y **solo 1 aparece en `email_events`**. Los otros 423 son invisibles para observabilidad y analítica. Un destinatario tiene hoy `email_soporte_disabled` (leo el valor de AHORA, no el de entonces, así que no se puede afirmar que se le escribiera después de pedirlo — lo que sí es seguro es que **por ese camino nada lo habría impedido**).
-- **POR QUÉ IMPORTA MÁS DE LO QUE PARECE:** va a gente que **paga**, avisa de un **cobro**, y es justo el tipo de envío cuya desaparición nadie nota — la ceguera que costó seis horas en [T-422] es la misma. Además su guardarraíl documentado («el cron ticó y envió 0») emitía `renewal_reminders_zero_sent` que **ninguna regla miraba** hasta [T-448].
-- **RESOLUCIÓN PROPUESTA:** migrarlo a `sendEmailV2` (que usa Resend por dentro: no se cambia de proveedor, se le ponen las comprobaciones delante). Ojo al hacerlo: hoy el importe se calcula con `invoices.createPreview` y eso hay que conservarlo; y la idempotencia actual vive en `email_logs` (5 días), que conviene mantener ADEMÁS de la clave de Resend.
-- **Relacionadas:** [T-448] (donde salió), [T-369] (por qué la categoría decide quién lo recibe), [T-457] (el otro cabo del mismo repaso).
-
-- **✅ HECHO (01/08) — migrado a `sendEmailV2`, con lo que había que conservar conservado:**
-  - `sendRenewalReminder` ya no habla con Resend en crudo. Gana las tres piezas: `canSendEmail`, token de baja con cabeceras `List-Unsubscribe`, y fila en `email_events`. El importe se sigue calculando con `invoices.createPreview` (no se tocó `getUpcomingInvoiceInfo`) y el dedup de `email_logs` a 5 días **se conserva** por delante del envío, que es lo que separa el aviso de 7 días del de 1 día.
-  - **La trampa de la migración, que estaba a un paso de tragarse el descuento:** el despacho de templates de `sendEmailV2` NO pasaba `baseAmount` ni `discountPercent`, que son los dos últimos argumentos del template y los únicos que pintan la línea *«precio base 59€ con tu 20% de descuento de fidelidad aplicado»*. Como el correo salía por el camino crudo (con los 8 argumentos), el fallo estaba **latente**: se habría estrenado justo al migrar, borrando la explicación del importe en el correo que avisa de un cobro. Se arregla en el despacho y se fija en `templateDispatch.test.ts`, que es el único sitio que usa los templates REALES.
-  - **Clave de idempotencia de Resend:** `renewal:<user>:<fecha de renovación>:<día de envío>`, en un núcleo puro y testeado. **`daysUntilRenewal` NO sirve** como discriminante: sale de un `Math.ceil` sobre `now`, así que la misma persona da 8 por la mañana y 7 por la tarde — una clave que cambia sola entre dos intentos del mismo día no deduplica nada.
-  - **Bloqueado por preferencias cuenta como OMITIDO, no como fallido.** Si contara como fallo, el guardarraíl de *«ticó y envió 0»* gritaría por gente que decidió no recibirlo.
-  - **Alcance medido antes de tocar (para no cambiarle el correo a nadie sin saberlo):** de las **74** suscripciones activas que renuevan, **0** tienen `email_soporte_disabled` y **0** tienen baja total. Es decir: hoy la comprobación de preferencias **no deja fuera a nadie** — se pone para el futuro, no para cortar envíos vivos.
-  - **Capas:** 6 tests de contrato del camino (`recordatorioRenovacionCarril.test.ts`), 4 de clave pura, 3 nuevos de render real con y sin descuento, y los 5 de `renewalReminderPrices` reapuntados al `customData`. Typecheck y lint limpios.
-
-- **🔎 HALLAZGO al verificar, que NO se cierra desde aquí — el rastro depende de una lista blanca en la BD.** `email_events.email_type` tiene un CHECK (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo que no esté en la lista **no da error a nadie**, simplemente no deja fila. Medido sobre RDS: 18 tipos declarados en la app, 24 en el CHECK, y **2 que la app envía y la BD rechaza**:
-  - `recordatorio_renovacion` **SÍ está** en la lista → el arreglo de esta ficha funciona. ✅
-  - **`fin_suscripcion_precio_heredado` NO está**, y es de [T-448], que se estrenó esa misma mañana: 4 personas recibieron el aviso a las 09:00 y las **8 filas** que quedaron son de `email_logs` (**dos por envío**: `sendEmailV2` escribe una y `avisoFinSuscripcion` repite el insert), **cero** en `email_events`. O sea que el correo hermano nace con la misma ceguera que esta ficha arregla.
-  - **`nueva_oposicion`** tampoco está.
-  - Cerrarlo pide una **migración que amplíe el CHECK** (+ quitar el insert duplicado de `avisoFinSuscripcion`), y eso es territorio de [T-448]. Mientras tanto queda vigilado por trinquete en `__tests__/integration/emailEventsTiposAceptados.test.ts`: **no falla por la deuda de hoy, falla si crece** — un gate en cero dejaría el CI rojo para todas las sesiones por algo que no se arregla desde esta ficha.
-
-- **📦 ESTADO AL CERRAR LA SESIÓN (01/08 12:45 CEST) — qué encuentra quien la coja:**
-  - En `main` como `e8f928427`. Frontend **desplegándose** en esa misma tanda (`origin/main` = `9cbdc06f`, que ya lo incluye). Al terminar el deploy, la tarea se despierta sola y sale como `⏰ LISTA PARA VERIFICAR`.
-  - **⚠️ PERO NO SE PODRÁ VERIFICAR ESE MISMO DÍA, y conviene saberlo antes de intentarlo.** El cron es `@Cron('0 9 * * *', UTC)` en `backend/src/internal-cron-triggers/` y dispara `/api/cron/renewal-reminders` **una vez al día**. El 01/08 ya había corrido (a las 09:00 UTC) con el código VIEJO, y el deploy salió a las ~10:40 UTC. O sea: **la primera tanda con el código nuevo es la del día siguiente a las 09:00 UTC**. Despertarse «lista para verificar» y no encontrar datos NO es que el arreglo falle.
-  - **Cómo verificarla (en este orden):** (1) `SELECT count(*) FROM email_events WHERE email_type='recordatorio_renovacion' AND created_at > '<fecha del deploy>'` en RDS — antes del arreglo eran **424 en `email_logs` contra 1 en `email_events`**, así que cualquier número > 0 que case con los envíos del día ya es la prueba; (2) comprobar que a quien tiene `loyalty_10`/`loyalty_20` el correo le pinta la línea del descuento (es lo que arregla el despacho de templates, y era el fallo latente que la migración iba a estrenar); (3) `node scripts/canary-renewal-reminders.cjs` si se quiere adelantar sin esperar al cron.
-  - **Ojo al leer los números:** `avisoFinSuscripcion` ([T-448]) escribe **dos** filas en `email_logs` por envío, así que contar por ahí infla. `email_events` es la cuenta buena.
-  - **📏 LÍNEA BASE tomada el 01/08 a las 13:50 CEST, con el frontend YA desplegado y antes de que corra ningún cron nuevo** (para que la comparación de mañana sea limpia): `email_logs` = **424**, `email_events` = **1** (esa única fila es del **24/02/2026**). El último recordatorio real salió el **20/07** y el cron de hoy envió **0**.
-  - **🎯 QUÉ ESPERAR EXACTAMENTE, porque «mira si hay filas» no vale aquí: debe salir UN correo, no un lote.** Quedan solo **2 suscripciones que renuevan de verdad** (11 vencen en 30 días, pero **59** de ellas son `cancel_at_period_end=true` y el cron las excluye a propósito — es justo el hueco de [T-448]): una renueva el **02/08** y otra el **10/08**. La ventana (`renewalReminderWindow`) es el **día natural `now + N` en hora LOCAL del servidor**, y la del 02/08 cae a las **22:00 UTC**, o sea justo FUERA de la ventana de hoy y DENTRO de la de mañana. Por eso hoy salieron 0 y **mañana 02/08 a las 09:00 UTC debe salir exactamente 1** (el aviso de 1 día). **Veredicto: 1 fila nueva en `email_events` = verificado; 0 filas = algo va mal.** Después de esa, la siguiente oportunidad es el aviso de 7 días de la del 10/08, que por el mismo desfase de huso cae hacia el **04/08**.
-  - **Si mañana sale 0, mirar en este orden** antes de culpar al arreglo: (1) que el frontend desplegado sea ≥ `9cbdc06f` (`/api/health`); (2) que el cron ticara — `observable_events` con `renewal_reminders_*` y el heartbeat `trigger-renewal-reminders`; (3) que la suscripción no se cancelara entre medias (pasaría a `cancel_at_period_end=true` y el cron la excluiría con razón); (4) solo entonces, el camino de envío.
-
-### [T-457] 🟡 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
-
-- **ORIGEN.** Salió comparando los caminos de envío en [T-448]/[T-456]: la newsletter tiene **dos** rutas y solo una filtra.
-- **EL DETALLE:** el envío **por audiencia** usa el helper de Drizzle que excluye `unsubscribedAll` y `email_newsletter_disabled` (está comentado en el código: *«respeta unsubscribedAll»*). El envío **por `selectedUserIds`** hace `.where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))`: comprueba que tengan email **y nada más**. Ni `resolve-users` ni `users` filtran preferencias tampoco.
-- **NO se afirma que se haya enviado nada indebido**: depende de de dónde saque el admin esa lista, y puede venir de una pantalla ya filtrada. Lo que sí se puede afirmar es que **el filtro no está en el punto de escritura**, que es donde el resto del sistema lo pone ([T-130]: dos puertas al mismo recurso con criterios distintos no protegen).
-- **MEDIR ANTES DE TOCAR:** cruzar `email_events` de newsletters con `email_preferences` para saber si el hueco se ha usado alguna vez. Si el número es 0, esto es un trinquete barato; si no lo es, es un incidente de cumplimiento.
-
-- **📏 MEDIDO (01/08) — es un TRINQUETE, no un incidente. Y la medida corrigió mi primera lectura.**
-  - Universo: **7.660** envíos de newsletter a **5.577** usuarios desde el 28/09/2025. Hoy hay **109** usuarios detrás del filtro (104 baja total + 83 newsletter apagada, solapan).
-  - **Evidencia dura** (envío POSTERIOR a `unsubscribed_at`, que es la única marca de tiempo que permite afirmar algo): **1 usuario, 2 envíos**, el 10/12/2025 y el 22/12/2025, dado de baja el 29/10/2025. Uno de los dos tiene la firma exacta del hueco: `campaign_id` con **un solo destinatario**, que es como se ve una selección manual.
-  - **PERO los dos son ANTERIORES al filtro:** `getNewsletterAudience` no excluyó preferencias hasta `c30893c94` (**30/03/2026**). En diciembre **ninguna** vía filtraba, así que esos 2 envíos **no prueban** que se haya usado el hueco actual. Desde que existe el filtro: **0 envíos demostrables** a alguien ya bloqueado.
-  - Conclusión honesta: **no consta uso del hueco vigente**, así que esto es el trinquete barato de la ficha — pero con 109 personas al alcance y sin nada que lo impidiera.
-  - Reproducible: `scratchpad/t457/medir-hueco.cjs`.
-
-- **✅ ARREGLADO (01/08), en el punto de escritura:**
-  - **Núcleo puro nuevo `lib/api/newsletters/recipients.ts`** — `isBlockedForNewsletter` / `blockedUserIds` / `filterEligibleRecipients`. El criterio (baja total **o** newsletter apagada) vive en UN sitio y lo usan las dos vías.
-  - **`getNewsletterRecipientsByIds`** (`queries.ts`) es ahora la vía de la selección manual; la ruta `send` **ya no consulta `user_profiles` por su cuenta**.
-  - **`getBlockedNewsletterUserIds`** unifica la lectura de preferencias, que estaba **copiada** en `getNewsletterAudience` y `getAudienceStats` (y ausente en la tercera vía). Una sola puerta.
-  - **Se CUENTA lo que se descarta** (`skippedBlocked`, en la respuesta y en la tarjeta de resultado del panel): una selección de N que sale a N−k tenía que verse; si el descarte es mudo, el envío parece haber salido entero.
-  - **NO se toca la pantalla** que arma la selección, a propósito: una lista filtrada al construirse envejece antes de pulsar «enviar».
-  - **Capas:** 12 unitarios del núcleo puro (`__tests__/emails/newsletterDestinatarios.test.ts`) · guardarraíl de 6 que enumera **las dos vías** y pone trinquete a que el criterio se vuelva a copiar (`__tests__/guardrails/newsletterFiltraPreferencias.test.ts`) · **simulación contra la BD real** `npx tsx --env-file=.env.local scripts/sim/sim-newsletter-destinatarios.ts` (no envía nada; 7 seleccionados → 3 destinatarios, 4 excluidos, y comprueba que los NO bloqueados siguen pasando).
-  - El guardarraíl se **mutó a propósito** en las dos direcciones antes de darlo por bueno: reintroducir la consulta en la ruta y renombrar la llamada a `XXgetNewsletterRecipientsByIds(` lo ponen en rojo, y el original en verde. Sin eso sería teatro (lección de [T-454]).
-
-- **⏳ FALTA:** desplegar **frontend** y, en el siguiente envío manual real, ver la línea «No enviados por preferencias» en la tarjeta de resultado.
-- **RESOLUCIÓN PROPUESTA:** mover el filtro a la consulta del envío (las dos rutas), no a las pantallas que alimentan la selección. Una lista de destinatarios que llega ya filtrada sigue pudiendo envejecer entre que se construye y se envía.
-- **Relacionadas:** [T-456] (el otro cabo del mismo repaso: el recordatorio de renovación envía con Resend crudo, sin filtro ni rastro), [T-369], [T-130] (dos puertas con criterios distintos no protegen).
-
-### [T-450] 🔴 [ABIERTO 01/08] El modo EXAMEN no cuenta para el límite diario del free: 10.181 respuestas en 7 días sin pasar por el contador
-
-- **Qué pasa:** un usuario free tiene 25 preguntas/día. Ese tope lo aplica el camino de PRÁCTICA. El **modo examen no lo toca**: las respuestas se guardan en `test_questions` y `daily_question_usage` no se entera. Un free que descubra los exámenes tiene barra libre, sin necesidad de segunda cuenta ni de borrar nada.
-- **Medido el 01/08 (banco vivo):**
-  | | respuestas | usuarios |
-  |---|---|---|
-  | Respuestas de tests `exam` que no llegan al contador (7 días) | **10.181** | **136** |
-  | …las mismas por el camino `practice` | 617 | 168 |
-- **El caso que lo destapó, y que lo prueba en una sola persona:** `javiergalinanesvarela@gmail.com` (free, alta 27/07) **contestó 489 preguntas en 4 días** —todas contestadas de verdad, cero en blanco— mientras su contador registraba ~65. De esas 489, **432 son de tests `exam`** y solo 57 de práctica. El **29/07 respondió 110 preguntas y `daily_question_usage` no tiene NI UNA FILA de ese día.**
-  | día | respuestas reales | contador |
-  |---|---|---|
-  | 27/07 | 185 | 25 |
-  | 28/07 | 129 | 20 |
-  | 29/07 | 110 | **(sin fila)** |
-  | 30/07 | 65 | 20 |
-  - **El contraste está en la misma máquina:** la otra cuenta de ese equipo (`trabajospilarfreire@gmail.com`) solo hace práctica y **cuadra clavada a 25/día**. Para ella el límite funciona. La diferencia no es la persona: es el camino.
-- **✅ CAUSA CONFIRMADA (01/08) — es una REGRESIÓN con fecha, NO una exención de producto.** La duda que abría esta ficha («¿el examen está exento a propósito?») queda resuelta por los datos: **hasta el 27/07 el contador seguía a los exámenes, y el 28/07 se desploma y no se recupera.**
-  | día | respuestas de examen (free) | suma del contador |
-  |---|---|---|
-  | 22/07 | 585 | 563 |
-  | 26/07 | 913 | 699 |
-  | 27/07 | 1.421 | 895 |
-  | **28/07** | 1.492 | **326** |
-  | 29/07 | 1.602 | **157** |
-  | 30/07 | 1.966 | **157** |
-- **EL MECANISMO, en una frase: al arreglar bien una cosa, el examen se quedó sin nadie que cobre.** El **29/07** se movió el cobro del cupo **del cliente al servidor** (`hooks/useDailyQuestionLimit.ts` → `recordAnswer` ya NO cobra; el cobro es de `answer-and-save`, y solo cuando la respuesta se PERSISTE, `debeConsumirCupo` → `saveAction === 'saved_new'`). **El cambio era correcto** y su motivo sigue siéndolo: cobrar desde el cliente desacoplaba el cupo del guardado —respuestas que no llegaban a `test_questions` consumían igual— y no era idempotente.
-  - **Pero el modo examen NO pasa por `answer-and-save`.** Sus respuestas se persisten **en bloque** en `app/api/exam/validate/route.ts` (`insert(testQuestions)` con `onConflict`), un camino que nunca cobró cupo porque no le hacía falta: cobraba el cliente. `components/ExamLayout.tsx` (línea ~953) **sigue llamando a `recordAnswer()` en bucle**, solo que desde el 29/07 eso únicamente mueve el contador OPTIMISTA de la interfaz.
-  - **`/api/exam/answer` sí COMPRUEBA el límite** (`getDailyLimitStatus`, corta con `limitReached`) y dice en un comentario *«Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer). No incrementar aquí para evitar doble conteo»*. Ese comentario quedó obsoleto el 29/07 y **nadie lo actualizó**: describe un reparto de responsabilidad que ya no existe.
-  - `increment_daily_questions` **existe** como función SQL y la llama el backend (`daily-limit.service.ts`), no hay trigger sobre `test_questions` que cuente. La comprobación y el cobro viven en sitios distintos, y esa separación es la que se rompió.
-- **🚨 VERIFICADO EN PRODUCCIÓN EL 01/08 TRAS EL DEPLOY: EL PRIMER ARREGLO ERA INERTE. No cobraba nada.** El frontend con el cobro en `/api/exam/validate` entró vivo a las **08:47 UTC**. El primer examen real posterior al deploy lo desmiente entero:
-  | qué | dato |
-  |---|---|
-  | examen `426d0ee1` (usuario free `374e9067`) | 10 respuestas, completado 09:04:32 UTC |
-  | cuándo se escribieron esas 10 filas | 09:00:42 → **09:04:30**, una a una durante el examen |
-  | cuándo corrió `validate` | 09:04:32 — **2 segundos DESPUÉS de la última** |
-  | fila en `daily_question_usage` de ese día | **ninguna** |
-  - **La premisa de la ficha era falsa, y por eso el arreglo no podía funcionar.** Arriba se afirmó que las respuestas del examen «se persisten **en bloque** en `/api/exam/validate`». **No es así:** las persiste **`/api/exam/answer` en vivo**, una por una, mientras el usuario responde (`saveAnswer` → UPSERT en `test_questions`). `validate` es la **red** que rellena lo que esos saves *fire-and-forget* no consiguieron guardar.
-  - **Consecuencia exacta:** `validate` cobra solo lo que ESTRENA, y cuando corre no estrena nada, porque ya está todo escrito → `nuevasRespondidas = 0` → **el `if` ni siquiera entra**. La condición era correcta; lo que fallaba era la premisa sobre dónde ocurre la persistencia.
-  - **Y ningún test podía verlo.** El guardarraíl `dailyQuotaServerSide` lee el CÓDIGO: confirmó que el cobro existe, que va después de persistir y que solo cobra lo que se estrena — las tres cosas ciertas. **Un guardarraíl de código no puede ver que una condición correcta nunca se cumple.** Eso solo lo ve el canario, que mira datos. Es la misma lección de la vuelta anterior una capa más abajo.
-- **✅ ARREGLADO DE VERDAD (01/08, sesión `central-izquierdo`) — el cobro va donde la respuesta se persiste: `/api/exam/answer`.**
-  - **`saveAnswer` devuelve ahora `saveAction`** (`saved_new` / `already_saved`), **con el mismo vocabulario que `answer-and-save`**, para poder cobrar con la política COMPARTIDA `debeConsumirCupo(saveAction, isPremium)` en vez de con un criterio propio. Dos puertas al mismo recurso con criterios distintos no protegen: se contradicen — que es exactamente cómo el examen se quedó sin cobrar.
-  - **Estrenar incluye rellenar una fila EN BLANCO** (el examen crea filas conforme se navega), y **rectificar no se cobra**: en un examen se puede volver atrás y cambiar de opción tantas veces como se quiera antes de entregar, así que cobrar cada save convertiría el tope de 25 preguntas en un tope de 25 clics.
-  - **El doble clic lo arbitra el MOTOR, no la lectura previa** (`RETURNING (xmax = 0)`): dos peticiones simultáneas ven las dos «no existe fila» en el SELECT y cobrarían dos veces la misma respuesta. Cobrar de más es peor que cobrar de menos.
-  - **El cobro de `validate` SE QUEDA, y no se solapa por construcción:** es el único que ve las respuestas que los saves en vivo perdieron (poco fiables bajo carga — 30/40 exámenes con filas perdidas el 08/06), y esas son justo las que allí nadie cobró. La condición de cada sitio es la negación exacta de la del otro.
-  - **Capas:** `__tests__/api/exam/examAnswerCobroCupo.test.ts` (5 casos, gemelo del de `answer-and-save`: estrena / rectifica / falla el guardado / premium / el contador se cae y la respuesta no se rompe) + el guardarraíl ampliado a los DOS sitios, incluido un cierre para que el comentario obsoleto («lo incrementa el frontend») no pueda volver: fue literalmente el hueco por el que se coló esto.
-- **🔧 Y el canario no arrancaba con el comando que documenta esta ficha.** `npm run canary:cupo-vs-respuestas` moría con *«no hay URL de base de datos»*: el script no cargaba `.env.local`, a diferencia de todos sus hermanos. Nació así porque se estrenó ejecutándolo a mano con `--env-file`, así que el hueco no se vio — **una capa que no se puede invocar como está escrito que se invoque no es una capa**.
-- **✅ ARREGLO PARCIAL PREVIO 01/08 (sesión `t115-huerfanos`) — desplegado y, como se ve arriba, insuficiente por sí solo.**
-  - **`/api/exam/validate` ahora cobra**, y lo hace donde toca: justo después de persistir, y **solo por las respuestas que se estrenan**. El conteo se hace ANTES del upsert (cuántas de las que entran no tienen respuesta todavía), que es la misma condición que el propio upsert aplica para decidir si escribe — leída un instante antes. **Ahí vive la idempotencia, sin tabla extra**: un `validate` reenviado encuentra las filas ya respondidas y cobra 0. Y si la persistencia falla, se cobra 0: nunca se le cobra al usuario cupo por respuestas que no han quedado guardadas (misma regla que `save_failed`).
-  - **`increment_daily_questions` acepta ahora un IMPORTE** (`p_amount`, migración `20260801_increment_daily_questions_amount.sql`, ya aplicada). Un examen se cobra en UNA llamada en vez de ~50 idas y vueltas en un camino donde el usuario está esperando su nota. `DEFAULT 1` → **los llamadores actuales siguen valiendo sin tocarlos**; verificado que las dos formas de llamada resuelven. **GOTCHA:** hay que DROPear la versión de 2 argumentos primero — un `CREATE OR REPLACE` con un parámetro de más crea una SOBRECARGA, y entonces las llamadas de 2 argumentos quedan ambiguas y fallan.
-  - **Se conserva la SATURACIÓN**, que es la semántica de esta tabla: `questions_answered` es cupo consumido, no cuenta bruta. Simulado contra un usuario real en transacción deshecha: cobrar 12 → 12 · cobrar 99 → **25** · tres cobros de 10 → **25**. Y `GREATEST(p_amount, 0)` impide que un importe negativo pueda DEVOLVER cupo: esta función solo cobra.
-  - **Cerrado el punto ciego del propio guardarraíl** (`dailyQuotaServerSide.test.ts`): nació de este incidente el 29/07, enumeró los caminos que cobran y **se dejó fuera el examen**. Ahora lo cubre, y comprueba además el ORDEN (cobrar después de persistir) y la CONDICIÓN (solo lo que se estrena), que es lo que distingue cobrar bien de cobrar.
-- **🕯️ NUEVO CANARIO `npm run canary:cupo-vs-respuestas`, y lo primero que hizo fue CORREGIRME.** Mira los DATOS, no una lista de ficheros: la lección de esto es que **un guardarraíl que enumera caminos solo protege los que enumeró**, y el que se olvida es justo el que se rompe. Criterio: usuario free que respondió MUY por encima del tope y cuyo contador se quedó POR DEBAJO (comparar respuestas contra contador a secas marcaría a todo el mundo, porque el contador satura).
-  - **⚠️ CORRECCIÓN A LO QUE YO MISMO ESCRITO ARRIBA: la fuga NO empieza el 28/07.** Esa conclusión salía de sumas agregadas, que tapaban una minoría constante. Por usuario y día se ve un **goteo de 2-5 usuarios/día desde al menos el 12/07**, que el 28/07 salta a 13-14. O sea: la regresión del 29/07 **agravó** una fuga que ya existía, no la creó.
-  - **Consecuencia práctica: arreglar `/api/exam/validate` puede NO llevar esto a cero.** Al desplegar hay que volver a correr el canario: si baja al goteo de ~2 y no a 0, **hay un segundo camino** que tampoco cobra y hay que buscarlo (la propia salida del canario dice cómo: mirar por `test_type` las respuestas de un usuario-día con fuga).
-  - **🔁 CORRECCIÓN (01/08, misma sesión) — lo que escribí antes en esta ficha ERA FALSO, y el error fue MÍO dos veces seguidas.** Llegué a afirmar aquí que el segundo camino era `practice` con **3.036 respuestas de 20 usuarios**. **No es cierto: son 458 de 12.** Lo demás era mi canario marcando como fuga a gente que en julio era PREMIUM.
-    - **El mismo error, cometido dos veces:** primero filtré por `plan_type` de HOY (corregido cruzando con `user_subscriptions`), y al corregirlo exigí `status IN ('active','trialing','past_due')` — que **también es el estado de HOY**. Una suscripción activa en julio y cancelada en agosto figura hoy como `canceled`, así que seguía marcando premium como fuga. Caso que lo destapó: un usuario con `premium_monthly` del **25/06 al 25/07** y 300 respuestas diarias sin cobrar — que es lo CORRECTO, era premium. Su trayectoria lo canta sola: 25-26 de junio responde 27 y 50 con el contador topado en 25 (free, cobrando), y desde el 29 de junio 300 al día con el contador a 0 (premium).
-    - **Lo que decide es el PERIODO, no el estado.** El canario ya no filtra por `status`.
-    - **La cifra buena, del 10 al 27 de julio:** `practice` **458 respuestas / 12 usuarios** · `exam` **110 / 5**. Es decir: **la masa de la fuga SÍ es la regresión del examen del 28/07**, y lo de antes es un residuo pequeño —compatible en parte con el fail-silent del cobro, que por diseño regala la pregunta si el contador falla—.
-    - **Queda por explicar ese residuo de `practice`**, que es real aunque sea chico: ~25 respuestas al día sin cobrar por un camino que sí cobra. **No dar por hecho que es otro agujero** hasta descartar el fail-silent, que explicaría justo un goteo así.
-    - **La lección, y va al runbook:** un detector que juzga un hecho del pasado con el estado del presente se inventa hallazgos, y **no basta con arreglarlo una vez** — hay que preguntarse de cada columna que se use si es un estado ACTUAL. `plan_type` y `status` lo eran las dos.
-  - Hoy el canario **FALLA a propósito** (14 usuarios el peor día, techo 3): la fuga sigue viva hasta que se despliegue. Es la lectura honesta, no un rojo que haya que silenciar.
-- **ARREGLO (especificado, NO implementado — merece su propio trabajo con la cabeza fresca):** cobrar en el SERVIDOR en el punto donde las respuestas de examen se PERSISTEN, es decir en `/api/exam/validate`, **y con la misma condición que `answer-and-save`: cobrar solo lo que se guarda de nuevo**. El `onConflict` de ese insert ya distingue la fila nueva de la re-enviada, así que la idempotencia se puede apoyar en él en vez de inventarla. **Dos trampas:** (1) los PREMIUM esquivan el contador por diseño y la corrección no puede empezar a contarlos; (2) `ExamLayout` seguirá moviendo su contador optimista — si además cobra el servidor, hay que comprobar que no se cuenta dos veces (que es justo el motivo por el que el comentario de `exam/answer` decía lo que decía).
-- **Y una capa que faltaba:** nadie compara respuestas reales contra el contador. Un canario que lo haga por usuario free y día habría cantado esto **el 28/07**, no cuatro días después y de rebote.
-- **Pista de código (sin cerrar):** `increment_daily_questions` **solo aparece en `__tests__/api/daily-limit-enforcement.test.ts`** — el grep no encuentra ningún punto de producción que lo llame. Los tests afirman que se invoca y pasan porque lo mockean. Los endpoints de `app/api/exam/*` escriben en `test_questions` y ninguno toca el contador. **Ojo: eso hay que confirmarlo antes de tocar nada** — puede que el incremento viva con otro nombre o dentro del backend; lo MEDIDO es el efecto, no la causa.
-- **Por qué es 🔴 y no un matiz:** [T-304] gastó tres meses en cerrar la evasión del tope por dispositivo —la de crear una segunda cuenta— y resulta que **el tope se rebasa 7× sin necesidad de segunda cuenta**. Mientras esto siga abierto, el límite por dispositivo corta a quien comparte ordenador y deja pasar a quien abre un examen. Se está midiendo la puerta equivocada.
-- **Decisión que hay que tomar antes de arreglar (es de Manuel):** ¿el modo examen debe contar para el tope del free, o está exento a propósito? Si está exento a propósito, entonces el tope de 25 no es un tope y hay que decir otra cosa en la UI. **No dar por hecho que es un bug**: puede ser una exención de producto que nadie escribió.
-- **Al arreglar, cuidado con dos cosas:** (1) los PREMIUM esquivan el contador por diseño (lo dice `lib/security/harvestSignals.js`), así que la corrección no puede empezar a contarlos; (2) un examen se responde en bloque y se corrige al final —`/api/exam/validate`—, así que el punto donde incrementar no es el mismo que en práctica.
-- **Capas que faltan:** ninguna vigila esto. Un canario que compare respuestas reales de `test_questions` contra `daily_question_usage` por usuario free y día habría cantado esto desde el primer día.
-- **Cómo salió:** investigando a fondo el único caso que el límite por dispositivo de [T-304] iba a cortar (petición de Manuel, 01/08). El caso resultó ser dos personas reales compartiendo ordenador; el hallazgo de verdad estaba debajo.
-- **Relacionadas:** [T-304] (el límite por dispositivo, que esto deja sin sentido mientras siga abierto), [T-095] (por qué el enforcement de uso se descartó en su día), [T-372] (punto ciego del antifraude), `docs/runbooks/revisar-fraudes.md`.
-- **🔴 VERIFICADO EL 02/08 Y **NO** ESTÁ ARREGLADO — el cobro se lo salta el examen que PRE-CREA sus filas.** Con el arreglo vivo desde el 01/08 23:33 (task def 600), un usuario **free** (`c07c2079…`) respondió **20 preguntas de examen** y su contador **no se movió: no tiene NI UNA fila en `daily_question_usage`**, ni un solo evento de cupo.
-  - **El mecanismo, con la traza delante:** el examen **escribe sus 64 filas al ABRIRSE** (todas con `created_at` 11:03:05) y las respuestas llegan **después**, como UPDATE (`updated_at` 12:34-12:35). Así que cuando el usuario contesta, la fila **ya existe** → `saveAction` no es `saved_new` → `debeConsumirCupo` dice que no y **no cobra nada**.
-  - **Por qué la medición anterior daba verde:** contar FILAS de `test_questions` engaña, porque el examen crea una por pregunta al abrirlo. Hay que contar las que tienen `user_answer` de verdad. En el mismo barrido, otro free (`6cf81425…`) sí quedó bien cobrado (24 contestadas de 89 filas, contador 25): **el flujo normal SÍ cobra**, el que se escapa es este.
-  - **Lo que hay que decidir al arreglarlo:** rellenar una fila **en blanco** tiene que estrenar cupo (hoy se confunde con rectificar). Es la misma frontera que ya distingue `debeConsumirCupo`, pero el examen la cruza por el otro lado. Y al tocarlo, comprobar que **rectificar** una respuesta sigue sin cobrar dos veces.
-  - **Cómo re-medirlo (no repetir el error):** free con respuestas de examen posteriores al instante del deploy, contando `user_answer IS NOT NULL AND <> ''`, cruzado contra `daily_question_usage` del día en `Europe/Madrid`.
-- **🔴 EL CUARTO CAMINO (04/08): la RED DE SEGURIDAD de `complete-test`, y se llevaba lo gordo.** Con los tres arreglos anteriores ya vivos (`3cc77c42`), el canario baja de 13 usuarios/día (30/07) a **1**, y ese que queda no es examen: es **práctica**.
-  - **El caso, con la traza entera:** un free (`joseantoniogalianbastida@…`) respondió **56 preguntas de práctica con el contador a CERO** —ni una fila en `daily_question_usage`—. Sus llamadas a `answer-and-save` fueron **112, todas 403**: *«ya tienes 2 dispositivos conectados»*. Cero doscientos. La cola del cliente no drenó NUNCA… y las 56 respuestas están guardadas igual, escritas **en bloque** al terminar cada test (todas con el mismo `created_at`, en dos tandas).
-  - **Quién las escribe:** el safety-net de `/api/v2/complete-test` (`fillMissingTestQuestions` → `insertTestAnswersBatch`), que existe para que no se pierdan las respuestas que la cola no pudo enviar. Hace bien su trabajo; lo que no hacía era **cobrar**.
-  - **Y esto invierte el sentido del guardarraíl de dispositivos:** el 403 de [T-304] frenaba el camino que COBRA y dejaba entero el que NO. Cuanto peor le va a la cola de un usuario, más respuestas caen por el hueco. No es un residuo: es el modo de fallo más limpio de los cuatro.
-  - **✅ ARREGLADO (04/08).** Se cobra donde se persiste, con importe y solo por lo que se estrena: `gapFilledCount` son las filas que ese insert creó **de verdad** (el `ON CONFLICT DO NOTHING` deja fuera las que ya estaban), así que **no puede solaparse** con lo que ya cobró `answer-and-save` — son conjuntos disjuntos por construcción, no por un `if`. Premium lo corta la propia función SQL, así que no hace falta una sexta definición de «premium» aquí.
-  - **Y deja rastro:** era un `console.log`, o sea invisible — nadie podía saber cuántas respuestas entran por la red de seguridad ni a cuánta gente. Ahora emite `cupo_safety_net` (`warn`: que el safety-net trabaje significa que la cola NO drenó, y eso siempre es síntoma de algo). Entra en la tarjeta «Todas las señales» del panel; **el umbral de una regla propia se pone cuando haya datos**, no a ojo.
-  - **Capas:** el guardarraíl de cupo ampliado al CUARTO camino (que cobre, con importe, después de persistir, y que deje evento). La verificación de verdad es el **canario** `npm run canary:cupo-vs-respuestas` tras el deploy: si baja a 0 está cerrado; si se queda en un goteo, hay un quinto camino. Es la lección de esta misma ficha — un guardarraíl de código no puede ver que una condición correcta nunca se cumple.
-- **🔧 ARREGLADO EL 02/08 (pendiente de deploy) — era el SIMULACRO, con sus endpoints propios.** `POST /api/v2/official-exams/answer` no cobraba nada, y comparte el modo de fallo del examen normal: pre-crea sus filas al abrirse, así que guardar es un UPDATE y «la fila ya existía» se confundía con «ya había respondido». Medido antes de tocar: **100 usuarios free · 4.975 respuestas · 7 días**.
-  - **La regla vive UNA vez:** `estrenaRespuesta` en `lib/api/dailyLimit.ts`, junto a `debeConsumirCupo`, usada por el examen normal y por el simulacro. Estaba escrita a mano en uno y no existía en el otro.
-  - **Sin viajes extra a la BD:** el dueño del test y la respuesta previa se traen en la consulta que el guardado ya hacía (ese endpoint no lleva auth a propósito, por latencia; el dueño sale del test, creado con sesión en `/init`).
-  - **Un fallo propio que conviene recordar:** el primer intento decidió premium con `plan_type === 'premium'` — una **sexta definición**, que deja fuera a `trial`, `legacy_free`, `premium_semester` y `admin`. No cobró de más (la función SQL corta igual), pero es como divergen las cosas. Ahora `esPlanPremium()` sobre `PREMIUM_PLAN_TYPES`, **con guardarraíl que compara la lista del código contra el `IN (...)` de la migración**.
-  - **Capas:** 10 unitarios de la frontera en las dos direcciones · guardarraíl de paridad ampliado al TERCER camino (incluido «la regla se importa, no se copia») · **`npm run sim:cupo-simulacro`, que EJECUTA el cobro contra la BD real** con usuarios efímeros (estrenar cobra 1 · rectificar no · `trial` no consume · la respuesta queda guardada) · y el canario `canary:cupo-vs-respuestas`, que ya existía y hoy está en ROJO (13 usuarios el 30/07): es el que dirá si baja.
-  - **🚪 LA PUERTA YA EXISTÍA Y ESTABA MUERTA, no hace falta una nueva:** `OfficialExamLayout` bloquea al responder si `isLimitReached`, y ese dato sale de `/api/v2/daily-question/status`, **el mismo contador** que este arreglo empieza a mover. Llevaba sin dispararse porque el contador nunca subía por el simulacro. Con esto, revive sola.
-  - **Lo que queda ABIERTO y es una decisión, no un olvido:** ese bloqueo es de CLIENTE, así que se puede saltar. El examen normal sí corta en servidor (`/api/exam/answer`), pero hacerlo aquí cuesta una consulta de estado **por respuesta** en un examen cronometrado, que es justo la latencia que ese endpoint evita. Endurecerlo es una decisión de producto (y encaja mejor con el antifraude, [T-372]) — **no se hace aquí para no cambiarla a escondidas**.
-
-### [T-448] 🟠 [ABIERTO 01/08] Las 184 suscripciones que se están apagando solas no reciben NINGÚN aviso: se quedan en free sin enterarse
-
-- **ORIGEN.** Manuel (01/08): *«habría que crearles un email personalizado 3 días antes… diciendo que va a terminar su suscripción, que para mantener el mismo precio debe entrar y resuscribirse»*. Salió mientras se verificaba [T-363], repasando el camino entero de «recuperar mi precio».
-- **EL HUECO, y es de exclusión deliberada.** El recordatorio que existe (`recordatorio_renovacion`, cron diario 09:00 UTC) **filtra `cancel_at_period_end = false`** a propósito: avisa de un **cobro** que viene, y a estas personas no se les va a cobrar. Correcto para lo suyo, pero deja sin ningún aviso justo a quien va a perder el acceso.
-- **MEDIDA (01/08):** **184** suscripciones de la cuenta antigua activas y apagándose, **59 vencen en los próximos 30 días**, y **170 ya vencieron** sin que nadie les dijera nada. Su precio antiguo (20/35/59 €) es más barato que el vigente (29/39/69 €), así que el aviso no es cortesía: es la diferencia entre volver y no volver.
-- **LO QUE HAY QUE REUTILIZAR, no reconstruir:** el cron `trigger-renewal-reminders` (backend, 09:00 UTC, con heartbeat), la ventana en núcleo puro (`renewalReminderWindow`), la **idempotencia** por `email_logs` (no repite en 5 días), el canario `canary-renewal-reminders.cjs` y el guardarraíl de *«el cron respondió 200 pero envió 0»*. Y la categoría **`soporte`**, que es la que atraviesa el botón de baja masiva — imprescindible aquí, porque buena parte de este público lo pulsó ([T-369]).
-- **EL AVISO SOLO ES VERDAD SI SE HACE VERDAD.** Decir *«perderás tu precio»* no se sostenía con el código: `user_price_offers.expires_at` existe, se LEE, y **nadie la escribe jamás** (las 4 ofertas vivas la tienen a NULL). Decisión de Manuel (01/08): no se hace caducar sola — **se anulará a mano** pasado un plazo desde que caen a free (*«una semana o un mes, ya te diré»*). Por eso el email **no lleva fecha límite inventada**: dice que al terminar pasan a gratis y que más adelante ese precio dejará de estar disponible. Verdadero hoy y verdadero cuando se anule.
-- **✅ LAS 189 OFERTAS YA ESTÁN CREADAS (01/08), y esto lo corrigió Manuel sobre la marcha:** *«el precio lo tienes que crear ya y ponerlo en el botón de perfil, imagina que pincha antes del correo»*. Crearlas solo al enviar el email dejaba tres cabos que únicamente se ven en el momento de decidir: (1) el perfil **no puede enseñar la CIFRA** si la oferta no existe, y la cifra es el argumento entero (20 € frente a 29 €); (2) crearla en el clic **habla con Stripe en vivo**, y si falla el perfil hace `tieneOferta ? '/premium/personal' : '/premium'` y la persona acaba viendo la **tarifa nueva** — un tropiezo de red le cuesta su precio; (3) no se sabía a cuántos les saldría. **Medido antes de escribir nada: 189 de 189, cero excepciones.** Ejecutado con `scripts/premium/crear-ofertas-fidelidad.ts --apply` (registrado, dry-run por defecto, idempotente): **190 ofertas vivas, una por persona, todas en `nila`, todas con enlace, y 0 personas apagándose sin su precio.** Reparto: 84 a 35 € trimestral, 73 a 59 € semestral, 32 a 20 € mensual.
-- **Y la cifra se enseña YA en el perfil**, no dos pantallas después: el endpoint de suscripción devuelve `precioFidelidad` formateado (misma fuente que la página de destino, para que no haya dos formas de pintar el mismo importe) y el botón pasa a decir «Mantener mi precio: 35 € cada 3 meses». Si aún no tuviera oferta, el botón **no promete cifra** — enseñar un importe que luego no aparece sería peor que no enseñar ninguno.
-- **La oferta también se crea al enviar el aviso.** `asegurarOfertaHeredada()` se ejecuta al pulsar el botón del perfil; un email que enlace a `/premium/personal` sin eso enseñaría *«No tienes ningún precio de fidelidad activo»*. El envío tiene que crear la oferta antes de enlazarla.
-- **Alcance acordado:** (1) aviso a 3 días reutilizando el cron; (2) crear la oferta al enviar; (3) herramienta de anulación con el plazo como parámetro y dry-run por defecto. **Sin enviar nada sin borrador aprobado y sin anular nada sin que Manuel dé el plazo.**
-- **✅ EL PLAZO YA ESTÁ DECIDIDO (Manuel, 01/08): UN MES.** Al terminar la suscripción pasan a gratis; tienen **un mes** para volver con su precio; pasado ese mes **se anula la oferta** y contratan en `/premium` a los planes vigentes. Eso es lo que hace verdad el aviso, así que la anulación **no puede depender de que alguien se acuerde**: va programada, no a mano.
-- **Pendiente de decidir:** qué se hace con las **170 ya vencidas**, a las que el aviso de 3 días ya no alcanza.
-- **🔎 DOS CABOS QUE LE LLEGAN DESDE [T-456] (medidos el 01/08, sin tocar) — el aviso que ya se envía es CIEGO:**
-  1. **`email_events` rechaza `fin_suscripcion_precio_heredado` en silencio.** La columna `email_type` tiene un CHECK con lista blanca (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo ausente **no da error a nadie**, simplemente no deja fila. Las 4 personas que recibieron el aviso el 01/08 a las 09:00 dejaron **8 filas en `email_logs` y CERO en `email_events`**. Es exactamente la ceguera que [T-456] acaba de arreglar para el recordatorio de renovación, un piso más abajo. **Se cierra con una migración que amplíe el CHECK** (`nueva_oposicion` está en el mismo caso). Al hacerlo hay que **quitar el tipo de `HUECOS_CONOCIDOS`** en `__tests__/integration/emailEventsTiposAceptados.test.ts`, o deja de vigilarse sin que nadie se entere (el trinquete comprueba las dos direcciones y se pondrá rojo si se olvida).
-  2. **`avisoFinSuscripcion` escribe la fila de `email_logs` DOS veces por envío** — `sendEmailV2` ya la escribe y él repite el insert. Además de ensuciar la cuenta, **rompe cualquier medida basada en `email_logs`** (que es como se midieron los 424 recordatorios de [T-456]) y puede descuadrar la idempotencia de 5 días si alguien la lee contando filas.
-- **Relacionadas:** [T-341] (el botón), [T-363] (no cobrar dos veces al volver), [T-369] (por qué la categoría importa), [T-373], [T-456] (de donde vienen los dos cabos de arriba), [T-466] (el correo no dice hasta cuándo se puede volver).
-
-### [T-466] 🟡 [ABIERTO 01/08] El aviso de fin de suscripción no dice HASTA CUÁNDO se puede volver: la fecha límite se calcula, se documenta y no llega al correo
-- **Cómo salió:** verificando a mano el correo de [T-448] (Manuel pidió que se lo enviaran a su buzón para verlo con ojos humanos, porque ese texto se escribió y se mandó a producción sin que nadie lo abriera nunca).
-- **Qué pasa:** el correo le dice a la persona *«para mantenerlo tienes que renovar tú… si no lo haces, lo perderás»* — y **no dice hasta cuándo**. Mientras tanto hay un barrido que le **anula la oferta** en una fecha concreta (`debeAnularOferta` / `fechaLimiteRetorno`, un mes después del fin de periodo).
-- **Dónde está roto, exactamente:** la plantilla `fin_suscripcion_precio_heredado` (`lib/emails/templates.ts`) **declara `fechaLimite` como 5.º parámetro** y el despacho se lo pasa (`lib/api/emails/queries.ts:380-383`, `customData.fechaLimite`), pero:
-  1. el llamante real **no lo incluye** en `customData` — `lib/api/premium/avisoFinSuscripcion.ts:178-184` manda `to`, `userName`, `fechaFin`, `importe`, `periodicidad`, `ctaUrl` y nada más → llega `undefined`;
-  2. y la plantilla **no lo pinta en ninguna parte** del HTML → por eso NO sale un «undefined» visible. Es un parámetro que no va a ningún sitio.
-- **⚠️ Y el propio comentario de la plantilla describe una regla que no se cumple:** *«La fecha límite NO se inventa: sale de `fechaLimiteRetorno()`, la MISMA función que usa el barrido que anula las ofertas. Si el texto y el barrido divergieran, prometeríamos un mes y quitaríamos el precio antes.»* La intención estaba escrita; el cable, no.
-- **A quién afecta (medido el 01/08):** las **4 personas** que ya lo recibieron ese día tienen plazo hasta el 04/09 y nadie se lo ha dicho. Y el cron de las 09:00 UTC sigue: **187 suscripciones** que se apagan con oferta viva, **22 en los próximos 7 días** y 56 en 30. Cada día que pasa, más gente hereda la misma omisión.
-- **Por qué NO es lo mismo que los dos cabos de [T-448]:** aquellos son de RASTRO (el envío no deja fila, o deja dos). Éste es de CONTENIDO: el correo sale, se entrega y se lee, y le falta el dato que decide si la persona vuelve a tiempo.
-- **Cómo arreglarlo:** pasar `fechaLimite: fechaLarga(fechaLimiteRetorno(c.finPeriodo))` en el `customData` del llamante y **pintarlo** en la plantilla (junto al bloque del precio, que es donde se explica qué se pierde). La función ya existe y ya la usa el barrido, así que no hay que calcular nada nuevo — es cablear lo que ya está.
-- **La capa que hace falta, y es la lección de fondo:** ninguna de las 4 capas de [T-448] podía cazar esto, porque **`templateDispatch.test.ts` enumera los tipos A MANO** (`test.each([...])`) en vez de recorrer `EMAIL_TYPES`. Medido contra `main` el 01/08: **7 de los 18 tipos no los prueba nadie** — `admin_notification`, `fin_suscripcion_precio_heredado`, `medal_congratulation`, `newsletter`, `newsletter_oposicion`, `nueva_oposicion`, `pago_fallido`. Entre ellos, precisamente el tipo nuevo. Lo suyo es un guardarraíl que recorra `EMAIL_TYPES` y exija que cada uno tenga categoría, plantilla y rama de despacho, y que **todo argumento declarado por la plantilla llegue con valor** (esto último es lo que habría cantado este defecto).
-- **⚠️ Cuidado con el claim:** [T-448] la lleva otra sesión (`t326`, viva el 01/08 a las 21:05). Los ficheros se solapan (`templates.ts`, `queries.ts`, `avisoFinSuscripcion.ts`) → **coordinar antes de tocar**, o hacerlo desde esa misma tarea.
-- **Verificado que lo demás SÍ está bien** (no hace falta re-mirarlo): importe y periodicidad son correctos en los 4 envíos reales (`20 € al mes` ×3, `35 € cada 3 meses` ×1), y la etiqueta la deriva el código del intervalo real (`ETIQUETA_INTERVALO`), no se escribe a mano. El orden de los argumentos del despacho también es correcto.
-- **Relacionadas:** [T-448] (el correo), [T-456] (el carril de envío y el trinquete de tipos), [T-363] (el precio que se pierde si no vuelve a tiempo).
-
-### [T-392] 🔴 [ABIERTO 31/07] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
-
-- **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
-- **EL DIAGNÓSTICO, y no es una intuición: pasó TRES veces el mismo día.**
-  - Por la mañana, otra sesión **reabrió T-055, T-067 y T-125** tras una revisión independiente: estaban cerradas y su propio texto declaraba trabajo vivo.
-  - Al mediodía cerré **T-355** y una hora después la sustituyó un diseño mejor ([T-363]): había cerrado una solución provisional como si fuera el final.
-  - Y por la tarde cerré **T-363** —que decide **cuándo se le cobra a alguien**— con el código en `main`, **sin desplegar y sin verificar**. Lo cazó Manuel preguntando, no el sistema.
-  - **La causa común:** hoy `done` significa «he escrito el código» y se lee como «funciona». Entre esas dos cosas hay un push, un deploy y una comprobación, y ninguna es automática.
-- **LO QUE YA EXISTE Y NO HAY QUE REINVENTAR** (esto es un ciclo que encadena piezas sueltas, no un sistema nuevo):
-  - **claim + `lease_until`** (90 min, renovable con `heartbeat`) — una sesión muerta libera su tarea sola.
-  - **`pause --tras-deploy`** → `wake_on_deploy_sha` + superficie; el propio script de deploy llama a `backlog.cjs deployed <sha>` y la despierta.
-  - **`pause --hasta` / `snooze`** → `snooze_until`: el reloj la libera sola.
-  - **`due` (`due_at` + motivo)** → fecha límite, para lo que caduca (un plazo de convocatoria, un examen).
-  - **La puerta del `done`** (30/07): aborta si el `outcome` confiesa trabajo pendiente.
-  - **`blocked_by`** para dependencias entre tareas.
-  - **El latido de sesiones** ([T-296]): qué worktree está vivo.
-
-#### ✅ FASE 1 HECHA (31/07) — el escalón medible del `done`
-
-Era la que la propia ficha marcaba como primera *«y ya aporta sola»*: la que habría parado el
-fallo de [T-363]. **`done` ahora tiene dos puertas**: la del TEXTO, que ya existía y caza al que
-confiesa, y la de los HECHOS, que no se puede maquillar — si los commits que **declaran** la tarea
-tocan superficie **servida** y el `sha` vivo todavía no los incluye, el cierre se para y te
-imprime el `pause --tras-deploy` ya escrito.
-
-Probado sobre el caso real: con un outcome que dice *«verificado en producción con un canje
-real»* —que la puerta del texto deja pasar sin pestañear— T-363 **se bloquea** y lista los tres
-ficheros de cobros que no están vivos.
-
-**Las tres decisiones que evitan que sea un sello**, que era el riesgo (a) declarado en la ficha:
-
-1. **«Servido» se DERIVA, no se declara.** Un fichero de `lib/` viaja si algo bajo `app/`,
-   `components/`, `contexts/`, `hooks/` o `backend/src/` lo importa. Al estrenarlo con el nombre
-   del módulo suelto, `pushGuard` salía «servido por backend» porque un fichero servido lo nombra
-   **en un comentario**: ahora solo cuentan líneas con forma de `import`/`require`.
-2. **Solo cuentan los commits que DECLARAN la tarea**, no los que la citan — el criterio de
-   [T-403] aplicándose a sí mismo. Sin eso, T-431 salía «toca backend» por un `alert-rules.ts`
-   que nunca tocó: venía del commit de otra sesión que la citaba de pasada.
-3. **`package.json` solo cuenta si cambian DEPENDENCIAS.** Registrar un comando de npm no llega
-   a ningún usuario, y casi toda tarea de tooling toca ese fichero.
-
-**Alcance medido: 36 %** de las 161 tareas cerradas con código en 7 días tocan superficie servida;
-el otro 64 % (documentación, tooling, datos) se cierra exactamente igual que antes.
-
-> **Lo que NO se pudo medir, y conviene saberlo antes de la Fase 2:** la pregunta retrospectiva
-> «¿cuántos de esos 161 cierres habrían bloqueado **el día que se cerraron**?» **no tiene
-> respuesta**, porque `deploy_runs` está **VACÍA** —ningún deploy ha pasado aún por el camino de
-> [T-385]— y no existe el `sha` que estaba vivo aquel día. La Fase 3 debería apoyarse en esa
-> tabla, así que hasta que un deploy real la alimente, el historial de despliegues no es una
-> fuente utilizable.
-
-Capas: núcleo puro `lib/backlog/verificacionGate.cjs` (11 tests) · I/O
-`scripts/backlog/verificacion.cjs` (`npm run backlog:verificacion -- T-nnn` explica cualquier
-veredicto) · calibración `npm run sim:verificacion -- --listar`, con **gate de regresión** sobre
-tres casos de verdad conocida (T-363 debe bloquear; T-403 y T-431, tooling puro, no pueden).
-Fail-open ante cualquier fallo de red o de git. El escape `--igualmente` y los bloqueos se cuentan
-los dos en el bus de fricción de [T-423]: si el ratio sube, la puerta se ha vuelto peaje.
-
-**Quedan la Fase 2** (el estado `verificando` explícito con su cubo y su vigía) **y la Fase 3**
-(`archive --evidencia` y la migración de las ~350 cerradas).
-
-#### Los estados, y qué los mueve
-
-| estado | qué significa | quién lo mueve al siguiente |
-|---|---|---|
-| `abierta` | nadie la tiene | `claim` de una sesión |
-| `en_curso` | alguien trabaja (lease 90 min) | `heartbeat` la mantiene · el lease vencido la devuelve sola a `abierta` |
-| **`implementada`** | el código está en `main`. **Es lo que hoy hace `done`** | el propio comando, que **exige declarar cómo se verificará** |
-| **`verificando`** | esperando la condición que permite comprobarla | el **deploy** (`deployed <sha>`), el **reloj** (`snooze_until`/`due_at`) o un **dato** (que corra un cron, que crezca un corpus) |
-| **`lista_para_verificar`** | la condición se cumplió: hay que ir a mirar | una persona/sesión, con `archive --evidencia` |
-| **`archivada`** | verificada en producción, con evidencia escrita | — (terminal) |
-| `descartada` | no se hace, con motivo | — (terminal) |
-
-- **La transición que hoy falta es la del medio.** `implementada → verificando` tiene que ser **obligatoria**, no opcional: el comando pide **cómo** se comprueba (deploy de qué superficie, o fecha), y sin eso no deja avanzar. Es lo que ya hace `pause`, pero dejado a la voluntad de quien cierra — y hoy se demostró que esa voluntad falla.
-
-#### Las tres reglas que lo salvan de ser burocracia
-
-1. **Exención AUTOMÁTICA y comprobable.** Si los commits que mencionan ese `T-NNN` tocan **solo documentación o tests**, se archiva directo sin pasar por `verificando`. Lo decide el guardarraíl mirando los ficheros del commit, sin preguntar a nadie. Sin esto, las fichas de backlog —que son la mitad— arrastrarían una fase inútil y la gente aprendería a saltársela.
-2. **Archivar exige EVIDENCIA, no un «ok».** Igual que el `outcome` ya obliga a contar qué pasó: *«la primera factura salió el 30/10 por 35 €»*, no *«verificado»*. Se puede exigir por longitud y rechazando el vocabulario vacío (`ok`, `correcto`, `funciona`), que es el mismo criterio que ya usa la puerta del `done`.
-3. **Estar en `verificando` demasiado tiempo ES un hallazgo.** Hoy ya hay un cubo «⏰ listas para verificar» con **7 tareas**; si añadimos la fase sin vaciar ese cubo, cambiamos un problema por otro. Una tarea que lleve más de N días esperando verificación tiene que salir en el panel como sale cualquier otra señal.
-
-#### El escalón que hoy es medible y habría parado el fallo de T-363
-
-La puerta del `done` mira **el texto** del `outcome`. No mira lo que sí es comprobable: **que el código toque una superficie SERVIDA y que el `sha` vivo no lo incluya todavía**. Las dos cosas están al alcance —`git diff --name-only` de los commits de esa tarea, y el `sha` desplegado que ya consulta `deploy:pendiente`—. Con eso, cerrar T-363 habría sido imposible sin declarar antes su verificación.
-
-#### Para sesiones múltiples (que es donde esto se rompe)
-
-- **Todo el estado en RDS**, como ya está: un markdown no admite transiciones atómicas con 2-10 sesiones.
-- **Toda transición con `sid`** y su hora, para poder responder «quién movió esto y cuándo».
-- **Nada depende de que alguien se acuerde:** el deploy despierta, el reloj despierta, el lease caduca. La única acción humana obligatoria es **mirar y escribir la evidencia**.
-- **Y la cola de verificación se reparte igual que el trabajo**: quien coge una tarea `lista_para_verificar` la reclama, para que dos sesiones no verifiquen lo mismo.
-
-#### Migración (que no es lo divertido, pero sin esto no se puede desplegar)
-
-Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo aplica de la fecha de estreno en adelante. Y `done` debe seguir existiendo como alias durante un tiempo, porque hay sesiones vivas con el comando en la cabeza y runbooks que lo nombran.
-
-- **Riesgos, dichos antes de construir:** (a) que la fase nueva se convierta en un sello — lo mitiga la regla 2; (b) que el cubo de `verificando` se llene y nadie lo mire — lo mitiga la regla 3; (c) que la exención automática sea demasiado laxa y deje pasar código servido como si fuera documentación — hay que probarla contra los commits reales de esta semana antes de encenderla.
-- **Por dónde empezar (fases, y la primera ya aporta sola):** (1) el escalón medible del `done` —código servido + sha vivo—, que es pequeño y habría evitado el fallo de hoy; (2) el estado `verificando` explícito con su cubo y su vigía; (3) `archive --evidencia` y la migración.
-- **📥 CONSOLIDADO DESDE [T-449] (01/08), que era un DUPLICADO de esta ficha.** La abrí sin buscar antes —el fallo que [T-427] documenta y que CLAUDE.md avisa: cinco segundos de `grep` antes de `reserve`— y otra sesión la cerró. Lo que traía y no se puede perder son **tres casos VIVIDOS la misma madrugada**, que dicen algo que esta ficha aún no decía: al terminar de verificar **no hay un desenlace, hay tres, y el diseño tiene que distinguirlos**.
-  1. **Verificado y CORRECTO, pero la tarea sigue viva.** [T-385]: sus cuatro puntos se comprobaron con un deploy real y aun así le queda la fase 3. Su `resume_check` seguía diciendo *«ningún deploy real ha corrido»* y `list` la anunciaba arriba del todo como «se cierra en minutos». **La cogí para repetir trabajo hecho.**
-  2. **Verificado y ROTO — destapa trabajo NUEVO que nadie había previsto.** [T-326]: la verificación en vivo demostró que el arreglo estaba desplegado e **inerte** (vivía en el camino que producción no ejecuta). No es «falta mirar producción», es «hay que programar otra cosa». Hoy los dos se ven idénticos desde `list`.
-  3. **Verificado por la MÁQUINA, pendiente del OJO humano.** También [T-326], ya con el porte vivo: el dato es correcto —tres comprobaciones contra producción— pero *si la casilla se entiende en pantalla* no lo puede juzgar una sesión, y Manuel pidió expresamente revisarlo él. **No es «esperando decisión de Manuel»**: esa sección existe y es para decisiones de producto. Esto es una **revisión**, no una decisión — nadie elige nada, solo mira.
-  - **Y el detalle operativo que lo hace urgente:** `resume_check` **solo lo escribe `pause`**, que exige `--hasta` o `--tras-deploy`. Así que hoy no hay forma de decir ninguna de las tres sin *inventarse* una espera (mal, por lo mismo que el CHECK de `due_at`) o dejar el texto obsoleto ahí — y `release` no lo toca. **Dos sesiones pagaron ese peaje en menos de una hora.**
-- **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), [T-449] (duplicada y consolidada aquí), [T-385] y [T-326] (los tres casos medidos), y la puerta del `done` del 30/07.
-
-### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
-
-- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
-- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
-- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
-- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
-- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
-- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
-- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
-- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
-- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
-- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
-- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
-- **⚠️ REABIERTA EL MISMO DÍA, y el motivo importa más que la tarea.** La cerré con `done` teniendo el código **en `main` pero sin desplegar**, así que nadie iba a comprobar en producción que la primera factura sale en la fecha correcta. Lo cazó Manuel preguntando: *«las tareas que esperan el despliegue, ¿se supone que tienen puesto que cuando desplieguen las chequeen? ¿siempre se chequean los cambios y funcionalidades nuevas?»*. La respuesta medida era **no**: de las 5 tareas de hoy que tocan código servido, **ninguna** estaba puesta para verificarse tras el deploy. Ahora esta sí (`pause --tras-deploy`), con las tres comprobaciones concretas en `--falta`.
-- **Y deja una pregunta abierta para el sistema:** la puerta del `done` impide cerrar cuando el *texto* confiesa trabajo pendiente, pero no sabe que **el código toca una superficie servida y aún no está desplegado**. Eso es comprobable —hay `sha` desplegado y hay ficheros tocados— y sería el siguiente escalón del mismo guardarraíl. *(Construido después, es [T-392] F1.)*
-
-#### 🔭 AL IR A VERIFICARLA (01/08) — el código está vivo, pero NO HABÍA NADA QUE MIRAR
-
-Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no estaba en la ficha.
-
-- **El sha vivo ya la incluye** (`backlog:verificacion` da ✅: 3 ficheros servidos de frontend). O sea que la función lleva días operativa.
-- **Nadie ha canjeado desde entonces.** De **193 ofertas emitidas solo se ha canjeado UNA**, y fue el **30/07**, un día ANTES de que este código existiera. Las dos comprobaciones que pedía la ficha («un canje real crea la suscripción en `trialing`», «el primer cobro cae al terminar la cobertura») necesitan un canje, y no hay ninguno. No hay tampoco **ni una sola suscripción en `trialing`** en toda la BD.
-- **Pero la población es real y sigue ahí, medida hoy:** de las **190 ofertas vivas**, **181 tienen cobertura previa** y **178 aplazarían el cobro si canjearan hoy** (la primera se queda sin cobertura el 02/08; la última, el 06/01/2027). O sea: la función no está de adorno, es que aún no le ha tocado el turno.
-- **⚠️ Y AQUÍ EL HALLAZGO: cuando le toque, no nos íbamos a enterar.** El aplazamiento dejaba como única huella un `console.log` en los logs de ECS, que no mira nadie. Combinado con lo que la propia ficha ya decía —*«este fallo sería invisible: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario»*— el resultado es que el primer canje de esos 178 se habría procesado bien o mal **sin que ninguna consulta pudiera decir cuál de las dos**. La verificación no estaba pendiente de una fecha: **no era posible**.
-- **Arreglado, y es la parte que faltaba de la tarea:** el checkout con precio heredado emite ahora `checkout_precio_heredado` (`info`) en `observable_events`, con `aplaza`, `dias` y la **fecha del primer cobro** — que es el dato contrastable contra el `current_period_end` de su suscripción vieja. Núcleo puro `trazaCobertura()` en `cobertura.ts` con 4 tests.
-- **Distingue las DOS formas de no aplazar**, que no son la misma: `sin_cobertura_previa` (correcto, no hay nada que aplazar) y `menos_de_48h` (correcto también, pero es justo el borde donde se escondería un error de cálculo). Sin el motivo, un `aplaza:false` no se puede juzgar — y un rastro que no se puede juzgar no sirve de rastro.
-- **No pinga badge ni manda correo a propósito:** es `info`, no una avería. Es el rastro de que la función actuó.
-- **Verificación, ahora sí posible:** desplegar frontend y, en el primer canje real, `SELECT metadata FROM observable_events WHERE event_type='checkout_precio_heredado'` → `aplaza=true` y `primerCobro` igual al `current_period_end` de su suscripción anterior.
-
-
-
-### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
-
-- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
-- **Sigue reapareciendo, y su segunda alerta es de esta misma familia:** el 31/07 a las 08:05 disparó `pool_frontend_saturation_high` (**5 muestras con ≥13 conexiones activas, pico 82** contra un techo estimado de 16), quince minutos después del `5xx_spike` de las 07:50. **Es el mismo incidente visto desde el pool, no uno nuevo** — anotado al triar las alertas del día ([T-426]) para que nadie le abra ficha aparte ni lo investigue de cero.
-- **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
-  1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
-  2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
-  3. **NO es que el motor de alertas escanee el primario.** Backend y frontend tienen `USE_READ_REPLICA=true` en su task definition: producción computa en la réplica, como manda el runbook de contención.
-- **LO QUE SÍ SE ENCONTRÓ, y ya está arreglado (31/07):** el `.env.local` de las sesiones locales tenía `DATABASE_URL_REPLICA` apuntando a **`vence-prod`, el PRIMARIO**, y sin `USE_READ_REPLICA`. O sea que cada `npm run dev` con el panel de salud abierto le metía los escaneos de 6,9 GB **a la base de datos que atiende a los opositores**, justo lo que producción evita. Corregido en las 10 sesiones vivas y en el `.env.local` del repo principal (del que `crear-worktree.sh` copia, así que las nuevas nacen bien). Verificado: `pg_is_in_recovery = true`, retraso 0,55 s.
-- **LO MEDIDO, que sigue en pie:** 6,9 GB · 10.733.632 filas · ~4.500 eventos/hora (46% `request_completed`). La consulta de la regla de latencia agrega **todos** los `request_completed` de 45 min para un percentil — **un índice parcial NO sirve aquí**, no hay «unas pocas lentas» que indexar (eso descarta el índice que se propuso primero).
-- **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
-- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
-- **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
-
-### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
-
-- **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.
-- **POR QUÉ NO ES COPIAR-PEGAR EL ARREGLO:** [T-340] terminó demostrando que el contraste es un **detector, no un control**, y que cortar por él tiene coste real (17 intentos de compra bloqueados). Así que aquí la pregunta por endpoint no es «¿lo contrasto?» sino **«¿qué daño hace equivocarse de cuenta?»** — la misma política `alDiscrepar` de `requireUsuarioPropio`, elegida a conciencia y declarada por escrito.
-- **EMPEZAR POR MEDIR, no por parchear:** cuántos de esos 38 reciben hoy un id que **no coincide** con el del token en producción. La señal `auth_identidad_ajena_rechazada` ya existe; basta con instrumentarlos en modo «seguir-con-el-token» y mirar una semana. Si alguno tiene tráfico con id ajeno, ahí hay o un cliente roto ([T-352]) o algo peor.
-- **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
-- **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
-`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
-
 ## 🔢 Por dónde empezar
 
 > **Criterio de orden (Manuel, 20/07): lo que quema muchos tokens va a prioridad baja.** Arriba, lo
@@ -1686,7 +841,10 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **EL FALLO.** `docs/roadmap/tareas-pendientes.md` pasa de 11.000 líneas y la frase `## Abiertas` aparece **dentro del texto** de varias fichas (las que hablan justamente de este problema), *antes* que el encabezado de verdad. Cualquier búsqueda de esa cadena —un `index()`, un `sed`, «pégala arriba del todo»— acierta la MENCIÓN, y la ficha aterriza en el preámbulo, fuera de toda sección.
 - **POR QUÉ IMPORTA Y NO ES COSMÉTICO.** Una ficha fuera de sección la sigue viendo `parseMarkdown.cjs` (que desde [T-382] lee la CABECERA, no la posición), pero queda desordenada respecto a lo que un humano lee, y el fichero acumula fichas huérfanas en el preámbulo que nadie encuentra al revisar el backlog.
 - **LA PRUEBA DE QUE NO ES DESCUIDO — y el número real es mucho peor de lo que parecía.** Se creyó que habían sido «un par de veces»; al estrenar la herramienta se midió el fichero y hay **58 fichas fuera de toda sección, 27 de ellas VIVAS** (T-504 🔴, T-479, …). O sea que colocarla mal no es el desliz: es el **resultado normal** de insertarla a mano. Y la señal de que no se arregla avisando: el ancla falsa con la que se tropezó el 04/08 escribiendo [T-508] era **un bullet de otra sesión documentando esta misma trampa**. Dos personas distintas, el mismo agujero, con el aviso escrito delante — **un aviso no es un guardarraíl**. Mismo principio que ganó `snooze_until` ([T-221]) y el push-guard: lo que no se impide en el punto de escritura, se repite.
-- **PENDIENTE (no hecho aquí a propósito):** reubicar esas 27 vivas. Es mecánico pero toca 27 sitios de un fichero que todas las sesiones editan a la vez, así que va en su propia pasada y no mezclado con el arreglo — mezclarlo garantizaría un conflicto enorme y ninguna de las dos cosas revisable.
+- **LAS 27 VIVAS, YA REUBICADAS (04/08).** `node scripts/backlog.cjs reubicar [--apply]` (simula por defecto) las devuelve **al FINAL de `## Abiertas`** — no al principio, que es donde escriben las sesiones las fichas nuevas y donde meter 27 garantizaría chocar con quien esté creando una. Verificado sobre el fichero real: **498 fichas antes y después, 10.701 líneas con contenido antes y después, conjuntos idénticos** (nada perdido, nada inventado; las 3 líneas de diferencia son blancos). Quedan **0 huérfanas vivas**.
+- **Las 31 CERRADAS huérfanas se dejan a propósito:** su sitio sería `## Hechas` y en el fichero hay TRES secciones con ese nombre, así que elegir una es adivinar. Una ficha cerrada mal colocada no le cuesta nada a nadie; una abierta invisible, sí.
+- **TRINQUETE:** guardarraíl en `backlogRegistry.guardrail` — «ninguna ficha VIVA fuera de sección». Nace en verde, así que cualquier subida es una regresión demostrable. **Comprobado que detecta**: inyectando una huérfana se pone rojo y al quitarla vuelve a verde (un guardarraíl que nunca se ha visto fallar no se sabe si mira).
+- **GOTCHA que casi lo deja inerte:** `reubicar --apply` no escribía nada. `arg()` devuelve `null` a un flag SIN valor —es su contrato, documentado en el propio fichero— y para booleanos la convención aquí es `process.argv.includes` (como `--all` y el `--apply` de `reap`). Falló hacia el lado seguro (simulaba en vez de escribir mal), pero se descubrió por comprobar el RESULTADO —seguían 27 huérfanas— y no por leer la salida, que decía «moviendo 27».
 - **ARREGLO.** Núcleo puro `lib/backlog/insertarFicha.cjs` + subcomando `node scripts/backlog.cjs ficha <id> [--texto <fichero.md>]` (o por stdin), citado por `reserve` en lugar del «escríbela a mano» de antes. Localiza el encabezado por **línea exacta**, nunca por búsqueda de texto. Se niega a escribir si: el id no está **reservado en `backlog_tasks`** (la BD es el árbitro del reparto, el markdown no admite reserva atómica), el id ya tiene ficha, la cabecera dice otro id, la ficha **nace con ✅**, o **desaparecería alguna ficha previa** (comprobación de no-pérdida: el guardarraíl de ids solo mira unicidad, y un id sigue siendo único después de vaciarle el cuerpo).
 - **LO QUE NO ARREGLA, dicho a propósito:** *no* reduce los conflictos de git. Todas las sesiones insertan en el mismo punto del mismo fichero, así que el conflicto sigue siendo lo normal — se resuelve al fusionar conservando LOS DOS lados (`perdidaDeContexto.cjs`). Esto quita la colocación equivocada y el id repetido, no la contención.
 - **Capas:** 11 unitarios (`__tests__/backlog/insertarFicha.test.ts`) sobre el fichero real reducido, incluido el ancla falsa. Estrenado contra el fichero de verdad: **esta misma ficha se colocó con la herramienta**.
@@ -3648,6 +2806,847 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **El arreglo, cuando se sepa la causa:** al acuñar el token, si la identidad que el cliente tiene cacheada no es la del token, limpiarla y recargar el estado — con su señal, para poder medir cuántos estaban así sin saberlo.
 - **Relacionadas:** [T-340] (el contraste que lo destapó), y los **38 endpoints fuera de `/api/stripe`** con el mismo patrón de `userId` sin verificar, que siguen sin auditar.
 
+
+### [T-519] 🟡 [ABIERTO 04/08] Un artículo puede servir once preguntas sobre la misma frase y ninguna herramienta podía verlo: los dos cortes de duplicados exigen que las OPCIONES coincidan
+
+- **Lo cazó una usuaria** (impugnación `9e0d7418`, Marta Benito Padilla, premium, Aux. Admin. Madrid): *«pregunta_repetida — repetida en el mismo artículo»*. Pidió un **test del artículo 2 de la LGSS**, le salieron 10 preguntas y **ocho examinaban la misma frase** (los cuatro principios: universalidad, unidad, solidaridad e igualdad), cuatro en forma positiva y cuatro preguntando cuál NO lo es. Y no fue mala suerte: **le había pasado idéntico once días antes**, con las mismas diez preguntas. El artículo servía **13 activas y 11 preguntaban lo mismo**.
+- **Por qué era invisible.** Los dos cortes que había —el exacto (T-321) y el parafraseado (T-425/T-410)— **exigen los dos que las OPCIONES coincidan**. Aquí solo coincide la respuesta correcta y los distractores son otros, que es exactamente como se acumulan las paráfrasis generadas en tandas distintas. Corridos sobre el caso, los dos dan **cero**.
+- **Y el punto de escritura tenía el mismo hueco, que es lo que lo dejaba crecer:** `analizarDuplicados` comparaba la CLAVE solo **intra-lote**; contra las preguntas VIVAS miraba únicamente el enunciado (Jaccard). Una pregunta nueva, redactada de otra forma y con otros distractores, cuya respuesta ya estaba viva en ese artículo, pasaba sin un aviso. Ahí entró la clase entera.
+- **Hecho (04/08), en dos capas y en los módulos que ya existían** (nada de un cuarto detector — la lección de T-130):
+  1. **Detección**: `--misma-clave` en `scripts/calidad/duplicados-exactos.cjs`. Agrupa por artículo + TEXTO de la respuesta correcta (nunca por su índice: las copias vienen barajadas) y **descarta la pareja si las opciones también coinciden**, para no contar dos veces lo que ya ven los otros dos. LISTA Y NO ESCRIBE, como sus hermanos.
+  2. **Prevención en el punto de escritura**: `analizarDuplicados` compara ahora la clave **también contra las vivas**. Admite el formato antiguo (solo el enunciado) y entonces **no emite ese aviso** en vez de inventárselo.
+- **El discriminador NO puede ser «misma respuesta» a secas**, y esto es lo reutilizable: un artículo con una **enumeración** (LOFCS art. 5, principios básicos de actuación) tiene N preguntas que piden **subhechos distintos** y comparten la etiqueta como respuesta — 41.063 parejas en crudo, mayoría falsos positivos por diseño. Lo que separa las dos cosas es si el **enunciado pide lo mismo**, medido sobre las palabras de CONTENIDO con `secuenciaDeContenido` de T-439 (que ya quita el ruido de cita: el nombre desarrollado de la ley que exige §2.2-quater pesa más que la materia e infla el parecido solo).
+- **Calibrado con anclas leídas a mano, no a ojo:** los falsos positivos conocidos caen en **0,12 · 0,14 · 0,27** y los ciertos del caso en **0,48 · 0,67 · 0,67 · 0,87** → GEMELA ≥0,85 (**2.277 grupos, 4.233 sobrantes**, 6 de 6 ciertas en la muestra leída) y cola 0,55-0,85 (1.919). Por debajo de 0,55 **no se emite**: ahí viven los falsos positivos y 33.572 parejas de ruido.
+- **La banda del grupo la fija su MEJOR pareja, no la peor.** Un grupo es un cierre transitivo: el del art. 2 LGSS tiene parejas en 0,48 y en 0,87, y puntuarlo por la peor lo habría dejado fuera de su propio corte.
+- **Capas**: 7 tests del núcleo (`__tests__/calidad/duplicados.test.ts`) con los umbrales anclados a los casos reales, y 5 del punto de escritura (`__tests__/lib/generacion/simularBatch.test.js`). Registrado en `toolRegistry`.
+- **NO pinga el badge, a propósito** (mismo criterio que `--parafraseadas` y que `audit:vinculo-vecino`): son 2.277 grupos que se adjudican a mano y una alerta sin remediación construida enseña a ignorar el buzón (T-426).
+- **Pendiente: la cola de adjudicación.** 4.233 sobrantes, con el **80 % de la exposición en los 326 primeros grupos** — el orden ya lo da el propio comando. Los de más arriba son de libro (9 versiones de *«la forma política del Estado español»* con 3.004 exposiciones, 11 de *«los valores superiores del ordenamiento jurídico»* con 2.697). Se ataca por exposición, de una en una, y **nunca se jubila una de examen OFICIAL**.
+
+### [T-504] 🔴 [ABIERTO 03/08] La cabecera de escritorio se desborda 375 px y deja el perfil y las notificaciones FUERA de la pantalla, sin scroll con el que alcanzarlos
+
+- **Lo reportó un usuario** (`e41cf047`, premium, Brave sobre Windows, 1920×925, feedback enviado desde el propio checkout de Stripe): *«desde que me he hecho premium el menú superior se descuadra y me impide ver mi perfil y las notificaciones. Tampoco me deja desplazarme horizontalmente para acceder a ellos»*. Adjuntó captura.
+- **NO es de Brave ni es de premium**, y eso es lo que cambia el tamaño del problema. Medido con navegador real contra producción, la fila de la cabecera ocupaba **1.879 px** dentro de un contenedor que da **1.504 px** como máximo → desbordaba en las **cuatro** anchuras de escritorio (1280, 1440, 1536, 1920) y en los **dos** planes. Con `html` y `body` en `overflow-x: hidden`, `scrollWidth == innerWidth`: lo que se sale **no se puede alcanzar de ninguna manera**. A 1280 quedaban inalcanzables SEIS controles (IA, ranking, racha, selector de oposición, campana y avatar), no los dos que él llegó a contar.
+- **Lo que cambió al pagar fue CUÁL se cae, no si se cae:** premium pierde el botón «Hazte Premium» del bloque derecho y gana el enlace «Recompensas» en la barra. Él cruzó el umbral; no lo causó.
+- **Causa raíz:** la barra era un `flex-1` **sin `min-w-0`**, así que por `min-width: auto` no podía encogerse por debajo de su contenido, y el bloque derecho es `flex-shrink-0` → la barra lo empujaba fuera del viewport. **Ningún breakpoint lo arreglaba**: `container` topa en 1.536 px, así que ni en una pantalla de 2560 cabría. La cabecera llevaba meses creciendo un enlace cada vez y aguantando por suerte; con el octavo se acabó.
+- **Arreglado (03/08) en dos capas, y la de abajo aguanta sola:**
+  1. **CSS, garantía por construcción:** `min-w-0` en el `<nav>` y scroll de reserva envolviendo solo los enlaces. Aunque el JavaScript no llegue a correr, lo peor que pasa es una barra con scroll — el perfil y la campana NO pueden volver a quedarse fuera.
+  2. **Reparto «priority+»** (`components/HeaderDesktopNav.tsx`): se mide lo que ocupa cada enlace y el sitio real que queda, y lo que no cabe se pliega en un menú **«Más»**. Da igual cuántos enlaces se añadan mañana: el sobrante se pliega en vez de empujar a nadie.
+  3. La cabecera pasa a ocupar **todo el ancho en escritorio** (`xl:max-w-none`): `container` desperdiciaba 384 px en una pantalla de 1920 mientras el menú no cabía. Con eso a 1920 vuelven a la barra 7 de 9 enlaces en vez de 5.
+  4. El nombre del avatar va **topado** (`max-w-[9rem] truncate`): lo escribe el usuario y un «Sergio De La Rosa Márquez» medía 273 px él solo.
+- **Capas:** núcleo puro `lib/ui/navOverflow.ts` (**18 tests**, con las anchuras medidas en producción) · simulación **`npm run sim:cabecera`** con navegador real (4 anchuras × 3 tipos de sesión), registrada en `toolRegistry`.
+- **La simulación está validada en los DOS sentidos**, que es lo que la hace valer: contra producción con el código viejo sale **roja en 8 de 12** casos y nombra exactamente los controles que el usuario no podía pulsar; contra el arreglo, verde en 12.
+- **Dos fallos de mi propio instrumento, encontrados y cerrados** (van aquí porque son la parte reutilizable):
+  - El medidor invisible **contaba en el `scrollWidth`** de sus ancestros y hacía ver un desborde de 379 px que no existía. Un instrumento que falsea justo lo que va a medir.
+  - La simulación **contaba enlaces del menú** en vez de comprobar que se vieran, y daba verde con el desplegable **recortado por un `overflow-x: auto`** — invisible en pantalla, presente en el DOM. **Lo cazó un pantallazo, no la simulación.** Ahora se comprueba con `elementFromPoint`, que caza recortes, tapados y z-index.
+  - Y un **verde parcial**: contra el código viejo se saltaba 8 de 12 casos por «no concluyente» y aun así imprimía 🟢. Ahora cualquier caso sin poder juzgar deja el veredicto en amarillo (salida 2).
+- **Queda por decidir (producto, no bug):** cuántos enlaces caben depende del bloque DERECHO, que hoy pesa 674 px en producción (Soporte y IA con texto, meta diaria, ranking, racha, selector de oposición, campana y avatar con nombre). Si se quiere más menú visible, el sitio de donde sacarlo es ese. El invariante se cumple igual con cualquier decisión.
+
+### [T-479] 🟡 [ABIERTO 02/08] La cola de trabajo externo no deja traza de quién la trabajó, y el vigía no sabe que existen las reservas
+
+- **De dónde sale:** los cuatro huecos que [T-474] midió y NO arregló (allí se cerró lo que impide el pisotón: la puerta de cierre y el criterio único del panel). Estos cuatro son de **visibilidad**, no de bloqueo, y por eso van aparte.
+- **1. No hay traza: una colisión es invisible por construcción.** `claimed_by` se pisa al reclamar y se pone a NULL al soltar, y no existe historial. Consecuencia medida el 01/08: se puede saber cuántos casos se cerraron **sin** reserva (28 de 165 impugnaciones, 58 de 111 feedbacks) pero **no cuántas veces dos sesiones estuvieron en el mismo caso** — el dato no existe. El backlog ya resolvió esto con `last_claimed_by` ([T-430]); son tres columnas espejo en `question_disputes`, `psychometric_question_disputes` y `user_feedback`. Sin esto, no hay forma de saber si la puerta de T-474 sirvió.
+- **2. El vigía, que es la puerta de entrada REAL al trabajo, no menciona el claim ni una vez.** Imprime `CLASE|id|tipo|email|plan|texto` y ahí arranca la sesión — sin decir quién tiene el caso ni dar el comando para cogerlo. Es el camino por el que se colaban los cierres sin reservar. Arreglo: una marca por línea (`🔒 otra sesión` / `🟢 libre`) y el `cola.cjs claim <id>` ya escrito, que es el principio 10 (la regla en el MOMENTO de la verdad, contextual).
+- **3. `cola.cjs next` no late.** El latido lo emiten `revisar-*`, el CLI del backlog y el `pre-push`. Quien reserva con `next` y luego se pasa dos horas leyendo, redactando y esperando el OK de Manuel **sin ejecutar nada** pierde la reserva estando vivo — que es exactamente el caso que [T-412] dice haber cerrado, por el flanco de quien solo lee y escribe texto. Una línea, mismo patrón fire-and-forget que ya usa `revisar-impugnacion.cjs`.
+- **4. El dossier avisa y luego entrega el material.** `revisar-impugnacion.cjs` imprime `⛔ NO ES TUYA: no la trabajes` y a continuación el dossier entero (usuario, pregunta, clave, artículo, checks). Comparar con `backlog.cjs claim`, que **no** te da la ficha si no es tuya. Decidir si se recorta a la cabecera o se deja: aquí hay tensión real con «avisar ≠ bloquear», porque a veces se abre el dossier justo para saber si merece la pena pedirle el caso a la otra sesión.
+- **Comprobación:** ampliar `npm run sim:cola-reserva`, que ya monta los casos contra la BD real.
+
+### [T-364] 🟡 [ABIERTO 30/07] El test de descarga troceada del PDF filtra un click al siguiente test y tumba el pre-commit de forma intermitente
+
+- **Qué pasa:** `__tests__/components/TopicPrintButton.test.tsx` falla **solo en la suite completa**, nunca aislado (ahí da 9/9). El test de la descarga normal espera **1** ancla y recibe **2**: la suya (`…tema-7.pdf`) y una **del test anterior** (`…tema-109-parte-2-de-2.pdf`), el de la descarga troceada de [T-273].
+- **Por qué NO es el reset:** el fichero ya limpia `clickedAnchors = []` en `beforeEach`. Lo que se escapa es un **click asíncrono** del caso troceado —que descarga dos partes— y que **no se espera**: cuando la máquina va más cargada, el segundo click cae ya dentro del test siguiente. Es una carrera, no un olvido.
+- **Impacto real, y por eso merece ficha:** bloquea el `pre-commit` de **cualquiera**, no solo de quien toca esa zona. El 30/07 tumbó un commit de temario y pasó al reintentar (20.575 tests en verde), que es la firma clásica del *flake*: **invita a saltarse el guardarraíl**, que es justo lo que no se debe hacer.
+- **Cómo:** en el caso troceado, esperar explícitamente a que se disparen **las dos** descargas antes de terminar (o quedarse con timers falsos y vaciarlos), de modo que ningún click quede pendiente al salir del test.
+- **Nota:** es trabajo EN VUELO de otra sesión ([T-273], piloto de troceado por estructura), así que no se tocó desde fuera. Se documenta para quien lo tenga reclamado.
+
+### [T-351] 🟡 [ABIERTO 30/07 — Word, Access y Excel CERRADOS · LibreOffice ⛔ BLOQUEADO (no hay instalación ES) · quedan 2 hallazgos de pregunta] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
+
+> **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
+> **4 contradicciones `interna` + 10 `familia` → 2 + 3**, y **Word queda limpio del todo**.
+>
+> - **`Word 365 Escritorio` art.5 no tenía filas mal: tenía la PREMISA mal.** Afirmaba que en Word 365
+>   los atajos siguen mnemónicos ingleses, que los españoles *«ya no son válidos»*, y remataba
+>   instruyendo al opositor a *«verificar siempre el atajo contra Microsoft Support es-ES»* — justo la
+>   página traducida que da las teclas inglesas. **La trampa elevada a doctrina**, en un artículo del
+>   que cuelgan 69 preguntas y 2.032 exposiciones. Encima se contradecía en su propia primera tabla
+>   (`Ctrl+U` era a la vez «nuevo documento» y «subrayado»).
+> - **Reparado trayendo su gemelo `Word 365` art.5**, que es EL MISMO DOCUMENTO ya corregido (misma
+>   estructura, sección de teclas de función idéntica) y trae la tabla de contraste ES/EN. Menos
+>   superficie de error que parchear veinte filas. Se conservó la única fila exclusiva que sostenía una
+>   pregunta viva (`Ctrl+Alt+I`, vista preliminar → `a1bc1366`, 28 exp).
+> - **🔴 Y destapó un fallo de la reparación del 30/07 (mía):** al arreglar las notas al pie en el
+>   art. 6 no miré el art. 5 del mismo contenedor, cuya sección de vistas daba `Alt+Ctrl+O` = **vista
+>   Esquema** — contradiciendo de frente el `Alt+Ctrl+O` = nota al pie que acababa de escribir.
+>   Corregido en los dos: en español **`Alt+Ctrl+D`** = Diseño de impresión, **`Alt+Ctrl+E`** = Esquema,
+>   **`Alt+Ctrl+I`** = vista preliminar — **y es esa localización la que deja libres la O y la L para
+>   las notas**, que es la explicación que faltaba. Retirada la fila `Alt+Ctrl+L = Vista Lectura`: no
+>   está verificada y choca con `Alt+Ctrl+L` = nota al final, que sí lo está.
+> - **Cerrado también el cabo que quedó abierto el 30/07:** `Supuesto Word CyL` daba la nota al final
+>   en `Alt+Ctrl+D` porque las fuentes se partían. Zanjado con el mnemotécnico español del temario AGE
+>   (la «L» de documento fina**L**) + once sitios del propio banco que ya decían L.
+> - **Otros arreglos de la misma pasada:** `Ctrl+F`→`Ctrl+B` (Buscar) en los art. 6 de los dos
+>   contenedores · `Ctrl+Alt+H`→`Ctrl+Alt+K` (Hipervínculo) en los art. 1 · `Outlook 2016` art. 2, que
+>   daba dos atajos distintos para «Buscar» en la misma lista (`Ctrl+Mayús+F` es la **búsqueda
+>   avanzada**, otra acción) · y la pregunta `641db440` (25 exp), cuya tabla resumen servía
+>   `Ctrl+H` = Reemplazar en vez de `Ctrl+L`.
+> - Caché invalidada (`teoria`, `temario`, `laws`) en las 6 instancias.
+>
+> **✅ FASE ACCESS HECHA (30/07).** Los arts. **1, 2 y 5** daban `Ctrl+S` para Guardar — el atajo de la
+> versión **inglesa** (*Save*) — en el contenedor **más rico del banco** (66.810 chars/artículo, **636
+> preguntas activas**). Corregido a **`Ctrl+G`**, con nota de contraste ES/EN en el art. 5. `Mayús+F12`
+> se deja intacto: es tecla de función, no se localiza y es alias legítimo.
+> - **Lo que zanjó la duda fue la COHERENCIA entre apps, no una sola cita:** Office localiza este atajo
+>   igual en las tres — Word «guardar el documento», Excel «guardar el libro», Access «guardar el
+>   objeto», todas `Ctrl+G`. La fuente de oposiciones (`josenrique.es`) las lista juntas. Las dos
+>   fuentes que daban `Ctrl+S` eran **traducciones**: la página es-es de Microsoft y una web con texto
+>   de traducción automática evidente. Mismo patrón que costó las notas al pie.
+> - **Riesgo nulo de clave:** ninguna pregunta activa de Access menciona `Ctrl+S`/`Ctrl+G`. Era
+>   corrección de temario pura.
+> - ⚠️ **Y este caso el detector NO lo saca**, porque Access era *coherentemente* inglés: no se
+>   contradecía, se equivocaba entero. **El detector encuentra desacuerdos, no errores unánimes** — es
+>   su límite estructural y conviene tenerlo presente antes de fiarse de un verde suyo.
+>
+> **✅ FASE EXCEL HECHA (30/07).** `Excel 365` y `Excel 365 Escritorio` art.150 daban `Ctrl+L` **y**
+> `Ctrl+H` para Reemplazar como si las dos operasen, y el art.140 usaba directamente la inglesa.
+> Verificado (exceltotal.com + fuentes de oposiciones; y nuestro propio `Excel 365` art.10 ya lo tenía
+> bien): en el Excel español **`Ctrl+B` = Buscar y `Ctrl+L` = Reemplazar**; `Ctrl+F`/`Ctrl+H` son los
+> ingleses. La fila de `Ctrl+H` se conserva **marcada como convención inglesa**, que es más útil que
+> borrarla: es el distractor típico.
+> - **Y había una clave mal con 40 exposiciones:** `7fa76a85` («¿qué atajo abre el cuadro Reemplazar?»)
+>   tenía marcada `Ctrl+H` y **`Ctrl+L` no figuraba entre las cuatro opciones** — el mismo patrón que
+>   `1ee365af`. Corregida la opción y reescrita la explicación en formato estructurado, así que además
+>   pasa a ser barajable. No es examen oficial.
+>
+> **LO QUE QUEDA — solo LibreOffice, y NO es mecánico:**
+> 1. ⚠️ **LibreOffice: la evidencia está DIVIDIDA y hay una clave en juego. No tocar sin resolverlo.**
+>    Nuestro banco se contradice: `LibreOffice Writer` arts. 1 y 3 dan `Ctrl+B` negrita / `Ctrl+I`
+>    cursiva, y `LibreOffice Calc` art.3 da `Ctrl+N` / `Ctrl+K` «en versión española». Y hay **dos
+>    preguntas casi gemelas con claves opuestas**: `317154d8` (13 exp, Calc) responde `Ctrl+N` y
+>    `d79c9b70` (2 exp, Writer) responde `Ctrl+I`.
+>    - **A favor de Writer:** la **ayuda oficial de LibreOffice en español**
+>      (`help.libreoffice.org/latest/es/text/shared/04/01010000.html`) dice literalmente `Ctrl+B` →
+>      «adopta el atributo *Negrita*» y `Ctrl+I` → «adopta el atributo *Itálica*». Es decir,
+>      **LibreOffice NO localiza los atajos aunque la interfaz esté en español**, al revés que
+>      Microsoft Office — que es justo la trampa en sentido contrario.
+>    - **A favor de Calc:** varias fuentes españolas dan `Ctrl+N`/`Ctrl+K`, y alguna dice que en
+>      LibreOffice ES funcionan **las dos** para cursiva.
+>    - **Cómo cerrarlo bien:** abrir un LibreOffice instalado en español y probarlo, o mirar
+>      `Herramientas ▸ Personalizar ▸ Teclado` de una instalación ES. Con eso se decide en un minuto
+>      lo que las fuentes secundarias no resuelven. **Hasta entonces no se flipa ninguna clave.**
+>    - **⛔ BLOQUEADA POR ENTORNO (30/07): Manuel no tiene LibreOffice instalado.** No es que falte
+>      tiempo, es que falta la única prueba que zanja la discrepancia. **No reintentar con más
+>      búsquedas web**: ya se hicieron y devuelven las dos respuestas — ese camino está agotado.
+>      Se desbloquea el día que haya una instalación ES a mano (propia o de un usuario), o si aparece
+>      documentación de LibreOffice que distinga explícitamente por idioma de interfaz.
+>    - **Mientras tanto NO se toca nada**: el banco queda con la contradicción, que es preferible a
+>      resolverla a cara o cruz. Las dos preguntas suman 15 exposiciones, así que el coste de esperar
+>      es bajo.
+> 2. El aviso `interna` de LibreOffice (`Ctrl+Alt+B` para Buscar y reemplazar) es **falso positivo**:
+>    el propio artículo lo etiqueta como *«atajo alternativo, versión 4.1»*, y la ayuda oficial ES
+>    confirma `Ctrl+H` como el principal. Alias documentado, no defecto.
+> 3. **«Fuente»: contradicción REAL que el detector no ve** (la acción no está en su vocabulario).
+>    El banco da dos respuestas para «abrir el cuadro de diálogo Fuente» en Word: **`Ctrl+M`** en
+>    `8d7b1a8e` (46 exp) frente a **`Ctrl+Mayús+F`** en `86000eb8` (33 exp) y `f98e1daa` (22 exp) —
+>    **101 exposiciones** repartidas entre dos respuestas incompatibles. Nuestro `Word 2016` art.5 dice
+>    `Ctrl+M`. Sospecha razonable: las dos funcionan (`Ctrl+M` es la española y `Ctrl+Mayús+F` un alias
+>    heredado), pero **hay que verificarlo antes de tocar ninguna clave**. Al resolverlo, añadir
+>    `fuente` a `ACCIONES` en `lib/health/atajoCoherencia.js` para que el detector lo cubra en adelante.
+> 4. **`Ctrl+M`: el banco da dos respuestas incompatibles.** Una pregunta (42 exp) responde que **aumenta la sangría izquierda** y otra (46 exp) que **abre el cuadro Fuente**, que es además lo que dicen nuestros artículos de Word. Detectado al reescribir `Word 2016` art.5; el detector no lo ve porque ni «sangría» ni «fuente» están en su vocabulario. **Verificar contra una instalación española antes de tocar ninguna de las dos.**
+> 5. **«¿Cómo se denomina el proceso de abrir un archivo creado por otro programa?»** (69 exp) tiene como clave **«Inserción de datos»**, terminología que no aparece en la documentación de Word ni pudo confirmarse. Se dejó **deliberadamente sin cubrir** al reescribir `Word 2016` art.2: escribirla en el temario solo para que la métrica cuadrara habría sido inventar doctrina. Verificar el origen de la pregunta.
+> 6. **Afirmación huérfana:** `Ctrl+Mayús+F5` es la clave de `7b327e92` (33 exp) y `5495794c` (26 exp)
+>    para «insertar un marcador», y **no aparece en NINGÚN artículo del banco**. No es contradicción
+>    —por eso el detector calla— sino una clave sin respaldo documental. Verificar contra fuente y, si
+>    es correcta, llevarla al artículo; si no, corregirla.
+
+
+
+- **Cómo salió:** cerrando los cabos de [T-291]. Reparado el atajo de nota al pie en los 6 artículos de Word (ver [T-302]), se barrieron los **88 artículos virtuales que mencionan `Ctrl+`** buscando la forma INGLESA de los atajos que Microsoft **sí localiza** (guardar, nuevo, negrita, cursiva, subrayado, buscar, seleccionar todo). La mayoría de los avisos son sanos —artículos que explican bien la diferencia ES/EN—, pero quedan tres focos reales.
+- **⚠️ El peor: `Word 365 Escritorio` art.5 se contradice a sí mismo y encima lo justifica.** Contiene a la vez `Ctrl+S | Guardar` y `Ctrl+G | Guardar`, `Ctrl+A | Seleccionar todo` y `Ctrl+E | Seleccionar todo`, bajo un epígrafe que los llama *«atajos polisémicos… según la tabla de Microsoft Support»*. Es la trampa de la página traducida elevada a doctrina: en vez de elegir, el artículo da las dos y deja al opositor sin criterio. **Su gemelo `Word 365` art.5 lo tiene BIEN**, con los mnemónicos españoles (`Ctrl+G` Guardar, `Ctrl+E` sEleccionar). Dos contenedores hermanos, la misma materia, respuestas opuestas.
+- **`Access 365` usa el set inglés para guardar** (`Ctrl+S`) en los arts. 1, 2 y 5 — en el Access español es `Ctrl+G` —, y sin embargo el art. 5 sí usa `Ctrl+E` para «seleccionar todos los registros». Mezcla dentro del mismo contenedor. Es el contenedor **más rico del banco** (66.810 chars/artículo) y sostiene **636 preguntas activas**, así que conviene mirarlo antes que ninguno.
+- **`Word 365` y `Word 365 Escritorio` art.4** dan `Ctrl+A (seleccionar todo)` para actualizar campos, cuando sus propios arts. 1 y 5 dicen `Ctrl+E`. Contradicción interna barata de arreglar.
+- **Por qué importa:** el barrido de junio (memoria `project-informatica-atajos-es-vs-en` §7.7) dio el banco **limpio**… pero miró **PREGUNTAS**, no artículos. Los artículos son la fuente contra la que se verifica y desde la que se escriben las explicaciones, así que un artículo equivocado no falla al leerse: falla al **usarse como prueba de cargo**. Es exactamente lo que costó retirar dos preguntas correctas en T-291.
+- **Cómo:** verificar cada atajo contra fuente **española** (temarios de oposiciones tipo `age.josenrique.es`, PDFs de academias, o la macro `ListCommands` que recomienda Microsoft), **nunca** la página `es-es` de soporte. Elegir UNA convención por artículo y, cuando el atajo inglés sea relevante para el examen, decirlo como contraste explícito («en inglés es X»), que es como ya lo hacen bien `PowerPoint 2016`, `LibreOffice Calc` y `Procesadores texto CyL`.
+- **Reproducible:** `node data/pilotos/t291-escalon2-30jul/auditar-atajos-en.cjs` (26 avisos sobre 88 artículos; hay que triarlos a mano, el detector no distingue la afirmación del contraste didáctico).
+- **Relacionada:** [T-302] (ahí está el barrido de las notas al pie ya hecho) · [T-291] · memoria `project-informatica-atajos-es-vs-en`.
+
+### [T-342] 🟡 [ABIERTO 30/07 — DETECTOR HECHO, queda triar la cola de 411] «Explicación estructurada SIN cita» es el rastro de que el artículo no responde a la pregunta
+
+- **Cómo salió:** verificando a mano los 8 casos críticos de [T-291] (ver `data/pilotos/t291-escalon2-30jul/ADJUDICACION-PENDIENTE.md`), Manuel preguntó si el temario **responde literalmente** a las preguntas que se verificaron. Se midió, y la respuesta partió el cubo en dos.
+- **Medido el 30/07 sobre las 737 preguntas de la campaña con explicación estructurada aplicada**, con `citaNoLiteral` importado de `scripts/impugnaciones/validar-explicacion.cjs` (el criterio ÚNICO del guardarraíl de impugnaciones, no una copia):
+
+  | | preguntas | |
+  |---|---|---|
+  | cita **literal** en el artículo vinculado | **687** | 93,2 % |
+  | cita **no literal** (inventada o de otro artículo) | **0** | 0 % |
+  | **sin cita** — no se pudo anclar a ninguna frase | **50** | 6,8 % |
+
+  **Cero citas inventadas**: donde hay blockquote, el texto está verbatim. El gate del validador aguantó. Lo que no cubre nadie es la otra columna.
+- **La idea:** el esquema de `explanation_data` hace `cita` OPCIONAL, así que una explicación sin ella pasa todos los gates. Pero un agente que leyó el artículo y **no encontró una frase que sostuviera la respuesta** deja exactamente esa huella. **No es un defecto de formato: es un detector de huecos de temario que ya está en los datos y sale de una query, sin LLM ni fetch.**
+- **⚠️ El recuento de términos NO basta, y está medido:** el triaje por presencia de los tokens de la opción correcta coloca 36 de las 50 en verde, y **comprobé tres a mano y falla en dos**:
+  - `4a7c00bc` (393 exposiciones, Windows 11 art.1) — «¿qué función permite hacer **copias de seguridad** automáticas?», clave «Historial». Puntúa 100 % porque *Historial* aparece en el artículo **por otro motivo**; la expresión «copia de seguridad» **no aparece ni una vez en 53.930 caracteres**. El artículo NO responde.
+  - `c56bb7f9` (393) — consumo de energía de una app, clave «Administrador de tareas»; el artículo lo describe como *«Ver procesos, rendimiento y servicios»*, sin energía. NO responde.
+  - `4aa025af` (375) — «¿Qué es el Contenido destacado?»: aquí el artículo **sí** tiene un apartado literal (*«…Windows Spotlight… muestra diferentes imágenes de fondo en la pantalla de bloqueo»*). Omisión del agente, no hueco.
+
+  O sea: **el hueco real es mayor que el que el proxy ve**, y una palabra presente no prueba que el artículo lo diga.
+- **Exclusiones que el detector DEBE llevar de nacimiento** (calibradas sobre estas 50): preguntas de **negación** («¿cuál NO es…?», «excepto», «INCORRECTA») — ahí que el término de la clave falte en el artículo es **lo esperado**, es justo la respuesta (caso `3356030d`, «toroidal») — y **meta-opciones** («todas/ninguna son correctas»), que no tienen término que buscar. Sin esas dos guardas el detector grita en falso.
+- **Cola concreta ya triada** (12 preguntas, **2.175 exposiciones**), en `data/pilotos/t291-escalon2-30jul/triaje-sin-cita.json`: `74bd6e7c` (CE 37 — «sólo por ley» es una lectura, no el texto) · `82515bd2` (las 5 P de la Agenda 2030 no están en el artículo) · `bbae979c` (que el art. 43 esté en el capítulo tercero no lo dice el propio art. 43) · `b7ae3c61` (Outlook/SharePoint) · `915c35f4` · `f82d2c6f` · `1ed7c890` · `5cf15668` · `e7b97b3f` · `dd9d9f87` · `ea844def`, más las dos de Windows 11 de arriba.
+- **Cómo:**
+  1. **Núcleo puro** que, dado `explanation_data` + el artículo, diga si hay cita y si es literal — reusando `citaNoLiteral`, **sin duplicar el criterio** (hay trinquete en `criterioCitaUnico.test.ts`). Hermano del kind `cita_no_literal`, que ya existe y mira el caso contrario: aquel comprueba la cita que HAY, este echa en falta la que NO hay.
+  2. **Detector** con las dos exclusiones, en el barrido de salud. Antes de enchufarlo al badge, **medirlo bank-wide** sobre las ~7.000 con estructura: si sale ruidoso, va bajo demanda como el de vínculo vecino, no a badge.
+  3. **Triar las 50** por el camino de siempre: leer el artículo y, o se ancla la cita, o el hueco se anota. Es la validación del detector y el trabajo útil a la vez.
+- **Punto ciego que hereda:** solo ve preguntas **con** `explanation_data`. Las de explicación en texto plano no tienen dónde dejar el rastro — se irán cubriendo según avance [T-291].
+- **Reproducible sin esta sesión:** `node data/pilotos/t291-escalon2-30jul/medir-literalidad.cjs` (las tres cifras de la tabla) · `triar-sin-cita.cjs` (el triaje por términos) · `refinar.cjs` (excluye negaciones y meta-opciones).
+- **Relacionada:** [T-291] (de donde salen las 737) · [T-302] (los huecos que esto encuentra son su materia prima; y ojo: **no todos los contenedores culpables son flacos** — «Supuesto Excel CyL» tiene 33.466 caracteres y aun así miente).
+
+### [T-288] 🟡 [ABIERTO 29/07] El vigía de feedback e impugnaciones muere con la sesión: convertirlo en alerta permanente
+
+- **Qué hay hoy:** `scripts/vigia.cjs feedback|impugnaciones` (documentado en el manual de feedback y en el de impugnaciones). Avisa de lo NUEVO y, sobre todo, de las **RÉPLICAS**: cuando respondemos, el hilo se cierra como resuelto y el siguiente mensaje de la persona desaparece de toda lista de pendientes. En impugnaciones, el equivalente son las apelaciones.
+- **La limitación:** se lanza a mano en una sesión y **se apaga al terminarla**. Si nadie tiene una sesión abierta, nadie se entera — que es justo cuando más falta hace (noche, fin de semana).
+- **Lo que hay que hacer:** una regla de alerta en `backend/src/alerts/alert-rules.ts`, junto al resto. Dos disparos distintos, porque son dos fallos distintos:
+  1. **feedback sin responder** más de N horas (empezar por 12, medir antes de bajarlo);
+  2. **réplica sin atender** — el último mensaje es del usuario, es posterior a nuestra respuesta y lleva más de N horas. Esta es la importante: hoy no la ve nadie, ni el badge ni ninguna lista.
+- **Ojo con la fatiga:** el canal manda ya ~64 correos al día ([T-272]). Si esto entra sin arreglar aquello, se pierde entre el ruido. Mirar T-272 antes de elegir severidad.
+- **Datos para calibrar (medidos el 29/07):** llegan **6,6 feedbacks/día** (0,27/hora), el hueco medio entre uno y otro es de **166 minutos** y las horas punta son 9h, 11h, 16h, 19h y 20h.
+- **Relacionadas:** [T-247] (feedback incontestable, mismo terreno), [T-272] (fatiga del canal de alertas).
+- **Origen:** el 29/07 una usuaria estuvo tres horas esperando —abandonando cuatro pagos— porque su réplica quedó invisible al cerrarse el hilo.
+
+### [T-287] 🟠 [ABIERTO 29/07] Canary del precio de fidelidad: nadie vigila que quien tiene una oferta pueda pagarla
+
+- **Por qué existe:** el 29/07 a una usuaria (Rocío, feedback `48f1503a`) se le creó un precio de fidelidad y estuvo **tres horas sin poder comprar**. La página cargaba, así que se fue al checkout público, vio la tarifa nueva y **abandonó cuatro pagos**. La causa era invisible desde fuera: `apiFetch` mandaba POST a un endpoint GET y devolvía **405** en silencio. El deploy estaba verde, los tests pasaban y la única señal fue su mensaje.
+- **Lo que hay hoy:** tests unitarios y de guardarraíl (el código está cubierto) y un journey de Vence Sim (`scripts/sim/journeys/precio-fidelidad-visible.ts`) que comprueba lo correcto — que el endpoint devuelva las ofertas que la persona TIENE y que la página las pinte.
+- **Lo que falta, y es el trabajo de esta ficha:**
+  1. **Que el journey autentique.** Contra producción da **401**: la sesión que forja el sim no llega a ese endpoint (`verifyAuth` espera Bearer; otros journeys van con cookie). Falta que `ctx.api` mande el token de la identidad simulada. Está anotado en el propio fichero.
+  2. **Activarlo:** `postDeploy: true`. Se dejó en `false` a propósito — un guardarraíl que falla siempre se acaba ignorando, y entonces no protege nada.
+  3. **Decidir si además hace falta un canario continuo** de la familia `canary_*` (junto a `canary_answer_save_failed`, `canary_stripe_webhook_failed`). El journey corre en cada despliegue; un canario correría cada pocos minutos. Para este caso el despliegue puede bastar: el fallo lo introdujo un cambio de código, no apareció solo con el tiempo — el mismo razonamiento que el runbook de Vence Sim da para no meter sus journeys en un cron.
+- **Criterio de hecho:** un despliegue con el endpoint roto a propósito (por ejemplo devolviendo 405) tiene que salir en ROJO. Si no lo caza, el canary no sirve.
+- **Ya son DOS los journeys bloqueados por esto** (30/07): `precio-fidelidad-visible` y `favoritas-persisten`. Los dos están escritos, comprueban lo correcto y quedan en `postDeploy: false` porque sin token dan 401 y serían un rojo permanente. Arreglar `ctx.api` los activa a los dos de golpe — por eso esta ficha vale más que su tamaño.
+- **Relacionadas:** [T-261] (favoritas, mismo patrón de "lanzado y sin vigilar"), `docs/runbooks/vence-sim.md`, `docs/runbooks/oferta-precio-personalizada.md`.
+
+### [T-278] 🟠 [ABIERTO 29/07] Parque Móvil del Estado: generar el banco de la parte específica (9 temas en elaboración)
+
+- **Contexto:** la oposición está CREADA y con los tres gates deterministas en verde (`audit:oposicion`, `audit:served`, `audit:epigrafe` = 0 ❌). Falta contenido para poder publicarla. Origen: petición de un usuario (feedback `e5151a19`) + convocatoria viva (BOE-A-2026-15052, 98 plazas de acceso libre, inscripción abierta hasta ~3/08/2026).
+- **El hueco, medido:** la parte común reutiliza **4.934 preguntas** del banco existente (Constitución, Ley del Gobierno, Ley 40/2015, TREBEP, igualdad) y cubre las 40 preguntas comunes del examen. La parte **específica**, que son **60 de las 100 preguntas del examen**, solo tiene **68**:
+
+  | Tema | Preguntas | Estado |
+  |---|---|---|
+  | T6 El conductor | 6 | en elaboración |
+  | T7 El vehículo | 3 | en elaboración |
+  | T8 Seguridad activa y pasiva | 5 | en elaboración |
+  | T9 La vía | 0 | en elaboración |
+  | T10 La velocidad | 0 | en elaboración |
+  | T11 Maniobras de circulación | 44 | **disponible** |
+  | T12 Conducción nocturna y adversa | 2 | en elaboración |
+  | T13 Las señales de circulación | 2 | en elaboración |
+  | T14 El accidente de circulación | 5 | en elaboración |
+  | T15 Elementos del vehículo | 1 | en elaboración |
+
+- **Por qué es BARATO:** el articulado ya está importado — **551 artículos** entre Ley de Tráfico (146), Reglamento General de Circulación (224), Reglamento de Vehículos (73) y Reglamento de Conductores (108). Es generar preguntas contra texto legal literal con el pipeline de siempre (`generar-preguntas-con-ia.md` + triple auditoría), sin editor humano y sin importar nada.
+- **Salvedad:** el T15 (elementos del vehículo: componentes y funcionamiento) es el único con carga técnica de mecánica, no puramente normativa. Su respaldo más cercano son las condiciones técnicas del Reglamento de Vehículos; si no da, es candidato a quedarse en elaboración.
+- **Criterio de disponibilidad aplicado:** un tema se ofrece a partir de **20 preguntas**; por debajo el opositor repite las mismas en dos vueltas. Los 9 temas están en `disponible=false` (salen como "En elaboración"), así que la oposición se puede publicar sin engañar a nadie.
+- **Al terminar:** refrescar la MV (§6.bis del manual de creación) y volver a pasar `audit:served`, o los temas seguirán saliendo "En desarrollo" aunque tengan preguntas.
+- **Go-live:** `is_active=false` a la espera de OK. La landing y las rutas ya están generadas y DESPLEGADAS (29/07).
+
+- **ESTADO AL CERRAR LA SESIÓN DEL 29/07 — lo que está hecho y lo que NO:**
+
+  **Hecho y verificado** (no hace falta repetirlo):
+  - 15 temas con el temario LITERAL de las bases (Anexos VI y VII), 2 bloques, convocatoria SSOT, 3 hitos con cita del BOE, temario_version, entidad OEP (RD 625/2023 + RD 656/2024) enlazada.
+  - Parte común sirviendo **4.934 preguntas** heredadas por `topic_scope`, sin duplicar nada.
+  - Los 3 gates deterministas en **0 ❌** (`audit:oposicion`, `audit:served` con la MV refrescada, `audit:epigrafe`).
+  - **`verify:scope` registrado** (run `verify_mecanico_conductor_estado_2026-07-29`): 12 `correct`, 3 `issues`. Dos correcciones ya aplicadas: art. 66 Ley de Tráfico (permisos de CIRCULACIÓN) movido de T6 a T7, y arts. 33-34 RGC (pruebas deportivas) fuera de T9.
+  - Código en `main` y desplegado.
+
+  **Lo que queda, por orden:**
+  1. **Generar el banco específico** (la tabla de arriba). Sin esto no se publica: son 60 de las 100 preguntas del examen.
+  2. **Las 3 salvedades del verify:scope**, que decidir al generar: T8 pide "seguridad activa y pasiva" y solo la pasiva tiene artículos (cinturones, retención infantil, cascos); T14 incluye delitos contra la seguridad del tráfico, que son del **Código Penal** y NO está escopado (decidir si se importan los arts. 379-385 o el tema se queda corto); T15 es mecánica pura, con el único respaldo de las condiciones técnicas del Reglamento de Vehículos.
+  3. **Publicar** (`is_active=true`) cuando al menos T9 y T10 (hoy a cero) tengan banco. Antes: refrescar la MV y pasar `audit:served`, o saldrán "En desarrollo" con preguntas dentro.
+  4. **Avisar al usuario que la pidió** — Chema (feedback `e5151a19`), que preguntó expresamente por el temario y los tests y ya echó la instancia. Su feedback sigue abierto a propósito.
+  5. Opcional tras el go-live: campaña de captación (FASE 8 del manual). El plazo de inscripción cerraba ~3/08/2026, así que el público objetivo ya está inscrito y estudiando.
+
+### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
+
+- **Qué falta:** el simulacro y el modo examen del temario (`ExamLayout` ← `TestExamenPage`) deben servir las opciones barajadas y, en las oposiciones que examinan con 3, recortadas — su razón de ser es parecerse al examen que el opositor va a hacer (decisión Manuel, 29/07). Los tests de práctica ya lo hacen desde [T-267]; el examen no.
+- **NO confundir con el examen oficial REPRODUCIDO** (`/[oposicion]/test/examen-oficial?fecha=…`, servido por `/api/v2/official-exams/questions` y armado por tags + `question_official_exams`): ese es el documento tal como cayó y **no se toca nunca**, ni orden ni opciones.
+- **Por qué NO es "mandar `shuffleOptions: true`" y basta** (investigado 29/07):
+  1. **El modo examen corrige por LETRA.** `lib/api/exam/queries.ts` compara `userAnswer` ('a'|'b'|'c'|'d') contra la letra derivada de `correct_option`. Con barajado, esa letra es la de la posición MOSTRADA: hay que traducirla al índice ORIGINAL en `/api/exam/answer` y en la validación batch de `/api/exam/validate`, o se marcan como fallo respuestas acertadas (el incidente de [T-235], por otra puerta).
+  2. **El examen se REANUDA, y ahí está el peligro de verdad.** `/api/exam/resume` reconstruye las opciones desde la pregunta. Si se baraja al servir y el orden no se persiste EN ESE MOMENTO, quien deje el examen a medias y vuelva verá otro orden, con sus respuestas anteriores apuntando a posiciones que ya no significan lo mismo → **se corrompen exámenes en curso**, que es peor que el problema que se resuelve.
+- **Diseño mínimo:** persistir el orden de exposición al SERVIR el examen (no al responder) y que `resume`, `answer` y `validate` lean de ahí. El núcleo ya existe y está probado: `subsetOrderFor` / `isValidExposureOrder` (`lib/shuffle/subsetOrder.ts`), con copia paritaria en el backend.
+- **Condiciones heredadas de [T-267]** (no repetirlas mal): solo preguntas elegibles (`shuffle_safety='safe'` o explicación estructurada), nunca las que citan al conjunto ("todas las anteriores"), la correcta siempre incluida, y el nº de opciones sale de `examen_config` — nunca hardcodeado.
+- **Relacionadas:** [T-267] (fase 1, hecha), [T-235] (piloto del motor), [T-262] (explicaciones que clavan la letra).
+- **Origen:** feedback `ed09cf73` de Pilar Martín + decisión de Manuel del 29/07.
+
+### [T-271] 🟠 [ABIERTO 29/07] Los `console_error` crónicos del cliente: respuestas que se quedan sin token, timeouts de 15 s y logins que no cuajan
+
+- **Qué se ve (medido 29/07 sobre 6 h, RDS):** 453 `console_error` de severidad `error` (aparte de 1.208 ya archivados como ruido de Google Identity, que está bien clasificado). Los dominantes, todos de código nuestro:
+  - `❌ [answerSaveQueue] Sin token (intento #1..#4)` — 99 eventos. La cola de guardado reintenta hasta 4 veces sin token: la respuesta del usuario está en el aire.
+  - `⏱️ [answerSaveQueue] Timeout 15s del servidor retry #0/#1` — 55.
+  - `❌ [CALLBACK] Error procesando callback: No se estableció sesión tras la autenticación` — 37. Alguien acaba de hacer login y no entra.
+  - `UserAvatar: v2 stats error: Usuario no existe` — 24. Misma firma que [T-245] (sesión con `sub` sin perfil).
+- **Por qué está sin dueño:** `console_error` no tiene regla de alerta propia, y hasta hoy el panel no pintaba el catch-all. Estaba en la BD, con volumen, y no lo miraba nadie. Ahora sale en `/admin/salud-sistema` → "Todas las señales (24h)" marcado *solo catch-all*.
+- **Por qué NO se sube el umbral para callarlo:** ~75/h es el suelo que obligó a poner el catch-all en 150/h. Mientras esto siga así, el catch-all está medio ciego en esa banda.
+- **Qué hacer:** separar las tres firmas (token ausente en la cola / timeout de 15 s / callback sin sesión), medir a cuántos usuarios distintos afecta cada una, y atacar primero la de la cola de guardado — es la única que puede costarle al usuario una respuesta contestada.
+- **📈 RE-MEDIDO 30/07 (12:00 UTC, 3 h): 453 `console_error` — el MISMO número que la ficha midió en 6 h, o sea el ritmo se ha DOBLADO.** Y esta vez ya no es solo un cubo sin dueño: disparó la alerta **`senal_error_sin_vigilancia` en `critical`** (185 en una hora a las 08:05, 231 el día anterior). El catch-all está haciendo su trabajo; lo que falta es atender esto.
+- **Reparto de hoy (3 h, por firma):**
+
+  | firma | eventos | qué es |
+  |---|---|---|
+  | `UserAvatar: v2 stats error: Usuario no existe` | ~133 | **bug real** — y el reparto lo señala: **50 en `/auth/callback`**, o sea justo al entrar. Misma firma que [T-245] |
+  | `403 «Este dispositivo ha alcanzado el límite diario»` | 61 | **NO es un fallo: es el muro de pago funcionando** (ver abajo) |
+  | `[answerSaveQueue] Sin token (intento #5..#9)` | ~50 | **bug real**, y peor que cuando se abrió la ficha: entonces reintentaba hasta 4 veces, ahora se ven intentos **#9** |
+  | `[Watchdog] UI congelada visibleMs≈12.400` | resto | ya tiene indicador propio en el panel |
+
+- **🔎 EL HALLAZGO DEL DÍA: parte del volumen que dispara la alerta es un RESULTADO DE NEGOCIO registrado como error.** El 403 «Este dispositivo ha alcanzado el límite diario de preguntas. Vuelve mañana o hazte premium.» sale de `/api/exam/answer` y el cliente lo escribe como `❌ Error guardando respuesta en API (permanente)`. **No es un fallo: es el cupo del plan gratuito diciendo su función** (y en `/api/exam/answer` el sujeto solo puede ser el dispositivo, porque el examen se puede hacer sin cuenta). O sea: **el muro de pago está inflando la señal de error y con ella el umbral del catch-all** — el mismo mecanismo que la ficha ya denunciaba («~75/h es el suelo que obligó a poner el listón en 150/h»), pero con una causa que no estaba identificada.
+  - **Comprobado que NO es enforcement nuevo:** estos 403 vienen de ANTES ([28/07 llegó a 102/h](#)), y `device_daily_limit_blocked` —el evento del límite por dispositivo de [T-304]— **no tiene ni un registro**, coherente con que salió en modo sombra. El corpus de huellas v2 ya crece (85 dispositivos). Descartado que el deploy del 30/07 esté cortando a nadie.
+  - **Salida correcta (runbook §1.ter.a):** que un 403 esperado deje de viajar como `console_error`/`error` —en el cliente, en el origen— o, si se prefiere no tocar el cliente, declararlo benigno **a propósito** en `lib/observability/benignSignals.ts` (con su copia del backend). **Lo que NO se hace es subir el umbral.**
+- **▶️ EMPIEZA POR AQUÍ (relevo del 30/07, sesión `centro-abajo`):** el triaje ya está hecho y medido arriba; lo que falta es atacar. Orden propuesto, de más daño a menos:
+  1. **`UserAvatar: v2 stats error: Usuario no existe`** — ~133 en 3 h y **50 de ellos en `/auth/callback`**, o sea justo al entrar. Misma firma que [T-245]. Empezar mirando qué pide `UserAvatar` con el `sub` recién llegado y por qué el perfil no resuelve TODAVÍA en ese instante (¿carrera con la creación/lectura del perfil?).
+  2. **`[answerSaveQueue] Sin token`** — llega al **intento #9** (cuando se abrió la ficha era #4). Es la única firma que puede costarle al usuario **una respuesta**, así que si hay que elegir una sola, es esta.
+  3. **NO perseguir** los 61 eventos del `403` del cupo gratuito: no es un fallo, es el muro de pago registrado como error (ver el hallazgo de arriba). Su arreglo es dejar de emitirlo como `error` en el cliente, o declararlo benigno a propósito — nunca subir el umbral del catch-all.
+  - Consulta de partida (RDS): `SELECT left(error_message,80), count(*) FROM observable_events WHERE event_type='console_error' AND severity='error' AND ts > now() - interval '6 hours' GROUP BY 1 ORDER BY 2 DESC LIMIT 15;`
+- **Relacionadas:** [T-245] (sesión sin perfil), [T-260] (el cupo que cobraba el cliente), [T-210] (clasificación de ruido de consola).
+
+- **📈 RE-MEDIDO 31/07 (24 h, sesión `central-izquierdo`) — sigue subiendo, y el reparto por USUARIOS cambia las prioridades.** 1.915 `console_error` con `severity='error'` (frente a los 453/3 h del 30/07). Aparte quedan **3.414 archivados en `debug`**: la clasificación de [T-210] **funciona** —GSI_LOGGER/FedCM y los `failed to fetch` están todos en `debug`, comprobado por `deploy_version`—, así que lo que queda en `error` es prácticamente todo código nuestro.
+
+  | firma | eventos | usuarios | lectura |
+  |---|---|---|---|
+  | `Error cargando notificaciones` | 399 | 38 | incluye el bucle de 401 → ficha propia [T-419] |
+  | `❌ Error guardando respuesta en API (permanente)` | 182 | **4** | el 403 del cupo → [T-418] (ahí está el ángulo del usuario: responde y no se guarda) |
+  | `[answerSaveQueue] Sin token (#1..#4+)` | **642** | 18 (**618 anónimos**) | la firma que más ha crecido |
+  | `[CALLBACK] No se estableció sesión tras la autenticación` | 125 | 11 | **login que no cuaja** |
+  | `Error fetching question history: 401` | 138 | 3 | 401 concentrado |
+  | `UserAvatar: v2 stats error: Usuario no existe` | 81 | **33** | firma de [T-245], y ahora en 33 personas |
+
+  - **El dato nuevo que más ordena el ataque: `Sin token` es sobre todo ANÓNIMO** (618 de 642) y con «0 pendientes», es decir, **la cola arranca y reintenta sin sesión y sin nada que guardar**. Eso cambia el diagnóstico de la ficha: no es (solo) «la respuesta del usuario está en el aire», es **un bucle que se ejecuta donde no debería**. Los 24 restantes, con usuario, sí son el caso preocupante — y hay que separarlos antes de tocar nada, porque el arreglo de cada mitad es distinto.
+  - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
+  - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
+
+### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
+- **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
+- **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
+
+  | Pregunta | Lo que respondió de verdad | Lo que decía la cabecera |
+  |---|---|---|
+  | `3bdd3565` | B → **FALLO** (`is_correct=false`) | *«¡Progreso! Antes fallaste, ahora acertaste»* |
+  | `4ed7bbcc` | A → **ACIERTO** (`is_correct=true`) | *«Sigues fallando esta pregunta (0/2)»* |
+  | `89021fe8` | histórico real **2/3** | *«Siempre aciertas (3/3)»* |
+
+- **Dónde NO está el fallo (descartado con datos, no por intuición):**
+  - **No son las bolitas ni el porcentaje:** coinciden **exactamente** con `test_questions` en los 3 casos (`3bdd3565`: 6 intentos, 17 %, ✓✗✗✗✗✗). Quien miente es la cabecera; la usuaria lo interpretó al revés.
+  - **No es la función pura:** con la entrada correcta, `calcularEvolucionCompleta` devuelve el mensaje CORRECTO en los 3 casos. El fallo está en la **entrada**.
+  - **No es el barajado:** ninguna de sus 20 respuestas de ese rato lleva `option_order`, y la clave guardada (`correct_answer`) coincide con `questions.correct_option` en **todas** → se le sirvió en orden natural. (Ver T-235: el piloto no ha barajado aún.)
+- **CAUSA RAÍZ (confirmada): el recuadro tenía DOS fuentes de verdad.** Las bolitas y el porcentaje se calculan con `all`, que cuando el intento ya está persistido usa **la fila real** (el servidor revalida la respuesta); la cabecera se calculaba con `currentResult`, que `TestLayout.tsx` (~L296) deriva del estado del cliente (`selectedAnswer === verifiedCorrectAnswer`). Mismo hecho, dos orígenes → podían contradecirse.
+  - **Descartado con evidencia** que fuera desincronía pregunta↔estado: el detector `TestRenderDesync` que ya existe **no ha emitido ni un evento en 30 días**. Sus `console_warn` de esa hora eran ruido conocido (aviso de Zod y `NetworkError` de notificaciones), nada relacionado.
+  - Tampoco es exclusivo del repaso: a la hora de las capturas estaba en **tests de tema normales** (`/auxiliar-administrativo-valencia/test/tema/6`).
+- **ARREGLADO (28/07):** cuando el intento actual ya está en el historial, **manda la fila persistida** también para la cabecera (`components/QuestionEvolution.tsx`). Si aún no ha aterrizado el guardado asíncrono, se sigue usando el resultado del cliente — el feedback instantáneo queda intacto. Es un arreglo **por construcción**: no se ajusta el mensaje, se elimina la segunda fuente.
+- **DETECCIÓN (lo que faltaba):** evento `evolution_result_mismatch` (severidad `warn`) cuando cliente y servidor discrepan sobre el intento. Antes esto **no dejaba ningún rastro** —la BD guardaba lo correcto, así que ninguna alerta lo veía— y por eso vivió hasta que una usuaria mandó capturas. Consulta: `SELECT count(*), metadata->>'questionId' FROM observable_events WHERE event_type='evolution_result_mismatch' AND created_at > now() - interval '7 days' GROUP BY 2 ORDER BY 1 DESC`.
+- **PENDIENTE (lo que queda de esta ficha):** con el evento ya en producción, **mirar a los pocos días cuántas discrepancias salen y de qué preguntas**. La UI ya no miente, pero que el cliente se equivoque sigue siendo un síntoma: si el volumen es alto, hay que ir al origen (`currentResult`) con datos reales en la mano en vez de suposiciones.
+- **Por qué es 🔴 y no cosmético:** al usuario se le afirma que ha fallado algo que acertó. Eso ataca justo lo que vende la plataforma —saber en qué estás flojo— y encima **no deja rastro**: la BD guarda lo correcto, así que ninguna métrica ni alerta lo ve. Solo lo caza alguien mirando la pantalla.
+- **Ya hecho (28/07):**
+  - **Simulación con datos reales:** `scripts/sim/sim-evolucion-marisol.ts <email>` — replayea los intentos de un usuario y dice si el fallo está en la función o en la entrada. Reutilizable para cualquier reporte parecido.
+  - **Invariante + regresión permanente:** `evolutionHeaderMatchesLastAttempt` en `lib/sim/invariants.ts` (+ 4 tests con los dos casos REALES) y journey de navegador `scripts/sim/journeys/evolucion-cabecera-coherente.ts`, que afirma que la cabecera no puede contradecir al veredicto que la propia UI acaba de mostrar.
+- **✅ BLOQUEO DEL JOURNEY RESUELTO (29/07):** era la cuenta de test sin onboardear — le faltaban edad y género, así que el modal se abría a pantalla completa encima de CUALQUIER journey autenticado y se tragaba los clics (el síntoma que llegaba era un `locator.click: Timeout` sobre un botón que existe y se ve). Se completó su perfil (`age`, `gender`, `onboarding_completed_at`; ojo, va cacheado 60 s y hay que purgar el tag `profile`) y el runner ahora **lo detecta y lo dice** en vez de morir con un timeout críptico. Documentado en `docs/runbooks/vence-sim.md` §Identidad. Este journey ya puede correr.
+- **Siguiente paso:** desbloquear el journey → reproducir → arreglar el origen de `currentResult` (no parchear el mensaje) → dejar el journey en verde como regresión.
+- **Origen:** feedback `108cc2a8` de MariSol, 28/07/2026.
+
+#### 🔧 EL JOURNEY NUNCA HA PODIDO DAR VERDE (31/07) — no es una regresión, es que no arrancaba
+- **La causa:** entraba directo a `/test/repaso-fallos-v2`, que **solo tiene contenido si la cuenta ha fallado algo**, y la cuenta de prueba tiene **114 respuestas y CERO fallos** (todas de canaries, sobre una única pregunta). Test vacío → «no se pudo evaluar ninguna pregunta». Además declaraba la oposición `auxiliar_administrativo_valencia` y esa cuenta es de `auxiliar_administrativo_estado`.
+- **Arreglado ya:** la oposición correcta; una **pasada previa de siembra** por el camino real (responde un test normal, lo que falle cae solo en el repaso y allí esas preguntas ya tienen historial); se acepta el banner de cookies, que flotaba encima y se comía los clics; y el selector pasa a ser el botón cuadrado `^[ABCD]$`, el mismo que usa `limite-diario-contador`, que sí responde preguntas.
+- **LO QUE FALTA, con la pista exacta:** `…/test/aleatorio` **no lleva a las preguntas, es un CONFIGURADOR** («Número de preguntas / Dificultad / Solo preguntas oficiales»). Hay que **desplazarse y pulsar el botón de empezar**, que está por debajo del pliegue; el regex `/Comenzar|Empezar|Iniciar|Generar/i` no lo encuentra en el viewport inicial. Capturas del estado exacto en `sim-reports/1785491930609/`.
+- Cuando dé verde, marcarlo `postDeploy: true` para que corra en cada despliegue.
+
+#### 📊 MEDIDO EN PRODUCCIÓN (31/07) — el volumen es BAJO, y eso decide
+- `evolution_result_mismatch` en los últimos 4 días: **7 · 6 · 10 · 2 eventos**, de **1 a 6 usuarios/día**, y **repartidos entre preguntas distintas** (2 por pregunta, ninguna concentración).
+- La propia ficha decía: *«si el volumen es alto, ir al origen de `currentResult` en vez de parchear el mensaje»*. **No es alto** → toca arreglar el mensaje, no perseguir el origen. Pero es persistente y no se va solo.
+
+### [T-235] 🟠 [ABIERTO 28/07] Revisar el piloto de barajado de opciones (Valencia) — decidir si se amplía, se corrige o se apaga
+- **🔬 CORRECCIÓN (29/07, verificada leyendo el código y los datos): los 3 `evolution_result_mismatch` que motivaron el apagado NO pudieron venir del barajado.** Ocurrieron en `/test/repaso-fallos-v2`, y esa ruta se sirve de `/api/v2/tests/failed-questions` — **no pide barajado** (`shuffleOptions` solo lo pide `lib/testFetchers.ts`) y ni siquiera maneja `option_order`. Así que la causa de esos tres es otra y pertenece a [T-244].
+  - **La cadena que SÍ baraja está intacta y cableada desde el 22/07** (commit `5b85e7357`), antes del piloto: el serve devuelve `option_order`, los fetchers pasan `data.questions` tal cual (sin remapear), `TestLayout` ya enviaba `optionOrder` antes del refactor del 28/07, el esquema de `/api/v2/answer-and-save` lo acepta y el INSERT lo escribe. Verificado eslabón por eslabón + los 7 tests de `viajeDeIdaYVueltaDelBarajado`.
+  - **Por qué `option_order` sigue a 0 en toda la historia, entonces:** la explicación que queda en pie es que **ninguna pregunta barajada llegó a responderse** — el piloto medía una esquina del tráfico (6 peticiones con barajado frente a 379 respuestas ese día). El emisor `shuffle_options_served`, que lo habría demostrado, **se añadió a las 21:22 del 28/07**, una hora DESPUÉS de apagar el piloto: por eso su ausencia no prueba nada del periodo del piloto.
+  - **⚠️ Riesgo REAL detectado, distinto y aún vivo:** hay rutas de test con su propia copia de `transformQuestions` que **descartan `option_order`** (`app/test/articulo/page.tsx`, `app/test/repaso-fallos/page.tsx`). Hoy son inofensivas porque esas rutas no piden barajado; el día que alguna lo pida, perderán el orden en silencio y marcarán fallos falsos. **Comprobar esto antes de ampliar el scope del piloto a más rutas.**
+- **📏 PRIMERA MEDICIÓN (28/07 ~15:30, desde otra sesión — NO reclamé la ficha, solo dejo el dato):** el piloto **está vivo pero casi no produce señal**, así que hoy **no se puede juzgar** con los criterios de abajo.
+  - ✅ **El flag llega y actúa:** `FEATURE_SHUFFLE_OPTIONS=true` y `..._SCOPE=auxiliar_administrativo_valencia` están en SSM **y el task def vivo los inyecta**; el evento `shuffle_options_request_active` ha disparado **6 veces hoy**, todas con `positionType=auxiliar_administrativo_valencia`. No es un problema de configuración.
+  - ⚠️ **Pero `test_questions.option_order` sigue en 0**, incluidas las **36 respuestas de Valencia posteriores al deploy**. Es el criterio nº 2 de esta ficha… y **no basta para concluir que está roto**.
+  - 🔍 **El dato que lo explica, y es el hallazgo:** hoy hubo **379 respuestas de usuarios de Valencia y solo 6 peticiones con barajado activo**. La vía que baraja (`/api/questions/filtered` con `shuffleOptions:true`, que ponen los fetchers de `testFetchers.ts`) **apenas la toca el tráfico real**. Con ~12 preguntas servidas y un **33 % de elegibles** en Valencia (6.946 de 20.942 `safe`+`full`), el 0 es perfectamente compatible con "muestra minúscula", no con "roto".
+  - **Por tanto, ANTES de mirar aciertos o de decidir si se amplía/apaga: averiguar por qué el 98 % de las respuestas de Valencia no pasan por la vía que baraja.** Si es que el grueso del tráfico usa otro fetcher (tests de ley, aleatorio, repaso…), el piloto está midiendo una esquina y ampliarlo o apagarlo por estos números sería decidir a ciegas.
+  - Sin eventos `shuffle_option_order_invalid` (0 hoy): no hay indicio de clave rota.
+- **🔴 APAGADO EL 28/07 ~20:18 (otra sesión, sin reclamar la ficha) — el barajado estaba REGISTRANDO MAL LAS RESPUESTAS.**
+  - **Lo confirmado ejecutando el código real:** `getFilteredQuestions` con las banderas de producción devuelve **5 de 20 preguntas realmente permutadas** (`scripts/sim/sim-shuffle-extremo-a-extremo.ts`), y `test_questions.option_order` está a **NULL en el 100 % de las filas de la historia**. Si la permutación no vuelve al guardar, el servidor interpreta la posición MOSTRADA como la ORIGINAL → **marca fallo a quien acertó y acierto a quien falló**, y la fila queda coherente consigo misma (indetectable a posteriori).
+  - **Señal que lo destapó:** el detector `evolution_result_mismatch` (T-244), a los minutos de desplegarse: 3 casos de una premium de Valencia, **todos cliente=acierto / servidor=fallo**, y las 3 preguntas `safe`+`full` (elegibles para barajar; verificado con `scripts/sim/sim-shuffle-servido.ts`).
+  - **Acción:** `FEATURE_SHUFFLE_OPTIONS=false` en SSM (versión 3) + `force-new-deployment` para que ECS lo lea (los secretos se inyectan al arrancar la tarea, no en caliente). Aplicado el criterio de esta misma ficha: *«si aparece cualquier señal → apagar primero y diagnosticar después»*.
+  - **Daño medido:** con la bandera encendida (12:40→20:18) hubo **136 respuestas de 8 usuarios de Valencia a preguntas barajables, 56 marcadas como fallo**. **NO se pueden reparar**: la permutación se genera con un nonce aleatorio por exposición y no se guardó, así que es imposible saber qué opción eligió cada uno. Borrar el conjunto entero destruiría ~3 de cada 4 registros legítimos (y en el repaso de fallos escondería preguntas que sí fallaron), así que se deja como está. Decisión de Manuel, 28/07.
+  - **Dónde se pierde el orden:** revisada la cadena entera (endpoint → esquema de respuesta → fetcher → wrapper → componente → cola → esquema de guardado → INSERT) y **todos los eslabones lo conservan**. La contradicción con los datos sigue abierta: es lo que hay que cerrar ANTES de reactivar.
+  - **🚧 CONDICIÓN PARA VOLVER A ENCENDER (no negociable):** tras encenderlo, comprobar en la primera hora que `SELECT count(*) FROM test_questions WHERE option_order IS NOT NULL AND created_at > now() - interval '1 hour'` es **> 0**. Si sigue en 0, el orden no vuelve y se está corrigiendo mal: apagar de inmediato. Ya existe la red de tests: `__tests__/answers/viajeDeIdaYVueltaDelBarajado.test.ts`.
+- **📏 SEGUNDA MEDICIÓN (28/07 ~17:30, otra sesión — TAMPOCO la reclamo, solo confirmo y afino):** el diagnóstico de arriba se sostiene y se estrecha.
+  - `shuffle_options_request_active` ha subido a **19** (última 15:21) y `test_questions.option_order` sigue en **0 — en TODA la historia de la tabla**, no solo hoy. El piloto **no ha producido ni una sola exposición barajada**.
+  - **No es escasez de material:** hay **73.485 preguntas activas `safe`** (frente a 61.099 `unsafe`), así que la vía que baraja tendría de sobra.
+  - **Confirmado desde el otro extremo, con un caso real:** las 20 respuestas de MariSol (usuaria de Valencia) de las 16:20-16:32 **no tienen `option_order`** y su `correct_answer` guardada coincide con `questions.correct_option` en **las 20** → se le sirvió en **orden natural**. Es decir: una usuaria de la oposición del piloto, practicando dentro del piloto, no vio barajado ni una vez.
+  - Refuerza la conclusión: el problema es **por dónde entra el tráfico real** (`/test/repaso-fallos-v2` en su caso), no la configuración. Mientras eso no se resuelva, los criterios 2 y 3 de esta ficha no pueden dar veredicto.
+- **Qué:** el 28/07 se encendió el barajado de opciones en producción **solo para `auxiliar_administrativo_valencia`** (41 usuarios, ~4.400 respuestas/semana; el 33% de lo que se le sirve es barajable). **Revisar a los 3-5 días** con datos reales, no antes: hace falta que se acumulen respuestas.
+- **Cómo saber si va bien** (por orden de gravedad):
+  1. `SELECT count(*) FROM observable_events WHERE event_type='shuffle_option_order_invalid' AND ts > '2026-07-28'` — detector de **clave rota** (el cliente devolvió un orden que no cuadra). **Cualquier cosa distinta de 0 es motivo de apagar y diagnosticar antes que seguir.**
+  2. `SELECT count(*) FROM test_questions WHERE option_order IS NOT NULL` — debe **subir**. Si sigue en 0 pasados unos días, el piloto NO está actuando (flag apagado por un deploy, scope mal, o nadie de Valencia practicando) y lo que parece «va bien» es que no está pasando nada.
+  3. **Aciertos de Valencia antes/después.** Barajar debería bajar un poco el acierto —se deja de reconocer por posición, que es el objetivo—, pero **una caída brusca** apunta a preguntas cuya explicación u opciones dependían del orden y se colaron. Comparar la semana previa contra la posterior, y contra otra oposición como control.
+  4. **Impugnaciones de usuarios de Valencia**: leer si alguna dice que la explicación no cuadra con las opciones. El dossier ya traduce las letras (ver manual de impugnaciones), así que el bloque 🔀 aparecerá solo.
+  5. `npx tsx --env-file=.env.local scripts/sweep-shuffle-safety-drift.ts` — debe seguir en 0 regresiones.
+- **Decisión al revisar:** si 1 y 3 están limpios → **ampliar** el `_SCOPE` (siguiente escalón: añadir `auxiliar_administrativo_diputacion_cordoba` y `tecnico_auxiliar_universidad_de_murcia`, o pasar a `all`). Si aparece cualquier señal → **apagar** primero y diagnosticar después; apagar cuesta ~5 min y no necesita build.
+- **📌 ACTUALIZACIÓN 01/08 — el piloto SÍ está barajando, y ha destapado un fallo real ([T-472]).** Lo que esta ficha daba por hecho (`option_order` a 0 en toda la historia) dejó de ser cierto el **29/07**: hay **577 exposiciones barajadas, 24 usuarios, 114 tests**, todas `practice`. El criterio nº 1 sigue limpio (0 `shuffle_option_order_invalid`) y el nº 2 ya se cumple. Lo que apareció es por una **puerta que esta ficha no vigilaba**: el **repaso** de un test terminado señalaba la opción equivocada en el **77 %** de esas exposiciones (lo cazó la impugnación `8e9142c0` de una usuaria de Valencia). Arreglado en [T-472]; **añadir a la lista de comprobación un punto 6: repasar un test barajado y ver que la opción resaltada es la buena** — servir bien y corregir bien no garantizaba pintar bien.
+- **Comandos (ampliar / apagar) y el estado del cableado:** en la ficha [T-080], sección «ENCENDIDO EN PRODUCCIÓN».
+- **Contexto de por qué importa vigilarlo:** el mismo día se encontraron cuatro huecos en los detectores que decidían qué es barajable (referencias por posición, el agujero de las tildes en `\b`, opciones que se citan entre sí, razones estructuradas que mencionan otra opción). Que hoy el sweep dé 0 no garantiza que no quede una quinta clase sin descubrir — y el sitio donde se vería es el uso real.
+- **Origen:** encendido del piloto, 28/07.
+
+### [T-237] 🟠 `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
+
+**Qué:** el sensor `llm_semantic` escribe `cron_tick{phase:'start'}` al arrancar y `cron_run` con las
+stats al terminar. El 21, 22 y 27/07 arrancó, emitió algunas señales y **nunca cerró** — las
+oposiciones que quedaban por barrer ese día no se miraron y nada avisó.
+**Por qué (🟠):** es un fallo SILENCIOSO en el sensor de mayor cobertura del radar (2.206 URLs). El
+badge de OEPs parece sano porque sí llegan señales, así que se da por bueno. Causa probable: el
+barrido creció 4,7× (472 → 2.206 URLs al subir la cobertura) y pasó de ~40 min a **~2 h 50 min** sin
+ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206). Falta también una
+alerta `arranques > cierres`.
+**Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
+incluida).
+
+### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
+
+- **Esfuerzo: rato** (el parser y el render ya existen; es soportar el segundo nivel).
+- **ORIGEN.** Feedback `2f904b99` de Lú Henao (premium, Aux. Admin. Madrid, 48 días y 5 feedbacks previos resueltos): *«En el estudio de leyes estaría muy bien que leyes como la 39 especifique títulos, capítulos y en general la estructura de la ley»*. Se le respondió que los **títulos ya se ven** en `/leyes/[law]` (venía del temario, no de ahí) y que lo de capítulos quedaba apuntado.
+- **NO es [T-012] otra vez, y por eso tiene ficha propia.** Aquélla está hecha y desplegada: pobló `law_sections` en 249 leyes y pinta las cabeceras de sección en teoría. Su pendiente declarado son *«~58 leyes de estructura ANIDADA (Código Civil, LECrim, Ley 9/2017: libro>título>capítulo) que el parser RECHAZA a propósito»*. **Lo medido el 03/08 tiene otra forma y es mucho más ancho:**
+  | Forma de la estructura guardada | Leyes |
+  |---|---|
+  | solo TÍTULOS | **234** |
+  | solo CAPÍTULOS | 89 |
+  | **AMBOS niveles** | **0** |
+  - **Ninguna ley del catálogo tiene los dos niveles.** No es que fallen 58 leyes raras: es que el parser guarda **un único nivel por ley** (el más externo que encuentre), y quien tiene títulos se queda sin capítulos por construcción.
+- **A quién le toca, que es lo que lo hace prioritario:** son justo las leyes más estudiadas. CE (4.607 preguntas servidas), Ley 39/2015 (3.088), LECrim (2.092), Reglamento Penitenciario (1.720), CP (1.701), Ley 1/2000 (1.550), LOPJ (1.507), Ley 40/2015 (1.466), Código Civil (1.349), TREBEP (1.224), LO 3/2018 (889). **Todas con títulos y capítulos a cero.**
+- **Dónde se ve el hueco:** en `/leyes/ley-39-2015` se pinta «Título I. De los interesados en el procedimiento · Artículos 3 a 12» y ahí se acaba; el usuario no puede orientarse dentro de un título largo, que es justo lo que pedía Lú. El Título IV de la 39/2015 (el del procedimiento común) tiene siete capítulos y ninguno se ve.
+- **Por dónde va el arreglo:** `lib/laws/parseBoeSections.js` (lógica pura, ya con 10 tests) + `scripts/poblar-law-sections-boe.cjs`. El render **no habría que tocarlo**: `lib/teoria/sectionHeaders.ts` ya pinta cabeceras por sección y `availableSections` ya se carga para el filtro, así que el segundo nivel entra sin fetch nuevo. La tabla tampoco cambia: `section_type` ya admite `capitulo` y hay 523 filas de 89 leyes que lo demuestran.
+- **Ojo al medir el resultado:** el éxito NO es «hay más filas en `law_sections`», es que **las leyes con títulos pasen a tener también capítulos**. La query de arriba (formas de estructura) es el antes/después.
+- **✅ MITAD DE DATOS HECHA (03/08).** `parseBoeSectionsMultinivel` devuelve TODOS los niveles y el poblador los inserta como series independientes. **Ley 39/2015 ya tiene sus 7 títulos + 16 capítulos** en BD, con rúbrica y rangos correctos («Capítulo II. Términos y plazos», arts. 29-33). 34 tests en `__tests__/laws/parseBoeSections.test.js` (27 previos intactos + 7 nuevos).
+  - **La trampa que sostiene el diseño:** el solape se valida **por nivel, jamás entre niveles** — un capítulo vive dentro de un título, así que sus rangos se pisan por definición y mezclarlos haría saltar `motivo:'solape'` en TODAS las leyes. Hay un test que lo fija.
+  - **Y `ya_poblada` pasa a ser por NIVEL:** contarlo por ley dejaba fuera para siempre a las 234 que ya tenían títulos, que nunca habrían recibido sus capítulos.
+  - **Defecto propio cazado al mirar lo servido:** `order_position` reiniciaba en 1 en cada nivel y el fetcher ordena por esa columna, así que títulos y capítulos salían ENTRELAZADOS. Se desplaza por lo ya existente. No se ve al insertar, solo al pintar.
+- **▶ LO QUE QUEDA: el RENDER no muestra el segundo nivel.** La ficha daba por hecho que no habría que tocarlo y **eso era falso**: con los 16 capítulos ya en BD, `https://www.vence.es/leyes/ley-39-2015` sigue pintando solo los 7 títulos. Falta distinguir cuál de las dos cosas es, y son arreglos distintos: (a) la página es `revalidate:false` (caché permanente) y no se ha refrescado pese a invalidar el tag `teoria`, o (b) el componente pinta un solo nivel. **Comprobarlo antes de tocar nada.** Y cuando se vea, decidir cómo se presenta la jerarquía (el capítulo debería ir DENTRO de su título, no como una lista hermana).
+- **NO barrer el resto del catálogo hasta que el render funcione.** El dry-run de 25 leyes ya enseña que funciona (`titulo(14)+capitulo(19)` en LIRPF, `titulo(8)+capitulo(28)` en la Ley 31/1990), pero poblar 234 leyes cuyo segundo nivel no se ve no le da nada a nadie y ensucia la medida del antes/después.
+- **✅ MITAD DE DATOS HECHA (03/08). ❌ El render NO la muestra, y eso corrige lo que suponía esta ficha.**
+  - **Parser:** `parseBoeSectionsMultinivel()` en `lib/laws/parseBoeSections.js` devuelve TODOS los niveles. `parseBoeSections()` se conserva intacta (sigue dando el más externo) y ahora se implementa sobre la nueva, así que la retrocompatibilidad está probada, no supuesta: los **27 tests anteriores siguen verdes** y hay **7 nuevos** (34 en total).
+  - **LA TRAMPA, que es lo que había que acertar:** el solape se valida **POR NIVEL, jamás entre niveles**. Un capítulo vive DENTRO de un título, así que sus rangos se pisan por definición; pasarle los dos juntos a `validarSecciones` haría saltar `motivo:'solape'` en TODAS las leyes y el guardarraíl que existe para no meter basura acabaría rechazando justo lo correcto. Hay un test que lo fija.
+  - **Poblador:** el `ya_poblada` era por LEY y ahora es **por NIVEL** — contarlo por ley dejaba fuera para siempre a las 234 que ya tenían títulos, que nunca habrían recibido capítulos.
+  - **Y un defecto propio que solo se ve al PINTAR:** `order_position` reiniciaba en 1 en cada nivel y el fetcher ordena por esa columna, así que títulos y capítulos salían **entrelazados** (título I, capítulo I, título II…). Se arregló desplazando por lo que la ley ya tiene. Verificado en BD: Ley 39/2015 = títulos en 1-7 y capítulos en 8-23.
+  - **Estrenado sobre la ley del feedback:** la **Ley 39/2015 pasa de 7 secciones a 23** (7 títulos + 16 capítulos, con rúbrica y rango correctos: «Capítulo II. Términos y plazos», arts. 29-33). El dry-run de lote confirma que el resto también los saca (LIRPF `titulo(14)+capitulo(19)`, Ley 31/1990 `titulo(8)+capitulo(28)`) y que los rechazos siguen siendo los guardarraíles de siempre.
+- **✅ Y SE VE EN PRODUCCIÓN. La sospecha de que fallaba el render era MÍA y era falsa.**
+  - Con los capítulos ya en BD, `/leyes/ley-39-2015` seguía pintando solo títulos, y anoté que el render podía estar filtrando un nivel. **No.** Pedida la MISMA página con un parámetro que evita la caché, salían los 16 capítulos con su rúbrica. Lo que fallaba era la **invalidación**.
+  - **GOTCHA reutilizable:** esa página cachea con `unstable_cache(..., {revalidate:false, tags:['teoria']})`, y en AWS el frontend son **N contenedores standalone, cada uno con su caché EN MEMORIA**. Una sola llamada a `/api/admin/revalidate` limpia **solo el contenedor que la atendió**; los demás siguen sirviendo lo viejo. **Repetir la llamada (8 veces con 4 tareas) limpió todas** y la URL limpia pasa a servir 7 títulos + 16 capítulos. Es exactamente el modo de fallo del incidente de TAI que ya documenta `cache-revalidation.md`, aquí otra vez y desde el otro lado: no es que la caché no se invalide, es que **se invalida una instancia de cuatro**.
+  - **Y la lección de método:** «lo desplegué y no se ve» tiene DOS causas posibles y se distinguen en 30 segundos pidiendo la misma URL con y sin cache-buster. Yo di por hecha la más cara (código) antes de descartar la barata (caché), y escribí en esta ficha una conclusión falsa.
+- **▶ LO QUE QUEDA:** poblar el resto del catálogo (`--sweep --limit N --apply`). Ya tiene sentido, porque lo poblado se ve. Al terminar cada lote, **invalidar `teoria` varias veces** o el usuario seguirá viendo la estructura vieja.
+- **Relacionadas:** [T-012] (la que dejó el nivel de título hecho y el render puesto).
+
+### [T-502] 🟡 [ABIERTO 03/08] Reparar las 171 psicotécnicas cuya explicación no cierra (el detector ya está hecho)
+
+- **Esfuerzo: larga.** Son 171 preguntas y **cada una se repara leyendo su enunciado y rehaciendo el cálculo**; no hay reescritura en bloque que valga.
+- **De dónde sale:** [T-500] construyó el detector y midió. `npm run audit:psico-explicacion -- --todos` da la lista con su banda y su motivo.
+- **Cola, por orden de daño:**
+  1. **48 graves.** Tres formas: una NOTA DE REVISIÓN INTERNA publicada como explicación (*«Errores en desglose por filas: fila 4 lista 960 como par…»*), una explicación que enuncia el método y se corta antes de resolver (*«se aplica la fórmula de iguales excluidos:»*), y la peor, la que **cierra afirmando la cifra de OTRA opción**.
+  2. **123 avisos:** nunca mencionan la cifra de su respuesta. Suelen describir el patrón de la serie sin llegar a decir el resultado.
+- **REGLA DURA al reparar:** se rehace la EXPLICACIÓN contra el enunciado. **NUNCA se toca la clave para que encaje con la explicación** — en el caso que abrió esta familia la clave era la correcta y lo falso era el razonamiento.
+- **Y ojo, porque el detector no ve el defecto entero:** solo comprueba que la explicación **llegue** a su respuesta. Una explicación que cita su cifra por un camino equivocado le parece sana (es exactamente el caso `3ff87618`). Al reparar una, merece la pena leer sus hermanas del mismo tipo de ejercicio.
+- **Relacionadas:** [T-500] (detector y medición), [T-410] (duplicados en psicotécnicas).
+
+**AVANCE (03-04/08) — LA BANDA GRAVE ESTÁ A CERO: 48 → 0. Quedan los 121 avisos.**
+
+- **Las 48 se repararon de una en una, resolviendo el enunciado**, nunca tocando la clave. En las 48 el cálculo dio la clave marcada, así que no hubo que retirar ninguna pregunta.
+- **Familias que aparecieron, y cada una pedía una cosa distinta:**
+  - **Cálculo puro** (regla de tres simple y compuesta, series intercaladas, m.c.m., combinatoria, ecuaciones, decimales): se rehízo el razonamiento hasta la cifra.
+  - **Ortografía** («¿cuántas faltas contiene esta frase?»): 11 preguntas cuya explicación justifica palabra por palabra y **nunca escribe el número**. Ahí la reparación es una frase de cierre con la clave — no se inventa nada, es la propia respuesta marcada.
+  - **La de la matriz** parecía irreparable («mostrada en la imagen» + una nota de auditoría publicada como explicación) y **no lo era**: la matriz viaja en `content_data`, así que se pudo recontar fila a fila (4+4+4+4+4+3+4+4 = 31) y comprobar que la clave era correcta. **Antes de dar por perdida una pregunta con imagen, mirar `content_data`.**
+- **⚠️ EL DETECTOR SE ARREGLÓ TRES VECES DURANTE LA REPARACIÓN, y ese fue medio trabajo.** Reparar es la única forma de descubrir que el criterio miente: (1) `(2,1)` son las dos raíces de una ecuación y se leía como el decimal 2,1; (2) `2,4,3,1` es el orden de una pregunta de ordenar la frase y se descartaba por «número imposible»; (3) `2,1` sin paréntesis es un par cuando **el enunciado** pide dos números, dato que no está en la clave — el detector recibe ahora también la pregunta. Los tres con test y con su no-caso, para que ensanchar no se coma la sensibilidad.
+- **LO QUE QUEDA: los 121 avisos**, explicaciones que describen el método pero no llegan a decir la cifra. Son menos graves (no engañan, se quedan cortas) y muchas admiten el mismo cierre de una línea que la familia de ortografía. `npm run audit:psico-explicacion -- --todos` los lista.
+
+### [T-503] 🔴 [ABIERTO 03/08] Construir Agente de la Hacienda Pública (C1) — 16 usuarios y 2 premium con CERO temas
+
+- **Esfuerzo: sesion_propia.**
+- **ORIGEN.** Decisión de Manuel (03/08) al revisar qué construir después de [T-488]. Es el caso con **gente pagando por algo que no existe**: 16 usuarios la tienen como objetivo, **2 de ellos premium**, y la oposición está `is_active=false` con **0 temas**. Es la raíz de tres fichas abiertas — [T-326] (el filtro de oficiales que pidió Sergio), [T-327] (la oposición personalizada, que nació porque la suya no está montada) y [T-397] (los 592 usuarios en oposiciones sin temario).
+- **Está DENTRO de la banda que se construye:** categoría **C1** en nuestro propio catálogo (`categoria='C1'`, `subgrupo='C1'`). Lo que es A1/A2 en Hacienda son los Inspectores y los Técnicos, no el Agente.
+- **La convocatoria, verificada en el BOE (no supuesta):** [BOE-A-2025-27056](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27056), Resolución de 22 de diciembre de 2025 de la Presidencia de la AEAT, BOE núm. 314 de 30/12/2025. Cifras **literales**: turno libre **1.000 plazas (920 general + 80 discapacidad)** y promoción interna **400** → **1.400 en total**.
+  - ⚠️ **El cupo de discapacidad va DENTRO del turno libre** (920+80=1.000). Hay que declarar `plazas_discapacidad_incluidas=true` o `oposiciones_ssot` lo suma y publicaríamos 1.080 donde hay 1.000.
+  - **El examen de ESTA convocatoria ya se celebró** (primer ejercicio 21/03/2026), así que quien estudia ahora prepara la siguiente, de la **OEP 2026** — coherente con el `estado_proceso='oep_aprobada'` que ya tiene la ficha. Es buena ventana: un año por delante.
+- **Temario: 32 temas del ANEXO I**, parseados del texto del BOE — 12 Materias Comunes (7 de organización del Estado y AGE + 5 de Derecho Administrativo General) y 20 Materias Específicas (Organización de la Hacienda Pública y Derecho Tributario).
+  - **GOTCHA de parseo del BOE, reutilizable:** separa «Tema» de su número con **espacio duro** (`\xa0`) y usa **espacio em** (`\u2003`) tras el punto, así que buscar `"Tema 1."` no encuentra NADA. Hay que normalizar antes de partir el texto.
+- **🔬 LO MEDIDO, que es lo que decide el trabajo real (03/08):** las **comunes están cubiertas de sobra** por reutilización (CE 4.607 preguntas, Ley 39/2015 3.089, Ley 40/2015 1.466, TREBEP 1.224, LO 3/2018 889, LO 3/2007 782, Ley 19/2013 415, LO 1/2004 391) y **las específicas están casi vacías** — pero **NO porque falten las leyes: el articulado verbatim YA ESTÁ IMPORTADO**, que es la parte cara y la que no se puede improvisar.
+  | Ley | Artículos | Preguntas activas |
+  |---|---|---|
+  | LGT (58/2003) | 293 | 221 |
+  | RGGIT (1065/2007) | 230 | 22 |
+  | RD 939/2005 (Recaudación) | 136 | 5 |
+  | LIVA (37/1992) | 187 | **0** |
+  | LIS (27/2014) | 136 | **0** |
+  | LIRPF (35/2006) | 107 | **0** |
+  | Ley 31/1990 (AEAT) | 104 | **0** |
+  - **Faltan en BD:** el Reglamento sancionador (RD 2063/2004) y el de revisión en vía administrativa (RD 520/2005).
+- **CONSECUENCIA para el plan, y es distinta de la de [T-488]:** allí la oposición nació sirviendo 19.605 preguntas porque todo existía. Aquí el andamiaje (fila, temas, scope, rutas, landing) es igual de barato, **pero las 20 específicas nacen sin banco**: se montan con su scope y su teoría —que sí se puede leer— y `disponible=false` hasta generar preguntas contra el articulado ya importado (pipeline `generar-preguntas-con-ia.md` + doble auditoría ciega). **NUNCA poner `is_active=true` con temas disponibles a cero.**
+- **Relacionadas:** [T-326], [T-327], [T-397] (las tres cuelgan de que esta oposición no exista), [T-488] (el precedente de construcción por reutilización).
+
+### [T-501] 🟡 [ABIERTO 03/08] El lado de FEEDBACK no tenía reconciliador de emails: 43 respuestas en 90 días sin poder saber si llegaron
+
+- **Esfuerzo declarado: larga.**
+- **De dónde sale:** Manuel pidió revisar los errores de impugnaciones (03/08). Los que había eran el falso positivo ya documentado en [T-422] —y su ficha avisaba de no volver a comerse el anzuelo, así que no se reenvió nada—, pero al cerrar aquello quedaba escrito su **hueco conocido**: *«el mismo salto silencioso existe para las respuestas a feedback (`soporte_respuesta`) y ahí no hay reconciliador ninguno, así que nadie lo vería»*. Esto es ese hueco.
+- **Qué pasaba, en una frase:** le contestamos a una persona por DOS caminos y solo uno estaba vigilado. `respondFeedback` (`lib/api/v2/feedback/queries.ts`) **no emitía ni un solo evento** —grepeado: cero `emit` en el fichero—; los cinco motivos de «sin email» y los fallos de envío viajaban en el JSON de vuelta y morían ahí. Sin evidencia, sin cron y sin regla, un drop en ese lado era invisible por completo.
+- **Y tiene una salida que el gemelo no tiene, que es lo que lo hace peor:** `user_actively_browsing` compara contra `user_sessions.updated_at` con una ventana de **CINCO SEGUNDOS**. Es la condición más efímera del sistema y **nadie puede releerla después** — un reconciliador ingenuo la contaría como pérdida cada vez.
+- **Medido ANTES de construir nada (90 días, contra RDS):** **532 respuestas de admin, 43 sin fila en `email_events` (8%)**. Reparto semanal de 0 a 12; la última semana, 62 respuestas y 0 sin email.
+- **El discriminante que convierte esas 43 en un número útil:** `email_unsubscribe_tokens` se inserta DENTRO de `sendEmailV2`, **después** de `canSendEmail`, así que su presencia prueba que el envío pasó el gate. Control limpio: de las 488 entregadas, **488 tienen token (100%)**. Aplicado a las 43 → **42 se cortaron antes de enviar** (preferencia, `sendEmail:false` o los 5 segundos) y **1 es una pérdida REAL**.
+- **Esa 1 tiene nombre y es de dinero:** `garciamoyanoraquel7179@`, **14/07 19:55**. Preguntaba cómo evitar el siguiente cobro de su plan de 3 meses; se le escribió la respuesta, se creó el token y el correo nunca salió ni dejó rastro. Contraste que lo cierra: otro email suyo esa misma mañana tiene token **y** fila. **Nadie se enteró en 20 días** — lo encontró esta búsqueda a mano, que es exactamente lo que la filosofía martillo dice que no debe pasar.
+- **NO se le reenvía** (decisión de Manuel, 03/08): *«ha pasado mucho tiempo y es peor enviarlo»*. Tiene la respuesta en la campana y en `/soporte`. El valor de esto está entero en enterarse DENTRO de las 24 h.
+- **Hecho:**
+  - `lib/api/v2/feedback/queries.ts` — emite **`feedback_email_skipped`** (`info`, con el motivo) y **`feedback_email_failed`** (`warn`), anclados al **`messageId`**. Al mensaje y no al feedback a propósito: un hilo tiene N respuestas de admin, y anclarlo al feedback las confunde entre sí (el gemelo de impugnaciones no tiene ese problema).
+  - `backend/src/feedback-email-reconciliation/` — cron cada hora (**:35**, para no solaparse con `:00` ni con el `:15` del gemelo), ventana de 24 h con 10 min de gracia. La unidad es el MENSAJE. Publica `inferredSkips` como trinquete.
+  - **Reutiliza el núcleo puro `verdict.ts` del gemelo, no una copia** — dos puertas al mismo hecho con criterios distintos no protegen el doble, se contradicen. Lo único que se le añade es el hecho `hasUnsubscribeToken` (opcional): si hubo token y no hay email, es `real_drop` **por certeza**, diga lo que diga la preferencia de hoy. Es la respuesta a la «dirección peligrosa» de [T-422], ahora con prueba en vez de con silencio.
+  - `backend/src/alerts/alert-rules.ts` — regla **`feedback_email_drop`** (`error`), separada de la de impugnaciones para que el cooldown de una no silencie a la otra. Su texto manda **no reenviar** sin mirar.
+  - `docs/runbooks/health-check.md` **§0.ter** — triaje, con la tabla de las dos diferencias frente a §0.bis.
+- **Capas:** 7 tests del emisor (`respondFeedback.test.ts`, incluida la de que si la observabilidad falla la respuesta sigue siendo un éxito) + 5 del núcleo puro (`verdict.spec.ts`, con el caso de que SIN el hecho nuevo el criterio de impugnaciones no cambia ni un ápice) + 5 de la regla + **`npm run sim:reconciliador-feedback`**, que corre el servicio REAL contra RDS (nunca una copia del SQL) y reimprime la calibración y el control del 100%.
+- **Verificado en la simulación, no supuesto:** ventana real 0/0/0 e inferidos 0; calibración 531 · 488 con email · 43 sin · 1 con token · control 488/488 (100%). Coincide con la medición a mano hecha antes de escribir el SQL.
+- **Falta:** desplegar **frontend** (el emisor) y **backend** (el cron + la regla) y comprobar en producción que (a) el `cron_run` de `feedback-email-reconciliation` aparece cada hora, (b) `inferredSkips` baja a 0 según entran respuestas nuevas —si no baja, el emisor no está llegando—, y (c) un salto legítimo real deja su `feedback_email_skipped`.
+- **Lo que este arreglo NO cubre:** los contactos EXTERNOS (sin `user_id`) salen por `/api/send-support-email` con `sendDirectEmail`, otro camino que tampoco deja evidencia. Queda fuera a propósito: el reconciliador solo mira conversaciones con usuario.
+- **Relacionadas:** [T-422] (el gemelo, de donde sale el hueco), [T-373] y [T-369] (por qué la preferencia es mutable y no prueba nada), [T-116] (el otro hueco de emails: intentado y rechazado).
+
+### [T-456] 🟠 [ABIERTO 01/08 · IMPLEMENTADO 01/08, falta verlo vivo] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
+
+- **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
+- **HAY TRES CAMINOS DE ENVÍO, no dos**, y dos de ellos están completos:
+  1. **`sendEmailV2`** (transaccional, uno a uno): comprueba `canSendEmail`, genera el token de baja, registra en `email_events` y admite `idempotencyKey`. Lo usan impugnaciones, feedback y soporte.
+  2. **Newsletters** (masivo): Resend por HTTP con reintentos y control de rate-limit —lo que necesita un envío a miles— pero **con las tres piezas puestas**: excluye a los dados de baja al construir la audiencia, genera token y registra en `email_events`.
+  3. **Este recordatorio**: Resend crudo **sin ninguna de las tres**.
+- **MEDIDA (01/08):** **424 recordatorios enviados** y **solo 1 aparece en `email_events`**. Los otros 423 son invisibles para observabilidad y analítica. Un destinatario tiene hoy `email_soporte_disabled` (leo el valor de AHORA, no el de entonces, así que no se puede afirmar que se le escribiera después de pedirlo — lo que sí es seguro es que **por ese camino nada lo habría impedido**).
+- **POR QUÉ IMPORTA MÁS DE LO QUE PARECE:** va a gente que **paga**, avisa de un **cobro**, y es justo el tipo de envío cuya desaparición nadie nota — la ceguera que costó seis horas en [T-422] es la misma. Además su guardarraíl documentado («el cron ticó y envió 0») emitía `renewal_reminders_zero_sent` que **ninguna regla miraba** hasta [T-448].
+- **RESOLUCIÓN PROPUESTA:** migrarlo a `sendEmailV2` (que usa Resend por dentro: no se cambia de proveedor, se le ponen las comprobaciones delante). Ojo al hacerlo: hoy el importe se calcula con `invoices.createPreview` y eso hay que conservarlo; y la idempotencia actual vive en `email_logs` (5 días), que conviene mantener ADEMÁS de la clave de Resend.
+- **Relacionadas:** [T-448] (donde salió), [T-369] (por qué la categoría decide quién lo recibe), [T-457] (el otro cabo del mismo repaso).
+
+- **✅ HECHO (01/08) — migrado a `sendEmailV2`, con lo que había que conservar conservado:**
+  - `sendRenewalReminder` ya no habla con Resend en crudo. Gana las tres piezas: `canSendEmail`, token de baja con cabeceras `List-Unsubscribe`, y fila en `email_events`. El importe se sigue calculando con `invoices.createPreview` (no se tocó `getUpcomingInvoiceInfo`) y el dedup de `email_logs` a 5 días **se conserva** por delante del envío, que es lo que separa el aviso de 7 días del de 1 día.
+  - **La trampa de la migración, que estaba a un paso de tragarse el descuento:** el despacho de templates de `sendEmailV2` NO pasaba `baseAmount` ni `discountPercent`, que son los dos últimos argumentos del template y los únicos que pintan la línea *«precio base 59€ con tu 20% de descuento de fidelidad aplicado»*. Como el correo salía por el camino crudo (con los 8 argumentos), el fallo estaba **latente**: se habría estrenado justo al migrar, borrando la explicación del importe en el correo que avisa de un cobro. Se arregla en el despacho y se fija en `templateDispatch.test.ts`, que es el único sitio que usa los templates REALES.
+  - **Clave de idempotencia de Resend:** `renewal:<user>:<fecha de renovación>:<día de envío>`, en un núcleo puro y testeado. **`daysUntilRenewal` NO sirve** como discriminante: sale de un `Math.ceil` sobre `now`, así que la misma persona da 8 por la mañana y 7 por la tarde — una clave que cambia sola entre dos intentos del mismo día no deduplica nada.
+  - **Bloqueado por preferencias cuenta como OMITIDO, no como fallido.** Si contara como fallo, el guardarraíl de *«ticó y envió 0»* gritaría por gente que decidió no recibirlo.
+  - **Alcance medido antes de tocar (para no cambiarle el correo a nadie sin saberlo):** de las **74** suscripciones activas que renuevan, **0** tienen `email_soporte_disabled` y **0** tienen baja total. Es decir: hoy la comprobación de preferencias **no deja fuera a nadie** — se pone para el futuro, no para cortar envíos vivos.
+  - **Capas:** 6 tests de contrato del camino (`recordatorioRenovacionCarril.test.ts`), 4 de clave pura, 3 nuevos de render real con y sin descuento, y los 5 de `renewalReminderPrices` reapuntados al `customData`. Typecheck y lint limpios.
+
+- **🔎 HALLAZGO al verificar, que NO se cierra desde aquí — el rastro depende de una lista blanca en la BD.** `email_events.email_type` tiene un CHECK (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo que no esté en la lista **no da error a nadie**, simplemente no deja fila. Medido sobre RDS: 18 tipos declarados en la app, 24 en el CHECK, y **2 que la app envía y la BD rechaza**:
+  - `recordatorio_renovacion` **SÍ está** en la lista → el arreglo de esta ficha funciona. ✅
+  - **`fin_suscripcion_precio_heredado` NO está**, y es de [T-448], que se estrenó esa misma mañana: 4 personas recibieron el aviso a las 09:00 y las **8 filas** que quedaron son de `email_logs` (**dos por envío**: `sendEmailV2` escribe una y `avisoFinSuscripcion` repite el insert), **cero** en `email_events`. O sea que el correo hermano nace con la misma ceguera que esta ficha arregla.
+  - **`nueva_oposicion`** tampoco está.
+  - Cerrarlo pide una **migración que amplíe el CHECK** (+ quitar el insert duplicado de `avisoFinSuscripcion`), y eso es territorio de [T-448]. Mientras tanto queda vigilado por trinquete en `__tests__/integration/emailEventsTiposAceptados.test.ts`: **no falla por la deuda de hoy, falla si crece** — un gate en cero dejaría el CI rojo para todas las sesiones por algo que no se arregla desde esta ficha.
+
+- **📦 ESTADO AL CERRAR LA SESIÓN (01/08 12:45 CEST) — qué encuentra quien la coja:**
+  - En `main` como `e8f928427`. Frontend **desplegándose** en esa misma tanda (`origin/main` = `9cbdc06f`, que ya lo incluye). Al terminar el deploy, la tarea se despierta sola y sale como `⏰ LISTA PARA VERIFICAR`.
+  - **⚠️ PERO NO SE PODRÁ VERIFICAR ESE MISMO DÍA, y conviene saberlo antes de intentarlo.** El cron es `@Cron('0 9 * * *', UTC)` en `backend/src/internal-cron-triggers/` y dispara `/api/cron/renewal-reminders` **una vez al día**. El 01/08 ya había corrido (a las 09:00 UTC) con el código VIEJO, y el deploy salió a las ~10:40 UTC. O sea: **la primera tanda con el código nuevo es la del día siguiente a las 09:00 UTC**. Despertarse «lista para verificar» y no encontrar datos NO es que el arreglo falle.
+  - **Cómo verificarla (en este orden):** (1) `SELECT count(*) FROM email_events WHERE email_type='recordatorio_renovacion' AND created_at > '<fecha del deploy>'` en RDS — antes del arreglo eran **424 en `email_logs` contra 1 en `email_events`**, así que cualquier número > 0 que case con los envíos del día ya es la prueba; (2) comprobar que a quien tiene `loyalty_10`/`loyalty_20` el correo le pinta la línea del descuento (es lo que arregla el despacho de templates, y era el fallo latente que la migración iba a estrenar); (3) `node scripts/canary-renewal-reminders.cjs` si se quiere adelantar sin esperar al cron.
+  - **Ojo al leer los números:** `avisoFinSuscripcion` ([T-448]) escribe **dos** filas en `email_logs` por envío, así que contar por ahí infla. `email_events` es la cuenta buena.
+  - **📏 LÍNEA BASE tomada el 01/08 a las 13:50 CEST, con el frontend YA desplegado y antes de que corra ningún cron nuevo** (para que la comparación de mañana sea limpia): `email_logs` = **424**, `email_events` = **1** (esa única fila es del **24/02/2026**). El último recordatorio real salió el **20/07** y el cron de hoy envió **0**.
+  - **🎯 QUÉ ESPERAR EXACTAMENTE, porque «mira si hay filas» no vale aquí: debe salir UN correo, no un lote.** Quedan solo **2 suscripciones que renuevan de verdad** (11 vencen en 30 días, pero **59** de ellas son `cancel_at_period_end=true` y el cron las excluye a propósito — es justo el hueco de [T-448]): una renueva el **02/08** y otra el **10/08**. La ventana (`renewalReminderWindow`) es el **día natural `now + N` en hora LOCAL del servidor**, y la del 02/08 cae a las **22:00 UTC**, o sea justo FUERA de la ventana de hoy y DENTRO de la de mañana. Por eso hoy salieron 0 y **mañana 02/08 a las 09:00 UTC debe salir exactamente 1** (el aviso de 1 día). **Veredicto: 1 fila nueva en `email_events` = verificado; 0 filas = algo va mal.** Después de esa, la siguiente oportunidad es el aviso de 7 días de la del 10/08, que por el mismo desfase de huso cae hacia el **04/08**.
+  - **Si mañana sale 0, mirar en este orden** antes de culpar al arreglo: (1) que el frontend desplegado sea ≥ `9cbdc06f` (`/api/health`); (2) que el cron ticara — `observable_events` con `renewal_reminders_*` y el heartbeat `trigger-renewal-reminders`; (3) que la suscripción no se cancelara entre medias (pasaría a `cancel_at_period_end=true` y el cron la excluiría con razón); (4) solo entonces, el camino de envío.
+
+### [T-457] 🟡 [ABIERTO 01/08 · ARREGLADO 01/08, ESPERA DEPLOY] La newsletter por selección MANUAL de usuarios no comprueba si están dados de baja
+
+- **ORIGEN.** Salió comparando los caminos de envío en [T-448]/[T-456]: la newsletter tiene **dos** rutas y solo una filtra.
+- **EL DETALLE:** el envío **por audiencia** usa el helper de Drizzle que excluye `unsubscribedAll` y `email_newsletter_disabled` (está comentado en el código: *«respeta unsubscribedAll»*). El envío **por `selectedUserIds`** hace `.where(and(inArray(userProfiles.id, selectedUserIds), isNotNull(userProfiles.email)))`: comprueba que tengan email **y nada más**. Ni `resolve-users` ni `users` filtran preferencias tampoco.
+- **NO se afirma que se haya enviado nada indebido**: depende de de dónde saque el admin esa lista, y puede venir de una pantalla ya filtrada. Lo que sí se puede afirmar es que **el filtro no está en el punto de escritura**, que es donde el resto del sistema lo pone ([T-130]: dos puertas al mismo recurso con criterios distintos no protegen).
+- **MEDIR ANTES DE TOCAR:** cruzar `email_events` de newsletters con `email_preferences` para saber si el hueco se ha usado alguna vez. Si el número es 0, esto es un trinquete barato; si no lo es, es un incidente de cumplimiento.
+
+- **📏 MEDIDO (01/08) — es un TRINQUETE, no un incidente. Y la medida corrigió mi primera lectura.**
+  - Universo: **7.660** envíos de newsletter a **5.577** usuarios desde el 28/09/2025. Hoy hay **109** usuarios detrás del filtro (104 baja total + 83 newsletter apagada, solapan).
+  - **Evidencia dura** (envío POSTERIOR a `unsubscribed_at`, que es la única marca de tiempo que permite afirmar algo): **1 usuario, 2 envíos**, el 10/12/2025 y el 22/12/2025, dado de baja el 29/10/2025. Uno de los dos tiene la firma exacta del hueco: `campaign_id` con **un solo destinatario**, que es como se ve una selección manual.
+  - **PERO los dos son ANTERIORES al filtro:** `getNewsletterAudience` no excluyó preferencias hasta `c30893c94` (**30/03/2026**). En diciembre **ninguna** vía filtraba, así que esos 2 envíos **no prueban** que se haya usado el hueco actual. Desde que existe el filtro: **0 envíos demostrables** a alguien ya bloqueado.
+  - Conclusión honesta: **no consta uso del hueco vigente**, así que esto es el trinquete barato de la ficha — pero con 109 personas al alcance y sin nada que lo impidiera.
+  - Reproducible: `scratchpad/t457/medir-hueco.cjs`.
+
+- **✅ ARREGLADO (01/08), en el punto de escritura:**
+  - **Núcleo puro nuevo `lib/api/newsletters/recipients.ts`** — `isBlockedForNewsletter` / `blockedUserIds` / `filterEligibleRecipients`. El criterio (baja total **o** newsletter apagada) vive en UN sitio y lo usan las dos vías.
+  - **`getNewsletterRecipientsByIds`** (`queries.ts`) es ahora la vía de la selección manual; la ruta `send` **ya no consulta `user_profiles` por su cuenta**.
+  - **`getBlockedNewsletterUserIds`** unifica la lectura de preferencias, que estaba **copiada** en `getNewsletterAudience` y `getAudienceStats` (y ausente en la tercera vía). Una sola puerta.
+  - **Se CUENTA lo que se descarta** (`skippedBlocked`, en la respuesta y en la tarjeta de resultado del panel): una selección de N que sale a N−k tenía que verse; si el descarte es mudo, el envío parece haber salido entero.
+  - **NO se toca la pantalla** que arma la selección, a propósito: una lista filtrada al construirse envejece antes de pulsar «enviar».
+  - **Capas:** 12 unitarios del núcleo puro (`__tests__/emails/newsletterDestinatarios.test.ts`) · guardarraíl de 6 que enumera **las dos vías** y pone trinquete a que el criterio se vuelva a copiar (`__tests__/guardrails/newsletterFiltraPreferencias.test.ts`) · **simulación contra la BD real** `npx tsx --env-file=.env.local scripts/sim/sim-newsletter-destinatarios.ts` (no envía nada; 7 seleccionados → 3 destinatarios, 4 excluidos, y comprueba que los NO bloqueados siguen pasando).
+  - El guardarraíl se **mutó a propósito** en las dos direcciones antes de darlo por bueno: reintroducir la consulta en la ruta y renombrar la llamada a `XXgetNewsletterRecipientsByIds(` lo ponen en rojo, y el original en verde. Sin eso sería teatro (lección de [T-454]).
+
+- **⏳ FALTA:** desplegar **frontend** y, en el siguiente envío manual real, ver la línea «No enviados por preferencias» en la tarjeta de resultado.
+- **RESOLUCIÓN PROPUESTA:** mover el filtro a la consulta del envío (las dos rutas), no a las pantallas que alimentan la selección. Una lista de destinatarios que llega ya filtrada sigue pudiendo envejecer entre que se construye y se envía.
+- **Relacionadas:** [T-456] (el otro cabo del mismo repaso: el recordatorio de renovación envía con Resend crudo, sin filtro ni rastro), [T-369], [T-130] (dos puertas con criterios distintos no protegen).
+
+### [T-450] 🔴 [ABIERTO 01/08] El modo EXAMEN no cuenta para el límite diario del free: 10.181 respuestas en 7 días sin pasar por el contador
+
+- **Qué pasa:** un usuario free tiene 25 preguntas/día. Ese tope lo aplica el camino de PRÁCTICA. El **modo examen no lo toca**: las respuestas se guardan en `test_questions` y `daily_question_usage` no se entera. Un free que descubra los exámenes tiene barra libre, sin necesidad de segunda cuenta ni de borrar nada.
+- **Medido el 01/08 (banco vivo):**
+  | | respuestas | usuarios |
+  |---|---|---|
+  | Respuestas de tests `exam` que no llegan al contador (7 días) | **10.181** | **136** |
+  | …las mismas por el camino `practice` | 617 | 168 |
+- **El caso que lo destapó, y que lo prueba en una sola persona:** `javiergalinanesvarela@gmail.com` (free, alta 27/07) **contestó 489 preguntas en 4 días** —todas contestadas de verdad, cero en blanco— mientras su contador registraba ~65. De esas 489, **432 son de tests `exam`** y solo 57 de práctica. El **29/07 respondió 110 preguntas y `daily_question_usage` no tiene NI UNA FILA de ese día.**
+  | día | respuestas reales | contador |
+  |---|---|---|
+  | 27/07 | 185 | 25 |
+  | 28/07 | 129 | 20 |
+  | 29/07 | 110 | **(sin fila)** |
+  | 30/07 | 65 | 20 |
+  - **El contraste está en la misma máquina:** la otra cuenta de ese equipo (`trabajospilarfreire@gmail.com`) solo hace práctica y **cuadra clavada a 25/día**. Para ella el límite funciona. La diferencia no es la persona: es el camino.
+- **✅ CAUSA CONFIRMADA (01/08) — es una REGRESIÓN con fecha, NO una exención de producto.** La duda que abría esta ficha («¿el examen está exento a propósito?») queda resuelta por los datos: **hasta el 27/07 el contador seguía a los exámenes, y el 28/07 se desploma y no se recupera.**
+  | día | respuestas de examen (free) | suma del contador |
+  |---|---|---|
+  | 22/07 | 585 | 563 |
+  | 26/07 | 913 | 699 |
+  | 27/07 | 1.421 | 895 |
+  | **28/07** | 1.492 | **326** |
+  | 29/07 | 1.602 | **157** |
+  | 30/07 | 1.966 | **157** |
+- **EL MECANISMO, en una frase: al arreglar bien una cosa, el examen se quedó sin nadie que cobre.** El **29/07** se movió el cobro del cupo **del cliente al servidor** (`hooks/useDailyQuestionLimit.ts` → `recordAnswer` ya NO cobra; el cobro es de `answer-and-save`, y solo cuando la respuesta se PERSISTE, `debeConsumirCupo` → `saveAction === 'saved_new'`). **El cambio era correcto** y su motivo sigue siéndolo: cobrar desde el cliente desacoplaba el cupo del guardado —respuestas que no llegaban a `test_questions` consumían igual— y no era idempotente.
+  - **Pero el modo examen NO pasa por `answer-and-save`.** Sus respuestas se persisten **en bloque** en `app/api/exam/validate/route.ts` (`insert(testQuestions)` con `onConflict`), un camino que nunca cobró cupo porque no le hacía falta: cobraba el cliente. `components/ExamLayout.tsx` (línea ~953) **sigue llamando a `recordAnswer()` en bucle**, solo que desde el 29/07 eso únicamente mueve el contador OPTIMISTA de la interfaz.
+  - **`/api/exam/answer` sí COMPRUEBA el límite** (`getDailyLimitStatus`, corta con `limitReached`) y dice en un comentario *«Daily count se incrementa en el frontend (useDailyQuestionLimit.recordAnswer). No incrementar aquí para evitar doble conteo»*. Ese comentario quedó obsoleto el 29/07 y **nadie lo actualizó**: describe un reparto de responsabilidad que ya no existe.
+  - `increment_daily_questions` **existe** como función SQL y la llama el backend (`daily-limit.service.ts`), no hay trigger sobre `test_questions` que cuente. La comprobación y el cobro viven en sitios distintos, y esa separación es la que se rompió.
+- **🚨 VERIFICADO EN PRODUCCIÓN EL 01/08 TRAS EL DEPLOY: EL PRIMER ARREGLO ERA INERTE. No cobraba nada.** El frontend con el cobro en `/api/exam/validate` entró vivo a las **08:47 UTC**. El primer examen real posterior al deploy lo desmiente entero:
+  | qué | dato |
+  |---|---|
+  | examen `426d0ee1` (usuario free `374e9067`) | 10 respuestas, completado 09:04:32 UTC |
+  | cuándo se escribieron esas 10 filas | 09:00:42 → **09:04:30**, una a una durante el examen |
+  | cuándo corrió `validate` | 09:04:32 — **2 segundos DESPUÉS de la última** |
+  | fila en `daily_question_usage` de ese día | **ninguna** |
+  - **La premisa de la ficha era falsa, y por eso el arreglo no podía funcionar.** Arriba se afirmó que las respuestas del examen «se persisten **en bloque** en `/api/exam/validate`». **No es así:** las persiste **`/api/exam/answer` en vivo**, una por una, mientras el usuario responde (`saveAnswer` → UPSERT en `test_questions`). `validate` es la **red** que rellena lo que esos saves *fire-and-forget* no consiguieron guardar.
+  - **Consecuencia exacta:** `validate` cobra solo lo que ESTRENA, y cuando corre no estrena nada, porque ya está todo escrito → `nuevasRespondidas = 0` → **el `if` ni siquiera entra**. La condición era correcta; lo que fallaba era la premisa sobre dónde ocurre la persistencia.
+  - **Y ningún test podía verlo.** El guardarraíl `dailyQuotaServerSide` lee el CÓDIGO: confirmó que el cobro existe, que va después de persistir y que solo cobra lo que se estrena — las tres cosas ciertas. **Un guardarraíl de código no puede ver que una condición correcta nunca se cumple.** Eso solo lo ve el canario, que mira datos. Es la misma lección de la vuelta anterior una capa más abajo.
+- **✅ ARREGLADO DE VERDAD (01/08, sesión `central-izquierdo`) — el cobro va donde la respuesta se persiste: `/api/exam/answer`.**
+  - **`saveAnswer` devuelve ahora `saveAction`** (`saved_new` / `already_saved`), **con el mismo vocabulario que `answer-and-save`**, para poder cobrar con la política COMPARTIDA `debeConsumirCupo(saveAction, isPremium)` en vez de con un criterio propio. Dos puertas al mismo recurso con criterios distintos no protegen: se contradicen — que es exactamente cómo el examen se quedó sin cobrar.
+  - **Estrenar incluye rellenar una fila EN BLANCO** (el examen crea filas conforme se navega), y **rectificar no se cobra**: en un examen se puede volver atrás y cambiar de opción tantas veces como se quiera antes de entregar, así que cobrar cada save convertiría el tope de 25 preguntas en un tope de 25 clics.
+  - **El doble clic lo arbitra el MOTOR, no la lectura previa** (`RETURNING (xmax = 0)`): dos peticiones simultáneas ven las dos «no existe fila» en el SELECT y cobrarían dos veces la misma respuesta. Cobrar de más es peor que cobrar de menos.
+  - **El cobro de `validate` SE QUEDA, y no se solapa por construcción:** es el único que ve las respuestas que los saves en vivo perdieron (poco fiables bajo carga — 30/40 exámenes con filas perdidas el 08/06), y esas son justo las que allí nadie cobró. La condición de cada sitio es la negación exacta de la del otro.
+  - **Capas:** `__tests__/api/exam/examAnswerCobroCupo.test.ts` (5 casos, gemelo del de `answer-and-save`: estrena / rectifica / falla el guardado / premium / el contador se cae y la respuesta no se rompe) + el guardarraíl ampliado a los DOS sitios, incluido un cierre para que el comentario obsoleto («lo incrementa el frontend») no pueda volver: fue literalmente el hueco por el que se coló esto.
+- **🔧 Y el canario no arrancaba con el comando que documenta esta ficha.** `npm run canary:cupo-vs-respuestas` moría con *«no hay URL de base de datos»*: el script no cargaba `.env.local`, a diferencia de todos sus hermanos. Nació así porque se estrenó ejecutándolo a mano con `--env-file`, así que el hueco no se vio — **una capa que no se puede invocar como está escrito que se invoque no es una capa**.
+- **✅ ARREGLO PARCIAL PREVIO 01/08 (sesión `t115-huerfanos`) — desplegado y, como se ve arriba, insuficiente por sí solo.**
+  - **`/api/exam/validate` ahora cobra**, y lo hace donde toca: justo después de persistir, y **solo por las respuestas que se estrenan**. El conteo se hace ANTES del upsert (cuántas de las que entran no tienen respuesta todavía), que es la misma condición que el propio upsert aplica para decidir si escribe — leída un instante antes. **Ahí vive la idempotencia, sin tabla extra**: un `validate` reenviado encuentra las filas ya respondidas y cobra 0. Y si la persistencia falla, se cobra 0: nunca se le cobra al usuario cupo por respuestas que no han quedado guardadas (misma regla que `save_failed`).
+  - **`increment_daily_questions` acepta ahora un IMPORTE** (`p_amount`, migración `20260801_increment_daily_questions_amount.sql`, ya aplicada). Un examen se cobra en UNA llamada en vez de ~50 idas y vueltas en un camino donde el usuario está esperando su nota. `DEFAULT 1` → **los llamadores actuales siguen valiendo sin tocarlos**; verificado que las dos formas de llamada resuelven. **GOTCHA:** hay que DROPear la versión de 2 argumentos primero — un `CREATE OR REPLACE` con un parámetro de más crea una SOBRECARGA, y entonces las llamadas de 2 argumentos quedan ambiguas y fallan.
+  - **Se conserva la SATURACIÓN**, que es la semántica de esta tabla: `questions_answered` es cupo consumido, no cuenta bruta. Simulado contra un usuario real en transacción deshecha: cobrar 12 → 12 · cobrar 99 → **25** · tres cobros de 10 → **25**. Y `GREATEST(p_amount, 0)` impide que un importe negativo pueda DEVOLVER cupo: esta función solo cobra.
+  - **Cerrado el punto ciego del propio guardarraíl** (`dailyQuotaServerSide.test.ts`): nació de este incidente el 29/07, enumeró los caminos que cobran y **se dejó fuera el examen**. Ahora lo cubre, y comprueba además el ORDEN (cobrar después de persistir) y la CONDICIÓN (solo lo que se estrena), que es lo que distingue cobrar bien de cobrar.
+- **🕯️ NUEVO CANARIO `npm run canary:cupo-vs-respuestas`, y lo primero que hizo fue CORREGIRME.** Mira los DATOS, no una lista de ficheros: la lección de esto es que **un guardarraíl que enumera caminos solo protege los que enumeró**, y el que se olvida es justo el que se rompe. Criterio: usuario free que respondió MUY por encima del tope y cuyo contador se quedó POR DEBAJO (comparar respuestas contra contador a secas marcaría a todo el mundo, porque el contador satura).
+  - **⚠️ CORRECCIÓN A LO QUE YO MISMO ESCRITO ARRIBA: la fuga NO empieza el 28/07.** Esa conclusión salía de sumas agregadas, que tapaban una minoría constante. Por usuario y día se ve un **goteo de 2-5 usuarios/día desde al menos el 12/07**, que el 28/07 salta a 13-14. O sea: la regresión del 29/07 **agravó** una fuga que ya existía, no la creó.
+  - **Consecuencia práctica: arreglar `/api/exam/validate` puede NO llevar esto a cero.** Al desplegar hay que volver a correr el canario: si baja al goteo de ~2 y no a 0, **hay un segundo camino** que tampoco cobra y hay que buscarlo (la propia salida del canario dice cómo: mirar por `test_type` las respuestas de un usuario-día con fuga).
+  - **🔁 CORRECCIÓN (01/08, misma sesión) — lo que escribí antes en esta ficha ERA FALSO, y el error fue MÍO dos veces seguidas.** Llegué a afirmar aquí que el segundo camino era `practice` con **3.036 respuestas de 20 usuarios**. **No es cierto: son 458 de 12.** Lo demás era mi canario marcando como fuga a gente que en julio era PREMIUM.
+    - **El mismo error, cometido dos veces:** primero filtré por `plan_type` de HOY (corregido cruzando con `user_subscriptions`), y al corregirlo exigí `status IN ('active','trialing','past_due')` — que **también es el estado de HOY**. Una suscripción activa en julio y cancelada en agosto figura hoy como `canceled`, así que seguía marcando premium como fuga. Caso que lo destapó: un usuario con `premium_monthly` del **25/06 al 25/07** y 300 respuestas diarias sin cobrar — que es lo CORRECTO, era premium. Su trayectoria lo canta sola: 25-26 de junio responde 27 y 50 con el contador topado en 25 (free, cobrando), y desde el 29 de junio 300 al día con el contador a 0 (premium).
+    - **Lo que decide es el PERIODO, no el estado.** El canario ya no filtra por `status`.
+    - **La cifra buena, del 10 al 27 de julio:** `practice` **458 respuestas / 12 usuarios** · `exam` **110 / 5**. Es decir: **la masa de la fuga SÍ es la regresión del examen del 28/07**, y lo de antes es un residuo pequeño —compatible en parte con el fail-silent del cobro, que por diseño regala la pregunta si el contador falla—.
+    - **Queda por explicar ese residuo de `practice`**, que es real aunque sea chico: ~25 respuestas al día sin cobrar por un camino que sí cobra. **No dar por hecho que es otro agujero** hasta descartar el fail-silent, que explicaría justo un goteo así.
+    - **La lección, y va al runbook:** un detector que juzga un hecho del pasado con el estado del presente se inventa hallazgos, y **no basta con arreglarlo una vez** — hay que preguntarse de cada columna que se use si es un estado ACTUAL. `plan_type` y `status` lo eran las dos.
+  - Hoy el canario **FALLA a propósito** (14 usuarios el peor día, techo 3): la fuga sigue viva hasta que se despliegue. Es la lectura honesta, no un rojo que haya que silenciar.
+- **ARREGLO (especificado, NO implementado — merece su propio trabajo con la cabeza fresca):** cobrar en el SERVIDOR en el punto donde las respuestas de examen se PERSISTEN, es decir en `/api/exam/validate`, **y con la misma condición que `answer-and-save`: cobrar solo lo que se guarda de nuevo**. El `onConflict` de ese insert ya distingue la fila nueva de la re-enviada, así que la idempotencia se puede apoyar en él en vez de inventarla. **Dos trampas:** (1) los PREMIUM esquivan el contador por diseño y la corrección no puede empezar a contarlos; (2) `ExamLayout` seguirá moviendo su contador optimista — si además cobra el servidor, hay que comprobar que no se cuenta dos veces (que es justo el motivo por el que el comentario de `exam/answer` decía lo que decía).
+- **Y una capa que faltaba:** nadie compara respuestas reales contra el contador. Un canario que lo haga por usuario free y día habría cantado esto **el 28/07**, no cuatro días después y de rebote.
+- **Pista de código (sin cerrar):** `increment_daily_questions` **solo aparece en `__tests__/api/daily-limit-enforcement.test.ts`** — el grep no encuentra ningún punto de producción que lo llame. Los tests afirman que se invoca y pasan porque lo mockean. Los endpoints de `app/api/exam/*` escriben en `test_questions` y ninguno toca el contador. **Ojo: eso hay que confirmarlo antes de tocar nada** — puede que el incremento viva con otro nombre o dentro del backend; lo MEDIDO es el efecto, no la causa.
+- **Por qué es 🔴 y no un matiz:** [T-304] gastó tres meses en cerrar la evasión del tope por dispositivo —la de crear una segunda cuenta— y resulta que **el tope se rebasa 7× sin necesidad de segunda cuenta**. Mientras esto siga abierto, el límite por dispositivo corta a quien comparte ordenador y deja pasar a quien abre un examen. Se está midiendo la puerta equivocada.
+- **Decisión que hay que tomar antes de arreglar (es de Manuel):** ¿el modo examen debe contar para el tope del free, o está exento a propósito? Si está exento a propósito, entonces el tope de 25 no es un tope y hay que decir otra cosa en la UI. **No dar por hecho que es un bug**: puede ser una exención de producto que nadie escribió.
+- **Al arreglar, cuidado con dos cosas:** (1) los PREMIUM esquivan el contador por diseño (lo dice `lib/security/harvestSignals.js`), así que la corrección no puede empezar a contarlos; (2) un examen se responde en bloque y se corrige al final —`/api/exam/validate`—, así que el punto donde incrementar no es el mismo que en práctica.
+- **Capas que faltan:** ninguna vigila esto. Un canario que compare respuestas reales de `test_questions` contra `daily_question_usage` por usuario free y día habría cantado esto desde el primer día.
+- **Cómo salió:** investigando a fondo el único caso que el límite por dispositivo de [T-304] iba a cortar (petición de Manuel, 01/08). El caso resultó ser dos personas reales compartiendo ordenador; el hallazgo de verdad estaba debajo.
+- **Relacionadas:** [T-304] (el límite por dispositivo, que esto deja sin sentido mientras siga abierto), [T-095] (por qué el enforcement de uso se descartó en su día), [T-372] (punto ciego del antifraude), `docs/runbooks/revisar-fraudes.md`.
+- **🔴 VERIFICADO EL 02/08 Y **NO** ESTÁ ARREGLADO — el cobro se lo salta el examen que PRE-CREA sus filas.** Con el arreglo vivo desde el 01/08 23:33 (task def 600), un usuario **free** (`c07c2079…`) respondió **20 preguntas de examen** y su contador **no se movió: no tiene NI UNA fila en `daily_question_usage`**, ni un solo evento de cupo.
+  - **El mecanismo, con la traza delante:** el examen **escribe sus 64 filas al ABRIRSE** (todas con `created_at` 11:03:05) y las respuestas llegan **después**, como UPDATE (`updated_at` 12:34-12:35). Así que cuando el usuario contesta, la fila **ya existe** → `saveAction` no es `saved_new` → `debeConsumirCupo` dice que no y **no cobra nada**.
+  - **Por qué la medición anterior daba verde:** contar FILAS de `test_questions` engaña, porque el examen crea una por pregunta al abrirlo. Hay que contar las que tienen `user_answer` de verdad. En el mismo barrido, otro free (`6cf81425…`) sí quedó bien cobrado (24 contestadas de 89 filas, contador 25): **el flujo normal SÍ cobra**, el que se escapa es este.
+  - **Lo que hay que decidir al arreglarlo:** rellenar una fila **en blanco** tiene que estrenar cupo (hoy se confunde con rectificar). Es la misma frontera que ya distingue `debeConsumirCupo`, pero el examen la cruza por el otro lado. Y al tocarlo, comprobar que **rectificar** una respuesta sigue sin cobrar dos veces.
+  - **Cómo re-medirlo (no repetir el error):** free con respuestas de examen posteriores al instante del deploy, contando `user_answer IS NOT NULL AND <> ''`, cruzado contra `daily_question_usage` del día en `Europe/Madrid`.
+- **🔴 EL CUARTO CAMINO (04/08): la RED DE SEGURIDAD de `complete-test`, y se llevaba lo gordo.** Con los tres arreglos anteriores ya vivos (`3cc77c42`), el canario baja de 13 usuarios/día (30/07) a **1**, y ese que queda no es examen: es **práctica**.
+  - **El caso, con la traza entera:** un free (`joseantoniogalianbastida@…`) respondió **56 preguntas de práctica con el contador a CERO** —ni una fila en `daily_question_usage`—. Sus llamadas a `answer-and-save` fueron **112, todas 403**: *«ya tienes 2 dispositivos conectados»*. Cero doscientos. La cola del cliente no drenó NUNCA… y las 56 respuestas están guardadas igual, escritas **en bloque** al terminar cada test (todas con el mismo `created_at`, en dos tandas).
+  - **Quién las escribe:** el safety-net de `/api/v2/complete-test` (`fillMissingTestQuestions` → `insertTestAnswersBatch`), que existe para que no se pierdan las respuestas que la cola no pudo enviar. Hace bien su trabajo; lo que no hacía era **cobrar**.
+  - **Y esto invierte el sentido del guardarraíl de dispositivos:** el 403 de [T-304] frenaba el camino que COBRA y dejaba entero el que NO. Cuanto peor le va a la cola de un usuario, más respuestas caen por el hueco. No es un residuo: es el modo de fallo más limpio de los cuatro.
+  - **✅ ARREGLADO (04/08).** Se cobra donde se persiste, con importe y solo por lo que se estrena: `gapFilledCount` son las filas que ese insert creó **de verdad** (el `ON CONFLICT DO NOTHING` deja fuera las que ya estaban), así que **no puede solaparse** con lo que ya cobró `answer-and-save` — son conjuntos disjuntos por construcción, no por un `if`. Premium lo corta la propia función SQL, así que no hace falta una sexta definición de «premium» aquí.
+  - **Y deja rastro:** era un `console.log`, o sea invisible — nadie podía saber cuántas respuestas entran por la red de seguridad ni a cuánta gente. Ahora emite `cupo_safety_net` (`warn`: que el safety-net trabaje significa que la cola NO drenó, y eso siempre es síntoma de algo). Entra en la tarjeta «Todas las señales» del panel; **el umbral de una regla propia se pone cuando haya datos**, no a ojo.
+  - **Capas:** el guardarraíl de cupo ampliado al CUARTO camino (que cobre, con importe, después de persistir, y que deje evento). La verificación de verdad es el **canario** `npm run canary:cupo-vs-respuestas` tras el deploy: si baja a 0 está cerrado; si se queda en un goteo, hay un quinto camino. Es la lección de esta misma ficha — un guardarraíl de código no puede ver que una condición correcta nunca se cumple.
+- **🔧 ARREGLADO EL 02/08 (pendiente de deploy) — era el SIMULACRO, con sus endpoints propios.** `POST /api/v2/official-exams/answer` no cobraba nada, y comparte el modo de fallo del examen normal: pre-crea sus filas al abrirse, así que guardar es un UPDATE y «la fila ya existía» se confundía con «ya había respondido». Medido antes de tocar: **100 usuarios free · 4.975 respuestas · 7 días**.
+  - **La regla vive UNA vez:** `estrenaRespuesta` en `lib/api/dailyLimit.ts`, junto a `debeConsumirCupo`, usada por el examen normal y por el simulacro. Estaba escrita a mano en uno y no existía en el otro.
+  - **Sin viajes extra a la BD:** el dueño del test y la respuesta previa se traen en la consulta que el guardado ya hacía (ese endpoint no lleva auth a propósito, por latencia; el dueño sale del test, creado con sesión en `/init`).
+  - **Un fallo propio que conviene recordar:** el primer intento decidió premium con `plan_type === 'premium'` — una **sexta definición**, que deja fuera a `trial`, `legacy_free`, `premium_semester` y `admin`. No cobró de más (la función SQL corta igual), pero es como divergen las cosas. Ahora `esPlanPremium()` sobre `PREMIUM_PLAN_TYPES`, **con guardarraíl que compara la lista del código contra el `IN (...)` de la migración**.
+  - **Capas:** 10 unitarios de la frontera en las dos direcciones · guardarraíl de paridad ampliado al TERCER camino (incluido «la regla se importa, no se copia») · **`npm run sim:cupo-simulacro`, que EJECUTA el cobro contra la BD real** con usuarios efímeros (estrenar cobra 1 · rectificar no · `trial` no consume · la respuesta queda guardada) · y el canario `canary:cupo-vs-respuestas`, que ya existía y hoy está en ROJO (13 usuarios el 30/07): es el que dirá si baja.
+  - **🚪 LA PUERTA YA EXISTÍA Y ESTABA MUERTA, no hace falta una nueva:** `OfficialExamLayout` bloquea al responder si `isLimitReached`, y ese dato sale de `/api/v2/daily-question/status`, **el mismo contador** que este arreglo empieza a mover. Llevaba sin dispararse porque el contador nunca subía por el simulacro. Con esto, revive sola.
+  - **Lo que queda ABIERTO y es una decisión, no un olvido:** ese bloqueo es de CLIENTE, así que se puede saltar. El examen normal sí corta en servidor (`/api/exam/answer`), pero hacerlo aquí cuesta una consulta de estado **por respuesta** en un examen cronometrado, que es justo la latencia que ese endpoint evita. Endurecerlo es una decisión de producto (y encaja mejor con el antifraude, [T-372]) — **no se hace aquí para no cambiarla a escondidas**.
+
+### [T-448] 🟠 [ABIERTO 01/08] Las 184 suscripciones que se están apagando solas no reciben NINGÚN aviso: se quedan en free sin enterarse
+
+- **ORIGEN.** Manuel (01/08): *«habría que crearles un email personalizado 3 días antes… diciendo que va a terminar su suscripción, que para mantener el mismo precio debe entrar y resuscribirse»*. Salió mientras se verificaba [T-363], repasando el camino entero de «recuperar mi precio».
+- **EL HUECO, y es de exclusión deliberada.** El recordatorio que existe (`recordatorio_renovacion`, cron diario 09:00 UTC) **filtra `cancel_at_period_end = false`** a propósito: avisa de un **cobro** que viene, y a estas personas no se les va a cobrar. Correcto para lo suyo, pero deja sin ningún aviso justo a quien va a perder el acceso.
+- **MEDIDA (01/08):** **184** suscripciones de la cuenta antigua activas y apagándose, **59 vencen en los próximos 30 días**, y **170 ya vencieron** sin que nadie les dijera nada. Su precio antiguo (20/35/59 €) es más barato que el vigente (29/39/69 €), así que el aviso no es cortesía: es la diferencia entre volver y no volver.
+- **LO QUE HAY QUE REUTILIZAR, no reconstruir:** el cron `trigger-renewal-reminders` (backend, 09:00 UTC, con heartbeat), la ventana en núcleo puro (`renewalReminderWindow`), la **idempotencia** por `email_logs` (no repite en 5 días), el canario `canary-renewal-reminders.cjs` y el guardarraíl de *«el cron respondió 200 pero envió 0»*. Y la categoría **`soporte`**, que es la que atraviesa el botón de baja masiva — imprescindible aquí, porque buena parte de este público lo pulsó ([T-369]).
+- **EL AVISO SOLO ES VERDAD SI SE HACE VERDAD.** Decir *«perderás tu precio»* no se sostenía con el código: `user_price_offers.expires_at` existe, se LEE, y **nadie la escribe jamás** (las 4 ofertas vivas la tienen a NULL). Decisión de Manuel (01/08): no se hace caducar sola — **se anulará a mano** pasado un plazo desde que caen a free (*«una semana o un mes, ya te diré»*). Por eso el email **no lleva fecha límite inventada**: dice que al terminar pasan a gratis y que más adelante ese precio dejará de estar disponible. Verdadero hoy y verdadero cuando se anule.
+- **✅ LAS 189 OFERTAS YA ESTÁN CREADAS (01/08), y esto lo corrigió Manuel sobre la marcha:** *«el precio lo tienes que crear ya y ponerlo en el botón de perfil, imagina que pincha antes del correo»*. Crearlas solo al enviar el email dejaba tres cabos que únicamente se ven en el momento de decidir: (1) el perfil **no puede enseñar la CIFRA** si la oferta no existe, y la cifra es el argumento entero (20 € frente a 29 €); (2) crearla en el clic **habla con Stripe en vivo**, y si falla el perfil hace `tieneOferta ? '/premium/personal' : '/premium'` y la persona acaba viendo la **tarifa nueva** — un tropiezo de red le cuesta su precio; (3) no se sabía a cuántos les saldría. **Medido antes de escribir nada: 189 de 189, cero excepciones.** Ejecutado con `scripts/premium/crear-ofertas-fidelidad.ts --apply` (registrado, dry-run por defecto, idempotente): **190 ofertas vivas, una por persona, todas en `nila`, todas con enlace, y 0 personas apagándose sin su precio.** Reparto: 84 a 35 € trimestral, 73 a 59 € semestral, 32 a 20 € mensual.
+- **Y la cifra se enseña YA en el perfil**, no dos pantallas después: el endpoint de suscripción devuelve `precioFidelidad` formateado (misma fuente que la página de destino, para que no haya dos formas de pintar el mismo importe) y el botón pasa a decir «Mantener mi precio: 35 € cada 3 meses». Si aún no tuviera oferta, el botón **no promete cifra** — enseñar un importe que luego no aparece sería peor que no enseñar ninguno.
+- **La oferta también se crea al enviar el aviso.** `asegurarOfertaHeredada()` se ejecuta al pulsar el botón del perfil; un email que enlace a `/premium/personal` sin eso enseñaría *«No tienes ningún precio de fidelidad activo»*. El envío tiene que crear la oferta antes de enlazarla.
+- **Alcance acordado:** (1) aviso a 3 días reutilizando el cron; (2) crear la oferta al enviar; (3) herramienta de anulación con el plazo como parámetro y dry-run por defecto. **Sin enviar nada sin borrador aprobado y sin anular nada sin que Manuel dé el plazo.**
+- **✅ EL PLAZO YA ESTÁ DECIDIDO (Manuel, 01/08): UN MES.** Al terminar la suscripción pasan a gratis; tienen **un mes** para volver con su precio; pasado ese mes **se anula la oferta** y contratan en `/premium` a los planes vigentes. Eso es lo que hace verdad el aviso, así que la anulación **no puede depender de que alguien se acuerde**: va programada, no a mano.
+- **Pendiente de decidir:** qué se hace con las **170 ya vencidas**, a las que el aviso de 3 días ya no alcanza.
+- **🔎 DOS CABOS QUE LE LLEGAN DESDE [T-456] (medidos el 01/08, sin tocar) — el aviso que ya se envía es CIEGO:**
+  1. **`email_events` rechaza `fin_suscripcion_precio_heredado` en silencio.** La columna `email_type` tiene un CHECK con lista blanca (`email_events_email_type_check`) y `logEmailSent` inserta dentro de un `try/catch`: un tipo ausente **no da error a nadie**, simplemente no deja fila. Las 4 personas que recibieron el aviso el 01/08 a las 09:00 dejaron **8 filas en `email_logs` y CERO en `email_events`**. Es exactamente la ceguera que [T-456] acaba de arreglar para el recordatorio de renovación, un piso más abajo. **Se cierra con una migración que amplíe el CHECK** (`nueva_oposicion` está en el mismo caso). Al hacerlo hay que **quitar el tipo de `HUECOS_CONOCIDOS`** en `__tests__/integration/emailEventsTiposAceptados.test.ts`, o deja de vigilarse sin que nadie se entere (el trinquete comprueba las dos direcciones y se pondrá rojo si se olvida).
+  2. **`avisoFinSuscripcion` escribe la fila de `email_logs` DOS veces por envío** — `sendEmailV2` ya la escribe y él repite el insert. Además de ensuciar la cuenta, **rompe cualquier medida basada en `email_logs`** (que es como se midieron los 424 recordatorios de [T-456]) y puede descuadrar la idempotencia de 5 días si alguien la lee contando filas.
+- **Relacionadas:** [T-341] (el botón), [T-363] (no cobrar dos veces al volver), [T-369] (por qué la categoría importa), [T-373], [T-456] (de donde vienen los dos cabos de arriba), [T-466] (el correo no dice hasta cuándo se puede volver).
+
+### [T-466] 🟡 [ABIERTO 01/08] El aviso de fin de suscripción no dice HASTA CUÁNDO se puede volver: la fecha límite se calcula, se documenta y no llega al correo
+- **Cómo salió:** verificando a mano el correo de [T-448] (Manuel pidió que se lo enviaran a su buzón para verlo con ojos humanos, porque ese texto se escribió y se mandó a producción sin que nadie lo abriera nunca).
+- **Qué pasa:** el correo le dice a la persona *«para mantenerlo tienes que renovar tú… si no lo haces, lo perderás»* — y **no dice hasta cuándo**. Mientras tanto hay un barrido que le **anula la oferta** en una fecha concreta (`debeAnularOferta` / `fechaLimiteRetorno`, un mes después del fin de periodo).
+- **Dónde está roto, exactamente:** la plantilla `fin_suscripcion_precio_heredado` (`lib/emails/templates.ts`) **declara `fechaLimite` como 5.º parámetro** y el despacho se lo pasa (`lib/api/emails/queries.ts:380-383`, `customData.fechaLimite`), pero:
+  1. el llamante real **no lo incluye** en `customData` — `lib/api/premium/avisoFinSuscripcion.ts:178-184` manda `to`, `userName`, `fechaFin`, `importe`, `periodicidad`, `ctaUrl` y nada más → llega `undefined`;
+  2. y la plantilla **no lo pinta en ninguna parte** del HTML → por eso NO sale un «undefined» visible. Es un parámetro que no va a ningún sitio.
+- **⚠️ Y el propio comentario de la plantilla describe una regla que no se cumple:** *«La fecha límite NO se inventa: sale de `fechaLimiteRetorno()`, la MISMA función que usa el barrido que anula las ofertas. Si el texto y el barrido divergieran, prometeríamos un mes y quitaríamos el precio antes.»* La intención estaba escrita; el cable, no.
+- **A quién afecta (medido el 01/08):** las **4 personas** que ya lo recibieron ese día tienen plazo hasta el 04/09 y nadie se lo ha dicho. Y el cron de las 09:00 UTC sigue: **187 suscripciones** que se apagan con oferta viva, **22 en los próximos 7 días** y 56 en 30. Cada día que pasa, más gente hereda la misma omisión.
+- **Por qué NO es lo mismo que los dos cabos de [T-448]:** aquellos son de RASTRO (el envío no deja fila, o deja dos). Éste es de CONTENIDO: el correo sale, se entrega y se lee, y le falta el dato que decide si la persona vuelve a tiempo.
+- **Cómo arreglarlo:** pasar `fechaLimite: fechaLarga(fechaLimiteRetorno(c.finPeriodo))` en el `customData` del llamante y **pintarlo** en la plantilla (junto al bloque del precio, que es donde se explica qué se pierde). La función ya existe y ya la usa el barrido, así que no hay que calcular nada nuevo — es cablear lo que ya está.
+- **La capa que hace falta, y es la lección de fondo:** ninguna de las 4 capas de [T-448] podía cazar esto, porque **`templateDispatch.test.ts` enumera los tipos A MANO** (`test.each([...])`) en vez de recorrer `EMAIL_TYPES`. Medido contra `main` el 01/08: **7 de los 18 tipos no los prueba nadie** — `admin_notification`, `fin_suscripcion_precio_heredado`, `medal_congratulation`, `newsletter`, `newsletter_oposicion`, `nueva_oposicion`, `pago_fallido`. Entre ellos, precisamente el tipo nuevo. Lo suyo es un guardarraíl que recorra `EMAIL_TYPES` y exija que cada uno tenga categoría, plantilla y rama de despacho, y que **todo argumento declarado por la plantilla llegue con valor** (esto último es lo que habría cantado este defecto).
+- **⚠️ Cuidado con el claim:** [T-448] la lleva otra sesión (`t326`, viva el 01/08 a las 21:05). Los ficheros se solapan (`templates.ts`, `queries.ts`, `avisoFinSuscripcion.ts`) → **coordinar antes de tocar**, o hacerlo desde esa misma tarea.
+- **Verificado que lo demás SÍ está bien** (no hace falta re-mirarlo): importe y periodicidad son correctos en los 4 envíos reales (`20 € al mes` ×3, `35 € cada 3 meses` ×1), y la etiqueta la deriva el código del intervalo real (`ETIQUETA_INTERVALO`), no se escribe a mano. El orden de los argumentos del despacho también es correcto.
+- **Relacionadas:** [T-448] (el correo), [T-456] (el carril de envío y el trinquete de tipos), [T-363] (el precio que se pierde si no vuelve a tiempo).
+
+### [T-392] 🔴 [ABIERTO 31/07] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
+
+- **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
+- **EL DIAGNÓSTICO, y no es una intuición: pasó TRES veces el mismo día.**
+  - Por la mañana, otra sesión **reabrió T-055, T-067 y T-125** tras una revisión independiente: estaban cerradas y su propio texto declaraba trabajo vivo.
+  - Al mediodía cerré **T-355** y una hora después la sustituyó un diseño mejor ([T-363]): había cerrado una solución provisional como si fuera el final.
+  - Y por la tarde cerré **T-363** —que decide **cuándo se le cobra a alguien**— con el código en `main`, **sin desplegar y sin verificar**. Lo cazó Manuel preguntando, no el sistema.
+  - **La causa común:** hoy `done` significa «he escrito el código» y se lee como «funciona». Entre esas dos cosas hay un push, un deploy y una comprobación, y ninguna es automática.
+- **LO QUE YA EXISTE Y NO HAY QUE REINVENTAR** (esto es un ciclo que encadena piezas sueltas, no un sistema nuevo):
+  - **claim + `lease_until`** (90 min, renovable con `heartbeat`) — una sesión muerta libera su tarea sola.
+  - **`pause --tras-deploy`** → `wake_on_deploy_sha` + superficie; el propio script de deploy llama a `backlog.cjs deployed <sha>` y la despierta.
+  - **`pause --hasta` / `snooze`** → `snooze_until`: el reloj la libera sola.
+  - **`due` (`due_at` + motivo)** → fecha límite, para lo que caduca (un plazo de convocatoria, un examen).
+  - **La puerta del `done`** (30/07): aborta si el `outcome` confiesa trabajo pendiente.
+  - **`blocked_by`** para dependencias entre tareas.
+  - **El latido de sesiones** ([T-296]): qué worktree está vivo.
+
+#### ✅ FASE 1 HECHA (31/07) — el escalón medible del `done`
+
+Era la que la propia ficha marcaba como primera *«y ya aporta sola»*: la que habría parado el
+fallo de [T-363]. **`done` ahora tiene dos puertas**: la del TEXTO, que ya existía y caza al que
+confiesa, y la de los HECHOS, que no se puede maquillar — si los commits que **declaran** la tarea
+tocan superficie **servida** y el `sha` vivo todavía no los incluye, el cierre se para y te
+imprime el `pause --tras-deploy` ya escrito.
+
+Probado sobre el caso real: con un outcome que dice *«verificado en producción con un canje
+real»* —que la puerta del texto deja pasar sin pestañear— T-363 **se bloquea** y lista los tres
+ficheros de cobros que no están vivos.
+
+**Las tres decisiones que evitan que sea un sello**, que era el riesgo (a) declarado en la ficha:
+
+1. **«Servido» se DERIVA, no se declara.** Un fichero de `lib/` viaja si algo bajo `app/`,
+   `components/`, `contexts/`, `hooks/` o `backend/src/` lo importa. Al estrenarlo con el nombre
+   del módulo suelto, `pushGuard` salía «servido por backend» porque un fichero servido lo nombra
+   **en un comentario**: ahora solo cuentan líneas con forma de `import`/`require`.
+2. **Solo cuentan los commits que DECLARAN la tarea**, no los que la citan — el criterio de
+   [T-403] aplicándose a sí mismo. Sin eso, T-431 salía «toca backend» por un `alert-rules.ts`
+   que nunca tocó: venía del commit de otra sesión que la citaba de pasada.
+3. **`package.json` solo cuenta si cambian DEPENDENCIAS.** Registrar un comando de npm no llega
+   a ningún usuario, y casi toda tarea de tooling toca ese fichero.
+
+**Alcance medido: 36 %** de las 161 tareas cerradas con código en 7 días tocan superficie servida;
+el otro 64 % (documentación, tooling, datos) se cierra exactamente igual que antes.
+
+> **Lo que NO se pudo medir, y conviene saberlo antes de la Fase 2:** la pregunta retrospectiva
+> «¿cuántos de esos 161 cierres habrían bloqueado **el día que se cerraron**?» **no tiene
+> respuesta**, porque `deploy_runs` está **VACÍA** —ningún deploy ha pasado aún por el camino de
+> [T-385]— y no existe el `sha` que estaba vivo aquel día. La Fase 3 debería apoyarse en esa
+> tabla, así que hasta que un deploy real la alimente, el historial de despliegues no es una
+> fuente utilizable.
+
+Capas: núcleo puro `lib/backlog/verificacionGate.cjs` (11 tests) · I/O
+`scripts/backlog/verificacion.cjs` (`npm run backlog:verificacion -- T-nnn` explica cualquier
+veredicto) · calibración `npm run sim:verificacion -- --listar`, con **gate de regresión** sobre
+tres casos de verdad conocida (T-363 debe bloquear; T-403 y T-431, tooling puro, no pueden).
+Fail-open ante cualquier fallo de red o de git. El escape `--igualmente` y los bloqueos se cuentan
+los dos en el bus de fricción de [T-423]: si el ratio sube, la puerta se ha vuelto peaje.
+
+**Quedan la Fase 2** (el estado `verificando` explícito con su cubo y su vigía) **y la Fase 3**
+(`archive --evidencia` y la migración de las ~350 cerradas).
+
+#### Los estados, y qué los mueve
+
+| estado | qué significa | quién lo mueve al siguiente |
+|---|---|---|
+| `abierta` | nadie la tiene | `claim` de una sesión |
+| `en_curso` | alguien trabaja (lease 90 min) | `heartbeat` la mantiene · el lease vencido la devuelve sola a `abierta` |
+| **`implementada`** | el código está en `main`. **Es lo que hoy hace `done`** | el propio comando, que **exige declarar cómo se verificará** |
+| **`verificando`** | esperando la condición que permite comprobarla | el **deploy** (`deployed <sha>`), el **reloj** (`snooze_until`/`due_at`) o un **dato** (que corra un cron, que crezca un corpus) |
+| **`lista_para_verificar`** | la condición se cumplió: hay que ir a mirar | una persona/sesión, con `archive --evidencia` |
+| **`archivada`** | verificada en producción, con evidencia escrita | — (terminal) |
+| `descartada` | no se hace, con motivo | — (terminal) |
+
+- **La transición que hoy falta es la del medio.** `implementada → verificando` tiene que ser **obligatoria**, no opcional: el comando pide **cómo** se comprueba (deploy de qué superficie, o fecha), y sin eso no deja avanzar. Es lo que ya hace `pause`, pero dejado a la voluntad de quien cierra — y hoy se demostró que esa voluntad falla.
+
+#### Las tres reglas que lo salvan de ser burocracia
+
+1. **Exención AUTOMÁTICA y comprobable.** Si los commits que mencionan ese `T-NNN` tocan **solo documentación o tests**, se archiva directo sin pasar por `verificando`. Lo decide el guardarraíl mirando los ficheros del commit, sin preguntar a nadie. Sin esto, las fichas de backlog —que son la mitad— arrastrarían una fase inútil y la gente aprendería a saltársela.
+2. **Archivar exige EVIDENCIA, no un «ok».** Igual que el `outcome` ya obliga a contar qué pasó: *«la primera factura salió el 30/10 por 35 €»*, no *«verificado»*. Se puede exigir por longitud y rechazando el vocabulario vacío (`ok`, `correcto`, `funciona`), que es el mismo criterio que ya usa la puerta del `done`.
+3. **Estar en `verificando` demasiado tiempo ES un hallazgo.** Hoy ya hay un cubo «⏰ listas para verificar» con **7 tareas**; si añadimos la fase sin vaciar ese cubo, cambiamos un problema por otro. Una tarea que lleve más de N días esperando verificación tiene que salir en el panel como sale cualquier otra señal.
+
+#### El escalón que hoy es medible y habría parado el fallo de T-363
+
+La puerta del `done` mira **el texto** del `outcome`. No mira lo que sí es comprobable: **que el código toque una superficie SERVIDA y que el `sha` vivo no lo incluya todavía**. Las dos cosas están al alcance —`git diff --name-only` de los commits de esa tarea, y el `sha` desplegado que ya consulta `deploy:pendiente`—. Con eso, cerrar T-363 habría sido imposible sin declarar antes su verificación.
+
+#### Para sesiones múltiples (que es donde esto se rompe)
+
+- **Todo el estado en RDS**, como ya está: un markdown no admite transiciones atómicas con 2-10 sesiones.
+- **Toda transición con `sid`** y su hora, para poder responder «quién movió esto y cuándo».
+- **Nada depende de que alguien se acuerde:** el deploy despierta, el reloj despierta, el lease caduca. La única acción humana obligatoria es **mirar y escribir la evidencia**.
+- **Y la cola de verificación se reparte igual que el trabajo**: quien coge una tarea `lista_para_verificar` la reclama, para que dos sesiones no verifiquen lo mismo.
+
+#### Migración (que no es lo divertido, pero sin esto no se puede desplegar)
+
+Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo aplica de la fecha de estreno en adelante. Y `done` debe seguir existiendo como alias durante un tiempo, porque hay sesiones vivas con el comando en la cabeza y runbooks que lo nombran.
+
+- **Riesgos, dichos antes de construir:** (a) que la fase nueva se convierta en un sello — lo mitiga la regla 2; (b) que el cubo de `verificando` se llene y nadie lo mire — lo mitiga la regla 3; (c) que la exención automática sea demasiado laxa y deje pasar código servido como si fuera documentación — hay que probarla contra los commits reales de esta semana antes de encenderla.
+- **Por dónde empezar (fases, y la primera ya aporta sola):** (1) el escalón medible del `done` —código servido + sha vivo—, que es pequeño y habría evitado el fallo de hoy; (2) el estado `verificando` explícito con su cubo y su vigía; (3) `archive --evidencia` y la migración.
+- **📥 CONSOLIDADO DESDE [T-449] (01/08), que era un DUPLICADO de esta ficha.** La abrí sin buscar antes —el fallo que [T-427] documenta y que CLAUDE.md avisa: cinco segundos de `grep` antes de `reserve`— y otra sesión la cerró. Lo que traía y no se puede perder son **tres casos VIVIDOS la misma madrugada**, que dicen algo que esta ficha aún no decía: al terminar de verificar **no hay un desenlace, hay tres, y el diseño tiene que distinguirlos**.
+  1. **Verificado y CORRECTO, pero la tarea sigue viva.** [T-385]: sus cuatro puntos se comprobaron con un deploy real y aun así le queda la fase 3. Su `resume_check` seguía diciendo *«ningún deploy real ha corrido»* y `list` la anunciaba arriba del todo como «se cierra en minutos». **La cogí para repetir trabajo hecho.**
+  2. **Verificado y ROTO — destapa trabajo NUEVO que nadie había previsto.** [T-326]: la verificación en vivo demostró que el arreglo estaba desplegado e **inerte** (vivía en el camino que producción no ejecuta). No es «falta mirar producción», es «hay que programar otra cosa». Hoy los dos se ven idénticos desde `list`.
+  3. **Verificado por la MÁQUINA, pendiente del OJO humano.** También [T-326], ya con el porte vivo: el dato es correcto —tres comprobaciones contra producción— pero *si la casilla se entiende en pantalla* no lo puede juzgar una sesión, y Manuel pidió expresamente revisarlo él. **No es «esperando decisión de Manuel»**: esa sección existe y es para decisiones de producto. Esto es una **revisión**, no una decisión — nadie elige nada, solo mira.
+  - **Y el detalle operativo que lo hace urgente:** `resume_check` **solo lo escribe `pause`**, que exige `--hasta` o `--tras-deploy`. Así que hoy no hay forma de decir ninguna de las tres sin *inventarse* una espera (mal, por lo mismo que el CHECK de `due_at`) o dejar el texto obsoleto ahí — y `release` no lo toca. **Dos sesiones pagaron ese peaje en menos de una hora.**
+- **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), [T-449] (duplicada y consolidada aquí), [T-385] y [T-326] (los tres casos medidos), y la puerta del `done` del 30/07.
+
+### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
+
+- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
+- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
+- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
+- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
+- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
+- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
+- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
+- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
+- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
+- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
+- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
+- **⚠️ REABIERTA EL MISMO DÍA, y el motivo importa más que la tarea.** La cerré con `done` teniendo el código **en `main` pero sin desplegar**, así que nadie iba a comprobar en producción que la primera factura sale en la fecha correcta. Lo cazó Manuel preguntando: *«las tareas que esperan el despliegue, ¿se supone que tienen puesto que cuando desplieguen las chequeen? ¿siempre se chequean los cambios y funcionalidades nuevas?»*. La respuesta medida era **no**: de las 5 tareas de hoy que tocan código servido, **ninguna** estaba puesta para verificarse tras el deploy. Ahora esta sí (`pause --tras-deploy`), con las tres comprobaciones concretas en `--falta`.
+- **Y deja una pregunta abierta para el sistema:** la puerta del `done` impide cerrar cuando el *texto* confiesa trabajo pendiente, pero no sabe que **el código toca una superficie servida y aún no está desplegado**. Eso es comprobable —hay `sha` desplegado y hay ficheros tocados— y sería el siguiente escalón del mismo guardarraíl. *(Construido después, es [T-392] F1.)*
+
+#### 🔭 AL IR A VERIFICARLA (01/08) — el código está vivo, pero NO HABÍA NADA QUE MIRAR
+
+Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no estaba en la ficha.
+
+- **El sha vivo ya la incluye** (`backlog:verificacion` da ✅: 3 ficheros servidos de frontend). O sea que la función lleva días operativa.
+- **Nadie ha canjeado desde entonces.** De **193 ofertas emitidas solo se ha canjeado UNA**, y fue el **30/07**, un día ANTES de que este código existiera. Las dos comprobaciones que pedía la ficha («un canje real crea la suscripción en `trialing`», «el primer cobro cae al terminar la cobertura») necesitan un canje, y no hay ninguno. No hay tampoco **ni una sola suscripción en `trialing`** en toda la BD.
+- **Pero la población es real y sigue ahí, medida hoy:** de las **190 ofertas vivas**, **181 tienen cobertura previa** y **178 aplazarían el cobro si canjearan hoy** (la primera se queda sin cobertura el 02/08; la última, el 06/01/2027). O sea: la función no está de adorno, es que aún no le ha tocado el turno.
+- **⚠️ Y AQUÍ EL HALLAZGO: cuando le toque, no nos íbamos a enterar.** El aplazamiento dejaba como única huella un `console.log` en los logs de ECS, que no mira nadie. Combinado con lo que la propia ficha ya decía —*«este fallo sería invisible: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario»*— el resultado es que el primer canje de esos 178 se habría procesado bien o mal **sin que ninguna consulta pudiera decir cuál de las dos**. La verificación no estaba pendiente de una fecha: **no era posible**.
+- **Arreglado, y es la parte que faltaba de la tarea:** el checkout con precio heredado emite ahora `checkout_precio_heredado` (`info`) en `observable_events`, con `aplaza`, `dias` y la **fecha del primer cobro** — que es el dato contrastable contra el `current_period_end` de su suscripción vieja. Núcleo puro `trazaCobertura()` en `cobertura.ts` con 4 tests.
+- **Distingue las DOS formas de no aplazar**, que no son la misma: `sin_cobertura_previa` (correcto, no hay nada que aplazar) y `menos_de_48h` (correcto también, pero es justo el borde donde se escondería un error de cálculo). Sin el motivo, un `aplaza:false` no se puede juzgar — y un rastro que no se puede juzgar no sirve de rastro.
+- **No pinga badge ni manda correo a propósito:** es `info`, no una avería. Es el rastro de que la función actuó.
+- **Verificación, ahora sí posible:** desplegar frontend y, en el primer canje real, `SELECT metadata FROM observable_events WHERE event_type='checkout_precio_heredado'` → `aplaza=true` y `primerCobro` igual al `current_period_end` de su suscripción anterior.
+
+### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
+
+- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
+- **Sigue reapareciendo, y su segunda alerta es de esta misma familia:** el 31/07 a las 08:05 disparó `pool_frontend_saturation_high` (**5 muestras con ≥13 conexiones activas, pico 82** contra un techo estimado de 16), quince minutos después del `5xx_spike` de las 07:50. **Es el mismo incidente visto desde el pool, no uno nuevo** — anotado al triar las alertas del día ([T-426]) para que nadie le abra ficha aparte ni lo investigue de cero.
+- **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
+  1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
+  2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
+  3. **NO es que el motor de alertas escanee el primario.** Backend y frontend tienen `USE_READ_REPLICA=true` en su task definition: producción computa en la réplica, como manda el runbook de contención.
+- **LO QUE SÍ SE ENCONTRÓ, y ya está arreglado (31/07):** el `.env.local` de las sesiones locales tenía `DATABASE_URL_REPLICA` apuntando a **`vence-prod`, el PRIMARIO**, y sin `USE_READ_REPLICA`. O sea que cada `npm run dev` con el panel de salud abierto le metía los escaneos de 6,9 GB **a la base de datos que atiende a los opositores**, justo lo que producción evita. Corregido en las 10 sesiones vivas y en el `.env.local` del repo principal (del que `crear-worktree.sh` copia, así que las nuevas nacen bien). Verificado: `pg_is_in_recovery = true`, retraso 0,55 s.
+- **LO MEDIDO, que sigue en pie:** 6,9 GB · 10.733.632 filas · ~4.500 eventos/hora (46% `request_completed`). La consulta de la regla de latencia agrega **todos** los `request_completed` de 45 min para un percentil — **un índice parcial NO sirve aquí**, no hay «unas pocas lentas» que indexar (eso descarta el índice que se propuso primero).
+- **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
+- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
+- **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
+
+### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
+
+- **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.
+- **POR QUÉ NO ES COPIAR-PEGAR EL ARREGLO:** [T-340] terminó demostrando que el contraste es un **detector, no un control**, y que cortar por él tiene coste real (17 intentos de compra bloqueados). Así que aquí la pregunta por endpoint no es «¿lo contrasto?» sino **«¿qué daño hace equivocarse de cuenta?»** — la misma política `alDiscrepar` de `requireUsuarioPropio`, elegida a conciencia y declarada por escrito.
+- **EMPEZAR POR MEDIR, no por parchear:** cuántos de esos 38 reciben hoy un id que **no coincide** con el del token en producción. La señal `auth_identidad_ajena_rechazada` ya existe; basta con instrumentarlos en modo «seguir-con-el-token» y mirar una semana. Si alguno tiene tráfico con id ajeno, ahí hay o un cliente roto ([T-352]) o algo peor.
+- **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
+- **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
+`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
 

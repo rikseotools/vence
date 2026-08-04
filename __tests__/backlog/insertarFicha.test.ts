@@ -110,3 +110,67 @@ describe('no se pierde nada de lo que ya estaba', () => {
     expect(r.md.replace(FICHA + '\n\n', '')).toBe(MD)
   })
 })
+
+/**
+ * Devolver a su sección las fichas que quedaron huérfanas. [T-515]
+ *
+ * Las 58 que había el 04/08 (27 vivas, cinco 🔴) son el rastro acumulado de insertar a mano.
+ * `parseMarkdown.cjs` las sigue viendo —desde T-382 manda la cabecera, no la posición— así que
+ * no desaparecen del CLI; lo que pasa es que un humano que abre el fichero y baja a
+ * `## Abiertas` no las encuentra. Con cinco críticas dentro, eso sí cuesta.
+ */
+describe('reubicar huérfanas', () => {
+  const { reubicarHuerfanas, huerfanas } = require('@/lib/backlog/insertarFicha.cjs')
+
+  it('las localiza: solo lo que está antes de la PRIMERA sección', () => {
+    const h = huerfanas(MD.split('\n'))
+    expect(h.map((x: any) => x.id)).toEqual(['T-100'])
+    // T-505 vive dentro de «## Abiertas» y T-050 dentro de «## Hechas»: no son huérfanas.
+    expect(h.map((x: any) => x.id)).not.toContain('T-505')
+    expect(h.map((x: any) => x.id)).not.toContain('T-050')
+  })
+
+  it('la mueve al FINAL de «## Abiertas», no al principio', () => {
+    const r = reubicarHuerfanas(MD)
+    expect(r.ok).toBe(true)
+    expect(r.movidas).toEqual(['T-100'])
+    const l = r.md.split('\n')
+    const iAb = l.findIndex((x: string) => x.trim() === '## Abiertas')
+    const i505 = l.findIndex((x: string) => x.startsWith('### [T-505]'))
+    const i100 = l.findIndex((x: string) => x.startsWith('### [T-100]'))
+    expect(i100).toBeGreaterThan(iAb)
+    // Detrás de las que ya estaban: arriba es donde escriben las sesiones fichas NUEVAS, y
+    // meter ahí las viejas garantiza chocar con quien esté creando una.
+    expect(i100).toBeGreaterThan(i505)
+    expect(i100).toBeLessThan(l.findIndex((x: string) => x.trim() === '## Hechas'))
+  })
+
+  it('el CUERPO de la ficha viaja con ella, no solo la cabecera', () => {
+    const r = reubicarHuerfanas(MD)
+    const l = r.md.split('\n')
+    const i100 = l.findIndex((x: string) => x.startsWith('### [T-100]'))
+    expect(l.slice(i100, i100 + 4).join('\n')).toContain('se queda huérfana')
+  })
+
+  it('NO toca las cerradas: su sitio sería «## Hechas» y hay tres, elegir una es adivinar', () => {
+    const md = MD.replace('### [T-100] 🟡 [ABIERTO 01/08]', '### [T-100] ✅ 🟡 [HECHA 01/08]')
+    const r = reubicarHuerfanas(md)
+    expect(r.movidas).toEqual([])
+    expect(r.dejadas).toEqual(['T-100'])
+    expect(r.md).toBe(md)
+  })
+
+  it('sin huérfanas no cambia nada (se puede correr dos veces seguidas)', () => {
+    const r1 = reubicarHuerfanas(MD)
+    const r2 = reubicarHuerfanas(r1.md)
+    expect(r2.movidas).toEqual([])
+    expect(r2.md).toBe(r1.md)
+  })
+
+  it('no pierde ninguna ficha por el camino', () => {
+    const r = reubicarHuerfanas(MD)
+    const antes = idsDeFichas(MD.split('\n')).sort()
+    const despues = idsDeFichas(r.md.split('\n')).sort()
+    expect(despues).toEqual(antes)
+  })
+})
