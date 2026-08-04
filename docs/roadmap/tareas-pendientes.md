@@ -865,6 +865,48 @@ Las 5 premisas ya están reparadas (04/08): la nota se copió **verbatim** a `in
 3. Que el render **falle ruidoso** ante una clave que no sabe pintar, en vez de tragársela.
 
 **Relacionadas:** [T-410] (psicotécnicas duplicadas), y el kind `visual_deixis_no_image`, que es el mismo modo de fallo por el otro lado: la pregunta invoca algo que el usuario no ve.
+### [T-540] 🟡 [ABIERTO 04/08] Parte específica de la UAL: 5 temas por debajo de 20 preguntas y una premium que ya lo ha notado
+
+**Qué pasa.** En `auxiliar_administrativo_universidad_almeria` la parte GENERAL está saturada y la
+ESPECÍFICA está a medias. Medido el 04/08 sobre preguntas activas alcanzables por el `topic_scope`
+de cada tema:
+
+| Tema | Preguntas |
+|---|---|
+| B2 · T12 — PDI: concursos de acceso a cuerpos docentes (UAL) | **12** |
+| B2 · T15 — Reglamento de Cartas de Servicio (UAL) | **12** |
+| B2 · T21 — Créditos ECTS y sistema de calificaciones | **14** |
+| B2 · T10 — Ley Universitaria para Andalucía: gobernanza | **17** |
+| B2 · T19 — Permanencia de estudiantes (UAL) | **18** |
+
+Contraste, en la misma oposición: **T1 (Ley 39/2015) 3.088**, **T24 (Excel y Word) 1.650**,
+**T4 (TREBEP) 1.224**. Total 8.963 preguntas en 24 temas, pero **5 temas concentran la carencia y los
+cinco están en el Bloque II**, que es justo lo que distingue esta oposición de cualquier otra.
+
+**Quién lo ha dicho.** Feedback `bef24aff` de **Esther Lázaro** (premium, alta hace 152 días,
+Almería), 04/08: *«observo que hay temas en la parte específica que tienen pocas preguntas. Por
+ejemplo ahora estoy con uno que solo tiene 12 preguntas. Estos temas, ¿se van a ampliar más
+adelante?»*. Su cifra es exacta: son el T12 o el T15. Se le ha respondido que sí, sin dar fecha.
+**No es una queja aislada de una persona**: es la parte del temario por la que se paga esta
+oposición y no otra.
+
+**Por qué el badge no lo ve.** El detector `low_coverage` del barrido dispara por debajo de **6**
+preguntas, y `empty_topic` a **0**. Doce preguntas para un tema entero pasa los dos en verde. Es un
+umbral pensado para «el tema está vacío», no para «el tema no da para estudiar»: con 12 preguntas,
+un opositor que practique el tema tres veces ya las ha visto todas.
+
+**Qué hacer.** Generación anclada a artículo por los cinco temas, empezando por los dos de 12.
+Antes de escribir, pasar por `npm run huerfanos:plan -- --oposicion auxiliar-administrativo-universidad-almeria`,
+que prioriza por alcance real y avisa si otra sesión tiene un lote abierto en esas leyes. Doble
+auditoría ciega antes de activar, como cualquier lote.
+
+**Ojo con el orden:** los temas de la UAL cuelgan en buena parte de **reglamentos propios de la
+universidad** (Cartas de Servicio, permanencia, matrícula), no del BOE. Verificar contra la fuente
+de la UAL, no contra un boletín, y comprobar que el artículo escopado existe y está activo antes de
+generar sobre él.
+
+**Relacionadas:** el patrón general de saturar por demanda ya está descrito para otras oposiciones;
+esta ficha es el caso concreto de la UAL, con las cifras medidas y con una usuaria de pago detrás.
 
 ### [T-535] 🟡 [ABIERTO 04/08] Duplicadas con las OPCIONES reescritas: el punto ciego del barrido de parafraseadas
 
