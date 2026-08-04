@@ -855,6 +855,60 @@
 - **GOTCHA de sintaxis:** un comentario con acentos graves DENTRO de una plantilla ``sql`…` `` la parte. Me pasó dos veces seguidas — la segunda, en el comentario que avisaba de la primera.
 - **PENDIENTE:** desplegar y verificar en vivo con la cuenta de Manuel; el control «rojo contra producción» del sim no llegó a correr por un error de toolchain local (el `cp -al` de `node_modules` para levantar el dev), así que la evidencia del estado roto es la captura.
 
+### [T-525] 🔴 [ABIERTO 04/08] La explicación reproduce la opción FALSA con la palabra buena pegada detrás, sin decir en ningún momento que es falsa
+
+**Lo que se ve.** La opción A de una pregunta del TUE dice *«La delimitación de las competencias
+de la Unión se rige por el principio de **cooperación leal**»*. Su explicación decía, entera:
+
+> `- A) Art. 5.1: La delimitación de las competencias de la Unión se rige por el principio de cooperación leal atribución.`
+
+Las dos palabras juntas, sin coma, sin veredicto y sin decir cuál sobra. El opositor lee una frase
+que no existe en el Tratado y no tiene forma de saber que la buena es «atribución». Lo cazó
+**Adrián Castelló** (impugnación `b061898d`, `explicacion_mejorable`): *«está mezclando dos
+principios distintos: el de atribución y el de cooperación leal. Genera confusión.»* Tenía razón.
+
+**De dónde sale.** Es una corrección hecha por YUXTAPOSICIÓN: alguien escribió el distractor y
+pegó detrás la palabra correcta —seguramente tachada en el original, y el tachado se perdió al
+importar—. A veces sobrevive como negrita (`por un período de cinco **tres** años`), y entonces se
+adivina; cuando no queda ni la negrita, la frase se lee como si fuera el texto legal.
+
+**Por qué es peor que una explicación pobre.** Una explicación floja no enseña; ésta **enseña lo
+contrario de la norma**, y lo hace en el momento en que el opositor acaba de fallar y va a fiarse
+de lo que lee. Ninguno de los detectores vivos lo ve: `audit_note_explanation` busca notas de
+auditoría, `explicacion_estructura_rota` mira el formato, `explicacion_truncada` mira si falta
+texto, y `cita_no_literal` solo juzga el blockquote — aquí no hay blockquote y el formato está
+«bien».
+
+**Medido el 04/08/2026 sobre el banco vivo** (`is_active`, explicaciones con viñetas `- A)`):
+
+| Corte | Preguntas |
+|---|---|
+| Explicaciones con la plantilla de viñetas `- A)` | 2.818 |
+| De ésas, reproducen literal una opción falsa | 705 |
+| **Yuxtaposición: la opción falsa casi tal cual + el arreglo pegado, sin un solo veredicto** | **292** (34 de examen oficial) |
+
+El corte que vale es el tercero, y la diferencia entre 705 y 292 es lo que hace falta para no
+inventarse el problema: **citar la opción falsa es legítimo** si va seguida de «INCORRECTA porque…».
+Lo que se persigue es el segmento que es la opción **casi carácter por carácter** (ratio de
+longitud 0,85-1,7) y no lleva ninguna palabra de veredicto. Leídas 6 al azar del corte: 6 de 6 son
+el fenómeno. Con el corte ancho previo, 2 de 4 eran falsos positivos (explicaciones correctas que
+citan el artículo en blockquote) — por eso no se puede reportar el 705.
+
+**Qué falta.**
+1. Núcleo puro con el corte de arriba + tests, y decidir si pinga el badge o va bajo demanda
+   (precisión medida 6/6, así que probablemente sí pinga).
+2. Reparar. **No vale poner un «INCORRECTA» delante**: hay que decir qué palabra sobra y cuál es
+   la del precepto, que es justo lo que la yuxtaposición se calla. El artículo vinculado ya está
+   en la BD, así que la razón se escribe contra él.
+3. Las 34 de examen oficial: se toca **solo la explicación**, nunca el enunciado ni las opciones.
+4. Aplicar con `scripts/aplicar-explicacion.ts` (estructura → texto), que además las deja
+   barajables; el formato viejo por texto no se transcribe bien.
+
+**Ya reparada:** `a4a5a82e` (la de Adrián), como muestra del formato de llegada.
+
+**Relacionadas:** [T-409] (transcripción de explicaciones), [T-408] (duplicados), y el cubo de
+explicaciones legales.
+
 ### [T-523] 🔴 [ABIERTO 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
 
 - **Esfuerzo: rato** (el arreglo es de PANTALLA, no de datos).
@@ -889,8 +943,6 @@
   - **NO subir la sensibilidad de los cortes existentes** para intentar pescarlo: están calibrados con anclas leídas a mano (falsos positivos en 0,12-0,27) y aflojarlos rompe lo que ya funciona.
 - **Y el dato que ordena el trabajo antes de escribir nada:** medir **cuántas parejas hay** y cuántas se han servido AL MISMO USUARIO EN EL MISMO TEST, que es el único caso en que el opositor lo nota. Un duplicado que nunca coincide con su gemelo no molesta a nadie.
 - **Nota de método:** esta ficha existe porque la puerta de [T-520] obligó a dar un verdicto sistémico al cerrar. Sin ella, la impugnación se habría cerrado como «falso positivo» — la pregunta impugnada es única en el banco y las tres herramientas decían que no había duplicados.
-
-
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
 - **Esfuerzo: rato.** Núcleo puro + subcomando + tests.
