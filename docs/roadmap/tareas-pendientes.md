@@ -853,6 +853,7 @@
 - **Y antes de nada, una decisión de fondo que lo simplifica todo:** `programa_url` **sirve a dos contratos** —el enlace del botón «Ver convocatoria» y la fuente del temario del Sistema 2— y mientras siga así ningún detector puede juzgarlo sin ambigüedad. Estaba apuntado hace días sin número; ahora lo tiene: **44 de 126 activas** son un botón razonable y una fuente inútil a la vez. **Separar el campo haría este kind trivial** y de paso desambiguaría a los tres detectores de enlace (`convocatoria_link_mismatch`, `_etiqueta_boletin`, `_enlace_no_boletin`). El guardarraíl que impide fundir los dos conceptos ya está puesto ([T-553]).
 - **Es 🟢 a propósito:** nada está roto y la herramienta se invoca con una frase. Lo que se gana es que el número no se quede viejo en silencio.
 
+- **CABO SUELTO concreto que salió del barrido y no tiene dueño:** `administrativo-estado` y `administrativo-seguridad-social` **comparten el mismo `programa_url`** (`BOE-A-2026-9946`, el RD de la OEP 2026). Dos oposiciones distintas no pueden tener el mismo temario, y encima ese documento no es un temario. Se apuntó en [T-552] pero esa ficha ya está cerrada: se repite aquí para que no se pierda. Va por la frase *«revisa los enlaces de convocatoria»*.
 ### [T-551] 🔴 [ABIERTO 04/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
 
 **El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
@@ -3635,6 +3636,8 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Cómo:** en el caso troceado, esperar explícitamente a que se disparen **las dos** descargas antes de terminar (o quedarse con timers falsos y vaciarlos), de modo que ningún click quede pendiente al salir del test.
 - **Nota:** es trabajo EN VUELO de otra sesión ([T-273], piloto de troceado por estructura), así que no se tocó desde fuera. Se documenta para quien lo tenga reclamado.
 
+- **Reincidencia medida el 04/08 (sesión imp-04ago-c), y el caso es peor que el del 30/07:** volvió a tumbar el `pre-commit` **dos veces en la misma sesión**, con la suite en **263 s y 288 s**. La primera vez bloqueó un commit de código; **la segunda bloqueó un commit que solo tocaba `docs/roadmap/tareas-pendientes.md`** — o sea, un cambio que no puede romper ningún test. Las dos pasaron al reintentar, y el fichero da 9/9 en aislado. Es exactamente el patrón que la ficha describe, con la agravante de que castiga a quien no ha tocado código.
+- **Y puede tener hermano:** en la segunda corrida fallaron DOS, y el otro era `__tests__/components/QuestionDispute…` («muestra “Ya impugnaste” en la pregunta que sí tiene impugnación», 3.098 ms). No se ha diagnosticado: puede ser la misma clase de carrera bajo carga o algo suyo. Si al arreglar este se sigue viendo, empezar por ahí.
 ### [T-351] 🟡 [ABIERTO 30/07 — Word, Access y Excel CERRADOS · LibreOffice ⛔ BLOQUEADO (no hay instalación ES) · quedan 2 hallazgos de pregunta] Los contenedores de ofimática mezclan los atajos españoles con los ingleses, y a veces dentro del mismo artículo
 
 > **✅ FASE WORD HECHA (30/07), guiada por el detector de [T-354].** Medición antes → después:
