@@ -842,6 +842,30 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-537] 🟡 [ABIERTO 04/08] Psicotécnicas servidas SIN su premisa: `content_data` lleva campos que el render no pinta
+
+**Qué es.** `ContentDataRenderer` pinta exactamente seis claves de `content_data`: `instructions`, `instruction`, `text_passage`, `image_base64`, `table_data` y `tables`. Todo lo demás se descarta **en silencio**: `question_context`, `chart_title`, `operation_type`, `evaluation_description`, `explanation_sections` y —la cara— **`footer_note` de cada tabla**. Nadie avisa: la pregunta se sirve, se responde y se corrige como si estuviera completa.
+
+**Por qué duele.** `footer_note` se usa para **dos cosas opuestas**, y por eso no vale con «que se pinte»:
+
+| Uso | Cuántas (activas, 04/08) | Si se pintara |
+|---|---|---|
+| **Pista de solución** («Sumar: 94 + 270 + 129…», «Fórmula: (15/270)×100», «Buscar el mayor valor…») | 19 | **regala la respuesta** |
+| **Premisa del enunciado** (sin ella la pregunta cambia de resultado) | 5 | es lo que falta |
+
+Las 5 premisas ya están reparadas (04/08): la nota se copió **verbatim** a `instructions`, que sí se pinta. Quedan las 19 pistas, que son inocuas mientras sigan invisibles.
+
+**Lo que lo hace grave y no cosmético.** En las dos de la Tabla Ponencias, la premisa invisible era *«los asistentes a cada ponencia son los ponentes y los alumnos»*, y **el distractor es exactamente la lectura sin premisa**: contando solo la columna ALUMNOS salen **37** (`0cbc46d2`) y **141** (`3822c8fb`) — y las dos cifras **están entre las opciones**. O sea que quien razona bien con lo que ve en pantalla marca una opción que existe y se le corrige como fallo, sin forma de saber por qué.
+
+**Cómo salió.** Impugnación `849c65b2` (maria jose Martinez Lopez, premium, `error_pregunta_respuesta`, 03/08) sobre `bf89b367`: *«una de las condiciones que aparece en la respuesta es que el peso sea >0,5kg»*. Tenía razón: esa condición vivía en el `footer_note` de la tabla y **la palabra `footer_note` no aparece en ninguna parte del código**.
+
+**Qué falta (esto es la ficha).**
+1. **Detector**, que es lo que impide que vuelva: kind de salud que marque la psicotécnica activa cuyo `content_data` tenga texto en una clave **no renderizada**, distinguiendo premisa de pista (o, más simple y honesto, marcando toda clave desconocida para que se triae). Hoy no hay ninguna capa: esto se encontró porque una usuaria lo contó.
+2. Decidir el destino de las 19 pistas: o a `explanation_sections` (que tampoco se pinta, pero ahí su sitio es la corrección) o fuera.
+3. Que el render **falle ruidoso** ante una clave que no sabe pintar, en vez de tragársela.
+
+**Relacionadas:** [T-410] (psicotécnicas duplicadas), y el kind `visual_deixis_no_image`, que es el mismo modo de fallo por el otro lado: la pregunta invoca algo que el usuario no ve.
+
 ### [T-535] 🟡 [ABIERTO 04/08] Duplicadas con las OPCIONES reescritas: el punto ciego del barrido de parafraseadas
 
 **Qué es.** `scripts/calidad/duplicados-exactos.cjs --parafraseadas` agrupa exigiendo **las mismas opciones** (`claveOpciones`) y solo tolera que varíe el ENUNCIADO. Así que la copia que reescribe las opciones por encima —«A circular y residir…» frente a «Circular y residir…», o «generales y municipales» frente a «generales y en las municipales»— **no forma grupo y el barrido la da por inexistente**. No es un fallo del criterio: T-321 ya demostró que un umbral de parecido a secas da 3.230 pares con supuestos prácticos dentro. Es que este corte concreto nadie lo mira.
