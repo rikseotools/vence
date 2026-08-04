@@ -127,7 +127,7 @@ async function main() {
   const navegador = await chromium.launch()
   const visitas: Visita[] = []
   /** Enlaces que sacan al usuario de SU oposición y lo meten en otra. [T-541] */
-  const fugas: Array<{ href: string; desde: string }> = []
+  const fugas: Array<{ href: string; desde: string; texto?: string }> = []
 
   try {
     if (VACIA) {
@@ -325,13 +325,22 @@ async function main() {
       // y sus enlaces apuntan fuera con toda legitimidad (de hecho ya se comprueba aparte, más
       // arriba); mezclarlos hacía que una cuenta sin objetivo fijado —como la efímera de esta
       // simulación— saliera con fugas que no lo son.
+      // Se guarda también el TEXTO del enlace: una fuga sin saber qué botón es obliga a
+      // adivinar dónde está en el código, y eso ya costó una vuelta.
       const enlacesContenido = await p
         .locator('main a[href^="/"]')
-        .evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute('href') || ''))
-        .catch(() => [] as string[])
-      for (const href of enlacesContenido) {
+        .evaluateAll((as) =>
+          as.map((a) => ({
+            href: (a as HTMLAnchorElement).getAttribute('href') || '',
+            texto: ((a as HTMLAnchorElement).innerText || '').trim().slice(0, 60),
+          })),
+        )
+        .catch(() => [] as Array<{ href: string; texto: string }>)
+      for (const { href, texto } of enlacesContenido) {
         const limpia = href.split('?')[0].split('#')[0]
-        if (limpia && enlaceSaleAOtraOposicion(limpia, raiz)) fugas.push({ href: limpia, desde: ruta })
+        if (limpia && enlaceSaleAOtraOposicion(limpia, raiz)) {
+          fugas.push({ href: limpia, desde: ruta, texto })
+        }
       }
       for (const href of enlaces) {
         const limpia = href.split('?')[0].split('#')[0]
@@ -483,7 +492,9 @@ async function main() {
 
     if (fugas.length) {
       console.log(`\n❌ ENLACES QUE SE ESCAPAN A OTRA OPOSICIÓN: ${fugas.length}\n`)
-      for (const f of fugas) console.log(`   ❌ ${f.href}\n      desde: ${f.desde}`)
+      for (const f of fugas) {
+        console.log(`   ❌ ${f.href}${f.texto ? `   («${f.texto}»)` : ''}\n      desde: ${f.desde}`)
+      }
     }
     console.log(`\nRutas visitadas: ${visitas.length}\n`)
     for (const v of visitas) {

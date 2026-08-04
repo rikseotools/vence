@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { resolveOposicionSlugForNav } from '@/lib/config/oposiciones'
+import { raizPersonalizada, raizPersonalizadaEnRuta } from '@/lib/oposicion/objetivoPersonalizado'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { useAuth } from '@/contexts/AuthContext'
 import TestLayout from './TestLayout'
@@ -97,6 +98,13 @@ export default function TestPageWrapper({
   // Slug para navegación: la oposición del USUARIO (oposicionId) cuando la URL es
   // global sin slug (/test/rapido, /test/aleatorio…) → no rebota a otra oposición.
   const navSlug = resolveOposicionSlugForNav(pathname, oposicionId)
+
+  // [T-541] Misma raíz que en `TestLayout`, y por el mismo motivo: `resolveOposicionSlugForNav`
+  // solo conoce el catálogo estático, así que dentro de una personalizada devuelve la flagship y
+  // «Cambiar configuración» mandaba al usuario al tema de OTRA oposición. Manda la RUTA sobre el
+  // perfil (las personalizadas son públicas).
+  const navBase =
+    raizPersonalizadaEnRuta(pathname) ?? raizPersonalizada(oposicionId) ?? `/${navSlug}`
   const finalSearchParams = propsSearchParams || hookSearchParams
 
   // 🔒 Estabilizar referencia de searchParams para evitar re-renders espurios de useSearchParams()
@@ -638,7 +646,7 @@ export default function TestPageWrapper({
 
               {testType === 'personalizado' && tema && (
                 <a
-                  href={`/${navSlug}/test/tema/${tema}`}
+                  href={`${navBase}/test/tema/${tema}`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                 >
                   🎛️ Cambiar configuración
@@ -656,7 +664,7 @@ export default function TestPageWrapper({
               )}
 
               <a
-                href={`/${navSlug}/test`}
+                href={`${navBase}/test`}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
                 🏠 Volver a Tests

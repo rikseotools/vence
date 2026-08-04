@@ -6,7 +6,7 @@
 
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { getTopicContent } from '@/lib/api/temario/queries'
+import { getTopicContent, getTemarioByPositionType } from '@/lib/api/temario/queries'
 import TopicContentView from '@/app/administrativo-estado/temario/[slug]/TopicContentView'
 import { formatUpdatedAt } from '@/lib/temario/updatedAt'
 import { raizPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
@@ -42,9 +42,20 @@ export default async function Page({
   // este tema»— sacan al usuario a OTRA oposición sin dar ningún error. [T-541]
   const raiz = raizPersonalizada(objetivo)!
 
+  // Los temas que EXISTEN, para que el pie no ofrezca un «Tema siguiente» que da 404. Con los
+  // enlaces mal apuntados esto no se notaba: el tema siguiente existía en la otra oposición.
+  // La consulta está cacheada (es la misma que pinta el índice del temario). [T-541]
+  const temario = await getTemarioByPositionType(objetivo)
+  const temasExistentes = temario?.bloques.flatMap((b) => b.temas.map((t) => t.id)) ?? []
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <TopicContentView content={content} basePath={raiz} updatedAt={formatUpdatedAt()} />
+      <TopicContentView
+        content={content}
+        basePath={raiz}
+        temasExistentes={temasExistentes}
+        updatedAt={formatUpdatedAt()}
+      />
     </div>
   )
 }

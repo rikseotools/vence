@@ -208,3 +208,34 @@ describe('el temario de un tema propio enlaza DENTRO de tu oposición', () => {
     }
   })
 })
+
+/**
+ * SEXTO ESLABÓN MUDO: el pie del tema navegaba a ciegas. [T-541]
+ *
+ * `TopicNavFooter` pintaba «Tema siguiente» haciendo `topicNumber + 1` sin comprobar que ese
+ * tema existiera. Mientras los enlaces se escapaban a otra oposición el fallo estaba TAPADO —el
+ * tema siguiente existía, en la oposición equivocada—; al enderezarlos, la última página del
+ * temario propio pasó a ofrecer un 404. Lo vio el rastreador contra producción, no una prueba.
+ */
+describe('el pie del tema no ofrece temas que no existen', () => {
+  const pie = leer('components/TopicNavFooter.tsx')
+  const ruta = leer('app/oposicion-personalizada/[id]/temario/[slug]/page.tsx')
+
+  it('el componente admite la lista de temas que existen', () => {
+    expect(pie).toMatch(/temasExistentes\?:\s*number\[\]/)
+  })
+
+  it('…y la respeta en los DOS botones (anterior y siguiente)', () => {
+    expect(pie).toMatch(/const anterior = topicNumber > 1 && existe\(topicNumber - 1\)/)
+    expect(pie).toMatch(/const siguiente = existe\(topicNumber \+ 1\)/)
+  })
+
+  it('sin la lista se mantiene el comportamiento de siempre (las ~120 del catálogo no cambian)', () => {
+    expect(pie).toMatch(/!temasExistentes \|\| temasExistentes\.includes\(n\)/)
+  })
+
+  it('la página personalizada se la pasa, sacada de su propio temario', () => {
+    expect(ruta).toContain('getTemarioByPositionType')
+    expect(ruta).toMatch(/temasExistentes=\{/)
+  })
+})

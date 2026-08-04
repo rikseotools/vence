@@ -28,6 +28,8 @@ interface TopicContentViewProps {
    * estar leyendo una personalizada que no es tu objetivo, porque son públicas.
    */
   basePath?: string
+  /** Números de tema que existen en esta oposición; sin esto el pie navega a ciegas. [T-541] */
+  temasExistentes?: number[]
   updatedAt: string
 }
 
@@ -49,7 +51,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'administrativo-estado', basePath: basePathProp, updatedAt }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'administrativo-estado', basePath: basePathProp, temasExistentes, updatedAt }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set()
@@ -265,6 +267,7 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
         )}
 
         <TopicNavFooter
+          temasExistentes={temasExistentes}
           topicNumber={content.topicNumber}
           basePath={basePath}
           getDisplayNum={(n) => getBlockInfo(n).displayNum}
