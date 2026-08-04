@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
+import { coincideBusqueda } from '@/lib/text/normalizarBusqueda'
 
 interface OppositionOption {
   key: string
@@ -28,9 +29,23 @@ interface SectionOption {
 interface InteractiveBreadcrumbsProps {
   customLabels?: Record<string, string>
   className?: string
+  /**
+   * [T-521] Oposición PERSONALIZADA en la que estamos, si la hay.
+   *
+   * Viene de la PÁGINA y no se deduce del perfil a propósito: se puede estar viendo una
+   * personalizada que no es tu objetivo (son públicas), y entonces el perfil diría otra cosa.
+   * La página ya consultó el nombre para pintar su título, así que aquí no hay consulta nueva.
+   *
+   * Sin esto, `currentOpo` es null en `/oposicion-personalizada/**` —ningún slug del catálogo
+   * casa— y las migas no se pintan. Y como las migas son EL sitio donde se cambia de oposición,
+   * quien tenía una personalizada como objetivo se quedaba sin poder cambiar. Lo reportó Manuel
+   * el 04/08/2026 con una captura: «quiero cambiar de universidad y no me deja, y no salen las
+   * migas de pan».
+   */
+  personalizada?: { id: string; nombre: string } | null
 }
 
-export default function InteractiveBreadcrumbs({ customLabels = {}, className = "" }: InteractiveBreadcrumbsProps) {
+export default function InteractiveBreadcrumbs({ customLabels = {}, className = "", personalizada = null }: InteractiveBreadcrumbsProps) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -77,6 +92,20 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     .sort((a, b) => b.slug.length - a.slug.length)[0]
   const isOposicion = !!currentOpo
 
+  // [T-521] Una personalizada no está en el config estático, así que `currentOpo` es null. Se
+  // construye un objeto con la MISMA forma que usa el resto del componente (id/slug/name/…) para
+  // no abrir un segundo camino de render: `psicoOpo` ya resolvía así el caso de psicotécnicos.
+  // `slug` lleva la ruta por id porque una personalizada no tiene página de catálogo.
+  const personalizadaOpo = personalizada
+    ? {
+        id: `personalizada_${personalizada.id}`,
+        slug: `oposicion-personalizada/${personalizada.id}`,
+        name: personalizada.nombre,
+        shortName: personalizada.nombre,
+        emoji: '✏️',
+      }
+    : null
+
   // Detectar contextos especiales (no oposición)
   const isLeyes = pathname.includes('/leyes')
   const isTeoria = pathname.includes('/teoria')
@@ -120,14 +149,26 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     { key: 'teoria', label: '📖 Teoría', name: 'Teoría', emoji: '📖', hasFlag: false, path: '/teoria', oposicionId: null }
   ]
 
+  // [T-521] Se compara SIN TILDES. Antes era `label.toLowerCase().includes(term)`, que las
+  // exigía: escribir «almeria» no encontraba «Almería» ni «leon» encontraba «León». Con León,
+  // Almería, Cádiz, Córdoba, Jaén, Alcalá y Castellón en el catálogo, eso dejaba fuera del
+  // buscador a una parte grande de las oposiciones por su propio nombre.
   const filteredOptions = useMemo(() => {
     if (!dropdownSearch.trim()) return oppositionOptions
-    const term = dropdownSearch.toLowerCase()
-    return oppositionOptions.filter(opt => opt.label.toLowerCase().includes(term))
+    return oppositionOptions.filter(opt => coincideBusqueda(opt.label, dropdownSearch))
   }, [dropdownSearch, oppositionOptions])
 
   // Opciones de sección específicas según contexto
   const getSectionOptions = (): SectionOption[] => {
+    // [T-521] Una personalizada tiene tests y temario, pero NO página de información ni
+    // psicotécnicos: ofrecer secciones que no existen es mandar al usuario a un 404, que es
+    // justo el fallo del que sale esta tarea.
+    if (personalizadaOpo) {
+      return [
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'temario', label: '📚 Temario', path: '/temario' },
+      ]
+    }
     if (currentOpo) {
       return [
         { key: 'info', label: 'ℹ️ Información', path: '' },
@@ -287,7 +328,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isOposicion || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
+          {(isOposicion || !!personalizadaOpo || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
 
             <li className="flex items-center relative">
               <div className="flex items-center">
@@ -296,6 +337,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   // Determinar si mostrar link (no estamos en la página principal)
                   const showAsLink =
                     (currentOpo && pathname !== '/' + currentOpo.slug) ||
+                    (personalizadaOpo && pathname !== '/' + personalizadaOpo.slug) ||
                     (isLeyes && pathname !== '/leyes') ||
                     (isTeoria && pathname !== '/teoria') ||
                     (isPsicotecnicos && pathname !== '/psicotecnicos') ||
@@ -310,6 +352,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   // Determinar href
                   const linkHref =
                     currentOpo ? '/' + currentOpo.slug :
+                    personalizadaOpo ? '/' + personalizadaOpo.slug + '/test' :
                     (isPsicotecnicos && psicoOpo) ? '/' + psicoOpo.slug :
                     isLeyes ? '/leyes' :
                     isTeoria ? '/teoria' :
@@ -319,9 +362,9 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
                   // Determinar texto: nombre completo en desktop, abreviado en móvil
 
-                  const labelContent = (currentOpo || psicoOpo)
+                  const labelContent = (currentOpo || psicoOpo || personalizadaOpo)
                     ? (() => {
-                        const opo = currentOpo || psicoOpo!
+                        const opo = (currentOpo || psicoOpo || personalizadaOpo)!
                         return hasCcaaFlag(opo.id)
                           ? <><CcaaFlag oposicionId={opo.id} /> <span className="hidden md:inline">{opo.name}</span><span className="md:hidden">{opo.shortName}</span></>
                           : <><span className="hidden md:inline">{opo.emoji} {opo.name}</span><span className="md:hidden">{opo.emoji} {opo.shortName}</span></>
@@ -429,7 +472,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isOposicion || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
+          {(isOposicion || !!personalizadaOpo || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
@@ -439,7 +482,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
               <div className="flex items-center">
                 {/* Si estamos en una página específica dentro de la sección, hacer clickeable para volver al índice */}
                 {(() => {
-                  const basePath = currentOpo ? '/' + currentOpo.slug : ''
+                  const basePath = currentOpo ? '/' + currentOpo.slug
+                    : personalizadaOpo ? '/' + personalizadaOpo.slug : ''
                   const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
 
                   if (isInSpecificPage && basePath) {

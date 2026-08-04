@@ -8,6 +8,7 @@ import { userFeedback, feedbackConversations } from '@/db/schema'
 import { oposicionesSsot as oposiciones } from '@/db/oposicionesSsot'
 import { eq, and, ilike, gte } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
+import { normalizarBusqueda } from '@/lib/text/normalizarBusqueda'
 
 export interface OposicionEntry {
   id: string
@@ -79,13 +80,10 @@ const NORMALIZE_MAP: Record<string, string> = {
   admin: 'administrativo',              // "aux admin"
 }
 
-function normalize(s: string): string {
-  return s.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
-    .replace(/[^a-z0-9ñ\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+// [T-521] La normalización de búsqueda vive en UN solo sitio. Esta copia era idéntica a la que
+// necesitaba el desplegable de las migas, y dos copias del mismo criterio se separan a la
+// primera. NO es la misma que la de los slugs (`lawSlugSync`), que tiene otro propósito.
+const normalize = normalizarBusqueda
 
 function tokenize(s: string): string[] {
   return normalize(s).split(' ')

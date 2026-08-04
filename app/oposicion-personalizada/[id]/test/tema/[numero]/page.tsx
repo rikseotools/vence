@@ -12,6 +12,7 @@ import TemaTestPage from '@/components/test/TemaTestPage'
 import { nombrePublico } from '@/lib/oposicionPersonalizada/nombrePublico'
 import AvisoTemarioVacio from '@/components/oposicionPersonalizada/AvisoTemarioVacio'
 import { personalizadaUtilizable } from '@/lib/oposicion/objetivoPersonalizado'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,6 +52,9 @@ export default async function Page({
   if (!personalizadaUtilizable(Number(filas[0].temas ?? 0))) {
     return (
       <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* [T-521] Las migas son EL sitio donde se cambia de oposición. Sin ellas, quien
+          tenía una personalizada como objetivo no podía cambiar: no había botón. */}
+      <InteractiveBreadcrumbs personalizada={{ id: limpio, nombre: nombre }} />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <h1 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">{nombre}</h1>
           <AvisoTemarioVacio />

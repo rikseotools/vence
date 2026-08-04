@@ -263,6 +263,35 @@ async function main() {
     }
     console.log('')
 
+    // [T-521] LAS MIGAS, que son EL sitio donde se cambia de oposición.
+    //
+    // Con una personalizada como objetivo NO se pintaban: `currentOpo` sale de los slugs del
+    // catálogo estático y ninguno casa con `/oposicion-personalizada/**`, así que el bloque
+    // entero quedaba fuera. Consecuencia: no había selector y no se podía cambiar de oposición.
+    // Lo reportó Manuel con una captura el 04/08/2026 («quiero cambiar y no me deja, y no salen
+    // las migas de pan»).
+    //
+    // Se comprueba EN NAVEGADOR y no por HTML servido a propósito: `InteractiveBreadcrumbs` es
+    // 'use client', así que en el HTML de `curl` no aparece ni en las páginas que SÍ la tienen —
+    // verificarlo así da un falso rojo idéntico en todos los casos, que es como se descubrió.
+    await p.goto(`${URL_BASE}${raiz}/test`, { waitUntil: 'domcontentloaded' })
+    await p.waitForTimeout(4000)
+    const nav = p.locator('nav[aria-label="Breadcrumb"], nav').first()
+    const hayMigas = (await p.locator('nav').count()) > 0
+    const textoMigas = hayMigas ? (await nav.innerText().catch(() => '')) : ''
+    anotaTest(
+      'las migas se pintan en una oposición personalizada',
+      /\S/.test(textoMigas),
+      textoMigas.replace(/\s+/g, ' ').slice(0, 90) || 'no hay migas',
+    )
+    // El selector es lo que de verdad pedía el usuario: sin él, las migas son decorativas.
+    const selector = p.locator('nav button svg, nav button').first()
+    anotaTest(
+      'las migas traen el selector para CAMBIAR de oposición',
+      (await p.locator('nav button').count()) > 0,
+      `${await p.locator('nav button').count()} botón(es) en las migas`,
+    )
+
     const vistas = new Set<string>()
 
     while (pendientes.length && vistas.size < MAX_PAGINAS) {

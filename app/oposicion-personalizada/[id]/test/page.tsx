@@ -19,6 +19,7 @@ import { sql } from 'drizzle-orm'
 import { getAdminDb } from '@/db/client'
 import { nombrePublico } from '@/lib/oposicionPersonalizada/nombrePublico'
 import AvisoTemarioVacio from '@/components/oposicionPersonalizada/AvisoTemarioVacio'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 // Es contenido de un usuario, cambia cuando él lo edita y no tiene valor de catálogo.
 export const dynamic = 'force-dynamic'
@@ -93,6 +94,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* [T-521] Las migas son EL sitio donde se cambia de oposición. Sin ellas, quien
+          tenía una personalizada como objetivo no podía cambiar: no había botón. */}
+      <InteractiveBreadcrumbs personalizada={{ id: limpio, nombre: datos.nombre }} />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <header className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{datos.nombre}</h1>
