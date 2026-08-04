@@ -856,6 +856,50 @@
 - **LO QUE HAY QUE TOCAR (y por qué es sesion_propia):** `lib/backlog/parseMarkdown.cjs` (fuente única de parseo), `sync`, `backlog.cjs ficha`/`reubicar`, `backlogRegistry.guardrail`, `contexto-push-guard` (compara ESE fichero contra `origin/main`), `perdidaDeContexto.cjs`, y la migración de las 506 fichas. Son las piezas de las que depende el reparto entre sesiones: romperlas deja a todas sin coordinación.
 - **DESCARTADO: el merge driver de git.** Parecía el atajo (unir por id al fusionar) pero se registra en `.git/config`, que **no se versiona**: en cada VPS habría que instalarlo aparte, y quien no lo tenga cae al comportamiento de siempre. Una protección que depende de que cada máquina esté bien configurada no es fiable, es optimista.
 - **CÓMO SE SABRÁ SI SALIÓ BIEN** (declarado antes de empezar): conflictos en el backlog por sesión → 0; `npm run sesiones:friccion` sin subida de escapes; y ninguna ficha perdida en la migración (comparar el conjunto de ids Y el de líneas con contenido antes/después, que es como se verificó [T-515]).
+### [T-531] 🟡 [ABIERTO 04/08] La puerta del cierre rechaza outcomes por palabras que no son trabajo pendiente
+
+- **Esfuerzo: minutos.** Es afinar una lista que ya existe (`lib/backlog/claimGate.cjs`), con los casos reales delante.
+- **QUÉ PASA:** `done --outcome` aborta si el texto «confiesa trabajo pendiente». La regla es buena —nace de cerrar una tarea de cobros con el código sin desplegar— pero dispara con palabras que en el outcome significan otra cosa.
+- **MEDIDO el 04/08 cerrando [T-463]: CUATRO rechazos seguidos del mismo texto**, y ninguno era trabajo pendiente:
+  1. *«la descripción de lo que hay que comprobar sigue ahí detrás»* → cazó **«hay que comprobar»**, que estaba CITANDO el enunciado de la tarea, no anunciando trabajo.
+  2. *«el pendiente completo sigue ahí»* → cazó **«pendiente»** usado como SUSTANTIVO (el texto guardado en `resume_check`).
+  3. *«que era lo que faltaba»* → cazó **«falta»** en pasado, describiendo lo que se acababa de resolver.
+  4. *«9 eventos en 2 días»* → cazó **«en 2 días»** como futuro, cuando era una ventana hacia ATRÁS.
+- **El (4) es un hueco de la exención que ya existe:** [T-499] añadió `esMedidaPasada` para no marcar mediciones del pasado, y su lista (`últimos`, `durante`, `hace`, `pasados`…) no cubre `en N días` sin marcador delante. Se arregla ahí, no con una regla nueva.
+- **POR QUÉ MERECE ARREGLARSE aunque el escape exista:** reescribí el texto cuatro veces en vez de usar `--igualmente`, y el resultado es un outcome **peor** que el que quería escribir. Una puerta que obliga a escribir peor para poder pasar enseña a usar el escape, y entonces deja de proteger — que es la lección de los tres guardarraíles que hubo que quitar el 31/07.
+- **Cómo NO arreglarlo:** quitando palabras de la lista a bulto. Lo que falla no es que `falta` sea mala señal, es que se mira sin contexto. El camino es el mismo que ya funcionó en [T-499]: mirar las palabras de alrededor.
+- **La prueba de que está bien calibrado:** los cuatro textos de arriba pasan, y un outcome de verdad inacabado («falta desplegar», «queda por verificar») sigue abortando. Los dos sentidos, como en T-499.
+- **Relacionadas:** [T-499] (la misma puerta, la exención anterior), [T-392] (de donde sale la puerta), `__tests__/backlog/claimGate.test.ts`.
+
+### [T-530] 🟠 [ABIERTO 04/08] La huella de hardware no reconoce la misma máquina: 30 casos medidos y el antifraude se apoya en ella
+
+- **Esfuerzo: larga.** Medir primero; lo que se decida arreglar, aparte.
+- **PARA QUÉ EXISTE LA HUELLA:** reconocer el mismo aparato cuando alguien borra los datos del navegador. Es la pieza que sostiene [T-304] («la huella que sobrevive al borrado») y la que usa `register_device` en su PASO 2 para reutilizar la fila en vez de gastar un hueco nuevo.
+- **LO MEDIDO (04/08, al investigar [T-418]):** hay **30 usuarios premium con sus dos plazas ocupadas por la MISMA etiqueta** (`Chrome / Windows, Chrome / Windows`, `Safari / iOS, Safari / iOS`, `Chrome / Mac, Chrome / Mac`) y **en los 30 las dos filas tienen huellas DISTINTAS**. Ninguna tiene la huella a null: están las dos y no coinciden.
+- **Por qué importa más allá de la molestia:** de los **91 premium con las dos plazas llenas, 39 tienen una ocupada por un aparato que ya no se usa** (patrón de relevo: el viejo deja de verse justo cuando nace el nuevo). El PASO 2 tenía que haber reutilizado esa fila y no lo hizo. El arreglo de [T-418] les libera la plaza a los 7 días, que es una **mitigación del síntoma**: si la huella funcionara, la fila no se habría duplicado.
+- **Y hay un segundo consumidor al que esto deja cojo:** el barrido de fraude agrupa por dispositivo. Si la misma máquina genera huellas nuevas, un multicuenta que borre datos se reparte en varios «aparatos» y baja por debajo de los umbrales — justo el punto ciego que [T-372] acaba de cerrar por otro lado.
+- **LO PRIMERO ES MEDIR, no arreglar** (dos lecturas posibles y la respuesta cambia el trabajo):
+  1. **Son dos máquinas de verdad.** «Chrome / Windows» es una etiqueta genérica: un sobremesa y un portátil del trabajo dicen lo mismo. Entonces no hay defecto y solo sobra la mitigación.
+  2. **Es la misma máquina y la huella DERIVA** (actualización de navegador, cambio de resolución, otro perfil). Entonces la huella no cumple su función y hay que ver de qué se compone.
+  - **Cómo distinguirlas con lo que ya hay:** el SOLAPE de actividad. Dos máquinas reales se alternan (la vieja se sigue usando tras nacer la nueva); una que se re-registra hace un RELEVO limpio. Con ese corte, de los 30 salieron **13 solapan / 17 relevo**, así que **al menos 17 son sospecha firme de deriva**.
+- **Al mirar la composición de la huella:** ver qué entradas cambian entre las dos filas del mismo relevo. Si es una sola señal volátil, se puede sacar del cálculo; si es media huella, el diseño no aguanta y hay que decidir otra cosa.
+- **NO tocar `register_device` antes de medir:** hoy su PASO 2 exige huella **Y** etiqueta iguales, y aflojar cualquiera de las dos condiciones agruparía cuentas que hoy no se agrupan — que es exactamente lo que el modo `shadow` de [T-304] existe para medir antes de cortarle el servicio a nadie.
+- **Relacionadas:** [T-418] (donde salió, y que mitiga el síntoma), [T-304] (la premisa que esto pone en duda), [T-372], `lib/api/deviceLimit.ts`, `supabase/migrations/20260804_device_slot_inactivo_7_dias.sql`.
+
+### [T-529] 🔴 [ABIERTO 04/08] Un cero de un detector no se distingue de un detector muerto: falta el latido de lo EVALUADO
+
+- **Esfuerzo: sesion_propia.** Toca los dos barridos (el `@Cron` del backend y el gemelo CLI) y su tabla de hallazgos.
+- **EL PROBLEMA, en una frase:** `content_health_findings` guarda lo que se ENCUENTRA, así que la ausencia de filas de un kind significa a la vez «vigilado y limpio» y «nadie lo miró». Son dos cosas opuestas y hoy se leen igual.
+- **Salió tropezando con ello TRES veces el mismo día (04/08), en sitios distintos:**
+  - **[T-406]** (opciones duplicadas) pide *«comprobar que el barrido emite el kind y que sigue en 0/0»*. Está a cero. No se puede cerrar: es literalmente el defecto que la tarea venía a arreglar, una capa más arriba.
+  - **[T-384]**, mitad psicotécnica: `psicotecnico_integridad` a cero, misma duda. Su hermano `temas_card` SÍ emitió, así que ahí se pudo afirmar algo.
+  - **[T-501]**: consultar `cron_runs` para saber si un cron vive devolvió **«cero pases»** con toda naturalidad… porque **esa tabla está MUERTA desde el 24/05/2026** (8.726 filas y ninguna posterior). La señal de vida vive hoy en `observable_events`. Estuve a punto de dar una falsa alarma («el reconciliador no corre») que habría mandado a alguien a arreglar algo que funciona.
+- **Y NO es teórico en esta casa:** el barrido de fraude estuvo muerto con el badge tranquilo (21-28/07), y **101 fuentes de seguimiento llevaban 45 días en error** sin que nada avisara. Las dos veces el síntoma fue el mismo: un cero que nadie podía interpretar.
+- **QUÉ HACER:** que cada pasada del barrido registre **qué kinds EVALUÓ** (y cuántos sujetos miró), no solo lo que encontró. Con eso, un cero pasa a ser afirmable —«se evaluó y no hay nada»— y su ausencia se vuelve la señal: *este kind lleva N días sin evaluarse*.
+  - **Dónde encaja sin crear un silo:** ya existe `cron_run` en `observable_events` con `metadata` libre, que es donde vive la señal de vida del resto de crons. Lo natural es que el barrido emita ahí la lista de kinds evaluados, y que el panel de salud lo lea junto a los hallazgos.
+  - **Ojo con el coste:** son ~60 kinds y el barrido ya es largo; el latido tiene que ser un resumen por pasada, no una fila por sujeto.
+- **La prueba de que sirve:** cerrar [T-406] y la mitad psicotécnica de [T-384] con el dato delante, que hoy no se puede.
+- **Relacionadas:** [T-406], [T-384], [T-501], `docs/runbooks/health-check.md`, `docs/runbooks/salud-radar.md` (que persigue lo mismo para los sensores del radar).
 
 ### [T-521] 🟠 [ABIERTO 04/08] Con objetivo personalizado no había migas: no se podía cambiar de oposición, y el buscador ignoraba las tildes
 
