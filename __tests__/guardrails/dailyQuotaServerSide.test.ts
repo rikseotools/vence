@@ -182,6 +182,30 @@ describe('guardarraíl: el cupo diario lo cobra el servidor', () => {
     expect(src.indexOf('persistExamQuestions(testId')).toBeLessThan(src.indexOf('incrementDailyCount('))
   })
 
+  // ── EL CUARTO CAMINO (T-450, 04/08/2026) ───────────────────────────────────────────────────
+  // La red de seguridad de `complete-test` rellena en bloque las respuestas que la cola del
+  // cliente no consiguió drenar, y lo hacía SIN cobrar. No era teórico: un free respondió 56
+  // preguntas con el contador a cero porque sus 112 llamadas a `answer-and-save` se toparon con
+  // el 403 del límite de dispositivos, así que TODAS acabaron aquí. El guardarraíl de
+  // dispositivos frenaba el camino que cobra y dejaba entero el que no.
+  it('la red de seguridad de complete-test cobra lo que rellena', () => {
+    const src = leer('lib/api/v2/complete-test/queries.ts')
+    expect(src).toContain('incrementDailyCount(')
+    // Con IMPORTE y solo por lo que se ESTRENA: `gapFilledCount` son las filas que este insert
+    // creó de verdad (el ON CONFLICT deja fuera las que ya estaban), así que no puede solaparse
+    // con lo que ya cobró answer-and-save.
+    expect(src).toMatch(/incrementDailyCount\([^)]*gapFilledCount/)
+    // Y DESPUÉS de persistir, nunca antes.
+    expect(src.indexOf('fillMissingTestQuestions')).toBeLessThan(src.indexOf('incrementDailyCount('))
+  })
+
+  it('la red de seguridad deja rastro: cuántas respuestas entran por ahí', () => {
+    // Era un `console.log`, o sea invisible. Sin evento, el próximo agujero de cupo se vuelve a
+    // descubrir por un usuario — que es exactamente como se descubrió este.
+    const src = leer('lib/api/v2/complete-test/queries.ts')
+    expect(src).toMatch(/eventType:\s*'cupo_safety_net'/)
+  })
+
   it('el examen NO cobra lo que no ha podido guardar', () => {
     // Misma regla que `save_failed` en answer-and-save: si la persistencia falla, no se le
     // cobra al usuario cupo por respuestas que no existen. El catch devuelve 0.

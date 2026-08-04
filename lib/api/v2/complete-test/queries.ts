@@ -11,6 +11,8 @@ import { eq, and, inArray } from 'drizzle-orm'
 import type { CompleteTestRequest, DetailedAnswerInput } from './schemas'
 import { insertTestAnswersBatch } from '@/lib/api/test-answers'
 import type { SaveAnswerRequest } from '@/lib/api/test-answers'
+import { incrementDailyCount } from '@/lib/api/dailyLimit'
+import { emit } from '@/lib/observability/emit'
 import { isValidOrder, displayedToOriginal } from '@/lib/shuffle/permute'
 
 interface ArticleStat {
@@ -310,6 +312,39 @@ export async function completeTest(
   if (gapFilledCount > 0) {
     savedQuestionsCount += gapFilledCount
     console.log(`🛟 [complete-test] Safety-net rellenó ${gapFilledCount} respuestas faltantes en test ${sessionId}`)
+
+    // COBRO DEL CUPO — el safety-net es el CUARTO camino que persistía respuestas sin cobrar
+    // (T-450, 04/08/2026). La regla de la casa es una sola: se cobra donde la respuesta se
+    // PERSISTE, y solo por las que se ESTRENAN. Aquí las dos cosas se saben exactas, porque
+    // `gapFilledCount` cuenta las filas que este insert creó de verdad (el `ON CONFLICT DO
+    // NOTHING` deja fuera las que ya estaban), así que no puede solaparse con lo que ya cobró
+    // `/api/v2/answer-and-save`: son conjuntos disjuntos por construcción.
+    //
+    // ── EL CASO QUE LO DESTAPÓ, y por qué este camino se llevaba lo GORDO ────────────────────
+    // Un usuario free respondió 56 preguntas de práctica con el contador a CERO. Sus 112
+    // llamadas a `answer-and-save` habían devuelto 403 («ya tienes 2 dispositivos conectados»),
+    // así que la cola del cliente no drenó NUNCA… y este safety-net escribió las 56 al terminar
+    // el test. O sea que el guardarraíl de dispositivos no frenaba nada: paraba el camino que
+    // cobra y dejaba entero el que no. Cuanto peor le va a la cola, más respuestas caen aquí.
+    //
+    // Premium no paga: lo corta la propia función SQL (`increment_daily_questions` sale antes de
+    // tocar la tabla), así que no hace falta consultarlo aquí ni arriesgarse a una SEXTA
+    // definición de «premium». Y el cobro es fail-silent por dentro: una respuesta guardada
+    // nunca se rompe porque el contador falle.
+    await incrementDailyCount(userId, gapFilledCount)
+
+    // Hasta hoy esto era un `console.log`: nadie podía saber cuántas respuestas entran por la
+    // red de seguridad ni a cuánta gente. Sin este evento, el próximo agujero de cupo se vuelve
+    // a descubrir por un usuario. `warn` a propósito: que el safety-net trabaje significa que la
+    // cola del cliente NO drenó, y eso siempre es un síntoma de algo.
+    await emit({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'cupo_safety_net',
+      endpoint: '/api/v2/complete-test',
+      userId,
+      metadata: { sessionId, gapFilled: gapFilledCount, esperadas: detailedAnswers.length },
+    })
   }
 
   // Si tras el gap-fill siguen faltando filas Y el cliente mandó datos
