@@ -161,13 +161,16 @@ async function main() {
   const { worktree, branch } = datosDelWorktree(base)
   const slug = path.basename(worktree)
   const huella = huellaDelWorktree(base)
-  const { maquina, rol } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const { maquina, rolDeclarado } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
   const host = maquina()
   // QUÉ es esta sesión (T-539). Viaja en el latido porque es lo que permite al parte distinguir
   // una persona que no ha hecho preflight (normal) de un trabajador que no lo ha hecho (está
-  // trabajando sin que nadie sepa si puede). Se declara explícitamente o no se declara: por eso
-  // `persona` —el valor por defecto— se guarda como NULL en vez de afirmarse.
-  const miRol = rol() === 'trabajador' ? 'trabajador' : null
+  // trabajando sin que nadie sepa si puede).
+  //
+  // Se guarda lo DECLARADO, no lo efectivo: `null` significa «no lo ha dicho», y abajo se conserva
+  // lo que hubiera. Guardar `rol()` degradaba a persona en cada comando que no llevase la variable
+  // — medido en la primera vuelta del piloto.
+  const miRol = rolDeclarado()
   const s = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8, idle_timeout: 2 })
   try {
     const r = await s`
@@ -190,9 +193,14 @@ async function main() {
              -- siempre el host del primer latido, así que un sid que empezara a latir desde otro
              -- sitio se veía igual que uno que no se hubiera movido.
              host           = EXCLUDED.host,
-             -- El rol también se refresca: una sesión que pasa a ser trabajador tiene que verse
-             -- como tal desde el latido siguiente, no desde el primero de su vida.
-             rol            = EXCLUDED.rol,
+             -- El rol NUNCA se degrada en silencio (T-539, medido en la 1ª vuelta del piloto).
+             -- Guardando el rol EFECTIVO, un trabajador que declaraba la variable en un comando y
+             -- no en el siguiente volvía a NULL, y con él se apagaba la alarma del parte, que es
+             -- justo lo que existe para verlo. La asimetría es deliberada: subir a trabajador solo
+             -- añade vigilancia, bajar la quita. Para bajar hay que DECIRLO con la variable puesta
+             -- a persona, igual que la huella solo se pisa si esta vez SÍ se pudo calcular.
+             -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+             rol            = COALESCE(EXCLUDED.rol, worktree_sessions.rol),
              -- La huella solo se pisa si esta vez SÍ se pudo calcular: si git no contestó,
              -- conservar la anterior es más útil que borrarla (touched_at delata su edad).
              touched_files  = COALESCE(EXCLUDED.touched_files, worktree_sessions.touched_files),

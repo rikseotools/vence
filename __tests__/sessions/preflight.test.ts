@@ -15,7 +15,7 @@
 const { evaluarPreflight, mensajePreflight, severidadPreflight, cegueraBloquea, mensajeCeguera } =
   require('@/lib/sessions/preflight.cjs')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { rol, esTrabajador } = require('@/lib/sessions/sid.cjs')
+const { rol, rolDeclarado, esTrabajador } = require('@/lib/sessions/sid.cjs')
 
 const sana = { sid: 'sid-1', host: 'fedora', coordinacion: true, latido: true }
 
@@ -116,6 +116,27 @@ describe('rol de sesión', () => {
     expect(rol({ env: { VENCE_SESSION_ROLE: ' Trabajador ' } })).toBe('trabajador')
     expect(esTrabajador({ env: { VENCE_SESSION_ROLE: 'trabajador' } })).toBe(true)
     expect(esTrabajador({ env: {} })).toBe(false)
+  })
+
+  // ── LO DECLARADO ≠ LO EFECTIVO, y confundirlos apagó la alarma ─────────────────────────────
+  // Medido en la 1ª vuelta del piloto: el trabajador declaró su rol en el comando del preflight y
+  // no en los siguientes, que laten igual. El latido guardaba `rol()` —que devuelve 'persona' tanto
+  // si se declaró como si no— así que cada comando normal lo degradaba a persona EN SILENCIO. Su
+  // fila acabó en NULL teniendo un preflight que decía «trabajador», y con ella se apagó la alarma
+  // del parte, que es exactamente lo que existe para verlo.
+  describe('rolDeclarado: distingue «no lo ha dicho» de «ha dicho persona»', () => {
+    it('sin variable → null, que es «no declarado» y NO se puede persistir como persona', () => {
+      expect(rolDeclarado({ env: {} })).toBeNull()
+      expect(rol({ env: {} })).toBe('persona')          // el efectivo sí tiene defecto
+    })
+
+    it('declarar persona SÍ es una afirmación, y se distingue del silencio', () => {
+      expect(rolDeclarado({ env: { VENCE_SESSION_ROLE: 'persona' } })).toBe('persona')
+    })
+
+    it('un valor desconocido no es una declaración', () => {
+      expect(rolDeclarado({ env: { VENCE_SESSION_ROLE: 'robot' } })).toBeNull()
+    })
   })
 })
 
