@@ -22,6 +22,31 @@ const { spawnSync } = require('child_process')
 
 const REPO = path.resolve(__dirname, '..', '..')
 const SID = 'SIM-preflight-t539'
+const DESDE = new Date()
+
+// ── ESTA SIMULACIÓN DISPARA GUARDARRAÍLES DE VERDAD, Y ESO DEJA HUELLA ──────────────────────
+// Los guards emiten fricción (`guard_bloqueo`) al bloquear, y aquí se les hace bloquear a
+// propósito varias veces. Medido el 04/08: una sola vuelta metió **10 eventos falsos** en la serie
+// de `indice-compartido` — que es justamente el termómetro con el que se decide si ese guardarraíl
+// sigue vivo (T-423). Una simulación que envenena la métrica que protege no es una prueba, es una
+// avería con buena intención.
+//
+// Se limpia por SID Y por ventana de tiempo: borrar por ventana a secas se llevaría por delante
+// los bloqueos reales de otras sesiones, que es peor que el ruido que se quita.
+async function limpiarFriccionPropia(sql) {
+  const { resolverSid } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
+  const mio = resolverSid({ repo: REPO }).sid
+  if (!mio) return 0
+  // El emisor va detached: sin esta espera, los últimos eventos llegan DESPUÉS de la limpieza.
+  await new Promise((r) => setTimeout(r, 2500))
+  const borrados = await sql`
+    DELETE FROM public.observable_events
+     WHERE event_type = 'sesion_friccion'
+       AND metadata->>'sid' = ${mio}
+       AND ts >= ${DESDE}
+   RETURNING id`
+  return borrados.length
+}
 
 const casos = []
 function afirmar(nombre, ok, detalle = '') {
@@ -143,7 +168,8 @@ async function main() {
       const s1 = await sql`DELETE FROM worktree_sessions WHERE sid = ${SID} RETURNING sid`
       const s2 = await sql`DELETE FROM observable_events WHERE event_type = 'sesion_preflight'
                             AND metadata->>'sid' = ${SID} RETURNING id`
-      console.log(`\n🧹 limpieza: ${s1.length} sesión(es) y ${s2.length} evento(s) desechables borrados`)
+      const s3 = await limpiarFriccionPropia(sql)
+      console.log(`\n🧹 limpieza: ${s1.length} sesión(es), ${s2.length} preflight(s) y ${s3} evento(s) de fricción provocados por la propia prueba`)
       try { await sql.end({ timeout: 5 }) } catch {}
     }
   }
