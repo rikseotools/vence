@@ -248,8 +248,12 @@ async function detectarTodo(c, add, now) {
         FROM topic_scope ts
         JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
         JOIN laws l ON l.id = ts.law_id
-        JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-        JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
+        -- article_numbers NULL = LA LEY ENTERA (T-451). Con el unnest de antes, unnest(NULL) no
+        -- devuelve ni una fila, así que esos scopes DESAPARECÍAN del detector: el badge no podía
+        -- ver el temario escopado por ley completa. Mismo criterio que articleInScope() y que el
+        -- planificador de huérfanos, ya arreglado — no un tercer intérprete del NULL.
+        JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                       AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
         WHERE tp.position_type = $1 AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
           AND ${SQL_UNIVERSO_COBERTURA}
         GROUP BY tp.topic_number

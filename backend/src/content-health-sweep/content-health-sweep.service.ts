@@ -1235,8 +1235,11 @@ export class ContentHealthSweepService {
           FROM topic_scope ts
           JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
           JOIN laws l ON l.id = ts.law_id
-          JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-          JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num AND a.is_active
+          -- article_numbers NULL = LA LEY ENTERA (T-451). Espejo EXACTO del CLI: con el unnest de
+          -- antes esos scopes desaparecían del detector y el badge no veía el temario escopado por
+          -- ley completa. Mismo criterio que articleInScope() y que el planificador de huérfanos.
+          JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                         AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
           WHERE tp.position_type = ${pt} AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
             -- Mirror INLINE de SQL_UNIVERSO_COBERTURA (lib/generacion/huerfanosPlan.js)
             -- (MANTENER EN SYNC — lo vigila __tests__/health/content-sweep-parity.test.ts).
