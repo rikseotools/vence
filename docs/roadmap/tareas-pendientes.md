@@ -865,6 +865,97 @@ Los 358 son la banda accionable y la que menos criterio pide: **la oficial no se
 3. Adjudicar los 358 mixtos primero.
 
 **Relacionadas:** [T-321], [T-408], [T-410], [T-425], [T-439].
+### [T-534] 🟡 [ABIERTO 04/08] 1.670 explicaciones activas sirven citas «literales» sin tildes, y el guardarraíl de literalidad no puede verlas por construcción
+
+**De dónde sale:** la impugnación `70110a29` (Esther Ramos, premium, Aux. Admin. Comunidad de Madrid).
+Ella discutía la clave —y **no tenía razón**—, pero al abrir la explicación para contestarle resultó
+que el blockquote presentado como texto del art. 20.1 de la Ley 1/1983 CM decía *«El Consejo de
+Gobierno cesa tras la celebracion de elecciones a la Asamblea, en los casos de perdida de la cuestion
+de confianza, aprobacion de mocion de censura, dimision, incapacidad permanente…»*. El artículo lleva
+sus seis tildes. O sea: **le estábamos enseñando como literal de la ley un texto que no es el de la
+ley**, en la misma pregunta en la que le decíamos que se fiara del literal.
+
+**Lo medido (04/08), y el corte importa más que el número:**
+
+| | |
+|---|---|
+| preguntas activas con explicación | 138.104 |
+| con al menos una palabra española **imposible** sin tilde | **1.670** (1,2 %) |
+| de esas, con **blockquote** (cita presentada como literal) | **1.210** |
+| de esas, ya transcritas a `explanation_data` (defecto copiado adelante) | 4 |
+
+Palabras que más disparan: `articulo` 567 · `organo` 326 · `informacion` 252 · `organos` 231 ·
+`segun` 193 · `tambien` 134 · `proteccion` 107 · `aprobacion` 104. Precisión **12/12** en muestra
+aleatoria leída a mano.
+
+**⚠️ Cómo NO medirlo, porque el primer corte dio 9.348 y era falso.** La trampa no es rara, es la
+norma del castellano: **el plural pierde la tilde**. `funciones`, `sanciones`, `mociones`,
+`cuestiones`, `resoluciones` y `administraciones` son **correctos** sin tilde, y meterlos en la lista
+infla la cuenta ×5,6. Lo mismo con las **formas verbales y adjetivos** homógrafos: `publico`/`publica`
+(yo publico, él publica), `titulo`, `numero`, `capitulo`, y `perdida` (*la oportunidad perdida*). El
+corte solo admite **singulares cuya versión sin tilde no es palabra**. Medición reproducible en
+`scratchpad/medir-tildes.cjs` + `scratchpad/precision-tildes.cjs` (llevar a `scripts/` al atacarla).
+
+**🕳️ EL PUNTO CIEGO, que es el hallazgo reutilizable.** `scripts/impugnaciones/validar-explicacion.cjs`
+es el guardarraíl que existe *«para cazar citas inventadas»*, y su comparador (línea 25) hace:
+
+```js
+const norm = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'') …
+```
+
+es decir **borra las tildes antes de comparar la cita con el artículo**. Una cita a la que se le han
+caído todas pasa la comprobación de literalidad **como si fuera verbatim**. El mismo criterio lo
+comparte `citaNoLiteral` (trinquete `criterioCitaUnico.test.ts`), así que el barrido
+`npm run citas:barrido` y el kind `cita_no_literal` tampoco pueden verlo.
+
+**Y la normalización NO es el bug — ojo con «arreglarla».** Quitar tildes para comparar es lo
+correcto: hace el check robusto a nuestro propio formato y a las erratas del import. Si se le exige
+igualdad con tildes, los 1.210 casos pasan a fallar **junto con** un número indeterminado de citas
+honradas, y el guardarraíl se vuelve inservible (es el mismo error de calibración que llevó el check
+estricto de §5.1.bis de 942 falsos a 165 reales). Lo que falta es **otra** comprobación, sobre el
+texto que se PINTA, no sobre el que se compara: *¿la cita conserva los diacríticos del artículo?*
+
+**Lo que queda:**
+1. **Reparar los 1.210 con blockquote**, que son los que engañan. No re-acentuar «a ojo»: el texto
+   bueno ya está en el artículo vinculado — se localiza el fragmento con el comparador que ya
+   normaliza y se **sustituye por el literal del artículo**. Determinista y verificable.
+2. **Los 460 restantes** (sin blockquote) son prosa nuestra: ahí sí es corrección ortográfica, y se
+   puede hacer con diccionario acotado a la lista de palabras del corte. Prioridad menor: se lee
+   descuidado, pero no afirma nada falso.
+3. **La capa que falta:** comprobar diacríticos de la cita contra el artículo, en el mismo módulo del
+   criterio único (nunca una segunda copia — así nacieron los cinco escritores de [T-130]) y
+   **avisando, no bloqueando**, hasta que la cola esté drenada.
+4. **Mirar de dónde salen.** El reparto por palabra apunta a lotes, no a despistes sueltos: conviene
+   agrupar por `created_at`/lote antes de reparar, porque si el generador o el importador sigue
+   perdiendo tildes, esto se vuelve a llenar. Relacionado: [T-409] (cubo de transcripción) tocó de
+   pasada un caso así (línea *«su explicación actual está sin tildes por un fallo de codificación»*)
+   sin medir la clase.
+
+**Cómo se reproduce la medida:**
+```sql
+-- \m…\M son fronteras de palabra de Postgres. La lista es la del núcleo, sin plurales.
+SELECT count(*) FROM questions
+ WHERE is_active AND explanation ~
+   '\m(articulo|articulos|segun|tambien|aprobacion|informacion|administracion|organo|organos|mocion|cuestion|dimision|celebracion|regimen|proteccion|resolucion|sancion)\M';
+```
+
+### [T-533] 🟠 [ABIERTO 04/08] Cantabria T6 sirve los Capítulos III y IV de la Ley 40/2015 que su epígrafe oficial no pide
+
+- **Sale de la impugnación `b439a3a7` de Jonatan Gonzalez** (ULE, 03/08): *«Esto es del capitulo III que no entra en el temario»*. Tenía razón — el ANEXO II del BOE-A-2026-4150 pide para el Tema 2 de la Universidad de León *«Capítulos I y II del Título Preliminar … Capítulo V»*, y el scope servía además el **Capítulo III**. Ese caso **ya está arreglado** (los arts. 25-31 salieron del scope el 04/08 a las 07:26, `topic_scope_history` delta −7).
+- **AL MEDIR SI ERA SISTÉMICO apareció un segundo caso, y este sigue vivo.** De las **47** filas de `topic_scope` que escopan el Capítulo III de la Ley 40/2015, **7** tienen un epígrafe que enumera capítulos o títulos concretos. Seis lo piden de verdad (Galicia y Aux. Galicia dicen *«capítulos I, II, III, IV y V»*; Badajoz T13 pide justo *«Capítulos III y IV»*; Cuenca T9 *«Capítulos I a VI»*; Granada T203 y Guardia Civil T10 piden el **Título Preliminar entero**). El séptimo no:
+
+  | | |
+  |---|---|
+  | Oposición | `auxiliar_administrativo_cantabria` T6 |
+  | Epígrafe (Paso 1 `verified_literal`) | *«disposiciones generales (capítulo I del título preliminar), de los órganos de las Administraciones Públicas (capítulo II del título preliminar), funcionamiento electrónico del sector público (capítulo V del título Preliminar), relaciones interadministrativas (título III)»* |
+  | Scope | incluye **25-37** = Capítulo III (potestad sancionadora) **y Capítulo IV** (responsabilidad patrimonial) |
+  | Preguntas activas de esos artículos | **139** |
+  | Exposición medida | 19 veces servidas a 3 usuarios (última: 16/07) |
+
+- **Lo que hace este caso distinto del de la ULE:** aquí el epígrafe **ya está contrastado contra el boletín** (`verified_literal`), o sea que no hace falta el Paso 1 — la contradicción está a la vista. Lo que falla es el Paso 2: el scope figura `verified_correct` **sellado por `claude_direct`** (21/07), justo la firma de la que [T-518] manda desconfiar porque no viene del pipeline de dos agentes.
+- **Qué hacer:** recortar 25-37 del `topic_scope` de Cantabria T6 por el camino del runbook (`verify:scope plan` → `apply`), re-verificar el tema y purgar la caché del tema. **No tocar nada más**: las otras seis oposiciones piden el Capítulo III de verdad y recortarlas sacaría de programa lo que su boletín sí incluye.
+- **Ojo con la frontera:** el epígrafe de Cantabria también deja fuera los arts. 6, 7 y 16-18 del Capítulo II, que el scope tampoco tiene — eso ya estaba bien y no se toca.
+- Relacionadas: [T-528] (el 59% de los scopes «verificados» se apoya en un epígrafe que nadie contrastó) y [T-527] (el mismo patrón con el RD 534/2024 en tres universidades). Esta ficha es un caso concreto y medido de lo que [T-528] describe en agregado.
 
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
@@ -1201,11 +1292,43 @@ correct» no es un dato.
    T1/T3/T4 contra el programa oficial, que ya está localizado y descargado.
 4. `verify:scope apply` **no se identifica** en `topic_scope_history` (`changed_by`/`change_reason`
    a NULL). Es una línea (`SET LOCAL app.actor`) y hoy el escritor canónico deja misterio.
+5. **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
+   nombra (medido el 04/08, al resolver la SEGUNDA impugnación del mismo usuario — `b439a3a7`, art.
+   27, gemela de la `0b9d9f56` que abrió esta ficha).** El corte: de las **47** filas de
+   `topic_scope` que escopan la Ley 40/2015 con alguno de los arts. **25-31**, **16** tienen un
+   epígrafe que **no menciona** potestad sancionadora, responsabilidad patrimonial ni el Título
+   Preliminar entero — 14 oposiciones reales + 2 personalizadas con el epígrafe vacío. Las otras 31
+   son legítimas (su epígrafe pide la potestad sancionadora de forma explícita). Los más claros,
+   con el mismo perfil que León T2 (el epígrafe delimita órganos / disposiciones generales /
+   funcionamiento electrónico y el scope arrastra el Capítulo III):
+   `auxiliar_administrativo_la_rioja` T14 («De los órganos de las Administraciones Públicas»),
+   `auxiliar_administrativo_diputacion_leon` T14 («disposiciones generales y principios. Abstención
+   y recusación»), `administrativo_junta_general_asturias` T28, `administrativo_asturias` T204 (que
+   además tiene su propio T208 de potestad sancionadora → duplicado), `administrativo_gva` T104,
+   `auxiliar_administrativo_ayuntamiento_valencia` T10, `auxiliar_administrativo_ayuntamiento_granada`
+   T2 y `auxiliar_administrativo_cyl` T11 (¡«las fuentes del derecho administrativo»!).
+   **Cada uno exige su Paso 1 antes de recortar** — no se aplica en bloque: `auxiliar_administrativo_sermas`
+   T9 tiene el epígrafe truncado («La Ley 40/2015…: » y nada más), así que ahí no se puede decidir
+   sin la fuente. Material servido en juego: los arts. 25-31 tienen **62 preguntas activas**
+   (25→8, 26→3, 27→4, 28→8, 29→15, 30→20, 31→4).
+   **Reproducible:** el corte está en el bloque SQL de abajo.
 
 **Cómo se reproduce la medida:**
 ```sql
 SELECT t.position_type, count(*) FROM topic_scope_verification v JOIN topics t ON t.id=v.topic_id
  WHERE v.verified_by='claude_direct' AND v.state='verified_correct' GROUP BY 1 ORDER BY 2 DESC;
+```
+
+Y el corte del punto 5 (Capítulo III escopado sin que el epígrafe lo pida) — las 47 filas se
+filtran DESPUÉS en JS, porque el criterio es «el epígrafe no nombra la materia» y eso se lee:
+```sql
+SELECT t.position_type, t.topic_number, t.epigrafe, ts.article_numbers
+  FROM topic_scope ts JOIN topics t ON t.id = ts.topic_id
+ WHERE ts.law_id = '95680d57-feb1-41c0-bb27-236024815feb'          -- Ley 40/2015
+   AND (ts.article_numbers IS NULL
+        OR ts.article_numbers && ARRAY['25','26','27','28','29','30','31']);
+-- descartar las legítimas: epígrafe que casa /sancionador|infracci|sanci[oó]n|
+--   responsabilidad patrimonial|cap[ií]tulos? III|t[ií]tulo preliminar/i  → quedan 16
 ```
 
 ### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
