@@ -358,3 +358,41 @@ describe('citar la norma por su nombre completo no convierte la pregunta en sosp
     expect(r.hallazgo).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// [T-458 · 04/08/2026] CUARTA ampliación de la lista de instrumentos, y ésta por FAMILIAS.
+//
+// Manolo García impugnó TRES preguntas seguidas de la Ley 13/2007 andaluza y el detector daba
+// CERO sobre esa ley: su art. 57 bis manda establecer una «ventanilla única» y el 60 promover
+// «protocolos de actuación», y ninguna de esas palabras estaba en la lista.
+//
+// ⚠️ Esto arregla SOLO la mitad del artículo. Medido el mismo día: con la lista ampliada, el
+// barrido del banco entero sigue dando 134 preguntas / 36 hallazgos, EXACTAMENTE lo mismo que
+// sin ella. Las cuatro preguntas malas de Manolo se siguen escapando por la otra mitad, y eso
+// tiene su propia ficha. Estos tests fijan lo que sí quedó bien, para que la ampliación no se
+// pierda en la siguiente edición.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe('RE_INSTRUMENTO — familias que la lista cerrada no cubría (04/08)', () => {
+  const { RE_INSTRUMENTO, norm } = require('@/lib/health/instrumentoDerivado.cjs')
+  const reconoce = (t) => RE_INSTRUMENTO.test(norm(t))
+
+  it.each([
+    ['ventanilla única', 'establecerá un sistema único de atención denominado ventanilla única para atención a las víctimas'],
+    ['protocolo de actuación', 'promoverá la elaboración de protocolos de actuación en los ámbitos judicial y policial'],
+    ['sistema único', 'la Administración establecerá un sistema único de atención'],
+    ['registro por materia', 'se crea el registro de parejas de hecho de la comunidad autónoma'],
+    ['observatorio andaluz', 'se crea el observatorio andaluz de la violencia de género'],
+  ])('reconoce %s', (_n, texto) => {
+    expect(reconoce(texto)).toBe(true)
+  })
+
+  it.each([
+    // Lo que NO debe reconocer: la lista sigue cerrada a propósito. Abrirla a cualquier
+    // sustantivo dispararía con media ley, que es justo lo que su cabecera advierte.
+    ['un artículo que solo habla de derechos', 'todas las personas tienen derecho a la vida y a la integridad física'],
+    ['un procedimiento cualquiera', 'el plazo para resolver el procedimiento será de tres meses'],
+    ['un órgano sin instrumento', 'corresponde a la consejería competente ejercer estas funciones'],
+  ])('NO se dispara con %s', (_n, texto) => {
+    expect(reconoce(texto)).toBe(false)
+  })
+})
