@@ -842,25 +842,6 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-549] 🟡 [ABIERTO 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
-
-> ⚠️ El outcome de [T-523] la cita como «T-546» — ese número se escribió antes de reservarlo y es incorrecto. Es ESTA.
-
-**Qué pasa.** `scripts/backlog/verificacion.cjs` decide si una tarea se puede cerrar con `contenidos(shaVivo, commits)`, que exige que **todos** los commits que declaran la tarea sean ancestros del sha vivo. Pero el veredicto que se quiere dar es otro: *«¿está vivo el código SERVIDO que toca esta tarea?»*. El propio módulo ya sabe distinguirlo — tiene `DIRS_SERVIDOS` (`app`, `components`, `contexts`, `hooks` en frontend; `backend/src`) y calcula `importadoEn` por fichero — pero esa distinción **no se aplica al conjunto de commits** que se le pasa a `contenidos`.
-
-**La consecuencia, y es lo que lo hace algo más que un detalle:** castiga exactamente la práctica que la casa pide. El orden bueno es *desplegar → verificar en producción → subir la prueba que lo verifica*. Al subir esa prueba (una simulación en `scripts/sim/`, que no es código servido y no cambia nada de lo desplegado), la tarea **deja de ser cerrable hasta el siguiente deploy**. O sea que la única forma de cerrar sin escape es escribir la verificación ANTES de poder verificar, o no subirla.
-
-**Cómo salió (04/08/2026).** Cerrando [T-523]: el arreglo se desplegó (`a68f5648`), se verificó en un navegador real contra producción (4/4) y se subió `scripts/sim/sim-editor-abre-la-tuya.ts` con esa comprobación. `done` bloqueó con *«su código todavía NO está vivo»* señalando tres ficheros de `components/` y `app/` que **sí** estaban vivos: `/api/health` respondía `a68f5648` y `git merge-base --is-ancestor` lo confirmaba. Lo que faltaba en el sha vivo era el commit de la SIMULACIÓN. Se cerró con `--igualmente` y el motivo escrito.
-
-**Segundo hallazgo del mismo rato, distinto y también real: durante el rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` lee `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva, así que ese endpoint contesta un sha **u otro** según a cuál caiga. El primer intento de cierre falló por esto (antes de que el rollout terminara) y el segundo ya devolvía el sha nuevo. Un guardarraíl que da veredictos distintos a la misma pregunta en el mismo minuto enseña a ignorarlo.
-
-**Qué mirar.**
-1. Filtrar los commits por si tocan `DIRS_SERVIDOS` **antes** de exigir que estén vivos: un commit que solo añade tests, simulaciones, documentación o scripts no puede impedir el cierre. La pieza ya existe (`importadoEn`), solo hay que usarla aquí.
-2. Para el rollout: o consultar el sha de forma estable (preguntar N veces y exigir acuerdo, o leer `deploy_runs`, que registra el fin del deploy con su `outcome`), o decirlo explícitamente en el mensaje («hay un rollout en curso, reintenta al terminar») en vez de afirmar que no está vivo.
-3. Medir cuántos `--igualmente` de los contados en el bus de fricción responden a estas dos causas: si son la mayoría, el guardarraíl está enseñando a saltárselo.
-
-**Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
-
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 
 - **Sale de [T-547]**, que puso los 38 epígrafes en `verified_literal` contra el BOPA. Reescribir el epígrafe dispara el trigger, así que su scope quedó **`stale`**: el veredicto anterior se emitió contra una paráfrasis y ya no vale. Estado hoy: **29 stale · 8 verified_correct · 1 verified_issues**.
@@ -1950,7 +1931,9 @@ ponerse a verificar una por una.
 - **Arreglo propuesto:** que la pregunta no sea «¿están vivos todos los commits?» sino **«¿están vivos los commits que tocan algo servido?»** — mismo principio que ya rige el resto del módulo (*se DERIVA de quién importa el fichero, no se declara*). Un commit que no toca superficie servida no puede cambiar lo que el usuario recibe, así que no puede ser motivo de espera. Y la lista que imprime debería nombrar solo los ficheros de los commits que faltan, no la unión: acusar a un fichero que está vivo es lo que hace que el mensaje no se crea.
 - **Y el sistema ya lo estaba midiendo por su cuenta:** `npm run sesiones:friccion` da **`done-verificacion` rodeado el 43% (3 de 7)**. O sea que casi la mitad de las veces que esta puerta habla, alguien la rodea — el propio informe lo clasifica como *«mira QUÉ caso legítimo no contempla»*. Es evidencia independiente de la medición de arriba: una la saca de los commits, la otra de los escapes reales, y las dos apuntan al mismo hueco.
 - **Ojo al recalibrar:** esto NO puede dejar pasar el caso para el que nació la puerta ([T-363], código de cobros cerrado sin desplegar). Ahí el commit que faltaba SÍ tocaba superficie servida, así que el corte propuesto lo sigue parando. `npm run sim:verificacion` es el que tiene que demostrarlo.
-- **Relacionadas:** [T-392] (fase 1: la puerta misma), [T-375] y [T-403] (la familia: un guardarraíl que bloquea lo que no se puede satisfacer y acaba enseñando a apagarlo), [T-423] (el contador de fricción donde se ve el `--igualmente`).
+- **SEGUNDO DEFECTO, DISTINTO Y TAMBIÉN REAL (04/08): durante un rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` pregunta a `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva → ese endpoint contesta **un sha u otro según a cuál caiga**. Verificado cerrando [T-523]: el primer `done` dio *«no está vivo»* con el rollout a medias y el segundo, ya terminado, devolvió el sha nuevo. Es peor que el defecto de arriba porque no es determinista: **la misma pregunta, en el mismo minuto, da veredictos opuestos**, y eso es lo que enseña a no creerse la puerta. Arreglo posible sin tocar el criterio: leer el fin del deploy en `deploy_runs` (que ya registra `finished_at` + `outcome`), o preguntar N veces y exigir acuerdo, o —lo más barato— **decir en el mensaje que hay un rollout en curso** en vez de afirmar que el código no está vivo.
+- **Otro caso real, del mismo día:** cerrando [T-523] el commit que faltaba era `scripts/sim/sim-editor-abre-la-tuya.ts`, la simulación en navegador **escrita después de desplegar para poder verificar en producción**. O sea que la puerta castiga el orden que la casa pide (desplegar → verificar en vivo → subir la prueba): la única forma de cerrar sin escape sería escribir la verificación antes de poder verificar, o no subirla.
+- **Relacionadas:** [T-392] (fase 1: la puerta misma), [T-375] y [T-403] (la familia: un guardarraíl que bloquea lo que no se puede satisfacer y acaba enseñando a apagarlo), [T-423] (el contador de fricción donde se ve el `--igualmente`), [T-531] (la MISMA puerta rechazando por palabras del outcome), [T-549] (duplicada de ésta, retirada — la abrió una sesión que no vio ésta porque el aviso de similitud de `reserve` solo enseña fichas cerradas, [T-478]).
 
 ### [T-451] 🟠 [ABIERTO 01/08] `huerfanos:plan` no ve las leyes escopadas como «ley entera»: 4.865 artículos sin preguntas fuera del radar
 
@@ -4332,6 +4315,26 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-549] ✅ 🟡 [HECHA 04/08] El gate de cierre exige que TODOS los commits estén vivos, aunque uno no toque código servido
+
+> ⚠️ El outcome de [T-523] la cita como «T-546» — ese número se escribió antes de reservarlo y es incorrecto. Es ESTA.
+
+**Qué pasa.** `scripts/backlog/verificacion.cjs` decide si una tarea se puede cerrar con `contenidos(shaVivo, commits)`, que exige que **todos** los commits que declaran la tarea sean ancestros del sha vivo. Pero el veredicto que se quiere dar es otro: *«¿está vivo el código SERVIDO que toca esta tarea?»*. El propio módulo ya sabe distinguirlo — tiene `DIRS_SERVIDOS` (`app`, `components`, `contexts`, `hooks` en frontend; `backend/src`) y calcula `importadoEn` por fichero — pero esa distinción **no se aplica al conjunto de commits** que se le pasa a `contenidos`.
+
+**La consecuencia, y es lo que lo hace algo más que un detalle:** castiga exactamente la práctica que la casa pide. El orden bueno es *desplegar → verificar en producción → subir la prueba que lo verifica*. Al subir esa prueba (una simulación en `scripts/sim/`, que no es código servido y no cambia nada de lo desplegado), la tarea **deja de ser cerrable hasta el siguiente deploy**. O sea que la única forma de cerrar sin escape es escribir la verificación ANTES de poder verificar, o no subirla.
+
+**Cómo salió (04/08/2026).** Cerrando [T-523]: el arreglo se desplegó (`a68f5648`), se verificó en un navegador real contra producción (4/4) y se subió `scripts/sim/sim-editor-abre-la-tuya.ts` con esa comprobación. `done` bloqueó con *«su código todavía NO está vivo»* señalando tres ficheros de `components/` y `app/` que **sí** estaban vivos: `/api/health` respondía `a68f5648` y `git merge-base --is-ancestor` lo confirmaba. Lo que faltaba en el sha vivo era el commit de la SIMULACIÓN. Se cerró con `--igualmente` y el motivo escrito.
+
+**Segundo hallazgo del mismo rato, distinto y también real: durante el rollout el veredicto es una MONEDA AL AIRE.** `shaVivo()` lee `https://www.vence.es/api/health`, y mientras ECS sustituye tareas el balanceador reparte entre la revisión vieja y la nueva, así que ese endpoint contesta un sha **u otro** según a cuál caiga. El primer intento de cierre falló por esto (antes de que el rollout terminara) y el segundo ya devolvía el sha nuevo. Un guardarraíl que da veredictos distintos a la misma pregunta en el mismo minuto enseña a ignorarlo.
+
+**Qué mirar.**
+1. Filtrar los commits por si tocan `DIRS_SERVIDOS` **antes** de exigir que estén vivos: un commit que solo añade tests, simulaciones, documentación o scripts no puede impedir el cierre. La pieza ya existe (`importadoEn`), solo hay que usarla aquí.
+2. Para el rollout: o consultar el sha de forma estable (preguntar N veces y exigir acuerdo, o leer `deploy_runs`, que registra el fin del deploy con su `outcome`), o decirlo explícitamente en el mensaje («hay un rollout en curso, reintenta al terminar») en vez de afirmar que no está vivo.
+3. Medir cuántos `--igualmente` de los contados en el bus de fricción responden a estas dos causas: si son la mayoría, el guardarraíl está enseñando a saltárselo.
+
+**Relacionadas:** [T-392] (que introdujo la puerta), [T-523] (el caso que la destapó).
+
 
 ### [T-523] ✅ 🔴 [HECHA 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
 
