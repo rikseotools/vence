@@ -34,14 +34,17 @@ describe('diffReservas — qué se me ha ido de las manos', () => {
     expect(mias).toEqual(['T-516'])
   })
 
-  it('caducó y volvió al pool SIN dueño: también se avisa (puedo estar hablando de ello igual)', () => {
+  it('sin dueño nuevo NO se avisa: soltar es casi siempre un acto propio (done/pause/release)', () => {
+    // Regresión del estreno (04/08): lo PRIMERO que dijo el aviso en vivo fue que esta sesión
+    // había «perdido» la tarea que ella misma acababa de cerrar. Una reserva libre no distingue
+    // «me lo quitaron» de «lo solté yo», y el daño que persigue la ficha necesita una SEGUNDA
+    // sesión: sin dueño nuevo, nadie más le está hablando a Manuel del mismo caso.
     const { perdidas } = diffReservas({
       antes: ['T-042'],
       ahora: [{ id: 'T-042', cola: 'backlog', claimedBy: null, titulo: 'algo' }],
       sid: YO,
     })
-    expect(perdidas).toHaveLength(1)
-    expect(perdidas[0].ahoraDe).toBeNull()
+    expect(perdidas).toEqual([])
   })
 
   it('un caso CERRADO no es una pérdida: desaparece de la consulta y se calla', () => {

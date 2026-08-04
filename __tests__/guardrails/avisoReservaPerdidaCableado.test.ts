@@ -61,6 +61,11 @@ describe('GUARDARRAÍL: el aviso de reserva perdida sigue enchufado', () => {
     expect(src).not.toMatch(/process\.env\.CLAUDE_CODE_SESSION_ID/)
   })
 
+  it('la cola del backlog filtra los estados cerrados (o avisa de trabajo terminado)', () => {
+    const src = leer('scripts/sessions/reserva-perdida.cjs')
+    expect(src).toMatch(/status NOT IN \('done','dropped'\)/)
+  })
+
   it('cubre las DOS colas: tareas del backlog y casos de la cola de atención', () => {
     const src = leer('scripts/sessions/reserva-perdida.cjs')
     for (const tabla of ['backlog_tasks', 'user_feedback', 'question_disputes', 'psychometric_question_disputes']) {

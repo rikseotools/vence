@@ -58,9 +58,13 @@ function leerFoto(f) {
 async function consultar(sql, sid, idsAntes) {
   const previos = idsAntes.length ? idsAntes : ['00000000-0000-0000-0000-000000000000']
   const [tareas, feedback, disputas, psico, latido] = await Promise.all([
+    // Solo tareas EN JUEGO: una `done`/`dropped` que aún figure en la foto no es una pérdida,
+    // es trabajo terminado. Las otras tres colas ya filtraban por estados abiertos; esta no, y
+    // por eso el aviso se estrenó diciendo que había perdido la tarea recién cerrada.
     sql`SELECT id::text AS id, 'backlog' AS cola, claimed_by, title AS titulo
           FROM backlog_tasks
-         WHERE claimed_by = ${sid} OR id = ANY(${previos})`,
+         WHERE status NOT IN ('done','dropped')
+           AND (claimed_by = ${sid} OR id = ANY(${previos}))`,
     sql`SELECT id::text AS id, 'feedback' AS cola, claimed_by, NULL AS titulo
           FROM user_feedback
          WHERE status = 'pending' AND (claimed_by = ${sid} OR id::text = ANY(${previos}))`,
