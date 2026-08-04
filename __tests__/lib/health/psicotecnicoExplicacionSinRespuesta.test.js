@@ -166,3 +166,51 @@ describe('los dos falsos positivos que aparecieron al correrlo contra el banco (
     expect(r.cierra).toBe(false)
   })
 })
+
+describe('claves que son un PAR de valores (T-502, al reparar el lote)', () => {
+  test('«(2,1)» son las dos raíces de una ecuación, no el decimal 2,1', () => {
+    const r = analizarExplicacion({
+      correcta: '(2,1)',
+      opciones: ['(3,-1/2)', '(2,-1)', '(2,1)', '(1,-1/2)'],
+      explicacion: 'x² − 9 = 3x − 11 → x² − 3x + 2 = 0 → (x − 1)(x − 2) = 0, de donde x = 1 y x = 2.',
+    })
+    expect(r.cierra).toBe(true)
+  })
+})
+
+describe('claves que son un ORDEN (preguntas de ordenar la frase)', () => {
+  test('«2,4,3,1» es una lista, no un número imposible', () => {
+    expect(numeros('el orden es (2,4,3,1)')).toEqual(expect.arrayContaining([2, 4, 3, 1]))
+  })
+
+  test('la explicación que da el orden correcto cierra', () => {
+    const r = analizarExplicacion({
+      correcta: '2, 4, 3, 1',
+      opciones: ['2, 4, 3, 1', '3, 2, 1, 4', '4, 1, 2, 3', '1, 3, 4, 2'],
+      explicacion: 'Las universidades del siglo XXI forman profesionales para el desarrollo social con habilidades necesarias para su desempeño. (**2,4,3,1**).',
+    })
+    expect(r.cierra).toBe(true)
+  })
+})
+
+describe('el ENUNCIADO desambigua cuando la clave son dos valores (T-502)', () => {
+  test('«indique los dos números» convierte «2,1» en un par, no en un decimal', () => {
+    const r = analizarExplicacion({
+      pregunta: 'Indique los dos números que seguirían en cada serie: 11, 10, 8, 7, 5, 4, ___, ___',
+      correcta: '2,1',
+      opciones: ['3, -1', '4, 5', '8, 10', '2,1'],
+      explicacion: 'El ciclo es −1, −2. Siguiendo el ciclo: 4 − 2 = 2 y 2 − 1 = 1.',
+    })
+    expect(r.cierra).toBe(true)
+  })
+
+  test('sin esa pista, «2,1» se sigue leyendo como decimal', () => {
+    const r = analizarExplicacion({
+      pregunta: '¿Cuál es el resultado de la operación?',
+      correcta: '2,1',
+      opciones: ['3,4', '2,1', '5,6', '7,8'],
+      explicacion: 'La operación da como resultado un valor distinto del que se busca, en torno a 9 unidades.',
+    })
+    expect(r.cierra).toBe(false)
+  })
+})

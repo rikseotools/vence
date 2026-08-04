@@ -34,6 +34,7 @@ const JSON_OUT = ARGS.includes('--json')
       correcta: opciones[q.correct_option],
       opciones,
       explicacion: q.explanation,
+      pregunta: q.question_text,
     })
     if (r.exenta) { exentas[r.exenta] = (exentas[r.exenta] || 0) + 1; continue }
     medibles++
