@@ -64,8 +64,22 @@ async function main() {
       { cwd: process.cwd(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
   } catch { return 0 }
 
+  // ── EL FAIL-OPEN TIENE QUE DECIRSE (T-486, 04/08/2026) ────────────────────────────────────
+  // Hasta hoy esto era `if (!u) return 0` MUDO, y ese silencio es indistinguible de «he mirado y
+  // estás solo»: la misma salida, sin una línea. Es justo el principio «"no lo sé" tiene que poder
+  // decirse» de `sistema-sesiones-paralelas.md`, incumplido por el único guardarraíl que el
+  // CLAUDE.md marca como bloqueante-de-verdad porque su alternativa es irreversible.
+  //
+  // Medido al probar un trabajador de flota en un clon SIN `.env.local`: los otros dos guards que
+  // dependen de la BD sí avisan («sin DATABASE_URL — push permitido (fail-open)»); este no decía
+  // nada. Un worktree de agente (`.claude/worktrees/…`) no hereda el `.env.local`, así que este es
+  // el estado NORMAL de cualquier sesión de agente, no un caso raro.
   const u = url()
-  if (!u) return 0
+  if (!u) {
+    console.log('⚠️  check-indice-compartido: sin DATABASE_URL — NO he podido comprobar si otra sesión trabaja aquí.')
+    console.log('    Commit permitido (fail-open), pero esto NO es «estás solo»: es «no lo sé».')
+    return 0
+  }
   let sesiones = []
   try {
     const postgres = require('postgres')

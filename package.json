@@ -63,7 +63,7 @@
     "test:integration": "jest --watchAll=false --passWithNoTests --maxWorkers=2 --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)'",
     "test:precommit": "jest --testPathPattern='precommit/criticalValidations' --passWithNoTests",
     "test:system": "node scripts/check-system.js",
-    "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='.claude/worktrees/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats'",
+    "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='<rootDir>/.claude/worktrees/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats'",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "sim": "tsx scripts/sim/run.ts",
