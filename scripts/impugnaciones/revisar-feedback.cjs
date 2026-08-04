@@ -87,6 +87,19 @@ const ago = (d) => {
     console.log('═'.repeat(70));
     if (claimWarn) console.log(claimWarn);
 
+    // --- 🔗 ¿ESTE CASO YA TIENE FICHA VIVA EN EL BACKLOG? (T-517) ---
+    // Va ARRIBA a propósito: quien coge el caso tiene que ver el trabajo ya hecho ANTES de
+    // ponerse a diagnosticar. Nace de que el feedback 8b788ee0 cambió de manos con su ficha
+    // [T-507] ya resuelta y la sesión que lo cogió no podía saberlo. Sin BD: lee el markdown.
+    try {
+      const path = require('path');
+      const { fichasQueCitan, lineasDossier } = require(path.join(__dirname, '..', '..', 'lib', 'backlog', 'fichasQueCitan.cjs'));
+      const md = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'roadmap', 'tareas-pendientes.md'), 'utf8');
+      const idCorto = String(fb.id).slice(0, 8);
+      const lineas = lineasDossier(fichasQueCitan(md, [String(fb.id), idCorto]));
+      if (lineas.length) console.log('\n' + lineas.join('\n'));
+    } catch { /* el backlog no es imprescindible para el dossier: nunca lo tumba */ }
+
     // --- Usuario ---
     const [p] = await s`SELECT full_name, email, plan_type, target_oposicion, ciudad, created_at FROM user_profiles WHERE id=${fb.user_id}`;
     console.log(`Usuario: ${p ? p.full_name : '(contacto externo)'}${p ? ` (${p.email})` : ''}`);

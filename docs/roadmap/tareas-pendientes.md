@@ -826,15 +826,6 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-517] 🟡 [ABIERTO 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
-
-- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
-- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
-- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
-- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
-- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
-- **Relacionadas:** [T-516], [T-507].
-
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
 - **Esfuerzo: rato.** Núcleo puro + subcomando + tests.
@@ -867,28 +858,6 @@
 - **CAPAS:** unitarios de los dos núcleos puros (17 + 20) · 4 guardarraíles nuevos en `testsDeOposicionPersonalizada.guardrail` (el CUARTO eslabón mudo) · **`sim:rutas-oposicion-personalizada --vacia`**, que era el punto ciego de esa simulación: creando siempre una oposición CON temario daba verde mientras el caso mayoritario estaba roto. **Probada roja contra producción antes de arreglar** (reproduce `icono 📚 → 404`) y verde después.
 - **PENDIENTE:** desplegar; verificar en vivo la URL de ella; decidir si se le devuelve el objetivo a Almería (que es lo que estudia de verdad: todos sus tests son de ahí) o se le explica cómo cambiarlo.
 - **GOTCHA de método:** el guardarraíl que exige no reescribir el criterio a mano se disparó con **mi propio comentario** explicando por qué no hay que reescribirlo. Mira código, no prosa — un guardarraíl que se dispara con las palabras obliga a escribir peores comentarios para callarlo.
-
-### [T-507] 🟡 [ABIERTO 03/08 — HECHO, EN ESPERA DE DEPLOY] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
-
-- **ESTADO: el código está en `main` y la migración YA APLICADA en RDS, pero SIN DESPLEGAR.** Lo verificado lo está contra la BD de producción con las funciones de producción; falta verlo en la app en vivo. Al desplegar: abrir el tema 3 de `subalterno-gva` y comprobar que dice 22 (y que el hub dice lo mismo).
-- **Esfuerzo declarado: rato.** Se fue a más al medir: la migración de la MV y la tercera causa (oficiales sin `exam_position`) no estaban a la vista al abrirla.
-- **CÓMO SALIÓ.** Feedback `8b788ee0` de **Neus A.B. (premium, `subalterno_gva`)**: *«En el tema 3 solo puedo realizar 22 preguntas, las mismas todo el rato. Pero pone que hay más disponibles»*. Tenía razón y el número que veía lo poníamos nosotros.
-- **LA CAUSA, en una frase: el rótulo y el test usaban criterios distintos.** El serve aplica SIEMPRE `buildOfficialExamFilter` (una pregunta de examen oficial solo se sirve si su `exam_position` es de TU oposición — anti-contaminación, caso Laura 14/04/2026) y los cuatro contadores no lo aplicaban. En su tema 3 había 39 preguntas en el scope, de las que **17 son oficiales de `auxiliar_administrativo_valencia`**: el test no se las iba a dar jamás y el rótulo las contaba.
-- **Comprobado con SUS datos, no deducido:** 378 respuestas, 245 preguntas distintas, **ni una sola oficial servida** en toda su historia; en el tema 3, esas 22 preguntas repetidas 122 veces. Además `totalQuestions` es el denominador de su barra de progreso, así que ese tema no podía pasar del 56% por mucho que estudiara.
-- **ALCANCE (`npm run sim:contador-servible`, 03/08):** **2.286 temas activos** descontaban mal, **197.734 preguntas** anunciadas y no servibles.
-- **TERCERA CAUSA que apareció al atar el test, y que no se veía:** **33 preguntas oficiales del banco no tienen `exam_position`**. No se las sirve nadie (ninguna oposición las reclama) pero además **quedaban fuera de la MV de oficiales**, así que no había forma de descontarlas: seguían anunciándose en **141 temas**. Ahora se agrupan bajo `''`, cadena que jamás está en `EXAM_POSITION_MAP` → cuentan como ajenas y nunca como propias.
-- **QUÉ SE TOCÓ.** El criterio NO se ha copiado a ningún sitio nuevo: el gemelo JS del filtro SQL (`passesOfficialExamFilter`) vive **en el mismo módulo** que `buildOfficialExamFilter`, junto a `ownOfficialPredicate`.
-  - `lib/api/oposicion-scope/queries.ts` — `passesOfficialExamFilter` (gemelo JS: ¿esto lo puede DAR el serve?).
-  - `lib/api/topic-data/mv-queries.ts` — resta las ajenas del total **y cubo a cubo por dificultad**, porque la ficha del tema pinta el total como suma de `difficultyStats` (restar solo del total dejaba el rótulo igual); y el contador del hub.
-  - `lib/api/topic-data/queries.ts` y `lib/api/random-test/queries.ts` — los caminos legacy, que siguen vivos como fallback sin redeploy (arreglar solo la MV dejaba el fallo esperando a que alguien apagase el flag).
-  - `lib/api/test-config/queries.ts` — la estimación del configurador, que además **tampoco excluía los supuestos prácticos** (`exam_case_id`), otro filtro que el serve sí aplica.
-  - `supabase/migrations/20260803_topic_official_by_position_difficulty.sql` — la MV de oficiales gana el desglose por dificultad (misma función `topic_question_difficulty_bucket` que la otra MV) y deja de tirar las de `exam_position` NULL. **APLICADA EN RDS el 03/08** (21.131 filas, los cubos suman exactamente el total). Recrea sus dos índices: sin el UNIQUE, el refresh nocturno `CONCURRENTLY` falla.
-- **CAPAS.** `officialCountSingleSource.test.ts` (24 tests) — extendido, no duplicado: era el guardarraíl de la mitad hermana de este criterio (contar de MÁS las propias, bug del «115»). Ahora cubre las dos mitades y exige que **los cuatro contadores** descuenten. `topicCountVsServed.integration.test.ts` — compara contra `getFilteredQuestions`, la función que sirve de verdad, y exige que la diferencia anunciado−servido sea **exactamente** la del tag: si aparece una causa nueva, pincha. `npm run sim:contador-servible` — la medida re-ejecutable, registrada en `toolRegistry`.
-- **⚠️ GOTCHA DE MEDICIÓN que costó dos vueltas y es reutilizable:** al contar lo excluido por tag, `NOT (tags @> ARRAY['PN'])` **vale NULL cuando `tags` es NULL**, así que deja fuera preguntas que el serve SÍ descarta. Con ese fallo, Policía Nacional T21 parecía servir **608** cuando sirve **222**, y las primeras cifras que se dieron estaban infladas. Lo cazó el test de integración al exigir residuo cero, no una revisión a ojo.
-- **VERIFICADO** con las funciones de producción, en los dos caminos (MV y legacy): tema 3 de `subalterno-gva` anuncia **22** y sirve **22**; la tarjeta del hub, 22.
-- **LO QUE NO ENTRA, y por qué:** la otra mitad de la clase (el filtro de TAG) es **[T-513]** — bajar el número de Policía Nacional de 2.006 a 222 no es corregir un contador, es una decisión de producto. Decisión de Manuel el 03/08.
-- **Relacionadas:** [T-513] (la deuda del tag), [T-411] (servir las oficiales compartidas, que cerraría el hueco por el otro lado), [T-326].
-
 
 ### [T-513] 🟠 [ABIERTO 03/08] 🙋 DECISIÓN DE MANUEL — los contadores anuncian 137.252 preguntas que el filtro de TAG impide servir
 
@@ -3649,6 +3618,41 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-517] ✅ [HECHA 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
+
+- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
+- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
+- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
+- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
+- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
+- **Relacionadas:** [T-516], [T-507].
+- **HECHO (04/08).** Núcleo puro `lib/backlog/fichasQueCitan.cjs` (10 tests) + bloque en los DOS dossieres (`revisar-feedback.cjs` y `revisar-impugnacion.cjs`), arriba del todo y antes de la conversación. Sin BD: lee el markdown. Si el backlog fallara, el dossier sigue saliendo (nunca lo tumba).
+- **El criterio de «viva» NO se decide aquí:** sale de `parseBacklogMarkdown`, que es la fuente única — manda el ✅, no la sección donde esté la ficha ([T-382]). Un test lo fija con una ficha cerrada colocada bajo `## Abiertas`.
+- **Verificado con el caso real:** el dossier de `8b788ee0` ahora abre con [T-507] y su extracto («el tema 3 anunciaba 39 y servía 22»), que es exactamente lo que la sesión que lo cogió esta mañana no podía ver.
+- **Frontera de palabra al buscar el id corto:** sin ella, ocho caracteres hex casarían dentro de cualquier otro hash.
+
+
+### [T-507] ✅ [HECHA 04/08] El contador de un tema anunciaba preguntas que su test nunca puede servir (oficiales de otra oposición)
+
+- **VERIFICADO EN PRODUCCIÓN (04/08, `deploy-de7d31c3`):** `GET /api/topics/3?oposicion=subalterno-gva` devuelve `totalQuestions: 22` y los cubos de dificultad suman 22. Antes anunciaba 39.
+- **Esfuerzo declarado: rato.** Se fue a más al medir: la migración de la MV y la tercera causa (oficiales sin `exam_position`) no estaban a la vista al abrirla.
+- **CÓMO SALIÓ.** Feedback `8b788ee0` de **Neus A.B. (premium, `subalterno_gva`)**: *«En el tema 3 solo puedo realizar 22 preguntas, las mismas todo el rato. Pero pone que hay más disponibles»*. Tenía razón y el número que veía lo poníamos nosotros.
+- **LA CAUSA, en una frase: el rótulo y el test usaban criterios distintos.** El serve aplica SIEMPRE `buildOfficialExamFilter` (una pregunta de examen oficial solo se sirve si su `exam_position` es de TU oposición — anti-contaminación, caso Laura 14/04/2026) y los cuatro contadores no lo aplicaban. En su tema 3 había 39 preguntas en el scope, de las que **17 son oficiales de `auxiliar_administrativo_valencia`**: el test no se las iba a dar jamás y el rótulo las contaba.
+- **Comprobado con SUS datos, no deducido:** 378 respuestas, 245 preguntas distintas, **ni una sola oficial servida** en toda su historia; en el tema 3, esas 22 preguntas repetidas 122 veces. Además `totalQuestions` es el denominador de su barra de progreso, así que ese tema no podía pasar del 56% por mucho que estudiara.
+- **ALCANCE (`npm run sim:contador-servible`, 03/08):** **2.286 temas activos** descontaban mal, **197.734 preguntas** anunciadas y no servibles.
+- **TERCERA CAUSA que apareció al atar el test, y que no se veía:** **33 preguntas oficiales del banco no tienen `exam_position`**. No se las sirve nadie (ninguna oposición las reclama) pero además **quedaban fuera de la MV de oficiales**, así que no había forma de descontarlas: seguían anunciándose en **141 temas**. Ahora se agrupan bajo `''`, cadena que jamás está en `EXAM_POSITION_MAP` → cuentan como ajenas y nunca como propias.
+- **QUÉ SE TOCÓ.** El criterio NO se ha copiado a ningún sitio nuevo: el gemelo JS del filtro SQL (`passesOfficialExamFilter`) vive **en el mismo módulo** que `buildOfficialExamFilter`, junto a `ownOfficialPredicate`.
+  - `lib/api/oposicion-scope/queries.ts` — `passesOfficialExamFilter` (gemelo JS: ¿esto lo puede DAR el serve?).
+  - `lib/api/topic-data/mv-queries.ts` — resta las ajenas del total **y cubo a cubo por dificultad**, porque la ficha del tema pinta el total como suma de `difficultyStats` (restar solo del total dejaba el rótulo igual); y el contador del hub.
+  - `lib/api/topic-data/queries.ts` y `lib/api/random-test/queries.ts` — los caminos legacy, que siguen vivos como fallback sin redeploy (arreglar solo la MV dejaba el fallo esperando a que alguien apagase el flag).
+  - `lib/api/test-config/queries.ts` — la estimación del configurador, que además **tampoco excluía los supuestos prácticos** (`exam_case_id`), otro filtro que el serve sí aplica.
+  - `supabase/migrations/20260803_topic_official_by_position_difficulty.sql` — la MV de oficiales gana el desglose por dificultad (misma función `topic_question_difficulty_bucket` que la otra MV) y deja de tirar las de `exam_position` NULL. **APLICADA EN RDS el 03/08** (21.131 filas, los cubos suman exactamente el total). Recrea sus dos índices: sin el UNIQUE, el refresh nocturno `CONCURRENTLY` falla.
+- **CAPAS.** `officialCountSingleSource.test.ts` (24 tests) — extendido, no duplicado: era el guardarraíl de la mitad hermana de este criterio (contar de MÁS las propias, bug del «115»). Ahora cubre las dos mitades y exige que **los cuatro contadores** descuenten. `topicCountVsServed.integration.test.ts` — compara contra `getFilteredQuestions`, la función que sirve de verdad, y exige que la diferencia anunciado−servido sea **exactamente** la del tag: si aparece una causa nueva, pincha. `npm run sim:contador-servible` — la medida re-ejecutable, registrada en `toolRegistry`.
+- **⚠️ GOTCHA DE MEDICIÓN que costó dos vueltas y es reutilizable:** al contar lo excluido por tag, `NOT (tags @> ARRAY['PN'])` **vale NULL cuando `tags` es NULL**, así que deja fuera preguntas que el serve SÍ descarta. Con ese fallo, Policía Nacional T21 parecía servir **608** cuando sirve **222**, y las primeras cifras que se dieron estaban infladas. Lo cazó el test de integración al exigir residuo cero, no una revisión a ojo.
+- **VERIFICADO** con las funciones de producción, en los dos caminos (MV y legacy): tema 3 de `subalterno-gva` anuncia **22** y sirve **22**; la tarjeta del hub, 22.
+- **LO QUE NO ENTRA, y por qué:** la otra mitad de la clase (el filtro de TAG) es **[T-513]** — bajar el número de Policía Nacional de 2.006 a 222 no es corregir un contador, es una decisión de producto. Decisión de Manuel el 03/08.
+- **Relacionadas:** [T-513] (la deuda del tag), [T-411] (servir las oficiales compartidas, que cerraría el hueco por el otro lado), [T-326].
 
 ### [T-372] ✅ 🔴 [HECHA 04/08] Punto ciego del antifraude: la pareja de DOS cuentas a 25+25 no la ve NINGUNO de los dos umbrales
 - **Cómo salió:** triando a mano los equipos multi-cuenta que más consumían (31/07, con OK de Manuel). De los 5 revisados, **4 no habían generado JAMÁS una señal**. No era mala suerte: es aritmética.

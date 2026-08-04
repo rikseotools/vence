@@ -183,6 +183,19 @@ if (require.main !== module) {
     console.log(`DOSSIER IMPUGNACIÓN ${did.slice(0, 8)}  [${d.qtype}]`);
     console.log('══════════════════════════════════════════════════════════════');
     if (claimWarn) console.log(claimWarn);
+
+    // --- 🔗 ¿ESTE CASO YA TIENE FICHA VIVA EN EL BACKLOG? (T-517) ---
+    // Va ARRIBA a propósito: quien coge el caso tiene que ver el trabajo ya hecho ANTES de
+    // ponerse a diagnosticar. Nace de que el feedback 8b788ee0 cambió de manos con su ficha
+    // [T-507] ya resuelta y la sesión que lo cogió no podía saberlo. Sin BD: lee el markdown.
+    try {
+      const path = require('path');
+      const { fichasQueCitan, lineasDossier } = require(path.join(__dirname, '..', '..', 'lib', 'backlog', 'fichasQueCitan.cjs'));
+      const md = fs.readFileSync(path.join(__dirname, '..', '..', 'docs', 'roadmap', 'tareas-pendientes.md'), 'utf8');
+      const idCorto = String(d.id).slice(0, 8);
+      const lineas = lineasDossier(fichasQueCitan(md, [String(d.id), idCorto]));
+      if (lineas.length) console.log('\n' + lineas.join('\n'));
+    } catch { /* el backlog no es imprescindible para el dossier: nunca lo tumba */ }
     if (alreadyWarn) console.log(alreadyWarn);
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
