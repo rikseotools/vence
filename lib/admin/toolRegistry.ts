@@ -1146,6 +1146,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se modela (Código Civil, CP, LECrim, LOPJ): sus títulos reinician por libro y se rechazan a ' +
       'propósito, es la tarea T-104.',
   },
+  scope_ley_entera_contradicha: {
+    titulo: 'Cuántos scopes «toda la ley» contradicen a su PROPIO epígrafe, contrastado contra el índice del BOE',
+    ruta: 'scripts/scope/medir-ley-entera.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      '`npm run scope:medir-ley-entera [-- --json]`. SOLO LEE: no escribe, no pinga badge. Es el ' +
+      'punto 1 de [T-528] — la medición que hacía falta antes de decidir nada. Se distingue del ' +
+      'detector `scope_over_inclusion_suspect` en que aquél razona sobre el TEXTO del epígrafe ' +
+      '(cuenta segmentos, busca palabras de cierre) y este lo contrasta contra las SECCIONES ' +
+      'REALES de la ley, así que lo que saca es una contradicción comprobable y no una sospecha. ' +
+      'Núcleo puro `lib/laws/epigrafeEnumeraSecciones.cjs` (12 unitarios) sobre `parseBoeSections`. ' +
+      'MEDIDO el 04/08: de 1.957 scopes «ley entera» solo 476 (24%) son medibles —el resto son ' +
+      'leyes sin índice del BOE y ahí NO se opina, un cero aquí no dice que estén bien—; de esos, ' +
+      '22 contradicen (17 ciertas a mano, 5 falsas por una norma que el atribuidor no reconoce) y ' +
+      '10 estaban marcadas `verified_correct`. GOTCHA: la atribución sección→ley se REUTILIZA de ' +
+      '`scopeTitleBoundary` (T-129); sin ella salían 33 hits y los primeros eran falsos (a la Ley ' +
+      '4/2015 se le colgaban los libros de la LECrim del mismo epígrafe).',
+  },
   scope_recortes_pendientes: {
     titulo: 'La cola de recortes de scope YA adjudicados contra la fuente oficial y sin aplicar',
     ruta: 'scripts/scope-over-inclusion.cjs',

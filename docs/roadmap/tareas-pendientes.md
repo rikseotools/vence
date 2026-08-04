@@ -1520,6 +1520,17 @@ explicaciones legales.
   1. **Detector determinista**, sin LLM: si el epígrafe contiene ≥2 rúbricas literales de capítulo/título de la ley Y el scope es `NULL`, es contradicción mecánica. Se hizo hoy a mano con `curl` al índice del BOE y un `includes()` sobre el epígrafe — no necesita inteligencia, necesita el índice. **Mide primero cuántos de los 1.976 caen ahí.**
   2. **Correr el Paso 1** en las activas: hay `programa_url` en las 126, y `verify:epigrafe dump/record` ya existe y enlaza al hub.
   3. Solo entonces, LLM para la cola que quede: el epígrafe **parafraseado** («materia acotada en prosa») no se puede mapear con un `includes()` y ahí sí hace falta juicio.
+- **PUNTO 1 HECHO (04/08) — el detector determinista existe y está medido.** `npm run scope:medir-ley-entera` (solo lee, no pinga badge): por cada scope `NULL` baja el ÍNDICE de su ley del BOE y pregunta al núcleo puro `lib/laws/epigrafeEnumeraSecciones.cjs` si el epígrafe nombra **dos o más secciones REALES** de esa ley. Si las nombra y el scope dice «entera», es una contradicción mecánica — no una sospecha.
+  | | |
+  |---|---|
+  | Scopes «ley entera» en temas activos | **1.957** en 103 oposiciones |
+  | …**medibles** (ley con índice del BOE) | **476 (24%)** — del 76% restante (autonómicas, reglamentos propios, ofimática) **no se opina** |
+  | Contradicen su epígrafe | **22** |
+  | …revisadas a mano: ciertas | **17** |
+  | …falsas | **5**, todas por la misma causa: el epígrafe cita una norma que el atribuidor no reconoce («Resolución de Rector», «Acuerdo regulador»), así que sus secciones se le cuelgan a la ley de al lado |
+  | De las 22, marcadas `verified_correct` | **10** — el verde que esta ficha viene a quitar |
+- **La cifra importa menos que su forma:** las contradicciones **no son 1.501**. Sobre lo medible salen 22, y el grueso del problema no es «scope NULL con epígrafe enumerador» sino que **no hay índice** con el que contrastar el 76%. Eso reordena el plan: antes que el LLM del punto 3, lo que rinde es dar estructura a las leyes que no la tienen.
+- **GOTCHA que costó la primera medición (y que ya estaba resuelto en la casa):** sin atribuir cada sección a su norma salían **33** hits, y los de más arriba eran falsos — a la Ley 4/2015 del Estatuto de la Víctima se le colgaban los **libros de la Ley de Enjuiciamiento Criminal**, que vive en el mismo epígrafe de `guardia_civil`. Es exactamente la fuga entre leyes que [T-129] arregló en `scopeTitleBoundary`. Se reutiliza su modelo («cada sección pertenece a la ÚLTIMA norma mencionada antes de ella») exportando sus helpers, en vez de escribir un segundo criterio; el caso real queda como test de regresión (12 unitarios).
 - **Lo que NO hay que hacer:** volver a correr el verificador multiagente sobre epígrafes sin sourcear. Es lo que ya se hizo, y lo que produjo el verde falso: más capacidad de razonamiento sobre una premisa sin verificar **no corrige el error, lo argumenta mejor**.
 
 ### [T-524] 🟡 [ABIERTO 04/08] Duplicados que NINGÚN corte puede ver: el hecho examinado es el mismo y el TEXTO de la respuesta no
