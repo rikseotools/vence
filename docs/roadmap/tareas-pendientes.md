@@ -1398,6 +1398,19 @@ El código de los dos intentos se **retiró** en vez de dejarlo tras un flag (un
 calibrado que alguien puede encender es peor que no tenerlo); lo que valía eran las anclas de
 arriba, y por eso están aquí y no en un fichero muerto.
 
+
+**El mismo usuario ha vuelto con TRES más el mismo día (04/08, tarde).** Tras cerrarle `f34b88ad`,
+manolo garcía (premium, Diputación de Córdoba) escribió `2f94aa50`, `86b44427` y `8b253d22`, las tres
+del mismo motivo: *«Esa información no aparece en el Temario que nos pasáis»*, *«Esto tampoco
+aparece»*, *«Mi respuesta es acertada pero por puro instinto porque no aparece en el Temario que nos
+dáis»*. **Van cuatro del mismo usuario y del mismo motivo**, que es el disparador de fallo sistémico
+del manual de impugnaciones (§7.5).
+
+Al cerrar la sesión las tenía reservadas `imp-04ago-d`. **Si se tratan una a una sin ver el patrón,
+se le contesta cuatro veces sin arreglar la causa** — y la causa es esta ficha: preguntas cuya
+respuesta no está en ningún artículo que se le sirva. Quien las coja debería medir primero cuántas de
+las suyas caen aquí, y contestarle una vez con el arreglo hecho.
+
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
 - **Esfuerzo: sesion_propia.** Toca el andamiaje del que dependen 2-10 sesiones a la vez; hacerlo deprisa es peor que no hacerlo.
@@ -3083,6 +3096,24 @@ Núcleo puro `lib/health/oposicionSinTemario.cjs` con **15 tests**. Registrado e
 - **La trampa del UUID va en el núcleo y con test**, no en la consulta: las personalizadas guardan un UUID en la misma columna y su temario vive en `custom_oposiciones`. Contarlas ya hizo publicar una cifra equivocada una vez.
 - **NO pinga badge ni manda correo, a propósito.** Las tres decisiones de abajo son de producto y no están tomadas; una alerta sin remediación construida enseña a ignorar el buzón entero, que es lo que ya pasa con `fraude_confirmado_sin_accion` ([T-426]). Cuando haya decisión, subirlo al sweep es cambiar el runner de sitio.
 - **Lo que el detector NO decide (sigue siendo tuyo):** las tres preguntas de arriba. Lo único que cambia es que ahora la cifra se puede volver a mirar en cualquier momento con un comando, y que los premium salen con su slug delante para atenderlos uno a uno.
+
+
+**Caso observado el 04/08 con antes y después, que añade un síntoma nuevo: ELEGIRLA te BORRA el
+objetivo.** Félix Peña (`felixperu88@gmail.com`, **premium**, alta hace 8 días) tenía
+`target_oposicion = 'cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl'` a las ~15:00. A las
+**15:45:54**, estando en `/perfil` y pulsando «Hacer objetivo» (consta en su journey), su
+`target_oposicion` pasó a **cadena vacía**. No es que no se guardara: es que **se perdió el que
+tenía**. Sus dos oposiciones candidatas están `is_active=false` y con 0 temas.
+
+Lo que NO puedo afirmar, para que nadie lo dé por medido: **no está probado que sea sistémico.** En
+ese momento había **1 solo premium** con el objetivo vacío (él) y 6 free en 24 h, pero de los free no
+tengo antes/después, así que pueden ser altas que nunca eligieron. Lo único probado es este caso, con
+sus dos lecturas separadas por 45 minutos.
+
+**La medición que lo resolvería y que hoy no se puede hacer:** no hay rastro de los cambios de
+`target_oposicion` (ni columna de historial ni evento). Sin eso, «se borró» vs «nunca lo puso» es
+indistinguible salvo que alguien mire por casualidad, como pasó aquí. Un evento en el punto de
+escritura del objetivo cerraría la pregunta en un día de datos.
 
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
