@@ -842,6 +842,33 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-555] 🔴 [ABIERTO 04/08] La vista de conteos no conoce un temario recién editado y la pantalla lo sirve como «0 preguntas»: un premium no podía empezar NINGÚN test de su oposición personalizada
+
+- **Lo reportó un usuario** (feedback `87e987d8`, **premium**, `pcsergio0@gmail.com`): *«no me carga los test de mi temario, entro a un tema y sale cargando preguntas y no las carga»*.
+- **La pantalla se contradecía a sí misma**, y eso es lo que delata el fallo: decía a la vez «Cargando preguntas…», «🚧 Tema en preparación: este tema aún no tiene preguntas configuradas» y, tres centímetros más abajo, «Tu progreso en el Tema 1 — 92,5%, **67 respuestas**». Le negaba las preguntas mientras le enseñaba las que ya había respondido.
+- **CADENA COMPLETA, medida y sin suposiciones:**
+  1. Rehízo su temario a las **17:37**; su `topic_scope` nace con esa hora.
+  2. La vista materializada `topic_law_question_summary` se había calculado a las **14:32**.
+  3. `/api/topics/[numero]` lee de esa vista y **no había ni una fila** de su tema → `totalQuestions: 0`.
+  4. `TestConfigurator` solo pinta el botón de empezar si `maxQuestions > 0` → **el botón no existía en el DOM**. No era que estuviera bajo el pliegue: no se pintaba.
+  5. A las 20:11 pulsó «📚Práctica» **cuatro veces seguidas**, probó «📝Examen», salió, volvió a entrar, **cerró sesión** y acabó escribiendo. Sus **186 preguntas** estaban en la BD todo el rato.
+- **El contraste que descartó todo lo demás:** justo antes había hecho un test de **50 preguntas seguidas** en `/leyes/constitucion-espanola/avanzado` sin un solo fallo (`answer-and-save` 200). Sesión, dispositivo, plan y límites: perfectos. El fallo era exclusivo de la ruta de su temario.
+- **ALCANCE:** 2 oposiciones personalizadas, **15 temas**, 1 premium afectado ahora mismo. Pero es **estructural, no un caso raro**: le pasa a CUALQUIERA que cree o edite su temario después del refresco diario (03:30 UTC) — hasta **13 horas** sin poder usar lo que acaba de construir.
+- **ARREGLO — «la vista no lo sabe» NO es «no hay preguntas»** (`lib/api/topic-data/vistaDesfasada.ts`, núcleo puro con 6 tests):
+  - Los dos estados **se distinguen por construcción**, no por heurística: la vista lleva `LEFT JOIN` desde `topic_scope`, así que un tema con materia y SIN preguntas **sí** tiene fila (con 0). Cero filas solo puede significar que la vista no conoce el tema.
+  - Cuando eso pasa, se cae al **cálculo directo, que YA EXISTÍA** (`getQuestionsForTopic`, el camino que se usa con el flag apagado). Sin código nuevo de conteo y sin silo.
+  - **NO se refresca la vista al guardar el temario**, y es deliberado: son 6.123 filas, `REFRESH MATERIALIZED VIEW` es todo-o-nada y ya provocó un incidente de timeout el 12/07 (guardarraíl `refresh-topic-summary.timeout.spec.ts`). Pagar un refresco completo por cada edición de un usuario no escala. El fallo de caché se resuelve donde se detecta.
+  - Solo se paga en el hueco, que es raro: el camino normal sigue siendo el de la vista.
+- **Observabilidad:** evento `topic_mv_hueco` (`warn`) con el tema y el `position_type`, verificado de extremo a extremo en `observable_events`. Sin él no habría forma de saber a cuánta gente le ocurre ni si el refresco diario se muere.
+- **VERIFICADO POR CONTRASTE**, mismo usuario, mismo móvil, misma página:
+  | | producción | con el arreglo |
+  |---|---|---|
+  | endpoint | `totalQuestions: 0` | **160** |
+  | botón «Empezar» | ❌ no existe en el DOM | ✅ «🚀 Empezar Test Personalizado (25 preguntas)», pulsable |
+  | «Tema en preparación» | sí (miente) | no |
+- **Radio comprobado antes de tocar:** esa vista solo la leen el endpoint del tema y un panel de admin, así que el arreglo cubre la superficie entera que ve el usuario. No queda ninguna pantalla vecina mintiendo.
+- **Relacionadas:** [T-327] (las personalizadas llegan como su propio `position_type`), [T-507] (el mismo endpoint restando oficiales ajenas), [T-508] (el aviso de temario vacío).
+
 ### [T-554] 🟢 [ABIERTO 04/08] El triaje epígrafe↔fuente solo corre cuando alguien lo pide: automatizarlo pide persistir el veredicto
 
 - **De dónde sale.** [T-552] construyó `npm run audit:epigrafe-fuente` y [T-553] le dio frase-gatillo, así que ya es invocable. Lo que NO tiene es quien lo mire solo: la cifra de hoy —**765 de 2.193 temas (35%) fuera de su fuente** y **44 de 126 oposiciones cuyo `programa_url` ni siquiera es un temario**— envejece sin que nada avise.

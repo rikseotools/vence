@@ -32,6 +32,8 @@ import {
 // topic_official_by_position. Detrás de feature flag TOPIC_MV_ENABLED para
 // rollback inmediato si hace falta.
 import { getTopicAggregatesFromMV, isTopicMvEnabled } from './mv-queries'
+import { debeCalcularEnDirecto } from './vistaDesfasada'
+import { emit } from '@/lib/observability/emit'
 import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 // Cache simple en memoria (5 minutos)
@@ -140,8 +142,36 @@ export async function getTopicFullData(
     let officialQuestionsCount: number
     let articlesByLaw: ArticlesByLaw
 
-    if (isTopicMvEnabled()) {
-      const agg = await getTopicAggregatesFromMV(db, topic.id, positionType)
+    const agg = isTopicMvEnabled()
+      ? await getTopicAggregatesFromMV(db, topic.id, positionType)
+      : null
+
+    // ── La vista puede NO CONOCER todavía este tema (T-555) ─────────────────────────────────
+    // Se refresca una vez al día, así que un temario creado o editado después del refresco no
+    // tiene ni una fila. Servir ese hueco como «0 preguntas» dejaba al usuario sin poder empezar
+    // ningún test de su propio temario —la pantalla no pinta el botón si el total es 0— mientras
+    // sus preguntas estaban en la base de datos. Aquí NO se adivina: sin fila es un hueco de la
+    // caché, con fila a 0 es un tema de verdad vacío (la vista lleva LEFT JOIN desde
+    // `topic_scope`). El criterio vive aparte y puro en `vistaDesfasada.ts`.
+    const vistaNoLoSabe =
+      agg !== null &&
+      debeCalcularEnDirecto({ filasEnVista: agg.filasEnVista, mapeosDeScope: scopeMappings.length })
+
+    if (vistaNoLoSabe) {
+      // Sin esta señal el arreglo sería mudo y no habría forma de saber a cuánta gente le pasa
+      // ni si el refresco diario se ha muerto. `warn` porque es un hueco que se cura solo en el
+      // siguiente refresco, no un error del que haya que rescatar a nadie.
+      void emit({
+        source: 'frontend',
+        severity: 'warn',
+        eventType: 'topic_mv_hueco',
+        endpoint: '/api/topics/[numero]',
+        errorMessage: 'la vista materializada no conoce este tema todavía: se calcula en directo',
+        metadata: { topicId: topic.id, positionType, mapeosDeScope: scopeMappings.length },
+      }).catch(() => { /* la telemetría nunca tumba una respuesta */ })
+    }
+
+    if (agg && !vistaNoLoSabe) {
       difficultyStats = agg.difficultyStats
       totalQuestions = agg.totalQuestions
       officialQuestionsCount = agg.officialQuestionsCount

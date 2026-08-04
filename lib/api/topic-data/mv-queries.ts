@@ -30,6 +30,14 @@ export interface TopicAggregates {
   articlesByLaw: ArticlesByLaw
   /** Edad de la MV (ms desde el último REFRESH). Para diagnóstico operacional. */
   staleSinceMs: number | null
+  /**
+   * Filas que la vista tenía para este tema. **0 no significa «sin preguntas»**: la vista se
+   * construye con LEFT JOIN desde `topic_scope`, así que un tema con materia y sin preguntas SÍ
+   * tendría fila (con total 0). Cero filas solo puede ser «la vista aún no conoce este tema»
+   * —típicamente un temario creado o editado después del refresco diario— y entonces hay que
+   * calcular en directo en vez de servir un cero falso. Ver `vistaDesfasada.ts` [T-555].
+   */
+  filasEnVista: number
 }
 
 type LawSummaryRow = {
@@ -184,6 +192,7 @@ export async function getTopicAggregatesFromMV(
     difficultyStats,
     articlesByLaw,
     staleSinceMs,
+    filasEnVista: byLawRows.length,
   }
 }
 
