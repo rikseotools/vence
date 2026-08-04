@@ -1040,6 +1040,26 @@ como núcleo puro + kind del barrido (`pregunta_estructural_sin_articulo_cero`),
 que **no pingan el badge** (precisión ~85% medida, se adjudica leyendo). Hoy la única forma de
 enterarse es que lo impugne un usuario, que es exactamente lo que pasó.
 
+### [T-538] 🟡 [ABIERTO 04/08] `cola.cjs list` trunca el `claimed_by` a 8 caracteres y hace pasar por tuya la reserva de otra sesión
+
+- **Cazado el 04/08** resolviendo la cola de impugnaciones desde el worktree `imp-04ago-c`. `cola.cjs list` pintaba **seis** impugnaciones como `🔒 imp-04ag — reservada hace 0.2 h (suelo de 2 h)`. Las seis eran de OTRAS sesiones:
+  | dispute | `claimed_by` real |
+  |---|---|
+  | `30c8af0c` | `imp-04ago-g-fedora-73618e` |
+  | `a85c9faa` | `imp-04ago-e-fedora-b6a253` |
+  | `1c8fd75a` | `imp-04ago-d-fedora-75459b` |
+  | `70110a29` · `381188b5` · `0bbce41a` | `imp-04ago-b-fedora-45b0da` |
+- **El defecto no es el truncado, es que el truncado ocurre justo donde vive la distinción.** El sid se corta a 8 caracteres y la convención de nombres de `crear-worktree.sh` es `<nombre-de-sesión>-<host>-<hash>`; con varias sesiones abiertas el mismo día, `imp-04ago-b`, `-c`, `-d`, `-e` y `-g` **colapsan todas en `imp-04ag`**. Cuantas más sesiones en paralelo —que es el caso para el que se construyó la cola— más se parecen entre sí las etiquetas.
+- **Por qué es peligroso y no cosmético:** `list` es la pantalla desde la que se decide qué coger. Leída de buena fe, decía que seis impugnaciones ajenas ya eran mías, que es exactamente la colisión que el claim existe para impedir. Y el fallo **no avisa**: no hay error, no hay línea roja; se lee y se sigue.
+- **Lo que salvó el caso fue una contradicción, no la pantalla:** `cola.cjs mine` decía «No tienes claims activos» a la vez que `list` mostraba seis con mi prefijo. Ese desacuerdo obligó a ir a la BD. Sin dos comandos que se contradijeran, no había señal.
+- **El dossier SÍ lo hace bien** (`revisar-impugnacion.cjs` imprime «🔒 Cogida por **tu sesión** (imp-04ag)»): compara el sid entero y dice de quién es. O sea que el dato está y la lógica ya existe en el repo — es `list` quien la tira al formatear.
+- **Arreglo propuesto** (en `scripts/impugnaciones/cola.cjs`, donde se compone la línea):
+  1. Decir la RELACIÓN, no el identificador: `🔒 TUYA` / `🔒 otra sesión (imp-04ago-b)`. Es lo que el lector necesita decidir, y no depende de cuántos caracteres quepan.
+  2. Si se conserva el sid, truncar por el **segmento distintivo** (`imp-04ago-b`), nunca por longitud fija — el hash del final es lo único prescindible.
+  3. Núcleo puro con test que fije el caso: dos sids que comparten los primeros 8 caracteres tienen que renderizarse distinto.
+- **Guardarraíl que lo mantiene:** un test que llame al formateador con `imp-04ago-b-fedora-45b0da` y `imp-04ago-c-fedora-eca3f1` y exija que las dos líneas se distingan. Sin él, cualquier cambio de anchura lo reintroduce.
+- **Mirar de paso si el mismo truncado está en otros listados** que muestren `claimed_by` (`backlog.cjs list`, paneles admin): la causa es el formateo, no la cola de impugnaciones.
+
 ### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
 
 - **Esfuerzo: sesion_propia.** Toca el andamiaje del que dependen 2-10 sesiones a la vez; hacerlo deprisa es peor que no hacerlo.
