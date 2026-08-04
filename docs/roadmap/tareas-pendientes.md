@@ -1691,6 +1691,41 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Relacionadas:** [T-507], [T-411], [T-397].
 
 
+### [T-514] 🟡 [ABIERTO 04/08] Ujieres CCGG: generar preguntas para T4 y T9-T12, que son el núcleo propio del Cuerpo
+
+**De dónde sale:** al contestar el feedback `9a70f674` (Blanca, premium, oposición recién convocada
+y con inscripción abierta) se contaron las preguntas por tema. El temario sirve **8.915 activas**,
+pero el reparto tiene un sesgo que importa:
+
+| Tema | Preguntas | Base normativa |
+|---|---|---|
+| T12 La Administración parlamentaria | **11** | Estatuto del Personal |
+| T4 Órganos de Gobierno de las Cámaras | **28** | Regl. Congreso + Senado |
+| T10 El Cuerpo de Ujieres | **29** | Estatuto + material del Congreso |
+| T9 Tipos de personal de las Cortes | **45** | Estatuto del Personal |
+| T11 Derechos, deberes e incompatibilidades | **52** | Estatuto del Personal |
+| T1 (1.402) · T7 (1.112) · T3 (1.104) · T16 (940) · T5 (935) | | el resto va sobrado |
+
+**Por qué no es un reparto inocente:** los cinco temas flacos son exactamente los que preguntan por
+**las Cortes Generales como empleador** — el núcleo diferencial de este Cuerpo, no relleno. Un
+opositor que llegue al tema 12 se encuentra once preguntas y no puede practicar. Los temas gordos son
+los de materia común (Constitución, Ley 39/2015, LPRL), que se alimentan del banco compartido con
+otras oposiciones: de ahí el desequilibrio.
+
+**Y por qué no lo ha visto nadie:** `audit:epigrafe` marca `LOW_COVERAGE` por debajo de **10**
+preguntas, y el peor tiene 11. El umbral está calibrado para detectar temas VACÍOS, no temas
+anémicos. Merece plantearse si el umbral debería ser relativo (p. ej. avisar cuando un tema tiene
+menos del 5 % de la media de su oposición) en vez de un número absoluto igual para todas.
+
+**Qué hacer:** generar preguntas para esos cinco temas contra su articulado real — Estatuto del
+Personal de las Cortes Generales (86 artículos cargados), Reglamentos del Congreso (207) y del
+Senado (227) — que da material de sobra; el cuello no es la fuente, es que no se han generado.
+Ojo con T10, cuya base incluye material del Congreso que no es una norma consolidada.
+
+**Contexto:** se le dijo a la usuaria en la respuesta del 04/08 que esos temas llevan menos preguntas
+y que **ya estamos ampliándolos**, así que hay una promesa hecha a una clienta premium con la
+convocatoria abierta. Ficha hermana: **T-511** (verificar epígrafes y scope de esta misma oposición).
+
 ### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
 
 **De dónde sale:** una opositora premium (alta hace 15 h, feedback `9a70f674` del 02/08) preguntó lo
