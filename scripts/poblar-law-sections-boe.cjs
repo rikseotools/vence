@@ -94,7 +94,11 @@ async function validar(lawId, secs) {
   // no tumba la ley entera (T-064: eran artículos DEROGADOS, no un parser desalineado).
   const conConteo = []
   for (const s of secs) {
-    const n = (await sql`SELECT count(*)::int c FROM articles WHERE law_id=${lawId} AND article_number ~ '^[0-9]+$' AND article_number::int BETWEEN ${s.from} AND ${s.to}`)[0].c
+    // `is_active` OBLIGATORIO (03/08/2026): sin él, una sección cuyos artículos están TODOS
+    // desactivados cuenta como llena, pasa la validación y se inserta sirviendo CERO. Medido
+    // en el barrido: 4 secciones así (REx cap. VI arts 97-102, y tres de la Ley 12/2001), con
+    // sus artículos existiendo en la tabla pero inactivos. El validador nació justo para eso.
+    const n = (await sql`SELECT count(*)::int c FROM articles WHERE law_id=${lawId} AND is_active AND article_number ~ '^[0-9]+$' AND article_number::int BETWEEN ${s.from} AND ${s.to}`)[0].c
     conConteo.push({ ...s, arts: n })
   }
   const r = validarSecciones(conConteo)
