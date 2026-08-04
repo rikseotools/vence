@@ -1541,6 +1541,32 @@ explicaciones legales.
   | …revisadas a mano: ciertas | **17** |
   | …falsas | **5**, todas por la misma causa: el epígrafe cita una norma que el atribuidor no reconoce («Resolución de Rector», «Acuerdo regulador»), así que sus secciones se le cuelgan a la ley de al lado |
   | De las 22, marcadas `verified_correct` | **10** — el verde que esta ficha viene a quitar |
+- **LAS 22, UNA A UNA** (`✅` cierta al revisarla a mano · `❓` falsa por norma no reconocida). No hace falta fiarse de esta tabla: `npm run scope:medir-ley-entera` la reconstruye en dos minutos, y por eso la lista se deja como contexto y no como fuente.
+  | | oposición | ley | estado del scope | secciones que nombra el epígrafe |
+  |---|---|---|---|---|
+  | ❓ | `administrativa_universidad_de_murcia` T504 | RD 534/2024 | verified_correct | titulo III, capitulo III |
+  | ✅ | `administrativo_asturias` T210 | Ley Expropiación Forzosa | verified_correct | titulo I, titulo II |
+  | ✅ | `administrativo_cantabria` T37 | Ley 3/2002 Archivos Cantabria | verified_correct | titulo I, capitulo IV, titulo II |
+  | ✅ | `administrativo_gva` T6 | Estatuto CV | verified_correct | titulo I, titulo II, titulo III, titulo IV |
+  | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | Ley 8/2011 Igualdad Ext | stale | capitulo IV, titulo PRELIMINAR |
+  | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | LO 3/2007 | stale | capitulo IV, titulo PRELIMINAR |
+  | ✅ | `auxiliar_administrativo_cantabria` T5 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III, titulo I |
+  | ✅ | `auxiliar_enfermeria_gva` T6 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III |
+  | ✅ | `auxiliar_enfermeria_gva` T9 | LPRL | verified_correct | capitulo I, capitulo III |
+  | ✅ | `auxiliar_enfermeria_gva` T10 | LO 3/2007 | verified_correct | titulo PRELIMINAR, titulo I |
+  | ✅ | `enfermero_scs_cantabria` T1 | CE | verified_correct | titulo PRELIMINAR, titulo I |
+  | ✅ | `enfermero_scs_cantabria` T1 | Estatuto Autonomia Cantabria | verified_correct | titulo PRELIMINAR, titulo I |
+  | ✅ | `enfermero_scs_cantabria` T3 | LAP | verified_correct | capitulo I, capitulo II, capitulo III, capitulo IV, capitulo |
+  | ❓ | `enfermero_scs_cantabria` T5 | LO 1/2004 | verified_issues | titulo PRELIMINAR, capitulo III, titulo II |
+  | ❓ | `enfermero_scs_cantabria` T5 | LO 3/2007 | verified_issues | titulo PRELIMINAR, titulo I, capitulo III, titulo III, titul |
+  | ✅ | `guardia_civil` T4 | LO 3/1981 | stale | titulo I, titulo II, titulo III |
+  | ✅ | `guardia_civil` T10 | Ley 39/2015 | stale | titulo PRELIMINAR, titulo I, titulo II, titulo III, titulo I |
+  | ✅ | `guardia_civil` T13 | LO 4/2015 | verified_correct | capitulo I, capitulo II, capitulo III, capitulo IV, capitulo |
+  | ✅ | `policia_municipal_madrid` T21 | CP | (sin verificar) | titulo PRELIMINAR, libro I, titulo I, titulo II |
+  | ✅ | `policia_municipal_madrid` T34 | LO 4/2015 | (sin verificar) | capitulo I, capitulo III, capitulo V |
+  | ✅ | `policia_municipal_madrid` T35 | LO 4/2000 | (sin verificar) | titulo I, capitulo I, capitulo IV, titulo II, capitulo II, c |
+  | ✅ | `policia_municipal_madrid` T37 | LO 1/2004 | (sin verificar) | titulo I, titulo II, capitulo I, titulo III, titulo IV |
+  - **Cada una es una decisión de programa, no higiene:** recortar significa dejar de servir preguntas, así que van por el pipeline del runbook (`verify:scope plan` → `apply`) y de una en una, como se hizo con Cantabria en [T-533].
 - **La cifra importa menos que su forma:** las contradicciones **no son 1.501**. Sobre lo medible salen 22, y el grueso del problema no es «scope NULL con epígrafe enumerador» sino que **no hay índice** con el que contrastar el 76%. Eso reordena el plan: antes que el LLM del punto 3, lo que rinde es dar estructura a las leyes que no la tienen.
 - **GOTCHA que costó la primera medición (y que ya estaba resuelto en la casa):** sin atribuir cada sección a su norma salían **33** hits, y los de más arriba eran falsos — a la Ley 4/2015 del Estatuto de la Víctima se le colgaban los **libros de la Ley de Enjuiciamiento Criminal**, que vive en el mismo epígrafe de `guardia_civil`. Es exactamente la fuga entre leyes que [T-129] arregló en `scopeTitleBoundary`. Se reutiliza su modelo («cada sección pertenece a la ÚLTIMA norma mencionada antes de ella») exportando sus helpers, en vez de escribir un segundo criterio; el caso real queda como test de regresión (12 unitarios).
 - **Lo que NO hay que hacer:** volver a correr el verificador multiagente sobre epígrafes sin sourcear. Es lo que ya se hizo, y lo que produjo el verde falso: más capacidad de razonamiento sobre una premisa sin verificar **no corrige el error, lo argumenta mejor**.
