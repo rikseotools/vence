@@ -206,6 +206,38 @@ sesión, con un suelo por debajo del cual no se toca. La decisión va **dentro d
 atómico (hay versión SQL además de la JS, con paridad testeada), porque decidirla en el lenguaje
 y escribir sin condición es un TOCTOU: dos sesiones leen «libre» y la segunda pisa a la primera.
 
+### 3.8.bis Enterarse de que TE HAN QUITADO lo que tenías (T-516)
+
+`lib/sessions/reservaPerdida.cjs` (núcleo puro) + `scripts/sessions/reserva-perdida.cjs`, colgado
+del hook `UserPromptSubmit` que ya existía para el recordatorio de método (§3.10). En **cada
+turno** compara lo que esta sesión tenía reservado con lo que tiene ahora, y si algo cambió de
+manos lo dice, con el nombre de quien lo lleva.
+
+**Por qué hacía falta.** El reparto (§3.8) decide bien cuándo una reserva vuelve al pool, pero
+solo tenía ida y no vuelta: **al que la pierde nadie se lo dice**. Sigue con todo el contexto en
+la cabeza, redacta una respuesta y la manda. Dicho por Manuel el 04/08: *«me voy a dormir y por la
+mañana dos sesiones me hablan de lo mismo»*. Es el principio 5 (avisar ≠ bloquear) aplicado al
+único punto donde faltaba.
+
+**No es un lease más largo, a propósito.** Alargarlo empeora justo ese escenario nocturno: la cola
+amanece congelada por sesiones que ya no existen. Lo que se arregla es el aviso, no el plazo.
+
+**Y detecta la causa raíz de las pérdidas FALSAS: la identidad partida.** Si reclamas con un sid
+que no está latiendo, el reparto te da por muerta y suelta tus reservas aunque estés trabajando.
+Pasó el 04/08: una sesión reclamó el feedback `8b788ee0` con el `.session-id` de su worktree
+mientras latía desde el checkout principal con otro id; a las pocas horas otra sesión se lo llevó
+y las dos acabaron hablando del mismo caso. Es la mitad que [T-407] dejó abierta: unificó quién
+LEE el id, pero nadie comprobaba que **lates con el mismo con el que reclamas**.
+
+**Cómo no estorba** (un hook que bloquea el prompt se desactiva el primer día): throttle de 90 s,
+timeout duro de 2,5 s contra la BD y fail-open absoluto — ante cualquier problema, ni una palabra.
+No añade escritores: no exige que `cola.cjs` ni los dossieres registren nada, solo lee y guarda su
+propia foto en `/tmp`. Si la foto se pierde, se avisa de menos, nunca de más.
+
+**Guardarraíl:** `avisoReservaPerdidaCableado.test.ts`. Su modo de fallo es enmudecer en silencio,
+así que se comprueba que el hook sigue declarado, que llama al consultor, y que el aviso NO cae
+dentro del contador de N mensajes (ahí llegaría hasta 15 turnos tarde, cuando ya has escrito).
+
 ### 3.9 Recuperar lo que dejó una sesión que MURIÓ
 
 `backlog_tasks.last_claimed_by` — al retomar una tarea, se enseña el worktree de su dueña

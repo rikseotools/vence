@@ -1674,6 +1674,15 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-517] 🟡 [ABIERTO 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
+
+- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
+- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
+- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
+- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
+- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
+- **Relacionadas:** [T-516], [T-507].
+
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
 - **Esfuerzo: rato.** Núcleo puro + subcomando + tests.
@@ -3685,6 +3694,27 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 
 
 ## Hechas
+
+### [T-516] ✅ [HECHA 04/08] Una sesión no se enteraba de que había perdido su reserva y seguía hablando de un caso que ya llevaba otra
+
+- **Esfuerzo: rato.** Núcleo puro + enganche al hook que ya existía; sin tabla ni campo nuevo.
+- **LO PIDIÓ MANUEL (04/08), con el síntoma exacto:** *«cuando me voy por la noche a dormir, dos sesiones por la mañana me hablan de lo mismo; puede que una lo tuviera, le caduca, otra lo coge porque estaba libre, y la primera no sabe que le caducó»*.
+- **EL HUECO, dicho con precisión:** el reparto ([T-412]) decide BIEN cuándo una reserva vuelve al pool (señal de vida con suelo de 2 h). Lo que no existía era **la vuelta**: al que la pierde nadie se lo dice. Sigue con el contexto en la cabeza, redacta y manda. El cierre sí estaba protegido desde [T-474] (`cerrar-feedback.ts` aborta sin reserva), pero **todo lo de antes —el análisis y la conversación con Manuel— no**.
+- **NO se ha alargado el lease, a propósito:** empeora justo el escenario nocturno (la cola amanece congelada por sesiones que ya no existen). Se arregla el aviso, no el plazo. Principio 5: avisar ≠ bloquear.
+- **Y ATACA LA CAUSA DE LAS PÉRDIDAS FALSAS: la identidad partida.** Si reclamas con un sid que no late, el reparto te da por muerta y suelta lo tuyo **estando viva**. Es la mitad que [T-407] dejó abierta: unificó quién LEE el id, pero nadie comprobaba que **lates con el mismo con el que reclamas**.
+- **CASO REAL QUE LO ESTRENA, y no es hipotético:** esta misma sesión reclamó el feedback `8b788ee0` (Neus) con el `.session-id` de su worktree mientras latía desde el checkout principal con otro id. Diez horas después la reserva se soltó sola y `cola-feedback-fedora-a93183` la cogió; las dos sesiones habrían acabado escribiendo a la misma usuaria. Verificado de extremo a extremo contra la BD real: el aviso nombra el caso y a la sesión que lo tiene ahora.
+- **QUÉ SE TOCÓ.** `lib/sessions/reservaPerdida.cjs` (núcleo PURO: `diffReservas`, `identidadSinLatido`, `lineasAviso`) · `scripts/sessions/reserva-perdida.cjs` (lo único que consulta) · `scripts/sessions/recordatorio-hook.cjs` (se cuelga del hook `UserPromptSubmit` que YA existía de [T-495]; nada de un hook nuevo) · runbook §3.8.bis · `toolRegistry`.
+- **Cubre las DOS colas** —`backlog_tasks` y feedback/impugnaciones— porque el problema de Manuel es el mismo en ambas.
+- **DECISIONES QUE SOSTIENEN QUE ESTO NO SE VUELVA RUIDO:**
+  - **Va en CADA turno, no cada 15** como el recordatorio de método: dentro del contador llegaría hasta 15 turnos tarde, o sea, después de haberle escrito al usuario. El guardarraíl comprueba justo eso.
+  - **Un caso CERRADO no es una pérdida** (sale de los estados abiertos y se calla). Avisar ahí convertiría cada trabajo terminado en una alarma.
+  - **Sin fila de latido NO se opina** (mismo criterio que `reserva.cjs`): una sesión recién nacida no es una sesión muerta.
+  - **No añade escritores.** No exige que `cola.cjs`, `backlog.cjs` ni los dossieres registren nada: solo lee, y la foto anterior vive en `/tmp`. Si se pierde, se avisa de MENOS, nunca de más.
+- **NO PUEDE COLGAR EL PROMPT** (un hook que estorba se desactiva el primer día): throttle de 90 s, timeout duro de 2,5 s y fail-open absoluto.
+- **CAPAS:** 15 tests del núcleo + 7 del guardarraíl `avisoReservaPerdidaCableado` (que el hook siga declarado, que llame al consultor, que el aviso no caiga dentro del contador, que la identidad salga del módulo compartido y que cubra las dos colas). El guardarraíl existe porque **el modo de fallo de esto es enmudecer en silencio**.
+- **Lo que queda como cabo:** el dossier de feedback/impugnación no enseña las fichas VIVAS del backlog que citan ese caso, así que quien lo coge después no ve el trabajo ya hecho. Es [T-517].
+- **Relacionadas:** [T-412] (el lease por señal de vida), [T-407] (identidad única), [T-474] (la puerta al cerrar), [T-495] (el hook del que cuelga).
+
 
 ### [T-505] ✅ 🟡 [HECHA 03/08] El detector de tablas aplanadas es CIEGO si el texto se re-fluye, que es justo lo que manda el manual
 

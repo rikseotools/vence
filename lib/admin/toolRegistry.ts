@@ -1538,6 +1538,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'nocturno: los worktrees son locales y el sweep corre en Fargate. Emite `trabajo_huerfano` ' +
       'al bus de fricción (T-423).',
   },
+  reserva_perdida: {
+    titulo: 'Avisar a una sesión de que lo que tenía reservado ya lo lleva otra',
+    ruta: 'scripts/sessions/reserva-perdida.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Lo invoca el hook `UserPromptSubmit` en CADA turno (a través de `recordatorio-hook.cjs`); ' +
+      'a mano, `node scripts/sessions/reserva-perdida.cjs --estado` dice además qué tienes ahora. ' +
+      'El reparto ya soltaba bien las reservas de una sesión muerta, pero no tenía vuelta: al que ' +
+      'la perdía nadie se lo decía, así que seguía trabajando y escribiendo — «me voy a dormir y ' +
+      'por la mañana dos sesiones me hablan de lo mismo» (Manuel, 04/08). Cubre las DOS colas ' +
+      '(backlog_tasks y feedback/impugnaciones) y detecta además la IDENTIDAD PARTIDA: reclamar ' +
+      'con un sid que no late hace que te den por muerta y te quiten lo tuyo estando viva (caso ' +
+      'real: el feedback 8b788ee0 reclamado con el id del worktree mientras se latía desde el ' +
+      'principal). Núcleo puro en `lib/sessions/reservaPerdida.cjs` (22 tests) + guardarraíl ' +
+      '`avisoReservaPerdidaCableado` porque su modo de fallo es enmudecer en silencio. ' +
+      'No añade escritores (solo lee; la foto anterior vive en /tmp) y es fail-open con throttle ' +
+      'de 90 s y timeout de 2,5 s: un hook que cuelga el prompt se desactiva el primer día.',
+  },
   contador_servible: {
     titulo: 'Medir cuánto promete el contador de un tema por encima de lo que el test puede servir',
     ruta: 'scripts/sim/sim-contador-servible.ts',
