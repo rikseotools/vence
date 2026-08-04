@@ -842,6 +842,21 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-532] 🟠 [ABIERTO 04/08] Una ficha = un fichero: quitar la CAUSA de la contención que [T-400] dejó solo visible
+
+- **Esfuerzo: sesion_propia.** Toca el andamiaje del que dependen 2-10 sesiones a la vez; hacerlo deprisa es peor que no hacerlo.
+- **NO es un duplicado de [T-400], es su escalón siguiente.** T-400 midió el mismo hecho —*«el ÚNICO fichero compartido por 3+ sesiones era `docs/roadmap/tareas-pendientes.md`»*— y decidió **a propósito** solo AVISAR (al `claim` y en los latidos), sin tocar la causa, porque bloquear por solape sería insufrible. Esto no propone bloquear: propone que el conflicto **no exista**.
+- **EL COSTE, medido en UNA sesión (04/08).** Cinco conflictos en ese fichero en una tarde, cada uno con su ciclo completo de tests + typecheck para reintentar el push. El fichero va por **506 fichas y 12.236 líneas**, con **1.307 commits** en su historia. Todas las sesiones insertan **en el mismo punto** (bajo `## Abiertas`), así que chocar no es mala suerte: es la geometría.
+- **Y el daño no es solo tiempo.** Resolver quedándose con «su» lado borra el trabajo del otro **en silencio**: el guardarraíl de ids comprueba unicidad, y un id sigue siendo único después de vaciarle el cuerpo. Por eso existe `contexto-push-guard` ([T-428]) — un parche sobre el mismo problema. Hoy mismo, además, `origin/main` traía **T-517 duplicada** (una copia abierta y otra ✅ HECHA) por cerrarla copiando en vez de moviendo: otra cara del mismo fichero-monolito.
+- **LA PROPUESTA: `docs/roadmap/tareas/T-nnn.md`, uno por ficha**, y el markdown grande pasa a ser **generado** (índice legible, no fuente).
+  - Dos sesiones creando fichas **nunca tocan el mismo fichero** → el conflicto desaparece por construcción, no se mitiga.
+  - Arregla de paso las huérfanas: la sección la decide el generador, no dónde pegaste el texto. ([T-515] las reubicó y puso trinquete, pero el modo de fallo seguiría existiendo sin esto.)
+  - **Refuerza `contexto-push-guard`**: borrar una ficha pasa a ser borrar un FICHERO, que git sí sabe señalar solo.
+  - Es lo que necesita la flota en VPS de [T-486]: su propia ficha ya avisa de que *«el cuello de botella no es el cómputo, es la integración»*.
+- **LO QUE HAY QUE TOCAR (y por qué es sesion_propia):** `lib/backlog/parseMarkdown.cjs` (fuente única de parseo), `sync`, `backlog.cjs ficha`/`reubicar`, `backlogRegistry.guardrail`, `contexto-push-guard` (compara ESE fichero contra `origin/main`), `perdidaDeContexto.cjs`, y la migración de las 506 fichas. Son las piezas de las que depende el reparto entre sesiones: romperlas deja a todas sin coordinación.
+- **DESCARTADO: el merge driver de git.** Parecía el atajo (unir por id al fusionar) pero se registra en `.git/config`, que **no se versiona**: en cada VPS habría que instalarlo aparte, y quien no lo tenga cae al comportamiento de siempre. Una protección que depende de que cada máquina esté bien configurada no es fiable, es optimista.
+- **CÓMO SE SABRÁ SI SALIÓ BIEN** (declarado antes de empezar): conflictos en el backlog por sesión → 0; `npm run sesiones:friccion` sin subida de escapes; y ninguna ficha perdida en la migración (comparar el conjunto de ids Y el de líneas con contenido antes/después, que es como se verificó [T-515]).
+
 ### [T-521] 🟠 [ABIERTO 04/08] Con objetivo personalizado no había migas: no se podía cambiar de oposición, y el buscador ignoraba las tildes
 
 - **Esfuerzo: rato.** Hecho y verificado en navegador; falta desplegar.

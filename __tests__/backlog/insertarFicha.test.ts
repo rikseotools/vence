@@ -174,3 +174,34 @@ describe('reubicar huérfanas', () => {
     expect(despues).toEqual(antes)
   })
 })
+
+/**
+ * El id es el PRIMERO de la cabecera, no el último. [T-515]
+ *
+ * Los títulos de este backlog citan otras tareas con toda normalidad. Con la regex codiciosa
+ * (`.*`) el id capturado era el ÚLTIMO de la línea: la ficha de T-532, cuyo título cita a
+ * [T-400], se rechazaba como «id_no_coincide» — y en el orden contrario se habría insertado con
+ * el id equivocado, desincronizando markdown y tabla en silencio.
+ *
+ * Y sobre todo: `parseMarkdown.cjs` —la FUENTE ÚNICA del parseo— coge el primero. Dos lectores
+ * de la misma cabecera con criterios distintos es el fallo que ese fichero existe para evitar.
+ */
+describe('el id de la cabecera es el primero, como en parseMarkdown', () => {
+  const { insertarFicha, idsDeFichas } = require('@/lib/backlog/insertarFicha.cjs')
+  const CITA = '### [T-999] 🟠 [ABIERTO 04/08] Quitar la causa que [T-400] dejó solo visible'
+
+  it('acepta una ficha cuyo TÍTULO cita otra tarea', () => {
+    const r = insertarFicha(MD, 'T-999', CITA)
+    expect(r.ok).toBe(true)
+  })
+
+  it('y lee su id como T-999, no como el citado', () => {
+    expect(idsDeFichas([CITA])).toEqual(['T-999'])
+  })
+
+  it('el mismo criterio que parseMarkdown, no otro parecido', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { parseBacklogMarkdown } = require('@/lib/backlog/parseMarkdown.cjs')
+    expect(parseBacklogMarkdown(CITA).map((t: any) => t.id)).toEqual(idsDeFichas([CITA]))
+  })
+})
