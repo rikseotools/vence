@@ -1357,9 +1357,10 @@ justo los casos donde se sufre.
 correcta y que el tema **se va a ampliar**, sin fecha. Si esto se aparca, hay una premium con la
 expectativa puesta.
 
-**Cómo se reproduce la medida:** `scratchpad/banda-ciega.cjs` de esta sesión (usa el
-`SQL_UNIVERSO_COBERTURA` real de `lib/generacion/huerfanosPlan.js`, no una copia). Llevarlo a
-`scripts/` al atacar la ficha.
+**Cómo se reproduce la medida:** `node scripts/medir-banda-ciega-cobertura.cjs` (usa el `SQL_UNIVERSO_COBERTURA` real de
+`lib/generacion/huerfanosPlan.js`, no una copia; solo lee). **Re-medido el 04/08 tras servir 13
+preguntas del Estatut valenciano: 221 → 219 temas**, porque el tema 3 de `subalterno_gva` subió al
+72 % de cobertura y salió de la banda por su propio pie — la medida está viva.
 
 ### [T-535] 🟡 [ABIERTO 04/08] Duplicadas con las OPCIONES reescritas: el punto ciego del barrido de parafraseadas
 
@@ -1412,8 +1413,9 @@ norma del castellano: **el plural pierde la tilde**. `funciones`, `sanciones`, `
 `cuestiones`, `resoluciones` y `administraciones` son **correctos** sin tilde, y meterlos en la lista
 infla la cuenta ×5,6. Lo mismo con las **formas verbales y adjetivos** homógrafos: `publico`/`publica`
 (yo publico, él publica), `titulo`, `numero`, `capitulo`, y `perdida` (*la oportunidad perdida*). El
-corte solo admite **singulares cuya versión sin tilde no es palabra**. Medición reproducible en
-`scratchpad/medir-tildes.cjs` + `scratchpad/precision-tildes.cjs` (llevar a `scripts/` al atacarla).
+corte solo admite **singulares cuya versión sin tilde no es palabra**. Medición reproducible con `node scripts/medir-citas-sin-tildes.cjs` (y
+`scripts/medir-citas-sin-tildes-precision.cjs` para el reparto por palabra disparadora y la muestra
+que hay que leer a mano). Solo leen.
 
 **🕳️ EL PUNTO CIEGO, que es el hallazgo reutilizable.** `scripts/impugnaciones/validar-explicacion.cjs`
 es el guardarraíl que existe *«para cazar citas inventadas»*, y su comparador (línea 25) hace:
