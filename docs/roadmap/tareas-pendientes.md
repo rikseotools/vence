@@ -981,6 +981,19 @@ explicaciones legales.
 - **Esfuerzo: rato** el arreglo técnico; la decisión es lo caro.
 - **DE DÓNDE SALE:** de [T-507]. Al cerrar la brecha de las oficiales quedó a la vista su gemela, que es **más grande**: el serve aplica también `buildQuestionTagFilter` (con tag propio sirve SOLO lo etiquetado como suyo; sin tag propio excluye lo etiquetado como exclusivo de otras) y **ningún contador lo aplica**.
 - **MEDIDO el 03/08 (`npm run sim:contador-servible`): 1.374 temas · 137.252 preguntas** anunciadas que el test no puede dar. Los peores:
+- **⚠️ LA PRIMERA TABLA POR OPOSICIÓN ERA FALSA, y la corrección importa (04/08).** Al medir qué número quedaría en cada oposición salía que **Correos serviría 0** y que 126 de 126 activas perdían el 80-100%. Falso: Correos sirve de sobra (comprobado con `getFilteredQuestions`). Causa: el operador `&&` vale NULL cuando `tags` es NULL, así que la mayoría de preguntas —que no llevan etiquetas— se caían de los DOS lados de la cuenta. Es la MISMA trampa que ya había mordido esa mañana en la otra rama del mismo `CASE`. Corregido con `COALESCE` y contrastado contra el serve real.
+- **LA TABLA BUENA (04/08, `npm run sim:contador-servible -- --por-oposicion`), que es lo que hay que decidir.** Solo oposiciones ACTIVAS, con sus usuarios:
+
+  | oposición | usuarios | anuncia hoy | diría la verdad | de menos |
+  |---|---|---|---|---|
+  | `policia_nacional` | 125 | 30.165 | 14.506 | **52%** |
+  | `policia_municipal_madrid` | 15 | 9.487 | 7.635 | 20% |
+  | `subalterno_parlamento_andalucia` | 38 | 5.169 | 4.265 | 17% |
+  | `guardia_civil` | 96 | 24.743 | 21.009 | 15% |
+  | `mecanico_conductor_estado` | 11 | 4.136 | 3.527 | 15% |
+  | el resto de las 124 activas | — | — | — | ≤14% |
+
+  **Lectura:** el caso gordo es **Policía Nacional (125 usuarios), que anuncia el DOBLE de lo que puede servir**. En el resto la corrección es de un dígito o adolescente, nada dramático. O sea: **no es un cambio traumático de catálogo, es un caso**.
   - `policia_nacional` T21 → anuncia **2.006**, sirve **222**. T5 → anuncia 1.114, sirve **48**.
   - `mecanico_conductor_estado` → **ocho temas (6, 7, 8, 11-15) anuncian preguntas y sirven CERO**. Eso no es un rótulo optimista: es un callejón sin salida para quien entre ahí.
 - **POR QUÉ NO SE ARREGLÓ CON [T-507]:** el arreglo es de una línea por contador, pero **el efecto visible es enorme**: Policía Nacional pasaría a anunciar 222 donde hoy pone 2.006. Es tu decisión, no la del contador.
