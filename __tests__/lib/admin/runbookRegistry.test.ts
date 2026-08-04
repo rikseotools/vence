@@ -89,3 +89,45 @@ describe('runbookRegistry — guardarraíles', () => {
     expect(health!.kinds.length).toBeGreaterThan(1)
   })
 })
+
+// ── T-553: `programa_url` sirve a DOS contratos y sus detectores no se pueden fundir ──
+//
+// Es una confusión fácil y cara: `convocatoria_enlace_no_boletin` juzga `programa_url` como
+// ENLACE DEL BOTÓN («¿lleva al boletín que promete?») y `programa_url_no_es_temario` como FUENTE
+// DEL TEMARIO («¿tiene temas dentro?»). Un portal institucional puede ser un botón razonable y
+// una fuente inútil A LA VEZ — medido el 04/08: 44 de 126 activas están exactamente así.
+//
+// Sin esto, la próxima sesión que vea dos kinds «sobre programa_url» los unifica de buena fe y
+// se pierde uno de los dos contratos sin que nada lo diga.
+describe('programa_url: botón y fuente del temario son detectores DISTINTOS', () => {
+  const BOTON = 'convocatoria_enlace_no_boletin'
+  const FUENTE = 'programa_url_no_es_temario'
+
+  it('los dos existen y no comparten frase-gatillo', () => {
+    const b = runbookForKind(BOTON)
+    const f = runbookForKind(FUENTE)
+    expect(b).toBeDefined()
+    expect(f).toBeDefined()
+    expect(b!.triggerPhrase).not.toBe(f!.triggerPhrase)
+  })
+
+  it('cada uno manda a SU runbook y a SU comando', () => {
+    const f = runbookForKind(FUENTE)!
+    expect(f.runbook).toBe('docs/runbooks/verificar-epigrafes-scope.md')
+    expect(f.comando).toBe('audit:epigrafe-fuente')
+    // El del botón vive en salud-contenido y no tiene comando propio: lo emite el sweep.
+    expect(runbookForKind(BOTON)!.runbook).toBe('docs/runbooks/salud-contenido.md')
+  })
+
+  it('el kind de la fuente EXPLICA la diferencia, para que no se fundan por error', () => {
+    const f = runbookForKind(FUENTE)!
+    expect(f.claudeHace).toMatch(/convocatoria_enlace_no_boletin/)
+    expect(f.claudeHace).toMatch(/dos contratos|BOT[ÓO]N/i)
+  })
+
+  it('el triaje epígrafe↔fuente comparte una sola frase para sus dos salidas', () => {
+    // Son dos cubos del MISMO comando: separar la frase obligaría a recordar cuál es cuál.
+    expect(runbookForKind('temario_fuera_de_su_fuente')!.triggerPhrase)
+      .toBe(runbookForKind(FUENTE)!.triggerPhrase)
+  })
+})
