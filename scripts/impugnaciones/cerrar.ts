@@ -39,6 +39,7 @@
 import { readFileSync } from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { extraerEnlacesBoe, anclaDe, articuloCitadoEnElTexto, extraerCitas, verificarDocumento } = require('../../lib/impugnaciones/verificarEnlaces.cjs')
+const { validarVerdictoSistemico } = require('../../lib/impugnaciones/verdictoSistemico.cjs')
 import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
@@ -68,6 +69,10 @@ export function parsearArgs(argv: string[]) {
     // Escape de la puerta de reserva (T-474). Exige motivo: un escape anónimo no se puede revisar
     // después, y lo que hay que poder ver es si la puerta se está rodeando por sistema.
     igualmente: valor('--igualmente'),
+    // La pregunta que hay que hacerse en TODA impugnación, exigida en el cierre (T-520).
+    sistemico: valor('--sistemico'),
+    // Escape, con motivo y contado: un escape anónimo no se puede revisar después.
+    sistemicoOmitido: valor('--sistemico-omitido'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -265,11 +270,36 @@ async function main() {
   const veredicto = await comprobarReserva({ tabla, id: a.disputeId, igualmente: a.igualmente })
   const sePuede = anunciar(veredicto, { aplicar: a.aplicar })
 
+  // ── PUERTA DEL VERDICTO SISTÉMICO (T-520) ──────────────────────────────────────────────────
+  // «Después de cada impugnación deberías hacerte esa pregunta y que no se te olvide, porque si no
+  // no avanzamos nada» (Manuel, 04/08/2026). Va AQUÍ, en el último paso, porque el dossier se lee
+  // al empezar y para el cierre la pregunta ya se quedó por el camino. Se anuncia también en
+  // dry-run, para que no sorprenda con el mensaje ya aprobado.
+  let sistemicoOk = true
+  if (a.sistemicoOmitido) {
+    console.log(`\n⚠️  verdicto sistémico OMITIDO a propósito: ${a.sistemicoOmitido}`)
+  } else {
+    const v = validarVerdictoSistemico(a.sistemico)
+    if (v.ok) {
+      console.log(`\n🔬 sistémico [${v.clase}]: ${String(a.sistemico).trim()}`)
+    } else {
+      sistemicoOk = false
+      console.error(`\n❌ ${v.problema}`)
+      console.error('   Una impugnación llega por UNA pregunta y casi nunca es un caso aislado:')
+      console.error('   quien la escribe solo ha visto la punta. Declara qué miraste, con una de:')
+      console.error('     --sistemico "aislado: <por qué no puede haber más casos>"')
+      console.error('     --sistemico "medido: <qué medí> → <N> casos"          (tiene que llevar la CIFRA)')
+      console.error('     --sistemico "ficha T-nnn: <qué se abrió>"')
+      console.error('   Escape contado: --sistemico-omitido "<por qué no procede>"')
+    }
+  }
+
   if (!a.aplicar) {
-    console.log(sePuede ? '\n(dry-run — repite con --aplicar para enviarlo)\n' : '\n(dry-run — con --aplicar esto se habría abortado)\n')
+    const bien = sePuede && sistemicoOk
+    console.log(bien ? '\n(dry-run — repite con --aplicar para enviarlo)\n' : '\n(dry-run — con --aplicar esto se habría abortado)\n')
     return
   }
-  if (!sePuede) process.exit(1)
+  if (!sePuede || !sistemicoOk) process.exit(1)
 
   const token = await tokenDeAdmin()
   const res = await fetch(`${BASE}/api/v2/dispute/resolve`, {

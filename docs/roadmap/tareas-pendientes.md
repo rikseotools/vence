@@ -826,6 +826,30 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-520] 🟡 [ABIERTO 04/08] El cierre de impugnaciones exige ya el verdicto sistémico: la regla estaba escrita desde el 30/07 y se seguía olvidando
+
+- **Lo pidió Manuel** (04/08/2026), después de dos impugnaciones seguidas de la misma usuaria en las que la pregunta sistémica sí se hizo y destapó [T-519]: *«después de cada impugnación deberías hacerte esa pregunta y que no se te olvide, **porque si no no avanzamos nada**»*. Ese es el motivo de fondo: sin ella se arregla una pregunta cada vez y el banco no mejora nunca.
+- **Lo que había, y por qué no bastaba.** La regla estaba desde el **30/07** en el manual (§ *«SI EL FALLO PUEDE SER SISTÉMICO, MÍRALO EN LA BD ANTES DE CERRAR»*), el dossier **imprime** las hermanas activas del artículo bajo un «🔬 ¿FALLO SISTÉMICO?» y la checklist lleva el punto 4.bis. Tres avisos, y se seguía olvidando. Es la lección que esta casa ya pagó dos veces: **un aviso impreso entre otras diez líneas no es una condición** (la que ganó `snooze_until` cuando T-221 llevaba 24 h con «⛔ NO COGER» en el título, y la que hizo que `claim` pasara de avisar a impedir).
+- **Y hay una razón de MOMENTO, no solo de forma:** el dossier se lee al EMPEZAR y el cierre llega media hora después, con el mensaje ya redactado y aprobado. Para entonces la pregunta se quedó por el camino. Por eso la puerta va en el **último paso**, que es el único por el que pasan todas.
+- **Hecho:** `cerrar.ts` **aborta** sin `--sistemico`. Núcleo puro `lib/impugnaciones/verdictoSistemico.cjs`, taxonomía **cerrada** de tres salidas y cada una con la prueba que le toca:
+  - `aislado: <por qué no puede haber más casos>` → ≥25 caracteres de razón
+  - `medido: <qué medí> → <N> casos` → **exige la CIFRA**: sin número, «medido» es una forma elegante de decir que no se midió, y ése era justo el hueco
+  - `ficha T-nnn: <qué se abrió>` → exige el id, o no hay nada que consultar después
+  - escape con motivo y contado: `--sistemico-omitido "<por qué no procede>"`
+- **Por qué taxonomía cerrada y no texto libre:** un campo libre se rellena con «lo he mirado», que no se puede contar, no se puede revisar y no distingue haber medido de haberlo supuesto. Mismo criterio que `reserve` (aborta sin `--esfuerzo`) y que `due` (el motivo tiene que ser EXTERNO, y lo impide un CHECK).
+- **Se anuncia también en dry-run**, para que no sorprenda con el mensaje ya aprobado — igual que la puerta de reserva de [T-474].
+- **Capas:** 9 tests (`__tests__/impugnaciones/verdictoSistemico.test.ts`) con los verdictos REALES de las tres impugnaciones que lo motivaron, y comprobado de extremo a extremo contra un cierre real en dry-run (bloquea sin él, pasa con él).
+- **Pendiente (decidir, no urgente):** el gemelo `cerrar-feedback.ts` tiene el mismo hueco. No se ha extendido sin medir: buena parte de la cola de feedback son bajas de cuenta, donde la pregunta sistémica no aplica y el escape se volvería el camino normal — y un escape que se usa siempre no protege, solo mide fricción. Antes de portarlo, contar qué fracción de los feedbacks admite verdicto.
+
+### [T-517] 🟡 [ABIERTO 04/08] El dossier de un caso no enseña las fichas VIVAS del backlog que lo citan
+
+- **Esfuerzo: minutos.** El parseo del backlog ya existe (`lib/backlog/parseMarkdown.cjs`) y el dossier ya imprime bloques; es añadir uno.
+- **DE DÓNDE SALE:** de [T-516]. Con el aviso de reserva perdida, la sesión que la pierde YA se entera. Falta la otra mitad: **la que la coge no ve lo que ya está hecho**.
+- **CASO REAL (04/08):** el feedback `8b788ee0` (Neus) tenía ficha viva [T-507] con el diagnóstico completo, el arreglo pusheado y el borrador pendiente de OK. Al soltarse la reserva, otra sesión lo cogió y su dossier **no mencionaba nada de eso**: iba a rediagnosticar desde cero y, peor, podía decirle a la usuaria «ya está arreglado» cuando el código aún no estaba desplegado.
+- **QUÉ HACER:** en `revisar-feedback.cjs` y `revisar-impugnacion.cjs`, buscar el id del caso en `docs/roadmap/tareas-pendientes.md` y, si alguna ficha VIVA lo cita, imprimirla arriba del todo con su estado (abierta / en pausa esperando deploy / lista para verificar). Es el mismo gesto que hace `claim`, que ya deduce las tareas relacionadas de los `[T-nnn]` que la ficha cita.
+- **GUARDA:** solo fichas VIVAS. Una cerrada que cite el caso es historia, no contexto pendiente, y llenaría el dossier de ruido.
+- **Relacionadas:** [T-516], [T-507].
+
 ### [T-515] 🟡 [ABIERTO 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
 - **Esfuerzo: rato.** Núcleo puro + subcomando + tests.

@@ -2080,7 +2080,18 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(3) canta si cierra SIN email en vez de enterrarlo en el JSON. ' +
       '`--sin-recompensa "<motivo>"` para el mismo hallazgo repetido (un fallo, una recompensa). ' +
       'Desde T-474 EXIGE tener la impugnación reservada (ver cola_puerta_cierre); escape ' +
-      '`--igualmente "<motivo>"`.',
+      '`--igualmente "<motivo>"`. ' +
+      '**Desde T-520 EXIGE además el VERDICTO SISTÉMICO** (`--sistemico`), porque la regla de ' +
+      '«mira si el fallo es sistémico antes de cerrar» llevaba desde el 30/07 escrita en el manual, ' +
+      'impresa por el dossier y en la checklist, y aun así se olvidaba: un aviso entre otras diez ' +
+      'líneas no es una condición, y encima el dossier se lee al EMPEZAR mientras el cierre llega ' +
+      'media hora después. Taxonomía CERRADA de tres salidas, cada una con su prueba — ' +
+      '`aislado: <razón ≥25 chars>` · `medido: <qué> → <N>` (exige la CIFRA: sin número, «medido» ' +
+      'es decir que no se midió) · `ficha T-nnn: <qué>` (exige el id). Un campo de texto libre se ' +
+      'rellena con «lo he mirado» y no se puede contar ni revisar. Escape contado: ' +
+      '`--sistemico-omitido "<por qué no procede>"`. Núcleo puro `lib/impugnaciones/verdictoSistemico.cjs` ' +
+      '(9 tests con los verdictos reales que lo motivaron). Se anuncia también en dry-run, para que ' +
+      'no sorprenda con el mensaje ya aprobado.',
   },
   cerrar_feedback: {
     titulo: 'Responder o cerrar en silencio un feedback por el endpoint',
