@@ -2751,64 +2751,6 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Lo que NO hay que hacer:** rellenar las explicaciones a ojo. Es contenido sanitario; cada una se redacta contra su artículo vinculado, y la que no se pueda fundamentar se deja en `needs_human` en vez de inventarla.
 - **Relacionada:** [T-406] (misma tanda de importación), [T-307] (por qué los patrones van fundidos), `salud-contenido.md` → frase-gatillo *«revisa las explicaciones rotas»*.
 
-### [T-406] 🟡 [ABIERTO 31/07] 33 preguntas activas repiten LITERALMENTE un distractor: se quedan en tres opciones sin decirlo
-
-- **🟢 NADA QUE DESPLEGAR:** la reparación es de DATOS (`questions.option_*` en RDS) y ya está viva; la caché `questions` se invalidó al terminar. Nadie tiene que esperar a un deploy para verlo. Lo que sí necesitará deploy es el detector del punto 2, porque toca el `@Cron` del backend.
-- **✅ REPARADAS LAS 33 el 31/07** (`scratchpad/t406/reparar.cjs`, con tres guardas: no tocar la clave, exigir que la opción siga duplicada, y que el texto nuevo no choque con otra opción). Cada distractor clonado recibió el contenido que le tocaba —casi siempre la casilla que faltaba de una rejilla evidente: `Uniform/Universal × Locator/Library`, `natural/artificial × activa/pasiva`, las cuatro categorías OMS—. Verificado: **0 duplicadas en el banco**, caché `questions` invalidada. **Queda por hacer el detector (punto 2) y el trinquete (punto 3)**, que es lo que impide que vuelva.
-- **Esfuerzo restante: ~1 h** (el detector).
-- **Cómo auditar esas 33 reparaciones si alguien quiere revisarlas:** el cambio fue un `UPDATE` directo de `questions.option_*` y **eso no deja rastro en ninguna tabla de historial** (el audit trail de `question_lifecycle_history` solo cubre `lifecycle_state`). La única traza es `updated_at`:
-  ```sql
-  SELECT id, question_text, option_a, option_b, option_c, option_d, correct_option
-    FROM questions
-   WHERE is_active AND updated_at::date = DATE '2026-07-31'
-   ORDER BY updated_at;   -- las 33 + la explicación reescrita de 6ebca38f
-  ```
-  Criterio que se siguió, por si hay que rehacer alguna: se reescribió **siempre una opción que NO era la clave**, dándole el contenido que le faltaba a la rejilla de la propia pregunta (Uniform/Universal × Locator/Library; natural/artificial × activa/pasiva; las cuatro categorías OMS; los cuatro principios de la bioética). En las de *«señale la FALSA»* el distractor nuevo tiene que ser una afirmación **verdadera** — es el error fácil de cometer ahí (caso `b30ad9fd`, hiperplasia benigna de próstata).
-- **Qué pasa:** hay preguntas activas donde **dos opciones son idénticas carácter a carácter**. La clave nunca está en el par (medido), así que **ninguna es irresoluble**: el daño es que el opositor ve dos opciones clonadas, la pregunta se queda de hecho en tres alternativas y parece descuidada.
-- **Medido hoy (31/07, banco activo, 138.108 preguntas):**
-  | Corte | Preguntas |
-  |---|---|
-  | Dos opciones idénticas carácter a carácter | **33** |
-  | …con la **clave dentro del par** (serían irresolubles) | **0** |
-  | …oficiales | **0** |
-  | Exposiciones en 90 días / usuarios distintos | **3 / 2** |
-  - Nacidas entre **abr-2026 y jul-2026**, casi todas de lotes de contenido sanitario (`GERIATRÍA ENF`, `Pediatría`, `SALUD MENTAL ENF`…) y de `opositatest:*`. Goteo de importación/generación, no un lote revertible.
-- **⚠️ DOS familias de falso positivo, y las dos me mordieron al medir. Encódalas quien haga el detector:**
-  1. **Diferencia SOLO de mayúsculas = legítima, y es frecuente (15 casos).** Normalizar con `lower()` destruye justo lo que esas preguntas examinan: `=MAYUSC("administración")` → `ADMINISTRACIÓN` vs `Administración`; `=NOMPROPIO`; Vi `i` vs `I`; plurales en inglés. Con `lower()` salían **8 «irresolubles» que no existen**.
-  2. **Normalizar espacios con regex mal escapada.** Un `\s+` que llega a SQL como `s+` **borra las eses** y hace iguales `wardrobes` y `wardrobess`. Salieron otros 8 fantasmas, todos de inglés PN. Por eso la comparación va en JS y solo hace `trim` + colapso de espacios.
-  - Moraleja para el kind: **lo único que se normaliza es el espacio en blanco**. Nada más.
-- **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero al comprobarlo apareció el fenómeno de verdad, en otras preguntas.
-- **Por qué no lo caza nada:** ningún detector de `health-sweep` mira la coherencia **interna entre opciones** — todos los kinds de contenido comparan la pregunta con su ARTÍCULO, con el epígrafe o con la convocatoria, nunca la pregunta consigo misma. `npm run tools:buscar -- "opciones duplicadas"` no devuelve escritor ni detector alguno. Es el mismo hueco de [T-405] visto desde otro lado: allí el veredicto existía y no llegaba a ninguna cola; aquí **ni siquiera se mira**.
-- **Propuesta (por orden de coste):**
-  1. ~~Reparar las 33 a mano~~ → **HECHO el 31/07** (ver arriba).
-  2. **PENDIENTE — kind determinista `opciones_duplicadas` en el barrido**, con dos bandas: **`error`** = clave dentro del par (hoy 0, pero es el caso que de verdad rompe la pregunta: sea cual sea la que marque el opositor, acierta y falla a la vez), **`warn`** = par de distractores. Sin LLM: o los dos textos son iguales o no lo son.
-  3. **PENDIENTE — trinquete** que impida que el número suba (mismo patrón que `toolWriters`), porque el goteo viene del importador/generador y hoy nace a cero: es el momento perfecto para poner el trinquete, cuando el número es 0 y cualquier subida es una regresión demostrable.
-- **✅ HECHO 01/08 (sesión `t115-huerfanos`) — puntos 2 y 3 construidos; falta desplegar el backend para que el `@Cron` los emita.**
-  - **Detector `opciones_duplicadas` con sus dos bandas**, en núcleo puro `lib/health/opcionesDuplicadas.cjs` (15 tests) y cableado en **las dos superficies a la vez** —`scripts/health-sweep.cjs` y el `@Cron` de `content-health-sweep.service.ts`—, que es lo que exige el test de paridad. Registrado en `runbookRegistry` con la frase *«revisa las opciones duplicadas»* y su línea en `CLAUDE.md`: **el guardarraíl lo hizo cumplir** — el CI se puso rojo hasta que la línea estuvo escrita, que es justamente para lo que está.
-  - **Los cinco casos que la ficha pedía fijar están en los tests**, y los tres primeros son los falsos positivos medidos, no hipótesis: mayúsculas que no son par, opción vacía que no forma par, la **D nula legítima** de las oposiciones de tres alternativas, el par de distractores (`warn`) y el par que incluye la clave (`error`).
-  - **TRINQUETE (punto 3): `npm run canary:opciones-duplicadas`**, con techo declarado **CERO en las dos bandas** y `exit 2` si sube. **Medido al estrenarlo: 0 y 0 sobre 138.115 preguntas activas** — las 33 reparaciones del 31/07 se sostienen.
-    - **Por qué un canario y no un guard en el punto de escritura, que es la regla de la casa:** se comprobó, y `questions.option_*` lo escriben **28 scripts de importación distintos** sin un camino común. Es el caso que `toolWriters` contempla para los recursos con decenas de escritores legítimos: declarar dónde vive la protección real en vez de fingir un guard por escritor. **El camino de GENERACIÓN ya estaba cubierto aguas arriba** (`verificar-batch-generado.cjs` exige las cuatro opciones distintas y aborta el lote); el goteo medido venía del IMPORTADOR, y esa puerta no existe.
-    - **El techo es 0 porque el banco está limpio HOY.** Con un techo heredado nadie puede distinguir una regresión nueva de deuda vieja — poner el trinquete cuando el número es cero es lo que lo hace servir para algo.
-  - **Canario y badge comparten núcleo**, así que no pueden divergir de criterio. Registrado en `toolRegistry`.
-  - **⏳ FALTA: desplegar BACKEND.** Hasta que suba, el kind nuevo NO aparece en `/admin/salud-sistema` (el `@Cron` de Fargate es el writer real de `content_health_findings`; el barrido de `scripts/` es el gemelo CLI). Al desplegar, comprobar que el barrido nocturno emite `opciones_duplicadas` y que sigue en 0/0 — **nace en verde a propósito**, así que si habla es que ha entrado una regresión.
-- **📋 TODO LO QUE HACE FALTA PARA EL PUNTO 2 (para no re-descubrirlo):**
-  - **El criterio entero, que cabe en cinco líneas.** Va en JS, en un núcleo puro (`lib/health/opcionesDuplicadas.cjs`), NO en SQL — ver la segunda familia de falso positivo:
-    ```js
-    const norm = (s) => (s == null ? null : String(s).trim().replace(/\s+/g, ' '))
-    // por pregunta activa, con opts = [option_a, option_b, option_c, option_d].map(norm)
-    for (let i = 0; i < 4; i++)
-      for (let j = i + 1; j < 4; j++)
-        if (opts[i] && opts[j] && opts[i] === opts[j])       // ← sin lower(), sin quitar tildes
-          emitir({ i, j, banda: correct_option === i || correct_option === j ? 'error' : 'warn' })
-    ```
-  - **Dónde enchufarlo:** `scripts/health-sweep.cjs` (patrón de cualquier kind de contenido: `add('content', banda, null, 'opciones_duplicadas', mensaje, { count, sample })`) **y su espejo** del `@Cron` en `backend/src/content-health-sweep/content-health-sweep.service.ts`, que es el que corre de verdad en Fargate a las 03:00 UTC (memoria `project-health-sweep-cron-fargate`). El barrido de `scripts/` es el gemelo CLI: **tocar uno solo deja el otro mintiendo**, y hay test de paridad (`__tests__/health/content-sweep-parity.test.ts`).
-  - **Registrar la frase-gatillo** en `lib/admin/runbookRegistry.ts` (p. ej. *«revisa las opciones duplicadas»* → `salud-contenido.md`) — hay guardarraíl que compara el registro con CLAUDE.md (`__tests__/lib/admin/runbookRegistry.test.ts`), así que **si no se registra, el CI se pone rojo**. Y añadir la línea correspondiente al mapa de frases-gatillo de `CLAUDE.md`.
-  - **Casos que el test del núcleo debe fijar** (los tres primeros son los falsos positivos reales, medidos, no hipótesis): (a) dos opciones que solo difieren en mayúsculas → **NO es hallazgo**; (b) opción vacía o `NULL` → **no cuenta como par** (si no, toda pregunta con dos opciones vacías salta); (c) **D nula legítima** de las oposiciones de 3 opciones (Policía Nacional: 989/991 oficiales con D vacía) → ver manual `impugnaciones-claude-code.md` §7.8; (d) par de distractores → `warn`; (e) par que incluye la clave → `error`.
-  - **Nace en verde a propósito** (0 hallazgos hoy), igual que el kind de psicotécnicos: es un trinquete contra regresiones, no una bandeja de trabajo.
-- **⚠️ El script de reparación (`scratchpad/t406/reparar.cjs`) NO está versionado y es desechable** — su mapeo ya se consumió (las 33 están hechas). Lo único que había que conservar es el criterio de detección, que está inline aquí arriba. No lo busques si no aparece.
-- **Capa que lo vigile:** el kind ES la capa (hoy no hay ninguna).
-- **Relacionada:** [T-413] (misma tanda de importación: 11 de estas 33 servían «explicación pendiente de redactar»), [T-408] (allí se repite la PREGUNTA entera en el banco; aquí se repiten dos OPCIONES dentro de una pregunta), [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
-
 ### [T-408] 🟠 [ABIERTO 31/07] El banco sirve la MISMA pregunta duplicada: 1.955 activas repetidas literalmente, y las gemelas pueden contradecirse en la clave
 
 - **Esfuerzo: ~3 h** (el corte estricto es una consulta determinista; el trabajo está en el corte BORROSO, que es donde vive el daño, y en decidir qué gemela se jubila).
@@ -4395,6 +4337,63 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **La simulación se ganó el sueldo al escribirse:** dio ROJO («el bus está roto») y el fallo era de la propia consulta — **`--detalle` NO se guarda en `metadata`, va a la columna `error_message`**. Un test unitario nunca habría visto ese hueco entre la llamada y la fila. Queda anotado como gotcha en el registro de herramientas.
 - **DEUDA que queda, con trinquete puesto (no crece):** las **6 copias privadas** restantes. Casi todas viven en el camino de los hooks de git (cada commit, cada push) o del latido, así que migrarlas pide su propio cambio y su propia verificación: **romper el pre-push deja a TODAS las sesiones sin poder subir nada**. El trinquete impide que aparezca la nº 7, que es como nació este bug.
 - **Lo que NO hay que hacer:** añadir un `spawn` propio en el guardarraíl nuevo «porque es una línea». Esa línea es exactamente esta ficha.
+### [T-406] ✅ 🟡 [HECHA 04/08] 33 preguntas activas repiten LITERALMENTE un distractor: se quedan en tres opciones sin decirlo
+
+- **🟢 NADA QUE DESPLEGAR:** la reparación es de DATOS (`questions.option_*` en RDS) y ya está viva; la caché `questions` se invalidó al terminar. Nadie tiene que esperar a un deploy para verlo. Lo que sí necesitará deploy es el detector del punto 2, porque toca el `@Cron` del backend.
+- **✅ REPARADAS LAS 33 el 31/07** (`scratchpad/t406/reparar.cjs`, con tres guardas: no tocar la clave, exigir que la opción siga duplicada, y que el texto nuevo no choque con otra opción). Cada distractor clonado recibió el contenido que le tocaba —casi siempre la casilla que faltaba de una rejilla evidente: `Uniform/Universal × Locator/Library`, `natural/artificial × activa/pasiva`, las cuatro categorías OMS—. Verificado: **0 duplicadas en el banco**, caché `questions` invalidada. **Queda por hacer el detector (punto 2) y el trinquete (punto 3)**, que es lo que impide que vuelva.
+- **Esfuerzo restante: ~1 h** (el detector).
+- **Cómo auditar esas 33 reparaciones si alguien quiere revisarlas:** el cambio fue un `UPDATE` directo de `questions.option_*` y **eso no deja rastro en ninguna tabla de historial** (el audit trail de `question_lifecycle_history` solo cubre `lifecycle_state`). La única traza es `updated_at`:
+  ```sql
+  SELECT id, question_text, option_a, option_b, option_c, option_d, correct_option
+    FROM questions
+   WHERE is_active AND updated_at::date = DATE '2026-07-31'
+   ORDER BY updated_at;   -- las 33 + la explicación reescrita de 6ebca38f
+  ```
+  Criterio que se siguió, por si hay que rehacer alguna: se reescribió **siempre una opción que NO era la clave**, dándole el contenido que le faltaba a la rejilla de la propia pregunta (Uniform/Universal × Locator/Library; natural/artificial × activa/pasiva; las cuatro categorías OMS; los cuatro principios de la bioética). En las de *«señale la FALSA»* el distractor nuevo tiene que ser una afirmación **verdadera** — es el error fácil de cometer ahí (caso `b30ad9fd`, hiperplasia benigna de próstata).
+- **Qué pasa:** hay preguntas activas donde **dos opciones son idénticas carácter a carácter**. La clave nunca está en el par (medido), así que **ninguna es irresoluble**: el daño es que el opositor ve dos opciones clonadas, la pregunta se queda de hecho en tres alternativas y parece descuidada.
+- **Medido hoy (31/07, banco activo, 138.108 preguntas):**
+  | Corte | Preguntas |
+  |---|---|
+  | Dos opciones idénticas carácter a carácter | **33** |
+  | …con la **clave dentro del par** (serían irresolubles) | **0** |
+  | …oficiales | **0** |
+  | Exposiciones en 90 días / usuarios distintos | **3 / 2** |
+  - Nacidas entre **abr-2026 y jul-2026**, casi todas de lotes de contenido sanitario (`GERIATRÍA ENF`, `Pediatría`, `SALUD MENTAL ENF`…) y de `opositatest:*`. Goteo de importación/generación, no un lote revertible.
+- **⚠️ DOS familias de falso positivo, y las dos me mordieron al medir. Encódalas quien haga el detector:**
+  1. **Diferencia SOLO de mayúsculas = legítima, y es frecuente (15 casos).** Normalizar con `lower()` destruye justo lo que esas preguntas examinan: `=MAYUSC("administración")` → `ADMINISTRACIÓN` vs `Administración`; `=NOMPROPIO`; Vi `i` vs `I`; plurales en inglés. Con `lower()` salían **8 «irresolubles» que no existen**.
+  2. **Normalizar espacios con regex mal escapada.** Un `\s+` que llega a SQL como `s+` **borra las eses** y hace iguales `wardrobes` y `wardrobess`. Salieron otros 8 fantasmas, todos de inglés PN. Por eso la comparación va en JS y solo hace `trim` + colapso de espacios.
+  - Moraleja para el kind: **lo único que se normaliza es el espacio en blanco**. Nada más.
+- **Cómo salió:** de la impugnación `626059c8` (Marcos Sánchez, 31/07), que decía *«la respuesta A y C son idénticas»*. **Ahí era falso** (una decía «denunciantes» y la otra «denunciados», que es justo el eje de la pregunta) y se rechazó — pero al comprobarlo apareció el fenómeno de verdad, en otras preguntas.
+- **Por qué no lo caza nada:** ningún detector de `health-sweep` mira la coherencia **interna entre opciones** — todos los kinds de contenido comparan la pregunta con su ARTÍCULO, con el epígrafe o con la convocatoria, nunca la pregunta consigo misma. `npm run tools:buscar -- "opciones duplicadas"` no devuelve escritor ni detector alguno. Es el mismo hueco de [T-405] visto desde otro lado: allí el veredicto existía y no llegaba a ninguna cola; aquí **ni siquiera se mira**.
+- **Propuesta (por orden de coste):**
+  1. ~~Reparar las 33 a mano~~ → **HECHO el 31/07** (ver arriba).
+  2. **PENDIENTE — kind determinista `opciones_duplicadas` en el barrido**, con dos bandas: **`error`** = clave dentro del par (hoy 0, pero es el caso que de verdad rompe la pregunta: sea cual sea la que marque el opositor, acierta y falla a la vez), **`warn`** = par de distractores. Sin LLM: o los dos textos son iguales o no lo son.
+  3. **PENDIENTE — trinquete** que impida que el número suba (mismo patrón que `toolWriters`), porque el goteo viene del importador/generador y hoy nace a cero: es el momento perfecto para poner el trinquete, cuando el número es 0 y cualquier subida es una regresión demostrable.
+- **✅ HECHO 01/08 (sesión `t115-huerfanos`) — puntos 2 y 3 construidos; falta desplegar el backend para que el `@Cron` los emita.**
+  - **Detector `opciones_duplicadas` con sus dos bandas**, en núcleo puro `lib/health/opcionesDuplicadas.cjs` (15 tests) y cableado en **las dos superficies a la vez** —`scripts/health-sweep.cjs` y el `@Cron` de `content-health-sweep.service.ts`—, que es lo que exige el test de paridad. Registrado en `runbookRegistry` con la frase *«revisa las opciones duplicadas»* y su línea en `CLAUDE.md`: **el guardarraíl lo hizo cumplir** — el CI se puso rojo hasta que la línea estuvo escrita, que es justamente para lo que está.
+  - **Los cinco casos que la ficha pedía fijar están en los tests**, y los tres primeros son los falsos positivos medidos, no hipótesis: mayúsculas que no son par, opción vacía que no forma par, la **D nula legítima** de las oposiciones de tres alternativas, el par de distractores (`warn`) y el par que incluye la clave (`error`).
+  - **TRINQUETE (punto 3): `npm run canary:opciones-duplicadas`**, con techo declarado **CERO en las dos bandas** y `exit 2` si sube. **Medido al estrenarlo: 0 y 0 sobre 138.115 preguntas activas** — las 33 reparaciones del 31/07 se sostienen.
+    - **Por qué un canario y no un guard en el punto de escritura, que es la regla de la casa:** se comprobó, y `questions.option_*` lo escriben **28 scripts de importación distintos** sin un camino común. Es el caso que `toolWriters` contempla para los recursos con decenas de escritores legítimos: declarar dónde vive la protección real en vez de fingir un guard por escritor. **El camino de GENERACIÓN ya estaba cubierto aguas arriba** (`verificar-batch-generado.cjs` exige las cuatro opciones distintas y aborta el lote); el goteo medido venía del IMPORTADOR, y esa puerta no existe.
+    - **El techo es 0 porque el banco está limpio HOY.** Con un techo heredado nadie puede distinguir una regresión nueva de deuda vieja — poner el trinquete cuando el número es cero es lo que lo hace servir para algo.
+  - **Canario y badge comparten núcleo**, así que no pueden divergir de criterio. Registrado en `toolRegistry`.
+  - **⏳ FALTA: desplegar BACKEND.** Hasta que suba, el kind nuevo NO aparece en `/admin/salud-sistema` (el `@Cron` de Fargate es el writer real de `content_health_findings`; el barrido de `scripts/` es el gemelo CLI). Al desplegar, comprobar que el barrido nocturno emite `opciones_duplicadas` y que sigue en 0/0 — **nace en verde a propósito**, así que si habla es que ha entrado una regresión.
+- **📋 TODO LO QUE HACE FALTA PARA EL PUNTO 2 (para no re-descubrirlo):**
+  - **El criterio entero, que cabe en cinco líneas.** Va en JS, en un núcleo puro (`lib/health/opcionesDuplicadas.cjs`), NO en SQL — ver la segunda familia de falso positivo:
+    ```js
+    const norm = (s) => (s == null ? null : String(s).trim().replace(/\s+/g, ' '))
+    // por pregunta activa, con opts = [option_a, option_b, option_c, option_d].map(norm)
+    for (let i = 0; i < 4; i++)
+      for (let j = i + 1; j < 4; j++)
+        if (opts[i] && opts[j] && opts[i] === opts[j])       // ← sin lower(), sin quitar tildes
+          emitir({ i, j, banda: correct_option === i || correct_option === j ? 'error' : 'warn' })
+    ```
+  - **Dónde enchufarlo:** `scripts/health-sweep.cjs` (patrón de cualquier kind de contenido: `add('content', banda, null, 'opciones_duplicadas', mensaje, { count, sample })`) **y su espejo** del `@Cron` en `backend/src/content-health-sweep/content-health-sweep.service.ts`, que es el que corre de verdad en Fargate a las 03:00 UTC (memoria `project-health-sweep-cron-fargate`). El barrido de `scripts/` es el gemelo CLI: **tocar uno solo deja el otro mintiendo**, y hay test de paridad (`__tests__/health/content-sweep-parity.test.ts`).
+  - **Registrar la frase-gatillo** en `lib/admin/runbookRegistry.ts` (p. ej. *«revisa las opciones duplicadas»* → `salud-contenido.md`) — hay guardarraíl que compara el registro con CLAUDE.md (`__tests__/lib/admin/runbookRegistry.test.ts`), así que **si no se registra, el CI se pone rojo**. Y añadir la línea correspondiente al mapa de frases-gatillo de `CLAUDE.md`.
+  - **Casos que el test del núcleo debe fijar** (los tres primeros son los falsos positivos reales, medidos, no hipótesis): (a) dos opciones que solo difieren en mayúsculas → **NO es hallazgo**; (b) opción vacía o `NULL` → **no cuenta como par** (si no, toda pregunta con dos opciones vacías salta); (c) **D nula legítima** de las oposiciones de 3 opciones (Policía Nacional: 989/991 oficiales con D vacía) → ver manual `impugnaciones-claude-code.md` §7.8; (d) par de distractores → `warn`; (e) par que incluye la clave → `error`.
+  - **Nace en verde a propósito** (0 hallazgos hoy), igual que el kind de psicotécnicos: es un trinquete contra regresiones, no una bandeja de trabajo.
+- **⚠️ El script de reparación (`scratchpad/t406/reparar.cjs`) NO está versionado y es desechable** — su mapeo ya se consumió (las 33 están hechas). Lo único que había que conservar es el criterio de detección, que está inline aquí arriba. No lo busques si no aparece.
+- **Capa que lo vigile:** el kind ES la capa (hoy no hay ninguna).
+- **Relacionada:** [T-413] (misma tanda de importación: 11 de estas 33 servían «explicación pendiente de redactar»), [T-408] (allí se repite la PREGUNTA entera en el banco; aquí se repiten dos OPCIONES dentro de una pregunta), [T-405] (veredictos rojos que no llegan a ninguna cola), [T-036] (la matriz de verificación no mira los distractores), manual `impugnaciones-claude-code.md` §7.8.
 
 
 ### [T-515] ✅ 🟡 [HECHA 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
