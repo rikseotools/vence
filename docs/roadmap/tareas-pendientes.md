@@ -968,6 +968,52 @@ citan el artículo en blockquote) — por eso no se puede reportar el 705.
 **Relacionadas:** [T-409] (transcripción de explicaciones), [T-408] (duplicados), y el cubo de
 explicaciones legales.
 
+### [T-528] 🔴 [ABIERTO 04/08] El 59% de los scopes «verificados» se apoya en un epígrafe que nadie contrastó contra el boletín, y el verificador da verde sin mirar el reparto interno
+
+- **Lo preguntó Manuel** al ver el caso de las 10 impugnaciones de Lucia Quiroga (`d4841d9b` y hermanas, UC3M, 03/08): *«¿por qué un fallo tan grande? ¿no están todas las oposiciones verificado el scope?»*. Sí lo estaban. Ese es el problema.
+- **LO MEDIDO (04/08/2026), que es lo que convierte la sospecha en 🔴:**
+  | | |
+  |---|---|
+  | Temas activos | 3.827 |
+  | **Sin ni una fila de Paso 1** (el epígrafe nunca se contrastó) | **2.295 (60%)** |
+  | Con el programa oficial **clonado y enlazado al hub** | **1.423 (37,2%)** |
+  | Oposiciones activas **con `programa_url`** | **126 de 126** |
+  | Temas con el scope `verified_correct` | 2.656 |
+  | …de ellos, **con el epígrafe SIN validar** | **1.561 (59%)** |
+  | Scopes que sirven una ley ENTERA (`article_numbers IS NULL`) | 1.976 |
+  | …de ellos, marcados `verified_correct` | **1.501** |
+- **La fuente oficial estaba disponible en el 100% de los casos.** No faltaba el documento: el Paso 1 sencillamente no se corrió.
+- **TRES fallos que se tapan entre sí**, y por eso ninguna de las tres capas pudo ver el caso de la UC3M:
+  1. **Paso 1 no se corrió** en el 60% de los temas → el epígrafe puede venir de una academia, de un PDF viejo o de memoria, y nadie lo sabe.
+  2. **El Paso 2 contesta OTRA pregunta.** Con `article_numbers = NULL` no hay artículos que comprobar uno a uno, así que la verificación degenera en *«¿es relevante esta norma para este tema?»*, que casi siempre es que sí. **Evidencia literal** del `findings` del Tema 17 de la UC3M (`verified_by: multi_agent`, 10/07/2026): *«AMBOS CORRECT: RD 534/2024 + Normativa de Admisión por Cambio UC3M cubren acceso y admisión + normativa propia UC3M»* — mira si la ley PERTENECE al tema, no si el epígrafe pide solo una PARTE de ella.
+  3. **El detector que lo vería está callado a propósito:** «epígrafe ENUMERADOR con la ley entera» es banda **MEDIUM** de `scope_over_inclusion_suspect`, y la MEDIUM no pinga el badge (decisión de T-426: una alerta sin remediación construida enseña a ignorar el buzón).
+- ⚠️ **1.501 NO son 1.501 defectos, y no se puede vender así.** Cuando el epígrafe pide de verdad la norma completa, `NULL` es lo CORRECTO (ver `fix-topic-scope-null-whole-law`). El defecto es solo cuando el epígrafe **enumera partes** y el scope dice «entera». Lo que sí se puede afirmar es que **hoy nada distingue un caso del otro**, y que la única señal que lo separó fue una opositora contando capítulos a mano.
+- **Por dónde empezar, en este orden** (lo barato y determinista primero):
+  1. **Detector determinista**, sin LLM: si el epígrafe contiene ≥2 rúbricas literales de capítulo/título de la ley Y el scope es `NULL`, es contradicción mecánica. Se hizo hoy a mano con `curl` al índice del BOE y un `includes()` sobre el epígrafe — no necesita inteligencia, necesita el índice. **Mide primero cuántos de los 1.976 caen ahí.**
+  2. **Correr el Paso 1** en las activas: hay `programa_url` en las 126, y `verify:epigrafe dump/record` ya existe y enlaza al hub.
+  3. Solo entonces, LLM para la cola que quede: el epígrafe **parafraseado** («materia acotada en prosa») no se puede mapear con un `includes()` y ahí sí hace falta juicio.
+- **Lo que NO hay que hacer:** volver a correr el verificador multiagente sobre epígrafes sin sourcear. Es lo que ya se hizo, y lo que produjo el verde falso: más capacidad de razonamiento sobre una premisa sin verificar **no corrige el error, lo argumenta mejor**.
+
+### [T-527] 🟠 [ABIERTO 04/08] Las otras 3 universidades escopan el RD 534/2024 ENTERO con epígrafes que enumeran capítulos concretos
+
+- **Sale de las 10 impugnaciones de Lucia Quiroga sobre la UC3M** (`d4841d9b` y hermanas, resueltas el 04/08). Al medir si era sistémico, las **cuatro** oposiciones que escopan el RD 534/2024 tienen `article_numbers = NULL` (= ley entera) y las cuatro tienen un epígrafe que **enumera bloques concretos**:
+  | oposición | tema | scope | capítulos que el epígrafe nombra |
+  |---|---|---|---|
+  | `auxiliar_administrativo_universidad_carlos_iii` | T17 B3 | **ya recortado** (arts 1-8, 22-26, 37-45) | I, II, IV, VI |
+  | `administrativa_universidad_de_murcia` | T4 B5 | ley entera | (heurística: II, IV — **leer**) |
+  | `auxiliar_administrativo_universidad_almeria` | T17 B2 | ley entera | (heurística: II, IV — **leer**) |
+  | `escala_administrativa_universidad_de_granada` | T7 B1 | ley entera | (heurística: II, IV — **leer**) |
+- **La columna de la derecha NO es un veredicto.** Sale de buscar rúbricas del BOE dentro del epígrafe, que es un apaño para dimensionar; los epígrafes de esas tres son más cortos que el de la UC3M y hay que **leerlos enteros contra su propia convocatoria**. Puede que alguno pida legítimamente la norma completa.
+- **Estructura real del RD 534/2024** (BOE `BOE-A-2024-11858`, ya verificada): CAP I arts 1-3 · CAP II 4-8 · CAP III 9-21 (Prueba de acceso) · CAP IV 22-26 · CAP V 27-36 (Procedimientos específicos) · CAP VI 37-45.
+- **Cómo se hace, una por una** (es el camino que funcionó en la UC3M y está probado):
+  1. `programa_url` de la oposición → si la página sirve un cascarón sin JS (la UC3M servía 1.565 caracteres), el temario está en un **PDF enlazado**; bajarlo y `pdftotext -layout`.
+  2. Localizar el tema y **comparar palabra por palabra** con `topics.epigrafe`.
+  3. Mapear las rúbricas que enumera a los capítulos del BOE y construir el `article_numbers`.
+  4. `verify:scope plan <pt> <propuestas.json>` → `apply` (con scope NULL el recorte se expresa en `anadir`, materializando la lista; `quitar` va vacío).
+  5. `verify:epigrafe record <pt> <consenso.json>` con `source_url` al PDF, que lo enlaza al hub de provenance.
+- **NUNCA recortar sin el boletín** y nunca por analogía con la UC3M: cada universidad tiene su propio temario.
+
+
 ### [T-523] 🔴 [ABIERTO 04/08] El temario de una oposición personalizada da 404: 580 de 585 no tienen temas
 
 - **Esfuerzo: rato** (el arreglo es de PANTALLA, no de datos).
