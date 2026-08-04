@@ -106,6 +106,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'La causa ya está cerrada en `processUnsubscribeByToken` (casilla `includeSoporte`), así que ' +
       'si esto vuelve a dar >0 filas, el defecto ha REAPARECIDO: mirar ahí antes de re-ejecutar.',
   },
+  slot_dispositivo_inactivo: {
+    titulo: 'El slot de un dispositivo sin usar deja de bloquear a su dueño a los 7 días',
+    ruta: 'scripts/sim/sim-slot-dispositivo.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/revisar-fraudes.md',
+    notas:
+      'npm run sim:slot-dispositivo — EJECUTA la regla contra la BD real con un usuario efímero ' +
+      'que se limpia solo, porque vive dentro de la función SQL `register_device` y un test de JS ' +
+      'tendría que mockear justo lo que hay que comprobar. Afirma las DOS direcciones (el slot ' +
+      'muerto libera · el vivo sigue bloqueando · la frontera a los 6 días aún ocupa). Nace de ' +
+      'medir [T-418] el 04/08/2026: 35 de 289 premium topaban el límite de 2 aparatos y, de los 91 ' +
+      'con los dos slots llenos, 39 tenían uno ocupado por una máquina que ya no se usa (patrón de ' +
+      'relevo tras re-registrarse). GOTCHA que decide la implementación: NO se borra la fila a los ' +
+      '7 días — `user_devices` es la prueba de qué cuentas comparten aparato y el barrido de fraude, ' +
+      'el cupo compartido y el anti-autoreferido la leen con ventana de 30 días; borrarla se la ' +
+      'recortaría a 7 en silencio. Se acorta lo que OCUPA PLAZA, no lo que se recuerda. ' +
+      'Migración: supabase/migrations/20260804_device_slot_inactivo_7_dias.sql.',
+  },
   errores_horneados: {
     titulo: 'Impedir que una página cacheada hornee su pantalla de error (T-506)',
     ruta: 'lib/calidad/erroresHorneados.cjs',
