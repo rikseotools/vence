@@ -34,7 +34,7 @@ export interface TestConfig {
   onlyOfficialQuestions?: boolean
   focusEssentialArticles?: boolean
   testMode?: string
-  positionType?: string
+  positionType: string
   [key: string]: unknown
 }
 
@@ -52,7 +52,7 @@ export interface TestConfiguratorProps {
   hideEssentialArticles?: boolean
   officialQuestionsCount?: number
   testMode?: 'practica' | 'examen'
-  positionType?: string
+  positionType: string
 }
 
 declare const TestConfigurator: FC<TestConfiguratorProps>

@@ -170,6 +170,9 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
           }
         `}</style>
         <TestConfigurator
+          // Explícito desde [T-541]. Antes se heredaba del valor por defecto del componente
+          // compartido, así que esta pantalla de LEYES decidía por omisión y en silencio.
+          positionType="auxiliar_administrativo_estado"
           tema={null} // Explícitamente null para que use lawsData
           totalQuestions={difficultyStats}
           userStats={difficultyStats as any}

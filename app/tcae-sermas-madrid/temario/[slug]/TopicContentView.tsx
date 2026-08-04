@@ -33,7 +33,7 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
   return { block: '', displayNum: topicNumber }
 }
 
-export default function TopicContentView({ content, oposicion = 'auxiliar-enfermeria-osakidetza', updatedAt }: TopicContentViewProps) {
+export default function TopicContentView({ content, oposicion = 'tcae-sermas-madrid', updatedAt }: TopicContentViewProps) {
   const { getSlug } = useLawSlugs()
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }

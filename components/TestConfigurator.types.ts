@@ -59,7 +59,14 @@ export interface TestConfiguratorProps {
   hideEssentialArticles?: boolean
   officialQuestionsCount?: number
   testMode?: TestMode
-  positionType?: string
+  /**
+   * OBLIGATORIA desde [T-541]. Tenía `auxiliar_administrativo_estado` por defecto, y un valor
+   * por defecto que es una oposición REAL no falla cuando se olvida: sirve la de otro. Ese
+   * patrón ha mordido cinco veces (caso Alicia 18/06, flor/MariSol 13/07, TemaTestPage,
+   * TopicContentView y TestPageWrapper el 04/08). Aquí lo impide el compilador, que es el único
+   * sitio donde no depende de que alguien se acuerde.
+   */
+  positionType: string
   /** Configurador "por leyes" acotado al temario del positionType (sin topicNumber):
    *  filtra las leyes y los artículos al temario del usuario. Default false. */
   scopeToPosition?: boolean

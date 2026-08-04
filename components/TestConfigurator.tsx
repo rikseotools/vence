@@ -70,7 +70,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   hideEssentialArticles = false,
   officialQuestionsCount = 0,
   testMode = 'practica',
-  positionType = 'auxiliar_administrativo_estado',
+  positionType,
   scopeToPosition = false,
   autoOpenFailed = false
 }) => {

@@ -646,6 +646,7 @@ export default function TemaPage({ params }: PageProps) {
         {/* CONFIGURADOR AVANZADO */}
         <section className="mb-8">
           <TestConfigurator
+            positionType="auxiliar_administrativo_estado"
             tema={tema}
             temaDisplayName={topicData ? (topicData.title.startsWith('Tema ') ? topicData.title : `${bloqueNombre} - Tema ${temaVisual}: ${topicData.title}`) : null}
             totalQuestions={difficultyStats as any}
