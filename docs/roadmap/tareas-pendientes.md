@@ -842,6 +842,25 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-546] 🟢 [ABIERTO 04/08] Migrar las 6 copias privadas del emisor de fricción que viven en hooks de git
+
+- **De dónde sale.** [T-542] creó el emisor único `lib/sessions/friccion.cjs` porque cada guardarraíl se escribía su propio `spawn` de `friccion-emitir.cjs` — y por eso la sexta puerta (temario, T-518) nació sin escribir el suyo. Se migraron las dos del cierre (`comprobar-reserva`, `puerta-temario`); **quedan 6**:
+  | módulo | cuándo corre |
+  |---|---|
+  | `scripts/backlog-push-guard.cjs` | **pre-push**, cada push |
+  | `scripts/contexto-push-guard.cjs` | **pre-push**, cada push |
+  | `scripts/check-indice-compartido.cjs` | **pre-commit**, cada commit |
+  | `scripts/backlog.cjs` | CLI del backlog |
+  | `scripts/sessions/huerfanos.cjs` | `npm run sesiones:huerfanos` |
+  | `scripts/sessions/latir.cjs` | latido, en bucle |
+- **Por qué NO se hizo en T-542 y no es pereza:** cuatro de los seis están en el camino de los hooks de git o del latido. **Romper el pre-push deja a todas las sesiones sin poder subir nada**, y romper el latido rompe el reparto de la cola. Un refactor con ese radio de acción pide su propio cambio, su propia verificación y su propio despliegue mental — no colarse al final de otra ficha.
+- **Riesgo real y concreto:** el emisor compartido hace `require` de `lib/observability/friccionSesiones.cjs` para validar la clase. Los guardarraíles de hook son `.cjs` sueltos que hoy no dependen de nada; hay que comprobar que la resolución de rutas funciona **desde un worktree** (que es donde corren) y que un fallo del `require` no tumbe el hook — el emisor ya es fail-open, pero conviene probarlo, no suponerlo.
+- **Cómo verificarlo antes de dar nada por bueno** (el trinquete solo dice que no crecen, no que la migración esté bien):
+  1. `npm run sim:friccion-puertas` sigue en verde.
+  2. Bajar el TECHO del trinquete en `__tests__/guardrails/puertasQueCuentan.guardrail.test.ts` según se migre cada uno — es el marcador de progreso.
+  3. **Probar un bloqueo REAL de cada hook** (un commit con el índice compartido, un push citando una tarea ajena) y comprobar que el roce aparece en `npm run sesiones:friccion`. Un test que no dispare el hook de verdad no prueba que el hook siga funcionando.
+- **Es 🟢 a propósito:** nada está roto. Los seis cuentan su fricción hoy; lo que se gana es que no puedan dejar de contarla en silencio, como pasó con la séptima.
+
 ### [T-545] 🟡 [ABIERTO 04/08] Las oposiciones DE COMUNIDAD se ofrecen en el onboarding sin contenido detrás
 
 **Qué pasa.** En el onboarding, entre las opciones de oposición aparecen las **creadas por usuarios** (`custom_oposiciones`), con el formato **«👥 Auxiliar administrativo ⭐ 22 usuarios»**. Quien la elige se queda con un `user_profiles.target_oposicion` que es un **UUID de `custom_oposiciones`**, no un `position_type` — y esa etiqueta **no tiene temas ni preguntas detrás** (la más elegida, `dd5c1b2b`, creada en enero por una usuaria: **0 temas**). El resto de la app espera un slug.
@@ -887,28 +906,6 @@ Se le escribió preguntando si quiere el borrado definitivo o solo dejar de reci
 **Gotcha del camino, que costó un 409.** Un feedback de `account_deletion` **no trae conversación**, así que `cerrar-feedback.ts` lo rechaza con *«El feedback no tiene conversacion abierta»*. Hay que crearla primero con `POST /api/v2/admin/feedback/start-conversation` (`{feedbackId, userId}`) y entonces responder. Es el mismo modo de fallo que el kind `feedback_sin_conversacion`, del que las bajas están **excluidas a propósito** porque normalmente no se contestan: en cuanto una baja sí merece respuesta, aparece la pared.
 
 **Relacionadas:** [T-545] (el hallazgo de las oposiciones de comunidad, que es lo que la dejó sin contenido).
-
-### [T-542] 🟡 [ABIERTO 04/08] La puerta de temario decía «queda contado» y no contaba nada: el emisor de fricción estaba copiado en cada guardarraíl y el sexto no lo escribió
-
-- **Cómo se destapó.** Resolviendo la cola de impugnaciones (04/08), una sesión saltó la puerta de temario con `--temario-igualmente` —motivo legítimo: la queja de Iván no iba de temario— y fue a buscar su escape al bus de fricción para dejarlo dicho. No estaba. Reportaban **nueve** guardarraíles (`backlog-push`, `indice-compartido`, `contexto-backlog`, `done-verificacion`, `cierre-cola`, `worktrees`, `latido`…) y **temario no**.
-- **El defecto no es que faltara un `emit`, es que MENTÍA.** La puerta imprimía literalmente *«queda contado»*. Un guardarraíl mudo se descubre; uno que **afirma** contar le dice a la siguiente sesión que no se preocupe, y nadie va a comprobarlo.
-- **Por qué es grave y no cosmético.** De la cabecera de `friccionSesiones.cjs` (T-423): *«la señal que más importa es el ESCAPE, no el bloqueo — un guardarraíl que se salta de forma sistemática está muerto y nadie se ha enterado»*. Una puerta que no emite es **invisible para su propio indicador de muerte**: puede llevar desde el día uno dando la lata sin proteger. La puerta de temario (T-518) se estrenó **ese mismo día**, así que nació ciega.
-- **CAUSA DE FONDO, que es lo que se arregla: el emisor estaba copiado a mano.** Seis módulos lanzaban `friccion-emitir.cjs` con su propio `spawn` privado (`backlog-push-guard`, `backlog`, `contexto-push-guard`, `check-indice-compartido`, `huerfanos`, `latir`) más el de `comprobar-reserva`. Cuando la única forma de emitir es copiar código de otro fichero, tarde o temprano alguien no lo copia. **Esto no fue un despiste: fue el resultado predecible del patrón.**
-- **Qué se ha hecho:**
-  1. **Emisor único** `lib/sessions/friccion.cjs` → `emitirFriccion({clase, guard, detalle, segundos})`. No lanza nunca, no bloquea (detached+unref: corre dentro de hooks de git), no imprime, y **descarta una clase fuera del catálogo cerrado antes de gastar un proceso** — porque si no, `friccion-emitir.cjs` la tira en silencio y el guardarraíl se queda creyendo que cuenta, que es el mismo bug un nivel más abajo.
-  2. **La puerta de temario emite** bloqueo y escape. El motivo del escape **ya lo producía el núcleo** (`revisionEpigrafe.cjs` devuelve `motivo`) y `comprobarTemario` lo tiraba: se propaga, no se reconstruye. El detalle del bloqueo agrupa por **CODE**, no por la prosa —que lleva dentro el nombre del tema y de la oposición y no agruparía con nada—.
-  3. **`comprobar-reserva.ts` migrado** al emisor único (misma familia, sin hooks de git de por medio).
-  4. **Guardarraíl** `lib/calidad/puertasQueCuentan.cjs`: marca la puerta que comunica un rechazo (🛑/⛔) y puede devolver `false` pero no llama al emisor. **Detecta por comportamiento, no por mención** (igual que `toolWriters`): un comentario que nombre la fricción **no** cuenta como contarla — la trampa exacta del caso original.
-- **Capas, y una se verificó de verdad:**
-  | capa | qué fija |
-  |---|---|
-  | `__tests__/sessions/friccionEmisor.test.ts` (6) | el emisor no lanza, no bloquea, recorta el detalle, descarta clases inventadas |
-  | `__tests__/impugnaciones/puertaTemarioFriccion.test.ts` (8) | la puerta EMITE. **Comprobado reintroduciendo el bug: 2 tests en rojo** — sin eso, un test que pasa no prueba nada |
-  | `__tests__/guardrails/puertasQueCuentan.guardrail.test.ts` (8) | la próxima puerta no nace muda + TRINQUETE en 6 copias privadas |
-  | `npm run sim:friccion-puertas` | extremo a extremo contra RDS: el roce **llega** al bus con su forma, y se limpia sola |
-- **La simulación se ganó el sueldo al escribirse:** dio ROJO («el bus está roto») y el fallo era de la propia consulta — **`--detalle` NO se guarda en `metadata`, va a la columna `error_message`**. Un test unitario nunca habría visto ese hueco entre la llamada y la fila. Queda anotado como gotcha en el registro de herramientas.
-- **DEUDA que queda, con trinquete puesto (no crece):** las **6 copias privadas** restantes. Casi todas viven en el camino de los hooks de git (cada commit, cada push) o del latido, así que migrarlas pide su propio cambio y su propia verificación: **romper el pre-push deja a TODAS las sesiones sin poder subir nada**. El trinquete impide que aparezca la nº 7, que es como nació este bug.
-- **Lo que NO hay que hacer:** añadir un `spawn` propio en el guardarraíl nuevo «porque es una línea». Esa línea es exactamente esta ficha.
 
 ### [T-537] 🟡 [ABIERTO 04/08] Psicotécnicas servidas SIN su premisa: `content_data` lleva campos que el render no pinta
 
@@ -4362,6 +4359,29 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-542] ✅ [HECHA 04/08] La puerta de temario decía «queda contado» y no contaba nada: el emisor de fricción estaba copiado en cada guardarraíl y el sexto no lo escribió
+
+- **Cómo se destapó.** Resolviendo la cola de impugnaciones (04/08), una sesión saltó la puerta de temario con `--temario-igualmente` —motivo legítimo: la queja de Iván no iba de temario— y fue a buscar su escape al bus de fricción para dejarlo dicho. No estaba. Reportaban **nueve** guardarraíles (`backlog-push`, `indice-compartido`, `contexto-backlog`, `done-verificacion`, `cierre-cola`, `worktrees`, `latido`…) y **temario no**.
+- **El defecto no es que faltara un `emit`, es que MENTÍA.** La puerta imprimía literalmente *«queda contado»*. Un guardarraíl mudo se descubre; uno que **afirma** contar le dice a la siguiente sesión que no se preocupe, y nadie va a comprobarlo.
+- **Por qué es grave y no cosmético.** De la cabecera de `friccionSesiones.cjs` (T-423): *«la señal que más importa es el ESCAPE, no el bloqueo — un guardarraíl que se salta de forma sistemática está muerto y nadie se ha enterado»*. Una puerta que no emite es **invisible para su propio indicador de muerte**: puede llevar desde el día uno dando la lata sin proteger. La puerta de temario (T-518) se estrenó **ese mismo día**, así que nació ciega.
+- **CAUSA DE FONDO, que es lo que se arregla: el emisor estaba copiado a mano.** Seis módulos lanzaban `friccion-emitir.cjs` con su propio `spawn` privado (`backlog-push-guard`, `backlog`, `contexto-push-guard`, `check-indice-compartido`, `huerfanos`, `latir`) más el de `comprobar-reserva`. Cuando la única forma de emitir es copiar código de otro fichero, tarde o temprano alguien no lo copia. **Esto no fue un despiste: fue el resultado predecible del patrón.**
+- **Qué se ha hecho:**
+  1. **Emisor único** `lib/sessions/friccion.cjs` → `emitirFriccion({clase, guard, detalle, segundos})`. No lanza nunca, no bloquea (detached+unref: corre dentro de hooks de git), no imprime, y **descarta una clase fuera del catálogo cerrado antes de gastar un proceso** — porque si no, `friccion-emitir.cjs` la tira en silencio y el guardarraíl se queda creyendo que cuenta, que es el mismo bug un nivel más abajo.
+  2. **La puerta de temario emite** bloqueo y escape. El motivo del escape **ya lo producía el núcleo** (`revisionEpigrafe.cjs` devuelve `motivo`) y `comprobarTemario` lo tiraba: se propaga, no se reconstruye. El detalle del bloqueo agrupa por **CODE**, no por la prosa —que lleva dentro el nombre del tema y de la oposición y no agruparía con nada—.
+  3. **`comprobar-reserva.ts` migrado** al emisor único (misma familia, sin hooks de git de por medio).
+  4. **Guardarraíl** `lib/calidad/puertasQueCuentan.cjs`: marca la puerta que comunica un rechazo (🛑/⛔) y puede devolver `false` pero no llama al emisor. **Detecta por comportamiento, no por mención** (igual que `toolWriters`): un comentario que nombre la fricción **no** cuenta como contarla — la trampa exacta del caso original.
+- **Capas, y una se verificó de verdad:**
+  | capa | qué fija |
+  |---|---|
+  | `__tests__/sessions/friccionEmisor.test.ts` (6) | el emisor no lanza, no bloquea, recorta el detalle, descarta clases inventadas |
+  | `__tests__/impugnaciones/puertaTemarioFriccion.test.ts` (8) | la puerta EMITE. **Comprobado reintroduciendo el bug: 2 tests en rojo** — sin eso, un test que pasa no prueba nada |
+  | `__tests__/guardrails/puertasQueCuentan.guardrail.test.ts` (8) | la próxima puerta no nace muda + TRINQUETE en 6 copias privadas |
+  | `npm run sim:friccion-puertas` | extremo a extremo contra RDS: el roce **llega** al bus con su forma, y se limpia sola |
+- **La simulación se ganó el sueldo al escribirse:** dio ROJO («el bus está roto») y el fallo era de la propia consulta — **`--detalle` NO se guarda en `metadata`, va a la columna `error_message`**. Un test unitario nunca habría visto ese hueco entre la llamada y la fila. Queda anotado como gotcha en el registro de herramientas.
+- **DEUDA que queda, con trinquete puesto (no crece):** las **6 copias privadas** restantes. Casi todas viven en el camino de los hooks de git (cada commit, cada push) o del latido, así que migrarlas pide su propio cambio y su propia verificación: **romper el pre-push deja a TODAS las sesiones sin poder subir nada**. El trinquete impide que aparezca la nº 7, que es como nació este bug.
+- **Lo que NO hay que hacer:** añadir un `spawn` propio en el guardarraíl nuevo «porque es una línea». Esa línea es exactamente esta ficha.
+
 
 ### [T-515] ✅ 🟡 [HECHA 04/08] Insertar una ficha a mano la coloca MAL: dos sesiones cayeron en el mismo ancla falso
 
