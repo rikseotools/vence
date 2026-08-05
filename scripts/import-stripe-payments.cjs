@@ -5,6 +5,9 @@
 
 require('dotenv').config({ path: '.env.local' })
 
+// Un trabajador autónomo no ejecuta esto: mueve dinero real y no hay nadie delante.
+const { exigirPersonaParaDinero } = require('../lib/sessions/dinero.cjs')
+if (!exigirPersonaParaDinero('stripe')) process.exit(4)
 const Stripe = require('stripe')
 const { createClient } = require('./lib/pg-agnostic-client.cjs')
 

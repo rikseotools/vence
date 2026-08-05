@@ -42,6 +42,10 @@
 const path = require('path');
 const REPO = path.resolve(__dirname, '..', '..');
 require(path.join(REPO, 'node_modules', 'dotenv')).config({ path: path.join(REPO, '.env.local') });
+// Un trabajador autónomo no ejecuta esto: mueve dinero real y no hay nadie delante.
+const { exigirPersonaParaDinero } = require(path.join(REPO, 'lib', 'sessions', 'dinero.cjs'));
+if (!exigirPersonaParaDinero('stripe')) process.exit(4);
+
 const Stripe = require(path.join(REPO, 'node_modules', 'stripe'));
 const pgMod = require(path.join(REPO, 'node_modules', 'postgres'));
 const postgres = pgMod.default || pgMod;

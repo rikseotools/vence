@@ -6,6 +6,9 @@
 
 const path = require('path')
 require(path.join(__dirname, '..', 'node_modules', 'dotenv')).config({ path: path.join(__dirname, '..', '.env.local') })
+// Un trabajador autónomo no ejecuta esto: mueve dinero real y no hay nadie delante.
+const { exigirPersonaParaDinero } = require(path.join(__dirname, '..', 'lib', 'sessions', 'dinero.cjs'))
+if (!exigirPersonaParaDinero('stripe')) process.exit(4)
 const Stripe = require(path.join(__dirname, '..', 'node_modules', 'stripe'))
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })

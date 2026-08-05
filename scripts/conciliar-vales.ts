@@ -34,6 +34,11 @@ const arg = (n: string, d: string) => {
 }
 const LIMITE = Number(arg('--limite', '50'))
 
+// Un trabajador autónomo no ejecuta esto: consulta compras de vales con dinero real y no hay
+// nadie delante. Ver lib/sessions/dinero.cjs.
+const { exigirPersonaParaDinero } = require('../lib/sessions/dinero.cjs')
+if (!exigirPersonaParaDinero('vales')) process.exit(4)
+
 const TOKEN = process.env.BITREFILL_API_TOKEN
 const DB = process.env.DATABASE_URL
 if (!TOKEN) { console.error('❌ falta BITREFILL_API_TOKEN'); process.exit(2) }
