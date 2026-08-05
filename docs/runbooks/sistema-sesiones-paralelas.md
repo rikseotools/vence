@@ -550,9 +550,10 @@ acotados, igual que el VPS.
 Lo que hace un trabajador de principio a fin, y **dónde para a propósito**:
 
 ```
-  encargo  →  claim  →  trabajo  →  ENTREGA  →  [una persona verifica]  →  cierre
-                                       ↑                                      ↑
-                            aquí acaba el trabajador              esto NUNCA es suyo
+  encargo → claim → trabajo → push → deploy → verifica en PRODUCCIÓN → done
+                                        ↑
+                    solo si su máquina puede (registro: puedeDesplegar);
+                    si no, `pause --tras-deploy` y el deploy la despierta
 ```
 
 Y si lo que produce va dirigido a alguien:
@@ -561,22 +562,31 @@ Y si lo que produce va dirigido a alguien:
   análisis  →  BORRADOR (embudo)  →  [Manuel lo aprueba]  →  una persona lo envía
 ```
 
-**Las tres cosas que un trabajador no hace, y no son limitaciones a corregir:**
+**Un trabajador lleva la tarea HASTA EL FINAL**, igual que una sesión del portátil: la hace, la
+empuja, **la despliega, la verifica en producción y la cierra**. Entregar a medias lo que se puede
+terminar es trabajo que luego tiene que rehacer una persona.
+
+> **Esto estuvo mal puesto durante el primer día.** El encargo decía «no despliegues, no cierres»
+> y se justificaba con la seguridad — pero **lo que lo impedía era el propio encargo, no el
+> sistema**. Un trabajador local corre como el usuario: alcanza AWS (verificado con
+> `aws sts get-caller-identity`) y **comparte el candado del deploy** con las sesiones de Manuel.
+> Lo corrigió él: *«deben tratar las tareas como lo hacen en mi portátil»*.
+
+**La única excepción es real y tiene ficha:** los trabajadores del **VPS no despliegan**, porque el
+candado es un `flock` sobre un fichero **local** y entre máquinas no hay exclusión ninguna ([T-485]).
+Mientras eso siga así dejan la tarea en `pause --tras-deploy`, y el propio deploy la despierta. Lo
+declara el registro de máquinas (`puedeDesplegar`), no el criterio de quien escriba el encargo.
+
+**Lo único que NO es suyo en ninguna máquina:**
 
 | no hace | por qué |
 |---|---|
-| **cerrar** una tarea | cerrar exige verificar, y verificar es de una persona (la quinta espera) |
 | **enviar** nada a un usuario | ahí es donde se detectan los fallos, y quien escribe necesita a alguien detrás |
-| **desplegar** | el deploy es cumulativo (sube todo `main`) y se coordina; además no tiene credenciales de AWS |
+| **aprobar** su propio borrador | por lo mismo: lo aprueba una persona, siempre |
 
-> **Consecuencia que hay que tener presente al leer cualquier cifra:** «tareas cerradas por
-> trabajador» es **0 por construcción**. Su producción son las ENTREGAS. Ver el parte de
-> productividad, abajo.
-
-**Y el deploy sí se hace, pero es de una persona.** Cuando la flota entrega trabajo que necesita
-estar vivo para verificarse, se acumula: `npm run deploy:pendiente` dice si hay algo esperando
-(🔴 = sí) y `scripts/deploy-cuando-verde.sh <superficie>` lo lanza. La política es **agrupar**, no
-desplegar en cada push.
+Y `npm run deploy:pendiente` sigue siendo la señal de si hay trabajo terminado esperando (🔴 = sí).
+La política de **agrupar** no cambia: no se despliega en cada push, se despliega cuando hay algo que
+verificar.
 
 #### Un borrador por destinatario
 

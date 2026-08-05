@@ -87,7 +87,7 @@ describe('el encargo dice lo que un trabajador solo no puede deducir', () => {
     ['no pushear a main', /NO pushees a main/],
     ['no rodear un guardarraíl', /NO lo rodees|_SKIP/],
     ['verificar contra la fuente, no contra la ficha', /fuente oficial|las fichas se/i],
-    ['cerrar con revision o release', /revision <id>|release <id>/],
+    ['cerrar con revision o release si no puede terminarla', /revision <id>|release <id>/],
     ['preguntar sin quedarse parado', /preguntar/],
     // La mayoría de lo que llega al embudo NO es una decisión: es el criterio de la casa aplicado
     // a un caso nuevo. Medido el 05/08 — de cuatro preguntas paradas, TRES las contestaba el
@@ -263,6 +263,44 @@ describe('el registro de máquinas crece por FILAS, no por copias', () => {
 // terminar, la consecuencia real era que la flota se paraba entera y nadie se enteraba hasta la
 // siguiente vez que Manuel preguntaba — medido el 05/08 con ocho trabajadores en pie y seis sin
 // hacer nada. Un panel que hay que mirar no es vigilancia.
+// ── EL CICLO ENTERO, COMO LAS SESIONES DEL PORTÁTIL ─────────────────────────────────────────
+// «Deben tratar las tareas como lo hacen en mi portátil: las ejecutan, las despliegan, las
+// verifican en producción y las archivan si están correctas» (Manuel, 05/08). Tenía razón: lo que
+// se lo impedía era el ENCARGO, no el sistema. Un trabajador local corre como él, alcanza AWS y
+// comparte el candado del deploy con sus sesiones — verificado con `sts get-caller-identity`.
+//
+// La única máquina que NO puede es el VPS, y no por política: el candado es un `flock` sobre un
+// fichero LOCAL, así que entre máquinas no hay exclusión y dos deploys podrían solaparse ([T-485]).
+describe('el ciclo completo depende de la máquina, no de una política', () => {
+  const local = ENC.encargo({ trabajador: 'l1', tarea: t('x'), puedeDesplegar: true })
+  const remoto = ENC.encargo({ trabajador: 'w1', tarea: t('x'), puedeDesplegar: false })
+
+  it.each([
+    ['despliega', /deploy-cuando-verde/],
+    ['verifica EN PRODUCCIÓN, no en local', /EN PRODUCCI[ÓO]N/],
+    ['y cierra él mismo', /done <id> --outcome/],
+  ])('quien puede: %s', (_c, patron) => {
+    expect(local).toMatch(patron as RegExp)
+  })
+
+  it('quien no puede, NO despliega y deja la tarea esperando al deploy', () => {
+    expect(remoto).not.toMatch(/deploy-cuando-verde/)
+    expect(remoto).toMatch(/tras-deploy/)
+    expect(remoto).toMatch(/T-485/)          // con el porqué: una regla sin motivo se salta
+  })
+
+  // Cerrar con un outcome que confiesa trabajo pendiente es cerrar en falso, y `done` ya lo aborta.
+  // Decírselo antes evita que gaste el turno chocando con la puerta.
+  it('le avisa de cuándo NO debe cerrar', () => {
+    expect(local).toMatch(/NO cierres: usa `pause`/)
+  })
+
+  // Las dos puertas comparten el final: si una se queda sin él, ese trabajador cierra distinto.
+  it('el encargo de impugnaciones lleva el mismo cierre', () => {
+    expect(ENC.encargoImpugnacion({ trabajador: 'l1', puedeDesplegar: true })).toMatch(/done <id> --outcome/)
+  })
+})
+
 describe('el bucle de vigilancia', () => {
   const src = require('fs').readFileSync(
     require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')

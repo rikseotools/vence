@@ -389,7 +389,7 @@ async function main() {
       // distintas sin coordinarse. Lo que produce es un BORRADOR que aprueba una persona.
       if (process.argv.includes('--impugnaciones')) {
         const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
-        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w }), { alDia })
+        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w, puedeDesplegar: MAQ.puedeDesplegar(w).puede }), { alDia })
         if (!r.ok) {
           console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
           return 1
@@ -433,7 +433,7 @@ async function main() {
       const [ses] = await sql`SELECT sid FROM public.worktree_sessions WHERE slug = ${w}`
       const reanuda = !!(ses && tarea.claimed_by === ses.sid)
       const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) }, reanuda })
-      const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea }), { alDia })
+      const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea, puedeDesplegar: MAQ.puedeDesplegar(w).puede }), { alDia })
       if (!r.ok) {
         console.error(r.ocupado
           ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
@@ -516,7 +516,7 @@ async function main() {
               // Tarea cogida y sin proceso: su turno murió. Se relanza CON SU TAREA, no con otra —
               // empezar algo nuevo encima de un trabajo a medias es como se pierde ese trabajo.
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
-              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya }), { alDia })
+              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }), { alDia })
               if (r.ok) { console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++ }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             } else {
@@ -539,12 +539,12 @@ async function main() {
                 const { tarea: elegida } = ENC.elegir(libres.filter((t) => !repartidas.has(t.id)))
                 if (elegida) {
                   repartidas.add(elegida.id)
-                  texto = ENC.encargo({ trabajador, tarea: elegida })
+                  texto = ENC.encargo({ trabajador, tarea: elegida, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede })
                   queEs = elegida.id
                 }
               }
               // Si no había tarea apta libre, se cae a impugnaciones: mejor eso que dejarlo parado.
-              if (!texto) { texto = ENC.encargoImpugnacion({ trabajador }); queEs = 'una impugnación' }
+              if (!texto) { texto = ENC.encargoImpugnacion({ trabajador, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }); queEs = 'una impugnación' }
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
               const r = mandarEncargo(trabajador, texto, { alDia })
               if (r.ok) { console.log(`   [${sello}] ✅ ${trabajador} → ${queEs}`); movidos++ }
@@ -605,7 +605,7 @@ async function main() {
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
           const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
-          const r = mandarEncargo(f.trabajador, ENC.encargo({ trabajador: f.trabajador, tarea }), { alDia })
+          const r = mandarEncargo(f.trabajador, ENC.encargo({ trabajador: f.trabajador, tarea, puedeDesplegar: MAQ.puedeDesplegar(f.trabajador).puede }), { alDia })
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
           // vez de quedarse sin repartir por un problema que no es suyo.
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
