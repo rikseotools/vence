@@ -156,3 +156,46 @@ describe('la producción de la flota son sus ENTREGAS, no sus cierres', () => {
     expect(P.formatear(m).join('\n')).toMatch(/a[úu]n sin tasa/)
   })
 })
+
+// ── LA PREVISIÓN, Y LAS DOS FORMAS DE ENGAÑARSE CON ELLA ────────────────────────────────────
+// (1) Lo primero que uno mira es `worked_seconds`, y NO mide esfuerzo: mide tiempo con la tarea
+//     COGIDA. Medido el 05/08, entregas de «22 h» que son tareas reclamadas de un turno a otro.
+//     Dividir 251 tareas entre eso daría años, y sería falso.
+// (2) Una entrega no es una tarea terminada hasta que alguien la revisa. Si Manuel revisa más
+//     despacio de lo que la flota entrega, la previsión la manda la REVISIÓN — y añadir
+//     trabajadores no acorta nada, solo alarga la cola.
+describe('previsión de cuánto falta', () => {
+  it('el ritmo sale de entregas por hora de RELOJ, que ya incluye paradas y reintentos', () => {
+    const p = P.prevision({ pendientes: 100, entregasVentana: 10, cerradasVentana: 10, horasVentana: 5 })
+    expect(p.entregasPorHora).toBe(2)
+    expect(p.manda).toBe('produccion')
+    expect(p.horas).toBe(50)
+  })
+
+  // El caso real del 05/08: 2,4 entregas/h contra 0,4 cerradas/h.
+  it('si se revisa más despacio de lo que se entrega, MANDA la revisión', () => {
+    const p = P.prevision({ pendientes: 251, entregasVentana: 12, cerradasVentana: 2, horasVentana: 5 })
+    expect(p.manda).toBe('revision')
+    // Y el número sale del ritmo LENTO, no del rápido: si mandara el rápido, la previsión
+    // prometería 105 h cuando de verdad son 628.
+    expect(p.horas).toBe(628)
+  })
+
+  // Extrapolar 251 tareas desde dos entregas daría una cifra con precisión inventada.
+  it.each([0, 1, 2])('con %s entrega(s) no se da un ritmo: se dice que falta rodaje', (n) => {
+    const p = P.prevision({ pendientes: 251, entregasVentana: n, horasVentana: 5 })
+    expect(p.hay).toBe(false)
+    expect(p.motivo).toMatch(/rodaje|entrega/)
+  })
+
+  it('sin ventana no se inventa nada', () => {
+    expect(P.prevision({ pendientes: 251, entregasVentana: 20, horasVentana: 0 }).hay).toBe(false)
+  })
+
+  // Días de reloj y jornadas no son lo mismo, y confundirlos es cómo una previsión se lee al revés.
+  it('da días de reloj Y jornadas de 8 h, que no son lo mismo', () => {
+    const p = P.prevision({ pendientes: 100, entregasVentana: 10, cerradasVentana: 10, horasVentana: 5 })
+    expect(p.dias).toBe(2.1)
+    expect(p.jornadas).toBe(6)
+  })
+})

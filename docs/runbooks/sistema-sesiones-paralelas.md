@@ -621,6 +621,20 @@ la impresión: tareas cerradas y verificadas por trabajador, ratio de escape de 
    si la flota produce el doble pero duplica tu tiempo, ha fallado aunque los contadores suban. Rojo
    cuando la mitad de las entregas lleva ≥24 h sin mirar.
 
+**Y da previsión** (`--ventana <h>`): cuántas tareas quedan, a qué ritmo van y cuánto falta. Dos
+trampas esquivadas a propósito:
+
+- **El ritmo NO sale de `worked_seconds`.** Ese campo mide *tiempo con la tarea cogida*, no
+  esfuerzo: hay entregas de «22 h» que son una tarea reclamada de un turno a otro. Dividir el
+  backlog entre eso daría años, y sería falso. El ritmo sale de **entregas por hora de reloj**, que
+  ya incluye paradas, reintentos y turnos muertos — que es justo lo que una previsión debe incluir.
+- **Si se revisa más despacio de lo que se entrega, la previsión la manda la REVISIÓN.** Y entonces
+  **añadir trabajadores no acorta nada**: solo alarga la cola. Es la diferencia entre «necesito más
+  trabajadores» y «necesito revisar», y el parte lo dice con esas palabras.
+
+Con menos de tres entregas medidas **se niega a dar un número**: extrapolar 250 tareas desde dos
+entregas es precisión inventada.
+
 Dos decisiones de medida que evitan engañarse: se usa la **mediana** (una entrega olvidada de hace
 tres días desplaza la media y esconde el resto) y se dice **«no medido»** en vez de rellenar
 (`worked_seconds` no existe en las tareas anteriores a [T-414], y promediar solo sobre las que lo

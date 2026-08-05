@@ -2000,7 +2000,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mira la COLA DE REVISIÓN, no la producción, porque ése era el criterio de fracaso: producir ' +
       'más a costa del tiempo de Manuel es perder. Usa MEDIANA (una entrega olvidada desplaza la ' +
       'media y esconde el resto) y **dice «no medido» en vez de rellenar** (`worked_seconds` solo ' +
-      'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`. 23 tests.',
+      'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`. 30 tests. **Y da PREVISIÓN** (`--ventana <h>`), con dos trampas esquivadas a propósito: (a) el ritmo NO sale de `worked_seconds`, que mide tiempo con la tarea COGIDA y no esfuerzo —hay entregas de «22 h» que son una tarea reclamada de un turno a otro—, sino de **entregas por hora de reloj**, que ya incluye paradas y reintentos; (b) si se revisa más despacio de lo que se entrega, **la previsión la manda la REVISIÓN** y añadir trabajadores no acorta nada, solo alarga la cola. Con menos de 3 entregas medidas se niega a dar un número.',
   },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',

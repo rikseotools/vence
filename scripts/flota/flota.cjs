@@ -460,6 +460,22 @@ async function main() {
           FROM public.backlog_tasks
          WHERE review_requested_at IS NOT NULL AND status <> 'done'`
       const m = PROD.medir({ cerradas, entregadas, ahora: new Date() })
+
+      // ── PREVISIÓN: hace falta el TAMAÑO de lo que queda y el RITMO reciente ─────────
+      const [{ pendientes }] = await sql`
+        SELECT count(*)::int AS pendientes FROM public.backlog_tasks WHERE status = 'open'`
+      const horasVentana = Math.max(1, Number(arg('--ventana') || 6))
+      const [{ entregasVentana }] = await sql`
+        SELECT count(*)::int AS "entregasVentana" FROM public.backlog_tasks
+         WHERE review_requested_at > now() - (${horasVentana} || ' hours')::interval
+           AND review_requested_by ~ '^(w|l)[0-9]'`
+      const [{ cerradasVentana }] = await sql`
+        SELECT count(*)::int AS "cerradasVentana" FROM public.backlog_tasks
+         WHERE closed_at > now() - (${horasVentana} || ' hours')::interval`
+      const trabajadores = MAQ.trabajadoresEsperados().length
+      m.pendientes = pendientes
+      m.trabajadores = trabajadores
+      m.prevision = PROD.prevision({ pendientes, entregasVentana, cerradasVentana, horasVentana, trabajadores })
       console.log('')
       for (const l of PROD.formatear(m, { dias })) console.log(l)
       console.log('')
