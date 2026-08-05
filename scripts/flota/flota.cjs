@@ -592,11 +592,15 @@ async function main() {
         catch (e) { salida = String((e && e.stdout) || e.message || '') }
         if (/NADA/.test(salida)) { console.log(`   ✅ ${w}: nada que salvar`); continue }
         const ok = /SALVADO=0/.test(salida)
-        const rama = (salida.match(/^RAMA=(.+)$/m) || [])[1] || '(?)'
+        // Un trabajador puede tener trabajo atrapado en VARIAS ramas a la vez (una por tarea
+        // entregada), así que se listan todas: quedarse con la primera escondía las demás.
+        const ramas = [...salida.matchAll(/^RAMA=(.+)$/gm)].map((m) => m[1].trim())
+        const rama = ramas[0] || '(?)'
         console.log(ok
-          ? `   💾 ${w}: rescatado y empujado a ${rama}`
+          ? `   💾 ${w}: ${ramas.length} rama(s) puesta(s) a salvo`
           : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux attach -t ${w}) · ${salida.trim().slice(-120)}`)
-        emitirTurno(w, ok ? 'rescatado' : 'rescate_fallido', { rama, motivo: ok ? null : 'no se pudo empujar lo que dejó sin salvar' })
+        for (const r of ramas) console.log(`        → ${r}`)
+        emitirTurno(w, ok ? 'rescatado' : 'rescate_fallido', { rama, ramas, motivo: ok ? null : 'no se pudo empujar lo que dejó sin salvar' })
         if (ok) n++
       }
       console.log(`\n${n} trabajador(es) rescatado(s).`)

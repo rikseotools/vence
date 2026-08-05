@@ -478,7 +478,17 @@ describe('el rescate automático', () => {
   // Una referencia nueva por rescate no choca con nada. Y como lleva el SHA dentro, rescatar dos
   // veces el mismo commit escribe la MISMA ref: idempotente sin comprobar nada.
   it('empuja a una referencia nueva que lleva el SHA', () => {
-    expect(bloque).toMatch(/rescate\/w1-\$\(git rev-parse --short HEAD\)/)
+    expect(bloque).toMatch(/rescate\/w1-.*\$\(git rev-parse --short "\$R"\)/)
+  })
+
+  // El 05/08 el rescate dijo «nada que salvar» en las 4 máquinas del VPS con 22 commits sin
+  // empujar: miraba `HEAD`, y los trabajadores entregan en una rama por tarea y vuelven a `main`.
+  // Que lo EJECUTA bien lo prueba el caso 3.bis de `npm run sim:rescate-flota`; esto solo impide
+  // que alguien vuelva a estrechar la mirada a HEAD.
+  it('mira TODAS las ramas, no solo HEAD', () => {
+    expect(bloque).toMatch(/--branches --not --remotes/)
+    expect(bloque).toMatch(/for-each-ref[^;]*refs\/heads/)
+    expect(bloque).not.toMatch(/count HEAD --not --remotes/)
   })
 
   // Si no hay nada que salvar no debe crear ruido: ni commits vacíos ni ramas.

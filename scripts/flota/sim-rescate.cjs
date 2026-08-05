@@ -99,6 +99,30 @@ console.log('── 3. commit huérfano (árbol limpio, nada en el remoto)')
     `el commit huérfano llegó a ${rama}`, 'no se empujó el commit huérfano')
 }
 
+// ── 3.bis. EL PUNTO CIEGO REAL: el trabajo entregado NO está en HEAD ──────────────────────────
+// El 05/08 el rescate dijo «nada que salvar» en las cuatro máquinas del VPS teniendo 22 commits
+// sin empujar. Los trabajadores entregan en una rama por tarea (`flota/T-525-…`, `sesion/w3`) y
+// luego vuelven a `main`, así que lo entregado nunca es HEAD. Miraba donde no estaba el trabajo.
+console.log('── 3.bis. el trabajo entregado está en OTRA rama, no en HEAD')
+{
+  const { origen, arbol } = repo('c3bis')
+  sh('git checkout -q -b flota/T-999-entrega', arbol)
+  fs.writeFileSync(path.join(arbol, 'entrega.txt'), 'la entrega del trabajador\n')
+  sh('git add -A && git commit -q -m "feat(T-999): la entrega"', arbol)
+  sh('git checkout -q main', arbol) // vuelve a main, como hace el trabajador al acabar el turno
+  const { salida } = rescatar(arbol)
+  comprobar(!/NADA/.test(salida),
+    'NO dice «nada que salvar» (era el fallo)',
+    'dice NADA teniendo trabajo sin empujar: el punto ciego ha vuelto')
+  const rama = (salida.match(/^RAMA=(.+)$/m) || [])[1]
+  const enRemoto = shTolerante(`git -C "${origen}" show ${rama}:entrega.txt`)
+  comprobar(/la entrega/.test(enRemoto.salida), `la entrega llegó al remoto (${rama})`,
+    'la entrega NO llegó: el rescate sigue sin ver las ramas que no son HEAD')
+  comprobar(/-flota-T-999-entrega-/.test(String(rama)),
+    'el nombre de la ref dice QUÉ rama se rescató (sin barras)',
+    `no se puede saber qué se rescató: ${rama}`)
+}
+
 // ── 4. Rama YA DIVERGIDA: el fallo real de l6, y la razón de no usar --force ───────────────────
 console.log('── 4. la rama del trabajador ya divergió en el remoto')
 {
