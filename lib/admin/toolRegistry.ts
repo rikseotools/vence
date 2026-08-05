@@ -1164,6 +1164,52 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(`convocatoria_enlace_repuntado`). NO purga la caché: eso va aparte y es per-instancia. ' +
       'Hermano de `repuntar_seguimiento_url`.',
   },
+  clasificar_tipo_documento: {
+    titulo: 'Clasificar el TIPO de un documento del hub de provenance (convocatoria/bases/OEP/…) por su cabecera',
+    ruta: 'lib/convocatoria/tipoDocumento.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      'Núcleo PURO (sin red ni BD): dado título/URL/texto, decide qué `tipo` de `convocatoria_documentos` ' +
+      'es un documento leyendo su CABECERA (no el texto entero — daba falsos positivos por menciones ' +
+      'de pasada). Ante la duda, `nota`: un tipo falso se usa como fuente de verdad, un `nota` de más ' +
+      'se ignora. Dos consumidores: `sim-tipo-documento.cjs` (CLI manual, simula y aplica en lote sobre ' +
+      'el histórico) y el mirror TS `backend/src/tipificar-documentos/tipo-documento-mirror.ts` (cron ' +
+      'diario — el backend no puede importar `lib/`, MANTENER EN SYNC, paridad en ' +
+      '__tests__/backend/tipoDocumentoMirror.test.ts). Reglas ORDENADAS por especificidad, cada una ' +
+      'con su exclusión medida sobre el corpus real (27/07).',
+  },
+  simular_tipo_documento: {
+    titulo: 'Simular/aplicar en lote la reclasificación de `nota`→tipo real sobre el hub de provenance',
+    ruta: 'scripts/convocatoria/sim-tipo-documento.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      'node scripts/convocatoria/sim-tipo-documento.cjs [--todo] [--ver <tipo>] [--apply ' +
+      '[--solo-alta]]. Herramienta MANUAL del paso 1 de T-147 (163 documentos tipados el 27/07). No ' +
+      're-tipa duplicados (mismo doc_key ya tipado en su convocatoria — eso es `merge-dup-docs.cjs`). ' +
+      'Desde el 05/08 tiene un GEMELO recurrente: `tipificar_documentos_cron`, que hace lo mismo cada ' +
+      'noche para que el backlog no se rellene solo; este script sigue vivo para pasadas manuales ' +
+      '`--todo` sobre el histórico y para revisar una muestra (`--ver`) antes de confiar en el criterio.',
+  },
+  tipificar_documentos_cron: {
+    titulo: 'Cron diario que reclasifica `nota`→tipo real en `convocatoria_documentos` (T-147, "arreglar el productor")',
+    ruta: 'backend/src/tipificar-documentos/tipificar-documentos.service.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      '@Cron 09:45 UTC diario (justo tras detect-notas-convocatoria, 09:30). Lee hasta 1000 filas ' +
+      '`tipo=\'nota\'` (las más antiguas primero), clasifica con el mismo criterio que ' +
+      '`sim-tipo-documento.cjs` (mirror TS, no puede importar `lib/`) y hace UPDATE por `id` — NO ' +
+      'inserta nada, así que nunca compite con el historial de monitoreo de `detect-notas-convocatoria` ' +
+      '(que sigue clonando TODO como `nota` a propósito: es su append por content_hash). Si el ' +
+      'doc_key ya está tipado por otra fila en la misma convocatoria (duplicado real), Postgres lo ' +
+      'rechaza (unique_violation) y se cuenta como `bloqueadosPorDuplicado` en vez de fusionar a ' +
+      'ciegas — eso lo resuelve `merge-dup-docs.cjs` aparte. Por qué existe: sin esto, tipar era un ' +
+      'gesto manual y el 96% del hub volvía a quedarse en `nota` cada noche (medido 27/07→05/08: ' +
+      '6.063→6.398 sin que nadie tocara nada). Cierra el "paso 2" que la ficha marcaba como ' +
+      '"hallazgo de diseño, no tocar el INSERT" — se resolvió sin tocarlo.',
+  },
   bandeja_documentos: {
     titulo: 'Bandeja de documentos oficiales clonados pendientes de revisar (y de volcar a la BD)',
     ruta: 'scripts/convocatoria/bandeja-documentos.cjs',

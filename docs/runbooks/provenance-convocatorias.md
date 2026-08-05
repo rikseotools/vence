@@ -151,6 +151,29 @@ texto que el documento tipado, y dos tipados estaban VACÍOS**. Fusionar sin mir
 del más completo y **después** se borra el duplicado — en ese orden, o revienta el UNIQUE
 `uq_conv_doc_url_hash` al coexistir dos filas con la misma url+hash.
 
+### 2.2-bis.2. El paso 2 resuelto: cron diario, sin tocar `detect-notas-convocatoria` (T-147, 05/08)
+
+`sim-tipo-documento.cjs --apply` es manual: sin nadie ejecutándolo, el hub vuelve a llenarse de
+`nota` cada día (medido: 6.063→6.398 entre el 27/07 y el 05/08, sin que nadie tocara nada). La
+ficha original planteaba tipar en el INSERT del cron `detect-notas-convocatoria`, pero ESE cron
+clona todo como `nota` A PROPÓSITO (es su historial de monitoreo, append por `content_hash`; el
+índice `ux_convocatoria_documentos_conv_dockey` las excluye para permitirlo) — tipar ahí las haría
+deduplicar por `doc_key` y se perdería el historial.
+
+En vez de tocar el insert, hay un **segundo cron** (`backend/src/tipificar-documentos/`, @Cron
+09:45 UTC diario, justo tras `detect-notas-convocatoria`) que reclasifica en el sitio las filas
+YA insertadas: lee hasta 1000 `nota` (las más antiguas primero), clasifica con el mismo criterio
+(mirror TS `tipo-documento-mirror.ts` — el backend no importa `../lib`, paridad fijada en
+`__tests__/backend/tipoDocumentoMirror.test.ts`) y hace **UPDATE por `id`** — nunca inserta, así
+que jamás compite con el modelo de append de `detect-notas-convocatoria`. Si el `doc_key` ya está
+tipado por OTRA fila en la misma convocatoria (duplicado real, el caso de arriba), Postgres lo
+rechaza con `unique_violation`; se cuenta como bloqueado y se deja como estaba — la fusión sigue
+siendo `merge-dup-docs.cjs`, no algo que este cron decida a ciegas.
+
+Registrado en `lib/admin/toolRegistry.ts` (`tipificar_documentos_cron`); el propio
+`sim-tipo-documento.cjs` sigue vivo para pasadas `--todo` sobre el histórico y para revisar
+muestras (`--ver`) antes de confiar en una regla nueva.
+
 ### 2.2-ter. Campaña: clonar el documento del BOTÓN OFICIAL (`programa_url`)
 
 Hueco sistémico medido el 27/07: **el documento más oficial de la landing no lo clona nadie.** El

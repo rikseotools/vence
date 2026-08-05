@@ -26,6 +26,7 @@ import { AnthropicModule } from './anthropic/anthropic.module';
 import { DetectTimelineSilenceModule } from './detect-timeline-silence/detect-timeline-silence.module';
 import { DetectOepLlmModule } from './detect-oep-llm/detect-oep-llm.module';
 import { DetectNotasConvocatoriaModule } from './detect-notas-convocatoria/detect-notas-convocatoria.module';
+import { TipificarDocumentosModule } from './tipificar-documentos/tipificar-documentos.module';
 import { DetectExamenesSignalsModule } from './detect-examenes-signals/detect-examenes-signals.module';
 import { AdvanceEstadoModule } from './advance-estado/advance-estado.module';
 import { DetectGenericSourcesModule } from './detect-generic-sources/detect-generic-sources.module';
@@ -226,6 +227,7 @@ import { PoolerInstanceSamplerModule } from './pooler-instance-sampler/pooler-in
     DetectTimelineSilenceModule,
     DetectOepLlmModule,
     DetectNotasConvocatoriaModule,
+    TipificarDocumentosModule, // T-147 — reclasifica 'nota'→tipo real, backlog no se rellena solo
     DetectExamenesSignalsModule,
     // detect-regional-oeps RETIRADO (01/06/2026): scraper autónomo de 167 fuentes
     // con 56% de tasa de error + falsos positivos. Descubrimiento de oposiciones
