@@ -89,6 +89,12 @@ describe('el encargo dice lo que un trabajador solo no puede deducir', () => {
     ['verificar contra la fuente, no contra la ficha', /fuente oficial|las fichas se/i],
     ['cerrar con revision o release', /revision <id>|release <id>/],
     ['preguntar sin quedarse parado', /preguntar/],
+    // La mayoría de lo que llega al embudo NO es una decisión: es el criterio de la casa aplicado
+    // a un caso nuevo. Medido el 05/08 — de cuatro preguntas paradas, TRES las contestaba el
+    // método (no apagues el guardarraíl, no metas una credencial de más, manda lo medido sobre la
+    // ficha) y solo una era de verdad de Manuel. Un embudo con ruido se deja de leer.
+    ['pensar si el método ya lo contesta antes de preguntar', /ANTES DE PREGUNTAR/],
+    ['y qué merece de verdad una pregunta', /usuario, a dinero/],
   ])('lleva la regla: %s', (_c, patron) => {
     expect(texto).toMatch(patron)
   })
