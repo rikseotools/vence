@@ -132,7 +132,22 @@ if (require.main !== module) {
       }
     }
 
-    const [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    // El rol de LECTURA de la flota (vence_lector/vence_coordinacion) niega `user_profiles` a
+    // propósito — es donde viven los identificadores directos (§canario-rol-lector). Un trabajador
+    // ejecutando este dossier no puede verlos NUNCA, y eso está bien; lo que no puede pasar es que
+    // la falta de permiso tumbe el dossier entero (antes: excepción sin capturar, proceso muerto,
+    // cero análisis). Se degrada: sigue sin nombre/email/plan, como ya contemplaba `p?.` en todo
+    // el fichero.
+    let p, profileWarn = '';
+    try {
+      [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    } catch (e) {
+      if (e.code === '42501') {
+        profileWarn = '👤 Nombre/email/plan no disponibles: tu rol no puede leer user_profiles (identificador directo). Redacta el borrador sin nombre («Hola,»).';
+      } else {
+        profileWarn = `👤 No se pudo leer user_profiles: ${e.message}`;
+      }
+    }
 
     // --- CONSECUENCIA ECONÓMICA de aceptar, calculada ANTES de decidir ---
     // Aceptar una impugnación mueve dinero real. Que eso se vea en el momento de decidir —y no se
@@ -198,6 +213,7 @@ if (require.main !== module) {
       if (lineas.length) console.log('\n' + lineas.join('\n'));
     } catch { /* el backlog no es imprescindible para el dossier: nunca lo tumba */ }
     if (alreadyWarn) console.log(alreadyWarn);
+    if (profileWarn) console.log(profileWarn);
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
     console.log(`Descripción: ${d.description}`);
