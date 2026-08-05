@@ -4193,7 +4193,18 @@ incluida).
   - **Capas:** 10 unitarios de la frontera en las dos direcciones · guardarraíl de paridad ampliado al TERCER camino (incluido «la regla se importa, no se copia») · **`npm run sim:cupo-simulacro`, que EJECUTA el cobro contra la BD real** con usuarios efímeros (estrenar cobra 1 · rectificar no · `trial` no consume · la respuesta queda guardada) · y el canario `canary:cupo-vs-respuestas`, que ya existía y hoy está en ROJO (13 usuarios el 30/07): es el que dirá si baja.
   - **🚪 LA PUERTA YA EXISTÍA Y ESTABA MUERTA, no hace falta una nueva:** `OfficialExamLayout` bloquea al responder si `isLimitReached`, y ese dato sale de `/api/v2/daily-question/status`, **el mismo contador** que este arreglo empieza a mover. Llevaba sin dispararse porque el contador nunca subía por el simulacro. Con esto, revive sola.
   - **Lo que queda ABIERTO y es una decisión, no un olvido:** ese bloqueo es de CLIENTE, así que se puede saltar. El examen normal sí corta en servidor (`/api/exam/answer`), pero hacerlo aquí cuesta una consulta de estado **por respuesta** en un examen cronometrado, que es justo la latencia que ese endpoint evita. Endurecerlo es una decisión de producto (y encaja mejor con el antifraude, [T-372]) — **no se hace aquí para no cambiarla a escondidas**.
-
+- **MEDIDO EL 05/08 08:44 UTC — el arreglo NO cerró la fuga, y esto tumba la hipótesis con la que se dejó la ficha.** Se dijo *«cero fugas posteriores al despliegue»* mirando el 04/08 en bloque; partiendo ese día por la hora en que el arreglo estuvo vivo (**09:39 UTC**), aparecen **cuatro fugas POSTERIORES**, y las cuatro por examen:
+  | usuario | respuestas | contador | hora (UTC) | camino |
+  |---|---|---|---|---|
+  | `9f9d60c1` | 148 | **4** | 18:10 | exam |
+  | `0f7a5b23` | 82 | **1** | 10:44 | exam |
+  | `36473806` | 64 | **13** | 10:18 | exam |
+  | `03f4e640` | 55 | **0** | 19:46 | exam |
+  | `d30088c6` | 50 | **0** | 17:18 | practice |
+  | ~~`2a905207`~~ | 56 | 0 | 04:23 | practice — **anterior** al arreglo, ya diagnosticado |
+- **El 05/08 sale a cero, pero NO es prueba de nada todavía:** a las 08:44 UTC solo **un** usuario free superaba las 25 respuestas en todo el día. Un cero sobre un usuario no distingue «arreglado» de «aún no ha pasado nada». Hay 1.043 respuestas de 62 usuarios free hoy, así que el tráfico existe; lo que falta es que alguien llegue al tope.
+- **⚠️ Dos criterios que NO coinciden, y hay que decidir cuál manda antes de volver a medir:** `canary:cupo-vs-respuestas` marca el 04/08 con **2 usuarios / 106 respuestas**, y el corte directo («≥25 respuestas y contador <25») da **6 usuarios**. Los dos no pueden ser la verdad. Mientras no se sepa cuál mide lo que importa, el canario puede estar **dando por buena** una fuga que existe — que es peor que no tenerlo. Reconciliar los dos criterios es el paso 0 del próximo intento.
+- **Siguiente paso, en este orden:** (1) reconciliar canario vs corte directo; (2) coger `9f9d60c1` (148 respuestas, contador 4, 18:10 UTC) y seguir sus llamadas a `answer-and-save` como se hizo con `2a905207` — es el caso más limpio y es de **examen**, no de práctica, así que el quinto camino no es el 403 de dispositivos que se sospechaba; (3) solo entonces decidir el umbral de la regla de `cupo_safety_net`.
 ### [T-448] 🟠 [ABIERTO 01/08] Las 184 suscripciones que se están apagando solas no reciben NINGÚN aviso: se quedan en free sin enterarse
 
 - **ORIGEN.** Manuel (01/08): *«habría que crearles un email personalizado 3 días antes… diciendo que va a terminar su suscripción, que para mantener el mismo precio debe entrar y resuscribirse»*. Salió mientras se verificaba [T-363], repasando el camino entero de «recuperar mi precio».
