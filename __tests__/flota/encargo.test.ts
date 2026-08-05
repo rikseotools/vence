@@ -399,3 +399,36 @@ describe('repartir y vigilar reparten igual', () => {
     expect((src.match(/tmux send-keys -t \$\{trabajador\}/g) || []).length).toBeLessThanOrEqual(1)
   })
 })
+
+// ── NINGÚN ENVÍO SIN RASTRO ─────────────────────────────────────────────────────────────────
+// El turno de un trabajador no se observaba en absoluto: nacía y moría dentro de un fichero de log
+// en su máquina, sin cruzar a ninguna parte. Nadie podía responder «¿cuánto tarda un turno?»,
+// «¿cuántos mueren a medias?» ni «¿qué se le encargó y cuándo?» sin entrar por SSH a leer un tail.
+//
+// Al ponerlo, se emitió desde cada llamador… y se olvidó en `repartir`, así que la serie nacía
+// incompleta el primer día. Por eso el rastro lo deja la PUERTA y esto lo exige.
+describe('el rastro del turno lo deja la puerta, no el llamador', () => {
+  const src = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('mandarEncargo emite el turno él mismo', () => {
+    const fn = src.slice(src.indexOf('function mandarEncargo'), src.indexOf('/** Dónde vive el fichero de entorno'))
+    expect(fn).toMatch(/if \(turno\) turno\(\)/)
+  })
+
+  // Si un llamador se olvida del reporte, su envío queda invisible: la serie miente por omisión,
+  // que es la forma en que un panel deja de servir sin que nadie lo note.
+  it('TODA llamada a mandarEncargo pasa su reporte', () => {
+    // Sin la definición: `function mandarEncargo(…)` no es una llamada.
+    const llamadas = (src.match(/(?<!function )mandarEncargo\([\s\S]{0,600}?\)\n/g) || [])
+    expect(llamadas.length).toBeGreaterThanOrEqual(4)
+    const sinTurno = llamadas.filter((c: string) => !/turno:\s*\(\)\s*=>/.test(c))
+    expect({ sinTurno: sinTurno.length, ejemplos: sinTurno.map((c: string) => c.slice(0, 70)) })
+      .toEqual({ sinTurno: 0, ejemplos: [] })
+  })
+
+  it('y un turno muerto se distingue de uno que empieza', () => {
+    expect(src).toMatch(/emitirTurno\(trabajador, 'muerto'/)
+    expect(src).toMatch(/'encargado'/)
+  })
+})

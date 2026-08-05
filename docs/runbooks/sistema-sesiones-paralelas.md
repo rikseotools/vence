@@ -603,6 +603,39 @@ identificador y no por texto** (cada trabajador escribe el destinatario con su p
 deduplica: «Marta» y «la lista de inscritos» pueden ser dos destinatarios legítimamente distintos.
 Escape explícito: `--igualmente`.
 
+#### Qué se ve de un trabajador (observabilidad de las sesiones)
+
+| qué | dónde |
+|---|---|
+| ¿está vivo? ¿qué comando hizo el último? | `worktree_sessions` (lo escribe el latido) |
+| ¿qué tiene cogido, qué entregó | `backlog_tasks` |
+| qué te pregunta · qué te deja para aprobar | `session_questions` (`kind` = pregunta \| borrador) |
+| ¿puede trabajar? ¿tiene el código al día? | `flota_autenticacion` · `flota_clon_desactualizado` |
+| **su TURNO: qué se le encargó, y si murió a medias** | **`flota_turno`** (`fase` = encargado \| muerto) |
+| ¿produce, y a qué coste? | `flota_productividad` + tabla `flota_productividad_historico` |
+
+> **El turno era el agujero.** Se observaba el ANDAMIAJE —preflight, fricción, clon al día— pero no
+> el trabajo: un `claude -p` nacía y moría dentro de un fichero de log en su máquina, sin cruzar a
+> ninguna parte. No había forma de responder «¿cuánto tarda un turno?», «¿cuántos mueren a medias?»
+> ni «¿qué se le encargó y cuándo?» sin entrar por SSH a leer un `tail`.
+>
+> Un turno que muere **con la tarea cogida** es el fallo caro: la deja reclamada por nadie,
+> bloqueada para el resto. El vigía los relanza, pero cinco en tres horas ya no es azar — apuntan a
+> una causa común (cuota agotada, un guardarraíl que no pueden satisfacer, una tarea fuera de su
+> alcance), y eso solo se ve con la serie. Regla: `RULE_FLOTA_TURNOS_MUERTOS`.
+>
+> **El rastro lo deja la PUERTA de envío, no cada llamador**: al ponerlo se emitía desde cada sitio
+> que manda y se olvidó en `repartir`, así que la serie nacía incompleta el primer día. Lo exige un
+> guardarraíl.
+
+**Y la historia dura.** El bus recibe la señal para *alertar*, pero **no sirve como historia**: se
+comprobó antes de decidirlo — `observable_events` tiene **10,8 M de filas y solo 32 días**, o sea que
+se poda. Por eso la productividad se guarda además en `flota_productividad_historico`, una fila por
+medida, con **las entradas del cálculo y no solo el veredicto**: si mañana se recalibran los
+umbrales, la historia se puede volver a juzgar con el criterio nuevo. `productividad` compara con la
+medida anterior y dice, métrica a métrica, si se **mejora** o se **empeora** — con un ±10 % tratado
+como ruido, porque llamar «mejora» a eso enseña a no creerse la serie.
+
 #### ¿Produce la flota, y a qué coste? — `npm run flota -- productividad`
 
 La ficha del piloto declaró **antes de empezar** cómo se sabría si salía bien, para no juzgarlo por

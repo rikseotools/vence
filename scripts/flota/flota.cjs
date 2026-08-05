@@ -168,7 +168,7 @@ function ponerAlDia(trabajador, { emitir = null, reanuda = false } = {}) {
  * se niega a trabajar sin supervisión con privilegios de root (y hace bien). En el portátil ya
  * eres tú: ni sudo ni chown.
  */
-function mandarEncargo(trabajador, texto, { alDia = null } = {}) {
+function mandarEncargo(trabajador, texto, { alDia = null, turno = null } = {}) {
   // ¿Está libre AHORA? El claim tarda minutos en aparecer desde que se manda el encargo, y en esa
   // ventana el trabajador es invisible para el reparto. La verdad la tiene su panel.
   const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
@@ -191,6 +191,9 @@ function mandarEncargo(trabajador, texto, { alDia = null } = {}) {
     `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
+  // El rastro lo deja la PUERTA, no el llamador. Puesto en cada sitio que manda, se olvida en uno
+  // — y de hecho se olvidó en `repartir` al primer intento, así que la serie nacía incompleta.
+  if (turno) turno()
   return { ok: true, al }
 }
 
@@ -214,6 +217,22 @@ async function main() {
     INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
     VALUES ('fargate', ${ACTU.severidad(v)}, 'flota_clon_desactualizado', 'flota', ${v.motivo},
             ${sql.json({ trabajador, maquina: MAQ.maquinaDe(trabajador)?.nombre || null, estado: v.estado })})`
+    .catch(() => {})
+
+
+  // ── EL TURNO DE UN TRABAJADOR, VISIBLE ────────────────────────────────────────────────────
+  // Hasta aquí se observaba el ANDAMIAJE (preflight, fricción, clon al día) pero no el trabajo: el
+  // turno de un `claude -p` nacía y moría dentro de un fichero de log en su máquina, sin cruzar a
+  // ninguna parte. Nadie podía responder «¿cuánto tarda un turno?», «¿cuántos mueren a medias?»
+  // ni «¿qué se le encargó y cuándo?» sin entrar por SSH a leer un `tail`.
+  //
+  // Un solo `event_type` con `fase` dentro, y no dos: dos tipos para el mismo hecho se vigilan con
+  // dos reglas y una acaba sin nadie que la mire.
+  const emitirTurno = (trabajador, fase, extra = {}) => sql`
+    INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+    VALUES ('fargate', ${fase === 'muerto' ? 'warn' : 'info'}, 'flota_turno', 'flota',
+            ${extra.motivo || null},
+            ${sql.json({ trabajador, fase, maquina: MAQ.maquinaDe(trabajador)?.nombre || null, ...extra })})`
     .catch(() => {})
 
   try {
@@ -389,7 +408,8 @@ async function main() {
       // distintas sin coordinarse. Lo que produce es un BORRADOR que aprueba una persona.
       if (process.argv.includes('--impugnaciones')) {
         const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
-        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w, puedeDesplegar: MAQ.puedeDesplegar(w).puede }), { alDia })
+        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w, puedeDesplegar: MAQ.puedeDesplegar(w).puede }),
+          { alDia, turno: () => emitirTurno(w, 'encargado', { tipo: 'impugnacion' }) })
         if (!r.ok) {
           console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
           return 1
@@ -433,7 +453,8 @@ async function main() {
       const [ses] = await sql`SELECT sid FROM public.worktree_sessions WHERE slug = ${w}`
       const reanuda = !!(ses && tarea.claimed_by === ses.sid)
       const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) }, reanuda })
-      const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea, puedeDesplegar: MAQ.puedeDesplegar(w).puede }), { alDia })
+      const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea, puedeDesplegar: MAQ.puedeDesplegar(w).puede }),
+        { alDia, turno: () => emitirTurno(w, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
       if (!r.ok) {
         console.error(r.ocupado
           ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
@@ -481,8 +502,55 @@ async function main() {
       console.log('')
       console.log('   el tercer criterio del piloto (¿se erosionan los guardarraíles?):')
       console.log('     npm run sesiones:friccion')
-      // Al bus, para que la serie exista: sin histórico, el veredicto de hoy no se puede comparar
-      // con nada — y este parte nace justamente porque no había con qué comparar.
+      // ── LA SERIE DURADERA ────────────────────────────────────────────────────────
+      // El bus recibe la señal para ALERTAR, pero no sirve como historia: se poda (medido, 10,8 M
+      // de filas y solo 32 días). Así que la medida se guarda también en su propia tabla, con las
+      // ENTRADAS del cálculo y no solo el veredicto — si mañana se recalibran los umbrales, la
+      // historia se puede volver a juzgar con el criterio nuevo.
+      const [prev] = await sql`
+        SELECT * FROM public.flota_productividad_historico ORDER BY medido_at DESC LIMIT 1`
+      await sql`
+        INSERT INTO public.flota_productividad_historico
+          (horas_ventana, dias_cerradas, pendientes, trabajadores, cerradas, cerradas_flota,
+           entregas_ventana, entregas_en_cola, espera_mediana_h, entregas_por_hora,
+           cerradas_por_hora, manda, horas_estimadas, veredicto, razon)
+        VALUES (${horasVentana}, ${dias}, ${pendientes}, ${trabajadores},
+                ${m.porOrigen.trabajador + m.porOrigen.persona}, ${m.produccionFlota.entregadasYaCerradas},
+                ${entregasVentana}, ${m.entregas.pendientes}, ${m.entregas.esperaMedianaH},
+                ${m.prevision.hay ? m.prevision.entregasPorHora : null},
+                ${m.prevision.hay ? m.prevision.cerradasPorHora : null},
+                ${m.prevision.hay ? m.prevision.manda : null},
+                ${m.prevision.hay ? m.prevision.horas : null},
+                ${m.veredicto.color}, ${m.veredicto.razon})`.catch((e) => {
+        console.log(`   (no se pudo guardar en el histórico: ${String(e.message).slice(0, 70)})`)
+      })
+
+      // ¿Mejor o peor que la anterior? Es la pregunta que motivó la tabla.
+      const cmp = PROD.comparar({
+        entregasPorHora: m.prevision.hay ? m.prevision.entregasPorHora : null,
+        cerradasPorHora: m.prevision.hay ? m.prevision.cerradasPorHora : null,
+        pendientes, entregasEnCola: m.entregas.pendientes,
+        esperaMedianaH: m.entregas.esperaMedianaH,
+        horasEstimadas: m.prevision.hay ? m.prevision.horas : null,
+      }, prev ? {
+        entregasPorHora: prev.entregas_por_hora, cerradasPorHora: prev.cerradas_por_hora,
+        pendientes: prev.pendientes, entregasEnCola: prev.entregas_en_cola,
+        esperaMedianaH: prev.espera_mediana_h, horasEstimadas: prev.horas_estimadas,
+      } : null)
+      console.log('')
+      console.log('¿MEJOR O PEOR QUE LA MEDIDA ANTERIOR?')
+      console.log('-'.repeat(58))
+      if (!cmp.hay) console.log(`  ${cmp.motivo}`)
+      else {
+        const ico = { mejora: '📈', empeora: '📉', igual: '➖' }
+        for (const f of cmp.filas) {
+          console.log(`  ${ico[f.veredicto]} ${f.metrica.padEnd(18)} ${f.de} → ${f.a}   (${f.cambio > 0 ? '+' : ''}${Math.round(f.cambio * 100)}%)`)
+        }
+        console.log(`  ${ico[cmp.resumen]} en conjunto: ${cmp.resumen.toUpperCase()}` +
+          (prev ? `   (frente a la medida de ${new Date(prev.medido_at).toISOString().slice(5, 16).replace('T', ' ')})` : ''))
+      }
+
+      // Al bus, para ALERTAR (la historia vive en la tabla de arriba).
       await sql`
         INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
         VALUES ('fargate', ${m.veredicto.color === 'rojo' ? 'error' : m.veredicto.color === 'ambar' ? 'warn' : 'info'},
@@ -532,8 +600,14 @@ async function main() {
               // Tarea cogida y sin proceso: su turno murió. Se relanza CON SU TAREA, no con otra —
               // empezar algo nuevo encima de un trabajo a medias es como se pierde ese trabajo.
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
-              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }), { alDia })
-              if (r.ok) { console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++ }
+              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }),
+                { alDia, turno: () => { emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' }); emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' }) } })
+              if (r.ok) {
+                // Un turno que murió con la tarea cogida es el fallo que más tiempo cuesta: la
+                // tarea queda bloqueada para todos y nadie avanza. Sin esta señal solo se veía
+                // mirando el panel en el momento justo.
+                console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++
+              }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             } else {
               // ── SE REPARTE POR CAPACIDAD, NO POR TURNO ───────────────────────────
@@ -568,8 +642,11 @@ async function main() {
               // Si no había tarea apta libre, se cae a impugnaciones: mejor eso que dejarlo parado.
               if (!texto) { texto = ENC.encargoImpugnacion({ trabajador, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }); queEs = 'una impugnación' }
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
-              const r = mandarEncargo(trabajador, texto, { alDia })
-              if (r.ok) { console.log(`   [${sello}] ✅ ${trabajador} → ${queEs}`); movidos++ }
+              const r = mandarEncargo(trabajador, texto,
+                { alDia, turno: () => emitirTurno(trabajador, 'encargado', { tarea: queEs.startsWith('T-') ? queEs : null, tipo: queEs.startsWith('T-') ? 'backlog' : 'impugnacion' }) })
+              if (r.ok) {
+                console.log(`   [${sello}] ✅ ${trabajador} → ${queEs}`); movidos++
+              }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             }
           } catch (e) {
@@ -631,7 +708,8 @@ async function main() {
           try {
             const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
             const r = mandarEncargo(f.trabajador,
-              ENC.encargoImpugnacion({ trabajador: f.trabajador, puedeDesplegar: false }), { alDia })
+              ENC.encargoImpugnacion({ trabajador: f.trabajador, puedeDesplegar: false }),
+              { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tipo: 'impugnacion' }) })
             if (r.ok) { console.log(`   ✅ ${f.trabajador.padEnd(4)} → una impugnación (no despliega: ${MAQ.puedeDesplegar(f.trabajador).porQueNo})`); n++ }
             else console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
           } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
@@ -641,7 +719,8 @@ async function main() {
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
           const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
-          const r = mandarEncargo(f.trabajador, ENC.encargo({ trabajador: f.trabajador, tarea, puedeDesplegar: MAQ.puedeDesplegar(f.trabajador).puede }), { alDia })
+          const r = mandarEncargo(f.trabajador, ENC.encargo({ trabajador: f.trabajador, tarea, puedeDesplegar: MAQ.puedeDesplegar(f.trabajador).puede }),
+            { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
           // vez de quedarse sin repartir por un problema que no es suyo.
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en

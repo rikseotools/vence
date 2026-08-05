@@ -5923,6 +5923,46 @@ export const RULE_FLOTA_AUTENTICACION: AlertRule<{
 };
 
 // ────────────────────────────────────────────────────────────────
+// TURNOS DE TRABAJADOR QUE MUEREN CON LA TAREA COGIDA (T-486, 2026-08-05)
+//
+// Un `claude -p` es de un solo tiro. Si su turno acaba a media tarea, la tarea se queda RECLAMADA
+// por nadie: bloqueada para el resto de la flota y sin avanzar. El vigía los relanza, pero si
+// pasan muchos es que algo sistemático los está matando —cuota agotada, un guardarraíl que no
+// pueden satisfacer, una tarea imposible— y eso no se ve relanzando uno a uno.
+//
+// El turno no se observaba en absoluto hasta ahora: nacía y moría dentro de un fichero de log en
+// la máquina del trabajador, sin cruzar a ninguna parte.
+export const RULE_FLOTA_TURNOS_MUERTOS: AlertRule<{
+  n: number;
+  trabajadores: string | null;
+}> = {
+  name: 'flota_turno',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           STRING_AGG(DISTINCT metadata->>'trabajador', ', ') AS trabajadores
+    FROM observable_events
+    WHERE event_type = 'flota_turno'
+      AND metadata->>'fase' = 'muerto'
+      AND created_at > NOW() - INTERVAL '3 hours'
+  `,
+  // Uno suelto es normal (un turno se acaba). Cinco en tres horas ya es un patrón.
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 5,
+  buildNotification: (rows) => ({
+    title: `↻ Flota: ${rows[0].n} turnos muertos con la tarea cogida en 3 h`,
+    body:
+      `Trabajadores: ${rows[0].trabajadores ?? '(n/a)'}\n\n` +
+      `Un turno que muere a media tarea la deja RECLAMADA por nadie: bloqueada para el resto y sin ` +
+      `avanzar. El vigia los relanza, pero tantos seguidos apuntan a una causa comun — cuota ` +
+      `agotada, un guardarrail que no pueden satisfacer, o una tarea que no esta a su alcance.\n` +
+      `Mira: npm run flota   y   tmux attach -t <trabajador> en su maquina.`,
+    metadata: { count: rows[0].n, trabajadores: rows[0].trabajadores },
+    fingerprint: 'flota_turno_muerto',
+  }),
+  cooldownMin: 180,
+};
+
+// ────────────────────────────────────────────────────────────────
 // LA COLA DE REVISIÓN DE LA FLOTA ENVEJECE (T-486, 2026-08-05)
 //
 // El criterio de FRACASO del piloto lo declaró su propia ficha antes de empezar: si las horas de
@@ -6158,6 +6198,8 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_FLOTA_CLON as AlertRule,
   // Y si lo entregado se queda sin revisar: el criterio de fracaso declarado del piloto (T-486).
   RULE_FLOTA_PRODUCTIVIDAD as AlertRule,
+  // Y los turnos que mueren con la tarea cogida, que la bloquean para todos (T-486).
+  RULE_FLOTA_TURNOS_MUERTOS as AlertRule,
   RULE_SIM_RUTA_ROTA as AlertRule,
   // Y el evento VIEJO de Vence Sim, sin vigilancia desde que existe el harness (T-491): el
   // catch-all tampoco lo cubría, porque exige 150 del mismo tipo en una hora.
