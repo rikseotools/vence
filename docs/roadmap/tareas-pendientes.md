@@ -842,6 +842,61 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-589] 🟡 [ABIERTO 05/08] Detector `visual_deixis_no_image` no capta "imagen de la izquierda/derecha" ni "figura N" sin "siguiente"
+
+**Origen:** impugnación `bdf4a132` (usuario 9e7328df, "No se puede ver la imagen"), pregunta `90011643-14a9-4c8f-9c0f-c878c14cd26b`
+(art. 4 "Tablas, columnas, secciones" de LibreOffice Writer, tema 17 Xunta Galicia). El enunciado dice
+*"tal como se ve en la imagen de la izquierda (figura. 1) ... la imagen de la derecha (figura.2) ...
+lo que se indica dónde está la marca negra en la figura 1"* — pide comparar dos figuras y localizar
+una marca en una de ellas. `image_url` es NULL y `content_data` es `{}`. Es literalmente irresoluble
+sin la imagen, y el detector de salud existente (`lib/health/visualDeixis.cjs`, kind
+`visual_deixis_no_image`) **no la marcó nunca**.
+
+**Medido (05/08, sobre `questions` activas con `image_url IS NULL`):** el patrón `VD_STRONG` actual
+cubre bien la familia "el/la siguiente icono/imagen/figura/..." (10 de 13 casos de una búsqueda más
+amplia caen ahí). Pero **3 casos evaden el regex** porque usan una redacción distinta, sin "siguiente":
+
+- `90011643-14a9-4c8f-9c0f-c878c14cd26b` — *"...en la imagen de la izquierda (figura. 1)... la imagen
+  de la derecha (figura.2)..."* (la impugnada)
+- `e615086f-1e51-45a5-891a-767f3cd0153d` — *"...vemos en la Figura 1... el resultado... es como se ve
+  en la Figura 2... que el resultado sea tal como queda en la Figura 3..."*
+- `3a8c8b38-2a26-4f6e-ac4d-e3a456b27479` — *"En la figura 1, tenemos las ventas... para obtener el
+  resultado de la Figura 2..."*
+
+Las tres son del MISMO lote (tags `Tema 17`, `LibreOffice`, `Xunta Galicia`) y las tres tienen
+`image_url IS NULL` y `content_data = {}`. Ninguna se puede responder sin la imagen: no describen el
+contenido visual en el propio texto (a diferencia de los falsos positivos que motivaron la
+calibración de T-113).
+
+**Por qué evaden `VD_STRONG`:** el regex exige o bien `(el|la) siguiente (icono|imagen|figura|...)`, o
+frases fijas como "según la imagen/figura", "observa la imagen", "en la imagen anterior/superior/...".
+No cubre:
+- `"la imagen de la (izquierda|derecha)"` — variante posicional que "anterior/superior/inferior/..."
+  no incluye.
+- `"(en )?la figura N"` (numeral suelto, sin "siguiente" delante) — el patrón actual solo captura
+  "figura" dentro de las frases fijas de arriba, no como referente numerado suelto.
+
+**Arreglo propuesto (no lo hice yo: toca el núcleo COMPARTIDO con parity guardrail, requiere tocar
+DOS ficheros y no es un fix aislado):**
+- Ampliar `VD_STRONG` en `lib/health/visualDeixis.cjs` con dos alternativas nuevas:
+  - `\yla\s+imagen\s+de\s+la\s+(izquierda|derecha)\y`
+  - `\y(en\s+)?la\s+figura\s+\d+\y` (con cuidado de falsos positivos — "en la figura" a secas puede
+    aparecer en contexto jurídico/administrativo no visual; medir antes de activar en `error`, este
+    detector ya nace como `warn`)
+- Replicar el cambio en el mirror del backend
+  (`backend/src/content-health-sweep/content-health-sweep.service.ts`) y comprobar
+  `content-sweep-parity` en verde.
+- Antes de fijar el regex nuevo, correrlo contra el banco completo y comprobar que no aumenta de
+  golpe con falsos positivos (mismo método que T-113: leer los nuevos hallazgos uno a uno).
+
+**Las 3 preguntas mientras tanto:** quedan sin remediar hasta que se decida por-pregunta si se
+reconstruye la imagen (no hay fuente/documento de origen, son preguntas de procedimiento de
+LibreOffice, no de un boletín) o se jubilan (`admin_image_unavailable` → `retired_irreparable`). No
+las he tocado (soy un trabajador de la flota, sin permiso de escritura en `questions`).
+
+**Esfuerzo:** rato (ampliar 1 regex en 2 ficheros + verificar parity + revisar el banco antes de
+activarlo).
+
 ### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
 
 - **Esfuerzo: minutos** para lo mitigado; el root cause real no está encontrado.
