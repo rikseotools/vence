@@ -10,14 +10,19 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#
+# El hook corre con `sh -e` (ver .husky/_/h): CUALQUIER comando suelto que devuelva no-cero
+# aborta el script AHÍ MISMO, antes de que un `if [ $? -ne 0 ]` posterior pueda leerlo — así
+# que "solo warning, no bloquea" solo era cierto mientras `db:check` no fallara nunca de
+# verdad. Se descubrió el 05/08/2026 con un trabajador de la flota (DATABASE_URL de
+# coordinación, sin permiso sobre tablas de negocio): CUALQUIER commit suyo moría aquí con el
+# error de conexión, aunque el commit no tocara nada de BD. El comando tiene que ser la
+# CONDICIÓN de un `if` para que `-e` no lo trate como fatal.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
-
-  if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+  if ! npm run db:check; then
     echo ""
-    echo "⚠️  Schema desincronizado. Ver errores arriba."
+    echo "⚠️  Schema desincronizado (o no se pudo comprobar). Ver errores arriba."
     echo "   Para sincronizar: npm run db:pull"
     echo ""
     # Solo warning, no bloquea el commit
@@ -65,16 +70,17 @@ echo ""
 #     4 tablas de coordinación, así que CUALQUIER commit de un trabajador —tocara o no el
 #     temario— moría aquí con «permission denied for table topics» leído como drift real.
 #     Mismo criterio que `db:check` unas líneas arriba: sin poder comprobar, se avisa y se
-#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre.
+#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre. Y por la misma
+#     razón que ese bloque, los dos comandos van como CONDICIÓN de un `if` — sueltos, `-e`
+#     los trata como fatales antes de que el `if [ $? -ne 0 ]` posterior pueda leer el código.
 echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
-npm run audit:display-drift -- --selftest
-if [ $? -ne 0 ]; then
+if ! npm run audit:display-drift -- --selftest; then
   echo "❌ audit:display-drift: el self-test del detector falló (lógica rota). Commit cancelado."
   exit 1
 fi
 if [ -n "$DATABASE_URL" ]; then
-  npm run audit:display-drift
-  DRIFT_EXIT_CODE=$?
+  DRIFT_EXIT_CODE=0
+  npm run audit:display-drift || DRIFT_EXIT_CODE=$?
   if [ $DRIFT_EXIT_CODE -eq 1 ]; then
     echo ""
     echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
