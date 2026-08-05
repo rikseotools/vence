@@ -59,6 +59,24 @@ function enMaquina(trabajador, orden, { entrada = null } = {}) {
     '-i', m.llave, `${m.usuario}@${m.host}`, orden], opciones)
 }
 
+/**
+ * ¿Está viva la SESIÓN de un trabajador, aunque no esté latiendo?
+ *
+ * El latido va dentro de los comandos del andamiaje, así que un trabajador ENTRE TAREAS no late —
+ * y a los 15 minutos el panel lo daba por caído estando perfectamente. «Libre» y «muerto» piden
+ * cosas opuestas: al primero se le manda trabajo, al segundo se le levanta.
+ *
+ * La sesión de tmux es la verdad: si existe, hay a quién mandarle un encargo.
+ */
+function sesionViva(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  const como = m && m.local ? '' : 'sudo -u flota '
+  try {
+    enMaquina(trabajador, `${como}tmux has-session -t ${trabajador} 2>/dev/null`)
+    return true
+  } catch { return false }
+}
+
 /** Dónde vive el fichero de entorno de un trabajador, que en local no está en /etc. */
 function ficheroEntorno(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
@@ -96,12 +114,17 @@ async function main() {
       console.log('\nFLOTA')
       console.log('='.repeat(60))
       for (const f of filas) {
-        const icono = f.estado === 'vivo' ? '🟢' : f.estado === 'callado' ? '🟠' : '🔴'
+        // Un trabajador callado PERO con sesión viva está LIBRE, no caído. Confundirlos manda a
+        // levantar lo que solo hacía falta encargar.
+        const libre = f.estado !== 'vivo' && sesionViva(f.trabajador)
+        const icono = f.estado === 'vivo' ? '🟢' : libre ? '🔵' : f.estado === 'callado' ? '🟠' : '🔴'
         const t = tareaDe(f.trabajador)
         const cuando = f.antiguedadMin == null ? 'sin señal nunca'
           : f.antiguedadMin < 1 ? 'ahora mismo' : `hace ${f.antiguedadMin} min`
         console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}`)
-        console.log(`       ${t ? `${t.id} — ${String(t.title).slice(0, 60)}` : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
+        console.log(`       ${t ? `${t.id} — ${String(t.title).slice(0, 60)}`
+          : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'
+          : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
       }
 
       // ── TUS SESIONES ────────────────────────────────────────────────────────────────
@@ -175,7 +198,7 @@ async function main() {
       // El resumen NO puede meter en el mismo saco «no da señal» y «da señal pero no puede
       // trabajar»: se arreglan en sitios distintos (la máquina vs. la credencial), y un resumen
       // que los confunde manda a mirar donde no es.
-      const sinSenal = filas.filter((f) => f.estado !== 'vivo')
+      const sinSenal = filas.filter((f) => f.estado !== 'vivo' && !sesionViva(f.trabajador))
       const partes = []
       if (sinSenal.length) partes.push(`${sinSenal.length} sin señal`)
       if (malAutenticados.length) partes.push(`${malAutenticados.length} sin poder trabajar`)
@@ -254,6 +277,66 @@ async function main() {
     // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
     // origin/main, credenciales RESTRINGIDAS (no tu .env.local, que abre usuarios y pagos) y el
     // preflight como puerta: si no puede latir, no arranca.
+    // ── REPARTIR: dar trabajo a TODOS los que estén libres, de una vez ────────────────────
+    // Es lo que cierra el bucle. Sin esto, «hablo solo con el supervisor» seguía significando
+    // «pídele trabajo a w1, luego a w2, luego a l1»: el supervisor sabía quién estaba libre y aun
+    // así había que decírselo uno a uno.
+    //
+    // NO reparte a las sesiones de Manuel, ni con --todos: a una terminal de una persona no se le
+    // manda un encargo. Y no reparte a quien ya tiene tarea — el claim manda, no esta lista.
+    if (cmd === 'repartir') {
+      const sesiones = await sql`
+        SELECT sid, slug, last_signal_at FROM public.worktree_sessions WHERE rol = 'trabajador'`
+      const ocupadas = await sql`
+        SELECT claimed_by FROM public.backlog_tasks WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
+      const conTarea = new Set(ocupadas.map((t) => t.claimed_by))
+      // «Vivo» aquí es «hay sesión a la que mandarle algo», no «ha latido hace poco»: un
+      // trabajador entre tareas no late y seguiría siendo un destinatario perfectamente válido.
+      const vivos = MAQ.comparar(sesiones).filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador))
+      const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
+      const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
+
+      if (!libres.length) {
+        console.log(`✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
+        return 0
+      }
+      const candidatas = await sql`
+        SELECT id, title FROM public.backlog_tasks
+         WHERE status = 'open' AND claimed_by IS NULL
+           AND (snooze_until IS NULL OR snooze_until <= now())
+           AND wake_on_deploy_sha IS NULL AND review_requested_at IS NULL
+         ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, id
+         LIMIT 120`
+      const dadas = new Set()
+      let n = 0
+      for (const f of libres) {
+        // Cada uno se lleva una DISTINTA: repartir la misma a dos es exactamente la colisión que
+        // el claim evita, pero mandarles a los dos a por ella desperdicia una vuelta entera.
+        const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)))
+        if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
+        dadas.add(tarea.id)
+        const texto = ENC.encargo({ trabajador: f.trabajador, tarea })
+        const m = MAQ.maquinaDe(f.trabajador)
+        const env = ficheroEntorno(f.trabajador)
+        const enc = env.replace(/\.env$/, '.encargo')
+        const como = m.local ? '' : 'sudo -u flota '
+        const dueno = m.local ? '' : `&& chown flota ${enc} `
+        try {
+          enMaquina(f.trabajador,
+            `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
+            `${como}tmux send-keys -t ${f.trabajador} 'set -a; . ${env}; set +a; ` +
+            `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${f.trabajador}.log' Enter`,
+            { entrada: texto })
+          console.log(`   ✅ ${f.trabajador.padEnd(4)} → ${tarea.id}  ${String(tarea.title).slice(0, 54)}`)
+          n++
+        } catch (e) {
+          console.log(`   ❌ ${f.trabajador}: no se le pudo mandar (${String(e.message).slice(0, 60)})`)
+        }
+      }
+      console.log(`\n${n} encargo(s) repartido(s). Míralo con: npm run flota`)
+      return 0
+    }
+
     if (cmd === 'lanzar') {
       const w = process.argv[3]
       if (!w) { console.error('Uso: flota.cjs lanzar <trabajador>'); return 2 }
@@ -360,7 +443,7 @@ async function main() {
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    console.error('Uso: flota.cjs [estado] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}
