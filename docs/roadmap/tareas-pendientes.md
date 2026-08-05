@@ -1251,6 +1251,118 @@ anotado en la ficha (mismo criterio que [T-188]).
 
 **Relacionadas:** [T-147] (documentos clonados como `nota`), [T-188] (los que no se pudieron clonar),
 [T-190] (extracción pobre), [T-181] (clonados en la convocatoria equivocada), [T-152] y [T-110] (campañas a Madrid).
+### [T-581] 🟡 [ABIERTO 05/08] Herramientas de impugnaciones/feedback revientan con el rol de lectura de la flota (permission denied sin capturar)
+
+**QUÉ PASA.** `scripts/impugnaciones/revisar-impugnacion.cjs`, `scripts/impugnaciones/cola.cjs`
+(`release`, `mine`, y probablemente `list`) y `scripts/impugnaciones/revisar-feedback.cjs` se
+escribieron asumiendo que quien los ejecuta tiene la credencial completa de la app
+(`.env.local`, que abre `user_profiles`/`user_feedback`/etc). Un **trabajador de la flota**
+(rol `vence_coordinacion` o `vence_lector`, ver `sistema-sesiones-paralelas.md` §6.quater y
+`scripts/canary-rol-lector.cjs`) tiene **negado a propósito** el acceso a esas tablas —ahí viven
+los identificadores directos (correo, nombre)— y las queries no van en `try/catch`, así que la
+excepción de Postgres (`42501 permission denied`) queda **sin capturar** y tumba el proceso
+entero con un `UnhandledPromiseRejection`.
+
+**MEDIDO el 05/08/2026, trabajando la impugnación `968b0a9d`:**
+1. `revisar-impugnacion.cjs <id>` — moría en la query de `user_profiles` (línea ~135) ANTES de
+   imprimir nada del dossier (cuestionario, artículo, hermanas, checklist). **Arreglado** en la
+   rama `flota/dossier-impugnaciones-rol-lector` (commit `4aef6bcee`, en este worktree, sin
+   pushear — el trabajador no tiene credenciales git de push): se degrada con un aviso
+   (`👤 Nombre/email/plan no disponibles: tu rol no puede leer user_profiles…`) en vez de morir;
+   el resto del fichero ya usaba `p?.` en todos los sitios, así que no hacía falta tocar nada más.
+2. `cola.cjs release <id>` — **hace su trabajo** (la fila SE libera, comprobado con `SELECT
+   claimed_by` tras el crash: quedó en `NULL`) pero **revienta DESPUÉS** al intentar tocar
+   `user_feedback` (parece que recorre las tres colas —`question_disputes`,
+   `psychometric_question_disputes`, `user_feedback`— para las operaciones de mantenimiento).
+   Sale un stack trace feo pero el efecto deseado ya ocurrió.
+3. `cola.cjs mine` — revienta igual, en `user_feedback`, sin llegar a imprimir nada (ni siquiera
+   los claims de impugnaciones, que sí podría leer).
+4. `revisar-feedback.cjs` — **peor**: `user_feedback` es la tabla BASE del dossier (línea 42,
+   `SELECT * FROM user_feedback WHERE id=…`), así que un trabajador **no puede generar el dossier
+   de NINGÚN feedback**, no solo degradarse sin nombre. Tiene además el mismo patrón sin
+   try/catch sobre `user_profiles` en la línea 105 (igual que tenía `revisar-impugnacion.cjs`).
+   **No lo he tocado** — es un cambio más grande (la tabla base entera, no un campo opcional) y
+   se sale del alcance de "arreglo acotado" de mi encargo de una impugnación.
+
+**POR QUÉ IMPORTA.** El encargo estándar de un trabajador de la flota para impugnaciones
+(`docs/maintenance/impugnaciones-claude-code.md`, seguido al pie de la letra) manda usar
+exactamente estas herramientas. Sin el arreglo del punto 1, **ningún trabajador puede generar
+un dossier de impugnación** — que es la mitad del encargo. El feedback (punto 4) está peor: el
+dossier no arranca en absoluto.
+
+**QUÉ HACE FALTA (no lo he hecho, esfuerzo mayor que "un query suelto"):**
+- Auditar `cola.cjs` (los tres subcomandos que tocan `user_feedback`: `next`, `release`, `mine`,
+  `list`) y envolver cada acceso a `user_feedback`/`user_profiles` en el mismo patrón de
+  degradación (capturar `42501`, avisar, seguir sin ese dato) en vez de dejar que la excepción
+  suba sin capturar.
+- `revisar-feedback.cjs`: decidir el diseño correcto para cuando `user_feedback` no es legible
+  en absoluto — probablemente el dossier de feedback simplemente NO es una herramienta que un
+  trabajador pueda ejecutar (a diferencia de impugnaciones, cuyo dato vive en tablas que sí
+  tiene O puede tener), y hay que documentarlo en vez de fingir que funciona.
+- Repasar si hay más escritores del mismo patrón (`tools:buscar -- "user_profiles"` /
+  `"user_feedback"` sobre `scripts/impugnaciones/`).
+
+**Cómo medí que NO es un caso aislado dentro de este hallazgo:** grep directo de
+`user_profiles`/`user_feedback` en `scripts/impugnaciones/*.cjs` — aparecen en los 3 ficheros
+citados, sin un solo `try/catch` alrededor en ninguno de los casos salvo el que ya arreglé.
+
+**AMPLIACIÓN 05/08/2026 (misma tarde, impugnación `4683e35b`) — el hallazgo original se quedó
+corto: no es solo `user_profiles`/`user_feedback` (identificadores directos, negados A PROPÓSITO),
+también fallan tablas de NEGOCIO normales por usar la credencial EQUIVOCADA, no por faltar un
+try/catch:**
+
+1. **`revisar-impugnacion.cjs` moría en `questions`** (línea ~190, tras el arreglo del punto 1 de
+   arriba): `DATABASE_URL` de un trabajador es el rol `vence_coordinacion` (T-539), que **solo
+   tiene 4 tablas de coordinación** + SELECT de `question_disputes`/`psychometric_question_disputes`
+   (T-574) — **cero** acceso a `questions`/`articles`/`test_questions`. Esas SÍ son legibles con
+   `VENCE_LECTOR_URL` (rol `vence_lector`, T-486), que el trabajador también tiene pero el script
+   nunca usaba. **Arreglado** en la misma rama (commit siguiente a `4aef6bcee`): se abre una
+   segunda conexión sobre `VENCE_LECTOR_URL` para toda lectura de negocio (`questions`, `articles`,
+   `test_questions`, hermanas, `reward_submissions`, `scopeEnforcement`) y se deja `DATABASE_URL`
+   solo para lo que de verdad es coordinación (leer/reclamar el dispute). Si `VENCE_LECTOR_URL` no
+   está en el entorno se reusa la misma conexión — no cambia nada para quien tiene `.env.local`
+   completo. Verificado con la propia `4683e35b`: el dossier ahora imprime entero.
+2. **El mismo patrón bloqueaba el `pre-commit` de CUALQUIER commit de CUALQUIER trabajador,
+   no solo de impugnaciones.** `.husky/pre-commit` corre `npm run audit:display-drift` cuando hay
+   `DATABASE_URL` en el entorno (que para un trabajador SIEMPRE está — es su forma de coordinarse),
+   y ese audit lee `topics` (negocio) con `DATABASE_URL` sin condicional ni try/catch → `42501` →
+   exit≠0 → `.husky/pre-commit` lo trata como 🔴 real y **cancela el commit**. A diferencia del
+   `db:check` de dos pasos antes en el MISMO hook (que explícitamente solo avisa, no bloquea, ante
+   un fallo de conexión), este SÍ bloqueaba. Medido intentando commitear el arreglo del punto 1:
+   `ERROR: permission denied for table topics` y commit cancelado. **Arreglado** en la misma rama:
+   `audit-temario-display-drift.cjs` prefiere `VENCE_LECTOR_URL` si existe (igual que el punto 1) y,
+   por si aparece otra tabla sin cubrir, el `catch` final trata un `42501` como "no puedo mirar" (se
+   salta, no bloquea) en vez de como hallazgo. Sin este arreglo **ningún trabajador de la flota
+   puede pushear NADA**, así que era bloqueante para completar cualquier encargo con entrega en rama.
+   No he auditado si hay más pasos del mismo `pre-commit` con el mismo patrón (queda para quien siga).
+
+**AMPLIACIÓN 05/08/2026 (misma tarde, impugnación `2477d39d`) — el punto "QUÉ HACE FALTA" de arriba
+sobre `cola.cjs` ya está hecho:**
+
+Al pedir trabajo con el flujo normal (`cola.cjs next` → dossier → borrador), **`cola.cjs list`,
+`mine` y `release-all` reventaban** con el mismo `42501 permission denied for table user_feedback`
+sin capturar — medido en vivo con el rol `vence_coordinacion` de este trabajador. `release <id>`
+es el caso más engañoso: **hacía su trabajo** (la fila se liberaba, confirmado con `list` después)
+y **luego** reventaba al recorrer `user_feedback` para las mismas operaciones de mantenimiento, así
+que el stack trace parecía indicar que nada había funcionado cuando sí. `next` (el que de verdad
+hace falta para coger trabajo) **no estaba afectado**: solo recorre `FEEDBACK_TBL` cuando se pide
+`--queue feedback`, así que el flujo normal de impugnaciones nunca tocaba `user_feedback`.
+
+**Arreglado** en esta misma rama (commit siguiente a este): mismo patrón de degradación que el
+punto 1 de arriba (capturar `42501`, avisar UNA vez con `warnFeedbackPerm()`, seguir sin esa cola)
+envolviendo los CINCO sitios que tocan `user_feedback` — `listQueue`, `elegirFeedbackPorPrioridad`,
+`claimFrom`, `mine`, `claim <id>`, `release` y `release-all` —. Verificado contra RDS real: los
+tres subcomandos que antes reventaban ahora imprimen el aviso una vez y siguen (`list` muestra las
+16 impugnaciones pendientes con normalidad, `mine`/`release-all` responden limpio). Los tests que
+tocaban el texto exacto de `cola.cjs` (`__tests__/lib/feedback/prioridadCola.test.js`,
+`__tests__/guardrails/reservaColaCriterioUnico.test.ts`) siguen en verde — se mantuvo intacta la
+línea literal que uno de esos guardarraíles exige (`tbl === 'user_feedback' ? await
+elegirFeedbackPorPrioridad(open) : null`) en vez de tocarlo.
+
+**Pendiente aún (no lo he tocado, es lo que queda del punto "QUÉ HACE FALTA" original):**
+`revisar-feedback.cjs`, cuya tabla BASE es `user_feedback` — un trabajador de la flota no puede
+generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin repensar el diseño
+(el manual ya lo señalaba como "esfuerzo mayor", no un query suelto).
 
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
@@ -5355,6 +5467,75 @@ trabajador): degradación genérica CE completa 4607→4607 (antes 0), con 19 ar
 además en `observable_events` el evento `filtered_questions_unbuilt_oposicion_degrade` con
 `source=fargate` y la combinación exacta de Félix, generado el 05/08 10:04 por tráfico real previo a
 esta verificación. Guardarraíl `__tests__/guardrails/estimateByLawsParidad.test.ts` en verde (10/10).
+
+### [T-588] ✅ [HECHA 05/08] cola.cjs next debería avisar/saltar disputes con borrador ya pendiente en el embudo
+
+**RESUELTO 05/08/2026 (w1).** Implementado el punto 1+2 de "QUÉ HACE FALTA": `lib/impugnaciones/borradorAbierto.cjs`
+(puro, con tests — `__tests__/impugnaciones/borradorAbierto.test.js`) consulta `session_questions`
+por el id completo o el corto (misma técnica de frontera que `fichasQueCitan.cjs`/[T-517]) y avisa
+—no bloquea— tanto en `cola.cjs next`/`claim` como en el dossier de `revisar-impugnacion.cjs`.
+Probado en vivo contra la propia `2477d39d`: el dossier imprime ahora los 3 borradores abiertos
+(`#21`, `#39`, `#72`) con su sesión y antigüedad. **No hice el punto 3** (columna estructurada
+`dispute_id` en vez de `ILIKE` sobre `draft_target`): es un cambio de esquema aparte, y el aviso
+por substring ya corta el problema medido (4 análisis para lo mismo). Yo mismo estuve a punto de
+ser la 5ª sesión en repetir el trabajo — el aviso me lo evitó en cuanto lo escribí.
+
+**QUÉ PASABA.** `cola.cjs next` reparte la impugnación **más antigua libre** de `question_disputes`,
+pero no mira si esa impugnación **ya tiene un borrador esperando OK de Manuel** en
+`session_questions` (kind='borrador'). El ciclo real es: sesión A la coge → analiza → verifica
+contra fuente oficial → escribe borrador → **libera la fila** (según el manual, nunca se cierra
+sin aprobación) → la impugnación vuelve a quedar "libre" y sigue siendo la más antigua → la
+siguiente sesión que pide trabajo se la vuelve a llevar, sin saber que ya hay un borrador
+esperando.
+
+**MEDIDO el 05/08/2026 sobre la impugnación `2477d39d` (Outlook, atajo Ctrl+Mayús+K vs Ctrl+T/Ctrl+Mayús+T
+para "nueva tarea"):** CUATRO sesiones distintas la analizaron de forma independiente, cada una con
+su propia verificación en vivo (WebFetch/fetch contra Microsoft Support ES/EN), en una ventana de
+2h26min:
+
+| sid | acción | hora (UTC) |
+|---|---|---|
+| `l3-fedora-2b213d` | borrador #21 (RECHAZAR) | 14:27:31 |
+| `l2-fedora-1d5f83` | borrador #39 (RECHAZAR, mismo veredicto) | 14:56:38 |
+| `w2-vence-flota-w1-d3707a` | pregunta #54 — crítica de tono al borrador #21 (abre con "Gracias por tu mensaje", que el manual §6 prohíbe) | 15:52:44 |
+| `w1-vence-flota-w1-386bf8` | borrador #62 (RECHAZAR) → retirado, sustituido por #72 (RECHAZAR, mismo veredicto, ya corrige la observación de w2) | 16:08:41 / 16:53:52 |
+
+Las CUATRO llegan al mismo veredicto (clave C correcta, verificada contra la misma fuente oficial),
+así que no hay desacuerdo de fondo — es trabajo **idéntico repetido cuatro veces**: 4 análisis
+completos, 4 verificaciones WebFetch contra la misma URL, y **3 borradores simultáneos abiertos**
+en el embudo (`#21`, `#39`, `#72`) esperando que Manuel elija cuál aprobar, más una pregunta de
+crítica cruzada (`#54`) que solo tiene sentido si se lee junto al borrador que critica.
+
+**Por qué pasa justo con ESTA:** nada en `cola.cjs next` ni en `revisar-impugnacion.cjs` consulta
+`session_questions` antes de asignar. El dossier (`revisar-impugnacion.cjs`) sí avisa si otra
+sesión tiene el **claim** fresco, pero el claim se suelta en cuanto se libera la fila (paso normal
+del flujo, no un error), y ahí el rastro del trabajo ya hecho — el borrador en el embudo — es
+invisible para el siguiente `next`.
+
+**COSTE medido:** 4x el trabajo (tiempo de sesión + llamadas LLM + WebFetch) para UNA sola
+impugnación, y le deja a Manuel 3 mensajes casi-duplicados que tiene que leer y comparar en vez de
+uno. Con la cola en paralelo de 2-10 sesiones, cualquier impugnación que tarde en aprobarse (porque
+Manuel no está mirando el panel en ese momento) es candidata a repetirse así.
+
+**QUÉ HACÍA FALTA (puntos 1-2 ya HECHOS — ver "RESUELTO" arriba):**
+1. ~~Antes de asignar en `cola.cjs next` (o al generar el dossier en `revisar-impugnacion.cjs`),
+   consultar `session_questions WHERE kind='borrador' AND status='open' AND draft_target ILIKE
+   '%<dispute_id>%'`~~ hecho.
+2. ~~Si ya hay un borrador abierto, **avisar** en vez de bloquear~~ hecho: imprime el borrador
+   existente (id, sesión, antigüedad) y deja que la sesión decida.
+3. **PENDIENTE (follow-up menor, no ficha aparte):** el campo `draft_target` sigue siendo texto
+   libre y el id del dispute se busca por substring — funciona porque todas las sesiones lo
+   incluyeron a mano, pero es una convención no forzada. Más robusto: añadir una columna
+   estructurada (`dispute_id`/`related_id`) a `session_questions`, o al menos documentar en el
+   manual que `--para` DEBE empezar por `"impugnación <id> (...)"` de forma parseable.
+
+**Relacionado:** es el mismo patrón de fondo que el CLAIM de disputes (`cola.cjs`, T-474) — "lease,
+no lock" ya resuelve que dos sesiones no analicen la MISMA fila A LA VEZ, pero no resuelve que dos
+sesiones analicen la misma fila EN SECUENCIA sin saber que la otra ya terminó. Es el hueco entre
+"nadie la tiene ahora" y "ya se hizo".
+
+**Esfuerzo: rato.**
+
 
 ### [T-544] ✅ 🟡 [HECHA 05/08] Baja de Sara Chamorro: confirmar o ejecutar el borrado antes de que venza el plazo RGPD
 

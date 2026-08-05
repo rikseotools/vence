@@ -48,6 +48,17 @@ const { sqlSinBorradorPendiente } = require(require('path').join(__dirname, '..'
 // Abreviar un sid es cosa de `sid.cjs` (T-538): a 8 caracteres, cinco sesiones del mismo día se
 // escriben igual y el listado hacía pasar por propias las reservas ajenas.
 const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
+// «Ya hay borrador abierto para este caso» (T-588): avisa, no bloquea. Nace de que 4 sesiones
+// analizaron la misma impugnación en 2h26min porque nada lo decía al repartir.
+const { borradoresQueCitan, lineasBorradorAbierto } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'borradorAbierto.cjs'));
+async function avisarSiHayBorrador(disputeId) {
+  try {
+    const filas = await s.unsafe(
+      `SELECT id, sid, status, draft_target, asked_at FROM public.session_questions WHERE kind='borrador' AND status='open'`);
+    const lineas = lineasBorradorAbierto(borradoresQueCitan(filas, String(disputeId)));
+    if (lineas.length) console.log('\n' + lineas.join('\n') + '\n');
+  } catch { /* nunca tumbar el reparto por esto */ }
+}
 
 // Tablas de cada cola: [tabla, estados-abiertos, herramienta/flujo a usar]
 const DISPUTE_TBL = [
@@ -61,6 +72,27 @@ const age = (t) => {
   const mins = Math.round((Date.now() - new Date(t).getTime()) / 60000);
   return mins < 60 ? `${mins}m` : `${Math.round(mins / 60)}h`;
 };
+
+// El rol de LECTURA de la flota (vence_coordinacion/vence_lector) no tiene NUNCA acceso a
+// `user_feedback` (T-581): es negocio, no coordinación. Antes cualquier operación que tocara esa
+// tabla —list/next/mine/claim/release/release-all— reventaba con un 42501 sin capturar y tumbaba
+// el proceso entero, aunque la parte de impugnaciones (question_disputes) ya se hubiera resuelto
+// bien (medido: `release` SÍ liberaba la fila y el crash posterior lo ocultaba). Se degrada igual
+// que `revisar-impugnacion.cjs` hizo con `user_profiles`: avisar una vez y seguir sin esa cola.
+let feedbackPermWarned = false;
+function warnFeedbackPerm() {
+  if (feedbackPermWarned) return;
+  feedbackPermWarned = true;
+  console.error('⚠️  Tu rol no puede leer user_feedback (T-581): la cola de FEEDBACK queda fuera de esta operación. Las impugnaciones siguen funcionando con normalidad.');
+}
+async function tocaFeedback(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e.code === '42501') { warnFeedbackPerm(); return null; }
+    throw e;
+  }
+}
 
 /**
  * Cola de feedback: el ORDEN DE ATENCIÓN lo decide `lib/feedback/prioridadCola.js` (bug →
@@ -76,15 +108,15 @@ const age = (t) => {
  */
 async function elegirFeedbackPorPrioridad(open) {
   const { ordenarCola } = require(require('path').join(__dirname, '..', '..', 'lib', 'feedback', 'prioridadCola.js'));
-  const libres = await s.unsafe(
+  const libres = await tocaFeedback(() => s.unsafe(
     `SELECT f.id, f.type, f.message, f.created_at, u.plan_type AS plan
        FROM public.user_feedback f
        LEFT JOIN public.user_profiles u ON u.id = f.user_id
       WHERE f.status = ANY($2)
         AND ${sqlReservaLibre('f.', '$1')}`,
     [sid, open]
-  );
-  if (!libres.length) return null;
+  ));
+  if (!libres || !libres.length) return null;
   return ordenarCola(libres)[0].id;
 }
 
@@ -95,12 +127,13 @@ async function claimFrom(list) {
   // Detalle: manual impugnaciones §7.5 (clustering mismo-usuario). Sigue respondiéndose UNA POR UNA.
   for (const { tbl, open, kind } of list) {
     const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
+    const esFeedback = tbl === 'user_feedback';
     // El feedback se reparte por PRIORIDAD (ver arriba); las impugnaciones, por antigüedad.
     // El id elegido entra en el mismo UPDATE atómico con el mismo guard, así que dos sesiones
     // que elijan a la vez el mismo siguen sin poder llevárselo las dos (FOR UPDATE SKIP LOCKED).
     const elegido = tbl === 'user_feedback' ? await elegirFeedbackPorPrioridad(open) : null;
-    if (tbl === 'user_feedback' && !elegido) continue;
-    const [row] = await s.unsafe(
+    if (esFeedback && !elegido) continue; // sin acceso a user_feedback o cola vacía: siguiente tabla
+    const claimado = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
       `UPDATE public.${tbl}
          SET claimed_by = $1, claimed_at = now()
        WHERE id = (
@@ -114,12 +147,14 @@ async function claimFrom(list) {
           LIMIT 1)
        RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
       elegido ? [sid, open, elegido] : [sid, open]
-    );
+    ));
+    if (!claimado) continue;
+    const [row] = claimado;
     if (!row) continue;
     // Cluster del mismo usuario: coge sus otras pendientes libres (SKIP LOCKED = no bloquea si otra sesión las tiene).
     let siblings = [];
     if (row.user_id != null) {
-      siblings = await s.unsafe(
+      siblings = (await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
         `UPDATE public.${tbl}
            SET claimed_by = $1, claimed_at = now()
          WHERE id IN (
@@ -129,7 +164,7 @@ async function claimFrom(list) {
             FOR UPDATE SKIP LOCKED)
          RETURNING id, ${typeCol} AS dispute_type, created_at`,
         [sid, open, row.user_id, row.id]
-      );
+      ))) || [];
     }
     return { ...row, kind, tbl, siblings };
   }
@@ -139,14 +174,18 @@ async function claimFrom(list) {
 async function listQueue(list) {
   const out = [];
   for (const { tbl, open, kind } of list) {
-    // El borrador pendiente se pinta con el MISMO criterio que impide repartirla (T-474): un panel
-    // que dijera «libre» sobre algo que la puerta no entrega manda a la siguiente sesión a
-    // trabajar en balde, que es justo lo que esta columna existe para evitar.
-    const rows = await s.unsafe(
-      `SELECT id, ${tbl === 'user_feedback' ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at,
+    const esFeedback = tbl === 'user_feedback';
+    // Dos cosas a la vez, y las dos hacen falta:
+    // · `tocaFeedback` (T-581): con el rol lector de la flota, tocar `user_feedback` reventaba la
+    //   cola entera con una excepción no capturada.
+    // · `con_borrador` (T-474): el panel se pinta con el MISMO criterio que impide repartirla —
+    //   decir «libre» sobre algo que la puerta ya no entrega manda a la siguiente sesión a
+    //   trabajar en balde.
+    const rows = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+      `SELECT id, ${esFeedback ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at,
               NOT (${sqlSinBorradorPendiente(`public.${tbl}.`)}) AS con_borrador
-         FROM public.${tbl} WHERE status = ANY($1) ORDER BY created_at`, [open]);
-    rows.forEach((r) => out.push({ ...r, kind }));
+         FROM public.${tbl} WHERE status = ANY($1) ORDER BY created_at`, [open]));
+    (rows || []).forEach((r) => out.push({ ...r, kind }));
   }
   return out;
 }
@@ -234,6 +273,7 @@ async function inconsistentesResueltasEnPending() {
       }
       if (row.kind === 'feedback') console.log(`   → siguiente: flujo docs/procedures/gestionar-feedback-bug.md`);
       else console.log(`   → siguiente: node scripts/impugnaciones/revisar-impugnacion.cjs ${row.id}`);
+      if (row.kind !== 'feedback') await avisarSiHayBorrador(row.id);
       return;
     }
 
@@ -242,10 +282,11 @@ async function inconsistentesResueltasEnPending() {
       const all = [...DISPUTE_TBL, ...FEEDBACK_TBL];
       let any = false;
       for (const { tbl, open, kind } of all) {
-        const rows = await s.unsafe(
+        const esFeedback = tbl === 'user_feedback';
+        const rows = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
           `SELECT id, status, claimed_at FROM public.${tbl}
-            WHERE claimed_by = $1 AND status = ANY($2) ORDER BY claimed_at`, [sid, open]);
-        rows.forEach((r) => { any = true; console.log(`  [${kind}] ${r.id} | ${r.status} | cogida hace ${age(r.claimed_at)}`); });
+            WHERE claimed_by = $1 AND status = ANY($2) ORDER BY claimed_at`, [sid, open]));
+        (rows || []).forEach((r) => { any = true; console.log(`  [${kind}] ${r.id} | ${r.status} | cogida hace ${age(r.claimed_at)}`); });
       }
       if (!any) console.log('No tienes claims activos.');
       return;
@@ -261,7 +302,8 @@ async function inconsistentesResueltasEnPending() {
       if (!id || !sid) { console.error('Uso: cola.cjs claim <id> --sid <ID>'); process.exit(2); }
       for (const { tbl, open, kind } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
         const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
-        const [row] = await s.unsafe(
+        const esFeedback = tbl === 'user_feedback';
+        const claimado = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
           `UPDATE public.${tbl}
              SET claimed_by = $1, claimed_at = now()
            WHERE id = (
@@ -271,13 +313,15 @@ async function inconsistentesResueltasEnPending() {
               FOR UPDATE SKIP LOCKED)
            RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
           [sid, open, id]
-        );
+        ));
+        if (!claimado) continue;
+        const [row] = claimado;
         if (!row) continue;
         console.log(`✅ CLAIM hecho por ${sidCorto(sid)} (usuario ${String(row.user_id ?? '?').slice(0, 8)}):`);
         console.log(`   id:   ${row.id}`);
         console.log(`   tipo: [${kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
         if (row.user_id != null) {
-          const hermanas = await s.unsafe(
+          const hermanas = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
             `UPDATE public.${tbl} SET claimed_by = $1, claimed_at = now()
              WHERE id IN (
                SELECT id FROM public.${tbl}
@@ -286,9 +330,10 @@ async function inconsistentesResueltasEnPending() {
                 FOR UPDATE SKIP LOCKED)
              RETURNING id, ${typeCol} AS dispute_type`,
             [sid, open, row.user_id, row.id]
-          );
-          hermanas.forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
+          ));
+          (hermanas || []).forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
         }
+        if (!esFeedback) await avisarSiHayBorrador(row.id);
         return;
       }
       console.log('No se pudo coger (¿id inexistente, ya cerrada, o la tiene otra sesión?).');
@@ -300,9 +345,10 @@ async function inconsistentesResueltasEnPending() {
       if (!id || !sid) { console.error('Uso: cola.cjs release <id> --sid <ID>'); process.exit(2); }
       let done = false;
       for (const { tbl } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
-        const res = await s.unsafe(
-          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE id = $1 AND claimed_by = $2 RETURNING id`, [id, sid]);
-        if (res.length) { done = true; console.log(`✅ Liberada ${id} de ${tbl}.`); }
+        const esFeedback = tbl === 'user_feedback';
+        const res = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE id = $1 AND claimed_by = $2 RETURNING id`, [id, sid]));
+        if (res && res.length) { done = true; console.log(`✅ Liberada ${id} de ${tbl}.`); }
       }
       if (!done) console.log('No se liberó nada (¿id no existe o no es tuyo?).');
       return;
@@ -312,9 +358,10 @@ async function inconsistentesResueltasEnPending() {
       if (!sid) { console.error('Falta --sid (o .session-id)'); process.exit(2); }
       let n = 0;
       for (const { tbl } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
-        const res = await s.unsafe(
-          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]);
-        n += res.length;
+        const esFeedback = tbl === 'user_feedback';
+        const res = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]));
+        n += (res || []).length;
       }
       console.log(`✅ Liberados ${n} claims del sid ${sidCorto(sid)}.`);
       return;
