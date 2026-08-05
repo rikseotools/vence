@@ -108,6 +108,31 @@ describe('el encargo dice lo que un trabajador solo no puede deducir', () => {
     expect(texto).toMatch(/cerrar ordenadamente|cabos sueltos/i)
   })
 
+  // ── EL MÉTODO LLEGA A LOS TRABAJADORES, Y ES EL MISMO TEXTO ───────────────────────────
+  // «Si se lo repito cada poco trabajan mejor» (Manuel, dos veces con las mismas palabras). El
+  // texto ya existía (T-495) pero vivía dentro del recordatorio POR TIEMPO, que se dispara en el
+  // `heartbeat` — así que solo llegaba a las sesiones de persona. Los trabajadores autónomos, que
+  // son a quienes nadie corrige a media tarea, no lo veían nunca.
+  //
+  // Para un trabajador la cadencia sale gratis: cada tarea es un `claude -p` nuevo, así que el
+  // método llega al empezar cada una, sin temporizar nada.
+  it('el encargo lleva el método ENTERO, línea por línea', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { METODO } = require('@/lib/sessions/recordatorio.cjs')
+    expect(METODO.length).toBeGreaterThanOrEqual(5)
+    for (const linea of METODO) expect(texto).toContain(linea)
+  })
+
+  // Dos copias del mismo texto acaban divergiendo, y entonces cada trabajador entiende su oficio
+  // de una forma distinta. El encargo lo IMPORTA; si alguien lo reescribe, esto se rompe.
+  it('y lo IMPORTA en vez de copiarlo', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fuente = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'), 'utf8')
+    expect(fuente).toMatch(/require\(['"]\.\.\/sessions\/recordatorio\.cjs['"]\)/)
+    expect(fuente).not.toMatch(/nada de chapuzas/)
+  })
+
   it('sin tarea concreta, le manda elegirla él', () => {
     expect(ENC.encargo({ trabajador: 'l1', tarea: null })).toMatch(/backlog\.cjs next/)
   })

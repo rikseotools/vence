@@ -443,6 +443,28 @@ Cada uno **se imprime al usarse** y **se cuenta**. Un escape con nombre es infin
 que `--no-verify`, que apaga todo a la vez y no deja rastro. Y contarlos es lo que permite saber
 si un guardarraíl sigue vivo (§3.9).
 
+### 6.sexies. El MÉTODO llega también a los trabajadores (T-486, 05/08)
+
+*«Si se lo repito cada poco trabajan mejor»* — dicho dos veces con las mismas palabras. De ahí sale
+[T-495], que reparte el recordatorio en tres momentos que ya existen (estrenar fichero, renovar el
+lease, cada 15 mensajes) en vez de en un temporizador que se aprende a ignorar.
+
+Pero el texto vivía **dentro** del recordatorio por tiempo, que se dispara en el `heartbeat`. O
+sea: llegaba a las sesiones de persona y **no llegaba nunca a los trabajadores autónomos** — que
+son precisamente a quienes nadie corrige a media tarea y cuya conversación no lee nadie.
+
+Ahora el método es una constante exportada (`recordatorio.cjs` → `METODO`) que consumen los dos
+caminos **sin copiarla**:
+
+| Quién | Cuándo lo recibe |
+|---|---|
+| una persona | a las 1,5 h de tarea, en el `heartbeat` · al estrenar ficheros, en el `pre-commit` · cada 15 mensajes |
+| un trabajador | **en cada encargo** — y la cadencia sale gratis, porque cada tarea es un `claude -p` nuevo |
+
+Dos copias del mismo texto acabarían divergiendo, y entonces cada trabajador entendería su oficio
+de una forma. Lo fija un test: el encargo tiene que **importarlo** y no puede contener el texto
+literal.
+
 ### 6.quinquies. El CONTEXTO se acaba, y hay que cerrar ANTES — al 80%
 
 Una sesión larga se compacta. Lo que sobrevive es lo que esté **escrito fuera**: la ficha, el
