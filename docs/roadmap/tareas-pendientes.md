@@ -842,6 +842,42 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-588] 🟡 [ABIERTO 05/08] cola.cjs next debería avisar/saltar disputes con borrador ya pendiente en el embudo
+
+**Medido, no sospechado.** El cluster de 5 impugnaciones del usuario `2eebe749…` (Manolo, aux. admin.
+Dip. Córdoba: `f34b88ad` + réplica, y las 4 hermanas `ea65996b`/`21be6a56`/`066a3d65`/`4ac133b7` sobre
+arts. 108/110/112/114 CE) ya tenía borrador COMPLETO y verificado para las 5 desde muy pronto (borradores
+#28/#33 para `f34b88ad`, #34-#37/#43/#44 para las hermanas). Aun así, **al menos 6 sesiones distintas**
+(`l1-fedora`, `l2-fedora` en dos turnos separados, `l3-fedora`, `l4-fedora`, `w2-vence-flota`, y una sesión
+`4952669b…`) volvieron a reclamar el mismo cluster vía `cola.cjs next` y rehicieron el análisis desde cero,
+dejando **15+ entradas** en el embudo de preguntas (#28,29,33,34,35,36,37,41,43,44,46,47,51,55,56,60,61…)
+sobre el MISMO hecho. Yo mismo (l2, este turno) fui la última: `cola.cjs next` me asignó el cluster,
+`revisar-impugnacion.cjs` no avisó de nada, hice el diagnóstico completo (confirmé target_oposicion vía
+`topic_scope`+curl al HTML servido) y solo al intentar `backlog.cjs borrador` me enteré de que ya existía
+#33 — es decir, el guardarraíl de **duplicar el borrador** SÍ existe y funcionó, pero llega **al final**
+del trabajo, no al principio.
+
+**Causa (ya apuntada en `project-flota-impugnacion-borrador-duplicado.md`, T-486):** el claim de
+`cola.cjs` (`claimed_by`/TTL por latido) es independiente del embudo de `session_questions`
+(`kind='borrador'`). Nada cruza `dispute_id` contra `session_questions.context` en el momento de
+OFRECER el trabajo — solo en el momento de escribir el borrador.
+
+**Coste medido:** con 5 disputes y ~15 entradas de embudo sobre el mismo hallazgo, cada sesión adicional
+más allá de la 2ª-3ª no añadió valor marginal (mismo veredicto, misma evidencia) — solo volvió a gastar
+una sesión completa de análisis + dejó una pregunta más para que Manuel triara en un embudo que ya tiene
+42+ pendientes.
+
+**Arreglo propuesto:** antes de que `cola.cjs next` / `revisar-impugnacion.cjs --sid` claimeen una fila,
+buscar en `session_questions` (kind='borrador', status='open') si el `context` ya cita ese `dispute_id`
+(mismo mecanismo que ya usa `revisar-impugnacion.cjs` para pintar "¿ya tiene ficha viva?" via
+`fichasQueCitan.cjs` — reusar ese patrón, no reescribirlo). Si hay un borrador vivo:
+- avisar en el propio `next`/dossier ANTES de que la sesión invierta tiempo analizando, no después;
+- opcionalmente, no claimear automáticamente (dejar que la sesión decida si de verdad hace falta revisar,
+  p.ej. porque el borrador es antiguo o el usuario ha vuelto a escribir).
+
+**No incluye:** decidir cuál de los borradores duplicados (#28 vs #33 para f34b88ad) se envía — eso es
+elección de Manuel, ortogonal a este ticket.
+
 ### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
 
 - **Esfuerzo: minutos** para lo mitigado; el root cause real no está encontrado.
