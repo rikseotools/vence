@@ -41,13 +41,28 @@ function url() {
   try { return fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim() } catch { return null }
 }
 
-/** Ejecuta algo en la máquina de un trabajador. Sin secretos en la línea de órdenes. */
+/**
+ * Ejecuta algo en la máquina de un trabajador. Sin secretos en la línea de órdenes.
+ *
+ * El portátil es una máquina más (`local: true`): se ejecuta aquí mismo, sin SSH. Es lo que
+ * permite que el supervisor sea UN solo punto de entrada para todo — que es lo que quita las
+ * pantallas múltiples. El resto del código no distingue: pide «haz esto en la máquina de w1» y ya.
+ */
 function enMaquina(trabajador, orden, { entrada = null } = {}) {
   const m = MAQ.maquinaDe(trabajador)
   if (!m) throw new Error(`el trabajador "${trabajador}" no está declarado en ninguna máquina (lib/flota/maquinas.cjs)`)
+  const opciones = { encoding: 'utf8', input: entrada || undefined, timeout: 120_000 }
+  if (m.local) return execFileSync('bash', ['-c', orden], opciones)
   return execFileSync('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
-    '-i', m.llave, `${m.usuario}@${m.host}`, orden],
-    { encoding: 'utf8', input: entrada || undefined, timeout: 120_000 })
+    '-i', m.llave, `${m.usuario}@${m.host}`, orden], opciones)
+}
+
+/** Dónde vive el fichero de entorno de un trabajador, que en local no está en /etc. */
+function ficheroEntorno(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  return m && m.local
+    ? `${process.env.HOME}/.vence-flota/${trabajador}.env`
+    : `/etc/vence-flota/${trabajador}.env`
 }
 
 async function main() {
@@ -108,7 +123,9 @@ async function main() {
           let salida = ''
           try {
             salida = enMaquina(f.trabajador,
-              `sudo -u flota bash -c "set -a; . /etc/vence-flota/${f.trabajador}.env; set +a; timeout 90 claude -p ${JSON.stringify(AUT.SONDA).replace(/"/g, '\\"')} 2>&1" || true`)
+              (MAQ.maquinaDe(f.trabajador).local ? '' : 'sudo -u flota ') +
+              `bash -c "set -a; . ${ficheroEntorno(f.trabajador)}; set +a; timeout 90 claude -p ` +
+              `${JSON.stringify(AUT.SONDA).replace(/"/g, '\\"')} 2>&1" || true`)
           } catch (e) { salida = String(e.message || e) }
           const v = AUT.clasificar(salida, /\bok\b/i.test(salida) ? 0 : 1)
           if (!AUT.puedeTrabajar(v)) {
@@ -187,26 +204,135 @@ async function main() {
       // el permiso. Cerrarlo por permiso es lo siguiente que hay que hacer.
       // Todo se hace COMO el usuario del trabajador: su tmux, su fichero de encargo, su log.
       // Claude Code se niega a trabajar sin supervisión con privilegios de root (y hace bien).
+      const m = MAQ.maquinaDe(w)
+      const env = ficheroEntorno(w)
+      const enc = env.replace(/\.env$/, '.encargo')
+      // En el VPS todo se hace COMO el usuario `flota` (Claude Code se niega a trabajar solo con
+      // privilegios de root). En el portátil ya eres tú: ni sudo ni chown.
+      const como = m.local ? '' : 'sudo -u flota '
+      const dueno = m.local ? '' : `&& chown flota ${enc} `
       enMaquina(w,
-        `umask 077 && cat > /etc/vence-flota/${w}.encargo && chown flota /etc/vence-flota/${w}.encargo && ` +
-        `sudo -u flota tmux send-keys -t ${w} 'set -a; . /etc/vence-flota/${w}.env; set +a; ` +
-        `claude -p "$(cat /etc/vence-flota/${w}.encargo)" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${w}.log' Enter`,
+        `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
+        `${como}tmux send-keys -t ${w} 'set -a; . ${env}; set +a; ` +
+        `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${w}.log' Enter`,
         { entrada: texto })
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
       console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
       return 0
     }
 
+    // ── LANZAR UN TRABAJADOR EN EL PORTÁTIL ───────────────────────────────────────────────
+    // El equivalente local de `arrancar-trabajador.sh`, sin usuario nuevo ni systemd: la sesión es
+    // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
+    // origin/main, credenciales RESTRINGIDAS (no tu .env.local, que abre usuarios y pagos) y el
+    // preflight como puerta: si no puede latir, no arranca.
+    if (cmd === 'lanzar') {
+      const w = process.argv[3]
+      if (!w) { console.error('Uso: flota.cjs lanzar <trabajador>'); return 2 }
+      const m = MAQ.maquinaDe(w)
+      if (!m) { console.error(`❌ ${w} no está declarado en lib/flota/maquinas.cjs`); return 1 }
+      if (!m.local) {
+        console.error(`❌ ${w} vive en ${MAQ.maquinaDe(w) && 'una máquina remota'}: se levanta allí con`)
+        console.error('   scripts/flota/arrancar-trabajador.sh ' + w)
+        return 2
+      }
+      // Las credenciales salen de SSM, que es donde ya viven. Así «lanzar» es un comando y no un
+      // ritual de exportar variables.
+      const desdeSsm = (nombre) => {
+        try {
+          return execFileSync('aws', ['--profile', 'vence', '--region', 'eu-west-2', 'ssm',
+            'get-parameter', '--name', nombre, '--with-decryption',
+            '--query', 'Parameter.Value', '--output', 'text'], { encoding: 'utf8' }).trim()
+        } catch { return null }
+      }
+      const host = 'vence-prod.c1mkcg6astb0.eu-west-2.rds.amazonaws.com:5432/app'
+      const pCoord = process.env.VENCE_COORDINACION_PASS || desdeSsm('/vence-flota/COORDINACION_DB_PASSWORD')
+      const pLector = process.env.VENCE_LECTOR_PASS || desdeSsm('/vence-flota/LECTOR_DB_PASSWORD')
+      if (!pCoord) { console.error('❌ no pude leer la credencial de coordinación de SSM'); return 1 }
+      const urlCoord = `postgres://vence_coordinacion:${pCoord}@${host}`
+      const urlLector = pLector ? `postgres://vence_lector:${pLector}@${host}` : ''
+
+      const casa = process.env.HOME
+      const wt = `${casa}/vence-sessions/${w}`
+      const env = ficheroEntorno(w)
+      // El checkout PRINCIPAL, preguntándoselo a git en vez de recortando rutas a mano: el
+      // supervisor puede estar corriendo desde cualquier worktree, y `REPO.replace(...)` daba
+      // /home/manuel — que no es un repo. Lo mismo que hace crear-worktree.sh.
+      const gitCommon = execFileSync('git', ['rev-parse', '--git-common-dir'],
+        { cwd: REPO, encoding: 'utf8' }).trim()
+      const repo = path.resolve(REPO, gitCommon, '..')
+      const token = process.env.CLAUDE_CODE_OAUTH_TOKEN || ''
+      if (!token) {
+        console.error('❌ falta CLAUDE_CODE_OAUTH_TOKEN en tu entorno (o expórtalo antes de lanzar).')
+        return 1
+      }
+
+      console.log(`→ montando ${w} en el portátil…`)
+
+      // ── LOS SECRETOS VAN POR STDIN, NUNCA DENTRO DEL SCRIPT ──────────────────────────────
+      // La primera versión los interpolaba en el propio script de shell, y al fallar un paso bash
+      // imprimió el comando entero — con las dos contraseñas dentro. Hubo que rotarlas. Un secreto
+      // en la línea de órdenes se ve en `ps`; en el cuerpo de un script se ve en CUALQUIER error.
+      enMaquina(w, `[ -d ${wt} ] || (cd ${repo} && scripts/worktrees/crear-worktree.sh ${w} >/dev/null 2>&1)`)
+
+      const envWorktree = `DATABASE_URL=${urlCoord}\n` + (urlLector ? `VENCE_LECTOR_URL=${urlLector}\n` : '')
+      enMaquina(w, `umask 077 && cat > ${wt}/.env.local`, { entrada: envWorktree })
+
+      // La ruta ABSOLUTA de claude, resuelta en la máquina con un shell de LOGIN. La sesión de
+      // tmux arranca un bash no interactivo que no carga el .bashrc, así que `claude` a secas no
+      // está en su PATH — y el trabajador moría con «instrucción no encontrada» sin que nada más
+      // fallara. Guardarla aquí vale para local y para remoto sin casos especiales.
+      let claudeBin = 'claude'
+      try {
+        claudeBin = enMaquina(w, `bash -lc 'command -v claude'`).trim() || 'claude'
+      } catch { /* si no se puede resolver, se deja el nombre y fallará de forma visible */ }
+
+      const envTrabajador = [
+        `CLAUDE_BIN=${claudeBin}`,
+        `CLAUDE_CODE_OAUTH_TOKEN=${token}`,
+        'VENCE_SESSION_ROLE=trabajador',
+        `VENCE_SESSION_HOME=${wt}`,
+        `DATABASE_URL=${urlCoord}`,
+        ...(urlLector ? [`VENCE_LECTOR_URL=${urlLector}`] : []),
+        '',
+      ].join('\n')
+      enMaquina(w, `umask 077 && mkdir -p "$(dirname ${env})" && cat > ${env} && chmod 600 ${env}`,
+        { entrada: envTrabajador })
+
+      // La PUERTA: si no puede participar del reparto, no se arranca.
+      try {
+        const salida = enMaquina(w, `cd ${wt} && set -a && . ${env} && set +a && npm run --silent sesion:preflight`)
+        console.log('   ' + salida.trim().split('\n').pop())
+      } catch (e) {
+        console.error('❌ el preflight dice que no está listo — no se arranca.')
+        console.error(String((e.stdout || '') + (e.stderr || '')).trim().slice(-500))
+        return 1
+      }
+      enMaquina(w, `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c ${wt} /bin/bash`)
+      console.log(`✅ ${w} en marcha en el portátil (${wt})`)
+      console.log(`   dale trabajo:  npm run flota -- encargar ${w}`)
+      return 0
+    }
+
     if (cmd === 'arrancar' || cmd === 'parar') {
       const w = process.argv[3]
       if (!w) { console.error(`Uso: flota.cjs ${cmd} <trabajador>`); return 2 }
-      const accion = cmd === 'arrancar' ? 'start' : 'stop'
-      enMaquina(w, `systemctl ${accion} vence-flota@${w} && systemctl is-active vence-flota@${w}`)
+      const m = MAQ.maquinaDe(w)
+      if (!m) { console.error(`❌ ${w} no está declarado en ninguna máquina`); return 1 }
+      if (m.local) {
+        // En el portátil no hay unidad de systemd que valga: la sesión es tuya, no del sistema.
+        enMaquina(w, cmd === 'arrancar'
+          ? `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c "$HOME/vence-sessions/${w}" /bin/bash`
+          : `tmux kill-session -t ${w} 2>/dev/null || true`)
+      } else {
+        const accion = cmd === 'arrancar' ? 'start' : 'stop'
+        enMaquina(w, `systemctl ${accion} vence-flota@${w} && systemctl is-active vence-flota@${w}`)
+      }
       console.log(`✅ ${w}: ${cmd === 'arrancar' ? 'arrancado' : 'parado'}`)
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    console.error('Uso: flota.cjs [estado] | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}

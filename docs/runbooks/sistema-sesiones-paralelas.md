@@ -469,6 +469,44 @@ VENCE_SESSION_ROLE=trabajador npm run sesion:preflight      # trabajador: exit 1
 VENCE_SESSION_ROLE=trabajador VENCE_SESSION_HOME=/ruta/a/su/worktree  <arranque del trabajador>
 ```
 
+#### El SUPERVISOR: un solo comando para todo — `npm run flota`
+
+El reparto ya era común (todo pasa por RDS), así que **una sesión del portátil y una del VPS son lo
+mismo para el sistema**. Lo único que las diferenciaba era que a las remotas se les podía dar
+trabajo con un comando y a las locales no. Ya no:
+
+```bash
+npm run flota                      # quién vive, qué hace, qué te espera, quién NO puede trabajar
+npm run flota -- lanzar l1         # levanta un trabajador EN EL PORTÁTIL
+npm run flota -- encargar l1       # le da trabajo (elige tarea apta si no se dice cuál)
+npm run flota -- encargar w1 --tarea T-451
+npm run flota -- arrancar|parar w2
+```
+
+El registro de máquinas (`lib/flota/maquinas.cjs`) trata el portátil como una más, con
+`local: true` = sin SSH. **Añadir una máquina o un trabajador es una fila.**
+
+Un trabajador local es idéntico a uno remoto salvo en dos cosas: no hay usuario nuevo ni unidad de
+systemd (la sesión es tuya, no del sistema). Lo que sí se conserva es lo que importa — **árbol
+propio desde `origin/main`, credenciales RESTRINGIDAS y el preflight como puerta**. En particular:
+un trabajador local **no usa tu `.env.local`**, que abre usuarios y pagos; usa los dos roles
+acotados, igual que el VPS.
+
+> **`trabajadores` en el registro son los AUTÓNOMOS, no todas tus sesiones.** Las que abras tú a
+> mano siguen siendo tuyas, salen como personas en el parte y nadie les manda encargos.
+
+**Tres gotchas que costaron una vuelta cada uno:**
+
+- **Los nombres van en minúscula.** El árbol se llama como el trabajador y `crear-worktree.sh`
+  exige kebab-case: con `L1` el arranque muere en la validación del slug.
+- **`claude` no está en el PATH de una sesión de tmux** (bash no interactivo, no carga el
+  `.bashrc`), y el trabajador moría con «instrucción no encontrada» sin que nada más fallara. Por
+  eso la ruta absoluta se resuelve al lanzar (`CLAUDE_BIN`) y se guarda en su fichero de entorno.
+- **Los secretos NUNCA dentro del script de shell.** La primera versión interpolaba las dos
+  contraseñas en el cuerpo del script; al fallar un paso, bash imprimió el comando entero con ellas
+  dentro y hubo que rotarlas. Van por `stdin`. Un secreto en la línea de órdenes se ve en `ps`; en
+  el cuerpo de un script se ve en **cualquier** error.
+
 #### Levantar un trabajador en un servidor: `scripts/flota/arrancar-trabajador.sh`
 
 Las sesiones se reparten el trabajo **por base de datos**, no por estar en la misma máquina: el
