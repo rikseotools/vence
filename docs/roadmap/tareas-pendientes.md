@@ -4388,7 +4388,7 @@ incluida).
 - **Verificado que lo demás SÍ está bien** (no hace falta re-mirarlo): importe y periodicidad son correctos en los 4 envíos reales (`20 € al mes` ×3, `35 € cada 3 meses` ×1), y la etiqueta la deriva el código del intervalo real (`ETIQUETA_INTERVALO`), no se escribe a mano. El orden de los argumentos del despacho también es correcto.
 - **Relacionadas:** [T-448] (el correo), [T-456] (el carril de envío y el trinquete de tipos), [T-363] (el precio que se pierde si no vuelve a tiempo).
 
-### [T-392] 🔴 [ABIERTO 31/07] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
+### [T-392] 🔴 [ENTREGADA 05/08 — Fase 2+3 en `main`, fail-open; bloqueada solo en la migración SQL, que exige permiso de owner] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
 
 - **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
 - **EL DIAGNÓSTICO, y no es una intuición: pasó TRES veces el mismo día.**
@@ -4491,6 +4491,55 @@ Las ~350 tareas ya cerradas pasan a `archivada` **sin re-verificar**: el ciclo a
   2. **Verificado y ROTO — destapa trabajo NUEVO que nadie había previsto.** [T-326]: la verificación en vivo demostró que el arreglo estaba desplegado e **inerte** (vivía en el camino que producción no ejecuta). No es «falta mirar producción», es «hay que programar otra cosa». Hoy los dos se ven idénticos desde `list`.
   3. **Verificado por la MÁQUINA, pendiente del OJO humano.** También [T-326], ya con el porte vivo: el dato es correcto —tres comprobaciones contra producción— pero *si la casilla se entiende en pantalla* no lo puede juzgar una sesión, y Manuel pidió expresamente revisarlo él. **No es «esperando decisión de Manuel»**: esa sección existe y es para decisiones de producto. Esto es una **revisión**, no una decisión — nadie elige nada, solo mira.
   - **Y el detalle operativo que lo hace urgente:** `resume_check` **solo lo escribe `pause`**, que exige `--hasta` o `--tras-deploy`. Así que hoy no hay forma de decir ninguna de las tres sin *inventarse* una espera (mal, por lo mismo que el CHECK de `due_at`) o dejar el texto obsoleto ahí — y `release` no lo toca. **Dos sesiones pagaron ese peaje en menos de una hora.**
+
+#### 🙋 FASE 2+3 ENTREGADAS (05/08, trabajador `l1`) — el escalón después de `done`, y un bloqueo real de permisos
+
+Cubre lo que la Fase 1 no cubría: `done` comprueba que el deploy YA incluye el código, pero no que
+**alguien lo haya visto funcionar**. Eso es lo que pidió Manuel con «archivado» y lo que faltaba.
+
+**Decisión de diseño que se aparta de la tabla de arriba, y por qué.** La tabla dibuja
+`verificando`/`lista_para_verificar`/`archivada` como valores nuevos de `status`. Se implementó
+distinto: **columnas aditivas sobre `done`** (`archived_at`, `archive_evidence`, `archived_by`,
+`requiere_archivo`), no un `status` más ancho. Motivo medido al leer `backlog.cjs`: decenas de
+`WHERE status IN (...)` a lo largo del fichero (claim, next, sync, el guardarraíl de CI que exige
+mover la ficha a "## Hechas" cuando `status='done'`) asumen que `done` es terminal, y el ciclo real
+de "verificando"/"lista para verificar" **ya existía**, repartido en `pause --tras-deploy`/`--hasta`
++ `resume_check` (eso YA es "verificando"; el cubo «⏰ IMPLEMENTADAS Y SIN COMPROBAR» de `list` YA es
+"lista para verificar", solo que antes de cerrar). Lo único que faltaba de verdad era el escalón
+DESPUÉS de `done`. Menos superficie de cambio, cero riesgo de romper un `WHERE` que alguien olvidó.
+
+**Lo construido, con las tres reglas de la ficha aplicadas:**
+- **Regla 1 (exención automática):** `done` reutiliza el MISMO análisis de superficie servida de la
+  Fase 1 (no lo recalcula) — si la tarea no toca nada servido, se archiva sola en el mismo `done`
+  (`archived_by='auto-t392'`). Si sí toca, queda `requiere_archivo=true` y hace falta
+  `archive <id> --evidencia "…"`.
+- **Regla 2 (evidencia obligatoria):** `archive` exige ≥20 caracteres y rechaza vocabulario vacío
+  (`ok`/`listo`/`correcto`/`funciona`/`verificado`…), mismo criterio que `revision.cjs`. Núcleo puro
+  `lib/backlog/archivo.cjs` (23 tests).
+- **Regla 3 (el cubo no puede quedar invisible):** `list` saca «🗄 N CERRADA(S) SIN ARCHIVAR», con 🔴
+  a partir de 3 días cerradas, igual de prominente que el cubo de «⏰ implementadas y sin comprobar».
+
+**🚧 BLOQUEO REAL encontrado al aplicar la migración (no burocrático — un permiso mal calibrado
+habría sido peor que dejarlo sin aplicar):** el rol `vence_coordinacion` —el único que tiene un
+trabajador de la flota, incluida esta sesión— tiene `INSERT/SELECT/UPDATE` sobre `backlog_tasks`
+pero **NO es su owner** (`venceadmin` lo es); un `ALTER TABLE` da `must be owner of table
+backlog_tasks`. Por diseño (CLAUDE.md: *"¿meto una credencial de más para que pase? → no. Se acota
+el permiso"*) no se intentó escalar. Consecuencia práctica: **toda la superficie nueva es
+fail-open ante "columna no existe" (código Postgres 42703)** — con la migración sin aplicar,
+`done`/`list`/`archive` se comportan EXACTO igual que ayer, verificado en vivo (`list` corrido
+contra la BD real de coordinación no imprime el cubo nuevo ni revienta). Se activa sola en cuanto
+una persona con permiso de owner corra `supabase/migrations/20260805_backlog_archivado.sql`.
+Después de eso, `node scripts/backlog/migrar-archivado-t392.cjs --apply` archiva las ~350 `done`
+existentes SIN re-verificar (con `requiere_archivo=NULL`, no `false`: no se afirma que no tocaran
+superficie servida, solo que no entran retroactivamente en el cubo de "sin archivar") — script ya
+escrito y probado en dry-run, solo le falta la migración para poder correr.
+
+**Verificación hecha (lo que SÍ se pudo comprobar sin la migración):** 515 tests de
+`__tests__/backlog/` en verde, 23 nuevos de `archivo.cjs`, guardarraíl `toolRegistry` en verde,
+`tsc`/`eslint` limpios, y **comandos reales corridos contra la BD de coordinación de producción**
+(`list`, `archive T-999999 --evidencia …`) confirmando el fail-open. Lo que falta verificar —el
+comando `archive`/el cubo funcionando de verdad— solo se puede ver **después** de la migración.
+
 - **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), [T-449] (duplicada y consolidada aquí), [T-385] y [T-326] (los tres casos medidos), y la puerta del `done` del 30/07.
 
 ### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
