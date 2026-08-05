@@ -49,6 +49,9 @@ const hasKind = (txt: string, kind: string) =>
 // fila a fila —44.370 explicaciones—, y eso no cabe en un `WHERE`. Se emite desde el subproceso
 // `barrido-citas.cjs --json`. Consecuencia asumida y documentada en el runbook: el badge no se
 // refresca solo; un cero ahí significa «nadie ha corrido el barrido».
+// `explicacion_yuxtaposicion` (T-525, 05/08) es CLI-only por la MISMA razón que `cita_no_literal`:
+// compara, opción por opción, el segmento de la explicación contra el texto de esa opción — no
+// cabe en un `WHERE`. Subproceso `audit-explicacion-yuxtaposicion.cjs --json`.
 const CLI_ONLY_KINDS = new Set([
   'shuffle_safe_regressed',
   'shuffle_narrativa_letra_clavada',
@@ -56,6 +59,7 @@ const CLI_ONLY_KINDS = new Set([
   // hereda su limitación: se emite al correr el CLI, no en el @Cron nocturno.
   'shuffle_veredicto_criterio_viejo',
   'cita_no_literal',
+  'explicacion_yuxtaposicion',
 ])
 
 // Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano
