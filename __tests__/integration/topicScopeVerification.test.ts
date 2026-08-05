@@ -9,6 +9,7 @@
 // propio test → no toca datos reales. Escribe, así que requiere INTEGRATION_DB_WRITABLE.
 import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
+import { getScopeVerificationCount } from '@/lib/api/scope-verification/queries'
 
 if (process.env.DATABASE_URL) {
   process.env.DATABASE_URL = /sslmode=/.test(process.env.DATABASE_URL)
@@ -89,5 +90,44 @@ describeIf('topic_scope_verification — invariantes (RDS, escribe tema aislado)
     await expect(
       c.query(`SELECT record_topic_verification($1,'perfecto','{}'::jsonb,'run_x','multi_agent')`, [topicId])
     ).rejects.toThrow()
+  })
+
+  // T-518: el sellado directo del 20-21/07 dejó 881 temas `verified_correct` sin haber pasado
+  // por el pipeline (`verified_by='claude_direct'` o `agent_run_id` vacío/`--run`, el nombre del
+  // flag mal pasado como valor). El badge de `/admin` los contaba como "resuelto" igual que un
+  // veredicto real de `verify:scope`. Estos dos tests prueban la función REAL del badge
+  // (`getScopeVerificationCount`, no una copia) contra un tema aislado.
+  describe('T-518 — el badge no puede contar un verified_correct sin pipeline como resuelto', () => {
+    test('sellado con agent_run_id="--run" (el flag mal pasado) cuenta como pendiente', async () => {
+      const antes = await getScopeVerificationCount()
+      if (!antes.success) throw new Error(antes.error)
+
+      await c.query(`SELECT record_topic_verification($1,'correct','{}'::jsonb,'--run','claude_direct')`, [topicId])
+      const conSelloRoto = await getScopeVerificationCount()
+      if (!conSelloRoto.success) throw new Error(conSelloRoto.error)
+      expect(conSelloRoto.scopeSinPipeline).toBe(antes.scopeSinPipeline + 1)
+      expect(conSelloRoto.scope).toBe(antes.scope + 1)
+      expect(conSelloRoto.count).toBe(antes.count + 1)
+
+      // el mismo tema, sellado por el pipeline de verdad con un run_id que sí identifica una
+      // corrida → dejar de contar como deuda
+      await c.query(`SELECT record_topic_verification($1,'correct','{}'::jsonb,'verify_test_2026-08-05','multi_agent')`, [topicId])
+      const conSelloBueno = await getScopeVerificationCount()
+      if (!conSelloBueno.success) throw new Error(conSelloBueno.error)
+      expect(conSelloBueno.scopeSinPipeline).toBe(antes.scopeSinPipeline)
+      expect(conSelloBueno.scope).toBe(antes.scope)
+    })
+
+    test('agent_run_id vacío también cuenta como pendiente, venga o no de claude_direct', async () => {
+      const antes = await getScopeVerificationCount()
+      if (!antes.success) throw new Error(antes.error)
+
+      // 'multi_agent' es el escritor legítimo del pipeline — el defecto es el run_id vacío,
+      // no el nombre del escritor (así se vieron los 175 casos reales de multi_agent+--run).
+      await c.query(`SELECT record_topic_verification($1,'correct','{}'::jsonb,'','multi_agent')`, [topicId])
+      const con = await getScopeVerificationCount()
+      if (!con.success) throw new Error(con.error)
+      expect(con.scopeSinPipeline).toBe(antes.scopeSinPipeline + 1)
+    })
   })
 })

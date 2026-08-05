@@ -70,8 +70,16 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
 
-  const DB_URL = process.env.DATABASE_URL;
-  if (!DB_URL) { console.error('❌ DATABASE_URL no configurado'); process.exit(2); }
+  // T-571 (05/08/2026, redescubierto y reaplicado en T-518: el commit original no llegó a
+  // ningún branch). Esta query es un SELECT de solo lectura sobre `topics` — exactamente lo
+  // que VENCE_LECTOR_URL da permiso a leer. DATABASE_URL en un trabajador de la flota es
+  // `vence_coordinacion` (4 tablas de coordinación, NINGUNA de negocio, por diseño — T-539),
+  // así que usarla aquí es `permission denied for table topics` siempre, para cualquier
+  // trabajador, no un fallo de este cambio en concreto. Sin cambio de comportamiento para
+  // sesiones humanas: casi nunca tienen VENCE_LECTOR_URL en su `.env.local`, así que caen a
+  // DATABASE_URL igual que antes.
+  const DB_URL = process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL;
+  if (!DB_URL) { console.error('❌ DATABASE_URL/VENCE_LECTOR_URL no configurado'); process.exit(2); }
   const postgres = require('postgres');
   const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 

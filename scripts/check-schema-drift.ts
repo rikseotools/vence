@@ -87,7 +87,12 @@ async function main() {
     }
   }
 
-  const sql = postgres(DATABASE_URL!, { max: 1 })
+  // ssl:'require' explícito (T-568, 05/08/2026, redescubierto y reaplicado en T-518): la
+  // DATABASE_URL de un trabajador de la flota no lleva `?sslmode=require` en la cadena (se la
+  // pasa el lanzador, no un `.env.local`), y sin la opción `ssl` postgres-js intenta conectar
+  // en claro → RDS lo rechaza (`no pg_hba.conf entry ... no encryption`). Mismo patrón que ya
+  // usa `scripts/audit-temario-display-drift.cjs`.
+  const sql = postgres(DATABASE_URL!, { max: 1, ssl: 'require' })
 
   try {
     // Obtener tablas de la BD (solo schema public)

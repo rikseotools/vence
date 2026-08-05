@@ -10,10 +10,20 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+# El comando va DENTRO de la condición del `if` (T-568/T-571, 05/08/2026, redescubierto y
+# reaplicado en T-518 porque el commit original se perdió: no está en ningún branch alcanzable).
+# Husky invoca este script con `sh -e` (ver `.husky/_/h`: `sh -e "$s" "$@"`), y bajo `-e` un
+# comando SUELTO que falla aborta el script entero AHÍ MISMO — el comentario "solo warning, no
+# bloquea" era falso en la práctica: `npm run db:check` fallando mataba el hook antes de llegar
+# siquiera a leer `SCHEMA_EXIT_CODE`, y ningún paso posterior (sintaxis, tests, display-drift)
+# llegaba a correr. La condición de un `if` es la única posición que POSIX exime de `-e`.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
+  if npm run db:check; then
+    SCHEMA_EXIT_CODE=0
+  else
+    SCHEMA_EXIT_CODE=$?
+  fi
 
   if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo ""
