@@ -842,6 +842,63 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-573] 🔴 `vence_lector`: RLS sin policy bloquea en silencio ~70 tablas (incl. `question_disputes`) pese al GRANT
+
+**⚠️ DUPLICADA con [T-574]** (creada 5s después, mismo hallazgo, claimed casi simultáneamente por otra
+sesión el 05/08). Recomiendo cerrar una como duplicado de la otra cuando se aplique el fix — dejo
+aquí el trabajo hecho para que quien las reconcilie no repita la medición.
+
+**El fallo, medido el 05/08 conectando COMO `vence_lector` (no adivinado):** `20260805_rol_lector_flota.sql`
+(T-486) hizo `GRANT SELECT ON ALL TABLES` y luego `REVOKE` tabla a tabla de las que llevan un
+identificador directo. Eso deja el privilegio de GRANT correcto, pero un `GRANT` sin política de
+RLS no es un permiso que funcione: si la tabla tiene `ENABLE ROW LEVEL SECURITY` y cero políticas
+que alcancen a `vence_lector` (ni por nombre ni por PUBLIC), el motor no da error — filtra TODAS
+las filas y devuelve 0, en silencio. `SELECT 1 FROM tests LIMIT 1` no lanza excepción.
+
+**Medición exacta (consulta al catálogo, no una lista a ojo):** tablas con GRANT SELECT concedido a
+`vence_lector` + `relrowsecurity=true` + sin ninguna política cuyo `roles` incluya `vence_lector` ni
+`{public}` → **80 tablas**. Entre ellas `tests` y `test_questions` — que es justo lo que dejó a
+medias la re-verificación de [T-472] (nota de acceso del 05/08: `sim-repaso-ajeno.ts` no pudo leer
+`tests`/`test_questions` con la credencial de la flota).
+
+**Ya estaba parcialmente arreglado:** la migración `20260805_rls_impugnaciones_flota.sql` (cabecera
+dice «T-486 / T-574») ya creó política para `question_disputes` y `psychometric_question_disputes` —
+esas dos NO aparecen en el recuento de 80 de arriba, confirmando que el patrón funciona.
+
+**Arreglo entregado (NO aplicado a producción — sin credenciales de owner, ver abajo):**
+- `supabase/migrations/20260805_rls_lector_setenta_tablas.sql` — política `FOR SELECT TO vence_lector
+  USING (true)` en las 80 tablas restantes (mismo patrón que la migración de impugnaciones), con un
+  DO block final que **aborta la migración** si queda alguna tabla en el estado roto (trinquete:
+  vuelve a fallar si el día 81 se cuela otra tabla sin política, no solo cierra las de hoy).
+- **Solo se toca lo que YA tenía GRANT** de T-486 — no se amplía la frontera de qué puede ver
+  `vence_lector`, solo se hace efectivo el permiso que ya existía sobre el papel. Revisé columnas de
+  las tablas más dudosas (`user_devices`, `attribution_touches`, `pwa_events`, `user_avatar_settings`,
+  `user_roles`, `telegram_alerts`…) — ninguna lleva correo/nombre/teléfono de una persona real
+  (`user_avatar_settings.current_name` es el nombre de la PERSONA-avatar gamificada, no el usuario).
+- `scripts/canary-rol-lector.cjs` — el canario tenía el MISMO fallo silencioso que denuncia [T-574]
+  en su título: `SELECT 1 ... LIMIT 1` sin excepción se marcaba `✅` aunque devolviera 0 filas.
+  Arreglado: (a) exige fila real en las 7 tablas de `DEBE_LEER`, no solo ausencia de excepción; (b)
+  nueva comprobación SISTÉMICA contra el catálogo (`has_table_privilege` + `pg_policies` por rol) que
+  cubre las 80 tablas y cualquier tabla futura, no una lista fija. **Verificado en rojo contra la BD
+  real, hoy, ANTES del fix**: `18/20`, señalando exactamente `test_questions` y las 80 tablas — así
+  se confirma que el canario detecta el problema real, no que "debería".
+
+**Por qué no lo apliqué a producción:** lo comprobé — `CREATE POLICY` con la credencial de
+coordinación (`DATABASE_URL`, rol `vence_coordinacion`) da `42501 must be owner of table`. Un
+trabajador de la flota no tiene credencial de owner sobre las tablas de negocio (por diseño, T-539/T-486)
+y las reglas de este encargo piden explícitamente no escribir en la BD de negocio. Hace falta que
+una persona (o un proceso con la credencial admin) aplique la migración contra RDS.
+
+**Para cerrar de verdad:**
+1. Aplicar `20260805_rls_lector_setenta_tablas.sql` contra RDS con una credencial de owner.
+2. Re-correr `VENCE_LECTOR_URL=… npm run canary:rol-lector` y comprobar que pasa a verde (20/20).
+3. Reconciliar con [T-574] (mismo hallazgo, otra sesión) — cerrar la que no se use como duplicada de
+   la que se aplique, citando la otra en el outcome.
+
+**Relacionadas:** [T-472] (de donde sale la nota de acceso), [T-574] (duplicada), [T-486] (origen del
+rol `vence_lector`), memoria `project-admin-endpoints-sin-auth` (mismo patrón de fallo, otra familia
+de rutas: permiso concedido en el papel que no funciona en la práctica).
+
 ### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
 
 - **Esfuerzo: minutos** para lo mitigado; el root cause real no está encontrado.

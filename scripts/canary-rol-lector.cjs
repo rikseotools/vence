@@ -79,13 +79,41 @@ async function main() {
     afirmar('conecta con su propio rol', quien[0].u === 'vence_lector', quien[0].u)
 
     console.log('\n▸ lo que el trabajo REAL necesita leer')
+    // OJO (T-573/T-574): «no lanzó excepción» NO es «pudo leer». Con RLS activo y sin política
+    // para este rol, el motor no da error — filtra todas las filas y devuelve 0, en silencio. Por
+    // eso se exige fila, no solo ausencia de excepción (falso verde real: así pasó 8 días con
+    // `tests`/`test_questions` con este mismo canario en verde).
     for (const [tabla, para] of DEBE_LEER) {
       try {
-        await sql.unsafe(`SELECT 1 FROM public.${tabla} LIMIT 1`)
-        afirmar(`lee ${tabla} (${para})`, true)
+        const filas = await sql.unsafe(`SELECT 1 FROM public.${tabla} LIMIT 1`)
+        afirmar(`lee ${tabla} (${para})`, filas.length > 0,
+          filas.length > 0 ? undefined : '0 filas sin error — posible RLS sin política (bloqueo silencioso)')
       } catch (e) {
         afirmar(`lee ${tabla} (${para})`, false, String(e.message).slice(0, 70))
       }
+    }
+
+    console.log('\n▸ ninguna tabla con GRANT y RLS se queda sin política para este rol (T-573/T-574)')
+    // El fallo real no estaba en las 7 tablas de arriba: estaba en que un GRANT sin política no se
+    // nota tabla a tabla, se nota preguntándole al catálogo. Esto cubre las ~80 que la lista fija
+    // nunca iba a enumerar, y a cualquiera que se añada mañana sin acordarse de esto.
+    try {
+      const huecos = await sql`
+        SELECT c.relname AS tabla
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity
+          AND has_table_privilege(current_user, c.oid, 'SELECT')
+          AND NOT EXISTS (
+            SELECT 1 FROM pg_policies p
+             WHERE p.schemaname = 'public' AND p.tablename = c.relname
+               AND (current_user = ANY(p.roles) OR p.roles = '{public}')
+          )
+        ORDER BY 1`
+      afirmar('0 tablas con GRANT+RLS y sin política para vence_lector', huecos.length === 0,
+        huecos.length ? `${huecos.length}: ${huecos.map((r) => r.tabla).slice(0, 8).join(', ')}${huecos.length > 8 ? '…' : ''}` : undefined)
+    } catch (e) {
+      afirmar('0 tablas con GRANT+RLS y sin política para vence_lector', false, String(e.message).slice(0, 100))
     }
 
     console.log('\n▸ lo que NO puede ver: el identificador directo')
