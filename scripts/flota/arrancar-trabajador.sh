@@ -151,9 +151,16 @@ Type=forking
 # El token y el resto del entorno viven aquí, con permisos 0600. Nunca en la línea de órdenes:
 # lo que va en ExecStart es visible en `ps` para cualquier usuario de la máquina.
 EnvironmentFile=/etc/vence-flota/%i.env
-# tmux mantiene la sesión ATACHABLE (que es como se habla con ella); systemd la levanta sola tras
-# un reinicio. Los dos, no uno: una flota que hay que rearrancar a mano no es una flota.
-ExecStart=/usr/bin/tmux new-session -d -s %i -c ${VENCE_SESSION_HOME} claude
+# La sesión tmux queda con una SHELL, no con el TUI de Claude Code (T-486, 05/08).
+#
+# Medido: `CLAUDE_CODE_OAUTH_TOKEN` autentica `claude -p` pero **el TUI interactivo lo ignora** y
+# se queda en «Select login method» — coherente con la documentación, que lo presenta para CI y
+# scripts. Con el TUI, el trabajador latía y parecía vivo sin poder hacer nada.
+#
+# Así que el trabajo se lanza como `claude -p` desde `flota.cjs encargar`, dentro de esta shell:
+# el token sirve, la salida queda visible al atachar, y tmux la mantiene viva aunque se caiga el
+# SSH. systemd levanta la shell tras un reinicio.
+ExecStart=/usr/bin/tmux new-session -d -s %i -c ${VENCE_SESSION_HOME} /bin/bash
 ExecStop=/usr/bin/tmux kill-session -t %i
 RemainAfterExit=yes
 Restart=on-failure

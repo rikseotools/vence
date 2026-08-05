@@ -167,9 +167,17 @@ async function main() {
       }
 
       const texto = ENC.encargo({ trabajador: w, tarea })
-      // Se manda por tmux: es la sesión interactiva que ya está corriendo. El texto va por stdin
-      // (`load-buffer -`) y no como argumento, para que no aparezca en `ps` ni se rompa por comillas.
-      enMaquina(w, `tmux load-buffer - && tmux paste-buffer -t ${w} && tmux send-keys -t ${w} Enter`, { entrada: texto })
+      // El encargo va a un FICHERO en la máquina y se lanza con `claude -p "$(cat …)"`.
+      //
+      // Por qué no al TUI interactivo: `CLAUDE_CODE_OAUTH_TOKEN` autentica `claude -p` pero el TUI
+      // lo IGNORA y se queda en la pantalla de login (medido el 05/08 con un token válido). Y por
+      // qué por fichero y no como argumento: el encargo es multilínea y acabaría roto por las
+      // comillas, además de quedar visible en `ps` para cualquier usuario de la máquina.
+      enMaquina(w,
+        `umask 077 && cat > /etc/vence-flota/${w}.encargo && ` +
+        `tmux send-keys -t ${w} 'set -a; . /etc/vence-flota/${w}.env; set +a; ` +
+        `claude -p "$(cat /etc/vence-flota/${w}.encargo)" --permission-mode acceptEdits 2>&1 | tee -a /var/log/flota-${w}.log' Enter`,
+        { entrada: texto })
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
       console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
       return 0
