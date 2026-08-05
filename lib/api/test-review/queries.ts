@@ -26,7 +26,7 @@ export async function getTestReview(
 ): Promise<GetTestReviewResponse> {
   try {
     const db = getTestReviewDb()
-    const { testId } = params
+    const { testId, requesterId } = params
 
     // 1. Obtener datos del test
     const [test] = await db
@@ -51,6 +51,25 @@ export async function getTestReview(
       return {
         success: false,
         error: 'Test no encontrado',
+        errorCode: 'not_found',
+      }
+    }
+
+    // El test es de quien lo hizo. Se comprueba ANTES de leer nada más: si no es tuyo, no
+    // se toca una sola fila de `test_questions` (T-482).
+    if (test.userId !== requesterId) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'auth_identidad_ajena_rechazada',
+        endpoint: '/api/tests/[testId]/review',
+        userId: requesterId,
+        metadata: { recurso: 'test_review', testId },
+      })
+      return {
+        success: false,
+        error: 'Este test no es tuyo',
+        errorCode: 'not_owner',
       }
     }
 
@@ -59,6 +78,7 @@ export async function getTestReview(
       return {
         success: false,
         error: 'El test no está completado',
+        errorCode: 'not_completed',
       }
     }
 
@@ -346,6 +366,7 @@ export async function getTestReview(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error interno del servidor',
+      errorCode: 'internal',
     }
   }
 }

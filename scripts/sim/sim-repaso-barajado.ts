@@ -48,14 +48,18 @@ async function main() {
   console.log('🔀 SIMULACIÓN — el repaso de un test barajado señala la opción correcta\n')
 
   // 1. Tests con al menos una exposición barajada (el universo del defecto).
+  // Se trae también el DUEÑO: desde T-482 `getTestReview` exige saber quién pregunta, y la
+  // simulación reproduce la pantalla real, así que pregunta como el usuario del test.
   const filas = argTest
-    ? await sql<{ test_id: string }[]>`
-        SELECT DISTINCT test_id FROM test_questions WHERE test_id = ${argTest}::uuid`
-    : await sql<{ test_id: string }[]>`
-        SELECT DISTINCT test_id
-        FROM test_questions
-        WHERE option_order IS NOT NULL AND option_order <> ARRAY[0,1,2,3]
-        ORDER BY test_id`
+    ? await sql<{ test_id: string; user_id: string }[]>`
+        SELECT DISTINCT tq.test_id, t.user_id
+        FROM test_questions tq JOIN tests t ON t.id = tq.test_id
+        WHERE tq.test_id = ${argTest}::uuid`
+    : await sql<{ test_id: string; user_id: string }[]>`
+        SELECT DISTINCT tq.test_id, t.user_id
+        FROM test_questions tq JOIN tests t ON t.id = tq.test_id
+        WHERE tq.option_order IS NOT NULL AND tq.option_order <> ARRAY[0,1,2,3]
+        ORDER BY tq.test_id`
 
   console.log(`Tests con exposiciones barajadas: ${filas.length}`)
   if (filas.length === 0) {
@@ -99,8 +103,8 @@ async function main() {
   // 4. EJECUTAR la query real de la pantalla de repaso, test por test.
   const veredictos: Veredicto[] = []
   let saltados = 0
-  for (const { test_id } of filas) {
-    const review = await getTestReview({ testId: test_id })
+  for (const { test_id, user_id } of filas) {
+    const review = await getTestReview({ testId: test_id, requesterId: user_id })
     if (!review.success || !review.questions?.length) {
       saltados++
       continue

@@ -242,3 +242,238 @@ describe('la equivalencia en la que se apoya el detector', () => {
     expect(src.slice(i, i + 400)).toMatch(/if\s*\(\s*!auth\.success\s*\)/)
   })
 })
+
+// ============================================================================
+// GUARDRAIL C2-BUILDER — la MISMA regla, pero mirando el query builder de Drizzle
+// ============================================================================
+// El escáner de arriba solo mira bloques `sql``` . Este repo, sin embargo, consulta sobre
+// todo con el QUERY BUILDER (`db.select().from(tests)`, `db.insert(tests)`), que era una
+// zona ciega COMPLETA: ninguna de esas consultas pasaba por ninguna comprobación.
+//
+// Lo que costó descubrirlo (T-482, 05/08/2026): tres endpoints del REPASO llevaban ahí
+// desde que se escribieron.
+//   · `GET /api/tests/[testId]/review` devolvía 200 SIN sesión con el examen de cualquiera
+//     —enunciados, sus respuestas, sus tiempos— a quien tuviera el UUID, que viaja en la
+//     URL del navegador.
+//   · `GET /api/psychometric/review`, su gemelo, igual.
+//   · `POST /api/tests/recover` ESCRIBÍA con el `userId` del cuerpo y sin token.
+// Los tres tocan tablas que ya estaban en `USER_SCOPED_TABLES` (`tests`, `test_questions`,
+// `psychometric_test_sessions`). El guardarraíl tenía la tabla en la lista y no los vio: no
+// le faltaba criterio, le faltaba MIRAR donde se consulta de verdad.
+//
+// Se comprueba también un nivel de DELEGACIÓN (`route.ts` → `lib/api/<x>/queries.ts`),
+// porque dos de los tres no consultaban en la ruta sino en su módulo de dominio — el
+// límite de seguridad sigue siendo la ruta, que es donde se autentica.
+//
+// ## Por qué es un TRINQUETE y no una prohibición
+//
+// Al estrenarlo, 76 rutas caen en esta zona. Muchas son legítimas (un webhook con firma, un
+// pixel de tracking, un cron), pero NINGUNA está triada. Ponerlas todas en rojo acabaría en
+// una allowlist de 76 entradas, que es donde los guardarraíles dejan de proteger. Así que la
+// lista se congela: **no puede aparecer una ruta nueva** —que es lo que impide un cuarto
+// `/review`— y solo puede ENCOGER según se trien (ficha [T-565]).
+//
+// Mismo patrón que `TECHO_CRUDOS` en `llmInstrumentation.guardrail`.
+
+// Export de Drizzle → nombre de tabla, leído de db/schema.ts (no una copia a mano).
+function exportsUserScoped(): Map<string, string> {
+  const schema = readFileSync(join(ROOT, 'db/schema.ts'), 'utf8')
+  const out = new Map<string, string>()
+  const re = /export const (\w+)\s*=\s*pgTable\(\s*["'`]([a-z0-9_]+)["'`]/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(schema))) {
+    if (USER_SCOPED_TABLES.has(m[2])) out.set(m[1], m[2])
+  }
+  return out
+}
+
+const EXPORT_A_TABLA = exportsUserScoped()
+
+/** Tablas user-scoped tocadas con el builder: .from(X) / .insert(X) / .update(X) / .delete(X) */
+function tablasPorBuilder(src: string): string[] {
+  const found = new Set<string>()
+  const re = /\.(?:from|insert|update|delete)\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(src))) {
+    const t = EXPORT_A_TABLA.get(m[1])
+    if (t) found.add(t)
+  }
+  return [...found]
+}
+
+// `requireUsuarioPropio` cuenta como autenticar: envuelve a `verifyAuth` y además contrasta
+// el id que afirma el cliente. Se comprueba abajo que sigue siendo esa envoltura.
+function rutaAutentica(src: string): boolean {
+  return /\b(?:verifyAuth|getAuthenticatedUser|requireUsuarioPropio|requireAdmin)\s*\(/.test(src)
+}
+
+// ----------------------------------------------------------------------------
+// LÍNEA BASE CONGELADA (05/08/2026). Solo puede ENCOGER.
+// Si al triar una ruta la haces autenticar, BÓRRALA de aquí: el test avisa de las muertas.
+// ----------------------------------------------------------------------------
+const ZONA_CIEGA_PENDIENTE: string[] = [
+  'app/api/admin/ai-chat-logs/route.ts',
+  'app/api/admin/feedback/status/route.ts',
+  'app/api/admin/funnel-users/route.ts',
+  'app/api/admin/graduated-limits/route.ts',
+  'app/api/admin/newsletters/audience/route.ts',
+  'app/api/admin/newsletters/history/route.ts',
+  'app/api/admin/newsletters/preview/route.ts',
+  'app/api/admin/newsletters/send/route.ts',
+  'app/api/admin/newsletters/template-stats/route.ts',
+  'app/api/admin/newsletters/users/route.ts',
+  'app/api/admin/oposiciones-migrate/route.ts',
+  'app/api/admin/oposiciones-stats/route.ts',
+  'app/api/admin/pending-counts/route.ts',
+  'app/api/admin/sales-prediction/route.ts',
+  'app/api/admin/users-count/route.ts',
+  'app/api/ai/chat-v2/route.ts',
+  'app/api/answer/psychometric/route.ts',
+  'app/api/answer/spelling/route.ts',
+  'app/api/auth/store-registration-ip/route.ts',
+  'app/api/auth/track-session-ip/route.ts',
+  'app/api/cron/daily-registration-summary/route.js',
+  'app/api/cron/renewal-reminders/route.ts',
+  'app/api/cursos/[slug]/route.ts',
+  'app/api/cursos/route.ts',
+  'app/api/email-tracking/click/route.ts',
+  'app/api/email-tracking/open/route.ts',
+  'app/api/email/track-click/route.ts',
+  'app/api/email/track-open/route.ts',
+  'app/api/emails/send-medal-congratulation/route.ts',
+  'app/api/exam/answer/route.ts',
+  'app/api/exam/complete/route.js',
+  'app/api/exam/discard/route.ts',
+  'app/api/exam/pending/route.js',
+  'app/api/exam/progress/route.js',
+  'app/api/exam/resume/route.ts',
+  'app/api/exam/validate/route.ts',
+  'app/api/interactions/route.ts',
+  'app/api/profile/avatar-settings/route.ts',
+  'app/api/profile/email-preferences/route.ts',
+  'app/api/psychometric-test-data/questions/route.ts',
+  'app/api/psychometric-test-data/route.ts',
+  'app/api/psychometric/complete/route.ts',
+  'app/api/psychometric/completed-sessions/route.ts',
+  'app/api/psychometric/create/route.ts',
+  'app/api/psychometric/discard/route.ts',
+  'app/api/psychometric/pending/route.ts',
+  'app/api/psychometric/resume/route.ts',
+  'app/api/questions/failed-by-topic/route.ts',
+  'app/api/questions/filtered/route.ts',
+  'app/api/questions/user-failed/route.ts',
+  'app/api/random-test-data/check-availability/route.ts',
+  'app/api/random-test-data/route.ts',
+  'app/api/random-test-data/theme-details/route.ts',
+  'app/api/random-test/availability/route.ts',
+  'app/api/random-test/config/route.ts',
+  'app/api/random-test/generate/route.ts',
+  'app/api/random-test/user-stats/route.ts',
+  'app/api/ranking/route.ts',
+  'app/api/ranking/streaks/route.ts',
+  'app/api/spelling/session/route.ts',
+  'app/api/stats/route.ts',
+  'app/api/stripe/webhook/route.ts',
+  'app/api/teoria/[law]/[articleNumber]/test-count/route.ts',
+  'app/api/teoria/search/route.ts',
+  'app/api/topics/[numero]/route.ts',
+  'app/api/user/question-history/route.ts',
+  'app/api/v2/admin/conversion-stats/route.ts',
+  'app/api/v2/admin/dashboard/route.ts',
+  'app/api/v2/admin/unread-sales/route.ts',
+  'app/api/v2/dispute/route.ts',
+  'app/api/v2/official-exams/answer/route.ts',
+  'app/api/v2/official-exams/questions/route.ts',
+  'app/api/v2/official-exams/user-stats/route.ts',
+  'app/api/v2/psychometric-stats/route.ts',
+  'app/api/v2/user-stats/route.ts',
+  'app/api/webhooks/resend-inbound/route.ts',
+]
+
+describe('Guardrail C2-builder — el query builder de Drizzle no es una zona franca', () => {
+  const RUTAS = ALL_FILES.filter((f) => /route\.(ts|js)$/.test(f))
+  const LIBS = walk('lib/api')
+  const libSrc = new Map(LIBS.map((f) => [f, read(f)]))
+
+  /** Tablas user-scoped que alcanza una ruta: las suyas + un nivel de delegación a lib/api. */
+  function alcanceDe(ruta: string): string[] {
+    const src = read(ruta)
+    const tablas = new Set(tablasPorBuilder(src))
+    const imp = /from\s+['"]([^'"]+)['"]/g
+    let m: RegExpExecArray | null
+    while ((m = imp.exec(src))) {
+      const i = m[1].indexOf('lib/api/')
+      if (i === -1) continue
+      const sub = m[1].slice(i + 'lib/api/'.length).replace(/\/$/, '')
+      if (!sub) continue
+      for (const [lf, ls] of libSrc) {
+        const base = lf.replace(/^lib\/api\//, '').replace(/\.ts$/, '').replace(/\/index$/, '')
+        if (base === sub || base.startsWith(`${sub}/`)) tablasPorBuilder(ls).forEach((t) => tablas.add(t))
+      }
+    }
+    return [...tablas]
+  }
+
+  const enZonaCiega = RUTAS.filter((r) => !rutaAutentica(read(r)) && alcanceDe(r).length > 0)
+
+  it('el escaneo ve algo (si esto falla, el detector se ha quedado ciego)', () => {
+    expect(RUTAS.length).toBeGreaterThan(300)
+    expect(EXPORT_A_TABLA.size).toBeGreaterThan(30)
+  })
+
+  it('ninguna ruta NUEVA toca datos de usuario sin autenticar', () => {
+    const nuevas = enZonaCiega.filter((r) => !ZONA_CIEGA_PENDIENTE.includes(r))
+    if (nuevas.length > 0) {
+      throw new Error(
+        `❌ C2-builder: ${nuevas.length} ruta(s) consultan tablas user-scoped con el query ` +
+        `builder SIN autenticar:\n` +
+        nuevas.map((r) => `  • ${r} → [${alcanceDe(r).join(', ')}]`).join('\n') +
+        `\n\nEsto es el agujero de T-482 otra vez: con el id del recurso, cualquiera lee (o ` +
+        `escribe) los datos de otra persona.\nArréglalo con \`requireUsuarioPropio\` y ` +
+        `comprobando el DUEÑO del recurso. Meterla en ZONA_CIEGA_PENDIENTE no es una opción: ` +
+        `esa lista está congelada y solo encoge.`
+      )
+    }
+  })
+
+  it('la línea base solo encoge (no deja entradas muertas)', () => {
+    const muertas = ZONA_CIEGA_PENDIENTE.filter((r) => !enZonaCiega.includes(r))
+    expect(muertas).toEqual([])
+  })
+
+  it('los tres endpoints de T-482 ya NO están en la zona ciega', () => {
+    // Trinquete explícito: si alguien revierte el arreglo, esto lo dice por su nombre.
+    for (const r of [
+      'app/api/tests/[testId]/review/route.ts',
+      'app/api/psychometric/review/route.ts',
+      'app/api/tests/recover/route.ts',
+    ]) {
+      expect(read(r)).toMatch(/requireUsuarioPropio\(/)
+      expect(enZonaCiega).not.toContain(r)
+    }
+  })
+})
+
+describe('C2-builder — meta: la detección funciona', () => {
+  it('reconoce el builder sobre una tabla user-scoped', () => {
+    expect(tablasPorBuilder('await db.select().from(tests).where(x)')).toContain('tests')
+    expect(tablasPorBuilder('await db.insert(testQuestions).values(v)')).toContain('test_questions')
+  })
+
+  it('NO marca tablas públicas', () => {
+    expect(tablasPorBuilder('await db.select().from(questions)')).toEqual([])
+    expect(tablasPorBuilder('await db.select().from(articles)')).toEqual([])
+  })
+
+  it('`requireUsuarioPropio` cuenta como autenticar, y sigue apoyándose en verifyAuth', () => {
+    expect(rutaAutentica('const i = await requireUsuarioPropio(request, E)')).toBe(true)
+    const src = readFileSync(join(ROOT, 'lib/api/shared/auth.ts'), 'utf8')
+    const i = src.indexOf('export async function requireUsuarioPropio')
+    expect(i).toBeGreaterThan(-1)
+    expect(src.slice(i, i + 900)).toMatch(/\bverifyAuth\s*\(/)
+  })
+
+  it('una ruta sin autenticación NO se da por buena', () => {
+    expect(rutaAutentica('const { testId } = await params')).toBe(false)
+  })
+})

@@ -164,6 +164,11 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     que: 'checkAvailableQuestions honra article_numbers NULL (= toda la ley).',
   },
   {
+    ruta: '__tests__/integration/reviewOwnership.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'El repaso de un test solo lo sirve su DUEÑO (T-482): con la identidad de otro no sale ni una pregunta. Toma prestados un test completado real y otro usuario real; SOLO LEE (un test de aislamiento que escribiera en producción sería peor que el agujero que vigila).',
+  },
+  {
     ruta: '__tests__/integration/essentialArticlesAvailability.test.ts',
     tipo: 'codigo_datos_prestados',
     que: 'checkQuestionAvailability honra focusEssentialArticles (caso Pilar).',

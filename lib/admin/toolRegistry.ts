@@ -435,6 +435,30 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Correrla tras tocar `/api/unsubscribe`, `processUnsubscribeByToken` o el modal de ' +
       '`app/unsubscribe/page.tsx`.',
   },
+  // ── el repaso de un test es de su dueño ───────────────────────────────────────────────────
+  sim_repaso_ajeno: {
+    titulo: 'Comprobar que el repaso de un test no se le sirve a otra persona (T-482)',
+    ruta: 'scripts/sim/sim-repaso-ajeno.ts',
+    estado: 'vivo',
+    notas:
+      'SIM_BASE=http://localhost:3477 npx tsx --env-file=.env.local scripts/sim/sim-repaso-ajeno.ts ' +
+      '(necesita AUTH_SECRET de SSM /vence-frontend/AUTH_SECRET). Navegador real + BD real. ' +
+      'CINCO casos: (1) el dueño ve SU repaso —y con Bearer—, (2) con la sesión de A el repaso de B ' +
+      'da 403 y no se pinta nada suyo, (3) sin sesión el GET da 401 y el cuerpo no lleva preguntas, ' +
+      '(4) el gemelo psicotécnico igual, (5) `POST /api/tests/recover` sin sesión no escribe (se ' +
+      'cuentan las filas antes y después). ' +
+      '⚠️ HACE FALTA NAVEGADOR y no basta con tests: la mitad del arreglo vive en el CLIENTE ' +
+      '(`app/revisar/[testId]/page.tsx` tiene que mandar el Bearer), y si no lo manda la pantalla ' +
+      'de repaso se queda en 401 para TODO el mundo sin que typecheck ni unit digan nada — es la ' +
+      'lección ya pagada en `project-admin-endpoints-sin-auth`. ' +
+      '⚠️ GOTCHA de medida: NO usar un `waitForTimeout` para dar por buena la respuesta. En dev la ' +
+      'primera compilación de la ruta tarda varios segundos y el caso 1 salía ROJO con el arreglo ' +
+      'bien puesto (la petición salía con su Bearer y la respuesta llegaba después de mirar). Se ' +
+      'espera la RESPUESTA (`waitForResponse`): un canario que depende de lo rápido que compile la ' +
+      'máquina no es un canario. ' +
+      'Contraste que demuestra que tiene colmillo: el mismo GET contra producción (código anterior) ' +
+      'devuelve 200 con las 25 preguntas del examen y las respuestas de esa persona.',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',

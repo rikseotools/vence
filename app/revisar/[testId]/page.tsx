@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import ExamReviewLayout from '@/components/ExamReviewLayout'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type {
   ReviewQuestion,
   TestInfo,
@@ -45,11 +46,19 @@ function TestReviewContent() {
           ? `/api/psychometric/review?sessionId=${testId}`
           : `/api/tests/${testId}/review`
 
-        const response = await fetch(url)
+        // El repaso es de quien hizo el test: desde T-482 los dos endpoints exigen Bearer.
+        // Sin esta cabecera la pantalla se queda en 401 para TODO el mundo.
+        const response = await fetch(url, { headers: await getAuthHeaders() })
         const data: ReviewData = await response.json()
 
         if (!data.success) {
-          setError(data.error || 'Error cargando datos del test')
+          if (response.status === 401) {
+            setError('Tu sesión ha caducado. Vuelve a entrar para ver la revisión de este test.')
+          } else if (response.status === 403) {
+            setError('Este test no es tuyo, así que no se puede mostrar su revisión.')
+          } else {
+            setError(data.error || 'Error cargando datos del test')
+          }
           return
         }
 

@@ -165,7 +165,8 @@
     "audit:epigrafe-fuente": "node scripts/temario/audit-epigrafe-vs-fuente.cjs",
     "scope:medir-ley-entera": "node --env-file=.env.local scripts/scope/medir-ley-entera.cjs",
     "flota": "node scripts/flota/flota.cjs",
-    "canary:rol-lector": "node scripts/canary-rol-lector.cjs"
+    "canary:rol-lector": "node scripts/canary-rol-lector.cjs",
+    "sim:repaso-ajeno": "tsx --env-file=.env.local scripts/sim/sim-repaso-ajeno.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

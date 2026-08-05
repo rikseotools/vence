@@ -7,6 +7,10 @@ import { psychometricTestSessions, psychometricTestAnswers, psychometricQuestion
 import { eq, and, asc } from 'drizzle-orm'
 import { z } from 'zod/v3'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
+import { emitFireAndForget } from '@/lib/observability/emit'
+
+const ENDPOINT = '/api/psychometric/review'
 
 const requestSchema = z.object({
   sessionId: z.string().uuid('ID de sesion invalido'),
@@ -14,8 +18,15 @@ const requestSchema = z.object({
 
 export const dynamic = 'force-dynamic'
 
+// GEMELO de `/api/tests/[testId]/review` y tenía el MISMO agujero (T-482), aunque la ficha
+// solo nombraba dos endpoints: la pantalla de repaso (`app/revisar/[testId]/page.tsx`) elige
+// entre los dos según `?type=psychometric`, así que arreglar uno y no el otro deja la misma
+// puerta abierta por el otro lado.
 async function _GET(request: NextRequest) {
   try {
+    const identidad = await requireUsuarioPropio(request, ENDPOINT)
+    if (!identidad.ok) return identidad.response
+
     const { searchParams } = new URL(request.url)
     const parsed = requestSchema.safeParse({
       sessionId: searchParams.get('sessionId'),
@@ -52,6 +63,20 @@ async function _GET(request: NextRequest) {
 
     if (!session) {
       return NextResponse.json({ success: false, error: 'Test no encontrado' }, { status: 404 })
+    }
+
+    // La sesión psicotécnica es de quien la hizo. Antes de T-482 este `userId` se traía en el
+    // SELECT y no se comparaba con nada.
+    if (session.userId !== identidad.userId) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'auth_identidad_ajena_rechazada',
+        endpoint: ENDPOINT,
+        userId: identidad.userId,
+        metadata: { recurso: 'psychometric_review', sessionId },
+      })
+      return NextResponse.json({ success: false, error: 'Este test no es tuyo' }, { status: 403 })
     }
 
     if (!session.isCompleted) {

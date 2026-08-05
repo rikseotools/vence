@@ -6,6 +6,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
 
 const PENDING_TEST_KEY = 'vence_pending_test'
@@ -115,9 +116,11 @@ function TestRecuperadoContent() {
         }
 
         // Llamar al API con Drizzle + Zod
+        // Bearer obligatorio desde T-482: el endpoint ya no acepta el `userId` del cuerpo
+        // como identidad (se queda solo como contraste) y sin token responde 401.
         const response = await fetch('/api/tests/recover', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
           body: JSON.stringify({
             userId: user.id,
             pendingTest: pendingTest,

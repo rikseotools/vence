@@ -6,8 +6,13 @@ import { z } from 'zod/v3'
 // REQUEST: OBTENER REVISIÓN DE TEST
 // ============================================
 
+// `requesterId` es el id del TOKEN, nunca uno que llegue del cliente: lo pone la ruta tras
+// `requireUsuarioPropio`. Va en el request —y no como parámetro suelto— para que sea
+// imposible llamar a `getTestReview` sin decir quién pregunta (T-482: se podía leer el
+// examen de cualquiera con solo el UUID, que viaja en la URL del navegador).
 export const getTestReviewRequestSchema = z.object({
   testId: z.string().uuid('ID de test inválido'),
+  requesterId: z.string().uuid('ID de usuario inválido'),
 })
 
 export type GetTestReviewRequest = z.infer<typeof getTestReviewRequestSchema>
@@ -116,6 +121,10 @@ export const getTestReviewResponseSchema = z.object({
     caseTitle: z.string().nullable(),
   }).nullable().optional(),
   error: z.string().optional(),
+  // Motivo tipado del fallo. El route lo traduce a HTTP; antes se comparaba el TEXTO del
+  // error para elegir el status (`error === 'Test no encontrado' ? 404 : 400`), que se rompe
+  // en cuanto alguien reescribe el mensaje.
+  errorCode: z.enum(['not_found', 'not_owner', 'not_completed', 'internal']).optional(),
 })
 
 export type GetTestReviewResponse = z.infer<typeof getTestReviewResponseSchema>
