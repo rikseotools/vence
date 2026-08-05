@@ -108,7 +108,7 @@ async function main() {
           let salida = ''
           try {
             salida = enMaquina(f.trabajador,
-              `set -a; . /etc/vence-flota/${f.trabajador}.env; set +a; timeout 90 claude -p ${JSON.stringify(AUT.SONDA)} 2>&1 || true`)
+              `sudo -u flota bash -c "set -a; . /etc/vence-flota/${f.trabajador}.env; set +a; timeout 90 claude -p ${JSON.stringify(AUT.SONDA).replace(/"/g, '\\"')} 2>&1" || true`)
           } catch (e) { salida = String(e.message || e) }
           const v = AUT.clasificar(salida, /\bok\b/i.test(salida) ? 0 : 1)
           if (!AUT.puedeTrabajar(v)) {
@@ -173,10 +173,24 @@ async function main() {
       // lo IGNORA y se queda en la pantalla de login (medido el 05/08 con un token válido). Y por
       // qué por fichero y no como argumento: el encargo es multilínea y acabaría roto por las
       // comillas, además de quedar visible en `ps` para cualquier usuario de la máquina.
+      //
+      // ── POR QUÉ `bypassPermissions` Y POR QUÉ ES DEFENDIBLE AQUÍ ────────────────────────
+      // Un trabajador autónomo no tiene a quién pedirle permiso: con el modo por defecto se
+      // queda preguntando «¿puedo ejecutar claim?» a una terminal que nadie mira, que es como
+      // pasó la primera vez. La contención NO es el diálogo de permisos, son las credenciales:
+      // esta máquina tiene el rol `vence_coordinacion` (4 tablas, ninguna de negocio, ningún
+      // DELETE), no tiene claves de AWS ni de Stripe, y no puede desplegar. Es exactamente para
+      // esto para lo que se construyó ese rol.
+      //
+      // ⚠️ Riesgo residual conocido y NO cerrado: el clon del repo tiene escritura sobre `main`.
+      // Mientras eso siga así, lo que impide un push indebido es el push-guard y el encargo, no
+      // el permiso. Cerrarlo por permiso es lo siguiente que hay que hacer.
+      // Todo se hace COMO el usuario del trabajador: su tmux, su fichero de encargo, su log.
+      // Claude Code se niega a trabajar sin supervisión con privilegios de root (y hace bien).
       enMaquina(w,
-        `umask 077 && cat > /etc/vence-flota/${w}.encargo && ` +
-        `tmux send-keys -t ${w} 'set -a; . /etc/vence-flota/${w}.env; set +a; ` +
-        `claude -p "$(cat /etc/vence-flota/${w}.encargo)" --permission-mode acceptEdits 2>&1 | tee -a /var/log/flota-${w}.log' Enter`,
+        `umask 077 && cat > /etc/vence-flota/${w}.encargo && chown flota /etc/vence-flota/${w}.encargo && ` +
+        `sudo -u flota tmux send-keys -t ${w} 'set -a; . /etc/vence-flota/${w}.env; set +a; ` +
+        `claude -p "$(cat /etc/vence-flota/${w}.encargo)" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${w}.log' Enter`,
         { entrada: texto })
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
       console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)

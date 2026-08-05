@@ -55,9 +55,20 @@ done
 [ -n "$SLUG" ] || { echo "Uso: arrancar-trabajador.sh <nombre> [--cuenta <cuenta>]"; exit 2; }
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "❌ nombre inválido: usa kebab-case"; exit 2; }
 
+# ── EL TRABAJADOR NO ES ROOT, Y NO ES UN DETALLE (T-486, 05/08) ─────────────────────────────
+# Claude Code se NIEGA a saltarse el diálogo de permisos con privilegios de root, y hace bien: un
+# agente autónomo con todo el sistema en la mano es otra cosa. Pero un trabajador autónomo tampoco
+# puede quedarse preguntando «¿puedo ejecutar claim?» a una terminal que nadie mira — que es lo
+# que pasó en la primera vuelta.
+#
+# La salida no es forzar el modo, es que el trabajador tenga el privilegio que le corresponde:
+# usuario propio, sin sudo, y ahí sí puede trabajar solo. Es la misma idea que el rol de BD de
+# cuatro tablas, una capa más abajo.
+USUARIO="${VENCE_FLOTA_USER:-flota}"
 REPO_URL="${VENCE_REPO_URL:-https://github.com/rikseotools/vence.git}"
-BASE="${VENCE_BASE_DIR:-$HOME/vence}"
-SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$HOME/vence-sessions}"
+CASA="/home/$USUARIO"
+BASE="${VENCE_BASE_DIR:-$CASA/vence}"
+SESSIONS_DIR="${VENCE_SESSIONS_DIR:-$CASA/vence-sessions}"
 WT="$SESSIONS_DIR/$SLUG"
 ENV_DIR="/etc/vence-flota"
 ENV_FILE="$ENV_DIR/$SLUG.env"
@@ -66,6 +77,13 @@ UNIT="/etc/systemd/system/vence-flota@.service"
 fallo() { echo ""; echo "❌ $1"; echo ""; exit 1; }
 
 echo "══ TRABAJADOR '$SLUG' ══"
+
+# El usuario del trabajador: sin sudo, con su propia casa. Idempotente.
+[ "$(id -u)" -eq 0 ] || fallo "este script se ejecuta como root (crea el usuario y la unidad de systemd)"
+if ! id "$USUARIO" >/dev/null 2>&1; then
+  useradd --create-home --shell /bin/bash "$USUARIO"
+  echo "→ usuario '$USUARIO' creado (sin sudo)"
+fi
 
 # ── 1. LO QUE TIENE QUE ESTAR ANTES ─────────────────────────────────────────────────────────
 for cmd in git node npm tmux systemctl; do
@@ -84,16 +102,16 @@ echo "→ claude $(claude --version 2>/dev/null || echo '?')"
 
 # ── 3. EL REPO ──────────────────────────────────────────────────────────────────────────────
 if [ -d "$BASE/.git" ]; then
-  echo "→ repo ya está, actualizando origin…"; git -C "$BASE" fetch origin --quiet
+  echo "→ repo ya está, actualizando origin…"; sudo -u "$USUARIO" git -C "$BASE" fetch origin --quiet
 else
   echo "→ clonando el repo en $BASE…"; git clone --quiet "$REPO_URL" "$BASE"
 fi
-git -C "$BASE" config user.name  "flota-$SLUG"
-git -C "$BASE" config user.email "flota@vence.es"
+sudo -u "$USUARIO" git -C "$BASE" config user.name  "flota-$SLUG"
+sudo -u "$USUARIO" git -C "$BASE" config user.email "flota@vence.es"
 
 echo "→ dependencias…"
-( cd "$BASE" && npm ci --silent )
-[ -d "$BASE/backend" ] && ( cd "$BASE/backend" && npm ci --silent ) || true
+sudo -u "$USUARIO" bash -c "cd '$BASE' && npm ci --silent"
+[ -d "$BASE/backend" ] && sudo -u "$USUARIO" bash -c "cd '$BASE/backend' && npm ci --silent" || true
 
 # ── 4. QUÉ CUENTA DE CLAUDE CODE LE TOCA ────────────────────────────────────────────────────
 # La decisión vive en el núcleo puro (testeado); aquí solo se consulta y se obedece.
@@ -114,12 +132,13 @@ echo "→ cuenta de Claude Code: $CUENTA"
 if [ -d "$WT" ]; then
   echo "→ el árbol $WT ya existe, se reutiliza"
 else
-  ( cd "$BASE" && VENCE_SESSIONS_DIR="$SESSIONS_DIR" scripts/worktrees/crear-worktree.sh "$SLUG" >/dev/null )
+  sudo -u "$USUARIO" bash -c "cd '$BASE' && VENCE_SESSIONS_DIR='$SESSIONS_DIR' scripts/worktrees/crear-worktree.sh '$SLUG'" >/dev/null
   echo "→ árbol propio en $WT"
 fi
 # La coordinación va donde el andamiaje la busca, y SOLO ella: ni pagos ni AUTH_SECRET.
 umask 077
 printf 'DATABASE_URL=%s\n' "$VENCE_COORDINACION_URL" > "$WT/.env.local"
+chown "$USUARIO:$USUARIO" "$WT/.env.local"
 
 # ── 6. LA CREDENCIAL, PERSISTIDA UNA SOLA VEZ ───────────────────────────────────────────────
 # Fichero de entorno con permisos 0600 que lee systemd. Es lo que hace que el token se pida UNA
@@ -136,7 +155,9 @@ VENCE_SESSION_HOME=$WT
 VENCE_SESSION_HOST=${VENCE_SESSION_HOST:-$(hostname -s)}
 DATABASE_URL=$VENCE_COORDINACION_URL
 ENVF
+chown "$USUARIO:$USUARIO" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
+chown -R "$USUARIO:$USUARIO" "$CASA" 2>/dev/null || true
 echo "→ credencial persistida en $ENV_FILE (0600): no se vuelve a pedir"
 
 # ── 7. LA UNIDAD DE SYSTEMD (una plantilla para todos los trabajadores) ─────────────────────
@@ -148,6 +169,9 @@ Wants=network-online.target
 
 [Service]
 Type=forking
+# Sin privilegios: Claude Code se niega a trabajar solo si es root, y con razón.
+User=flota
+Group=flota
 # El token y el resto del entorno viven aquí, con permisos 0600. Nunca en la línea de órdenes:
 # lo que va en ExecStart es visible en `ps` para cualquier usuario de la máquina.
 EnvironmentFile=/etc/vence-flota/%i.env
@@ -175,7 +199,7 @@ echo "→ unidad systemd instalada (vence-flota@$SLUG)"
 # ── 8. EL GATE: si no puede participar del reparto, NO arranca ──────────────────────────────
 echo ""
 echo "→ comprobando que puede participar del reparto…"
-if ! ( cd "$WT" && set -a && . "$ENV_FILE" && set +a && npm run --silent sesion:preflight ); then
+if ! sudo -u "$USUARIO" bash -c "cd '$WT' && set -a && . '$ENV_FILE' && set +a && npm run --silent sesion:preflight"; then
   fallo "el preflight dice que este trabajador no está listo (ver arriba).
    No se arranca: un trabajador invisible reclamaría tareas que nadie puede ver ni recuperar."
 fi
@@ -187,7 +211,7 @@ fi
 # con preflight verde y NINGUNO autenticado. Veinte minutos sin poder hacer nada y el sistema
 # entero diciendo que todo iba bien.
 echo "→ comprobando que Claude Code puede responder…"
-SONDA_SALIDA="$(set -a; . "$ENV_FILE"; set +a; timeout 90 claude -p 'responde solo: ok' 2>&1 || true)"
+SONDA_SALIDA="$(sudo -u "$USUARIO" bash -c "set -a; . '$ENV_FILE'; set +a; timeout 90 claude -p 'responde solo: ok' 2>&1" || true)"
 SONDA_ESTADO="$(cd "$BASE" && node -e "
   const A = require('./lib/flota/autenticacion.cjs')
   const v = A.clasificar(process.argv[1], /\bok\b/i.test(process.argv[1]) ? 0 : 1)
@@ -204,7 +228,7 @@ fi
 echo "   ✅ autenticado y respondiendo"
 
 # ── 9. ARRANQUE ─────────────────────────────────────────────────────────────────────────────
-if tmux has-session -t "$SLUG" 2>/dev/null; then
+if sudo -u "$USUARIO" tmux has-session -t "$SLUG" 2>/dev/null; then
   echo "→ ya había una sesión tmux '$SLUG': se conserva (no se pisa el trabajo en curso)"
   systemctl enable "vence-flota@$SLUG" >/dev/null 2>&1 || true
 else
