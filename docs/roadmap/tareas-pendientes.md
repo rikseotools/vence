@@ -883,6 +883,28 @@
   ```
 - **Sin detector automático de momento, a propósito:** el criterio se apoya en reconocer «la opción X» en prosa libre, y las tres pasadas de arriba muestran lo fácil que es que el reconocedor mienta en las dos direcciones. Si esto se convierte en cola recurrente, el sitio es el cubo de explicaciones, no un detector nuevo.
 
+### [T-561] 🟠 [ABIERTO 05/08] Preguntas del art. 19 TUE cuyo contenido es del ESTATUTO del TJUE: se sirven en 37 temas y ninguno las pide
+
+- **Lo destapó una usuaria FREE.** Lourdes García impugnó `212ae0c6` con cinco palabras: *«Este artículo no está dentro del temario»*. Tenía razón, y el alcance era mucho mayor que su oposición.
+- **El patrón:** preguntas ancladas a **TUE art. 19** (que dice qué órganos integran el Tribunal de Justicia) cuyo contenido real es del **Estatuto del TJUE** (Protocolo n.º 3), que baja al detalle interno: composición de Salas, nombramiento de Jueces, integrantes. El art. 19 TUE **no contiene la respuesta** — su texto en BD no dice «Sala», ni «tres», ni «cinco», ni «Estatuto».
+- **Por qué duele tanto:** el art. 19 TUE está escopado en **37 temas activos** (es el artículo de instituciones de media Europa del temario español), así que una pregunta mal anclada ahí se sirve en 37 oposiciones. **Medido el 05/08: 0 de esos 37 mencionan el Estatuto o la composición de las Salas en su epígrafe** — y los 37 TIENEN epígrafe, así que no hay ninguno indeterminable. No es que Lourdes tuviera mala suerte: esa materia está fuera de programa en todos.
+- **YA ARREGLADA 1 de 6** (`4438d206`, la suya): re-anclada a `Estatuto TJUE art. 16` con `reanclar-preguntas.cjs`, declarando la pérdida de 35 temas por escrito. **No se orfanó**: el Estatuto está escopado en `tramitacion_procesal` T5 (16,17,18) y `policia_nacional` T4 (ley entera), que son los que sí lo piden. **No se tocó el scope de Sevilla** — su epígrafe pide el art. 19 TUE legítimamente; el defecto era el ancla de la pregunta, no el temario.
+- **QUEDAN 5**, y cada una necesita que se le lea el destino (no vale mover en bloque):
+  | pregunta | de qué va |
+  |---|---|
+  | `bb382736` | nombramiento de los jueces del TJUE |
+  | `540c9861` | integración del Tribunal («de acuerdo con el TFUE») |
+  | `2aec5bd9` | Jueces y Abogados generales |
+  | `c11ee0e9` | composición del TJUE |
+  | `6fcef119` | composición del TJUE |
+  El corte fue *explicación que cita el Estatuto* → **6 de 47** activas del art. 19. Es un **suelo**: una pregunta puede ser del Estatuto sin que su explicación lo diga.
+- **Cómo hacerlo, y qué NO hacer:**
+  1. Leer cada una y localizar su artículo real del Estatuto (o del TFUE, ojo con `540c9861`, que dice «de acuerdo con el TFUE»).
+  2. `reanclar-preguntas.cjs` en DRY-RUN primero. **El guardarraíl bloquea si el destino no está escopado o si se pierden temas sin declararlo**, y hace bien: la primera versión de este arreglo se paró sola y obligó a medir los 37 epígrafes antes de seguir.
+  3. **NUNCA recortar el art. 19 TUE de los scopes** para resolverlo: ese artículo sí entra en los 37 programas. El defecto está en la pregunta, no en el temario.
+  4. Purgar caché (`test-counts`, `temario`, `teoria`, `questions`) — es por instancia, repetir.
+- **Hermano de la familia que ya conoce el sistema:** es el mismo fenómeno que *«revisa los vínculos al artículo vecino»* y *«revisa las preguntas de planes y estrategias»*, pero entre **instrumentos distintos** (Tratado vs Protocolo anejo), que es lo que ninguno de los dos detectores mira.
+
 ### [T-557] 🟠 [ABIERTO 05/08] Explicaciones que no explican: repiten la opción correcta, y a veces con el texto falseado y el verdadero PEGADOS
 
 - **Lo nombró un usuario, no un detector.** Adrián (premium) impugnó `c805e7c0` con una frase exacta: *«No explica nada, repite literalmente la respuesta correcta»*. Tenía razón, y su explicación entera era: *«Garantizar derechos económicos para las mujeres víctimas de violencia de género, con el fin de mejorar su posición facilitar su integración social.»* — o sea, la opción repetida **y encima con dos finales pegados**.
