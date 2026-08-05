@@ -104,8 +104,10 @@ echo "→ claude $(claude --version 2>/dev/null || echo '?')"
 if [ -d "$BASE/.git" ]; then
   echo "→ repo ya está, actualizando origin…"; sudo -u "$USUARIO" git -C "$BASE" fetch origin --quiet
 else
-  echo "→ clonando el repo en $BASE…"; git clone --quiet "$REPO_URL" "$BASE"
+  echo "→ clonando el repo en $BASE…"; sudo -u "$USUARIO" git clone --quiet "$REPO_URL" "$BASE"
 fi
+# Idempotencia real: una pasada anterior pudo dejar ficheros de root en la casa del trabajador.
+chown -R "$USUARIO:$USUARIO" "$CASA"
 sudo -u "$USUARIO" git -C "$BASE" config user.name  "flota-$SLUG"
 sudo -u "$USUARIO" git -C "$BASE" config user.email "flota@vence.es"
 
