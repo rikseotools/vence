@@ -966,6 +966,30 @@ a la vez. Dónde integra (comprobado con `tools:buscar`, no existe nada que lo h
 `salud-contenido.md`); alta en `toolRegistry.ts`. Capas: unit del núcleo, guardarraíl de que la tarjeta no
 dependa solo de `title`, simulación contra BD real que mida el banco, y **vence-sim (Playwright) sobre la
 página real** — es UI y aquí un test de texto no demuestra nada.
+### [T-597] 🟠 [ABIERTO 05/08] Una oposición personalizada no puede servir NINGUNA pregunta oficial (`exam_positions` vacío)
+
+- **Esfuerzo: rato** el cambio; la decisión es lo que hay que tomar primero.
+- **DE DÓNDE SALE:** del feedback `87e987d8` (Sergio, premium). Se atribuyó a [T-513] (el hueco del tag) y **la mayor parte no era el tag**. Al reproducir sus números apareció esto, que es una causa distinta y más grande para él.
+- **QUÉ PASA:** `getValidExamPositions('personalizada_…')` devuelve `[]` (una personalizada no está en `OPOSICIONES` ni en `EXAM_POSITION_MAP`), así que `buildOfficialExamFilter` cae en la rama de "sin mapeo" y devuelve `is_official_exam = false`. Resultado: **a una oposición personalizada no se le sirve jamás una pregunta de examen oficial.** `officialQuestionsCount` sale 0 en todos sus temas.
+- **EL PROPIO CÓDIGO YA LO DICE.** Ese camino no cae en las dos ramas silenciosas (`isExamPositionRegistered` → no-op; `ALL_POSITION_TYPES` → `recordNoExamPositionMapping`), sino en el `else` final, que hace `console.warn("positionType inesperado … Bug real: warn inmediato")`. Las personalizadas no están contempladas en ese filtro: entran por la puerta del «por si acaso», que está escrita para positionTypes corruptos.
+- **MEDIDO el 05/08** contra RDS, tema 1 de `personalizada_a92faefaf41b4d36b723c274f90a59f7` (CE, 5 artículos):
+
+  | dificultad | pegadas al artículo | anuncia hoy | sirve | se pierden por oficial | por tag `PN` |
+  |---|---|---|---|---|---|
+  | fáciles | 113 | 102 | **100** | 11 | 2 |
+  | medias | 63 | 54 | **26** | 9 | 28 |
+  | difíciles | 10 | 4 | **3** | 6 | 1 |
+
+  Los tres coinciden con lo que el usuario reportó por escrito («las fáciles sí pone 100», «solo me hace 26», «únicamente me hace 3»). Su «dice que el max son 10» era **anterior** al deploy de [T-566]: el bruto es 10 y hoy ya anuncia 4.
+- **LECTURA:** en difíciles, **6 de las 7 que se le retienen son oficiales y solo 1 es del tag**. O sea que para este usuario **esta ficha pesa más que [T-513]**, que es donde estaba anotado el caso. En medias manda el tag (28 de 37) y ahí sí es [T-513].
+- **ALCANCE:** 7 usuarios con personalizada, **4 de ellos premium**, 43 temas activos en 7 personalizadas.
+- **LA DECISIÓN (es lo caro, el cambio no):** ¿una oposición personalizada debe admitir preguntas oficiales?
+  - **El motivo por el que el filtro existe NO aplica aquí.** `buildOfficialExamFilter` nace del caso Laura (15/04/2026): sin él, las oficiales de otra oposición se cuelan en cualquier test que comparta ley (CE, 39/2015…). Pero en una personalizada **no hay oposición ajena de la que proteger al usuario**: él mismo eligió esos artículos a mano, y no existe un "examen propio" con el que contaminar. El bloqueo es un efecto colateral de no estar en el mapa, no una decisión.
+  - **Si se decide que sí:** a Sergio las difíciles del tema 1 le pasan de 3 a 9, **sin tocar [T-513] ni el tag**.
+  - **Si se decide que no:** entonces hay que dejar de anunciarlas (hoy tampoco se anuncian, [T-507] ya las descuenta) y **decirlo en la pantalla**, porque un premium que se monta su temario sobre la CE y no ve ni una pregunta de examen real no tiene forma de saber por qué.
+- **NO TOCAR A LO BRUTO.** El arreglo NO es quitar `buildOfficialExamFilter` ni hacer que devuelva `true` para cualquier positionType desconocido: eso reabre el caso Laura para los positionTypes corruptos, que es justo lo que esa rama vigila. Si se abre, se abre **solo** para el prefijo `personalizada_`, y con su test.
+- **CAPAS mínimas al implementar:** unit sobre `buildOfficialExamFilter` con un positionType `personalizada_*` (hoy no hay ninguno), y comprobar que el `console.warn` de "Bug real" deja de dispararse para ellas — si sigue saltando, es que se arregló por otro sitio.
+- **Relacionadas:** [T-513] (el hueco del tag, que es la OTRA mitad de este caso y sigue esperando decisión), [T-507] y [T-566] (cerraron la brecha de oficiales en el CONTADOR; esta ficha es sobre el SERVE), [T-397].
 
 ### [T-592] 🔴 [ABIERTO 05/08] El clon del trabajador nunca se actualiza si tiene el árbol a medias, y el supervisor mira un árbol que no es el suyo
 
