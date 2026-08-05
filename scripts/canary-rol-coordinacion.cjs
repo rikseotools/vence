@@ -118,6 +118,35 @@ async function main() {
     afirmar('dejar rastro en el bus de observabilidad', true)
 
     // ── MITAD 2: NO puede nada más ─────────────────────────────────────────────────────────
+    // ── LA COLA DE IMPUGNACIONES: coger sitio SÍ, resolver NO (T-486) ──────────────────
+    // Se concedió el 05/08 y se verificó a mano UNA vez. Eso no es una capa: el permiso vive en
+    // dos sitios que no se ven el uno al otro —un GRANT por columnas y una política RLS— y basta
+    // que alguien toque cualquiera de los dos para que el alcance deje de ser el declarado.
+    //
+    // Lo delicado es que estas dos tablas NO son solo una cola: llevan el texto de la impugnación,
+    // el veredicto y la respuesta que se le manda a una persona. Que pueda RECLAMAR y no RESOLVER
+    // es exactamente la línea, y es la que se comprueba aquí.
+    console.log('\n▸ la cola de impugnaciones: coger sitio sí, resolver no')
+    try {
+      await coord`SELECT id FROM public.question_disputes LIMIT 1`
+      afirmar('ver la cola para poder elegir', true)
+    } catch (e) {
+      afirmar('ver la cola para poder elegir', false, String(e.message).slice(0, 70))
+    }
+    try {
+      // WHERE false: no toca ninguna fila, pero el motor comprueba el permiso igual.
+      await coord`UPDATE public.question_disputes SET claimed_by = ${SUF}, claimed_at = now() WHERE false`
+      afirmar('reclamar una impugnación (claimed_by/claimed_at)', true)
+    } catch (e) {
+      afirmar('reclamar una impugnación (claimed_by/claimed_at)', false, String(e.message).slice(0, 70))
+    }
+    await debeDenegar('cambiar el ESTADO de una impugnación',
+      () => coord`UPDATE public.question_disputes SET status = 'resolved' WHERE false`)
+    await debeDenegar('escribir la RESPUESTA que le llega a la persona',
+      () => coord`UPDATE public.question_disputes SET admin_response = 'x' WHERE false`)
+    await debeDenegar('borrar una impugnación',
+      () => coord`DELETE FROM public.question_disputes WHERE false`)
+
     console.log('\n▸ lo que NO debe poder hacer (y es la mitad que no se puede leer en el .sql)')
 
     await debeDenegar('leer user_profiles (datos de usuarios)', () => coord`SELECT id FROM public.user_profiles LIMIT 1`)

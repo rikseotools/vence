@@ -1983,6 +1983,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'destinatario con su prosa); **sin id NO deduplica** a propósito, porque dos destinatarios ' +
       'sin identificador pueden ser legítimamente distintos. Escape: `--igualmente`. 11 tests.',
   },
+  flota_turno: {
+    titulo: 'El TURNO de un trabajador, visible: qué se le encargó y si murió con la tarea cogida',
+    ruta: 'scripts/flota/flota.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Evento `flota_turno` (`fase` = encargado | muerto). Se observaba el ANDAMIAJE de las ' +
+      'sesiones (preflight, fricción, clon al día) pero **no el trabajo**: un `claude -p` nacía y ' +
+      'moría dentro de un fichero de log en su máquina, sin cruzar a ninguna parte — no había cómo ' +
+      'responder «¿cuánto tarda un turno?» ni «¿cuántos mueren a medias?» sin entrar por SSH. Un ' +
+      'turno que muere CON LA TAREA COGIDA la deja reclamada por nadie y bloqueada para el resto; ' +
+      'el vigía los relanza, pero **cinco en tres horas apuntan a una causa común** (cuota, un ' +
+      'guardarraíl que no pueden satisfacer) y eso solo se ve con la serie → ' +
+      '`RULE_FLOTA_TURNOS_MUERTOS`. **El rastro lo deja la PUERTA de envío, no cada llamador**: al ' +
+      'ponerlo se emitía desde cada sitio y se olvidó en `repartir`, así que la serie nacía ' +
+      'incompleta el primer día; lo exige un guardarraíl.',
+  },
   flota_productividad: {
     titulo: '¿La flota produce, y a qué coste para Manuel? — el criterio de fracaso declarado del piloto',
     ruta: 'lib/sessions/productividad.cjs',
@@ -2000,7 +2018,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mira la COLA DE REVISIÓN, no la producción, porque ése era el criterio de fracaso: producir ' +
       'más a costa del tiempo de Manuel es perder. Usa MEDIANA (una entrega olvidada desplaza la ' +
       'media y esconde el resto) y **dice «no medido» en vez de rellenar** (`worked_seconds` solo ' +
-      'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`. 30 tests. **Y da PREVISIÓN** (`--ventana <h>`), con dos trampas esquivadas a propósito: (a) el ritmo NO sale de `worked_seconds`, que mide tiempo con la tarea COGIDA y no esfuerzo —hay entregas de «22 h» que son una tarea reclamada de un turno a otro—, sino de **entregas por hora de reloj**, que ya incluye paradas y reintentos; (b) si se revisa más despacio de lo que se entrega, **la previsión la manda la REVISIÓN** y añadir trabajadores no acorta nada, solo alarga la cola. Con menos de 3 entregas medidas se niega a dar un número.',
+      'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`, y **serie duradera** en la tabla `flota_productividad_historico` — el bus NO sirve como historia y se comprobó antes de decidirlo (10,8 M de filas y solo 32 días: se poda). Guarda las ENTRADAS del cálculo, no solo el veredicto, para poder re-juzgar la historia si se recalibran los umbrales; y compara con la medida anterior métrica a métrica con ±10 % tratado como ruido. 30 tests. **Y da PREVISIÓN** (`--ventana <h>`), con dos trampas esquivadas a propósito: (a) el ritmo NO sale de `worked_seconds`, que mide tiempo con la tarea COGIDA y no esfuerzo —hay entregas de «22 h» que son una tarea reclamada de un turno a otro—, sino de **entregas por hora de reloj**, que ya incluye paradas y reintentos; (b) si se revisa más despacio de lo que se entrega, **la previsión la manda la REVISIÓN** y añadir trabajadores no acorta nada, solo alarga la cola. Con menos de 3 entregas medidas se niega a dar un número.',
   },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
