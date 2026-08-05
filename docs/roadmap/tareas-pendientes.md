@@ -842,6 +842,64 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-582] 🟡 [ABIERTO 05/08/2026] Ley 13/2007 Andalucía: Art.0 estructural falta en topic_scope de 4 oposiciones pese a cierre f34b88ad
+
+**Origen:** impugnación `f34b88ad-1519-46fe-aea4-460dcf60845b` (usuario `2eebe749…`, apelación), analizada por l1 (flota) el 05/08/2026.
+
+**Qué pasó:** el 04/08/2026 se resolvió una impugnación sobre la pregunta `331115f3-1d5f-49db-971c-e6f05a3513b6`
+("La ley de medidas de prevención y protección integral contra la violencia de género en Andalucía cuenta
+con:") reescribiendo su explicación con la estructura completa de la Ley 13/2007 (verificada contra BOE
+`https://www.boe.es/buscar/act.php?id=BOE-A-2008-2493`: Título Preliminar + 4 títulos numerados I-IV,
+coincide literal). El `admin_response` dice **"Ya la hemos añadido, con los títulos de la ley y la materia
+de cada uno"**, dando a entender que el temario del usuario ya refleja esa estructura.
+
+**Lo medido (l1, VENCE_LECTOR_URL, tabla `topic_scope` JOIN `topics`):** el artículo que contiene esa
+estructura es el **"Art. 0"** de la ley (`2270b7b9-c2b4-45aa-bf64-e912c31b59d3`, patrón §7.1.1 del manual
+de impugnaciones — artículo estructural/metadatos). De las 9 filas de `topic_scope` que escopan esta ley
+(`law_id=8e7c797c-77b5-4013-8ac9-9aaec19814c8`), **6 tienen `article_numbers` explícito (no NULL)** — las
+otras 3 son `NULL` (= ley entera, así que YA incluyen el "0" sin tocar nada). De esas 6 con lista explícita,
+**solo 1 incluye `"0"`**:
+
+| position_type | tema | ¿incluye "0"? | `topic_scope.id` |
+|---|---|---|---|
+| `auxiliar_administrativo_diputacion_cordoba` | 4 | ✅ SÍ (desde 2026-06-15, **anterior** a esta impugnación — no fue el fix) | `b3b9f7d5-d962-481a-8799-53f8612c1195` |
+| `auxiliar_administrativo_andalucia` | 8 | ❌ NO | `13d2fe3c-3ca9-4364-8d53-86b1a530587e` |
+| `auxiliar_administrativo_ayuntamiento_marbella` | 15 | ❌ NO | `cb14bcc2-8861-41ff-ad1e-6a386de27042` |
+| `administrativo_andalucia` | 15 | ❌ NO | `e6469640-a745-4515-91c5-cca046167c4c` |
+| `auxiliar_administrativo_ayuntamiento_cordoba` | 5 | ❌ NO | `2a135d78-6ca8-496f-893f-1a133b221cf1` |
+
+**Conclusión:** el "ya la hemos añadido" del cierre del 04/08 es falso para 4 de las 6 oposiciones con
+scope explícito de esta ley — solo se tocó la EXPLICACIÓN de la pregunta (que ahora sí cita la estructura),
+pero nadie actualizó `topic_scope.article_numbers` para incluir el `"0"`. La única fila que lo tiene es
+de 7 semanas antes, sin relación con este cierre. El usuario que apeló (tags de su pregunta: "Tema 8" +
+"Andalucía", que casa con `auxiliar_administrativo_andalucia`) tiene razón en dudar: para su oposición
+más probable, la estructura NO aparece en el temario/teoría de tema 8.
+
+**⚠️ No verificado con certeza cuál es su oposición real** (`user_profiles.target_oposicion` es PII,
+bloqueado para un trabajador de la flota — ver `project-flota-impugnaciones-sin-permiso.md`, T-573).
+El match por tags es fuerte (nombre exacto de la oposición coincide con el tag) pero no es una prueba.
+**Antes de responder al usuario, confirmar `target_oposicion` con una sesión que sí tenga acceso.**
+
+**Arreglo (acotado, requiere escritura en BD de negocio — un trabajador de la flota no tiene permiso):**
+```sql
+UPDATE topic_scope SET article_numbers = array_append(article_numbers, '0')
+ WHERE id IN (
+   '13d2fe3c-3ca9-4364-8d53-86b1a530587e', -- auxiliar_administrativo_andalucia t8
+   'cb14bcc2-8861-41ff-ad1e-6a386de27042', -- auxiliar_administrativo_ayuntamiento_marbella t15
+   'e6469640-a745-4515-91c5-cca046167c4c', -- administrativo_andalucia t15
+   '2a135d78-6ca8-496f-893f-1a133b221cf1'  -- auxiliar_administrativo_ayuntamiento_cordoba t5
+ );
+```
+Revalidar caché de temario/teoría de esos 4 topic_scope tras el UPDATE (igual que cualquier cambio de
+scope). Confirmar después que la pregunta aparece en la teoría de esos temas.
+
+**No se ha aplicado.** No es sistémico más allá de esta ley (no se ha barrido el patrón "Art.0 sin scopear"
+en otras leyes — un barrido naive por `law_id` sobre TODAS las leyes con Art.0 da falsos positivos masivos
+en leyes multi-tema como la CE, donde cada tema cubre solo una porción y el Art.0 general no tiene por qué
+estar en todos; no extrapolar el número de aquí a otras leyes sin acotar igual que se hizo con ésta).
+
+**Relacionado:** [T-573] (bloqueo de PII para la flota, mismo origen de la incertidumbre sobre `target_oposicion`).
+
 ### [T-564] 🟠 [ABIERTO 05/08] 19 oposiciones ACTIVAS tienen el seguimiento de convocatorias en `error` y ningún detector lo mira
 
 - **Cómo apareció:** al hacer el rollover de `auxiliar-biblioteca-estado` a la OEP 2026 ([T-562] de contexto), quedó un cabo: las plazas de la Sección Bibliotecas las fijará la **convocatoria**, que aún no se ha publicado. Al comprobar quién vigilaría esa publicación → `seguimiento_change_status = 'error'`. El cron mira todos los días (`seguimiento_last_checked` = ayer) y **falla todos los días**.
