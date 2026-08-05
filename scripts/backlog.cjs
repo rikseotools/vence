@@ -1748,6 +1748,21 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         const [t] = await s`SELECT id FROM public.backlog_tasks WHERE id = ${tarea}`;
         if (!t) { console.error(`❌ la tarea ${tarea} no existe`); process.exit(2); }
       }
+      // ── UN BORRADOR POR DESTINATARIO ───────────────────────────────────────────────────
+      // El claim de la cola protege el trabajo SIMULTÁNEO; nada protegía el YA HECHO. Al terminar,
+      // el trabajador suelta la fila (hace bien: no puede cerrarla) y vuelve al pool, así que el
+      // siguiente la re-analiza desde cero. Medido al estrenarlo: de los diez primeros borradores,
+      // TRES pares duplicados. El coste no es la cuota — es que Manuel tenga que decidir cuál de
+      // los dos mandar, que es justo el trabajo que la flota venía a ahorrarle.
+      const BORR = require('../lib/backlog/borradores.cjs');
+      if (!process.argv.includes('--igualmente')) {
+        const abiertos = await s`
+          SELECT id, draft_target, sid FROM public.session_questions
+           WHERE kind = 'borrador' AND status = 'open'`;
+        const dup = BORR.yaHayUno(para, abiertos);
+        if (dup.duplicado) { console.error(BORR.mensajeDuplicado(dup)); process.exit(3); }
+      }
+
       // El «question» es lo que Manuel ve en una línea; el cuerpo íntegro va en `context`.
       const titular = (resumen || `Borrador para ${para}: ¿lo apruebo tal cual?`).trim();
       const [r] = await s`

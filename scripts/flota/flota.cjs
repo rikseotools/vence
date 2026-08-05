@@ -124,7 +124,8 @@ function ponerAlDia(trabajador, { emitir = null, reanuda = false } = {}) {
   let commits = null
   if (v.hayQueActualizar) {
     try {
-      commits = `ahora en ${enMaquina(trabajador, `${como}bash -lc ${citar(ACTU.ORDEN_ACTUALIZAR(arbol))}`).trim()}`
+      const orden = v.volverAMain ? ACTU.ORDEN_A_MAIN(arbol) : ACTU.ORDEN_ACTUALIZAR(arbol)
+      commits = `ahora en ${enMaquina(trabajador, `${como}bash -lc ${citar(orden)}`).trim()}`
     } catch (e) {
       // Se creía que se podía avanzar y el pull falló: eso ya no es «atrasado», es no saber.
       const fallo = { estado: 'sin_red', puedeEncargar: false, hayQueActualizar: false,

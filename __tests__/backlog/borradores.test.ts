@@ -1,0 +1,69 @@
+/**
+ * @jest-environment node
+ */
+// Un borrador por destinatario. (T-486)
+//
+// Los primeros diez borradores de la flota traían TRES pares duplicados: dos trabajadores habían
+// analizado la misma impugnación y cada uno dejó el suyo. El claim de la cola funciona — protege el
+// trabajo SIMULTÁNEO; lo que nadie protegía era el trabajo YA HECHO, porque al terminar el
+// trabajador suelta la fila (hace bien: no puede cerrarla) y vuelve al pool.
+//
+// El coste no es la cuota gastada dos veces: es que Manuel abre la cola y tiene que decidir cuál de
+// los dos mandar, que es justo el trabajo que la flota venía a ahorrarle.
+//
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const B = require('@/lib/backlog/borradores.cjs')
+
+describe('reconocer «el mismo caso»', () => {
+  // Los trabajadores escriben el destinatario con su propia prosa: comparar cadenas no los
+  // emparejaría nunca. Lo que comparten es el identificador.
+  it('empareja dos redacciones distintas del mismo id', () => {
+    const a = "impugnación 1aac9e3c (LO 3/2007 art.12, 'no corresponde al temario')"
+    const b = "impugnación 1aac9e3c (otro/tema_incorrecto: 'no corresponde')"
+    expect(B.claveDe(a)).toBe(B.claveDe(b))
+  })
+
+  it('acepta el UUID entero o su prefijo', () => {
+    expect(B.claveDe('impugnación 968b0a9d-a88f-422d-9315-51f386b5ce5a (art. 44)')).toBe('968b0a9d')
+    expect(B.claveDe('impugnación 968b0a9d (art. 44)')).toBe('968b0a9d')
+  })
+
+  // Sin id NO se deduplica, a propósito: «Marta» y «la lista de inscritos» pueden ser dos
+  // destinatarios legítimamente distintos, y bloquear por parecido impediría el segundo de verdad.
+  it.each(['la lista de inscritos', 'Marta', '', null])('«%s» no tiene clave', (d) => {
+    expect(B.claveDe(d as any)).toBeNull()
+  })
+})
+
+describe('la puerta', () => {
+  const abiertos = [
+    { id: 22, draft_target: "impugnación 1aac9e3c (LO 3/2007 art.12)", sid: 'l5-fedora-e6' },
+    { id: 24, draft_target: 'impugnación 4683e35b (desacuerdo_correcta)', sid: 'l6-fedora-c5' },
+  ]
+
+  it('el caso real: el segundo borrador de 1aac9e3c se para', () => {
+    const v = B.yaHayUno("impugnación 1aac9e3c (otro/tema_incorrecto)", abiertos)
+    expect(v.duplicado).toBe(true)
+    expect(v.existente.id).toBe(22)
+    expect(v.motivo).toMatch(/#22/)
+  })
+
+  it('un caso nuevo pasa', () => {
+    expect(B.yaHayUno('impugnación 744f0db0 (art. 27)', abiertos).duplicado).toBe(false)
+  })
+
+  it('sin id no bloquea nunca', () => {
+    expect(B.yaHayUno('la lista de inscritos', abiertos).duplicado).toBe(false)
+  })
+
+  it('sin borradores abiertos tampoco', () => {
+    expect(B.yaHayUno('impugnación 1aac9e3c', []).duplicado).toBe(false)
+  })
+
+  // Un bloqueo sin salida se rodea ([T-375]): tiene que ofrecer el camino bueno ANTES del escape.
+  it('el mensaje manda leer el que ya hay, y el escape va el último', () => {
+    const m = B.mensajeDuplicado(B.yaHayUno('impugnación 1aac9e3c', abiertos))
+    expect(m).toMatch(/backlog\.cjs preguntas/)
+    expect(m.indexOf('preguntas')).toBeLessThan(m.indexOf('--igualmente'))
+  })
+})

@@ -107,9 +107,11 @@ describe('cuándo NO, y por qué en cada caso', () => {
 // avance directo en cuanto tenga un commit propio, así que fallaba SIEMPRE y se reportaba como
 // «no se sabe» — dejando al trabajador sin poder recibir nada (05/08, l3 y l6).
 describe('un trabajador en su propia rama', () => {
-  it('no se le intenta mover la rama: le basta con que el fetch deje origin/main al día', () => {
-    const v = ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 1 }))
-    expect(v).toMatchObject({ estado: 'en_su_rama', puedeEncargar: true, hayQueActualizar: false })
+  // Ojo: la primera versión de esto NO le movía la rama («le basta el fetch»). Era falso — lo que
+  // ejecuta es su árbol — y se corrigió el mismo día. Ver el bloque de abajo.
+  it('se le puede encargar', () => {
+    expect(ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 1 })))
+      .toMatchObject({ estado: 'en_su_rama', puedeEncargar: true })
   })
 
   it('pero si está EN main y solo va por detrás, sí se actualiza', () => {
@@ -253,5 +255,31 @@ describe('el cruce tarea↔sesión necesita TODAS las sesiones', () => {
     // Y el bloque «TUYAS» filtra por rol DESPUÉS, que es donde toca: lo de un trabajador ya lo
     // cuenta el bloque de la flota con su estado real.
     expect(src).toMatch(/paradasTuyas/)
+  })
+})
+
+// ── QUEDARSE EN SU RAMA ERA ARRASTRAR CÓDIGO VIEJO PARA SIEMPRE ─────────────────────────────
+// La primera versión dejaba tranquilo al trabajador que estaba en su rama: «lo que necesita,
+// origin/main al día, ya lo hizo el fetch». Falso — lo que EJECUTA es su árbol. Medido el 05/08:
+// `l1` informó de que `backlog.cjs borrador` «no existe en este checkout» cuando llevaba horas en
+// main. Es el mismo daño que esta puerta venía a evitar, reintroducido por no tocarle la rama.
+describe('al trabajador que viene de su rama se le devuelve a main', () => {
+  it('con el árbol limpio y todo empujado, se le actualiza', () => {
+    const v = ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 1 }))
+    expect(v).toMatchObject({ estado: 'en_su_rama', hayQueActualizar: true, volverAMain: true })
+  })
+
+  // Lo irreversible sigue mandando: si hay algo que solo existe ahí, no se le toca la rama.
+  it.each([{ SUCIO: 1 }, { ADELANTE: 1 }])('pero NO si hay trabajo sin salvar (%s)', (extra) => {
+    const v = ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 1, ...extra }))
+    expect(v.hayQueActualizar).toBe(false)
+    expect(v.volverAMain).toBeUndefined()
+  })
+
+  it('la orden cambia de rama sin poder perder nada', () => {
+    const o = ACT.ORDEN_A_MAIN('~/x')
+    expect(o).toContain('checkout -q main')
+    expect(o).toContain('--ff-only')
+    expect(o).not.toMatch(/reset|clean|--force/)
   })
 })

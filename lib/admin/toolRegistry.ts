@@ -1967,6 +1967,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`aprobacionEnvios.guardrail.test.ts` (27) exige que ningún script de envío se quede sin la ' +
       'puerta, que es como se pierden las protecciones: añadiendo un quinto que no la tiene.',
   },
+  borradores_sin_duplicar: {
+    titulo: 'Un borrador por destinatario: la flota re-analizaba el mismo caso y dejaba dos',
+    ruta: 'lib/backlog/borradores.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'El claim de la cola de impugnaciones protege el trabajo SIMULTÁNEO; no protegía el YA HECHO. ' +
+      'Al terminar, el trabajador SUELTA la fila (hace bien: no puede cerrarla) y vuelve al pool, ' +
+      'así que el siguiente la re-analiza desde cero. Medido al estrenarlo: de los diez primeros ' +
+      'borradores, **tres pares duplicados**. El coste no es la cuota gastada dos veces — es que ' +
+      'Manuel tenga que decidir cuál de los dos mandar, justo el trabajo que la flota venía a ' +
+      'ahorrarle. Empareja **por identificador, no por texto** (cada trabajador redacta el ' +
+      'destinatario con su prosa); **sin id NO deduplica** a propósito, porque dos destinatarios ' +
+      'sin identificador pueden ser legítimamente distintos. Escape: `--igualmente`. 11 tests.',
+  },
   flota_productividad: {
     titulo: '¿La flota produce, y a qué coste para Manuel? — el criterio de fracaso declarado del piloto',
     ruta: 'lib/sessions/productividad.cjs',

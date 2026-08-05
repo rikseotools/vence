@@ -545,6 +545,54 @@ acotados, igual que el VPS.
 > **`trabajadores` en el registro son los AUTÓNOMOS, no todas tus sesiones.** Las que abras tú a
 > mano siguen siendo tuyas, salen como personas en el parte y nadie les manda encargos.
 
+#### El ciclo completo de la flota, de un vistazo
+
+Lo que hace un trabajador de principio a fin, y **dónde para a propósito**:
+
+```
+  encargo  →  claim  →  trabajo  →  ENTREGA  →  [una persona verifica]  →  cierre
+                                       ↑                                      ↑
+                            aquí acaba el trabajador              esto NUNCA es suyo
+```
+
+Y si lo que produce va dirigido a alguien:
+
+```
+  análisis  →  BORRADOR (embudo)  →  [Manuel lo aprueba]  →  una persona lo envía
+```
+
+**Las tres cosas que un trabajador no hace, y no son limitaciones a corregir:**
+
+| no hace | por qué |
+|---|---|
+| **cerrar** una tarea | cerrar exige verificar, y verificar es de una persona (la quinta espera) |
+| **enviar** nada a un usuario | ahí es donde se detectan los fallos, y quien escribe necesita a alguien detrás |
+| **desplegar** | el deploy es cumulativo (sube todo `main`) y se coordina; además no tiene credenciales de AWS |
+
+> **Consecuencia que hay que tener presente al leer cualquier cifra:** «tareas cerradas por
+> trabajador» es **0 por construcción**. Su producción son las ENTREGAS. Ver el parte de
+> productividad, abajo.
+
+**Y el deploy sí se hace, pero es de una persona.** Cuando la flota entrega trabajo que necesita
+estar vivo para verificarse, se acumula: `npm run deploy:pendiente` dice si hay algo esperando
+(🔴 = sí) y `scripts/deploy-cuando-verde.sh <superficie>` lo lanza. La política es **agrupar**, no
+desplegar en cada push.
+
+#### Un borrador por destinatario
+
+El claim de la cola de impugnaciones protege el trabajo **simultáneo**; no protegía el **ya hecho**.
+Al terminar, el trabajador **suelta** la fila —hace bien: no puede cerrarla— y vuelve al pool, así
+que el siguiente la re-analiza desde cero. Medido al estrenarlo: de los diez primeros borradores,
+**tres pares duplicados** (`1aac9e3c`, `71a15cae`, `968b0a9d`).
+
+El coste no es la cuota gastada dos veces: es que Manuel abra la cola y tenga que **decidir cuál de
+los dos mandar**, que es justo el trabajo que la flota venía a ahorrarle.
+
+`backlog.cjs borrador` se niega si ya hay uno abierto para el mismo caso, emparejando **por
+identificador y no por texto** (cada trabajador escribe el destinatario con su prosa). Sin id no
+deduplica: «Marta» y «la lista de inscritos» pueden ser dos destinatarios legítimamente distintos.
+Escape explícito: `--igualmente`.
+
 #### ¿Produce la flota, y a qué coste? — `npm run flota -- productividad`
 
 La ficha del piloto declaró **antes de empezar** cómo se sabría si salía bien, para no juzgarlo por
