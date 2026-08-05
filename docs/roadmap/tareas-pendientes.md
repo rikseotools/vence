@@ -956,56 +956,6 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Medir antes de tocar cada una:** cuántas llamadas reales recibe y desde dónde (`observable_events`), igual que se hizo en [T-482] — ahí se vio que `/api/tests/[testId]/review` recibía ~200 eventos muestreados en 30 días **todos con `user_id` nulo**, que es precisamente la firma de un endpoint que no sabe quién le pregunta.
 - **🎯 POR AQUÍ SE EMPIEZA — ya hay un caso CONFIRMADO por otra sesión, no una sospecha:** `/api/v2/user-stats` **coge el `userId` del query string y no llama a `verifyAuth`**, así que cualquiera lee las estadísticas de cualquier usuario pasándole su id. Lo dejó anotado la sesión de [T-434] en su nota de retomar (*«CABO SUELTO DE SEGURIDAD, dicho y no tocado […] encaja con T-482»*) y no llegó a tocarlo porque T-482 tenía lease vivo de otra sesión. Está en la lista congelada, así que el trinquete ya lo cubre contra empeorar — pero **sigue abierto en producción**. Es el mismo patrón exacto que T-482 (identidad que pone el cliente) y se arregla con la misma pieza, `requireUsuarioPropio`.
 - **Relacionadas:** [T-482] (de donde sale, y de donde salen las capas), [T-434] (que encontró el caso de `user-stats` de arriba), la memoria `project-admin-endpoints-sin-auth` (el mismo fallo en otra familia de rutas, ya cerrado), y `__tests__/security/crossUserIsolationC3.test.ts` (el gemelo conductual para la familia que sí usa `` sql`` ``).
-### [T-566] 🔴 [ABIERTO 05/08] El configurador por TEMA ofrece más preguntas de las que el test puede servir
-
-- **Esfuerzo: rato.** El diagnóstico está a medias y las mediciones ya están hechas (abajo): lo que falta es leer los dos caminos.
-- 👤 **HAY UN USUARIO ESPERANDO.** Feedback `87e987d8`, **Sergio (premium, `pcsergio0@gmail.com`)**, que el 05/08 estaba usando la app mientras se diagnosticaba. Sus palabras: *«al seleccionar las preguntas, ej. tema 1, le pongo 10 difíciles, dice que el máx son 10, luego deberían ser diez, empiezo el test y únicamente me hace 3»* y *«al elegir de tipo medio me marca 64, sale test de 64 preguntas pero luego solo me hace 26»*. El hilo quedó **soltado sin responder** a propósito: contestarle con una hipótesis a medias es peor que callar.
-
-**LO QUE ESTÁ PROBADO (medido el 05/08 sobre su tema 1, oposición `personalizada_a92faefaf41b4d36b723c274f90a59f7`, scope = 5 arts de la CE):**
-
-| dificultad declarada | hay | ya las vio Sergio | nuevas |
-|---|---|---|---|
-| `medium` | 115 | 67 | 48 |
-| `easy` | 67 | 59 | 8 |
-| **`hard`** | **3** | 2 | 1 |
-| `extreme` | 1 | 1 | 0 |
-
-- **El caso «difícil» está explicado:** existen **3** preguntas `hard` y el contador le ofreció **10**. El test le sirvió 3. O sea que **el contador no aplica el filtro de dificultad** que sí aplica el servicio. Es [T-551] por el lado contrario: allí el contador dice **0 de menos**, aquí dice **10 de más**.
-
-**LO QUE NO ESTÁ PROBADO, y por eso no se le ha respondido:** el caso «medio» no cuadra con ninguna de las dos cifras — pidió 64, le sirvió **26**, y hay 115 en total o **48 sin ver**. Ni 115 ni 48 dan 26. Y hay una **incoherencia entre los dos caminos** que es la pista: en `hard` **sí** le sirvió preguntas que ya había respondido (las 3, teniendo 2 vistas), mientras que en `medium` parece excluir algo. Los dos caminos no filtran igual y eso hay que leerlo en el código, no deducirlo.
-
-**AVANCE 05/08 (2.ª vuelta) — Sergio escribió DOS mensajes más y cambian el diagnóstico:**
-*«al elegir las fáciles sí pone 100, pero repite muchas»* y *«me pone arriba nunca vistas, ¿hay alguna forma de que me ponga estas solas?»*.
-
-- **«Nunca vistas» NO es un filtro, es una PRIORIDAD.** `lib/api/filtered-questions/queries.ts` ordena primero las nunca vistas (`getNeverSeenQuestionIds`) y **rellena detrás con las ya respondidas**. Lo que él ve en la página del tema (*«N vistas / N nunca vistas»*) es una estadística, no un selector. **Su cuarta pregunta tiene respuesta definitiva: esa opción NO existe hoy** — y es una petición de producto razonable, no un bug.
-- **Eso explica el caso «fáciles»:** hay **67** easy y pidió **100**; tras agotar las nunca vistas rellena repitiendo. Por diseño.
-- **Y destapa la INCOHERENCIA, que es el bug de verdad:** con `easy` **sí** rellena hasta 100 repitiendo, pero con `hard` **no** rellenó (3 existentes → sirvió 3, no 10). El mismo configurador promete un número y el servicio unas veces lo completa repitiendo y otras no. Cualquiera de las dos conductas es defendible; **tenerlas las dos a la vez no**, y es lo que hace que el contador parezca mentir.
-
-**⚠️ CORRECCIÓN DEL 05/08 (3.ª vuelta) — EL CONTADOR NO MIENTE. Lo que sirve de menos es el TEST.**
-
-Las dos primeras vueltas de esta ficha midieron por el campo equivocado (`questions.difficulty`). El código —los DOS caminos— filtra por `global_difficulty_category` **con fallback** a `difficulty`. Medido con ese criterio real sobre el tema 1 de Sergio:
-
-| dificultad | pool REAL (criterio del código) | le ofreció | le sirvió |
-|---|---|---|---|
-| `hard` | **10** | 10 ✅ | **3** ❌ |
-| `medium` | **64** | 64 ✅ | **26** ❌ |
-| `easy` | 112 | 100 (tope) | 100, repitiendo |
-
-**El contador acierta clavado.** Así que la hipótesis de las dos primeras vueltas («el contador no aplica el filtro de dificultad») es FALSA y no hay que perseguirla.
-
-**Dónde mirar entonces, que es el servicio:**
-- `lib/api/filtered-questions/queries.ts` línea ~764 aplica el MISMO filtro de dificultad que el contador. No es eso.
-- El paso **6a** aparta las respondidas recientemente en `recentReserve` y el **7c** (`backfillFromReserve`) las repesca *«para no devolver un test corto a quien ha practicado mucho el tema»*. Con `easy` ese relleno SÍ actúa (le da 100 repitiendo); con `hard` **no** actuó (3 de 10). **La pregunta es por qué la repesca no rellena en unos casos y en otros sí** — ahí está el defecto.
-- Segundo sospechoso a descartar: `applyExamPositionFilter` / el acotado por `positionType`, que en una oposición **personalizada** puede estrechar el pool de forma distinta a como lo cuenta el estimador. La medición de arriba NO lo aplica, así que es la diferencia más probable entre 10 y 3.
-
-**DECISIÓN DE PRODUCTO YA TOMADA (Manuel, 05/08):** cuando se pidan más preguntas de las que hay, **el contador dice la verdad y nunca ofrece más de las que existen**. Con la medición de arriba resulta que ya lo hace; lo que hay que alinear es el servicio, que debe entregar lo que el contador prometió (repescando) o explicar por qué no puede.
-
-**POR DÓNDE SEGUIR:** comparar el contador del configurador POR TEMA con `lib/api/filtered-questions/queries.ts`, igual que [T-551] hizo con `estimateByLaws`. La pregunta a responder es qué filtra cada uno: dificultad, exclusión de ya respondidas, y con qué campo (`difficulty` declarada vs `global_difficulty`, que es un porcentaje y no una etiqueta).
-
-⚠️ **NO te atasques con el 🛑 del dossier.** Salta el bloqueo de epígrafes con «13 temas `never_sourced`», pero **su oposición es PERSONALIZADA, creada por él**: no hay programa oficial que clonar, así que ese Paso 1 no aplica a este caso. Es el mismo falso bloqueo que ya costó tiempo el 04/08.
-
-- **Relacionadas:** [T-551] (el gemelo: mismo defecto de fondo, contador y test que no cuentan lo mismo — **arreglarlos juntos**, y ojo porque el 05/08 la tenía otra sesión), [T-397] (elegir una oposición sin temario), [T-545] y [T-523] (la familia de las oposiciones personalizadas/de comunidad).
-
 ### [T-564] 🟠 [ABIERTO 05/08] 19 oposiciones ACTIVAS tienen el seguimiento de convocatorias en `error` y ningún detector lo mira
 
 - **Cómo apareció:** al hacer el rollover de `auxiliar-biblioteca-estado` a la OEP 2026 ([T-562] de contexto), quedó un cabo: las plazas de la Sección Bibliotecas las fijará la **convocatoria**, que aún no se ha publicado. Al comprobar quién vigilaría esa publicación → `seguimiento_change_status = 'error'`. El cron mira todos los días (`seguimiento_last_checked` = ayer) y **falla todos los días**.
@@ -1783,7 +1733,15 @@ explicaciones legales.
   1. **Bajar el número** (contar lo servible). Honesto e inmediato, pero la oposición se ve mucho más pobre de lo que se ve hoy.
   2. **Subir lo servido**: revisar por qué el temario de esas oposiciones escopa miles de preguntas que su propio filtro rechaza. En `mecanico_conductor_estado` sirviendo cero, el defecto no está en el rótulo — está en que **el temario apunta a preguntas que no son suyas**. Ahí lo que toca no es corregir el contador sino el scope o las etiquetas.
 - **MIRAR ANTES DE DECIDIR:** `mecanico_conductor_estado` es el caso que apremia (temas que sirven 0 preguntas), y conviene saber cuántos usuarios lo tienen como objetivo antes de tocar nada.
-- **Relacionadas:** [T-507], [T-411], [T-397].
+- **🆕 CASO CONCRETO con usuario y feedback abierto (05/08, [T-566]):** Sergio (premium,
+  feedback `87e987d8`) en su oposición personalizada, tema 1 (CE). [T-566] cerró la brecha de
+  OFICIALES en el contador (backend twin sin el arreglo de T-507 — un bug distinto y ya
+  arreglado), y con eso resuelto el residuo que queda **es exactamente esta ficha**: contador
+  4 / servido 3 (hard), contador 54 / servido 26 (medium) — verificado en vivo contra
+  producción tras el deploy. No es un caso agregado del banco: es una persona con un hilo sin
+  responder porque la respuesta definitiva a *"¿por qué el contador no acierta del todo?"*
+  depende de la decisión que falta aquí.
+- **Relacionadas:** [T-507], [T-411], [T-397], [T-566] (caso real de arriba).
 
 
 ### [T-514] 🟡 [ABIERTO 04/08] Ujieres CCGG: generar preguntas para T4 y T9-T12, que son el núcleo propio del Cuerpo
@@ -4632,6 +4590,113 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-566] ✅ [HECHA 05/08] El configurador por TEMA ofrece más preguntas de las que el test puede servir
+
+- **Esfuerzo: rato.** El diagnóstico está a medias y las mediciones ya están hechas (abajo): lo que falta es leer los dos caminos.
+- 👤 **HAY UN USUARIO ESPERANDO.** Feedback `87e987d8`, **Sergio (premium, `pcsergio0@gmail.com`)**, que el 05/08 estaba usando la app mientras se diagnosticaba. Sus palabras: *«al seleccionar las preguntas, ej. tema 1, le pongo 10 difíciles, dice que el máx son 10, luego deberían ser diez, empiezo el test y únicamente me hace 3»* y *«al elegir de tipo medio me marca 64, sale test de 64 preguntas pero luego solo me hace 26»*. El hilo quedó **soltado sin responder** a propósito: contestarle con una hipótesis a medias es peor que callar.
+
+**LO QUE ESTÁ PROBADO (medido el 05/08 sobre su tema 1, oposición `personalizada_a92faefaf41b4d36b723c274f90a59f7`, scope = 5 arts de la CE):**
+
+| dificultad declarada | hay | ya las vio Sergio | nuevas |
+|---|---|---|---|
+| `medium` | 115 | 67 | 48 |
+| `easy` | 67 | 59 | 8 |
+| **`hard`** | **3** | 2 | 1 |
+| `extreme` | 1 | 1 | 0 |
+
+- **El caso «difícil» está explicado:** existen **3** preguntas `hard` y el contador le ofreció **10**. El test le sirvió 3. O sea que **el contador no aplica el filtro de dificultad** que sí aplica el servicio. Es [T-551] por el lado contrario: allí el contador dice **0 de menos**, aquí dice **10 de más**.
+
+**LO QUE NO ESTÁ PROBADO, y por eso no se le ha respondido:** el caso «medio» no cuadra con ninguna de las dos cifras — pidió 64, le sirvió **26**, y hay 115 en total o **48 sin ver**. Ni 115 ni 48 dan 26. Y hay una **incoherencia entre los dos caminos** que es la pista: en `hard` **sí** le sirvió preguntas que ya había respondido (las 3, teniendo 2 vistas), mientras que en `medium` parece excluir algo. Los dos caminos no filtran igual y eso hay que leerlo en el código, no deducirlo.
+
+**AVANCE 05/08 (2.ª vuelta) — Sergio escribió DOS mensajes más y cambian el diagnóstico:**
+*«al elegir las fáciles sí pone 100, pero repite muchas»* y *«me pone arriba nunca vistas, ¿hay alguna forma de que me ponga estas solas?»*.
+
+- **«Nunca vistas» NO es un filtro, es una PRIORIDAD.** `lib/api/filtered-questions/queries.ts` ordena primero las nunca vistas (`getNeverSeenQuestionIds`) y **rellena detrás con las ya respondidas**. Lo que él ve en la página del tema (*«N vistas / N nunca vistas»*) es una estadística, no un selector. **Su cuarta pregunta tiene respuesta definitiva: esa opción NO existe hoy** — y es una petición de producto razonable, no un bug.
+- **Eso explica el caso «fáciles»:** hay **67** easy y pidió **100**; tras agotar las nunca vistas rellena repitiendo. Por diseño.
+- **Y destapa la INCOHERENCIA, que es el bug de verdad:** con `easy` **sí** rellena hasta 100 repitiendo, pero con `hard` **no** rellenó (3 existentes → sirvió 3, no 10). El mismo configurador promete un número y el servicio unas veces lo completa repitiendo y otras no. Cualquiera de las dos conductas es defendible; **tenerlas las dos a la vez no**, y es lo que hace que el contador parezca mentir.
+
+**⚠️ CORRECCIÓN DEL 05/08 (3.ª vuelta) — EL CONTADOR NO MIENTE. Lo que sirve de menos es el TEST.**
+
+Las dos primeras vueltas de esta ficha midieron por el campo equivocado (`questions.difficulty`). El código —los DOS caminos— filtra por `global_difficulty_category` **con fallback** a `difficulty`. Medido con ese criterio real sobre el tema 1 de Sergio:
+
+| dificultad | pool REAL (criterio del código) | le ofreció | le sirvió |
+|---|---|---|---|
+| `hard` | **10** | 10 ✅ | **3** ❌ |
+| `medium` | **64** | 64 ✅ | **26** ❌ |
+| `easy` | 112 | 100 (tope) | 100, repitiendo |
+
+**El contador acierta clavado.** Así que la hipótesis de las dos primeras vueltas («el contador no aplica el filtro de dificultad») es FALSA y no hay que perseguirla.
+
+**Dónde mirar entonces, que es el servicio:**
+- `lib/api/filtered-questions/queries.ts` línea ~764 aplica el MISMO filtro de dificultad que el contador. No es eso.
+- El paso **6a** aparta las respondidas recientemente en `recentReserve` y el **7c** (`backfillFromReserve`) las repesca *«para no devolver un test corto a quien ha practicado mucho el tema»*. Con `easy` ese relleno SÍ actúa (le da 100 repitiendo); con `hard` **no** actuó (3 de 10). **La pregunta es por qué la repesca no rellena en unos casos y en otros sí** — ahí está el defecto.
+- Segundo sospechoso a descartar: `applyExamPositionFilter` / el acotado por `positionType`, que en una oposición **personalizada** puede estrechar el pool de forma distinta a como lo cuenta el estimador. La medición de arriba NO lo aplica, así que es la diferencia más probable entre 10 y 3.
+
+**DECISIÓN DE PRODUCTO YA TOMADA (Manuel, 05/08):** cuando se pidan más preguntas de las que hay, **el contador dice la verdad y nunca ofrece más de las que existen**. Con la medición de arriba resulta que ya lo hace; lo que hay que alinear es el servicio, que debe entregar lo que el contador prometió (repescando) o explicar por qué no puede.
+
+**POR DÓNDE SEGUIR:** comparar el contador del configurador POR TEMA con `lib/api/filtered-questions/queries.ts`, igual que [T-551] hizo con `estimateByLaws`. La pregunta a responder es qué filtra cada uno: dificultad, exclusión de ya respondidas, y con qué campo (`difficulty` declarada vs `global_difficulty`, que es un porcentaje y no una etiqueta).
+
+⚠️ **NO te atasques con el 🛑 del dossier.** Salta el bloqueo de epígrafes con «13 temas `never_sourced`», pero **su oposición es PERSONALIZADA, creada por él**: no hay programa oficial que clonar, así que ese Paso 1 no aplica a este caso. Es el mismo falso bloqueo que ya costó tiempo el 04/08.
+
+**CIERRE 05/08 (4.ª vuelta) — LA CAUSA ERA UN TERCER GEMELO, NO EL SERVICIO.** La pista de la
+«INCOHERENCIA entre los dos caminos» (arriba) llevaba a un sitio equivocado: no hay dos caminos
+que filtren distinto, hay **dos COPIAS del contador** y solo una tiene el arreglo de [T-507].
+
+`estimateAvailableQuestions` (modo tema) del FRONTEND (`lib/api/test-config/queries.ts`) SÍ
+aplica, desde T-507, `buildOfficialExamFilter` (una oficial solo se sirve si su
+`exam_position` es de TU oposición) y `exam_case_id IS NULL`. Pero la familia `test-config`
+está **enrutada al backend NestJS** (`test-config: true` en `lib/api/backend-router.ts`) y el
+arreglo de T-507 **nunca llegó a ese gemelo** — exactamente el patrón de fallo de
+[T-326]/[T-551] con `estimateByLaws`, un peldaño más arriba en el mismo módulo. Verificado
+contra producción ANTES del fix (`curl … | x-served-by: vence-backend`): hard=10, medium=63,
+easy=113 — coincide EXACTO con el criterio sin los dos filtros.
+
+**Arreglo:** `buildOfficialExamFilter` portado a `backend/src/test-config/test-config.helpers.ts`
+(el backend no puede importar `lib/`) y aplicado en el mismo punto que el frontend; columna
+`exam_case_id` añadida a `backend/src/db/schema.ts` (no estaba declarada — típico de un schema
+que solo tiene "las columnas que los handlers leen", y nadie había necesitado ésta hasta ahora).
+Guardarraíl nuevo `__tests__/guardrails/estimateAvailableQuestionsParidad.test.ts` (gemelo de
+`estimateByLawsParidad.test.ts`), verificado que CAZA la regresión.
+
+**De paso, esto BLOQUEABA EL COMMIT** (y no solo el mío): `.husky/pre-commit` corre con `sh -e`
+(`.husky/_/h`), y dos bloques (`db:check`, `audit:display-drift`) tenían el patrón `cmd; if [ $?
+-ne 0 ]` como statement SUELTO — bajo `-e` eso aborta el script ENTERO antes de llegar al `if`
+que decide avisar-y-seguir. El comentario "solo warning, no bloquea" llevaba tiempo siendo falso
+para CUALQUIER sesión (no solo para un rol restringido: [T-551] lo encontró la misma tarde por el
+lado de `check-schema-drift.ts` sin `ssl:'require'`, que hacía fallar la conexión SIEMPRE).
+Reescritos los dos bloques con `if ! cmd; then … fi` (exento de `-e` por POSIX). Y
+`core.hooksPath` apareció corrupto a `--version/_` durante la sesión (probablemente una
+re-ejecución del lifecycle `prepare` de npm) — corregido de vuelta a `.husky/_`, o ningún hook
+corría en absoluto. Probado con `sh -e .husky/pre-commit` (la MISMA invocación que usa husky)
+antes de confiar en el fix.
+
+**Desplegado y VERIFICADO EN PRODUCCIÓN (backend `ee1288d6`, task def `:165`), cache-busteado con
+`selectedLaws=CE` explícito para no leer la entrada cacheada de antes del deploy (TTL 1h,
+`cache_version:test-config` no se bumpeó — nada en este cambio dispara esa invalidación):**
+
+| dificultad | contador ANTES | contador AHORA | servido (real) |
+|---|---|---|---|
+| `hard` | 10 | **4** | 3 |
+| `medium` | 63 | **54** | 26 |
+| `easy` | 113 | **102** | 100 (tope pedido, con repesca) |
+
+**El contador miente MUCHO menos (10→4, 63→54) pero sigue sin acertar del todo.** El hueco que
+queda (4 vs 3, 54 vs 26) es exactamente el filtro de TAG (`buildQuestionTagFilter`), que
+**NINGÚN** contador aplica todavía — es la decisión de producto ya abierta en [T-513] («bajar el
+número» vs «subir lo servido»). No se auto-aplica aquí: cambiaría el número servido en 1.374
+temas sin que Manuel lo haya decidido. El caso de Sergio queda anotado en T-513 como evidencia
+concreta adicional (antes solo tenía agregados de banco, no un caso de usuario real con feedback
+abierto). **Sergio SIGUE sin respuesta** — el hilo se dejó así a propósito (ver arriba) y la
+respuesta definitiva a *"por qué 4 y no 3"* depende de esa decisión, no de este arreglo.
+
+- **Relacionadas:** [T-513] (el hueco que queda — DECISIÓN DE MANUEL, con el caso de Sergio ya
+  anotado ahí), [T-551] (el gemelo: mismo defecto de fondo — dos copias del contador, solo una
+  arreglada — un peldaño arriba en el mismo módulo, y de donde salió la pista del `sh -e`),
+  [T-576] (mismo defecto de fondo en `test:unit`, un paso antes en el mismo hook), [T-397]
+  (elegir una oposición sin temario), [T-545] y [T-523] (la familia de las oposiciones
+  personalizadas/de comunidad).
+
 
 ### [T-551] ✅ [HECHA 05/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
 
