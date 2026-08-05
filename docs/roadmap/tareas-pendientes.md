@@ -2029,17 +2029,6 @@ ponerse a verificar una por una.
 - **Capa que pide:** el criterio de parecido a núcleo puro con test, para poder fijar este caso como regresión (una ABIERTA que comparte el nombre propio sale por delante de tres CERRADAS que solo comparten vocabulario).
 - **Relacionadas:** [T-473] (la ficha duplicada que se anuló), [T-471] (la que no se vio), [T-130] (el registro de herramientas, mismo fallo un nivel más arriba).
 
-### [T-477] 🟡 [ABIERTO 02/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`
-
-- **Esfuerzo: minutos.** Es ampliar una condición y su test; el dominio ya lo soporta entero.
-- **LA CONTRADICCIÓN.** Desde el 28/07 el euro de impugnación solo se concede solo cuando el motivo es VERIFICABLE, y tanto el manual (§6.bis) como el runbook de embajadores prometen que **«lo subjetivo se sigue premiando A MANO»**. Pero esa vía **no existe**: `app/api/admin/rewards/route.ts` rechaza con 400 cualquier `type` que no sea `bug` o `ugc`.
-- **Y el dominio SÍ lo soporta, entero:** `REWARD_AMOUNTS = { bug: 3, ugc: 5, impugnacion: 1 }` (`lib/referrals/logic.ts:121`), `createRewardSubmission` acepta `type:'impugnacion'` con `disputeId`, tiene su **anti-duplicado por `dispute_id`** y, por debajo, un índice único parcial en BD. Lo único que falta es que la puerta HTTP lo deje pasar.
-- **Consecuencia práctica:** quien quiera cumplir la política tiene que **saltarse el endpoint** y llamar a la función de dominio desde un script. Funciona y conserva los guardarraíles, pero es un camino no documentado que cada sesión se reinventa — y el atajo alternativo (pagarlo como `bug`) **pagaría 3 € en vez de 1 €** y ensuciaría la traza con un motivo falso.
-- **CASO QUE LO DESTAPA (02/08).** Lucía Quiroga (premium, UC3M) encontró un defecto real de programa y lo demostró adjuntando sus bases ([T-467]). Sus tres impugnaciones eran de motivo `otro`, que no paga solo. Manuel ordenó premiar una; hubo que emitirla llamando a `createRewardSubmission` a mano (`24b7574a`, 1 €, `dispute_id=dd9aeb94…`).
-- **Arreglo:** aceptar `impugnacion` en el POST admin exigiendo `disputeId` (igual que `bug` exige `feedbackId` y `ugc` exige `url`), y cubrirlo en `__tests__/referrals/rewards-endpoints.test.ts`, que ya prueba los otros dos. **Ojo al tope:** `impugnacion` tiene su propio `IMPUGNACION_MONTHLY_CAP` de 10/mes y `canCreateReward` ya lo aplica — no hay que duplicar esa lógica en el endpoint.
-- **Relacionadas:** [T-467] y [T-470] (el caso de donde sale), `docs/runbooks/embajadores-recompensas.md` §2, `docs/maintenance/impugnaciones-claude-code.md` §6.bis.
-
-
 ### [T-471] 🟡 [ABIERTO 01/08] Los 20 epígrafes de UC3M siguen `never_sourced`: el 🛑 del dossier seguirá saltando en la próxima impugnación de temario
 
 - **Esfuerzo: rato.** Mecánico teniendo el PDF; lo que lleva tiempo es cotejar los 20 uno a uno.
@@ -4396,6 +4385,18 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-477] ✅ [HECHA 05/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`
+
+- **Esfuerzo: minutos.** Es ampliar una condición y su test; el dominio ya lo soporta entero.
+- **LA CONTRADICCIÓN.** Desde el 28/07 el euro de impugnación solo se concede solo cuando el motivo es VERIFICABLE, y tanto el manual (§6.bis) como el runbook de embajadores prometen que **«lo subjetivo se sigue premiando A MANO»**. Pero esa vía **no existe**: `app/api/admin/rewards/route.ts` rechaza con 400 cualquier `type` que no sea `bug` o `ugc`.
+- **Y el dominio SÍ lo soporta, entero:** `REWARD_AMOUNTS = { bug: 3, ugc: 5, impugnacion: 1 }` (`lib/referrals/logic.ts:121`), `createRewardSubmission` acepta `type:'impugnacion'` con `disputeId`, tiene su **anti-duplicado por `dispute_id`** y, por debajo, un índice único parcial en BD. Lo único que falta es que la puerta HTTP lo deje pasar.
+- **Consecuencia práctica:** quien quiera cumplir la política tiene que **saltarse el endpoint** y llamar a la función de dominio desde un script. Funciona y conserva los guardarraíles, pero es un camino no documentado que cada sesión se reinventa — y el atajo alternativo (pagarlo como `bug`) **pagaría 3 € en vez de 1 €** y ensuciaría la traza con un motivo falso.
+- **CASO QUE LO DESTAPA (02/08).** Lucía Quiroga (premium, UC3M) encontró un defecto real de programa y lo demostró adjuntando sus bases ([T-467]). Sus tres impugnaciones eran de motivo `otro`, que no paga solo. Manuel ordenó premiar una; hubo que emitirla llamando a `createRewardSubmission` a mano (`24b7574a`, 1 €, `dispute_id=dd9aeb94…`).
+- **Arreglo:** aceptar `impugnacion` en el POST admin exigiendo `disputeId` (igual que `bug` exige `feedbackId` y `ugc` exige `url`), y cubrirlo en `__tests__/referrals/rewards-endpoints.test.ts`, que ya prueba los otros dos. **Ojo al tope:** `impugnacion` tiene su propio `IMPUGNACION_MONTHLY_CAP` de 10/mes y `canCreateReward` ya lo aplica — no hay que duplicar esa lógica en el endpoint.
+- **Relacionadas:** [T-467] y [T-470] (el caso de donde sale), `docs/runbooks/embajadores-recompensas.md` §2, `docs/maintenance/impugnaciones-claude-code.md` §6.bis.
+- **HECHO (05/08).** La puerta acepta `impugnacion` **exigiendo `disputeId`**, y ese requisito no es formalismo: es el motivo trazable con el que el índice único parcial sobre `dispute_id` impide pagar dos veces la misma impugnación (el mismo papel que `feedback_id` en `bug` y `url` en `ugc`). No se duplicó nada del dominio: el tope mensual propio lo sigue aplicando `canCreateReward`. **Capas:** 4 tests nuevos en `rewards-endpoints.test.ts` —incluido uno que fija que un `type` inventado **sigue** rechazándose, porque la puerta se abre a UNO y no a cualquiera— vistos en ROJO quitando el arreglo (2 fallos) y en verde al restaurarlo. Y el **runbook** (§2), que era donde vivía la promesa incumplida, ya describe la vía con su importe y su condición.
+
 
 ### [T-451] ✅ [HECHA 05/08] `huerfanos:plan` no ve las leyes escopadas como «ley entera»: 4.865 artículos sin preguntas fuera del radar
 

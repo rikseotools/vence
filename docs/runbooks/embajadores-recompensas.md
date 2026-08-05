@@ -78,10 +78,11 @@ GET /api/admin/referrals/stats
 Usar cuando **resolvemos un bug reportado por el usuario** o **validamos una opinión (UGC)** real.
 ```
 POST /api/admin/rewards
-body: { email: "<email del usuario>", type: "bug" | "ugc", url?: "<link de la opinión>", feedbackId?: "<uuid del feedback>" }
-→ crea reward_submission (bug 3 € / ugc 5 €), estado approved, entra en hold.
+body: { email: "<email del usuario>", type: "bug" | "ugc" | "impugnacion", url?: "<link de la opinión>", feedbackId?: "<uuid del feedback>", disputeId?: "<uuid de la impugnación>" }
+→ crea reward_submission (bug 3 € / ugc 5 € / impugnacion 1 €), estado approved, entra en hold.
 ```
-- `bug` = 3 €, `ugc` = 5 €. El importe lo pone el sistema, no se envía.
+- `bug` = 3 €, `ugc` = 5 €, `impugnacion` = 1 €. El importe lo pone el sistema, no se envía.
+- **`impugnacion` es la vía MANUAL** (T-477, 05/08): la de motivo verificable la concede sola el cierre en `resolved`; esta es para lo **subjetivo** que aun así merece premio, que es lo que este runbook y el manual (§6.bis) llevaban prometiendo sin que existiera la puerta — hasta el 05/08 el endpoint devolvía 400 y había que llamar a `createRewardSubmission` desde un script (se hizo el 02/08 con Lucía Quiroga). **Exige `disputeId`**, y no por formalismo: es el motivo trazable con el que el índice único parcial sobre `dispute_id` impide pagar dos veces la misma impugnación. Sigue aplicando su tope propio (`IMPUGNACION_MONTHLY_CAP`, 10/mes) y sigue haciendo falta **orden explícita de Manuel**.
 - **Pasa SIEMPRE `feedbackId` en las de `bug`** (traza del motivo + anti-duplicado, ver abajo).
 - UGC exige `url` (link a la opinión) y respeta el tope 3/mes (devuelve `reward_cap_hit`).
 - Al crearse, el usuario recibe **solo el badge 🎁** (bug/ugc NO envían email — ver "Notificación al embajador"). **NO se lo menciones en el mensaje** (decisión Manuel 24/07): el badge parpadeante ya se lo dice; ponerlo en el texto queda cutre.

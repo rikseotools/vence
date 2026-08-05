@@ -68,6 +68,39 @@ describe('admin bug/UGC rewards', () => {
     expect(mCreate).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', type: 'ugc', url: 'https://t.me/x' }))
   })
 
+  // ── T-477: premiar A MANO una impugnación ────────────────────────────────────────────────
+  //
+  // El manual promete que «lo subjetivo se sigue premiando a mano» desde que el euro automático
+  // exige motivo verificable. La puerta lo rechazaba con 400 mientras el dominio lo soportaba
+  // entero, así que la única forma de cumplir la política era saltarse el endpoint.
+
+  it('POST create type=impugnacion con disputeId → crea (1 €, el importe lo pone el dominio)', async () => {
+    asAdmin(); mFind.mockResolvedValue('u1'); mCreate.mockResolvedValue({ ok: true, id: 's9' })
+    const res = await _POST(post(RURL, { email: 'a@b.c', type: 'impugnacion', disputeId: 'd1' }))
+    expect(res.status).toBe(200)
+    expect(mCreate).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1', type: 'impugnacion', disputeId: 'd1' }))
+  })
+
+  it('POST create type=impugnacion SIN disputeId → 400 (sin motivo no hay anti-duplicado)', async () => {
+    asAdmin(); mFind.mockResolvedValue('u1')
+    const res = await _POST(post(RURL, { email: 'a@b.c', type: 'impugnacion' }))
+    expect(res.status).toBe(400)
+    // Y no llega al dominio: se para en la puerta, no se crea nada a medias.
+    expect(mCreate).not.toHaveBeenCalled()
+  })
+
+  it('POST create la MISMA impugnación dos veces → 409 (el euro no se paga dos veces)', async () => {
+    asAdmin(); mFind.mockResolvedValue('u1'); mCreate.mockResolvedValue({ ok: false, reason: 'duplicate' })
+    const res = await _POST(post(RURL, { email: 'a@b.c', type: 'impugnacion', disputeId: 'd1' }))
+    expect(res.status).toBe(409)
+    expect(mEmit).toHaveBeenCalledWith('reward_duplicate', expect.objectContaining({ userId: 'u1' }))
+  })
+
+  it('un type inventado sigue rechazándose (la puerta se abre a UNO, no a cualquiera)', async () => {
+    asAdmin(); mFind.mockResolvedValue('u1')
+    expect((await _POST(post(RURL, { email: 'a@b.c', type: 'referido' }))).status).toBe(400)
+  })
+
   it('POST create supera el tope → 409', async () => {
     asAdmin(); mFind.mockResolvedValue('u1'); mCreate.mockResolvedValue({ ok: false, reason: 'monthly_cap' })
     expect((await _POST(post(RURL, { email: 'a@b.c', type: 'ugc' }))).status).toBe(409)
