@@ -6181,7 +6181,70 @@ export const RULE_LAW_NAME_RELLENO_ESCRITO: AlertRule<LawNameRellenoRow> = {
   cooldownMin: 720,
 };
 
+// ────────────────────────────────────────────────────────────────
+// EL AVISO DE PAGO FALLIDO QUE LE LLEGA A QUIEN ESTÁ PAGANDO BIEN (T-594, 2026-08-05)
+//
+// Cuando la tarjeta exige autenticación reforzada (3DS/SCA), Stripe emite
+// `invoice.payment_failed` a la vez que `invoice.payment_action_required`: no es un rechazo, es
+// que la persona está en la pantalla de su banco. Nuestro webhook mandaba ahí el correo
+// «Problema con el pago de tu suscripción». Medido antes del arreglo: **148 de 214 correos en 30
+// días (69%)** fueron a gente cuya suscripción arrancó segundos después, o sea en mitad de su
+// compra. Lo destapó un usuario escribiendo a soporte, no nosotros.
+//
+// La regla mira la BASE DE DATOS y no los eventos, a propósito y por el mismo motivo que
+// `law_name_relleno_escrito`: si alguien añade otro camino que mande ese correo sin pasar por
+// `decidirAvisoPagoFallido`, ese camino tampoco emitiría el evento de omisión. Lo único que no
+// se puede falsear es el correo enviado junto a una suscripción que sí cobró.
+//
+// ⚠️ CRITERIO ESPEJADO: el mismo corte vive en `scripts/stripe/medir-pago-fallido-falsos.cjs`
+// (la vista para humanos, que además dice A QUIÉN). Si tocas uno, toca el otro — lo exige el
+// guardarraíl de paridad `__tests__/guardrails/pagoFallidoParidad.test.ts`.
+export const VENTANA_FALSA_ALARMA_PAGO_S = 600;
+
+export const RULE_PAGO_FALLIDO_FALSA_ALARMA: AlertRule<{
+  n: number;
+  ejemplo: string | null;
+}> = {
+  name: 'pago_fallido_falsa_alarma',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(u.email ORDER BY e.created_at DESC))[1] AS ejemplo
+    FROM email_events e
+    JOIN user_profiles u ON u.id = e.user_id
+    JOIN user_subscriptions s ON s.user_id = e.user_id
+    WHERE e.email_type = 'pago_fallido'
+      AND e.event_type = 'sent'
+      AND e.created_at > NOW() - INTERVAL '24 hours'
+      AND s.status = 'active'
+      AND ABS(EXTRACT(EPOCH FROM (s.current_period_start - e.created_at))) < 600
+  `,
+  // Cero tolerancia: tras el arreglo, avisar a quien está pagando bien no puede pasar ni una vez.
+  shouldFire: (rows) => (rows[0]?.n ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `💳 ${r.n} aviso(s) de «pago fallido» a gente que SÍ pagó`,
+      body:
+        `${r.n} correo(s) de pago fallido enviados en 24 h a personas cuya suscripción se activó ` +
+        `en los segundos siguientes: se les asustó en mitad de su compra.\n\n` +
+        `Ejemplo: ${r.ejemplo ?? '(sin email)'}\n\n` +
+        `Esto debería ser imposible desde T-594: el webhook consulta ` +
+        `\`decidirAvisoPagoFallido\` y calla cuando el PaymentIntent está en autenticación ` +
+        `(3DS/SCA). Que haya correos significa que hay un camino nuevo saltándoselo, o que el ` +
+        `criterio se quedó corto ante un estado de Stripe que no contemplamos.\n\n` +
+        `Ver a quién y desde cuándo: npm run stripe:pago-fallido-falsos`,
+      metadata: { count: r.n, ejemplo: r.ejemplo },
+      fingerprint: 'pago_fallido_falsa_alarma',
+    };
+  },
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Trinquete de T-594: nadie vuelve a recibir «problema con el pago» mientras paga bien. Mira la
+  // BD y no los eventos: un camino nuevo que se salte el núcleo tampoco emitiría la omisión.
+  RULE_PAGO_FALLIDO_FALSA_ALARMA as AlertRule,
   // Trinquete de T-559: la tabla no puede volver a tener una ley de relleno. Mira la BD y no
   // los eventos a propósito — un escritor nuevo que se salte el núcleo tampoco emitiría.
   RULE_LAW_NAME_RELLENO_ESCRITO as AlertRule,
