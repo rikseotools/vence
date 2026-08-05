@@ -15,10 +15,19 @@
  * Y comprueba lo que un canario menos estricto pasaría por alto: que **no puede escribir**. Un rol
  * llamado «lector» que pudiera hacer UPDATE sería exactamente el fallo que nadie mira.
  *
+ * ── EL FALSO VERDE QUE ESTO ARREGLA (T-574) ────────────────────────────────────────────────
+ * `SELECT 1 FROM tabla LIMIT 1` con RLS activo y CERO políticas no lanza error: el motor filtra
+ * en silencio y da 0 filas, siempre — indistinguible de una tabla vacía de verdad si solo se mira
+ * "¿lanzó?". Medido en prod: `test_questions` y `tests` (dos de las tablas de `DEBE_LEER`) están
+ * en ese estado y el canario las daba por buenas. La comprobación ahora cruza el CATÁLOGO
+ * (`pg_class.relrowsecurity` + `pg_policies`, legible por cualquier rol sin GRANT explícito) con
+ * el intento real de lectura — núcleo puro en `lib/db/rlsSelectBlocked.cjs`, con tests propios.
+ *
  * Uso:  VENCE_LECTOR_URL=postgres://vence_lector:…@… npm run canary:rol-lector
  */
 const fs = require('fs')
 const path = require('path')
+const { seleccionBloqueadaPorRls } = require('../lib/db/rlsSelectBlocked.cjs')
 
 const REPO = path.resolve(__dirname, '..')
 
@@ -82,10 +91,44 @@ async function main() {
     for (const [tabla, para] of DEBE_LEER) {
       try {
         await sql.unsafe(`SELECT 1 FROM public.${tabla} LIMIT 1`)
-        afirmar(`lee ${tabla} (${para})`, true)
+        // No basta con que no lanzara: si RLS está activo y no hay política para este rol,
+        // el SELECT anterior "tuvo éxito" devolviendo 0 filas SIEMPRE, tenga la tabla datos
+        // o no. Eso es lo que daba el falso verde — se comprueba contra el catálogo.
+        const cat = await sql`
+          SELECT c.relrowsecurity AS rls
+          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relname = ${tabla}`
+        const pol = await sql`
+          SELECT cmd, roles FROM pg_policies WHERE schemaname = 'public' AND tablename = ${tabla}`
+        const bloqueada = cat.length && seleccionBloqueadaPorRls(cat[0].rls, pol, quien[0].u)
+        afirmar(`lee ${tabla} (${para})`, !bloqueada,
+          bloqueada ? 'RLS activo SIN política para este rol — lee 0 filas siempre, sin error' : '')
       } catch (e) {
         afirmar(`lee ${tabla} (${para})`, false, String(e.message).slice(0, 70))
       }
+    }
+
+    // ── EL ALCANCE TOTAL (T-574) ──────────────────────────────────────────────────────────
+    // `DEBE_LEER` es la lista de lo que el trabajo YA usa; esto es la foto completa. La
+    // mayoría de estas tablas está bloqueada A PROPÓSITO (son operativas/con PII y nunca han
+    // tenido política pública) — no es un fallo del canario, es el diseño "deniega por
+    // defecto". Se imprime como INFORMACIÓN, sin contar para el veredicto, para que no vuelva
+    // a pasar 24h sin que nadie lo vea (así se llegó a 87 sin que ningún canario lo dijera).
+    const rlsSinPolicy = await sql`
+      SELECT c.relname AS tabla
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relrowsecurity = true
+        AND NOT EXISTS (
+          SELECT 1 FROM pg_policies p
+          WHERE p.schemaname = 'public' AND p.tablename = c.relname
+        )
+      ORDER BY c.relname`
+    console.log(`\nℹ️  alcance total: ${rlsSinPolicy.length} tablas con RLS activo y CERO políticas (bloqueadas para TODOS los roles, no solo éste)`)
+    const enDebeLeer = new Set(DEBE_LEER.map(([t]) => t))
+    const inesperadas = rlsSinPolicy.filter((r) => enDebeLeer.has(r.tabla))
+    if (inesperadas.length) {
+      console.log(`   ⚠️  de ellas, ${inesperadas.length} están en DEBE_LEER y ya se contaron arriba como fallo: ${inesperadas.map((r) => r.tabla).join(', ')}`)
     }
 
     console.log('\n▸ lo que NO puede ver: el identificador directo')

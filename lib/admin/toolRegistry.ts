@@ -1905,7 +1905,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mitades y una tercera que un canario flojo pasaría por alto: que un rol llamado «lector» ' +
       'NO pueda escribir. La migración NO usa `ALTER DEFAULT PRIVILEGES` a propósito: una tabla ' +
       'nueva no queda legible sola, cuesta un grant explícito y a cambio nada se expone por nacer. ' +
-      '19/19 contra el rol vivo.',
+      '**Falso verde arreglado en [T-574]:** `SELECT … LIMIT 1` con RLS activo y CERO políticas no ' +
+      'lanza error — filtra en silencio a 0 filas, indistinguible de una tabla vacía. `DEBE_LEER` ' +
+      'se comprueba ahora también contra el catálogo (`pg_class`+`pg_policies`, núcleo puro ' +
+      '`lib/db/rlsSelectBlocked.cjs`), y así se cazó que `test_questions` estaba en ese estado ' +
+      '(dio 19/19 en verde durante semanas). Sigue en 18/19 hasta que [T-573] le añada su política ' +
+      '— el rojo es correcto, no una regresión de este canario. Añade además una sección ' +
+      'informativa con el recuento TOTAL de tablas RLS-sin-política (85 medidas el 05/08), la ' +
+      'mayoría bloqueadas a propósito (PII/operativas) y fuera del veredicto.',
   },
   flota_gobierno: {
     titulo: 'Gobernar la flota desde el portátil: quién vive, qué hace, darle trabajo — sin entrar en ningún servidor',
