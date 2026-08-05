@@ -842,6 +842,18 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-576] 🔴 [ABIERTO 05/08] 12 suites que hablan con la BD corrían en el pre-commit y bloqueaban a TODOS los trabajadores de la flota
+
+- **Síntoma, y lo reportó un trabajador:** `w1` no podía commitear NADA. Ni él, ni `w2`, ni `l2`, ni el supervisor operando dentro de su árbol. El `pre-commit` corre `npm run test:unit`, y ahí dentro había suites que consultan la **BD de negocio** — que un trabajador no puede leer por diseño (`vence_coordinacion` son 4 tablas de coordinación; `vence_lector` no da `conversion_events`, `admin_read_markers`, `temario_pdf_jobs`…).
+- **Medido, no supuesto.** Correr `test:unit` dentro del worktree de `l2` con SU entorno restringido: **12 suites en rojo, 52 tests**, de 1.063 suites totales. La lista textual (grep de `DATABASE_URL`, `postgres(`…) daba **44** y estaba llena de falsos positivos —guardarraíles que leen código como texto, el propio encargo de la flota que menciona la variable—, así que el criterio bueno es **cuáles fallan de verdad con el rol restringido**.
+  Las 12: `canary/{shuffleRoundtripBD,lawTestCtaScopedBD,explanationDataNoRegresionBD,landingSsotContractBD,oposicionIdentityBD}` · `temario/{pdfWorker,pdfJobQueue.integration,pdfHookScope.integration}` · `guardrails/{disputeOpenUnique,temarioPdfQueue}` · `api/admin/salesBadge.integration` · `config/psychometricFlagCoherence`.
+- **No son unitarias, y esa es la clave.** Un test que hace `DELETE`/`INSERT` contra la BD real es de **integración por definición**; que viviera bajo `test:unit` era un error de ETIQUETA, no una propiedad suya. Corregir la etiqueta no debilita el gate: lo hace honesto **y más rápido para todas las sesiones**, no solo para la flota. Tres de las doce ya se llamaban `*.integration.test.ts` — la convención existía y no se estaba respetando.
+- **Arreglo: una regla y cuatro renombrados.** `test:unit` ignora `__tests__/canary/` y `\.integration\.test\.`; `test:integration` los recoge (su patrón pasa a incluir ambos), así que **siguen corriendo en CI** — sacarlos del pre-commit sin que corran en ningún sitio habría sido apagarlos. Los cuatro que no seguían la convención se renombran a `*.integration.test.ts`.
+- **Verificado con la medida que lo destapó:** re-corriendo `test:unit` en el árbol de `l2` con su rol restringido, **de 12 suites en rojo a 1** — y esa una es un test nuevo que el propio `l2` estaba escribiendo, no una de las doce.
+- **Lo que NO se hizo, y por qué:** la otra salida que se barajó era que los trabajadores usaran `PRECOMMIT_TESTS_SKIP=1` en cada commit. Descartada: convertir un escape en rutina es exactamente cómo este repo ha perdido guardarraíles antes ([T-496]/[T-497] lo midieron — el escape se vuelve un prefijo que se copia de un comando a otro, y 6 de 10 no respondían a ningún bloqueo). El trabajador que lo reportó **se paró en vez de rodearlo**, que es lo que su encargo le pide.
+- **Falta (no se ha hecho):** un guardarraíl que impida que una suite que habla con la BD vuelva a colarse en `test:unit`. El registro `lib/admin/suiteRegistry.ts` ya hace esto para las carpetas de integración, con detección por imports; **el hueco es justo el complementario** —las que están FUERA de esas carpetas— y ahí es donde vive el fallo. Sin ese trinquete, esto vuelve en cuanto alguien añada una suite nueva.
+- **Esfuerzo: rato.**
+
 ### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
 
 - **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
