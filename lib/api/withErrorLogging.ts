@@ -8,6 +8,7 @@ import { NextResponse, after, type NextRequest } from 'next/server'
 import { randomUUID } from 'crypto'
 import { logValidationError, logValidationErrorAwait, classifyError } from '@/lib/api/validation-error-log'
 import { emit } from '@/lib/observability/emit'
+import { shouldSkipObservabilityPersistence } from '@/lib/observability/runtimeGate'
 import { extractUserIdFromRequest } from '@/lib/api/extractUserId'
 import { verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
@@ -20,6 +21,17 @@ import { isSyntheticRequest } from '@/lib/api/syntheticRequest'
  * confidence interval estrecho).
  */
 const SUCCESS_TIMING_SAMPLE_RATE = 0.1
+
+// T-572 (05/08/2026): el `request_completed` que este wrapper emite a
+// `observable_events` NO tenía el mismo freno que `validation_error_logs`
+// (`SKIP_PERSISTENCE` en validation-error-log/queries.ts). Como el .env.local
+// de este repo apunta `next dev` a la RDS de PRODUCCIÓN (ver CLAUDE.md), un
+// runtime local roto escribía directamente en la tabla que alimenta el panel
+// de salud real. Medido: un worktree con la clave RS256 inválida generó 89
+// eventos `httpStatus=500` en /api/auth/token en 4 minutos, host=localhost,
+// contados como "89 de 101 5xx en 24h" en el panel — mientras
+// validation_error_logs (la fuente real del indicador 1) estaba en CERO.
+const SKIP_REQUEST_COMPLETED_EMIT = shouldSkipObservabilityPersistence()
 
 const DEPLOY_VERSION =
   process.env.GIT_COMMIT_SHA?.slice(0, 8)
@@ -302,7 +314,8 @@ export function withErrorLogging(
       // ~525k request_completed/día en observable_events (el firehose). El resto de
       // 4xx/5xx (errores reales) sigue al 100%.
       const forceEmit = isError && !isExpectedStatus(response.status)
-      const shouldEmitTiming = forceEmit || Math.random() < SUCCESS_TIMING_SAMPLE_RATE
+      const shouldEmitTiming = !SKIP_REQUEST_COMPLETED_EMIT
+        && (forceEmit || Math.random() < SUCCESS_TIMING_SAMPLE_RATE)
       if (shouldEmitTiming) {
         const durationMs = Date.now() - startTime
         const host = request?.headers?.get?.('host') ?? null
@@ -508,29 +521,33 @@ export function withErrorLogging(
       // en el path try → 5xx por throw nunca llegaban a obs_events,
       // dejando hueco de observabilidad). Incluye stack truncado a 2KB
       // (suficiente para diagnóstico, no satura tabla).
-      after(async () => {
-        await emit({
-          source: 'vercel',
-          severity: synthetic ? 'info' : 'error',
-          eventType: 'request_completed',
-          endpoint,
-          userId: throwIdentity.userId,
-          httpStatus: 500,
-          durationMs,
-          deployVersion: DEPLOY_VERSION,
-          errorMessage: throwErrorMessage.slice(0, 2000),
-          metadata: {
-            host: request?.headers?.get?.('host') ?? null,
-            method: request?.method ?? 'GET',
-            sampled: 'false',
-            errorRef,
-            errorStack: throwErrorStack?.slice(0, 2000) || null,
-            capturedFromThrow: true,
-            ...(synthetic ? { synthetic: true } : {}),
-            ...identityMetadata(throwIdentity),
-          },
+      // SKIP_REQUEST_COMPLETED_EMIT: mismo freno que en el path try (T-572) —
+      // un throw en un runtime no-productivo no debe aparecer como 5xx real.
+      if (!SKIP_REQUEST_COMPLETED_EMIT) {
+        after(async () => {
+          await emit({
+            source: 'vercel',
+            severity: synthetic ? 'info' : 'error',
+            eventType: 'request_completed',
+            endpoint,
+            userId: throwIdentity.userId,
+            httpStatus: 500,
+            durationMs,
+            deployVersion: DEPLOY_VERSION,
+            errorMessage: throwErrorMessage.slice(0, 2000),
+            metadata: {
+              host: request?.headers?.get?.('host') ?? null,
+              method: request?.method ?? 'GET',
+              sampled: 'false',
+              errorRef,
+              errorStack: throwErrorStack?.slice(0, 2000) || null,
+              capturedFromThrow: true,
+              ...(synthetic ? { synthetic: true } : {}),
+              ...identityMetadata(throwIdentity),
+            },
+          })
         })
-      })
+      }
 
       return NextResponse.json(
         { success: false, error: 'Error interno del servidor', errorRef },
