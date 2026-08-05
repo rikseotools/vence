@@ -10,7 +10,7 @@ import { getDynamicLimit, invalidateLimitCache, GRADUATED_LIMIT_CONFIG } from '.
 import type { DailyLimitStatus } from './daily-limit'
 // Fase 1.5 outbox sprint (28/05/2026): cache Redis cross-lambda para
 // las 2 RPCs daily-limit. Ver docs/roadmap/sprint-outbox-test-questions.md
-import { getOrSet, invalidate as redisInvalidate } from '@/lib/cache/redis'
+import { getOrSet, invalidateMany as redisInvalidateMany } from '@/lib/cache/redis'
 
 /**
  * ¿Esta respuesta debe consumir cupo del plan gratuito?
@@ -401,10 +401,21 @@ export async function getDailyLimitStatus(
 /**
  * Invalida cache daily_limit (L1 premium + L2 Redis) tras cambio relevante
  * (increment, downgrade Stripe, etc.). Llamar tras cada save exitoso.
+ *
+ * INVALIDA LAS DOS CLAVES ([T-418], 05/08/2026): `daily_limit:${userId}` es la
+ * que escribe/lee `/api/daily-limit` (route.ts, wrapper `{data, ts}`), pero
+ * `getDailyLimitStatus` — la fuente real de `questionsToday` — cachea aparte
+ * en `daily_limit_status:${userId}` desde el incidente del 07/07 (ver el
+ * comentario junto a `getOrSet` más abajo). Este invalidador solo tocaba la
+ * primera: la segunda seguía sirviendo el conteo viejo hasta 30s después de
+ * cada respuesta guardada, así que quien respondía justo antes de topar el
+ * cupo del dispositivo podía seguir contestando sin ver el muro. Dirección
+ * permisiva (regala preguntas, no las quita) — no es la causa del goteo por
+ * pestañas, pero hay que cerrarla igual.
  */
 export async function invalidateDailyLimitCache(userId: string): Promise<void> {
   dailyLimitPremiumCache.delete(userId)
-  await redisInvalidate(`daily_limit:${userId}`)
+  await redisInvalidateMany([`daily_limit:${userId}`, `daily_limit_status:${userId}`])
 }
 
 /**
