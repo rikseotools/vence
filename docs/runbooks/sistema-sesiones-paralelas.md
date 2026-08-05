@@ -618,6 +618,17 @@ significarían dos sitios donde mirar y una de las dos olvidada. Sale **el prime
 permiso. El cuerpo íntegro es obligatorio (≥40 caracteres, lo exige un CHECK) y el destinatario
 también — un borrador sin destinatario no se puede revisar.
 
+> ⛔ **EL SUPERVISOR NO OPERA DENTRO DEL ÁRBOL DE UN TRABAJADOR.** Si necesita probar algo con
+> credenciales acotadas, monta **su propio** worktree con ese entorno. El 05/08 el supervisor entró
+> en el worktree de `l2` y ejecutó `git checkout HEAD -- .` para dejarlo limpio: se llevó por
+> delante los 6 ficheros sin commitear de esa sesión, su trabajo entero de T-518. **Su propia puerta
+> del clon ya se había negado a darle trabajo a `l2` cinco minutos antes, diciendo literalmente
+> «podrían ser el único rastro de un trabajo»** — un guardarraíl protege el camino que vigila, no a
+> quien va por fuera. Se recuperó de `git fsck --unreachable` (2.782 blobs, identificados por ancla
+> + tamaño + una cadena que solo estaba en la versión nueva), y lo que hizo posible el rescate no
+> fue git: fue **la entrega obligatoria**, que describía el trabajo fichero a fichero. Detalle y
+> arreglo pendiente: [T-577].
+
 **Tres gotchas que costaron una vuelta cada uno:**
 
 - **Los nombres van en minúscula.** El árbol se llama como el trabajador y `crear-worktree.sh`

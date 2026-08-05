@@ -111,14 +111,14 @@ const citar = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`
  * Y nunca a la brava — un clon con cambios sin commitear puede ser el único rastro de un trabajo
  * ([T-431]): se rehúsa y se dice qué hay, que tirarlo lo decide una persona.
  */
-function ponerAlDia(trabajador, { emitir = null } = {}) {
+function ponerAlDia(trabajador, { emitir = null, reanuda = false } = {}) {
   const como = MAQ.maquinaDe(trabajador)?.local ? '' : 'sudo -u flota '
   const arbol = MAQ.arbolDe(trabajador)
   let salida = ''
   try {
     salida = enMaquina(trabajador, `${como}bash -lc ${citar(ACTU.SONDA_GIT(arbol))}`)
   } catch (e) { salida = String((e && e.stdout) || '') }
-  const v = ACTU.evaluarClon(ACTU.leerSonda(salida))
+  const v = ACTU.evaluarClon(ACTU.leerSonda(salida), { reanuda })
 
   let commits = null
   if (v.hayQueActualizar) {
@@ -175,6 +175,9 @@ function mandarEncargo(trabajador, texto, { alDia = null } = {}) {
   const al = alDia || ponerAlDia(trabajador)
   if (al.linea) console.log(`   ${al.linea}`)
   if (!al.puedeEncargar) return { ok: false, al }
+  // Un turno nuevo no recuerda nada del anterior: si dejó trabajo a medias hay que DECÍRSELO,
+  // o lo normal es que empiece de cero encima de la única copia que existe.
+  if (al.estado === 'a_medias') texto += '\n' + ENC.avisoTrabajoAMedias(al.motivo)
 
   const m = MAQ.maquinaDe(trabajador)
   const env = ficheroEntorno(trabajador)
@@ -235,16 +238,31 @@ async function main() {
 
       console.log('\nFLOTA')
       console.log('='.repeat(60))
+      // ── LA PREGUNTA QUE EL LATIDO NO CONTESTA: ¿HAY ALGUIEN EJECUTANDO? ─────────────
+      // El latido demuestra que un comando del andamiaje corrió; el claim, que alguien cogió la
+      // tarea. Ninguno de los dos dice si AHORA MISMO hay un proceso trabajando. Medido el 05/08:
+      // el panel decía «✅ toda la flota viva y trabajando» con los cuatro 🟢 y sus tareas… y el
+      // VPS estaba a **carga 0,05 con CERO procesos de Claude**. Los turnos habían terminado
+      // solos y las tareas se quedaron cogidas por nadie.
+      //
+      // Un trabajador con tarea cogida y sin proceso es el estado PEOR de todos: bloquea la tarea
+      // para los demás y no avanza. Se pinta aparte porque se arregla distinto — no hay que
+      // levantarlo (su tmux vive), hay que volver a lanzarle el turno.
+      const abandonadas = []
       for (const f of filas) {
+        const ejecutando = ENC.puedeRecibir(comandoDelPanel(f.trabajador)).libre === false
         // Un trabajador callado PERO con sesión viva está LIBRE, no caído. Confundirlos manda a
         // levantar lo que solo hacía falta encargar.
-        const libre = f.estado !== 'vivo' && sesionViva(f.trabajador)
-        const icono = f.estado === 'vivo' ? '🟢' : libre ? '🔵' : f.estado === 'callado' ? '🟠' : '🔴'
+        const libre = !ejecutando && sesionViva(f.trabajador)
         const t = tareaDe(f.trabajador)
+        const abandonada = !!t && !ejecutando
+        if (abandonada) abandonadas.push({ trabajador: f.trabajador, tarea: t })
+        const icono = abandonada ? '🟠' : ejecutando ? '🟢' : libre ? '🔵' : '🔴'
         const cuando = f.antiguedadMin == null ? 'sin señal nunca'
           : f.antiguedadMin < 1 ? 'ahora mismo' : `hace ${f.antiguedadMin} min`
-        console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}`)
-        console.log(`       ${t ? `${t.id} — ${String(t.title).slice(0, 60)}`
+        console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}${ejecutando ? '  · ejecutando' : ''}`)
+        console.log(`       ${abandonada ? `⚠️ ${t.id} COGIDA Y SIN PROCESO — su turno terminó (relánzalo: flota -- encargar ${f.trabajador} --tarea ${t.id})`
+          : t ? `${t.id} — ${String(t.title).slice(0, 60)}`
           : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'
           : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
       }
@@ -254,7 +272,17 @@ async function main() {
       // porque «una sola pantalla» no puede significar «la mitad de lo que pasa».
       const ahora = new Date()
       const personas = todas.filter((s) => s.rol !== 'trabajador')
-      const { trabajando, paradas } = PARTE.cruzarTrabajo(tareas, personas, { ahora })
+      // ⚠️ El cruce recibe TODAS las sesiones, no solo las tuyas. Pasarle solo las personas hacía
+      // que cualquier tarea de un trabajador se leyera como «esa sesión nunca ha dado señal»,
+      // porque su sesión simplemente no estaba en la lista. Medido el 05/08: el panel decía
+      // «✅ toda la flota viva y trabajando» y, cuatro líneas más arriba, marcaba las CUATRO
+      // tareas de esos mismos trabajadores como paradas. Cuatro falsos de cuatro: una alarma que
+      // acierta cero veces se deja de leer, y entonces tampoco se ve la que sí importa.
+      const { trabajando, paradas } = PARTE.cruzarTrabajo(tareas, todas, { ahora })
+      const sidsTrabajadores = new Set(sesiones.map((s) => s.sid))
+      // Lo de un trabajador ya lo cuenta el bloque de la flota, arriba, con su estado real. Aquí
+      // solo lo TUYO, que es lo que el encabezado promete.
+      const paradasTuyas = paradas.filter((p) => !sidsTrabajadores.has(p.sid))
       const vivasPersonas = personas.filter((s) => {
         const min = (ahora.getTime() - new Date(s.last_signal_at).getTime()) / 60000
         return min <= 45
@@ -267,9 +295,9 @@ async function main() {
           console.log(`   ${(p.slug || '?').padEnd(16)} ${min < 1 ? 'ahora mismo' : `hace ${min} min`.padEnd(12)} ${t ? `${t.id} — ${String(t.title).slice(0, 44)}` : '(sin tarea cogida)'}`)
         }
       }
-      if (paradas.length) {
-        console.log(`\n🟠 ${paradas.length} TAREA(S) TUYAS SIN SEÑAL DE SU SESIÓN:`)
-        for (const p of paradas) console.log(`   ${p.id}  ${String(p.title).slice(0, 56)} — ${p.detalle}`)
+      if (paradasTuyas.length) {
+        console.log(`\n🟠 ${paradasTuyas.length} TAREA(S) TUYAS SIN SEÑAL DE SU SESIÓN:`)
+        for (const p of paradasTuyas) console.log(`   ${p.id}  ${String(p.title).slice(0, 56)} — ${p.detalle}`)
       }
 
       // Lo que espera a Manuel va SIEMPRE, aunque la flota esté perfecta: es lo único cuyo coste
@@ -338,17 +366,34 @@ async function main() {
       const partes = []
       if (sinSenal.length) partes.push(`${sinSenal.length} sin señal`)
       if (malAutenticados.length) partes.push(`${malAutenticados.length} sin poder trabajar`)
+      if (abandonadas.length) partes.push(`${abandonadas.length} con la tarea cogida y SIN PROCESO`)
       console.log(partes.length ? `\n⚠️  ${partes.join(' · ')}` : '\n✅ toda la flota viva y trabajando')
       return partes.length ? 3 : 0
     }
 
     if (cmd === 'encargar') {
       const w = process.argv[3]
-      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn]'); return 2 }
+      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn | --impugnaciones]'); return 2 }
+
+      // ── IMPUGNACIONES: analizar SÍ, enviar NO ───────────────────────────────────────────
+      // No pasa por el backlog: la cola de impugnaciones tiene su propio claim atómico
+      // (`cola.cjs`, FOR UPDATE SKIP LOCKED), así que N trabajadores cogen N impugnaciones
+      // distintas sin coordinarse. Lo que produce es un BORRADOR que aprueba una persona.
+      if (process.argv.includes('--impugnaciones')) {
+        const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
+        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w }), { alDia })
+        if (!r.ok) {
+          console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          return 1
+        }
+        console.log(`✅ ${w} → analizar una impugnación (cogerá una libre de la cola). Dejará BORRADOR, no enviará nada.`)
+        return 0
+      }
+
       let tarea = null
       const pedida = arg('--tarea')
       if (pedida) {
-        const [t] = await sql`SELECT id, title FROM public.backlog_tasks WHERE id = ${pedida}`
+        const [t] = await sql`SELECT id, title, claimed_by FROM public.backlog_tasks WHERE id = ${pedida}`
         if (!t) { console.error(`❌ ${pedida} no existe`); return 1 }
         const v = ENC.esApta(t)
         if (!v.apta) console.log(`⚠️  ${t.id} no parece apta para un trabajador (${v.motivo}) — se manda igual porque lo has pedido.`)
@@ -373,7 +418,13 @@ async function main() {
       // ── EL CÓDIGO PRIMERO, LUEGO EL TRABAJO ─────────────────────────────────────────────
       // Un encargo sobre código viejo es tiempo que luego hay que tirar, y peor: son los
       // guardarraíles de otra fecha protegiendo a quien nadie mira.
-      const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
+      //
+      // ¿Es RETOMAR lo suyo o empezar algo nuevo? Cambia el veredicto sobre un árbol a medias:
+      // encima de un trabajo sin terminar no se empieza otra cosa, pero seguir el propio es
+      // exactamente lo que hay que poder hacer.
+      const [ses] = await sql`SELECT sid FROM public.worktree_sessions WHERE slug = ${w}`
+      const reanuda = !!(ses && tarea.claimed_by === ses.sid)
+      const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) }, reanuda })
       const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea }), { alDia })
       if (!r.ok) {
         console.error(r.ocupado
