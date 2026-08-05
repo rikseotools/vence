@@ -10,10 +10,17 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+# El hook real (.husky/_/h) corre esto con `sh -e`: un comando fuera de un `if`/`||` que
+# devuelva !=0 mata el script AHÍ MISMO, antes de que "SCHEMA_EXIT_CODE=$?" llegue a
+# ejecutarse — el comentario "no bloquea" era falso bajo -e (T-568). `if npm run …` sí es
+# -e-safe: el resultado del comando alimenta la condición en vez de propagarse.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
+  if npm run db:check; then
+    SCHEMA_EXIT_CODE=0
+  else
+    SCHEMA_EXIT_CODE=$?
+  fi
 
   if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo ""

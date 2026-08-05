@@ -87,7 +87,11 @@ async function main() {
     }
   }
 
-  const sql = postgres(DATABASE_URL!, { max: 1 })
+  // ssl: 'require' es obligatorio contra RDS (pg_hba exige TLS): sin él, `postgres` intenta
+  // conectar en claro y el motor lo rechaza con "no encryption" — no es un problema de permisos,
+  // ni siquiera negocia TLS. Un DATABASE_URL de .env.local normal ya lleva `sslmode=require` en
+  // la cadena y lo tapaba; las credenciales de flota que salen de SSM (T-539) no, y ahí se ve.
+  const sql = postgres(DATABASE_URL!, { max: 1, ssl: 'require' })
 
   try {
     // Obtener tablas de la BD (solo schema public)
