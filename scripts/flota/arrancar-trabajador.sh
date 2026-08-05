@@ -84,6 +84,9 @@ if ! id "$USUARIO" >/dev/null 2>&1; then
   useradd --create-home --shell /bin/bash "$USUARIO"
   echo "→ usuario '$USUARIO' creado (sin sudo)"
 fi
+# Idempotencia real, y va ANTES de tocar el repo: una pasada anterior pudo dejar ficheros de root
+# en su casa, y entonces git se niega («dubious ownership») antes de que nada pueda arreglarlo.
+chown -R "$USUARIO:$USUARIO" "$CASA" 2>/dev/null || true
 
 # ── 1. LO QUE TIENE QUE ESTAR ANTES ─────────────────────────────────────────────────────────
 for cmd in git node npm tmux systemctl; do
@@ -106,8 +109,6 @@ if [ -d "$BASE/.git" ]; then
 else
   echo "→ clonando el repo en $BASE…"; sudo -u "$USUARIO" git clone --quiet "$REPO_URL" "$BASE"
 fi
-# Idempotencia real: una pasada anterior pudo dejar ficheros de root en la casa del trabajador.
-chown -R "$USUARIO:$USUARIO" "$CASA"
 sudo -u "$USUARIO" git -C "$BASE" config user.name  "flota-$SLUG"
 sudo -u "$USUARIO" git -C "$BASE" config user.email "flota@vence.es"
 
