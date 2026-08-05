@@ -842,6 +842,66 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-573] 🔴 [ABIERTO 05/08] `vence_lector`: RLS sin policy bloquea en silencio ~70 tablas (incl. `question_disputes`) pese al GRANT
+
+**Encontrada resolviendo mi encargo de flota (l6, 05/08): "analiza UNA impugnación" — con `VENCE_LECTOR_URL`,
+`question_disputes` y `psychometric_question_disputes` devuelven SIEMPRE 0 filas, sin importar el estado.
+No hay ninguna impugnación que pueda triar: el bloqueo es total, no de esta impugnación concreta.**
+
+**Causa, medida contra RDS (no supuesta):** `20260805_rol_lector_flota.sql` hace
+`GRANT SELECT ON ALL TABLES IN SCHEMA public TO vence_lector` y luego un `REVOKE` explícito de 21
+tablas con datos personales. Pero varias tablas tienen **RLS activo (`relrowsecurity=true`) y CERO
+`pg_policies`** — con RLS activo y sin policy, un rol que no es dueño de la tabla y no tiene
+`BYPASSRLS` ve 0 filas SIEMPRE, aunque el `GRANT` de la tabla sea correcto. El `GRANT` y el `REVOKE`
+del fichero no dicen nada sobre esto: son permisos de tabla, no policies de fila.
+
+**Medido con una consulta a `pg_class`+`pg_policies` vía el propio `vence_lector`:**
+```sql
+SELECT c.relname, count(p.policyname) AS n_policies
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+LEFT JOIN pg_policies p ON p.tablename=c.relname AND p.schemaname='public'
+WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity=true
+GROUP BY c.relname HAVING count(p.policyname)=0;
+```
+**87 tablas** con RLS activo y 0 policies. De esas, **21 coinciden con el `REVOKE` explícito** (ahí el
+efecto es el buscado, doblemente bloqueado, sin problema). Las otras **~70 NO están en el REVOKE**
+— es decir, la migración las quería legibles y no lo son. Entre ellas, con impacto directo medido:
+
+| Tabla | Filas reales (confirmado con `SELECT count(*)`) | Por qué importa |
+|---|---|---|
+| `question_disputes` | bloqueada (0 vía `vence_lector`) | Es la tabla de ESTE encargo — sin ella no se puede triar ninguna impugnación |
+| `psychometric_question_disputes` | bloqueada | Gemela psicotécnica, mismo bloqueo |
+| `test_questions` | bloqueada | **Nombrada LITERALMENTE en el comentario de la propia migración** como una de las 3 tablas que motivaron crear el rol (T-476: *"la actividad con la que se diagnostican los contadores"*) |
+| `oep_detection_signals`, `fraud_alerts`, `detection_sources`, `ai_verification_results`, `article_versions`, `law_versions`, `legal_modifications`, `question_lifecycle_history` | bloqueadas | Todas nombradas en runbooks de CLAUDE.md como lectura necesaria para los triajes de flota (OEPs, fraude, salud del radar, verificación de leyes, lifecycle) |
+
+**El canario que debía cazar esto da FALSO VERDE — mismo patrón que ya está documentado en este repo
+para otro contexto** (`oeps-convocatorias-seguimiento.md`: *"consultarla con la clave ANON devuelve 0
+filas en silencio — NO es que esté vacía"*). `scripts/canary-rol-lector.cjs` comprueba
+`SELECT 1 FROM tabla LIMIT 1` y solo mira si **lanza excepción**; con RLS+0 policies la consulta NO
+falla, simplemente no devuelve filas — así que `lee test_questions ✅` sale en verde con
+`npm run canary:rol-lector` (19/19, comprobado hoy) mientras el conteo real es 0. El canario prueba
+"no me deniega el motor", no "puedo leer datos".
+
+**Por qué no se vio antes:** nadie más accede a estas tablas con un rol restringido — la app y los
+scripts existentes usan el dueño de la tabla o un rol con `BYPASSRLS`, que ignoran las policies por
+completo. `vence_lector` es el primer rol NOINHERIT/no-owner que las toca, y ahí es donde aparece.
+
+**Arreglo (necesita a Manuel — ninguna credencial de esta sesión puede escribir DDL):**
+1. Migración que cree, para cada tabla del diff (las ~70 que no están en el REVOKE), una policy
+   permisiva de SOLO SELECT para `vence_lector`: `CREATE POLICY vence_lector_select ON public.<tabla>
+   FOR SELECT TO vence_lector USING (true);` — es mecánico, se puede generar con la misma consulta
+   de arriba filtrando el REVOKE.
+2. Arreglar el canario para que además de "no hay excepción" compruebe "hay >0 filas o la tabla está
+   genuinamente vacía" — si no, seguirá dando verde a la próxima tabla que caiga en el mismo agujero.
+3. Repetir mi consulta de arriba tras aplicar: debe dar 0 tablas fuera del REVOKE con RLS+0 policies.
+
+**Sistémico, medido, no supuesto:** 87 tablas con el patrón, 70 fuera del REVOKE (o sea, sin
+justificación de estar bloqueadas). No es un caso aislado de `question_disputes`.
+
+**Bloqueaba mi encargo de flota (l6, 05/08):** no pude analizar ninguna impugnación — la cola
+devuelve 0 items siempre, sea cual sea el estado real. Sesión soltada sin trabajar impugnaciones por
+este motivo.
+
 ### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
 
 - **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
