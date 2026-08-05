@@ -705,4 +705,72 @@ describe('Sincronización por Eventos (Cross-Component)', () => {
     expect(hook1.current.questionsToday).toBe(hook2.current.questionsToday)
     expect(hook1.current.questionsRemaining).toBe(hook2.current.questionsRemaining)
   })
+
+  // [T-418] El CustomEvent de arriba viaja por `window` — dentro de UNA pestaña. Estos
+  // dos tests cubren el gap real: dos PESTAÑAS del mismo origen (jsdom no puede abrir dos
+  // ventanas, pero el `BroadcastChannel` nativo de Node SÍ entrega mensajes entre
+  // instancias con el mismo nombre de canal, que es justo el mecanismo que cruza pestañas
+  // en un navegador real — publicar desde un canal aparte simula fielmente "la otra
+  // pestaña").
+  describe('Sincronización cross-tab vía BroadcastChannel', () => {
+    test('la pestaña se entera cuando OTRA pestaña de la MISMA cuenta gasta el cupo', async () => {
+      mockRpc.mockResolvedValue({
+        data: { questions_today: 10, questions_remaining: 15, is_limit_reached: false, is_premium: false, reset_time: new Date().toISOString() },
+        error: null,
+      })
+
+      const { result } = renderHook(() => useDailyQuestionLimit())
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)) })
+      expect(result.current.questionsToday).toBe(10)
+
+      const otraPestana = new BroadcastChannel('vence-daily-limit')
+      await act(async () => {
+        otraPestana.postMessage({
+          userId: mockUser.id,
+          status: {
+            questionsToday: 25, questionsRemaining: 0, dailyLimit: 25, isLimitReached: true,
+            isPremiumUser: false, isGraduated: false, resetTime: null, loading: false, error: null,
+            multiCuentaDispositivo: false,
+          },
+        })
+        await new Promise(resolve => setTimeout(resolve, 30))
+      })
+      otraPestana.close()
+
+      // Sin esto, la pestaña B del repro (scratchpad/t418/sim-goteo-2pestanas.ts) seguía
+      // creyendo que le quedaba cupo y dejaba contestar una respuesta que el servidor
+      // rechazaba en silencio.
+      expect(result.current.questionsToday).toBe(25)
+      expect(result.current.isLimitReached).toBe(true)
+    })
+
+    test('IGNORA el broadcast de otra CUENTA en el mismo origen (perfil/incógnito aparte)', async () => {
+      mockRpc.mockResolvedValue({
+        data: { questions_today: 10, questions_remaining: 15, is_limit_reached: false, is_premium: false, reset_time: new Date().toISOString() },
+        error: null,
+      })
+
+      const { result } = renderHook(() => useDailyQuestionLimit())
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)) })
+      expect(result.current.questionsToday).toBe(10)
+
+      const otraPestana = new BroadcastChannel('vence-daily-limit')
+      await act(async () => {
+        otraPestana.postMessage({
+          userId: 'usuario-completamente-distinto',
+          status: {
+            questionsToday: 25, questionsRemaining: 0, dailyLimit: 25, isLimitReached: true,
+            isPremiumUser: false, isGraduated: false, resetTime: null, loading: false, error: null,
+            multiCuentaDispositivo: false,
+          },
+        })
+        await new Promise(resolve => setTimeout(resolve, 30))
+      })
+      otraPestana.close()
+
+      // El estado de esta cuenta NO se pisa con el de una cuenta ajena.
+      expect(result.current.questionsToday).toBe(10)
+      expect(result.current.isLimitReached).toBe(false)
+    })
+  })
 })
