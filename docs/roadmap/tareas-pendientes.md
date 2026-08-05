@@ -842,6 +842,56 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-584] 🟡 [ABIERTO 05/08] `core.hooksPath` del repo compartido apunta a `--version/_` en vez de `.husky/_` — bloquea `git commit` de forma intermitente para CUALQUIER sesión
+
+- **🙋 NECESITA DECISIÓN/ACCIÓN DE MANUEL** — tocar `.git/config` está fuera de lo que un trabajador puede hacer por su cuenta (regla dura: nunca tocar la config de git sin persona delante).
+- **De dónde sale.** Al intentar commitear el trabajo de esta sesión (dos fixes de pre-commit — ver [T-576] — y la ficha de [T-583]), `git commit` empezó a fallar con:
+  ```
+  sh: --version/_/pre-commit: opción inválida
+  ```
+  en vez de ejecutar el hook real. Confirmado que **no es cosa de mis cambios**: revirtiendo `.husky/pre-commit` a la versión de `HEAD` el fallo persiste igual.
+- **La causa, verificada con `git config --get core.hooksPath`:** en `/home/manuel/Documentos/github/vence/.git/config` (el config COMPARTIDO por todos los worktrees) hay:
+  ```
+  [core]
+      hooksPath = --version/_
+  ```
+  En vez del valor estándar de husky v9 (`.husky/_`). El directorio real en disco se llama literalmente `--version` (confirmado con `find`/`test -e`, no con `ls` — `ls -la "--version"` engaña porque `ls` interpreta el argumento como SU PROPIO flag `--version`). Dentro hay los shims de husky (`h`, `pre-commit`, `pre-push`…) y funcionan — el propio `--version/_/h` es el dispatcher real que ejecuta `sh -e ".husky/<hook>"` (por eso [T-576] lo pudo diagnosticar: `bash -x`/`sh -e` directo sobre `.husky/pre-commit` SÍ reproduce fielmente lo que corre en el commit real, cuando funciona).
+- **Por qué es INTERMITENTE, y esto es lo que no se ha terminado de explicar.** El PRIMER `git commit` de esta sesión SÍ invocó el hook real con éxito (se vio la salida completa de `.husky/pre-commit`, incluido el `husky - pre-commit script failed (code 1)` cuando algo dentro fallaba). Varios intentos después, `git commit` empezó a fallar SIEMPRE con el «opción inválida» de arriba, sin que yo tocara `core.hooksPath` ni nada relacionado con la resolución de hooks. Aislado el mecanismo: `env sh --version/_/pre-commit` (ruta RELATIVA, empieza por `--`) falla igual que el commit roto — bash/`sh` interpreta un argumento posicional que empieza por `--` como una opción larga, no como nombre de fichero — mientras que `env sh "/home/…/l5/--version/_/pre-commit"` (ruta ABSOLUTA) funciona bien. La hipótesis con más fundamento: git a veces resuelve `core.hooksPath` a ruta absoluta y a veces a relativa (posiblemente por algo en el estado de `git-worktree`/CWD interno del proceso), y solo en el segundo caso el nombre `--version` hace que `sh` se atragante. No he podido fijar el disparador exacto — puede necesitar reproducirlo con `GIT_TRACE=1`/`strace` desde una sesión con más margen de tiempo.
+- **Arreglo correcto (no se ha aplicado — requiere tocar git config, fuera de mi alcance como trabajador):**
+  ```
+  cd /home/manuel/Documentos/github/vence
+  mv "--version" .husky/_          # o el nombre que corresponda; comprobar que .husky/_ no exista ya
+  git config core.hooksPath .husky/_
+  ```
+  y confirmar con un commit de prueba (`--allow-empty`) que pasa limpio. Alternativa más simple si no hace falta el directorio custom: `npx husky init` puede regenerar la instalación estándar desde cero.
+- **Mientras tanto:** el trabajo de esta sesión (fixes de [T-576] + ficha de [T-583]) quedó **SIN COMMITEAR** en el worktree `/home/manuel/vence-sessions/l5` (rama `sesion/l5`), ficheros: `.husky/pre-commit`, `scripts/audit-temario-display-drift.cjs`, `docs/roadmap/tareas-pendientes.md`. Verificado con `sh -e .husky/pre-commit` (la invocación exacta que usa husky cuando SÍ resuelve la ruta bien) que los cambios PASAN el pre-commit completo — el bloqueo es puramente de resolución de ruta, no de contenido. **No usé `--no-verify`** (headers de la sesión lo prohíben expresamente) ni toqué `core.hooksPath` (regla dura: nunca tocar config de git sin persona delante).
+- **Esfuerzo: minutos** (el diagnóstico es la parte cara y ya está hecha; el arreglo en sí son 2 comandos).
+
+### [T-583] 🟡 [ABIERTO 05/08] Test Rápido/aleatorio sirve preguntas fuera de `topic_scope` (RD 534/2024 Cap. III+V, Carlos III) pese al fix de artículo de T-551/CARM
+
+- **De dónde sale.** Impugnaciones `dba485dc` y `410025b4` (mismo usuario, `auxiliar_administrativo_universidad_carlos_iii`, «Fuera de temario. CAP 5»), sobre dos preguntas del art. 28 del RD 534/2024 (prueba de acceso a la universidad para mayores de 25 años). El usuario tiene razón: el art. 28 vive en el **Capítulo V** del RD (`Procedimientos específicos de acceso y admisión`), y el `topic_scope` del Tema 17 de esa oposición **NO lo incluye** — solo escopa `[1-8, 22-26, 37-45]` (Caps I, II, IV, VI), que es justo lo que nombra el epígrafe oficial (nunca menciona "Prueba de acceso a la universidad" [Cap III] ni "Procedimientos específicos de acceso y admisión" [Cap V]). Verificado contra el índice del BOE (`curl` a `https://www.boe.es/buscar/act.php?id=BOE-A-2024-11858`, estructura de capítulos confirmada).
+- **El `topic_scope` está bien configurado — el defecto está en el SERVIDO.** No es un caso de scope mal escrito (a diferencia de [T-533]): aquí el dato es correcto y coherente con el epígrafe. El problema es que **Test Rápido sirvió preguntas fuera de ese scope de todas formas**.
+- **MEDIDO, no supuesto (`observable_events`, `event_type='question_evolution_dedup'`, sin tocar `user_profiles`):** de las **27 preguntas activas** del RD 534/2024 en los Capítulos III (arts. 9-21) y V (arts. 27-36) — los dos capítulos fuera del scope de esta oposición —, **24 se han servido** entre el 26/07 y el 05/08, con **73 servidas totales a 6 usuarios distintos**. No es un caso aislado de un usuario: es una fuga activa y repetida.
+- **Por qué es raro y hay que investigarlo, no solo recortar el scope (que aquí no aplica: el scope YA está bien).** El código de `lib/api/filtered-questions/queries.ts` (modo global, ~L1200) ya aplica `articleInPositionScopeExists` (`lib/api/_shared/topicScopeSql.ts`) como condición dura en el `WHERE` del modo global — el mismo fix que cerró exactamente esta clase de bug el 16/06/2026 (dispute `e7f0b57c`, Laura CARM, CE art. 134). Leído el código fuente actual, la condición debería excluir el art. 28. Que la fuga se siga midiendo en producción sugiere una de estas hipótesis, sin confirmar cuál:
+  1. El fix no está desplegado en el ECS vivo (lag de deploy — comprobar `deploy:pendiente` / sha en producción vs. el commit del fix).
+  2. Hay un segundo camino de servido para Test Rápido/aleatorio que no pasa por este `isGlobalMode` (revisar `/api/random-test/generate` y hermanos, que existen en el repo y no se auditaron aquí).
+  3. Un caso de tipos/casts en el `EXISTS` (`ts.article_numbers` es `text[]`, `articles.article_number` también texto — en principio compatible, pero no descartado sin repetir la query a mano contra Postgres).
+- **Repro / query de medición** (con `VENCE_LECTOR_URL`, sin PII):
+  ```sql
+  -- preguntas activas del RD 534/2024 en Cap III (9-21) y V (27-36)
+  SELECT q.id FROM questions q JOIN articles a ON a.id = q.primary_article_id
+  WHERE a.law_id = 'fe88e048-a750-4eaa-a8d7-86b8ee42a353' AND q.is_active = true
+    AND a.article_number ~ '^[0-9]+$'
+    AND (a.article_number::int BETWEEN 9 AND 21 OR a.article_number::int BETWEEN 27 AND 36);
+  -- cuántas veces se sirvieron (observable_events, sin PII, solo questionId)
+  SELECT count(distinct user_id), count(*), count(distinct metadata->>'questionId')
+  FROM observable_events WHERE event_type='question_evolution_dedup'
+    AND metadata->>'questionId' IN (<lista de arriba>);
+  -- resultado 05/08: 6 usuarios · 73 servidas · 24/27 preguntas
+  ```
+- **Qué hacer:** (1) confirmar si el commit del fix de `articleInPositionScopeExists` en modo global está realmente en el sha desplegado; (2) si sí, reproducir la query real que dispara `fetchQuickQuestions` a mano (con el `userId` de este caso) contra RDS para ver si el `EXISTS` se evalúa como se espera; (3) si el bug persiste con el fix desplegado y confirmado, es un caso nuevo distinto del de CARM y merece su propio análisis con `EXPLAIN`. **No tocar el `topic_scope` de esta oposición** — está bien como está.
+- **Esfuerzo: rato** (localizar la causa exacta puede ser rápido si es (1) deploy lag, o más largo si es (2)/(3)).
+
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
 - **Qué pasó (05/08).** El supervisor de la flota necesitaba comprobar si el arreglo de [T-576] hacía pasar el `pre-commit` con un rol restringido. En vez de reproducirlo en su propio árbol, **entró en el worktree de `l2`** —una sesión ajena— y ejecutó `git checkout HEAD -- .` para dejarlo limpio. Eso borró los **6 ficheros modificados** que `l2` tenía sin commitear: su trabajo entero de T-518, cuya única copia estaba ahí.
@@ -866,6 +916,14 @@
 - **Lo que NO se hizo, y por qué:** la otra salida que se barajó era que los trabajadores usaran `PRECOMMIT_TESTS_SKIP=1` en cada commit. Descartada: convertir un escape en rutina es exactamente cómo este repo ha perdido guardarraíles antes ([T-496]/[T-497] lo midieron — el escape se vuelve un prefijo que se copia de un comando a otro, y 6 de 10 no respondían a ningún bloqueo). El trabajador que lo reportó **se paró en vez de rodearlo**, que es lo que su encargo le pide.
 - **Falta (no se ha hecho):** un guardarraíl que impida que una suite que habla con la BD vuelva a colarse en `test:unit`. El registro `lib/admin/suiteRegistry.ts` ya hace esto para las carpetas de integración, con detección por imports; **el hueco es justo el complementario** —las que están FUERA de esas carpetas— y ahí es donde vive el fallo. Sin ese trinquete, esto vuelve en cuanto alguien añada una suite nueva.
 - **Esfuerzo: rato.**
+- **AÑADIDO (l5, 05/08 tarde): el arreglo de arriba NO era completo — quedaban DOS bloqueadores más, y uno de ellos NO es solo de la flota.** Al intentar commitear una ficha de backlog (docs-only) desde un worktree con rol `vence_coordinacion`, el `pre-commit` seguía muriendo con el fix de `test:unit` ya aplicado.
+  1. **`audit:display-drift` contra BD (paso 1b) hacía `exit 1` con `permission denied for table topics`.** Ese script consulta `topics` con `DATABASE_URL` directo, y `topics` no está en el grant de `vence_coordinacion`. A diferencia de `db:check`, este SÍ hace `exit 1` a propósito (está pensado para bloquear cuando hay drift real) — así que un permiso insuficiente se leía como "hay drift" y bloqueaba.
+     **Arreglo:** `scripts/audit-temario-display-drift.cjs` reintenta con `VENCE_LECTOR_URL` (que SÍ puede leer `topics` — confirmado, 3.942 filas visibles) cuando `DATABASE_URL` falla con `code==='42501'`. Así el chequeo sigue siendo REAL (compara título↔display de verdad) en vez de degradarse a un aviso vacío.
+  2. **El de fondo, y este afecta a CUALQUIER desarrollador, no solo a la flota:** con el paso (1) ya arreglado, el commit SEGUÍA muriendo, esta vez en el paso **1 `db:check`** — el que el propio comentario del script dice *"no bloquea"*. Comprobado con `bash -x`/`sh` invocando `.husky/pre-commit` DIRECTAMENTE: ahí sí "solo avisaba" como se supone. La diferencia es cómo lo invoca git de verdad: el dispatcher real de husky en esta instalación (`--version/_/h` — el propio directorio interno de husky quedó con ese nombre por un fallo de instalación, en vez de `.husky/_`, pero funciona igual) ejecuta el hook con **`sh -e "$s"`**. Bajo `set -e`, las dos líneas `npm run db:check` / `SCHEMA_EXIT_CODE=$?` matan el script ENTERO en cuanto `db:check` falla — nunca se llega a la línea que captura el código ni al "solo warning". El comentario "no bloquea" llevaba siendo falso desde que se escribió; nadie lo notó porque, en un desarrollador con `DATABASE_URL` de acceso completo, `db:check` casi nunca falla.
+     **Arreglo:** meter el comando dentro de la condición de un `if` (`if ! npm run db:check; then …`) — las condiciones de `if`/`while` están exentas de errexit por POSIX, es el idiomatismo estándar para esto bajo `set -e`.
+  **Verificado end-to-end con la invocación REAL de husky** (`sh -e .husky/pre-commit`, no una aproximación): pasa completo con el rol restringido de un trabajador — 1.047 suites, 22.937 tests, `audit:display-drift` real con 0 drift, exit 0.
+  **Sin test añadido** para ninguno de los dos (uno es un fallback de conexión de 8 líneas verificado por ejecución directa; el otro es shell de infraestructura sin arnés de test en este repo) — dado el alcance, dejarlo así en vez de montar un arnés nuevo para 2 líneas de shell.
+  **Sigue pendiente:** (a) un guardarraíl que impida que un script que lee tablas de negocio use `DATABASE_URL` en vez de `VENCE_LECTOR_URL` por defecto — si aparece un TERCER script con el mismo patrón, ya no es casualidad; (b) revisar si el bloque de `test:precommit && test:unit` más abajo en el mismo hook tiene el MISMO defecto de errexit-mata-antes-de-capturar (mismo patrón `comando; VAR=$?`) — ahí el efecto NETO es el mismo (bloquea, que es lo correcto) pero se saltaría los mensajes de ayuda («💡 Para solucionar…»), así que es cosmético y no se ha tocado; (c) el directorio `--version/_` (debería llamarse `.husky/_`) es un rastro de una instalación de husky rota — no se ha tocado por no ser causa de ningún bloqueo activo y por precaución (toca la resolución de TODOS los hooks del repo, no solo pre-commit).
 
 ### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
 

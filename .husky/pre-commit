@@ -10,12 +10,16 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#    OJO (T-583, 05/08): husky ejecuta este script con `sh -e` (ver --version/_/h — el
+#    dispatcher real de husky en esta instalación). Bajo `set -e`, `npm run db:check`
+#    seguido de `SCHEMA_EXIT_CODE=$?` en DOS LÍNEAS mata el script entero en cuanto
+#    db:check falla — nunca llega a la línea que captura el código, así que el
+#    comentario de arriba ("no bloquea") era falso desde que se escribió. Hay que
+#    meter el comando DENTRO de la condición del `if` (las condiciones de if/while
+#    están exentas de errexit por POSIX), no en dos líneas sueltas.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
-
-  if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+  if ! npm run db:check; then
     echo ""
     echo "⚠️  Schema desincronizado. Ver errores arriba."
     echo "   Para sincronizar: npm run db:pull"

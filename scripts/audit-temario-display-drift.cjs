@@ -73,12 +73,27 @@ async function main() {
   const DB_URL = process.env.DATABASE_URL;
   if (!DB_URL) { console.error('❌ DATABASE_URL no configurado'); process.exit(2); }
   const postgres = require('postgres');
-  const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
-
   const positions = args.filter((a) => !a.startsWith('--'));
-  const rows = positions.length
-    ? await sql`SELECT position_type, topic_number, title, descripcion_corta, epigrafe, description FROM topics WHERE position_type = ANY(${positions}) ORDER BY position_type, topic_number`
-    : await sql`SELECT position_type, topic_number, title, descripcion_corta, epigrafe, description FROM topics ORDER BY position_type, topic_number`;
+  const queryTopics = (sql) => positions.length
+    ? sql`SELECT position_type, topic_number, title, descripcion_corta, epigrafe, description FROM topics WHERE position_type = ANY(${positions}) ORDER BY position_type, topic_number`
+    : sql`SELECT position_type, topic_number, title, descripcion_corta, epigrafe, description FROM topics ORDER BY position_type, topic_number`;
+
+  const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
+  let rows;
+  try {
+    rows = await queryTopics(sql);
+  } catch (e) {
+    // DATABASE_URL de un trabajador de la flota es el rol de coordinación (4 tablas,
+    // sin `topics` por diseño — PII/seguridad). Si falla por PERMISO (no por conexión)
+    // y hay VENCE_LECTOR_URL disponible, reintentar con ese rol de lectura de negocio
+    // en vez de bloquear el pre-commit de todo trabajador (ver T-576).
+    const isPermissionDenied = e && e.code === '42501';
+    if (!isPermissionDenied || !process.env.VENCE_LECTOR_URL) throw e;
+    await sql.end({ timeout: 1 }).catch(() => {});
+    const lectorSql = postgres(process.env.VENCE_LECTOR_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
+    rows = await queryTopics(lectorSql);
+    await lectorSql.end({ timeout: 1 }).catch(() => {});
+  }
 
   let redCount = 0;
   const byPos = {};
