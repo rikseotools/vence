@@ -172,3 +172,79 @@ describe('a quién se le puede mandar un encargo AHORA', () => {
     expect(v.motivo).toMatch(/no se pudo ver/)
   })
 })
+
+// ── ANALIZAR UNA IMPUGNACIÓN: SÍ. ENVIARLA: NO. ─────────────────────────────────────────────
+// `esApta` las descarta del reparto automático porque acaban en un correo a una persona, y eso
+// sigue impedido por permiso. Lo que cambia es que ahora hay dónde dejar el borrador, y el trabajo
+// de verdad —dossier, contraste contra el boletín, ¿es sistémico?— es técnico y paralelizable.
+describe('el encargo de impugnaciones', () => {
+  const texto = ENC.encargoImpugnacion({ trabajador: 'l3' })
+
+  it('nombra al trabajador y deja claro que NO envía', () => {
+    expect(texto).toContain('l3')
+    expect(texto).toMatch(/NO la vas a enviar t[úu]/)
+  })
+
+  // Las reglas duras de las impugnaciones no se deducen de los datos: viven en el manual, y
+  // saltárselo es cómo se contesta mal a una persona que dedicó su tiempo a avisarnos.
+  it('le manda leer el manual ANTES que nada', () => {
+    expect(texto).toMatch(/impugnaciones-claude-code\.md/)
+    expect(texto).toMatch(/L[ÉE]ELO ENTERO PRIMERO/)
+  })
+
+  it.each([
+    ['coger UNA sola por la cola con claim atómico', /cola\.cjs next/],
+    ['abrir el dossier', /revisar-impugnacion\.cjs/],
+    ['verificar contra la fuente oficial', /FUENTE OFICIAL/],
+    ['medir si es sistémico, no suponerlo', /S[ÍI]ST[EÉ]MICO\?|M[ÍI]DELO/],
+    ['abrir ficha con la cifra si afecta a más', /reserve|Sin cifra no es un hallazgo/],
+    ['dejar el borrador, que es el entregable', /backlog\.cjs borrador/],
+    ['soltar la fila al terminar', /cola\.cjs release/],
+  ])('lleva el paso: %s', (_c, patron) => {
+    expect(texto).toMatch(patron as RegExp)
+  })
+
+  // El script se negaría igual (lib/sessions/aprobacion.cjs), pero decírselo evita que gaste el
+  // turno intentándolo y acabe pensando que la tarea es imposible.
+  it('le avisa de que cerrar.ts se negará con él', () => {
+    expect(texto).toMatch(/NO cierres la impugnaci[óo]n|cerrar\.ts/)
+  })
+
+  // Lo que vale para cualquier encargo tiene que llegar también aquí: si la cola común se queda
+  // fuera de una de las dos puertas, ese trabajador trabaja con otras reglas.
+  it('comparte la cola común con el encargo normal (método incluido)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { METODO } = require('@/lib/sessions/recordatorio.cjs')
+    for (const linea of METODO) expect(texto).toContain(linea)
+    expect(texto).toMatch(/NADA SALE HACIA UNA PERSONA/)
+    expect(texto).toMatch(/NO DEJES NADA/)
+    expect(texto).toMatch(/80%/)
+  })
+})
+
+describe('el registro de máquinas crece por FILAS, no por copias', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const MAQ = require('@/lib/flota/maquinas.cjs')
+
+  it('todo trabajador declarado tiene máquina y árbol', () => {
+    for (const { trabajador } of MAQ.trabajadoresEsperados()) {
+      expect(MAQ.maquinaDe(trabajador)).not.toBeNull()
+      expect(MAQ.arbolDe(trabajador)).toBeTruthy()
+    }
+  })
+
+  // El árbol de un trabajador local lleva su nombre: si dos compartieran árbol, el commit de uno
+  // se llevaría el trabajo del otro — exactamente lo que [T-415] persigue entre sesiones.
+  it('cada trabajador local tiene un árbol propio', () => {
+    const locales = MAQ.trabajadoresEsperados().filter((x: any) => MAQ.maquinaDe(x.trabajador).local)
+    const arboles = locales.map((x: any) => MAQ.arbolDe(x.trabajador))
+    expect(new Set(arboles).size).toBe(locales.length)
+  })
+
+  // `crear-worktree.sh` exige kebab-case: con 'L1' el arranque muere en la validación del slug.
+  it('los nombres son válidos como slug de worktree', () => {
+    for (const { trabajador } of MAQ.trabajadoresEsperados()) {
+      expect(trabajador).toMatch(/^[a-z0-9][a-z0-9-]*$/)
+    }
+  })
+})

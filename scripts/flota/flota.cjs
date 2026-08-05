@@ -373,7 +373,23 @@ async function main() {
 
     if (cmd === 'encargar') {
       const w = process.argv[3]
-      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn]'); return 2 }
+      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn | --impugnaciones]'); return 2 }
+
+      // ── IMPUGNACIONES: analizar SÍ, enviar NO ───────────────────────────────────────────
+      // No pasa por el backlog: la cola de impugnaciones tiene su propio claim atómico
+      // (`cola.cjs`, FOR UPDATE SKIP LOCKED), así que N trabajadores cogen N impugnaciones
+      // distintas sin coordinarse. Lo que produce es un BORRADOR que aprueba una persona.
+      if (process.argv.includes('--impugnaciones')) {
+        const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
+        const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w }), { alDia })
+        if (!r.ok) {
+          console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          return 1
+        }
+        console.log(`✅ ${w} → analizar una impugnación (cogerá una libre de la cola). Dejará BORRADOR, no enviará nada.`)
+        return 0
+      }
+
       let tarea = null
       const pedida = arg('--tarea')
       if (pedida) {
