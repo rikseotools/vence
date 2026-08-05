@@ -1108,70 +1108,6 @@ Las dos primeras vueltas de esta ficha midieron por el campo equivocado (`questi
 - **Es 🟢 a propósito:** nada está roto y la herramienta se invoca con una frase. Lo que se gana es que el número no se quede viejo en silencio.
 
 - **CABO SUELTO concreto que salió del barrido y no tiene dueño:** `administrativo-estado` y `administrativo-seguridad-social` **comparten el mismo `programa_url`** (`BOE-A-2026-9946`, el RD de la OEP 2026). Dos oposiciones distintas no pueden tener el mismo temario, y encima ese documento no es un temario. Se apuntó en [T-552] pero esa ficha ya está cerrada: se repite aquí para que no se pierda. Va por la frase *«revisa los enlaces de convocatoria»*.
-### [T-559] 🔴 [ABIERTO 05/08] El gemelo backend guarda la ley como el literal `unknown`: la notificación publica una ley inventada y su botón de teoría da 404
-
-**Cómo se encontró:** feedback `79715a80` de Marta Pérez Llorente (premium, aux. admin. Madrid), 05/08/2026,
-con captura: *«Algunos test intensivos me aparecen así y luego al pinchar da error»*. La tarjeta decía
-**«2 Artículos Problemáticos: unknown»** y **«unknown · 2 artículos»** (Art. 190 y Art. 3, 0% aciertos).
-
-**Causa raíz — divergencia de GEMELOS.** `backend/src/test-answers/test-answers.service.ts:208`:
-
-```ts
-lawName: req.questionData.article?.law_short_name || 'unknown',
-```
-
-El gemelo Next.js (`lib/api/test-answers/queries.ts:210-213`) recibió el arreglo en junio/2026
-(`resolveLawShortNameFromArticle`: resuelve la ley desde `article_id` y escribe `null` si no puede,
-nunca el literal). **El gemelo del backend nunca lo recibió**, y encima tiene el `articleId` a mano
-dos líneas más arriba (línea 176) sin usarlo. No existe test de paridad entre los dos escritores
-(sí los hay para `fraud-sweep` y `content-sweep`).
-
-**Segundo defecto, en el MISMO camino:** el arreglo de junio filtra el hueco (`|| null`) pero **no
-filtra el literal si llega del cliente** — `req.questionData.article?.law_short_name || null` deja
-pasar `'unknown'` tal cual. O sea que la puerta de entrada sigue abierta en los dos gemelos.
-
-**Alcance medido (RDS, 05/08):**
-
-| | |
-|---|---|
-| Filas `test_questions.law_name='unknown'` | **15.109** (253 usuarios) |
-| Últimos 30 días | **11.506** (190 usuarios) |
-| Con `article_id` resoluble → recuperables | **15.057 (99,7%)** |
-| Reparto | solo `test_type='practice'` (6.680 vs 131.617 correctas, ≈4,8%); en `exam`, **0** |
-| Leyes afectadas | todas (CE 2.339, Ley 39/2015 1.103, Word/Excel/Access…) — no es de una ley, es del CAMINO |
-
-**Las tres consecuencias que ve el usuario:**
-
-1. **Ley inventada.** El agrupador de la notificación agrupa por `law_name`, así que artículos de
-   Excel 365, Word 365 y Access 365 se funden en una sola ley falsa llamada «unknown».
-2. **404.** «Ver Teoría» → `generateActionUrl` → `/teoria/unknown` → **404 comprobado en producción**
-   (`/teoria/access` da 200 con la misma forma de ruta).
-3. **Test que miente en silencio.** «Test Intensivo (4 preguntas)» → `/test/rapido?articles=190,3&law=unknown`,
-   y `/test/rapido` **ignora** `articles` y `law` (solo los usa `testType='articulos-dirigido'`) → le sirvió
-   preguntas del art. 83 CE y de la Ley 1/1983 CM cuando la tarjeta prometía Excel art. 190. Sin error.
-
-**Por qué nadie lo vio en 6 meses:** cero rastro. Ni `validation_error_logs` ni `observable_events`
-tienen una sola fila de esto. Los escudos anti-`unknown` que dejó el arreglo de junio están en
-`components/test/TemaTestPage.tsx:321` y `components/test/ArticulosEstudioPrioritario.tsx:12`, pero
-**NO en `components/NotificationBell.tsx`** (su `generateLawSlug`, línea 518, devuelve `'unknown'` para
-lo vacío y deja pasar el literal) — o sea, la única superficie sin escudo es justo la que se lo publica
-al usuario.
-
-**Lección de método (ya en memoria):** un fallback que rellena el hueco es un fallo silencioso.
-Sustituir `'unknown'` por `null` a secas sería el mismo defecto con otra cara: lo que falta es
-RESOLVER (el dato está a mano) y EMITIR cuando de verdad no se pueda.
-
-**Plan (capas):**
-- **Raíz:** núcleo puro compartido que resuelve la ley desde `article_id` y decide qué se persiste,
-  importado por los DOS gemelos — no una tercera copia.
-- **Puerta de entrada:** rechazar el literal `'unknown'` venga de donde venga.
-- **Guardarraíl de paridad** entre los dos escritores (mutación: romper uno y ver el rojo).
-- **Backfill** de las 15.057 recuperables desde `article_id`.
-- **Escudo + observabilidad** en la notificación: no publicar una ley que no resuelve, y emitirlo.
-- **Detector** para que la regresión no vuelva a esperar a que escriba una usuaria.
-
-**Feedback origen:** `79715a80-74a6-44ba-a657-30bd673f7356` (pendiente de responder a Marta).
-
 ### [T-551] 🔴 [ABIERTO 04/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
 
 **El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
@@ -4627,6 +4563,69 @@ Se le escribió preguntando si quiere el borrado definitivo o solo dejar de reci
 **Gotcha del camino, que costó un 409.** Un feedback de `account_deletion` **no trae conversación**, así que `cerrar-feedback.ts` lo rechaza con *«El feedback no tiene conversacion abierta»*. Hay que crearla primero con `POST /api/v2/admin/feedback/start-conversation` (`{feedbackId, userId}`) y entonces responder. Es el mismo modo de fallo que el kind `feedback_sin_conversacion`, del que las bajas están **excluidas a propósito** porque normalmente no se contestan: en cuanto una baja sí merece respuesta, aparece la pared.
 
 **Relacionadas:** [T-545] (el hallazgo de las oposiciones de comunidad, que es lo que la dejó sin contenido).
+### [T-559] ✅ [HECHA 05/08] El gemelo backend guardaba la ley como el literal `unknown`: la notificación publicaba una ley inventada y su botón de teoría daba 404
+
+**Cómo se encontró:** feedback `79715a80` de Marta Pérez Llorente (premium, aux. admin. Madrid), 05/08/2026,
+con captura: *«Algunos test intensivos me aparecen así y luego al pinchar da error»*. La tarjeta decía
+**«2 Artículos Problemáticos: unknown»** y **«unknown · 2 artículos»** (Art. 190 y Art. 3, 0% aciertos).
+
+**Causa raíz — divergencia de GEMELOS.** `backend/src/test-answers/test-answers.service.ts:208`:
+
+```ts
+lawName: req.questionData.article?.law_short_name || 'unknown',
+```
+
+El gemelo Next.js (`lib/api/test-answers/queries.ts:210-213`) recibió el arreglo en junio/2026
+(`resolveLawShortNameFromArticle`: resuelve la ley desde `article_id` y escribe `null` si no puede,
+nunca el literal). **El gemelo del backend nunca lo recibió**, y encima tiene el `articleId` a mano
+dos líneas más arriba (línea 176) sin usarlo. No existe test de paridad entre los dos escritores
+(sí los hay para `fraud-sweep` y `content-sweep`).
+
+**Segundo defecto, en el MISMO camino:** el arreglo de junio filtra el hueco (`|| null`) pero **no
+filtra el literal si llega del cliente** — `req.questionData.article?.law_short_name || null` deja
+pasar `'unknown'` tal cual. O sea que la puerta de entrada sigue abierta en los dos gemelos.
+
+**Alcance medido (RDS, 05/08):**
+
+| | |
+|---|---|
+| Filas `test_questions.law_name='unknown'` | **15.109** (253 usuarios) |
+| Últimos 30 días | **11.506** (190 usuarios) |
+| Con `article_id` resoluble → recuperables | **15.057 (99,7%)** |
+| Reparto | solo `test_type='practice'` (6.680 vs 131.617 correctas, ≈4,8%); en `exam`, **0** |
+| Leyes afectadas | todas (CE 2.339, Ley 39/2015 1.103, Word/Excel/Access…) — no es de una ley, es del CAMINO |
+
+**Las tres consecuencias que ve el usuario:**
+
+1. **Ley inventada.** El agrupador de la notificación agrupa por `law_name`, así que artículos de
+   Excel 365, Word 365 y Access 365 se funden en una sola ley falsa llamada «unknown».
+2. **404.** «Ver Teoría» → `generateActionUrl` → `/teoria/unknown` → **404 comprobado en producción**
+   (`/teoria/access` da 200 con la misma forma de ruta).
+3. **Test que miente en silencio.** «Test Intensivo (4 preguntas)» → `/test/rapido?articles=190,3&law=unknown`,
+   y `/test/rapido` **ignora** `articles` y `law` (solo los usa `testType='articulos-dirigido'`) → le sirvió
+   preguntas del art. 83 CE y de la Ley 1/1983 CM cuando la tarjeta prometía Excel art. 190. Sin error.
+
+**Por qué nadie lo vio en 6 meses:** cero rastro. Ni `validation_error_logs` ni `observable_events`
+tienen una sola fila de esto. Los escudos anti-`unknown` que dejó el arreglo de junio están en
+`components/test/TemaTestPage.tsx:321` y `components/test/ArticulosEstudioPrioritario.tsx:12`, pero
+**NO en `components/NotificationBell.tsx`** (su `generateLawSlug`, línea 518, devuelve `'unknown'` para
+lo vacío y deja pasar el literal) — o sea, la única superficie sin escudo es justo la que se lo publica
+al usuario.
+
+**Lección de método (ya en memoria):** un fallback que rellena el hueco es un fallo silencioso.
+Sustituir `'unknown'` por `null` a secas sería el mismo defecto con otra cara: lo que falta es
+RESOLVER (el dato está a mano) y EMITIR cuando de verdad no se pueda.
+
+**Plan (capas):**
+- **Raíz:** núcleo puro compartido que resuelve la ley desde `article_id` y decide qué se persiste,
+  importado por los DOS gemelos — no una tercera copia.
+- **Puerta de entrada:** rechazar el literal `'unknown'` venga de donde venga.
+- **Guardarraíl de paridad** entre los dos escritores (mutación: romper uno y ver el rojo).
+- **Backfill** de las 15.057 recuperables desde `article_id`.
+- **Escudo + observabilidad** en la notificación: no publicar una ley que no resuelve, y emitirlo.
+- **Detector** para que la regresión no vuelva a esperar a que escriba una usuaria.
+
+**Feedback origen:** `79715a80-74a6-44ba-a657-30bd673f7356` — respondida el 05/08 (email + campana) y emitida su recompensa de bug (3 €).
 
 
 ### [T-477] ✅ [HECHA 05/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`

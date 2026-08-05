@@ -328,12 +328,34 @@ export type EstadoIconoRecompensas = 'sin_saldo' | 'con_saldo' | 'cobrable'
 
 export interface IconoRecompensas {
   estado: EstadoIconoRecompensas
-  /** Importe del vale que YA se puede pedir. `null` mientras no llegue al mínimo: no se pinta. */
-  importeCobrable: number | null
+  /**
+   * SALDO REAL que se pinta en el chip. `null` mientras no llegue al mínimo: no se pinta.
+   *
+   * Antes aquí iba la DENOMINACIÓN del vale (5/10/20…), y eso escondía dinero del usuario:
+   * Alfonso tenía 18 € y el chip le decía «10 €», con el title rematando «Tienes 10 € listos
+   * para canjear». El chip es el único sitio donde la mayoría mira —96 % de los premium ni sabe
+   * que el programa existe— así que rebajar ahí la cifra es rebajar el incentivo entero.
+   * Corregido por decisión de Manuel (05/08/2026).
+   */
+  importeMostrado: number | null
+  /**
+   * Lo que puede pedirse HOY (denominación fija ≤ saldo). No se pinta en el chip; vive aquí para
+   * que el `titulo` pueda decir las DOS cosas sin que ninguna mienta.
+   */
+  importeCanjeableAhora: number | null
   /** Punto de novedad: hay ingresos que el usuario aún no ha visto. */
   hayNovedad: boolean
   /** Texto del `title`/`aria-label`. Se decide aquí para que no diverja del estado pintado. */
   titulo: string
+}
+
+/**
+ * Euros para pantalla: entero sin decimales (`18`), y con ellos solo si los tiene (`7,50`).
+ * Coma decimal porque el usuario es español; `18.00 €` se lee como un precio importado.
+ */
+export function formatearEuros(n: number): string {
+  const v = Math.round(n * 100) / 100
+  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',')
 }
 
 /**
@@ -351,24 +373,33 @@ export function estadoIconoRecompensas({
   if (cobrable > 0) {
     return {
       estado: 'cobrable',
-      importeCobrable: cobrable,
+      // El SALDO, no el vale. Ver el porqué en `importeMostrado`.
+      importeMostrado: saldo,
+      importeCanjeableAhora: cobrable,
       hayNovedad,
-      titulo: `Tienes ${cobrable} € listos para canjear`,
+      // El título dice las dos cosas cuando NO coinciden (18 € de saldo, vale de 10 €). Si
+      // coinciden, repetirlo suena a trabalenguas y no aporta.
+      titulo:
+        cobrable === saldo
+          ? `Tienes ${formatearEuros(saldo)} € listos para canjear`
+          : `Tienes ${formatearEuros(saldo)} € — puedes canjear ${cobrable} € ahora y el resto se acumula`,
     }
   }
   if (saldo > 0) {
     return {
       estado: 'con_saldo',
-      importeCobrable: null,
+      importeMostrado: null,
+      importeCanjeableAhora: null,
       hayNovedad,
       // Sin cifra en el icono, pero el title sí puede decir cuánto falta: quien pasa el ratón
       // está preguntando, y ahí la respuesta honesta ayuda en vez de decepcionar.
-      titulo: `Llevas ${saldo.toFixed(2).replace(/\.00$/, '')} € — a partir de ${MIN_PAYOUT_EUR} € puedes canjear`,
+      titulo: `Llevas ${formatearEuros(saldo)} € — a partir de ${MIN_PAYOUT_EUR} € puedes canjear`,
     }
   }
   return {
     estado: 'sin_saldo',
-    importeCobrable: null,
+    importeMostrado: null,
+    importeCanjeableAhora: null,
     hayNovedad,
     titulo: 'Recompensas — gana por recomendar Vence, reportar fallos y opinar',
   }

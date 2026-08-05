@@ -10,7 +10,7 @@
 // `lib/referrals/logic.ts`, con tests); este componente solo lo pinta.
 'use client'
 import Link from 'next/link'
-import type { IconoRecompensas } from '../lib/referrals/logic'
+import { formatearEuros, type IconoRecompensas } from '../lib/referrals/logic'
 
 export function RewardsIcon({ icono, href = '/recompensas?src=header' }: { icono: IconoRecompensas; href?: string }) {
   return (
@@ -24,11 +24,13 @@ export function RewardsIcon({ icono, href = '/recompensas?src=header' }: { icono
           mínimo no hay vale que pedir y escribir «1 €» lleva a un clic que acaba en decepción. */}
       <span className={`text-lg transition-all duration-300 ${icono.estado === 'sin_saldo' ? 'grayscale opacity-60' : ''}`}>🎁</span>
 
-      {/* La cifra aparece SOLO cuando ya se puede canjear, y es la del VALE (denominación fija),
-          no el saldo entero: con 7 € el vale es de 5 € y quedan 2 € acumulados. */}
-      {icono.importeCobrable !== null && (
+      {/* La cifra aparece SOLO cuando ya se puede canjear, y es el SALDO REAL — no la
+          denominación del vale. Antes se pintaba el vale y eso escondía dinero del usuario: con
+          18 € de saldo el chip decía «10 €». Lo que sí se puede pedir hoy lo cuenta el `title`.
+          Cambiado por decisión de Manuel (05/08/2026). */}
+      {icono.importeMostrado !== null && (
         <span className="ml-1 text-xs font-bold text-green-600 dark:text-green-400 tabular-nums">
-          {icono.importeCobrable}€
+          {formatearEuros(icono.importeMostrado)}€
         </span>
       )}
 
