@@ -248,3 +248,42 @@ describe('el registro de máquinas crece por FILAS, no por copias', () => {
     }
   })
 })
+
+// ── EL SUPERVISOR NO PUEDE DEPENDER DE QUE ALGUIEN LE PREGUNTE ──────────────────────────────
+// Sabía repartir, pero solo cuando se lo pedían. Y como el turno de un `claude -p` muere al
+// terminar, la consecuencia real era que la flota se paraba entera y nadie se enteraba hasta la
+// siguiente vez que Manuel preguntaba — medido el 05/08 con ocho trabajadores en pie y seis sin
+// hacer nada. Un panel que hay que mirar no es vigilancia.
+describe('el bucle de vigilancia', () => {
+  const src = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('existe y se puede acotar en cadencia y duración', () => {
+    expect(src).toMatch(/cmd === 'vigilar'/)
+    expect(src).toMatch(/--cada/)
+    expect(src).toMatch(/--vueltas/)
+  })
+
+  // Pasa por la MISMA puerta que el reparto manual: si tuviera su propio camino de envío, se
+  // quedaría sin las comprobaciones que se le añadan a la otra ([T-130]).
+  it('reparte por mandarEncargo, no por su cuenta', () => {
+    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
+    expect(bloque).toMatch(/mandarEncargo\(/)
+    expect(bloque).not.toMatch(/tmux send-keys/)
+  })
+
+  // Un turno muerto se relanza CON SU TAREA. Darle otra encima de un trabajo a medias es como se
+  // pierde ese trabajo, que es exactamente lo que la puerta del clon existe para evitar.
+  it('a quien tiene tarea cogida y sin proceso le devuelve LA SUYA', () => {
+    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
+    expect(bloque).toMatch(/reanuda:\s*true/)
+    expect(bloque).toMatch(/tarea:\s*suya/)
+  })
+
+  // Lo que es de una persona sigue siéndolo: automatizar la aprobación sería justo lo que este
+  // sistema no quiere.
+  it('no responde preguntas ni aprueba borradores', () => {
+    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
+    expect(bloque).not.toMatch(/responder|answer\s*=|aprob/i)
+  })
+})

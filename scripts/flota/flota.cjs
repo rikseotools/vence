@@ -437,6 +437,65 @@ async function main() {
       return 0
     }
 
+    // ── VIGILAR: la flota se mantiene ocupada SOLA ────────────────────────────────────────
+    // Hasta aquí el supervisor sabía repartir… pero solo cuando alguien se lo pedía. Y como el
+    // turno de un `claude -p` muere al terminar, la consecuencia real era que **la flota se paraba
+    // entera y nadie se enteraba hasta la siguiente vez que Manuel preguntaba** — medido el 05/08
+    // más de una vez, con ocho trabajadores en pie y seis sin hacer nada.
+    //
+    // Un panel que hay que mirar no es vigilancia: es un panel. Esto es el bucle que faltaba.
+    //
+    // Lo que hace en cada vuelta, y NADA más:
+    //   · a quien esté libre y vivo, le da trabajo (por el mismo `mandarEncargo`, con sus puertas)
+    //   · a quien tenga tarea cogida y NINGÚN proceso, le relanza el turno con SU tarea
+    // No responde preguntas, no aprueba borradores y no toca a las sesiones de Manuel: eso es de
+    // una persona, y automatizarlo sería justo lo que este sistema no quiere.
+    if (cmd === 'vigilar') {
+      const cada = Math.max(60, Number(arg('--cada') || 300))
+      const vueltas = Number(arg('--vueltas') || 0)   // 0 = para siempre
+      console.log(`👁️  vigilando la flota cada ${cada}s${vueltas ? ` (${vueltas} vueltas)` : ''}. Ctrl-C para parar.`)
+      for (let n = 1; !vueltas || n <= vueltas; n++) {
+        const sesiones = await sql`
+          SELECT sid, slug, last_signal_at FROM public.worktree_sessions WHERE rol = 'trabajador'`
+        const enCurso = await sql`
+          SELECT id, title, claimed_by FROM public.backlog_tasks
+           WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
+        const porSlug = new Map(sesiones.map((x) => [x.slug, x.sid]))
+        const tareaDe = (w) => enCurso.find((t) => t.claimed_by === porSlug.get(w))
+
+        const sello = new Date().toISOString().slice(11, 19)
+        let movidos = 0
+        for (const { trabajador } of MAQ.trabajadoresEsperados()) {
+          if (!sesionViva(trabajador)) continue
+          // ¿Está ejecutando algo? Entonces no se le toca, tenga tarea o no.
+          if (!ENC.puedeRecibir(comandoDelPanel(trabajador)).libre) continue
+
+          const suya = tareaDe(trabajador)
+          try {
+            if (suya) {
+              // Tarea cogida y sin proceso: su turno murió. Se relanza CON SU TAREA, no con otra —
+              // empezar algo nuevo encima de un trabajo a medias es como se pierde ese trabajo.
+              const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
+              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya }), { alDia })
+              if (r.ok) { console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++ }
+              else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+            } else {
+              const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
+              const r = mandarEncargo(trabajador, ENC.encargoImpugnacion({ trabajador }), { alDia })
+              if (r.ok) { console.log(`   [${sello}] ✅ ${trabajador} → una impugnación`); movidos++ }
+              else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+            }
+          } catch (e) {
+            console.log(`   [${sello}] ❌ ${trabajador}: ${String(e.message || e).slice(0, 70)}`)
+          }
+        }
+        if (!movidos) console.log(`   [${sello}] todo en marcha, nada que repartir`)
+        if (vueltas && n === vueltas) break
+        await new Promise((r) => setTimeout(r, cada * 1000))
+      }
+      return 0
+    }
+
     // ── LANZAR UN TRABAJADOR EN EL PORTÁTIL ───────────────────────────────────────────────
     // El equivalente local de `arrancar-trabajador.sh`, sin usuario nuevo ni systemd: la sesión es
     // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
@@ -607,7 +666,7 @@ async function main() {
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    console.error('Uso: flota.cjs [estado] | vigilar [--cada 300] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}
