@@ -481,3 +481,43 @@ describe('el rescate automático', () => {
     expect(bloque).toMatch(/emitirTurno\(w, ok \? 'rescatado' : 'rescate_fallido'/)
   })
 })
+
+// ── UN FILTRO QUE SOBREVIVE A SU MOTIVO ES UN BLOQUEO SIN MOTIVO ────────────────────────────
+// Los dos falsos positivos los reportó otra sesión, no un test — y ese es el dato: una tarea que el
+// reparto salta en CADA vuelta no aparece en ningún sitio. No falla, solo deja de repartir.
+describe('la criba y sus falsos positivos', () => {
+  // «factur» a secas era demasiado ancho: en este repo casi toda tarea valiosa justifica su
+  // prioridad con lo que vende. [T-585] —corpus documental, contenido puro— llevaba rondas
+  // saltándose sola porque su ficha dice «factura 1.691 €/90d».
+  it('el dinero como CONTEXTO no descarta; como ASUNTO sí', () => {
+    expect(ENC.esApta(t('El corpus documental de las que MÁS VENDEN está vacío: Madrid factura 1.691 €/90d')).apta).toBe(true)
+    for (const titulo of [
+      'Nila tiene NUEVE precios activos con duplicados',
+      'Unificar stripe-fees-summary a las dos cuentas',
+      'Las 184 suscripciones que se apagan solas no reciben aviso',
+      'Revisar la facturación de julio',
+    ]) expect(ENC.esApta(t(titulo)).apta).toBe(false)
+  })
+
+  // El filtro del deploy dejó de ser universal el 05/08, cuando los locales pasaron a cerrar el
+  // ciclo entero. Se quedó atrás descartando 6 tareas abiertas que sí podían hacerse.
+  it('desplegar solo descarta a quien NO puede desplegar', () => {
+    const tarea = t('Desplegar el backend con el arreglo del cron')
+    expect(ENC.esApta(tarea).apta).toBe(false)
+    expect(ENC.esApta(tarea, { puedeDesplegar: true }).apta).toBe(true)
+  })
+
+  // Poder desplegar no abre las demás puertas: lo que protege a los usuarios no depende de eso.
+  it('pero poder desplegar NO relaja lo demás', () => {
+    for (const titulo of [
+      'Responder a la impugnación de Sergio',
+      'Mandar la newsletter de agosto',
+      'El cobro de Stripe falla en el primer intento',
+    ]) expect(ENC.esApta(t(titulo), { puedeDesplegar: true }).apta).toBe(false)
+  })
+
+  it('y `elegir` le pasa la capacidad a la criba', () => {
+    const r = ENC.elegir([t('Desplegar el frontend', 'T-1'), t('Auditar el scope', 'T-2')], { puedeDesplegar: true })
+    expect(r.tarea.id).toBe('T-1')
+  })
+})
