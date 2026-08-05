@@ -762,6 +762,12 @@ Equipo de Vence
 
 **Notas de tono:**
 - Firmar siempre con "Equipo de Vence" al final.
+- **SIEMPRE en PRIMERA PERSONA DEL PLURAL** (Manuel, 05/08/2026, textual: *«además he comprobado no,
+  hemos comprobado, siempre en plural»*). *«Hemos comprobado»*, *«hemos revisado»*, *«te
+  confirmamos»* — **nunca** *«he comprobado»*, *«he revisado»*, *«no puedo»*. Es la firma vista
+  desde dentro del texto: si el mensaje lo firma un equipo, el singular delata a un individuo
+  detrás y rompe justo lo que la firma construye. Medido el 05/08 sobre los borradores de la
+  flota: **4 de 26** se habían escrito en singular, y ninguna de las capas lo miraba.
 - **NO usar fórmulas de apertura tipo "Gracias por avisar", "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. NO abrir el mensaje agradeciendo el aviso: entrar directo al reconocimiento ("Tenías razón…") o a la corrección. El único agradecimiento válido es el cierre "Muchas gracias." al final.
 - Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
 - **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.

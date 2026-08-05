@@ -1763,6 +1763,11 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         if (dup.duplicado) { console.error(BORR.mensajeDuplicado(dup)); process.exit(3); }
       }
 
+      // El mensaje lo firma «Equipo de Vence», así que va en plural. Avisa, no bloquea: puede
+      // estar CITANDO al usuario, y ahí el singular es correcto.
+      const enSingular = BORR.primeraPersonaSingular(cuerpo);
+      if (enSingular.length) console.error(BORR.avisoPlural(enSingular));
+
       // El «question» es lo que Manuel ve en una línea; el cuerpo íntegro va en `context`.
       const titular = (resumen || `Borrador para ${para}: ¿lo apruebo tal cual?`).trim();
       const [r] = await s`

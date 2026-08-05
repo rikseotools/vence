@@ -101,3 +101,33 @@ describe('sqlSinBorradorPendiente — el mismo criterio, en la puerta de la cola
     expect(sqlSinBorradorPendiente()).toContain('left(id::text, 8)')
   })
 })
+
+// ── EL MENSAJE LO FIRMA UN EQUIPO, ASÍ QUE VA EN PLURAL ─────────────────────────────────────
+// Norma de Manuel (05/08/2026): «además he comprobado no, hemos comprobado, siempre en plural».
+// Medido ese día: 4 de 26 borradores de la flota estaban en singular y ninguna capa lo miraba.
+describe('primeraPersonaSingular — la firma vista desde dentro del texto', () => {
+  const { primeraPersonaSingular, avisoPlural } = require(
+    require('path').join(process.cwd(), 'lib', 'backlog', 'borradores.cjs'))
+
+  it('caza las formas reales que aparecieron en los borradores', () => {
+    expect(primeraPersonaSingular('He comprobado el atajo contra la documentación.')).toHaveLength(1)
+    expect(primeraPersonaSingular('BLOQUEADO: no puedo leer target_oposicion.')).toHaveLength(1)
+    expect(primeraPersonaSingular('He revisado tu impugnación sobre el artículo 68.')).toHaveLength(1)
+  })
+
+  it('deja pasar el plural, que es lo correcto', () => {
+    expect(primeraPersonaSingular('Hemos comprobado el atajo con la documentación oficial.')).toEqual([])
+    expect(primeraPersonaSingular('Te confirmamos que la clave es la B.')).toEqual([])
+  })
+
+  it('no confunde el «he» de otra palabra ni el plural que lo contiene', () => {
+    expect(primeraPersonaSingular('El archivo adjunto he.pdf no existe')).toEqual([])
+    expect(primeraPersonaSingular('Hemos comprobado')).toEqual([])
+  })
+
+  it('AVISA, no bloquea: el aviso dice que una cita en singular es legítima', () => {
+    const aviso = avisoPlural(['He comprobado'])
+    expect(aviso).toMatch(/CITA/i)
+    expect(aviso).toMatch(/hemos comprobado/i)
+  })
+})
