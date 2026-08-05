@@ -99,6 +99,14 @@ NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
   "falta VENCE_COORDINACION_URL (rol vence_coordinacion, NO el .env.local del portátil).
    Procedimiento: docs/runbooks/sistema-sesiones-paralelas.md §6.quater"
 
+# El rol de LECTURA es opcional pero casi siempre necesario (T-486): sin él, el trabajador puede
+# coordinarse pero no diagnosticar — la primera tarea real de la flota se quedó a medias por esto.
+# Se avisa en vez de exigirlo, porque un trabajador solo de coordinación sigue siendo legítimo.
+if [ -z "${VENCE_LECTOR_URL:-}" ]; then
+  echo "⚠️  sin VENCE_LECTOR_URL: este trabajador NO podrá leer datos de negocio."
+  echo "    Podrá reclamar y entregar, pero no diagnosticar (barridos, auditorías, triajes)."
+fi
+
 # ── 2. CLAUDE CODE ──────────────────────────────────────────────────────────────────────────
 command -v claude >/dev/null || { echo "→ instalando Claude Code…"; npm install -g @anthropic-ai/claude-code; }
 echo "→ claude $(claude --version 2>/dev/null || echo '?')"
@@ -140,7 +148,12 @@ else
 fi
 # La coordinación va donde el andamiaje la busca, y SOLO ella: ni pagos ni AUTH_SECRET.
 umask 077
-printf 'DATABASE_URL=%s\n' "$VENCE_COORDINACION_URL" > "$WT/.env.local"
+{
+  printf 'DATABASE_URL=%s\n' "$VENCE_COORDINACION_URL"
+  # La de lectura va APARTE y con otro nombre: mezclarlas en DATABASE_URL obligaría a elegir una,
+  # y el trabajador necesita las dos — coordinarse con una, diagnosticar con la otra.
+  [ -n "${VENCE_LECTOR_URL:-}" ] && printf 'VENCE_LECTOR_URL=%s\n' "$VENCE_LECTOR_URL"
+} > "$WT/.env.local"
 chown "$USUARIO:$USUARIO" "$WT/.env.local"
 
 # ── 6. LA CREDENCIAL, PERSISTIDA UNA SOLA VEZ ───────────────────────────────────────────────
@@ -160,6 +173,7 @@ VENCE_SESSION_ROLE=trabajador
 VENCE_SESSION_HOME=$WT
 VENCE_SESSION_HOST=${VENCE_SESSION_HOST:-$(hostname -s)}
 DATABASE_URL=$VENCE_COORDINACION_URL
+VENCE_LECTOR_URL=${VENCE_LECTOR_URL:-}
 ENVF
 chown "$USUARIO:$USUARIO" "$ENV_FILE"
 chmod 600 "$ENV_FILE"

@@ -1816,6 +1816,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`CLAUDE_CODE_OAUTH_TOKEN`**, así que se arranca `claude` normal aunque bare sea lo que ' +
       'recomiendan para CI. La cuenta la decide `lib/flota/cuentas.cjs`.',
   },
+  canary_rol_lector: {
+    titulo: 'El rol de LECTURA de la flota: que lea lo que el trabajo necesita y NADA que identifique a una persona',
+    ruta: 'scripts/canary-rol-lector.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`VENCE_LECTOR_URL=… npm run canary:rol-lector`. Nace de la PRIMERA tarea real de la flota ' +
+      '(T-476): tres de las cuatro alertas no se pudieron triar porque el rol de coordinación solo ' +
+      'escribe — y casi todo el trabajo apto (barridos, auditorías de scope, generación, ' +
+      'adjudicaciones) es LEER y proponer. La línea: **se deniega el identificador directo** ' +
+      '(correo, nombre, teléfono, IP, pago, tokens) y **se permite la actividad por `user_id`**, ' +
+      'que es un UUID — hace falta para diagnosticar y no dice quién es nadie. Comprueba las DOS ' +
+      'mitades y una tercera que un canario flojo pasaría por alto: que un rol llamado «lector» ' +
+      'NO pueda escribir. La migración NO usa `ALTER DEFAULT PRIVILEGES` a propósito: una tabla ' +
+      'nueva no queda legible sola, cuesta un grant explícito y a cambio nada se expone por nacer. ' +
+      '19/19 contra el rol vivo.',
+  },
   flota_gobierno: {
     titulo: 'Gobernar la flota desde el portátil: quién vive, qué hace, darle trabajo — sin entrar en ningún servidor',
     ruta: 'scripts/flota/flota.cjs',
