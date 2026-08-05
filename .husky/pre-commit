@@ -65,12 +65,23 @@ if [ $? -ne 0 ]; then
 fi
 if [ -n "$DATABASE_URL" ]; then
   npm run audit:display-drift
-  if [ $? -ne 0 ]; then
+  DRIFT_EXIT_CODE=$?
+  # El script distingue: 1 = drift REAL encontrado (bloquea) · 2 = no pudo comprobar
+  # (sin conexión, o permission denied — p.ej. el rol restringido `vence_coordinacion`
+  # de un trabajador de la flota, que no tiene grant sobre `topics` a propósito, T-539).
+  # Antes cualquier no-cero bloqueaba por igual, así que un rol sin permiso sobre una
+  # tabla de negocio le parecía al hook "drift encontrado" y ningún trabajador podía
+  # commitear nunca (medido 05/08, T-574).
+  if [ $DRIFT_EXIT_CODE -eq 1 ]; then
     echo ""
     echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
     echo "   Al modificar un tema, actualiza los 4 campos: title + epigrafe + description + descripcion_corta."
     echo "   Detalle: docs/maintenance/verificar-epigrafe-topic-scope.md"
     exit 1
+  elif [ $DRIFT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "⚠️  audit:display-drift no pudo comprobar contra BD (ver error arriba). No bloquea:"
+    echo "   puede ser un rol de BD sin acceso a 'topics', no drift real."
   fi
 else
   echo "⏭️  Saltando audit:display-drift contra BD (DATABASE_URL no configurada)"

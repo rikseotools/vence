@@ -842,6 +842,72 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-575] 🟡 [ABIERTO 05/08] `core.hooksPath` apunta a un checkout fijo: ningún worktree puede aplicar sus propios cambios a los git hooks
+
+- **Esfuerzo: rato.** Es una línea de config, pero hay que decidir el mecanismo correcto (relativo vs `--worktree`) y verificarlo desde 2+ worktrees a la vez para no dejarlo peor.
+- **ORIGEN.** Encontrado entregando [T-574] (l3, 05/08): al corregir un bug real en `.husky/pre-commit` de este worktree (`/home/manuel/vence-sessions/l3`), la corrección **nunca se ejecutaba** al hacer `git commit` — seguía saltando el código VIEJO.
+
+- **LA CAUSA, medida:**
+  ```
+  git config --list --show-origin | grep -i hookspath
+  → file:/home/manuel/Documentos/github/vence/.git/config  core.hookspath=/home/manuel/Documentos/github/vence/.husky/_
+  ```
+  `core.hooksPath` está guardado como **ruta ABSOLUTA** en el `.git/config` **común** (compartido por el checkout principal y TODOS sus worktrees — así es como funcionan los worktrees de git salvo que se use `git config --worktree` con `extensions.worktreeConfig`). Como la ruta es absoluta y apunta a un directorio concreto, **cualquier worktree** — el mío, el de otra sesión, el que cree `crear-worktree.sh` — ejecuta siempre los hooks de `/home/manuel/Documentos/github/vence/.husky/`, nunca los suyos propios, aunque cada worktree tenga su propia carpeta `.husky/` con contenido distinto en disco.
+  **Consecuencia directa medida:** edité `.husky/pre-commit` en mi worktree para arreglar un falso bloqueo ([T-574]); `sh .husky/pre-commit` (invocación directa) sí mostraba el fix funcionando; `git commit` (que usa `core.hooksPath`) seguía ejecutando la versión SIN el fix. Confirmado leyendo el fichero que de verdad corre: es el de `/home/manuel/Documentos/github/vence`, no el de mi worktree.
+
+- **POR QUÉ IMPORTA para la flota:** el modelo de trabajo asume que cada sesión/trabajador vive aislado en su propio worktree (`docs/runbooks/sistema-sesiones-paralelas.md`, "una sesión por directorio"). Si alguien necesita tocar un guardarraíl de commit — cosa que este mismo turno demostró que hace falta, [T-574] — el cambio es invisible desde dentro del worktree hasta que se aplique a mano en el checkout de `/home/manuel/Documentos/github/vence`, que además es un directorio de trabajo AJENO al de la sesión (tocarlo desde aquí violaría el aislamiento por directorio que el propio sistema de sesiones paralelas exige). Nadie que trabaje solo en un worktree puede arreglar ni verificar un hook sin salirse de su carpeta.
+
+- **NO LO ARREGLO YO EN ESTA SESIÓN — motivo:** el fix vive en `.git/config`, que es infraestructura del repositorio, no contenido versionado; cambiarlo afecta a TODAS las sesiones activas a la vez (incluidas las que están commiteando ahora mismo — se vio con `ps aux` que había al menos otra sesión, `l6`, trabajando en paralelo durante este mismo turno). Es justo el tipo de cambio compartido que pide verificación con más de una sesión viva, no una decisión de una sola sesión sin supervisión.
+
+- **PROPUESTA para quien la coja:**
+  1. Cambiar `core.hooksPath` a una ruta **relativa** (`.husky/_`, sin el prefijo absoluto): git resuelve las rutas relativas de `core.hooksPath` contra la raíz de trabajo de CADA worktree, así que cada uno volvería a usar su propia copia. Verificar que husky (`npm run prepare` / `husky install`) no vuelve a escribir la ruta absoluta al reinstalar.
+  2. Si se prefiere mantener hooks IDÉNTICOS y centralizados a propósito (para que ninguna sesión pueda aflojar un guardarraíl desde su worktree), dejarlo explícito y documentado como decisión — pero entonces hace falta un mecanismo distinto para poder arreglar un bug real de un hook (como el de [T-574]) sin tener que salir del propio worktree.
+  3. Verificar con 2 worktrees a la vez (uno con un hook modificado, otro sin tocar) que cada uno ejecuta el que le corresponde.
+
+- **Cómo se sabrá si salió bien:** editar `.husky/pre-commit` dentro de un worktree cualquiera y comprobar que `git commit` en ESE worktree ejecuta la versión editada (hoy ejecuta siempre la de `/home/manuel/Documentos/github/vence`).
+
+- **Relacionadas:** [T-574] (el bug de hook que destapó esto), `docs/runbooks/sistema-sesiones-paralelas.md` (aislamiento por directorio, que este hallazgo rompe silenciosamente para los hooks).
+
+### [T-574] 🔴 [ABIERTO 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
+
+- **Esfuerzo: sesión propia.** Diseñar la estrategia de RLS para 87 tablas con datos de negocio (algunas con PII adyacente) es una decisión de seguridad que no se despacha en un rato, y el propio canario hay que rediseñarlo para que deje de mentir.
+- **ORIGEN.** Encargo de flota (l3, 05/08): resolver UNA impugnación de `question_disputes`. `cola.cjs next` (usa `DATABASE_URL` = `vence_coordinacion`) falló con `permission denied for table question_disputes` — correcto, ese rol es de 4 tablas de coordinación por diseño ([T-539]). Al probar con `VENCE_LECTOR_URL` (`vence_lector`, el rol de LECTURA de la flota, [T-486]) la query **no dio error** pero devolvió **0 filas**, en `question_disputes` y en `psychometric_question_disputes`. No se puede distinguir «cola vacía» de «estoy ciego» — así que la tarea quedó bloqueada sin poder ni empezar el análisis.
+
+- **LA CAUSA, medida y no supuesta:**
+  ```sql
+  SELECT relrowsecurity FROM pg_class WHERE relname='question_disputes';  -- true
+  SELECT count(*) FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid WHERE c.relname='question_disputes';  -- 0
+  ```
+  RLS está **activado** en `question_disputes` pero tiene **cero políticas**. En Postgres, RLS activado + 0 políticas = **deny-all** para cualquier rol que no sea el dueño de la tabla o tenga `BYPASSRLS` — el `GRANT SELECT` de la migración `20260805_rol_lector_flota.sql` no basta, porque RLS actúa DESPUÉS del GRANT. La query no lanza excepción (por eso no se ve como "permission denied"): simplemente nunca devuelve filas. `vence_lector` no tiene `BYPASSRLS` (`NOSUPERUSER`, sin ese atributo).
+
+- **NO ES UN CASO AISLADO — barrido completo contra las 139 tablas con RLS activado:**
+  ```sql
+  SELECT c.relname, (SELECT count(*) FROM pg_policy p WHERE p.polrelid=c.oid) AS n_policies
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE n.nspname='public' AND c.relkind='r' AND c.relrowsecurity=true;
+  ```
+  **87 de 139** tablas con RLS activado tienen **0 políticas** → invisibles para `vence_lector` pese al GRANT. Entre ellas, tablas que CLAUDE.md y los propios runbooks dan por legibles para un trabajador: `test_questions`, `question_lifecycle_history`, `ai_verification_results`, `fraud_alerts`, `oep_detection_signals`, `detection_sources`, `question_disputes`, `psychometric_question_disputes`, `psychometric_test_sessions`, `outbox_events`, `article_versions`, `law_versions`… (lista completa de las 87 en el historial de esta sesión / reproducible con la query de arriba).
+
+- **EL CANARIO QUE DEBÍA CAZAR ESTO DA VERDE, Y ES EL MISMO BUG QUE MOTIVÓ EL ROL:** `scripts/canary-rol-lector.cjs` comprueba `test_questions` —literalmente la tabla que el propio comentario de la migración cita como motivo de existir del rol (T-476: *"tres de las cuatro alertas no se pudieron triar porque... test_questions"*)— con:
+  ```js
+  await sql.unsafe(`SELECT 1 FROM public.${tabla} LIMIT 1`)
+  afirmar(`lee ${tabla} (${para})`, true)   // ← se marca OK con solo "no lanzó excepción"
+  ```
+  Con RLS deny-all la query **no lanza**, solo devuelve 0 filas — así que el canario dice `✅ lee test_questions` cuando en realidad **nunca puede leer una fila de esa tabla**. Ejecutado hoy: `19/19 comprobaciones` en verde, incluida `test_questions`, y `SELECT count(*) FROM test_questions` da **0** (con 160.310 preguntas activas en el banco, evidentemente no está vacía). Mismo patrón confirmado en `fraud_alerts`, `oep_detection_signals`, `question_lifecycle_history`, `ai_verification_results`: las cinco, `count(*) = 0` vía `vence_lector`.
+  **Es el mismo modo de fallo que ya está documentado en `docs/maintenance/oeps-convocatorias-seguimiento.md`** para `oep_detection_signals` con la clave ANON de Supabase ("devuelve 0 filas en silencio — NO es que esté vacía"), pero nadie lo trasladó al canario nuevo de los roles Postgres nativos del 04-05/08.
+
+- **POR QUÉ IMPORTA MÁS QUE EL BLOQUEO DE HOY:** cualquier trabajador de la flota que reciba un encargo de "revisa X" sobre una de esas 87 tablas (fraude, OEPs, salud del contenido, lifecycle de preguntas, impugnaciones…) va a leer **0 filas y no un error**, y sin saber que el canario ya le mintió con un verde, el resultado más probable es que informe "todo limpio" cuando en realidad está ciego. Es exactamente el patrón que `T-539` ya nombró para la ceguera de sesión (*"el fail-open es para personas; un trabajador autónomo falla cerrado"*) pero aquí no hay ni un mensaje de error que dispare el fail-closed: la lectura "funciona" y miente.
+
+- **NO LO ARREGLO YO EN ESTA SESIÓN — motivo:** decidir la política de RLS de 87 tablas (algunas con columnas que rozan PII, p.ej. `user_devices`, `user_interactions`) es exactamente el tipo de decisión de seguridad para la que existe la barrera de "escritura en negocio + PII" que el propio diseño de `vence_lector` fue tan cuidadoso en trazar tabla a tabla. Improvisar 87 `CREATE POLICY` en una sesión sin supervisión sería la chapuza que el método de la casa prohíbe.
+
+- **PROPUESTA para quien la coja (no vinculante, dos piezas separables):**
+  1. **Arreglo rápido y de bajo riesgo — el canario.** Cambiar `afirmar(...) true` por comprobar que la query devuelve **al menos una fila** cuando se espera que la tabla tenga datos (o, más robusto, comparar el `count(*)` vía `vence_lector` contra un `count(*)` de referencia > 0). Esto NO arregla el acceso, pero convierte el falso verde en un rojo honesto — que es la mejora de una línea con más valor inmediato.
+  2. **El acceso de fondo — políticas RLS.** Para cada una de las 87 tablas, decidir: (a) política `USING (true)` para `vence_lector` si la tabla es pura actividad/contenido sin PII directa (encaja con la intención ya escrita en la migración: "se permite la ACTIVIDAD por `user_id`"), o (b) dejarla fuera a propósito si tiene una columna sensible que la migración no vio (haría falta releer las 87 una a una, no en bloque). El propio comentario de `20260805_rol_lector_flota.sql` ya sienta el criterio — falta aplicarlo donde RLS lo bloquea.
+
+- **Cómo se sabrá si salió bien:** `canary-rol-lector.cjs` deja de dar verde con 0 filas; y `SELECT count(*) FROM test_questions` (y las otras tablas citadas) devuelve un número > 0 vía `vence_lector`.
+
+- **Relacionadas:** [T-486] (creó `vence_lector`), [T-539] (creó `vence_coordinacion` y la doctrina de ceguera-bloquea para trabajadores), `docs/maintenance/oeps-convocatorias-seguimiento.md` (mismo patrón ya documentado para clave ANON/Supabase, sin trasladar aquí).
+
 ### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
 
 - **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
