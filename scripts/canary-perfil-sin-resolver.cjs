@@ -175,9 +175,11 @@ async function main() {
       console.log(
         `\n   🔴 ${reb.resumen.rotos} persona(s) llevan días usando la app sin que se les guarde NADA.\n` +
           `      No es una caducidad de sesión: han vuelto en ${reb.resumen.minDias} o más días\n` +
-          `      distintos y siguen rebotando. El reintento de [T-434] NO puede curarles —vive\n` +
-          `      en el callback de Auth.js y ellos no llegan a tener sesión Auth.js—, así que\n` +
-          `      esta cifra NO baja sola por mucho que se despliegue.`,
+          `      distintos y siguen rebotando. El reintento de [T-434] NO puede curarles, pero\n` +
+          `      NO por lo que se creyó hasta el 05/08 («no llegan a tener sesión Auth.js»): eso\n` +
+          `      quedó DESMENTIDO al medirlo —180 de 182 sí tenían identidad verificada—. Es que\n` +
+          `      no hay nada que reparar en el servidor: el id roto es el que arrastra el\n` +
+          `      NAVEGADOR. Ver el bloque de abajo.`,
       )
       for (const f of reb.persistentes.slice(0, 8)) {
         const desde = f.primero ? new Date(f.primero).toISOString().slice(0, 10) : '?'
@@ -239,6 +241,66 @@ async function main() {
             `      significa que la cura no se ha ejecutado todavía. Comprobar que el arreglo\n` +
             `      del cliente está DESPLEGADO antes de leer los ceros de arriba como sanos.`,
       )
+    }
+
+    // ── Tercer bloque: LA CAUSA de los persistentes de arriba (T-434, 05/08/2026) ─────────
+    //
+    // Los dos bloques anteriores CUENTAN a los afectados; este dice POR QUÉ, y hasta hoy no
+    // lo miraba nadie. Al medir los 182 apareció que no están rotos: **están sanos y tienen
+    // dos identidades en el navegador**. 180 de 182 tenían peticiones con identidad
+    // verificada, 0 tenían fila en `user_profiles` con el id que rebotaba, y 0 estaban en
+    // `deleted_users_log`. El id malo es el que el CLIENTE manda por parámetro.
+    //
+    // Las dos señales miran el MISMO hecho desde los dos lados, y por eso van juntas:
+    //   · `identityMismatch` (SERVIDOR) ya se emitía desde el 07/07 —nació para el replay de
+    //     la cola offline— y NADIE la consultaba. No hubo que construir detector: hubo que
+    //     mirarla.
+    //   · `auth_identidad_ajena_descartada` (CLIENTE) cuenta el DRENAJE: cada vez que se
+    //     suelta un rastro ajeno. Un pico al principio es lo bueno; que no baje es el problema.
+    const mismatch = await c.query(
+      `SELECT count(*)::int AS eventos, count(DISTINCT user_id)::int AS usuarios
+         FROM observable_events
+        WHERE metadata->>'identityMismatch' = 'true'
+          AND created_at > now() - interval '14 days'`,
+    )
+    // Mismo discriminante que el bloque de arriba (`NO_SIMULACION`), no uno nuevo: la
+    // simulación recorre la app DE VERDAD, así que sus descartes son indistinguibles de los de
+    // una persona y cada corrida inflaría el drenaje. Se comprobó al estrenar este bloque —dijo
+    // «2 descartes» y los dos eran corridas locales mías—, que es exactamente el fallo que este
+    // canario ya se había comido una vez.
+    const descartes = await c.query(
+      `SELECT count(*)::int AS eventos,
+              count(DISTINCT date_trunc('day', created_at))::int AS dias
+         FROM observable_events
+        WHERE event_type = 'auth_identidad_ajena_descartada'
+          AND ${NO_SIMULACION}
+          AND created_at > now() - interval '7 days'`,
+    )
+    const mm = mismatch.rows[0]
+    const de = descartes.rows[0]
+    console.log(`\n── Navegadores con DOS identidades — la causa de lo de arriba ${'─'.repeat(12)}`)
+    console.log(etiqueta('el cliente manda un id ≠ del token (14 d)') + `${mm.usuarios} usuarios (${mm.eventos} eventos)`)
+    console.log(etiqueta('rastros ajenos descartados (7 d)') + `${de.eventos} en ${de.dias} día(s) distintos`)
+    if (mm.usuarios > 0 && de.eventos === 0) {
+      codigo = Math.max(codigo, 1)
+      console.log(
+        `\n   🔴 Hay ${mm.usuarios} navegador(es) con dos identidades y NINGÚN descarte.\n` +
+          `      O el arreglo no está desplegado, o no se está ejecutando. Compruébalo, no lo\n` +
+          `      supongas:  npm run sim:sesion-fantasma -- --url=https://www.vence.es`,
+      )
+    } else if (de.dias >= 7) {
+      codigo = Math.max(codigo, 1)
+      console.log(
+        `\n   🟠 Siete días seguidos descartando: el atasco ya debería estar drenado.\n` +
+          `      Si sigue a diario, ALGO VUELVE A ESCRIBIR el rastro legacy (mira quién escribe\n` +
+          `      \`sb-<ref>-auth\`: lib/auth/adapters/supabaseAdapter.ts lo hace en el callback).`,
+      )
+    } else if (mm.usuarios === 0) {
+      console.log(`\n   🟢 Ningún navegador mandando una identidad que no es la suya.`)
+    } else {
+      console.log(
+        `\n   🟡 EN CURSO — se están soltando rastros ajenos. Cada navegador se limpia la\n` +
+          `      primera vez que vuelve, así que ambas cifras deben bajar día a día.`,      )
     }
     console.log('')
     return codigo

@@ -114,6 +114,17 @@ export type ClientEventType =
   // servidor; este evento existe para MEDIR cuántas veces el cliente se equivoca y poder ir a la
   // causa. `metadata`: { questionId, cliente, servidor, intentos }.
   | 'evolution_result_mismatch'
+  // El cliente venía creyendo ser OTRA persona (T-434). El pre-hydrate resucita el id de la
+  // sesión LEGACY de Supabase que quedó en `localStorage`; cuando `INITIAL_SESSION` trae el id
+  // de verdad y NO coincide, se suelta ese rastro entero. Tipo PROPIO, por lo mismo que
+  // `usage_limit_hit` o `evolution_result_mismatch`: interesa medir el DRENAJE (cuántos
+  // navegadores arrastraban una identidad ajena y cuándo deja de pasar) sin contarlo como error
+  // de cliente. Hacía falta un emisor porque el camino del token está SANO —`auth_sub_reconciliado`
+  // tenía 1 evento en toda la base y `auth_alta_sin_perfil` cero—, así que ninguna señal del
+  // SERVIDOR podía ver este caso: el daño lo hacían las peticiones que llevan el id por
+  // parámetro (1.920 de los 401 de `/api/v2/user-stats` no traían identidad de token).
+  // `metadata`: { motivo, clavesBorradas }.
+  | 'auth_identidad_ajena_descartada'
   // Banner de instalación de la PWA (28/07/2026). Tipo PROPIO por lo mismo que
   // `usage_limit_hit` y `storage_unavailable`: interesa CONSERVAR visibilidad —cuántos ven la
   // invitación, cuántos instalan, cuántos la descartan y por qué no se muestra— sin que cuente

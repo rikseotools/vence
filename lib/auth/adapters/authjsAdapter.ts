@@ -42,6 +42,7 @@ import type {
   SignInWithIdTokenArgs,
 } from '../types'
 import { isBearerFresh, TOKEN_SKEW_SEC } from '../tokenFreshness'
+import { clearLegacySupabaseSession, esClaveSesionLegacy } from '../legacySupabaseStorage'
 import { deriveMintReason, MINT_REASON_HEADER, type MintReason } from '../mintReason'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,13 +60,9 @@ const POLL_INTERVAL_MS = 5000
 const UNAUTH_BACKOFF_MS = 60_000
 /** Canal/clave para propagar el logout entre pestañas sin polling agresivo. */
 const LOGOUT_BROADCAST_KEY = 'vence_auth_logout_at'
-/**
- * Clave(s) de la sesión Supabase en localStorage. La app usa un storageKey
- * PERSONALIZADO `sb-<ref>-auth` (SIN sufijo -token, ver lib/supabase.ts);
- * aceptamos también el `-token` por defecto de supabase-js. Compartida entre el
- * LECTOR (bridge) y el BORRADO (signOut) para que no se desincronicen.
- */
-const LEGACY_SB_KEY_RE = /^sb-.*-auth(-token)?$/
+// La clave de la sesión legacy y su borrado viven en `lib/auth/legacySupabaseStorage.ts`:
+// el criterio estaba escrito aquí y OTRA VEZ (distinto) en AuthContext, y el rastro que una
+// rama no borraba era justo el que resucitaba al usuario en la siguiente carga [T-434].
 
 function mapUser(u: NextSessionUser): AuthUser | null {
   if (!u) return null
@@ -103,7 +100,7 @@ function getLegacySupabaseAccessToken(): string | null {
   try {
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i)
-      if (!k || !LEGACY_SB_KEY_RE.test(k)) continue
+      if (!esClaveSesionLegacy(k)) continue
       const raw = window.localStorage.getItem(k)
       if (!raw) continue
       const parsed = JSON.parse(raw)
@@ -125,26 +122,6 @@ function getLegacySupabaseAccessToken(): string | null {
   return null
 }
 
-/**
- * Borra la sesión Supabase legacy de localStorage. IMPRESCINDIBLE en signOut bajo el
- * flip: si no se borra, el BRIDGE la relee en el siguiente getSession() y acuña un RS256
- * nuevo → el usuario se RE-LOGUEA solo tras "cerrar sesión". Al limpiarla, el bridge se
- * queda sin fuente → 401 → sesión null → SIGNED_OUT de verdad. Idempotente y defensivo
- * (recolecta las claves antes de borrar para no saltarse índices al mutar localStorage).
- */
-function clearLegacySupabaseSession(): void {
-  if (typeof window === 'undefined') return
-  try {
-    const keys: string[] = []
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const k = window.localStorage.key(i)
-      if (k && LEGACY_SB_KEY_RE.test(k)) keys.push(k)
-    }
-    keys.forEach((k) => window.localStorage.removeItem(k))
-  } catch {
-    /* localStorage inaccesible → nada que limpiar */
-  }
-}
 
 /**
  * Resultado DISCRIMINADO de acuñar el token. Distinguir estos casos es lo que evita

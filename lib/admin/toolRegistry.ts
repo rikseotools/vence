@@ -660,9 +660,39 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'caducidad normal. La señal es la PERSISTENCIA, no el volumen (los de un solo día ' +
       'acumulan 1-4 rebotes, igual que un roto). Corte calibrado sobre 483 usuarios/14d: 391 ' +
       '(81%) rebotan un solo día → caducidad, se descartan; 46 en 3+ días → rotos, el peor 13 ' +
-      'días seguidos. **Esta cifra NO baja al desplegar**: el reintento vive en el callback de ' +
-      'Auth.js y esta gente no llega a tener sesión Auth.js. Criterio en el núcleo puro ' +
-      '`lib/auth/rebotePersistente.cjs` (13 tests), no en la consulta.',
+      'días seguidos. Criterio en el núcleo puro `lib/auth/rebotePersistente.cjs` (13 tests), no ' +
+      'en la consulta. **TERCER bloque (05/08) y es LA CAUSA de los persistentes: navegadores ' +
+      'con DOS identidades.** Al medir los 182 se cayó la explicación anterior («no llegan a ' +
+      'tener sesión Auth.js»): **180 de 182 tenían identidad VERIFICADA**, 0 tenían fila en ' +
+      '`user_profiles` con el id que rebotaba y 0 estaban en `deleted_users_log`. O sea, gente ' +
+      'SANA cuyo navegador arrastra el id de la sesión Supabase legacy de `localStorage` y lo ' +
+      'manda por `?userId=` (1.920 de los 401 de user-stats no traían identidad de token). Se ' +
+      'cruzan las dos caras del MISMO hecho: `identityMismatch` (SERVIDOR, existía desde el ' +
+      '07/07 y **no la miraba nadie** — no hubo que construir detector, hubo que mirarla) y ' +
+      '`auth_identidad_ajena_descartada` (CLIENTE, el drenaje). Mismatch>0 con CERO descartes = ' +
+      'el arreglo no corre → compruébalo con `npm run sim:sesion-fantasma`, no lo supongas.',
+  },
+  sesion_fantasma: {
+    titulo: 'Comprobar en un navegador real que se suelta la identidad ajena sin desloguear al sano',
+    ruta: 'scripts/sim/sim-sesion-fantasma.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:sesion-fantasma [-- --url=https://www.vence.es]`, con `AUTH_SECRET` y ' +
+      '`DATABASE_URL` del entorno. Navegador real (Playwright); NO escribe nada y las cookies ' +
+      'forjadas van marcadas como simulación para no envenenar el canario hermano ' +
+      '(`canary:perfil-sin-resolver`). Cubre lo que ningún test puede: el bucle vive en el ' +
+      'CABLEADO —`localStorage` de verdad, `INITIAL_SESSION` de verdad, React montándose de ' +
+      'verdad—, no en la decisión, que ya tiene 16 unitarios. **Cada caso lleva su contraste** ' +
+      'porque este cambio falla hacia los dos lados y solo uno se nota: soltar de menos deja a ' +
+      'la persona encerrada (silencioso), soltar de más desloguea a premium sanos (caro). ' +
+      '**DOS GOTCHAS que la hacían inútil y están fijados por guardarraíl:** (1) el blob del ' +
+      'fixture DEBE llevar `access_token` y `expires_at` vigente — sin eso supabase-js lo borra ' +
+      'antes de que React monte (medido: desaparecía a los 3 s, el AuthProvider arrancaba a los ' +
+      '4,3 s) y el caso salía VERDE sin haber probado nada; (2) se mide a los 10 s, **después** ' +
+      'del veredicto de `INITIAL_SESSION` (~3,5-6 s) y **antes** del rescate tardío de 15 s del ' +
+      'camino antiguo, que si no también saldría verde y no distinguiría el arreglo. El caso ' +
+      '«sin sesión» sale como ⏳ PENDIENTE y no cuenta para el veredicto: su arreglo existe ' +
+      '(`decidirSesionFantasma`) pero cablearlo desloguea y esa decisión no está tomada.',
   },
   rutas_oposicion_personalizada: {
     titulo: 'Recorrer una oposición personalizada COMO UN USUARIO y encontrar lo que está roto',

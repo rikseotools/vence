@@ -16,7 +16,8 @@ import {
 } from '@/lib/security/sessionIpTracking'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
 import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
-import { decidirSesionFantasma } from '@/lib/auth/sesionFantasma'
+import { decidirSesionFantasma, decidirIdentidadAjena } from '@/lib/auth/sesionFantasma'
+import { clearLegacySupabaseSession, readLegacySupabaseUser } from '@/lib/auth/legacySupabaseStorage'
 import { emitClientEvent } from '@/lib/observability/client'
 import SessionWarningModal from '../components/SessionWarningModal'
 import { logClientError } from '../lib/logClientError'
@@ -155,13 +156,6 @@ function clearCachedProfile(): void {
  * encierra otra vez (T-434). La fórmula de la clave estaba escrita a mano en cuatro sitios de
  * este fichero; aquí queda una sola vez.
  */
-function limpiarBlobLegacySupabase(): void {
-  try {
-    const ref = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('://')[1]?.split('.')[0]
-    if (ref && typeof window !== 'undefined') localStorage.removeItem(`sb-${ref}-auth`)
-  } catch {}
-}
-
 // Sintetiza el `user_metadata` (forma Supabase) que ~20 componentes de UI leen para
 // mostrar avatar y nombre (UserAvatar, headers, etc.), a partir de los datos FRESCOS
 // del perfil de BD (/api/profile). IMPRESCINDIBLE con el emisor agnóstico (Auth.js /
@@ -198,6 +192,12 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
   // 🔧 Refs para evitar stale closures en onAuthStateChange/loadUserProfile
   const userProfileRef = useRef<UserProfileRow | null>(null)
   const profileLoadingRef = useRef(false)
+
+  // 👻 Qué identidad creyó tener el cliente ANTES de que hablara el servidor (T-434). La pone el
+  // pre-hydrate desde el rastro legacy de `localStorage`; el veredicto de `INITIAL_SESSION` la
+  // contrasta con la real. Va en un ref y no en estado porque se lee dentro de
+  // `onAuthStateChange`, donde el estado llega rancio.
+  const idPrehidratadoRef = useRef<string | null>(null)
 
   // 🎯 Singleflight: Map<userId, Promise> para deduplicar llamadas concurrentes.
   // Si varios componentes piden el perfil a la vez, todos esperan a la MISMA
@@ -668,20 +668,17 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
         // Intentar leer sesión de localStorage y cargar perfil
         try {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-          if (supabaseUrl) {
-            const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-            const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
-            if (raw) {
-              const parsed = JSON.parse(raw)
-              if (parsed?.user?.id) {
-                console.log('🔄 Recuperando sesión desde localStorage:', parsed.user.email)
-                setUser(parsed.user)
-                await loadUserProfile(parsed.user.id).catch((err: any) => {
-                  console.warn('⚠️ Error cargando perfil en timeout recovery:', err)
-                })
-              }
-            }
+          // Criterio ÚNICO de cuál es el rastro legacy (T-434): aquí se componía la clave a mano
+          // y no cubría el sufijo `-token` de supabase-js, así que este LECTOR y el BORRADO de
+          // otra rama no hablaban de las mismas claves.
+          const legacy = readLegacySupabaseUser()
+          if (legacy) {
+            console.log('🔄 Recuperando sesión desde localStorage:', legacy.email)
+            setUser(legacy as unknown as User)
+            idPrehidratadoRef.current = legacy.id
+            await loadUserProfile(legacy.id).catch((err: any) => {
+              console.warn('⚠️ Error cargando perfil en timeout recovery:', err)
+            })
           }
         } catch (err) {
           console.warn('⚠️ Error en timeout recovery:', err)
@@ -696,21 +693,17 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     // NO cargar perfil aquí — INITIAL_SESSION lo hará con token válido
     if (!initialUser) {
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        if (supabaseUrl) {
-          const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-          const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
-          if (raw) {
-            const parsed = JSON.parse(raw)
-            if (parsed?.user?.id) {
-              setUser(parsed.user)
-              // 💾 Pre-hidratar TAMBIÉN el perfil cacheado → UI funcional al
-              // instante aunque /api/profile vaya lento (saturación).
-              const cachedProfile = readCachedProfile(parsed.user.id)
-              if (cachedProfile) updateUserProfile(cachedProfile)
-              console.log('🚀 Pre-hydrate: usuario de localStorage:', parsed.user.email, cachedProfile ? '(+perfil cacheado)' : '')
-            }
-          }
+        const legacy = readLegacySupabaseUser() // criterio único de clave (T-434)
+        if (legacy) {
+          setUser(legacy as unknown as User)
+          // Se ANOTA de quién es este rastro: si luego el servidor dice otro nombre, todo
+          // lo pre-hidratado es de OTRA identidad y hay que soltarlo (T-434).
+          idPrehidratadoRef.current = legacy.id
+          // 💾 Pre-hidratar TAMBIÉN el perfil cacheado → UI funcional al
+          // instante aunque /api/profile vaya lento (saturación).
+          const cachedProfile = readCachedProfile(legacy.id)
+          if (cachedProfile) updateUserProfile(cachedProfile)
+          console.log('🚀 Pre-hydrate: usuario de localStorage:', legacy.email, cachedProfile ? '(+perfil cacheado)' : '')
         }
       } catch {
         // localStorage no disponible
@@ -759,7 +752,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
         // fallo transitorio — a ése lo recupera el reintento de más abajo. Al probarlo, el test
         // «caso Nila» se puso rojo: el premium sano se quedaba fuera. El agujero real no está
         // aquí, sino en la limpieza definitiva de abajo, que soltaba el perfil pero NO el blob
-        // legacy de `localStorage` (ver `limpiarBlobLegacySupabase`).
+        // legacy de `localStorage` (ver `lib/auth/legacySupabaseStorage.ts`).
         if (newUser || !userProfileRef.current) {
           setUser(newUser)
         } else {
@@ -775,6 +768,32 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
             // 27 días. La ventana la decide `shouldTrackSessionIp`, así que estar en los dos
             // sitios no duplica escrituras.
             trackSessionIPIfDue(newUser.id)
+
+            // 👻 EL RASTRO AJENO (T-434). El servidor ya ha dicho quién es: si el cliente venía
+            // creyendo ser OTRO, todo lo pre-hidratado —perfil cacheado y blob legacy— es de esa
+            // otra identidad. Soltarlo AQUÍ y no esperar a que un fetch lo pise es lo que corta
+            // el bucle: el blob es lo que resucita al fantasma en la carga siguiente, y mientras
+            // viva, lo que se monte antes del veredicto seguirá mandando el id viejo como
+            // `?userId=` (medido: 1.920 de esos 401 no traen identidad de token).
+            const identidad = decidirIdentidadAjena({
+              idPrehidratado: idPrehidratadoRef.current,
+              idSesion: newUser.id,
+            })
+            if (identidad.descartar) {
+              const borradas = clearLegacySupabaseSession()
+              updateUserProfile(null)
+              clearCachedProfile()
+              idPrehidratadoRef.current = null
+              console.warn('👻 Rastro de OTRA identidad descartado (T-434)')
+              // Sin esto no se puede medir el drenaje: el camino del token está sano, así que
+              // ninguna señal del SERVIDOR ve este caso. Es el gemelo de `identityMismatch`.
+              emitClientEvent({
+                severity: 'warn',
+                eventType: 'auth_identidad_ajena_descartada',
+                endpoint: 'auth/initial-session',
+                metadata: { motivo: identidad.motivo, clavesBorradas: borradas.length },
+              })
+            }
 
             const hasCachedProfile = userProfileRef.current?.id === newUser.id
             console.log('🔐 INITIAL_SESSION: cargando perfil con token válido...', hasCachedProfile ? '(cacheado → refresco en background, sin bloquear UI)' : '')
@@ -853,7 +872,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
                           clearCachedProfile()
                           setUser(null)
                           if (decision.limpiar) {
-                            limpiarBlobLegacySupabase()
+                            clearLegacySupabaseSession()
                             // 📡 Sin esta señal la cura sería MUDA, y un canario a cero no se
                             // distinguiría de «esto no se ejecuta» — que es el error que esta
                             // misma ficha ya cometió con `auth_alta_sin_perfil`. `warn` y no
@@ -889,15 +908,14 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
               // y es necesario para completar el exchange del código OAuth
               const isCallbackPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth/callback')
               if (!isCallbackPage) {
-                try {
-                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                  if (supabaseUrl) {
-                    const storageKey = `sb-${supabaseUrl.split('://')[1]?.split('.')[0]}-auth`
-                    localStorage.removeItem(storageKey)
-                    clearCachedProfile() // también el perfil cacheado (logout genuino)
-                    console.log('🧹 localStorage limpiado (token expirado)')
-                  }
-                } catch {}
+                // Criterio ÚNICO del rastro legacy (T-434): aquí se componía la clave a mano y
+                // no cubría el sufijo `-token` de supabase-js, así que este borrado y el del
+                // adapter no limpiaban lo mismo. El `code_verifier` de PKCE NO se toca (la
+                // expresión no lo casa), que es lo que protegía el guard de arriba.
+                clearLegacySupabaseSession()
+                clearCachedProfile() // también el perfil cacheado (logout genuino)
+                idPrehidratadoRef.current = null
+                console.log('🧹 localStorage limpiado (token expirado)')
               }
             }
           }

@@ -33,6 +33,32 @@
 // sano por un tropiezo de red. **El radio de acción es exactamente el caso roto y ni uno más:**
 // soltar de menos deja gente encerrada, pero soltar de más desloguea a premium sanos.
 
+// ## El caso HERMANO, y es el que de verdad está pasando (medido el 05/08/2026)
+//
+// Lo de arriba supone que el servidor dice «no hay nadie». Al medir los 182 que rebotan en 14
+// días apareció que **no es eso lo que les pasa**:
+//
+//   | | |
+//   |---|---|
+//   | con fila en `user_profiles` **con el id que rebota** | 0 |
+//   | en `deleted_users_log` (no son bajas) | 0 |
+//   | con alguna petición de identidad VERIFICADA (o sea, sesión buena) | **180 de 182** |
+//
+// Es decir: **son usuarios SANOS con DOS identidades en el navegador**. El pre-hydrate resucita
+// el id legacy de Supabase de `localStorage`, la sesión Auth.js llega ~700 ms después con el id
+// BUENO, y lo que ya disparó en ese hueco manda el id viejo. Los endpoints que reciben el id por
+// parámetro (`/api/v2/user-stats?userId=`) rebotan con «Usuario no existe» — 1.920 de esos 401
+// traen identidad NO verificada, o sea que vienen del query string y no de un token.
+//
+// Por eso **ninguna señal del servidor los veía**: el camino del token está sano
+// (`auth_sub_reconciliado` = 1 evento en TODA la base, `auth_alta_sin_perfil` = 0) y el reintento
+// de perfil no podía curarles, porque no hay nada que reparar en el servidor.
+//
+// La regla que lo cierra: **si la sesión trae un usuario y su id NO es el pre-hidratado, el
+// pre-hidratado es de OTRA identidad** y hay que soltarlo entero (perfil cacheado + blob legacy)
+// en el acto, no esperar a que un fetch lo pise. Si coinciden, no se toca nada — ese contraste
+// es el que protege al usuario sano, que es el 99% del tráfico que pasa por aquí.
+
 /** Qué hacer con el usuario que el cliente tiene en memoria. */
 export interface DecisionSesion {
   /** ¿Hay que soltar al usuario (y su perfil cacheado y el blob legacy)? */
@@ -76,4 +102,39 @@ export function decidirSesionFantasma(e: EntradaDecisionSesion): DecisionSesion 
   //    falló. Se conserva, como hasta ahora. Preferimos un premium con la interfaz intacta
   //    durante un bache a soltar a un usuario sano por un problema de red.
   return { limpiar: false, motivo: 'posible_fallo_transitorio' }
+}
+
+// ─── El caso hermano: SÍ hay sesión, pero el cliente arrastra OTRA identidad ─────────────────
+
+/** Qué hacer con el rastro pre-hidratado cuando la sesión sí trae usuario. */
+export interface DecisionIdentidadAjena {
+  /** ¿Hay que soltar el rastro pre-hidratado (perfil cacheado + blob legacy)? */
+  descartar: boolean
+  motivo:
+    | 'sin_sesion' // no opina: de eso se encarga `decidirSesionFantasma`
+    | 'sin_prehidratado' // no había nada del cliente que pudiera contaminar
+    | 'coincide' // MISMA persona: no se toca nada (el contraste que protege al sano)
+    | 'ajena' // el rastro es de OTRA identidad → soltarlo entero
+}
+
+/**
+ * ¿El rastro que el cliente traía de `localStorage` es de esta misma persona?
+ *
+ * Se compara **el id que el cliente creía tener** (pre-hydrate) con **el que dice la sesión ya
+ * verificada**. Solo cuando difieren se suelta, porque ahí no hay duda posible: el servidor ya
+ * ha hablado y ha dicho otro nombre.
+ *
+ * Deliberadamente NO opina cuando no hay sesión: ese caso ya tiene dueño arriba, y dos criterios
+ * sobre el mismo hecho no protegen el doble — se contradicen.
+ */
+export function decidirIdentidadAjena(e: {
+  /** Id que el pre-hydrate sacó del rastro legacy de `localStorage` (o null si no había). */
+  idPrehidratado: string | null | undefined
+  /** Id de la sesión verificada por el servidor (o null si no hay sesión). */
+  idSesion: string | null | undefined
+}): DecisionIdentidadAjena {
+  if (!e?.idSesion) return { descartar: false, motivo: 'sin_sesion' }
+  if (!e?.idPrehidratado) return { descartar: false, motivo: 'sin_prehidratado' }
+  if (e.idPrehidratado === e.idSesion) return { descartar: false, motivo: 'coincide' }
+  return { descartar: true, motivo: 'ajena' }
 }

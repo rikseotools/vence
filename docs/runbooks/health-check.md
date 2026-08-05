@@ -789,8 +789,38 @@ Regla para leerlo: **espera al menos una hora antes de sacar conclusiones**, y s
 
 - **La señal es la PERSISTENCIA, no el volumen.** Medido: los que rebotan un solo día acumulan 1-4 peticiones, exactamente igual que un roto. Lo que los separa es **cuántos días distintos** vuelven a rebotar.
 - **Corte calibrado (01/08, 14 días):** de 483 usuarios con rebote, **391 (81%) en un solo día** → caducidad normal, descartados; **46 en 3+ días** → rotos, el peor con 13 días seguidos.
-- **Esta cifra NO baja al desplegar,** y por eso está separada de las otras: el reintento de T-434 vive en el callback de Auth.js y **esta gente no llega a tener sesión Auth.js** (se quedan en el `401 unauthenticated` de `/api/auth/token`, que está silenciado a propósito por el polling anónimo). Si sube, es que nacen rotos nuevos; si no baja tras un deploy, **no es un fallo del deploy**.
+- **Esta cifra NO baja al desplegar el reintento,** y por eso está separada de las otras. Si sube, es que nacen rotos nuevos; si no baja tras un deploy, **no es un fallo del deploy**.
 - Núcleo puro con el criterio y sus tests: `lib/auth/rebotePersistente.cjs` (13 tests). Cambiar el umbral se hace ahí, no en la consulta.
+
+**🔴 CORRECCIÓN DEL 05/08/2026 — la explicación que daba este apartado era FALSA, y mandaba a mirar al sitio equivocado.** Aquí ponía que estas personas *«no llegan a tener sesión Auth.js»*. Se midió sobre los **182** que rebotaban en 14 días y no se sostiene:
+
+| | |
+|---|---|
+| con alguna petición de identidad **VERIFICADA** (o sea, sesión buena) | **180 de 182** |
+| con fila en `user_profiles` **con el id que rebota** | **0** |
+| en `deleted_users_log` (no son bajas) | **0** |
+| 401 de `/api/v2/user-stats` cuya identidad **no viene de token** sino del `?userId=` | **1.920** |
+
+**No están rotos: son usuarios SANOS con DOS identidades en el navegador.** El pre-hydrate resucita el id de la sesión Supabase legacy que quedó en `localStorage`, la sesión Auth.js llega ~700 ms después con el id BUENO, y lo que se montó en ese hueco manda el viejo. Los endpoints que reciben el id **por parámetro** rebotan; los que van por token funcionan. Muestra real:
+
+```
+token=0479a6bc (perfil:1)   cliente-dice=c1aee21c (perfil:0)
+```
+
+Por eso **ninguna señal del servidor los veía** y por eso el reintento no podía curarles: no hay nada que reparar en el servidor. `auth_sub_reconciliado` tenía **1 evento en toda la base** y `auth_alta_sin_perfil` **cero** — y esas ausencias se estaban leyendo como buenas noticias.
+
+**Cómo se mira ahora (tercer bloque del canario).** Se cruzan las dos caras del mismo hecho:
+
+| Señal | Lado | De dónde sale |
+|---|---|---|
+| `identityMismatch` en `metadata` | SERVIDOR | ya se emitía **desde el 07/07** (nació para el replay de la cola offline) y **no la consultaba nadie**. No hubo que construir detector: hubo que mirarla |
+| `auth_identidad_ajena_descartada` | CLIENTE | el drenaje: cada vez que se suelta un rastro ajeno |
+
+- **mismatch > 0 con CERO descartes** → el arreglo no está corriendo. Compruébalo, no lo supongas: `npm run sim:sesion-fantasma -- --url=https://www.vence.es`.
+- **descartes 7 días seguidos** → ya no es el atasco inicial: **algo vuelve a escribir** el rastro legacy. Lo avisa por correo la regla `identidad_ajena_no_drena`.
+- Decisión pura y sus contrastes: `lib/auth/sesionFantasma.ts` → `decidirIdentidadAjena` (16 tests). Criterio único de cuál es el rastro legacy y cómo se borra: `lib/auth/legacySupabaseStorage.ts` — estaba escrito dos veces y **distinto**, así que una rama borraba una clave que la otra no.
+
+> **Lección de método, que es la parte reutilizable:** las dos explicaciones anteriores de esta ficha eran razonables, estaban escritas con seguridad y las dos eran falsas. Lo que las tumbó no fue leer más código, fue **una consulta que preguntaba por el CONTRASTE** (¿tienen sesión verificada, sí o no?) en vez de por la confirmación.
 
 | Lo que ves | Qué significa |
 |---|---|

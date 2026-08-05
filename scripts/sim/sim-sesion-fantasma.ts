@@ -20,21 +20,25 @@
  * Un caso solo probaría la mitad, y sería justo la mitad que no duele. Por eso cada caso lleva
  * enfrente su contraste.
  *
- * ── ⚠️ ESTADO: EL FIXTURE DEL CASO 1 NO REPRODUCE AÚN EL FALLO (01/08/2026) ─────────────────
+ * ── ✅ EL FIXTURE ARREGLADO, Y LO QUE ENSEÑÓ (05/08/2026) ────────────────────────────────────
  *
- * Al estrenarla contra producción —que en ese momento **no llevaba el arreglo**— el caso 1 salió
- * VERDE. Eso no valida nada: **prueba que el fixture está mal**. Si el fantasma sintético se
- * limpia solo en el código viejo, entonces no es el estado en el que están las ~90 personas
- * reales, y la simulación no puede afirmar que el arreglo las cure.
+ * La versión anterior salía VERDE contra una producción **sin el arreglo**, y su propia cabecera
+ * avisaba de que eso no validaba nada sino que delataba el fixture. Se comprobó con el navegador
+ * instrumentado y era exacto: el blob de mentira **no llevaba `access_token`**, así que
+ * **supabase-js lo borraba antes de que React montara** —desaparecía a los 3 s y el AuthProvider
+ * arrancaba a los 4,3 s—, o sea que el fantasma nunca llegaba a nacer.
  *
- * Lo más probable es que el blob de aquí caiga en la rama de «token expirado», que YA limpiaba
- * (ver `limpiarRastroDeSesion` y su llamada original). Un blob de Supabase de verdad lleva
- * `access_token`, `refresh_token` y `expires_at`; este no. **Antes de creerse un verde hay que
- * hacer que el caso 1 salga ROJO contra una versión sin el arreglo** — esa es la prueba de que
- * la simulación mide lo que dice medir, igual que se hizo con `sim-perfil-roto-se-cura`.
+ * Con un blob de la forma REAL (con `access_token`, `refresh_token` y `expires_at` no caducado)
+ * se reproduce entero: pre-hydrate resucita al usuario, la guarda del perfil cacheado impide
+ * soltarlo, y el rastro sobrevive. Esa es la prueba de que la simulación mide lo que dice medir.
  *
- * El caso 2 (el sano) sí es informativo tal cual: comprueba que no deslogueamos a quien tiene
- * cookie válida, y ese contraste vale con cualquier fixture.
+ * ── Y EL CASO 3, QUE ES EL QUE DE VERDAD PASA ───────────────────────────────────────────────
+ *
+ * Al medir los 182 afectados apareció que **no están deslogueados**: 180 tenían identidad
+ * verificada, 0 tenían fila en `user_profiles` con el id que rebotaba y 0 estaban en
+ * `deleted_users_log`. Son usuarios SANOS con **dos identidades en el navegador**: el rastro
+ * legacy dice un id y la sesión Auth.js dice otro. El caso 3 lo reproduce y exige que ese rastro
+ * ajeno se suelte; su contraste es el caso 2, donde el rastro es del MISMO usuario y no se toca.
  *
  * ── NO ESCRIBE NADA ─────────────────────────────────────────────────────────────────────────
  *
@@ -55,6 +59,19 @@ import { randomUUID } from 'crypto'
 const URL_BASE =
   process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] || 'http://localhost:3000'
 const MES = 60 * 60 * 24 * 30
+// ⏱ CADA CASO MIDE EN SU VENTANA, y no es un detalle de estilo: los dos arreglos actúan en
+// momentos distintos, así que una sola espera dejaría a uno de los dos sin poder discriminar.
+//
+//   · SIN SESIÓN (caso 1): el cliente da DOS oportunidades a la sesión —reintento a los 5 s y
+//     otro 10 s después— antes de darla por perdida, para no desloguear a un premium por un
+//     bache. La cura corre al final de esa cadena, así que hay que esperarla; medir a los 6 s
+//     daría un ROJO falso. Lo que discrimina aquí no es el reloj sino el BLOB: el código viejo
+//     también suelta usuario y perfil, y lo que NO soltaba era el rastro que le reencierra.
+//   · IDENTIDAD AJENA (caso 3): se decide en el veredicto de `INITIAL_SESSION` (~3,5-6 s). Aquí
+//     el reloj SÍ discrimina, y hay que medir ANTES del rescate tardío: pasados los ~18-21 s el
+//     código sin el arreglo también ha limpiado y el caso pasaría estando roto.
+const VENTANA_TRAS_REINTENTOS_MS = 22_000
+const VENTANA_TRAS_VEREDICTO_MS = 10_000
 
 type Caso = { nombre: string; ok: boolean; detalle: string }
 const casos: Caso[] = []
@@ -146,7 +163,7 @@ async function main() {
    * Siembra el `localStorage` ANTES de que cargue la aplicación —si no, el pre-hydrate ya habría
    * corrido y no estaríamos probando el caso— y devuelve lo que queda después.
    */
-  const abrir = async (opts: { cookie?: string; id: string; email: string }) => {
+  const abrir = async (opts: { cookie?: string; id: string; email: string; esperaMs: number }) => {
     const ctx = await navegador.newContext()
     if (opts.cookie) await ctx.addCookies([cookieForPlaywright(opts.cookie, host)])
     await ctx.addInitScript(
@@ -160,15 +177,7 @@ async function main() {
     )
     const p = await ctx.newPage()
     await p.goto(`${URL_BASE}/`, { waitUntil: 'domcontentloaded' })
-    // El veredicto llega con `INITIAL_SESSION`, que el adaptador emite por sondeo, y la
-    // limpieza NO es inmediata: el cliente protege al premium con perfil cacheado dando dos
-    // oportunidades a la sesión (reintento a los 5 s y otro 10 s después) antes de darla por
-    // perdida. Hay que esperar a que ESE plazo venza, o se mediría el estado de antes de la
-    // decisión y el caso saldría rojo sin que nada esté mal.
-    //
-    // ⚠️ Esperar 6 s —lo que había— mide la ventana equivocada: es justo el hueco en el que el
-    // cliente todavía está, a propósito, conservando el perfil.
-    await p.waitForTimeout(22000)
+    await p.waitForTimeout(opts.esperaMs)
     const estado = await p.evaluate(
       ([k1, k2]: string[]) => ({
         sesionLegacy: localStorage.getItem(k1) !== null,
@@ -184,12 +193,16 @@ async function main() {
   // Es el estado exacto de las ~90 personas medidas: el cliente cree que está dentro y el
   // servidor no le conoce. Debe soltarse.
   const idFantasma = randomUUID()
-  const f = await abrir({ id: idFantasma, email: `fantasma-${idFantasma.slice(0, 8)}@ejemplo.test` })
+  const f = await abrir({
+    id: idFantasma,
+    email: `fantasma-${idFantasma.slice(0, 8)}@ejemplo.test`,
+    esperaMs: VENTANA_TRAS_REINTENTOS_MS,
+  })
   anota(
     'al fantasma se le suelta: se borra el rastro que le resucitaba',
     !f.sesionLegacy && !f.perfilCacheado,
-    `blob legacy=${f.sesionLegacy ? 'SIGUE (mal)' : 'borrado'} · perfil cacheado=${
-      f.perfilCacheado ? 'SIGUE (mal)' : 'borrado'
+    `blob legacy=${f.sesionLegacy ? 'SIGUE' : 'borrado'} · perfil cacheado=${
+      f.perfilCacheado ? 'SIGUE' : 'borrado'
     }. Si alguno sobrevive, la próxima carga vuelve a encerrarle.`,
   )
 
@@ -209,12 +222,42 @@ async function main() {
     salt: COOKIE,
     maxAge: MES,
   })
-  const s = await abrir({ cookie: cookieSana, id: sano.id, email: sano.email })
+  const s = await abrir({
+    cookie: cookieSana,
+    id: sano.id,
+    email: sano.email,
+    esperaMs: VENTANA_TRAS_REINTENTOS_MS,
+  })
   anota(
     'al usuario SANO no se le toca (el caso que protege el dinero)',
     s.perfilCacheado,
     `perfil cacheado=${s.perfilCacheado ? 'intacto' : 'BORRADO (mal: le hemos deslogueado)'}.` +
       ` Usuario real ${sano.email.slice(0, 3)}***, con cookie Auth.js válida.`,
+  )
+
+  // ── 3. EL CASO QUE DE VERDAD PASA: sesión BUENA + rastro de OTRA identidad ────────────────
+  //
+  // Medido el 05/08/2026 sobre los 182 que rebotaban en 14 días: 180 tenían identidad
+  // verificada, 0 tenían perfil con el id que rebotaba, 0 estaban dados de baja. No están
+  // deslogueados: **son sanos con dos nombres en el navegador**, y el viejo se cuela como
+  // `?userId=` en los endpoints que reciben el id por parámetro (1.920 de esos 401 no traían
+  // identidad de token). Mientras el rastro sobreviva, cada carga vuelve a hacerlo.
+  //
+  // Se exige que el BLOB LEGACY desaparezca: es el que resucita al fantasma en la carga
+  // siguiente. No se exige nada del perfil cacheado porque, tras descartarlo, la app carga el
+  // perfil BUENO y vuelve a escribirlo — con el id correcto, que es lo que se quería.
+  const idAjeno = randomUUID()
+  const a = await abrir({
+    cookie: cookieSana,
+    id: idAjeno,
+    email: `ajeno-${idAjeno.slice(0, 8)}@ejemplo.test`,
+    esperaMs: VENTANA_TRAS_VEREDICTO_MS,
+  })
+  anota(
+    'con sesión BUENA, el rastro de OTRA identidad se suelta',
+    !a.sesionLegacy,
+    `blob legacy=${a.sesionLegacy ? 'SIGUE (mal: la próxima carga vuelve a mandar el id ajeno)' : 'borrado'}.` +
+      ` Cookie de ${sano.email.slice(0, 3)}*** y rastro de ${idAjeno.slice(0, 8)} (que no existe).`,
   )
 
   await navegador.close()

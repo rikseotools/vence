@@ -2685,3 +2685,41 @@ describe('RULE_ALTA_SIN_PERFIL (el alta que nace sin poder pagar — T-434, 31/0
     expect(ALERT_RULES.some((r: { name: string }) => r.name === 'alta_sin_perfil')).toBe(true);
   });
 });
+
+describe('RULE_IDENTIDAD_AJENA_NO_DRENA (el navegador con DOS identidades — T-434, 05/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_IDENTIDAD_AJENA_NO_DRENA: R, ALERT_RULES } = require('./alert-rules');
+  const fila = (dias: number, veces: number) => [{ dias, veces }];
+
+  // El pico del drenaje NO es la señal: cada navegador afectado se limpia la primera vez que
+  // vuelve, así que los primeros días habrá muchos eventos y eso es exactamente lo esperado.
+  it('un pico grande concentrado en pocos días NO dispara: eso es el drenaje', () => {
+    expect(R.shouldFire(fila(3, 500))).toBe(false);
+  });
+
+  it('siete días seguidos SÍ dispara aunque sean pocos: eso ya es goteo', () => {
+    expect(R.shouldFire(fila(7, 9))).toBe(true);
+  });
+
+  it('sin eventos, silencio', () => {
+    expect(R.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('tolera filas vacías o corruptas', () => {
+    expect(R.shouldFire([])).toBe(false);
+    expect(R.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso manda al ESCRITOR del rastro y al gemelo del servidor', () => {
+    const n = R.buildNotification(fila(7, 40));
+    expect(n.body).toContain('supabaseAdapter');
+    expect(n.body).toContain('identityMismatch');
+    expect(n.body).toContain('T-434');
+  });
+
+  it('está registrada en ALERT_RULES (si no, la señal nace sin quien la mire)', () => {
+    expect(ALERT_RULES.some((r: { name: string }) => r.name === 'identidad_ajena_no_drena')).toBe(
+      true,
+    );
+  });
+});

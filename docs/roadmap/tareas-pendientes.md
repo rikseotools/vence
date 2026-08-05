@@ -2447,6 +2447,48 @@ El cabo del `localStorage` **está confirmado en el código, de punta a punta**,
 - **Registrada en `toolRegistry`** la simulación, que tampoco lo estaba.
 - **Estado al cerrar la sesión: en `main`, SIN desplegar.** Los 44 rotos **no bajan hasta el deploy**, y el canario lo dice solo. Verificación pendiente en producción: que el bloque de la cura deje de decir «nunca se ha emitido» y que los rebotes persistentes empiecen a caer.
 
+#### 🎯 CAUSA REAL, ENCONTRADA Y ARREGLADA (05/08/2026) — y las DOS explicaciones anteriores eran falsas
+
+Todo lo de arriba supone que estas personas están **rotas** o **deslogueadas**. Ninguna de las dos cosas. Medido sobre los **182** que rebotaban en 14 días:
+
+| | |
+|---|---|
+| con alguna petición de identidad **VERIFICADA** (o sea, sesión buena) | **180 de 182** |
+| con fila en `user_profiles` **con el id que rebota** | **0** |
+| en `deleted_users_log` (no son bajas) | **0** |
+| 401 de `/api/v2/user-stats` cuya identidad **no viene de token** sino del `?userId=` | **1.920** |
+| eventos con `identityMismatch` (el cliente manda un id ≠ del token) | **372, de 120 usuarios** |
+
+**Son usuarios SANOS con DOS identidades en el navegador.** El pre-hydrate resucita el id de la sesión Supabase legacy de `localStorage`, la sesión Auth.js llega ~700 ms después con el id BUENO, y lo que se montó en ese hueco manda el viejo. Lo que va por **token** funciona; lo que lleva el id **por parámetro** rebota. Muestra real, con el perfil de cada uno al lado:
+
+```
+token=0479a6bc (perfil:1)   cliente-dice=c1aee21c (perfil:0)   ← c1aee21c es uno de los 8 persistentes
+token=02b3c75e (perfil:1)   cliente-dice=e32e9372 (perfil:0)
+```
+
+Por eso **ninguna señal del servidor los veía** (`auth_sub_reconciliado` = 1 evento en TODA la base, `auth_alta_sin_perfil` = 0) y por eso el reintento no podía curarles: **no hay nada que reparar en el servidor**.
+
+**Cómo se cayeron las dos explicaciones previas, que es la parte reutilizable:** las dos estaban escritas con seguridad y las dos eran razonables. No las tumbó leer más código —eso solo producía la tercera hipótesis— sino **una consulta que preguntaba por el CONTRASTE** («¿tienen sesión verificada, sí o no?») en vez de por la confirmación.
+
+**Construido (todo con su contraste, porque este cambio falla hacia los dos lados y solo uno se nota):**
+
+| Pieza | Qué cierra |
+|---|---|
+| `decidirIdentidadAjena` en `lib/auth/sesionFantasma.ts` (+16 unitarios) | La decisión: si el rastro pre-hidratado es de OTRO id, se suelta; si es del mismo, **no se toca nada**. Va en el módulo de su hermana `decidirSesionFantasma`, no en uno nuevo, y un test comprueba que **nunca opinan a la vez** |
+| Cableado en `AuthContext.tsx` | Se anota el id pre-hidratado en los **dos** caminos que resucitan un usuario (pre-hydrate y rescate del timeout de 12 s) y se contrasta en el veredicto de `INITIAL_SESSION` |
+| `lib/auth/legacySupabaseStorage.ts` | Criterio ÚNICO de cuál es el rastro legacy y cómo se borra. Estaba escrito **dos veces y distinto** (`AuthContext` componía la clave a mano y no cubría el sufijo `-token`), así que una rama borraba una clave que la otra no. El `code_verifier` de PKCE **nunca** se toca, con test |
+| Evento `auth_identidad_ajena_descartada` + regla `identidad_ajena_no_drena` | Es la ÚNICA señal posible del caso. La regla **no dispara por volumen** (el pico inicial es el drenaje) sino por **7 días seguidos**: eso significa que algo vuelve a escribir el rastro |
+| Tercer bloque del canario `perfil-sin-resolver` | Cruza el gemelo del SERVIDOR (`identityMismatch`) con el drenaje del CLIENTE. **`identityMismatch` existía desde el 07/07 y no la miraba NADIE**: no hubo que construir detector, hubo que mirarla |
+| `__tests__/guardrails/identidadAjenaSeDescarta.guardrail.test.ts` (14) | Impide el modo de fallo de [T-443]: que un commit rancio borre la llamada y el arreglo quede vivo pero inerte |
+
+**Comprobado EJECUTANDO, no leyendo** (`npm run sim:sesion-fantasma`, navegador real): **rojo contra producción sin el arreglo, verde en local con él**, y el caso del usuario sano verde en las dos. Dos gotchas que hacían inútil la simulación anterior, ambos fijados por guardarraíl: el blob del fixture **tiene que llevar `access_token`** (sin él supabase-js lo borra antes de que React monte — el fantasma no llegaba a nacer y el caso salía verde sin probar nada), y **se mide a los 10 s**, después del veredicto y **antes** del rescate tardío de 15 s del camino antiguo, que si no también saldría verde.
+
+**Lo que queda, y por qué no se ha hecho:**
+
+1. **Desplegar y leer el drenaje.** Hasta que no esté vivo, el tercer bloque del canario dice 🔴 «120 navegadores con dos identidades y ningún descarte», que es la línea base correcta.
+2. **El caso «sin sesión» lo cableó OTRA SESIÓN el 04/08** (el apartado de arriba), en paralelo a esto y sin que ninguna de las dos lo supiera — las dos, además, encontraron por separado que el fixture de la simulación no llevaba `access_token`. Al fusionar se conserva su cableado y se corrige **su ventana de medida**: esperaba 22 s, y a esa altura **el código SIN el arreglo también ha limpiado** (medido: el rescate tardío cierra a los ~18-21 s), así que su caso 1 pasaría igual estando roto. Queda en 10 s, la única franja en la que el resultado depende del arreglo. Los dos casos son **distintos y complementarios**: el suyo es «no hay sesión», el mío es «la hay y el cliente cree ser otro» — 180 de los 182 medidos son el segundo.
+3. **🔓 HALLAZGO COLATERAL DE SEGURIDAD, no arreglado aquí:** `/api/v2/user-stats` coge el `userId` **del query string y no del token** — no llama a `verifyAuth`. Es decir, cualquiera puede leer las estadísticas de cualquier usuario pasando su id. Encaja con **[T-482]** (endpoints de tests sin autenticación), que tiene lease vivo de otra sesión, así que se deja **dicho y no tocado** para no pisarlo.
+
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.

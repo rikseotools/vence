@@ -5542,6 +5542,55 @@ export const RULE_SESION_SIN_EMAIL: AlertRule<{ veces: number }> = {
  * Se mide en DÍAS DISTINTOS con eventos, no en volumen: un pico grande el primer día es lo
  * esperado; siete días seguidos, por pocos que sean, es un goteo.
  */
+/**
+ * [T-434] EL NAVEGADOR ARRASTRA OTRA IDENTIDAD — y sigue pasando después del drenaje.
+ *
+ * El cliente resucita de `localStorage` el id de una sesión Supabase legacy y lo manda como
+ * `?userId=` a los endpoints que reciben el id por parámetro; el servidor, con su token
+ * perfectamente sano, contesta 401 «Usuario no existe». Medido el 05/08/2026: **182 personas en
+ * 14 días, 180 de ellas con sesión verificada y NINGUNA con fila en `user_profiles` bajo el id
+ * que rebotaba** — o sea, gente sana con dos nombres en el navegador.
+ *
+ * Ahora se suelta ese rastro en cuanto el servidor dice el nombre bueno, y cada vez que ocurre
+ * se emite `auth_identidad_ajena_descartada`. Es una métrica de DRENAJE: un pico los primeros
+ * días es lo esperado (cada navegador afectado se limpia la primera vez que vuelve).
+ *
+ * Por eso NO dispara por volumen sino por PERSISTENCIA: siete días seguidos significa que
+ * siguen NACIENDO navegadores con identidad legacy —alguien vuelve a escribir ese rastro— y el
+ * descarte estaría tapando el goteo en vez de dejarlo ver. Mismo criterio, y a propósito, que
+ * `perfil_roto_no_drena`: el arreglo que calla el síntoma es el que hay que vigilar.
+ */
+export const RULE_IDENTIDAD_AJENA_NO_DRENA: AlertRule<{ dias: number; veces: number }> = {
+  name: 'identidad_ajena_no_drena',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(DISTINCT date_trunc('day', ts))::int AS dias,
+           COUNT(*)::int AS veces
+      FROM observable_events
+     WHERE event_type = 'auth_identidad_ajena_descartada'
+       AND ts >= now() - interval '7 days'
+  `,
+  shouldFire: (rows) => (rows[0]?.dias ?? 0) >= 7,
+  buildNotification: (rows) => ({
+    title: `Identidad ajena en el navegador: 7 días seguidos descartando (${rows[0]?.veces ?? 0} veces)`,
+    body:
+      `El cliente sigue llegando con el id de una sesión Supabase legacy distinto del de su ` +
+      `sesión real. El atasco inicial (182 personas en 14 días, 05/08/2026) debería haberse ` +
+      `drenado ya: cada navegador afectado se limpia la primera vez que vuelve. Si sigue a ` +
+      `diario, es que ALGO VUELVE A ESCRIBIR ese rastro.\n\n` +
+      `Dónde mirar, en este orden:\n` +
+      `  1. Quién escribe la sesión legacy hoy (lib/auth/adapters/supabaseAdapter.ts la escribe ` +
+      `en el callback de OAuth).\n` +
+      `  2. El gemelo del SERVIDOR, que ve el mismo hecho desde el otro lado:\n` +
+      `     SELECT count(*), count(DISTINCT user_id) FROM observable_events\n` +
+      `      WHERE metadata->>'identityMismatch'='true' AND ts >= now() - interval '7 days';\n\n` +
+      `Ficha: T-434.`,
+    metadata: { dias: rows[0]?.dias ?? 0, veces: rows[0]?.veces ?? 0 },
+    fingerprint: 'identidad_ajena_no_drena',
+  }),
+  cooldownMin: 1440,
+};
+
 export const RULE_PERFIL_ROTO_NO_DRENA: AlertRule<{ dias: number; usuarios: number }> = {
   name: 'perfil_roto_no_drena',
   severity: 'warn',
@@ -6037,6 +6086,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_ALTA_SIN_PERFIL as AlertRule,
   RULE_SESION_SIN_EMAIL as AlertRule,
   RULE_PERFIL_ROTO_NO_DRENA as AlertRule,
+  // El navegador con DOS identidades (2026-08-05, T-434): el camino del token está sano, así que
+  // ninguna señal del servidor lo veía. Vigila la persistencia, no el pico del drenaje.
+  RULE_IDENTIDAD_AJENA_NO_DRENA as AlertRule,
   RULE_REINTENTO_PERFIL_ROTO as AlertRule,
   RULE_TEMARIO_PROPIO_PERDIDO as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se
