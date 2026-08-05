@@ -72,6 +72,10 @@ const ON_DEMAND_KINDS = new Set([
 const ALL_KINDS = Object.keys(RUNBOOK_BY_KIND).filter(
   (k) => !CLI_ONLY_KINDS.has(k) && !ON_DEMAND_KINDS.has(k),
 )
+// Los `kind` del bloque `observable_events críticos 24h`: se emiten con `add(..., ev.event_type, …)`
+// (el propio `event_type` de la fila), no con un literal — por eso viven aparte del resto del
+// universo `add`/`marcar` que este fichero verifica por texto.
+const CRIT_KINDS_DINAMICOS = ['server_render_error', 'http_5xx', 'webhook_unhealthy']
 const scriptKinds = ALL_KINDS.filter((k) => hasKind(SCRIPT, k)).sort()
 const backendKinds = ALL_KINDS.filter((k) => hasKind(BACKEND, k)).sort()
 
@@ -92,6 +96,70 @@ describe('content-health-sweep — paridad script ↔ backend @Cron', () => {
 
   it('los sets de kinds son IDÉNTICOS (no hay drift en ninguna dirección)', () => {
     expect(backendKinds).toEqual(scriptKinds)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EL LATIDO DE LO EVALUADO (T-529, 05/08/2026)
+//
+// `content_health_findings` solo guarda lo que se ENCUENTRA: la ausencia de filas de un kind
+// significa a la vez «vigilado y limpio» y «nadie lo miró». El arreglo es que cada detector
+// registre, con `marcar(kind, nSujetos)`, que su bloque TERMINÓ de mirar su población — con
+// hallazgos o sin ellos. Ver `lib/health/kindsEvaluados.cjs` para el porqué del criterio
+// autorreferencial (sin duplicar el universo de kinds una tercera vez).
+//
+// Este bloque es el guardarraíl de que NO se repite el patrón que motivó la tarea: un detector
+// nuevo (o uno viejo tocado) que emite `add(...)` sin su `marcar(...)` — exactamente lo que hacía
+// indistinguible un "psicotecnico_integridad: 0" real de un detector que nunca llegó a correr.
+const hasMarcar = (txt: string, kind: string) =>
+  new RegExp(`marcar\\(\\s*['"\`]${kind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"\`]`).test(txt)
+
+// `sweep_incompleto` NO es un detector con población propia — es la señal de que la pasada se
+// cortó a mitad (T-307), emitida por el propio `catch` de `run()`/`main()`. "Marcarlo evaluado"
+// no tendría sujetos que contar, así que se excluye a propósito (igual que CLI_ONLY_KINDS/
+// ON_DEMAND_KINDS de arriba son exclusiones declaradas, no un hueco sin explicar).
+//
+// `http_5xx`/`server_render_error`/`webhook_unhealthy` SÍ se marcan en los dos gemelos, pero por
+// un `for (const k of CRIT) marcar(k, …)` — el kind es DINÁMICO (viene de `event_type`), no un
+// literal pegado a `marcar(`, así que `hasMarcar` (que busca el literal) no lo ve. Se comprueba
+// aparte, contra el patrón real, en vez de fingir que `hasMarcar` los cubre.
+//
+// `landing_cifra_sin_respaldo`/`landing_superficies_contradictorias` son ON_DEMAND (arriba): el
+// CLI solo las MENCIONA en un comentario explicando por qué NO viven en el barrido nocturno — el
+// propio comentario usa comillas simples de código, y `hasKind` (que solo mira si el literal
+// aparece entre comillas, sin distinguir código de comentario) las confunde con una emisión real.
+const KINDS_SIN_LATIDO = new Set([
+  'sweep_incompleto',
+  ...CRIT_KINDS_DINAMICOS,
+  ...ON_DEMAND_KINDS,
+])
+
+describe('content-health-sweep — el latido de lo EVALUADO (T-529): ningún kind se emite sin marcar()', () => {
+  const kindsConLatidoScript = Object.keys(RUNBOOK_BY_KIND).filter(
+    (k) => hasKind(SCRIPT, k) && !KINDS_SIN_LATIDO.has(k),
+  )
+  const kindsConLatidoBackend = Object.keys(RUNBOOK_BY_KIND).filter(
+    (k) => hasKind(BACKEND, k) && !KINDS_SIN_LATIDO.has(k),
+  )
+
+  it('los tres kinds de CRIT (dinámicos) SÍ tienen su marcar(), por el patrón `for (const k of CRIT)`', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toContain('for (const k of CRIT)')
+      expect(txt).toMatch(/marcar\(k,/)
+    }
+  })
+
+  it('sanity: hay kinds que revisar en los dos gemelos (la extracción funciona)', () => {
+    expect(kindsConLatidoScript.length).toBeGreaterThanOrEqual(15)
+    expect(kindsConLatidoBackend.length).toBeGreaterThanOrEqual(15)
+  })
+
+  it.each(kindsConLatidoScript)('%s tiene su marcar() en el gemelo CLI', (k) => {
+    expect(hasMarcar(SCRIPT, k)).toBe(true)
+  })
+
+  it.each(kindsConLatidoBackend)('%s tiene su marcar() en el @Cron del backend (el writer real)', (k) => {
+    expect(hasMarcar(BACKEND, k)).toBe(true)
   })
 })
 
