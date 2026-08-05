@@ -163,7 +163,8 @@
     "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs",
     "sim:espera-revision": "node scripts/backlog/sim-espera-revision.cjs",
     "audit:epigrafe-fuente": "node scripts/temario/audit-epigrafe-vs-fuente.cjs",
-    "scope:medir-ley-entera": "node --env-file=.env.local scripts/scope/medir-ley-entera.cjs"
+    "scope:medir-ley-entera": "node --env-file=.env.local scripts/scope/medir-ley-entera.cjs",
+    "flota": "node scripts/flota/flota.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

@@ -5823,9 +5823,62 @@ export const RULE_SIM_JOURNEY_FALLIDO: AlertRule<{
   cooldownMin: 180,
 };
 
+
+/**
+ * Un TRABAJADOR de la flota está arrancado y latiendo pero NO PUEDE trabajar. (T-486)
+ *
+ * El latido demuestra que la máquina vive y alcanza la base de datos — es node hablando con
+ * Postgres. No demuestra nada sobre Claude Code, que puede llevar horas parado en la pantalla de
+ * login mientras el panel lo pinta 🟢.
+ *
+ * Pasó en el primer arranque real de la flota (05/08): los dos trabajadores latiendo, con rol y
+ * preflight en verde, y ninguno autenticado. Sin esta regla, un trabajador puede quedarse así
+ * indefinidamente: ocupa su sitio en el reparto, no coge tareas, y lo único que se ve por fuera es
+ * que «no está haciendo nada» — indistinguible de estar entre tareas.
+ *
+ * Dispara con UNO: no es un blip. O tiene credencial o no la tiene.
+ */
+export const RULE_FLOTA_AUTENTICACION: AlertRule<{
+  n: number;
+  trabajadores: string | null;
+  ultimoEstado: string | null;
+}> = {
+  name: 'flota_autenticacion',
+  severity: 'critical',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           STRING_AGG(DISTINCT metadata->>'trabajador', ', ') AS trabajadores,
+           (ARRAY_AGG(metadata->>'estado' ORDER BY created_at DESC))[1] AS "ultimoEstado"
+    FROM observable_events
+    WHERE event_type = 'flota_autenticacion'
+      AND severity = 'error'
+      AND created_at > NOW() - INTERVAL '60 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `🔑 Flota: ${r.trabajadores ?? '?'} no puede trabajar (${r.ultimoEstado})`,
+      body:
+        `Uno o más trabajadores de la flota están arrancados y latiendo pero NO pueden usar Claude Code.\n\n` +
+        `Estado: ${r.ultimoEstado}\n` +
+        `Trabajadores: ${r.trabajadores ?? '(n/a)'}\n\n` +
+        `Si es "token_invalido", hay que acuñar otro con "claude setup-token" (el bueno empieza por ` +
+        `sk-ant-oat01-) y volver a correr scripts/flota/arrancar-trabajador.sh, que es idempotente.\n` +
+        `Diagnóstico completo: npm run flota -- --probar`,
+      metadata: { count: r.n, trabajadores: r.trabajadores, estado: r.ultimoEstado },
+      fingerprint: 'flota_autenticacion',
+    };
+  },
+  cooldownMin: 120,
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // El barrido de rutas encontró una página que un usuario no puede usar (T-487). Vence Sim
   // emitía desde siempre y NINGUNA regla miraba sus eventos: el resultado moría en la terminal.
+  // Un trabajador de la flota latiendo pero sin poder autenticar (T-486): el latido no puede
+  // verlo, porque es node hablando con Postgres y eso funciona igual con la sesión en el login.
+  RULE_FLOTA_AUTENTICACION as AlertRule,
   RULE_SIM_RUTA_ROTA as AlertRule,
   // Y el evento VIEJO de Vence Sim, sin vigilancia desde que existe el harness (T-491): el
   // catch-all tampoco lo cubría, porque exige 150 del mismo tipo en una hora.

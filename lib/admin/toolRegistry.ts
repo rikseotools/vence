@@ -1793,6 +1793,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`CLAUDE_CODE_OAUTH_TOKEN`**, así que se arranca `claude` normal aunque bare sea lo que ' +
       'recomiendan para CI. La cuenta la decide `lib/flota/cuentas.cjs`.',
   },
+  flota_gobierno: {
+    titulo: 'Gobernar la flota desde el portátil: quién vive, qué hace, darle trabajo — sin entrar en ningún servidor',
+    ruta: 'scripts/flota/flota.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run flota` (estado) · `-- encargar <w> [--tarea T-nnn]` · `-- arrancar|parar <w>`. ' +
+      'No duplica nada: quién vive sale del latido, qué hace del claim, qué pregunta del embudo ' +
+      '(T-493) y qué entrega de la quinta espera (T-539). Lo único propio es el cruce con lo ' +
+      'ESPERADO (`lib/flota/maquinas.cjs`), que es lo que permite decir «falta w2» en vez de ' +
+      'enseñar solo lo que hay — un panel que solo pinta lo que existe no puede avisar de una ' +
+      'caída. **Y sonda la AUTENTICACIÓN**, que es el punto ciego del latido: éste es node ' +
+      'hablando con Postgres y funciona igual con la sesión atascada en la pantalla de login. ' +
+      'Medido en el primer arranque real (05/08): dos trabajadores 🟢, latiendo, preflight verde y ' +
+      'NINGUNO autenticado. El encargo se manda por tmux y sale de `lib/flota/encargo.cjs`, que ' +
+      'también descarta las tareas no aptas (impugnaciones, cobros, deploys, nada que hable con ' +
+      'usuarios) — aunque lo que de verdad protege es la credencial, no el texto.',
+  },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
     ruta: 'lib/flota/cuentas.cjs',

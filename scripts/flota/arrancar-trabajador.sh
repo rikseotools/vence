@@ -173,6 +173,29 @@ if ! ( cd "$WT" && set -a && . "$ENV_FILE" && set +a && npm run --silent sesion:
    No se arranca: un trabajador invisible reclamaría tareas que nadie puede ver ni recuperar."
 fi
 
+# ── 8.bis. ¿PUEDE DE VERDAD TRABAJAR? ───────────────────────────────────────────────────────
+# El preflight de arriba comprueba el REPARTO (identidad, BD, latido). No comprueba Claude Code:
+# es node hablando con Postgres, y eso funciona igual con la sesión atascada en la pantalla de
+# login. Medido el 05/08 en el primer arranque real: dos trabajadores 🟢 en el panel, latiendo,
+# con preflight verde y NINGUNO autenticado. Veinte minutos sin poder hacer nada y el sistema
+# entero diciendo que todo iba bien.
+echo "→ comprobando que Claude Code puede responder…"
+SONDA_SALIDA="$(set -a; . "$ENV_FILE"; set +a; timeout 90 claude -p 'responde solo: ok' 2>&1 || true)"
+SONDA_ESTADO="$(cd "$BASE" && node -e "
+  const A = require('./lib/flota/autenticacion.cjs')
+  const v = A.clasificar(process.argv[1], /\bok\b/i.test(process.argv[1]) ? 0 : 1)
+  process.stdout.write(v.estado + '\t' + (A.diagnostico('$SLUG', v) || ''))
+" "$SONDA_SALIDA")"
+ESTADO="${SONDA_ESTADO%%$'\t'*}"; DIAG="${SONDA_ESTADO#*$'\t'}"
+if [ "$ESTADO" != "autenticado" ]; then
+  fallo "este trabajador NO puede trabajar:
+   $DIAG
+
+   Está instalado y latiría, pero ocuparía sitio en el reparto sin poder hacer nada.
+   Arréglalo y vuelve a correr este script — es idempotente."
+fi
+echo "   ✅ autenticado y respondiendo"
+
 # ── 9. ARRANQUE ─────────────────────────────────────────────────────────────────────────────
 if tmux has-session -t "$SLUG" 2>/dev/null; then
   echo "→ ya había una sesión tmux '$SLUG': se conserva (no se pisa el trabajo en curso)"
