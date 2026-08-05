@@ -10,9 +10,16 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#    `.husky/_/h` invoca este script con `sh -e` (ver ese fichero): CUALQUIER comando de la lista
+#    que falle sin ir dentro de un `if`/`&&`/`||` mata el hook entero ahí mismo, saltándose incluso
+#    la línea que captura `$?`. El comentario de arriba prometía "no bloquea" y `-e` lo desmentía en
+#    silencio: bastaba con que `npm run db:check` no pudiera CONECTAR (blindado con `|| true`) para
+#    que el commit muriera antes de imprimir el aviso de "Schema desincronizado". Medido 05/08 con
+#    un rol de BD restringido (vence_coordinacion, T-539): pg_hba rechaza la conexión sin TLS y el
+#    hook abortaba en la línea 15, sin llegar ni a la sintaxis ni al resto de comprobaciones.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
+  npm run db:check || true
   SCHEMA_EXIT_CODE=$?
 
   if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
