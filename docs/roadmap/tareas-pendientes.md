@@ -4662,6 +4662,47 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 ## Hechas
 
+### [T-571] ✅ [HECHA 05/08] El pre-commit bloqueaba TODO commit de la flota: `audit:display-drift` usaba `DATABASE_URL` (vence_coordinacion) en vez de `VENCE_LECTOR_URL` para leer `topics`
+
+**CAUSA.** `scripts/audit-temario-display-drift.cjs` hace un `SELECT` de solo lectura sobre `topics`
+(temario) usando `process.env.DATABASE_URL`. Para un trabajador de la flota esa variable es el rol
+`vence_coordinacion` (grants solo sobre las 4 tablas de coordinación de la flota), así que la query
+daba SIEMPRE `permission denied for table topics`. El pre-commit (arreglo de [T-566], ya en main)
+trata ese fallo como "no se pudo comprobar" y no bloquea — pero eso significa que el detector de
+drift título↔display **nunca llegaba a comprobar nada de verdad** desde un worker: silencio, no
+verde.
+
+**REABIERTA una vez** (ver historial de progreso): la reapertura decía que este fix por sí solo no
+bastaba porque el bloqueo real era el de [T-568] (`db:check` muriendo bajo `sh -e` antes de llegar
+siquiera aquí) y que los dos estaban atrapados por la "paradoja del hooksPath compartido" (el fix de
+un hook no se puede commitear si el propio hook roto bloquea el commit). **Verificado el 05/08 que
+esa paradoja YA NO aplica**: los commits `f682f1dff` (`ssl:'require'` en `check-schema-drift.ts`) y
+`ee1288d62` (`if ! cmd; then` en vez de `cmd; if [ $? -ne 0 ]` suelto bajo `-e`, en los dos pasos
+`db:check` y `audit:display-drift`) ya están en `main` — alguien con credenciales completas los
+resolvió, tal y como predecía la nota de reapertura de T-568. El commit de ESTA tarea pasó el
+pre-commit completo (suite entera, 1049 suites / 22958 tests) sin ningún escape.
+
+**ARREGLO.** `pickDbUrl(env)` extraída como función pura y exportada (antes vivía inline en `main()`,
+que se ejecuta contra la BD en cuanto se importa el fichero — no se podía testear la preferencia sin
+red). Prefiere `VENCE_LECTOR_URL` (rol `vence_lector`, que `canary:rol-lector` ya declaraba con
+grants sobre `topics`); cae a `DATABASE_URL` si no está (sesión humana sin rol lector aparte — sin
+cambio de comportamiento para ellas). `main()` ahora solo corre bajo `require.main === module`,
+patrón ya usado en otros scripts del repo (`audit-clave-inciso-anulado.cjs`).
+
+**VERIFICADO contra RDS real:** con `DATABASE_URL` (vence_coordinacion), `SELECT … FROM topics` da
+`permission denied for table topics`; con `VENCE_LECTOR_URL` (vence_lector) la misma query funciona.
+`npm run audit:display-drift` pasa de `permission denied` a `0 🔴 drift`; el self-test
+(`-- --selftest`) sigue en 5/5.
+
+**CAPAS.** `__tests__/scripts/auditTemarioDisplayDriftCredencial.test.js` (3 casos: prefiere lector,
+cae a `DATABASE_URL`, `null` sin ninguna credencial).
+
+**Commit:** `8356d2535`, pusheado directo a `main` (no toca código servido — es tooling de
+pre-commit/CI — no requiere deploy).
+
+**Relacionadas:** [T-566] (mitigó el síntoma en el hook), [T-568] (mismo síntoma, causa distinta —
+verificar si sigue reclamada: su bloqueo estructural parece ya resuelto en main).
+
 ### [T-566] ✅ [HECHA 05/08] El configurador por TEMA ofrece más preguntas de las que el test puede servir
 
 - **Esfuerzo: rato.** El diagnóstico está a medias y las mediciones ya están hechas (abajo): lo que falta es leer los dos caminos.
