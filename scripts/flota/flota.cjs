@@ -33,6 +33,7 @@ const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
+const RESC = require(path.join(REPO, 'lib', 'flota', 'rescate.cjs'))
 // El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
 const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
@@ -581,27 +582,11 @@ async function main() {
         if (!m) { console.log(`   ⏭️  ${w}: no está declarado`); continue }
         const como = m.local ? '' : 'sudo -u flota '
         const arbol = MAQ.arbolDe(w)
-        // ── LA REFERENCIA ES NUEVA CADA VEZ, Y ESO ES EL DISEÑO ─────────────────────────
-        // Primer intento: empujar a `sesion/<w>`. Falló con `non-fast-forward` en cuanto una rama
-        // ya había divergido (l6, 05/08). Y la salida cómoda —`--force`— es exactamente lo que un
-        // rescate NO puede hacer: forzar destruye lo que hubiera en el remoto, o sea justo lo que
-        // se venía a proteger.
-        //
-        // Una referencia nueva por rescate no puede chocar con nada. Lleva el SHA dentro, así que
-        // rescatar dos veces el mismo commit escribe la MISMA ref: es idempotente sin comprobar
-        // nada. Salen ramas de más, y esas se borran leyéndolas; un trabajo perdido no.
-        // Una sola orden: si no hay nada que salvar, sale sin tocar nada y lo dice.
-        const orden = [
-          `cd ${arbol} 2>/dev/null || exit 90`,
-          'SUCIO=$(git status --porcelain | wc -l)',
-          'FUERA=$(git rev-list --count HEAD --not --remotes 2>/dev/null || echo 0)',
-          '[ "$SUCIO" = "0" ] && [ "$FUERA" = "0" ] && echo NADA && exit 0',
-          'if [ "$SUCIO" != "0" ]; then git add -A && git commit -q --no-verify -m "wip: trabajo puesto a salvo por el supervisor de la flota\n\nSu turno termino sin commitear esto. Se conserva TAL CUAL, sin revisar ni\ncompletar: rescatar no es aprobar. Quien retome la tarea decide que hacer.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"; fi',
-          `RAMA=rescate/${w}-$(git rev-parse --short HEAD)`,
-          'echo RAMA=$RAMA',
-          'BACKLOG_GUARD_SKIP="rescate del supervisor: pone a salvo lo que un trabajador dejo sin empujar, en una referencia NUEVA; no se esta trabajando ninguna tarea" ROBUSTEZ_GUARD_SKIP=1 CONTEXTO_GUARD_SKIP=1 git push -q origin HEAD:refs/heads/$RAMA 2>&1 | tail -2',
-          'echo SALVADO=$(git rev-list --count HEAD --not --remotes)',
-        ].join('; ')
+        // La orden vive en `lib/flota/rescate.cjs` y NO se copia aquí: `npm run sim:rescate-flota`
+        // la EJECUTA contra repos git desechables (rescata lo sin commitear, el commit huérfano,
+        // no pisa una rama ajena divergida…). Reconstruirla a mano en la simulación probaría una
+        // copia, y dos escritores del mismo hecho divergen.
+        const orden = RESC.ordenRescate({ arbol, trabajador: w })
         let salida = ''
         try { salida = enMaquina(w, `${como}bash -lc ${citar(orden)}`) }
         catch (e) { salida = String((e && e.stdout) || e.message || '') }
@@ -937,7 +922,7 @@ async function main() {
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | productividad [--dias 7] | vigilar [--cada 300] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    console.error('Uso: flota.cjs [estado] | productividad [--dias 7] | vigilar [--cada 300] | repartir | rescatar [<w>] | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}

@@ -440,10 +440,27 @@ describe('el rastro del turno lo deja la puerta, no el llamador', () => {
 //
 // Automatizarlo es seguro porque rescatar solo AÑADE: en el peor caso deja un commit de más, que
 // se descarta leyéndolo. Lo que destruye es lo contrario, y eso sigue siendo de una persona.
+// ── ESTO COMPRUEBA LO QUE LA ORDEN DICE, NO LO QUE HACE ─────────────────────────────────────
+// Antes se leía el TEXTO de `scripts/flota/flota.cjs` y se recortaba con `indexOf`, así que un
+// renombrado del comentario que servía de ancla dejaba el bloque vacío y los `toMatch` pasaban
+// sobre la nada. Ahora se le pide la orden a quien la produce en producción — el mismo valor que
+// se ejecuta —, de modo que estos trinquetes no pueden quedarse mirando a un sitio equivocado.
+//
+// Aun así siguen siendo texto: que **funcione** lo demuestra `npm run sim:rescate-flota`, que la
+// ejecuta contra repos git reales (rescata lo sin commitear, no pisa una rama divergida, …).
 describe('el rescate automático', () => {
-  const src = require('fs').readFileSync(
+  const { ordenRescate } = require(require('path').join(process.cwd(), 'lib', 'flota', 'rescate.cjs'))
+  const bloque: string = ordenRescate({ arbol: '/arbol/del/trabajador', trabajador: 'w1' })
+  const fuente = require('fs').readFileSync(
     require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
-  const bloque = src.slice(src.indexOf("cmd === 'rescatar'"), src.indexOf('VIGILAR: la flota se mantiene'))
+
+  it('la orden que se ejecuta es la del módulo, no una copia en el supervisor', () => {
+    expect(bloque.length).toBeGreaterThan(200)
+    expect(fuente).toMatch(/RESC\.ordenRescate\(/)
+    // Si alguien vuelve a incrustar la orden en el supervisor, la simulación pasaría a probar
+    // una copia y dejaría de decir nada del comando real.
+    expect(fuente).not.toMatch(/SUCIO=\$\(git status --porcelain/)
+  })
 
   it('solo añade: commit y push, jamás descarta', () => {
     expect(bloque).toMatch(/git add -A/)
@@ -461,7 +478,7 @@ describe('el rescate automático', () => {
   // Una referencia nueva por rescate no choca con nada. Y como lleva el SHA dentro, rescatar dos
   // veces el mismo commit escribe la MISMA ref: idempotente sin comprobar nada.
   it('empuja a una referencia nueva que lleva el SHA', () => {
-    expect(bloque).toMatch(/rescate\/\$\{w\}-\$\(git rev-parse --short HEAD\)/)
+    expect(bloque).toMatch(/rescate\/w1-\$\(git rev-parse --short HEAD\)/)
   })
 
   // Si no hay nada que salvar no debe crear ruido: ni commits vacíos ni ramas.
@@ -478,7 +495,7 @@ describe('el rescate automático', () => {
   })
 
   it('y deja rastro, salga bien o mal', () => {
-    expect(bloque).toMatch(/emitirTurno\(w, ok \? 'rescatado' : 'rescate_fallido'/)
+    expect(fuente).toMatch(/emitirTurno\(w, ok \? 'rescatado' : 'rescate_fallido'/)
   })
 })
 
