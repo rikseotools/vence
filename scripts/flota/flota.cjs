@@ -111,14 +111,14 @@ const citar = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`
  * Y nunca a la brava — un clon con cambios sin commitear puede ser el único rastro de un trabajo
  * ([T-431]): se rehúsa y se dice qué hay, que tirarlo lo decide una persona.
  */
-function ponerAlDia(trabajador, { emitir = null } = {}) {
+function ponerAlDia(trabajador, { emitir = null, reanuda = false } = {}) {
   const como = MAQ.maquinaDe(trabajador)?.local ? '' : 'sudo -u flota '
   const arbol = MAQ.arbolDe(trabajador)
   let salida = ''
   try {
     salida = enMaquina(trabajador, `${como}bash -lc ${citar(ACTU.SONDA_GIT(arbol))}`)
   } catch (e) { salida = String((e && e.stdout) || '') }
-  const v = ACTU.evaluarClon(ACTU.leerSonda(salida))
+  const v = ACTU.evaluarClon(ACTU.leerSonda(salida), { reanuda })
 
   let commits = null
   if (v.hayQueActualizar) {
@@ -175,6 +175,9 @@ function mandarEncargo(trabajador, texto, { alDia = null } = {}) {
   const al = alDia || ponerAlDia(trabajador)
   if (al.linea) console.log(`   ${al.linea}`)
   if (!al.puedeEncargar) return { ok: false, al }
+  // Un turno nuevo no recuerda nada del anterior: si dejó trabajo a medias hay que DECÍRSELO,
+  // o lo normal es que empiece de cero encima de la única copia que existe.
+  if (al.estado === 'a_medias') texto += '\n' + ENC.avisoTrabajoAMedias(al.motivo)
 
   const m = MAQ.maquinaDe(trabajador)
   const env = ficheroEntorno(trabajador)
@@ -254,7 +257,17 @@ async function main() {
       // porque «una sola pantalla» no puede significar «la mitad de lo que pasa».
       const ahora = new Date()
       const personas = todas.filter((s) => s.rol !== 'trabajador')
-      const { trabajando, paradas } = PARTE.cruzarTrabajo(tareas, personas, { ahora })
+      // ⚠️ El cruce recibe TODAS las sesiones, no solo las tuyas. Pasarle solo las personas hacía
+      // que cualquier tarea de un trabajador se leyera como «esa sesión nunca ha dado señal»,
+      // porque su sesión simplemente no estaba en la lista. Medido el 05/08: el panel decía
+      // «✅ toda la flota viva y trabajando» y, cuatro líneas más arriba, marcaba las CUATRO
+      // tareas de esos mismos trabajadores como paradas. Cuatro falsos de cuatro: una alarma que
+      // acierta cero veces se deja de leer, y entonces tampoco se ve la que sí importa.
+      const { trabajando, paradas } = PARTE.cruzarTrabajo(tareas, todas, { ahora })
+      const sidsTrabajadores = new Set(sesiones.map((s) => s.sid))
+      // Lo de un trabajador ya lo cuenta el bloque de la flota, arriba, con su estado real. Aquí
+      // solo lo TUYO, que es lo que el encabezado promete.
+      const paradasTuyas = paradas.filter((p) => !sidsTrabajadores.has(p.sid))
       const vivasPersonas = personas.filter((s) => {
         const min = (ahora.getTime() - new Date(s.last_signal_at).getTime()) / 60000
         return min <= 45
@@ -267,9 +280,9 @@ async function main() {
           console.log(`   ${(p.slug || '?').padEnd(16)} ${min < 1 ? 'ahora mismo' : `hace ${min} min`.padEnd(12)} ${t ? `${t.id} — ${String(t.title).slice(0, 44)}` : '(sin tarea cogida)'}`)
         }
       }
-      if (paradas.length) {
-        console.log(`\n🟠 ${paradas.length} TAREA(S) TUYAS SIN SEÑAL DE SU SESIÓN:`)
-        for (const p of paradas) console.log(`   ${p.id}  ${String(p.title).slice(0, 56)} — ${p.detalle}`)
+      if (paradasTuyas.length) {
+        console.log(`\n🟠 ${paradasTuyas.length} TAREA(S) TUYAS SIN SEÑAL DE SU SESIÓN:`)
+        for (const p of paradasTuyas) console.log(`   ${p.id}  ${String(p.title).slice(0, 56)} — ${p.detalle}`)
       }
 
       // Lo que espera a Manuel va SIEMPRE, aunque la flota esté perfecta: es lo único cuyo coste
@@ -348,7 +361,7 @@ async function main() {
       let tarea = null
       const pedida = arg('--tarea')
       if (pedida) {
-        const [t] = await sql`SELECT id, title FROM public.backlog_tasks WHERE id = ${pedida}`
+        const [t] = await sql`SELECT id, title, claimed_by FROM public.backlog_tasks WHERE id = ${pedida}`
         if (!t) { console.error(`❌ ${pedida} no existe`); return 1 }
         const v = ENC.esApta(t)
         if (!v.apta) console.log(`⚠️  ${t.id} no parece apta para un trabajador (${v.motivo}) — se manda igual porque lo has pedido.`)
@@ -373,7 +386,13 @@ async function main() {
       // ── EL CÓDIGO PRIMERO, LUEGO EL TRABAJO ─────────────────────────────────────────────
       // Un encargo sobre código viejo es tiempo que luego hay que tirar, y peor: son los
       // guardarraíles de otra fecha protegiendo a quien nadie mira.
-      const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
+      //
+      // ¿Es RETOMAR lo suyo o empezar algo nuevo? Cambia el veredicto sobre un árbol a medias:
+      // encima de un trabajo sin terminar no se empieza otra cosa, pero seguir el propio es
+      // exactamente lo que hay que poder hacer.
+      const [ses] = await sql`SELECT sid FROM public.worktree_sessions WHERE slug = ${w}`
+      const reanuda = !!(ses && tarea.claimed_by === ses.sid)
+      const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) }, reanuda })
       const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea }), { alDia })
       if (!r.ok) {
         console.error(r.ocupado

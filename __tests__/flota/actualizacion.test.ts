@@ -98,6 +98,45 @@ describe('cuándo NO, y por qué en cada caso', () => {
   })
 })
 
+// ── RETOMAR LO SUYO ≠ EMPEZAR ALGO NUEVO ────────────────────────────────────────────────────
+// Encima de un trabajo sin terminar no se empieza otra cosa. Pero seguir el PROPIO con el árbol a
+// medias es exactamente el estado en que se dejó, y bloquearlo dejaría al trabajador encallado
+// para siempre — un bloqueo que no se puede satisfacer se acaba rodeando ([T-375]). Medido el
+// 05/08 con `l1`: turno terminado a media tarea, 11 ficheros sin commitear y ni un commit.
+describe('cuando RETOMA su propia tarea', () => {
+  it.each([
+    ['ficheros sin commitear', { SUCIO: 11 }, /11 fichero/],
+    ['commits sin empujar', { ADELANTE: 3 }, /3 commit/],
+    ['las dos cosas', { SUCIO: 11, ADELANTE: 3 }, /11 fichero.*3 commit/],
+  ])('%s deja de bloquear', (_c, campos, detalle) => {
+    const v = ACT.evaluarClon(sonda(campos), { reanuda: true })
+    expect(v).toMatchObject({ estado: 'a_medias', puedeEncargar: true })
+    expect(v.motivo).toMatch(detalle as RegExp)
+  })
+
+  // Lo que NO cambia: si no se puede mirar, sigue sin encargarse. Reanudar no es una excusa para
+  // dejar pasar lo que no se sabe.
+  it.each([{ FETCH: 'fallo' }, { ATRAS: -1 }])('pero «no se sabe» sigue bloqueando', (campos) => {
+    expect(ACT.evaluarClon(sonda(campos), { reanuda: true }).puedeEncargar).toBe(false)
+  })
+
+  it('y sin reanudar, el mismo árbol SÍ bloquea', () => {
+    expect(ACT.evaluarClon(sonda({ SUCIO: 11 })).puedeEncargar).toBe(false)
+  })
+
+  // El turno nuevo no recuerda nada del anterior: si nadie se lo dice, empieza de cero encima de
+  // la única copia que existe.
+  it('el aviso le manda ponerlo a salvo ANTES de seguir, y no descartarlo', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const ENC = require('@/lib/flota/encargo.cjs')
+    const aviso = ENC.avisoTrabajoAMedias('11 ficheros sin commitear')
+    expect(aviso).toMatch(/ANTES DE NADA/)
+    expect(aviso).toMatch(/commit/)
+    expect(aviso).toMatch(/No empieces de cero|sin haberlo leído/)
+    expect(aviso).not.toMatch(/reset --hard|clean -fd/)
+  })
+})
+
 describe('las órdenes que se ejecutan en la máquina', () => {
   // `--ff-only` es la diferencia entre actualizar y poder perder algo: si no es avance directo,
   // git se niega en vez de fabricar un merge en una máquina que nadie mira.
@@ -142,5 +181,46 @@ describe('severidad: lo que se arregla solo no grita', () => {
     ['sin_red', { FETCH: 'fallo' }, 'error'],
   ])('%s → %s', (_c, campos, sev) => {
     expect(ACT.severidad(ACT.evaluarClon(sonda(campos)))).toBe(sev)
+  })
+})
+
+// ── EL PANEL NO PUEDE CONTRADECIRSE A SÍ MISMO ──────────────────────────────────────────────
+// Medido el 05/08: `npm run flota` decía «✅ toda la flota viva y trabajando» y, cuatro líneas
+// más arriba, marcaba las CUATRO tareas de esos mismos trabajadores como «esa sesión nunca ha
+// dado señal». Cuatro falsos de cuatro. La causa no estaba en el cruce —que es correcto— sino en
+// lo que se le pasaba: TODAS las tareas pero SOLO las sesiones de Manuel, así que la sesión de un
+// trabajador nunca aparecía y su tarea salía huérfana por construcción.
+//
+// Una alarma que acierta cero veces se deja de leer, y entonces tampoco se ve la que sí importa.
+describe('el cruce tarea↔sesión necesita TODAS las sesiones', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const PARTE = require('@/lib/sessions/parte.cjs')
+
+  const ahora = new Date('2026-08-05T14:00:00Z')
+  const hace = (min: number) => new Date(ahora.getTime() - min * 60000).toISOString()
+  const tareas = [{ id: 'T-418', title: 'x', claimed_by: 'w1-sid', claimed_at: hace(30), lease_until: null }]
+  const trabajador = { sid: 'w1-sid', slug: 'w1', host: 'vps', last_signal_at: hace(3) }
+  const persona = { sid: 'yo-sid', slug: 'mi-worktree', host: 'fedora', last_signal_at: hace(1) }
+
+  it('con TODAS, un trabajador vivo no sale como parado', () => {
+    const { paradas } = PARTE.cruzarTrabajo(tareas, [persona, trabajador], { ahora })
+    expect(paradas).toHaveLength(0)
+  })
+
+  // El bug, reproducido: mismo trabajador, misma señal de hace 3 minutos, y sale «desaparecida»
+  // solo porque su sesión no venía en la lista.
+  it('pasándole solo las personas, ese mismo trabajador sale «desaparecida» (el fallo)', () => {
+    const { paradas } = PARTE.cruzarTrabajo(tareas, [persona], { ahora })
+    expect(paradas).toHaveLength(1)
+    expect(paradas[0].motivo).toBe('desaparecida')
+  })
+
+  it('y el supervisor le pasa TODAS, no solo las personas', () => {
+    const src = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+    expect(src).toMatch(/cruzarTrabajo\(tareas,\s*todas/)
+    // Y el bloque «TUYAS» filtra por rol DESPUÉS, que es donde toca: lo de un trabajador ya lo
+    // cuenta el bloque de la flota con su estado real.
+    expect(src).toMatch(/paradasTuyas/)
   })
 })
