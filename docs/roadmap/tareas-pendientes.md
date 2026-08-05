@@ -1147,59 +1147,6 @@ Las dos primeras vueltas de esta ficha midieron por el campo equivocado (`questi
 - **Es 🟢 a propósito:** nada está roto y la herramienta se invoca con una frase. Lo que se gana es que el número no se quede viejo en silencio.
 
 - **CABO SUELTO concreto que salió del barrido y no tiene dueño:** `administrativo-estado` y `administrativo-seguridad-social` **comparten el mismo `programa_url`** (`BOE-A-2026-9946`, el RD de la OEP 2026). Dos oposiciones distintas no pueden tener el mismo temario, y encima ese documento no es un temario. Se apuntó en [T-552] pero esa ficha ya está cerrada: se repite aquí para que no se pierda. Va por la frase *«revisa los enlaces de convocatoria»*.
-### [T-551] 🔴 [ABIERTO 04/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
-
-**El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
-añade un `EXISTS` contra `topic_scope` como **condición dura**. Si la oposición **no tiene temario
-construido** (0 filas de `topic_scope`), ese `EXISTS` no casa nunca y **todas las leyes cuentan 0**.
-El usuario ve *«Número de preguntas: 0 · Solo hay 0 preguntas disponibles»* y no llega a lanzar el
-test — aunque el test, si lo lanzara, **sí le serviría preguntas**.
-
-**Los dos caminos NO se comportan igual, y ese es el defecto:**
-
-| camino | fichero | ¿degrada si la oposición no tiene temario? |
-|---|---|---|
-| el TEST | `lib/api/filtered-questions/queries.ts` | **Sí** — «degrad» sale **6 veces** |
-| el CONTADOR | `lib/api/test-config/queries.ts` (`estimateByLaws`) | **No** — sale **0 veces** |
-
-El del test incluso lo explica: *«Devuelve `null` cuando la oposición NO tiene NINGUNA fila de
-topic_scope… para poder DEGRADAR con gracia en vez de servir un test vacío que frustra al usuario
-(incidente Alfonso, premium, 11/07)»*. La lección se aprendió una vez y se aplicó **en un solo
-sitio**. Este es el mismo incidente por la otra puerta.
-
-**Medido el 04/08 sobre el caso real** (feedback `a99d3fec`, Félix Peña, **premium**, alta hace 8
-días, oposición `cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl` → **0 temas, 0 filas de
-`topic_scope`**), con su combinación guardada «Bloque económico» (10 leyes, dos de ellas acotadas a
-artículos concretos):
-
-| | preguntas |
-|---|---|
-| la combinación entera, sin acotar | **1.283** |
-| CE con sus 19 artículos, sin acotar | 317 |
-| CE con sus 19 artículos, **acotado a su oposición** | **0** ← lo que ve el contador |
-
-Su captura lo confirma: las 10 leyes se restauran bien («10 de 1136 leyes seleccionadas»), el aviso
-de mezcla de leyes acotadas y completas se pinta bien, y aun así el número es 0. **La selección
-guardada no tiene nada malo: miente el contador.**
-
-**Arreglo.** Llevar a `estimateByLaws` la misma degradación que ya tiene el camino del test: si la
-oposición no tiene NINGUNA fila de `topic_scope` para esa ley, **no intersecar contra vacío** —
-respetar la selección explícita del usuario (o la ley entera). Lo suyo es **extraer el criterio a un
-sitio único** en vez de copiarlo: dos guardas con criterios distintos sobre el mismo recurso no
-protegen, se contradicen (la lección de [T-130]).
-
-**Capas que pide.** Ya existe `npm run sim:estimate-por-leyes` («comprobar que el contador del
-configurador dice la verdad», T-326) y **no cazó esto**, porque compara el contador contra SQL
-escrito aparte pero **sin el caso de la oposición sin temario**. El caso nuevo es barato de añadir
-ahí y es el que convierte esto en trinquete: *contador y test tienen que dar el MISMO número*, que
-es la invariante de verdad y hoy no la vigila nadie.
-
-**Relacionada: [T-397]** («592 usuarios, 3 de ellos PREMIUM, han elegido una oposición sin ningún
-tema»). Félix es uno de esos tres premium. **Son dos fallos distintos y los dos hay que arreglar:**
-T-397 es que se pueda elegir (y pagar) una oposición vacía; esto es que, aun estando en esa
-situación, el contador le impide usar lo que sí funciona. Arreglar solo T-397 dejaría el contador
-mintiendo a cualquiera que en el futuro acote a una oposición en construcción.
-
 ### [T-548] 🟠 [ABIERTO 04/08] Paso 2 de administrativo_asturias: 29 temas stale tras el literal, y un recorte de 208 preguntas esperando decisión
 
 - **Sale de [T-547]**, que puso los 38 epígrafes en `verified_literal` contra el BOPA. Reescribir el epígrafe dispara el trigger, así que su scope quedó **`stale`**: el veredicto anterior se emitió contra una paráfrasis y ya no vale. Estado hoy: **29 stale · 8 verified_correct · 1 verified_issues**.
@@ -4685,6 +4632,71 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-551] ✅ [HECHA 05/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
+
+**El fallo.** En el configurador «por leyes», cuando el usuario acota a su oposición, el contador
+añade un `EXISTS` contra `topic_scope` como **condición dura**. Si la oposición **no tiene temario
+construido** (0 filas de `topic_scope`), ese `EXISTS` no casa nunca y **todas las leyes cuentan 0**.
+El usuario ve *«Número de preguntas: 0 · Solo hay 0 preguntas disponibles»* y no llega a lanzar el
+test — aunque el test, si lo lanzara, **sí le serviría preguntas**.
+
+**Los dos caminos NO se comportan igual, y ese es el defecto:**
+
+| camino | fichero | ¿degrada si la oposición no tiene temario? |
+|---|---|---|
+| el TEST | `lib/api/filtered-questions/queries.ts` | **Sí** — «degrad» sale **6 veces** |
+| el CONTADOR | `lib/api/test-config/queries.ts` (`estimateByLaws`) | **No** — sale **0 veces** |
+
+El del test incluso lo explica: *«Devuelve `null` cuando la oposición NO tiene NINGUNA fila de
+topic_scope… para poder DEGRADAR con gracia en vez de servir un test vacío que frustra al usuario
+(incidente Alfonso, premium, 11/07)»*. La lección se aprendió una vez y se aplicó **en un solo
+sitio**. Este es el mismo incidente por la otra puerta.
+
+**Medido el 04/08 sobre el caso real** (feedback `a99d3fec`, Félix Peña, **premium**, alta hace 8
+días, oposición `cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl` → **0 temas, 0 filas de
+`topic_scope`**), con su combinación guardada «Bloque económico» (10 leyes, dos de ellas acotadas a
+artículos concretos):
+
+| | preguntas |
+|---|---|
+| la combinación entera, sin acotar | **1.283** |
+| CE con sus 19 artículos, sin acotar | 317 |
+| CE con sus 19 artículos, **acotado a su oposición** | **0** ← lo que ve el contador |
+
+Su captura lo confirma: las 10 leyes se restauran bien («10 de 1136 leyes seleccionadas»), el aviso
+de mezcla de leyes acotadas y completas se pinta bien, y aun así el número es 0. **La selección
+guardada no tiene nada malo: miente el contador.**
+
+**Arreglo.** Llevar a `estimateByLaws` la misma degradación que ya tiene el camino del test: si la
+oposición no tiene NINGUNA fila de `topic_scope` para esa ley, **no intersecar contra vacío** —
+respetar la selección explícita del usuario (o la ley entera). Lo suyo es **extraer el criterio a un
+sitio único** en vez de copiarlo: dos guardas con criterios distintos sobre el mismo recurso no
+protegen, se contradicen (la lección de [T-130]).
+
+**Capas que pide.** Ya existe `npm run sim:estimate-por-leyes` («comprobar que el contador del
+configurador dice la verdad», T-326) y **no cazó esto**, porque compara el contador contra SQL
+escrito aparte pero **sin el caso de la oposición sin temario**. El caso nuevo es barato de añadir
+ahí y es el que convierte esto en trinquete: *contador y test tienen que dar el MISMO número*, que
+es la invariante de verdad y hoy no la vigila nadie.
+
+**Relacionada: [T-397]** («592 usuarios, 3 de ellos PREMIUM, han elegido una oposición sin ningún
+tema»). Félix es uno de esos tres premium. **Son dos fallos distintos y los dos hay que arreglar:**
+T-397 es que se pueda elegir (y pagar) una oposición vacía; esto es que, aun estando en esa
+situación, el contador le impide usar lo que sí funciona. Arreglar solo T-397 dejaría el contador
+mintiendo a cualquiera que en el futuro acote a una oposición en construcción.
+
+**Cerrada el 05/08.** El arreglo real (backend `6e84fc460`) se hizo el 04/08 tras descubrir que el
+primer parche solo tocó el gemelo del FRONTEND, y la familia `test-config` en producción la sirve el
+BACKEND (`x-served-by: vence-backend`) — el mismo modo de fallo dos veces sobre el mismo incidente.
+Desplegado en `95b0c163` (backend). **Verificado EN PRODUCCIÓN vía curl directo** (no con
+`sim:estimate-servido`, cuya query necesita `user_profiles`, tabla vedada para el rol de lectura del
+trabajador): degradación genérica CE completa 4607→4607 (antes 0), con 19 artículos filtrados
+590→590 (antes 0), combinación real de Félix (10 leyes) 5820→5820 (antes 0), y control CON temario
+(`administrativa_universidad_de_murcia`) 4607→1999 — sigue recortando, no degrada de más. Confirmado
+además en `observable_events` el evento `filtered_questions_unbuilt_oposicion_degrade` con
+`source=fargate` y la combinación exacta de Félix, generado el 05/08 10:04 por tráfico real previo a
+esta verificación. Guardarraíl `__tests__/guardrails/estimateByLawsParidad.test.ts` en verde (10/10).
 
 ### [T-544] ✅ 🟡 [HECHA 05/08] Baja de Sara Chamorro: confirmar o ejecutar el borrado antes de que venza el plazo RGPD
 
