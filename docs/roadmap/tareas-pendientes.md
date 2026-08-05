@@ -842,6 +842,19 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
+
+- **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
+  - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
+  - **89 de ellos son `/api/auth/token`** (último a las 09:40 UTC). El resto es cola larga: 6 en `/api/v2/answer-and-save`, 2 en `laws-configurator`, 2 en `random-test/availability`, 2 en `referrals/badge`.
+- **No se queda en un contador: le está costando datos a usuarios.** En la misma ventana hay **193 `console_error` con el texto `❌ [answerSaveQueue] Sin token (intento #1…)`** — la cola que persiste las respuestas de los tests se queda sin token y no puede llamar a `/api/v2/answer-and-save`. El usuario ve su respuesta corregida al instante (validación en cliente), así que **el fallo es invisible para él**, pero el registro en `test_questions`, el score autoritativo y el antifraude se los pierde el servidor. Es exactamente el modo de fallo que el runbook avisa: *«el servidor puede decir 0 5xx y el panel verde mientras los clientes sufren — p.ej. 502 de `/api/auth/token`, que es un error de EDGE»*.
+- **Qué hay que averiguar primero (no está determinado):** si los 89 son 502 de edge (infraestructura, delante de la app) o 500 de la propia ruta. La distinción cambia por completo el arreglo y **no se puede deducir del contador**: hay que mirar el `error_message`/`metadata` de esos eventos y los logs de Fargate/edge de esa franja.
+- **Relación con la cola de respuestas:** comprobar si los 193 «Sin token» caen en las MISMAS franjas que los 89 5xx. Si correlan, es un solo fallo con dos síntomas; si no, son dos.
+- **NO confundir con [T-315]** (el techo de 25 s de `answer-and-save`): ahí el problema es el presupuesto de tiempo del backend, aquí es que no hay token con el que llamar. Los 6 `answer-and-save` de esta ventana sí pueden ser de T-315.
+- **Ruido que NO es esto:** los 1.305 + 604 `console_error` de `[GSI_LOGGER] FedCM …` son del inicio de sesión con Google en el navegador y dominan el volumen; hay que descartarlos antes de mirar nada, o tapan la señal.
+- **Contexto de la medición:** también hay 96 `canary_pdf_queue_failed` (crónico conocido, cola de PDFs sin consumidor) y 85 `ci_integracion_rojo` (es [T-370], ya dormida esperando los secrets de GitHub).
+- **Esfuerzo: rato** (diagnóstico; el arreglo puede ser mayor y saldrá de lo que diga el diagnóstico).
+
 ### [T-569] 🟠 [ABIERTO 05/08] El perfil BORRA en silencio la oposición del usuario si no está en el registro del frontend: 11 cuentas con cadena vacía
 
 **Lo que le pasa a la persona.** Entra en `/perfil`, cambia cualquier cosa (el apodo, la meta
