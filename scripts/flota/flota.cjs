@@ -691,7 +691,7 @@ async function main() {
                      AND wake_on_deploy_sha IS NULL AND review_requested_at IS NULL
                    ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, id
                    LIMIT 60`
-                const { tarea: elegida } = ENC.elegir(libres.filter((t) => !repartidas.has(t.id)))
+                const { tarea: elegida } = ENC.elegir(libres.filter((t) => !repartidas.has(t.id)), { puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede })
                 if (elegida) {
                   repartidas.add(elegida.id)
                   texto = ENC.encargo({ trabajador, tarea: elegida, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede })
@@ -774,7 +774,7 @@ async function main() {
           } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
           continue
         }
-        const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)))
+        const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)), { puedeDesplegar: true })
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
           const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
@@ -795,6 +795,38 @@ async function main() {
           console.log(`   ❌ ${f.trabajador}: no se le pudo mandar (${String(e.message).slice(0, 60)})`)
         }
       }
+      // ── LO QUE LA FLOTA NUNCA VA A COGER ────────────────────────────────────────────────
+      // La criba de `esApta` es un filtro de TEXTO y siempre tendrá falsos: [T-585] —corpus
+      // documental, trabajo de contenido puro— llevaba rondas saltándose sola porque su ficha dice
+      // «factura 1.691 €/90d» para justificar su prioridad, y en este repo casi toda tarea valiosa
+      // se justifica así.
+      //
+      // Lo que hacía daño no era el falso positivo: era que **nadie podía saberlo**. Una tarea que
+      // el reparto salta en cada vuelta no aparece en ningún sitio — ni como error, ni como aviso.
+      // Se queda abierta para siempre y parece que nadie la ha cogido por casualidad.
+      const abiertas = await sql`
+        SELECT id, title FROM public.backlog_tasks
+         WHERE status = 'open' AND claimed_by IS NULL
+           AND (snooze_until IS NULL OR snooze_until <= now())
+           AND wake_on_deploy_sha IS NULL AND review_requested_at IS NULL`
+      const porMotivo = new Map()
+      for (const t of abiertas) {
+        const v = ENC.esApta(t, { puedeDesplegar: true })
+        if (v.apta) continue
+        if (!porMotivo.has(v.motivo)) porMotivo.set(v.motivo, [])
+        porMotivo.get(v.motivo).push(t.id)
+      }
+      if (porMotivo.size) {
+        const total = [...porMotivo.values()].reduce((a, b) => a + b.length, 0)
+        console.log(`\n🚫 ${total} tarea(s) libres que la flota NUNCA cogerá sola:`)
+        for (const [motivo, ids] of [...porMotivo].sort((a, b) => b[1].length - a[1].length)) {
+          console.log(`   ${String(ids.length).padStart(3)} · ${motivo}`)
+          console.log(`        ${ids.slice(0, 6).join(' ')}${ids.length > 6 ? ` …y ${ids.length - 6} más` : ''}`)
+        }
+        console.log('   Si alguna NO debería estar aquí, es un falso positivo de la criba:')
+        console.log('   se le puede mandar igual con  npm run flota -- encargar <w> --tarea <id>')
+      }
+
       console.log(`\n${n} encargo(s) repartido(s). Míralo con: npm run flota`)
       return 0
     }
