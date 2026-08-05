@@ -69,6 +69,33 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
               -- 300 respuestas diarias sin cobrar, que es lo correcto: era premium.
               AND tq.created_at::date BETWEEN us.current_period_start::date
                                           AND COALESCE(us.current_period_end::date, CURRENT_DATE))
+         -- ── EL TEST RECUPERADO NO ES UNA FUGA (05/08/2026) ───────────────────────────────
+         -- Quien prueba la app SIN cuenta y luego se registra recibe su test anónimo adjuntado
+         -- a la cuenta nueva. Esas respuestas se persisten TODAS de golpe, ya contestadas, y
+         -- nunca gastaron cupo — correctamente: cuando las dio no había cuenta a la que
+         -- cobrárselas. El canario las veía como «respondió 50 con el contador a 0».
+         -- Caso que lo destapó: cuenta creada a las 17:18:03 y test de 50 adjuntado 7 s después.
+         --
+         -- ⚠️ HACEN FALTA LAS DOS CONDICIONES, y la primera versión de esta guarda llevaba solo
+         -- una. La firma del VOLCADO (todas las respuestas insertadas en el mismo instante que
+         -- el test) NO basta: el modo EXAMEN persiste en lote por diseño, así que la tienen
+         -- **63 de 1.794 tests de examen (3,5 %)** — y cegar al canario ahí sería cegarlo justo
+         -- en el camino para el que nació esta ficha. Se comprobó antes de subirlo: con solo esa
+         -- condición se excluía un test del usuario 9f9d60c1, que es un caso de fuga REAL.
+         --
+         -- Lo que define al test recuperado es que se adjunta AL CREAR LA CUENTA. Por eso se
+         -- exige además que el test naciera pegado al alta. El tiempo por sí solo tampoco vale
+         -- (la distribución es continua: 552 tests en los primeros 50 s y una cola larga), pero
+         -- JUNTO al volcado sí: un test importado en bloque en los dos primeros minutos de vida
+         -- de la cuenta es el test anónimo, no una sesión de estudio.
+         AND NOT EXISTS (
+           SELECT 1 FROM tests t
+            WHERE t.id = tq.test_id
+              AND t.created_at <= up.created_at + interval '2 minutes'
+              AND (SELECT count(*) FROM test_questions x
+                    WHERE x.test_id = t.id AND x.user_answer IS NOT NULL AND x.user_answer <> '') >= 10
+              AND (SELECT max(x.created_at) FROM test_questions x WHERE x.test_id = t.id)
+                  <= t.created_at + interval '5 seconds')
        GROUP BY 1, 2)
     SELECT r.d AS dia, count(*) AS usuarios_con_fuga,
            sum(r.respuestas - COALESCE(u.questions_answered, 0)) AS respuestas_sin_cobrar
