@@ -268,6 +268,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     comando: 'npm run huerfanos:plan',
     claudeHace: 'localiza los artículos que están en el topic_scope y tienen contenido real pero 0 preguntas activas (al usuario nunca le salen en los tests aunque el tema en conjunto sí tenga preguntas), y genera preguntas ancladas al texto del artículo con doble auditoría ciega antes de activarlas. Excluye derogados.',
   },
+  articulo_servido_sin_texto: {
+    title: 'Artículos del temario que no tienen NADA que leer',
+    triggerPhrase: 'revisa los artículos sin texto',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'localiza los artículos escopados en un tema vivo que se sirven MUDOS (ni rúbrica ni contenido: el usuario ve el número y el botón «Hacer test», y ni una línea que estudiar) e importa su texto VERBATIM desde la fuente oficial, con la doble auditoría de siempre. NO confundir con «revisa los artículos sin preguntas», que es lo contrario: allí el artículo se lee bien y lo que falta son preguntas. Origen (T-596): hasta el 05/08/2026 el encabezado de la tarjeta colgaba solo de `title`, que 13.952 artículos activos (23% del banco) tienen a NULL TENIENDO el texto guardado, así que se servían mudos 48 de 62 artículos en un tema; el arreglo fue de render (`lib/teoria/encabezadoArticulo`) y este detector vigila lo que queda, que es la deuda de contenido real. Lo destapó un usuario premium, no una alerta.',
+  },
   flattened_table: {
     title: 'Tabla aplanada (import PDF sin rejilla)',
     triggerPhrase: 'revisa las tablas de artículos',

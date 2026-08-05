@@ -192,6 +192,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Complemento en caliente: el texto está en TEXTOS_PANTALLA_ERROR de `lib/sim/oraculo.ts`, ' +
       'así que el barrido de rutas caza las que ya estén vivas.',
   },
+  // ── Que el temario se pueda LEER (T-596) ──────────────────────────────────────────────────
+  encabezado_articulo: {
+    titulo: 'Qué se lee en la línea de un artículo del temario (rúbrica o, si no hay, su texto)',
+    ruta: 'lib/teoria/encabezadoArticulo.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'Núcleo puro y criterio ÚNICO: lo usan las 131 copias de `TopicContentView.tsx` (el render) y ' +
+      'el kind `articulo_servido_sin_texto` del sweep (la medida), para que detector y página no ' +
+      'puedan discrepar. Nace de que el encabezado colgaba solo de `article.title`, que 13.952 ' +
+      'artículos activos (23% del banco) tienen a NULL TENIENDO el texto guardado: se servían mudos ' +
+      '48 de 62 en un tema y lo destapó un premium estudiando, no una alerta. El arreglo es de ' +
+      'RENDER y no un backfill (catorce mil rúbricas no se rellenan a mano, y el artículo que se ' +
+      'importe mañana volvería a nacer roto). Aplicado a las 131 vistas con ' +
+      '`npm run teoria:encabezado-articulo` (dry-run por defecto, no toca lo que no encaje con el ' +
+      'patrón) y vigilado por `__tests__/guardrails/encabezadoArticulo.guardrail.test.ts`, que mira ' +
+      'las 131: la oposición 132 nace vigilada aunque se copie de una vista vieja. Comprobación en ' +
+      'caliente con navegador real: `npm run sim:articulo-con-texto` (validado por mutación — en ' +
+      'rojo contra producción antes del deploy, con los 48 casos y sus caracteres guardados).',
+  },
   // ── Consumo de LLM (API facturable + suscripción de Claude Code) ──────────────────────────
   llm_gasto: {
     titulo: 'Ver el consumo de LLM del sistema: lo que se factura y lo que consume cuota',

@@ -13,6 +13,7 @@ import TopicPrintButton from '@/components/TopicPrintButton'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import TopicNavFooter from '@/components/TopicNavFooter'
 import MarkdownContent from '@/components/MarkdownContent'
+import { encabezadoArticulo } from '@/lib/teoria/encabezadoArticulo'
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -273,7 +274,14 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-1 min-w-0">
             <span className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">Art. {article.articleNumber}</span>
-            {article.title && <h3 className="font-medium text-gray-900 dark:text-white truncate">{article.title}</h3>}
+            {(() => {
+              // T-596: el encabezado NO puede colgar de `title` — 23% del banco lo tiene a NULL
+              // teniendo el texto guardado, y esas tarjetas se servían mudas.
+              const encabezado = encabezadoArticulo(article)
+              return encabezado ? (
+                <h3 className="font-medium text-gray-900 dark:text-white truncate">{encabezado}</h3>
+              ) : null
+            })()}
           </div>
           {hasOfficialQuestions && (
             <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">

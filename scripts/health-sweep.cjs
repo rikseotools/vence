@@ -270,6 +270,42 @@ async function detectarTodo(c, add, now) {
         { temas: sinPreg.map(r => ({ tema: r.topic_number, arts_sin_preguntas: r.n, ejemplos: r.ejemplos })) });
     }
 
+    // ── ARTÍCULO SERVIDO MUDO (T-596) ──
+    // El temario pinta cada artículo con su rúbrica y, si no la hay, con un extracto de su
+    // contenido (`lib/teoria/encabezadoArticulo`). Queda mudo —número pelado, sin una línea que
+    // leer— solo cuando NO tiene ninguna de las dos cosas. Eso es lo que se mide aquí.
+    //
+    // Nace del bug que lo originó: hasta el 05/08 el encabezado colgaba SOLO de `title`, que
+    // 13.952 artículos activos (23% del banco) tienen a NULL teniendo el texto guardado, así que
+    // se servían mudos 48 de 62 en un tema. Lo destapó un premium estudiando, no un detector:
+    // ningún kind miraba si lo que servimos se puede LEER. Con el render arreglado esa masa
+    // desaparece y queda esta cola, corta y accionable: los que de verdad no tienen contenido.
+    //
+    // ⚠️ El criterio que MANDA es `articuloSinTextoVisible()`; esto es su espejo en SQL (el sweep
+    // es CJS y no puede llamar al núcleo TS). Por eso el corte es el trivial —ni rúbrica ni texto—
+    // y no una heurística propia: un espejo simple se puede comprobar de un vistazo, uno listo no.
+    const mudos = (await c.query(`
+      SELECT tp.topic_number,
+        count(*)::int AS n,
+        (array_agg(l.short_name || ' ' || a.article_number ORDER BY ${SQL_ORDEN_ARTICULO}))[1:6] AS ejemplos
+      FROM topic_scope ts
+      JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+      JOIN laws l ON l.id = ts.law_id
+      -- article_numbers NULL = LA LEY ENTERA: mismo criterio que el detector de cobertura.
+      JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                     AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+      WHERE tp.position_type = $1
+        AND coalesce(btrim(a.title), '') = ''
+        AND length(btrim(coalesce(a.content, ''))) = 0
+      GROUP BY tp.topic_number
+      ORDER BY tp.topic_number`, [pt])).rows;
+    if (mudos.length) {
+      const tot = mudos.reduce((a2, r) => a2 + r.n, 0);
+      add('content', 'warn', o.slug, 'articulo_servido_sin_texto',
+        `${o.slug}: ${tot} artículo(s) del temario se sirven SIN NADA que leer (ni rúbrica ni texto; p.ej. T${mudos[0].topic_number}: ${(mudos[0].ejemplos || []).join(', ')})`,
+        { temas: mudos.map(r => ({ tema: r.topic_number, arts_mudos: r.n, ejemplos: r.ejemplos })) });
+    }
+
     // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
     const nTopics = topics.length;
     if (o.temas_count != null && Number(o.temas_count) !== nTopics) add('content', 'error', o.slug, 'temas_card', `temas_count=${o.temas_count} ≠ ${nTopics} topics reales`);
