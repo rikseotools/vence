@@ -1948,24 +1948,6 @@ ponerse a verificar una por una.
 - **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
 - **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
 
-### [T-482] 🔴 [ABIERTO 02/08] Dos endpoints de tests sin autenticación: `/review` lee el examen de cualquiera y `/recover` escribe en la cuenta que le digas
-
-- **⛔ NO EMPEZAR HASTA EL MARTES 04/08 (decisión de Manuel, 02/08).** Está en `snooze_until`, así que `claim` no la entrega antes.
-- **Esfuerzo: sesion_propia.** No es «añadir un guard»: hay que decidir la identidad de cada endpoint, tocar también el cliente que hoy llama sin token, y comprobar que no se rompe el repaso de nadie.
-- **Cómo salió:** verificando [T-472] en producción. Para comprobar el arreglo hice `curl` a `/api/tests/<uuid>/review` **sin sesión** y respondió 200 con el examen entero. Me vino de perlas para verificar, y por eso mismo es un agujero.
-- **Los dos casos NO son el mismo problema, y el segundo es peor:**
-  - **`GET /api/tests/[testId]/review`** (`app/api/tests/[testId]/review/route.ts`) — **lectura ajena (IDOR)**: no llama a `getAuthenticatedUser` ni comprueba que el test sea tuyo. Con el UUID se leen enunciados, **las respuestas de esa persona**, sus aciertos y sus tiempos. El UUID viaja en la URL del navegador (`/revisar/<testId>`), así que aparece en historiales, capturas y cualquier enlace compartido.
-  - **`POST /api/tests/recover`** (`app/api/tests/recover/route.ts` → `recoverTest` en `lib/api/tests/queries.ts`) — **ESCRITURA con el `userId` del CUERPO**: sin sesión, se crea un test con sus respuestas para el usuario que se indique y se toca su `user_profiles`. Contamina el historial y las estadísticas de terceros, y es munición para el antifraude (aciertos que el usuario no hizo).
-- **Contraste que demuestra que es un olvido y no un diseño:** el feed de la campana (`/api/notifications/oposicion-alerts`) documenta en su cabecera *«userId SIEMPRE de la sesión → sin IDOR»* y así lo hace. La casa ya tiene la pieza (`getAuthenticatedUser` en `lib/api/shared/auth`); estos dos endpoints no la usan.
-- **Lo que hay que decidir al atacarla (no está resuelto):**
-  1. **`/review` necesita cambio de cliente además de servidor**: hoy `app/revisar/[testId]/page.tsx` hace `fetch` **sin cabecera de autorización**. Añadir el guard sin tocar el cliente deja la pantalla de repaso en 401 para todo el mundo.
-  2. **¿Dueño o compartible?** Si algún día se quiere «compartir mi resultado», eso es un token de compartición explícito, no la ausencia de guard.
-  3. **`/recover`**: el `userId` del cuerpo se ignora y se coge de la sesión. Revisar quién lo llama (recuperación de test interrumpido) para no romper el caso legítimo.
-- **Medir antes de tocar:** contar en `observable_events` cuántas llamadas reales reciben ambos endpoints y desde dónde, para saber si alguien los usa sin sesión por un motivo legítimo.
-- **Capas que pedirá:** test de que sin token responde 401 y con token ajeno 403 · integración contra BD real (un test de A no se lee con la sesión de B) · **journey** de la pantalla de repaso, que es lo que se rompe si el cliente no manda el token · y mirar si el guardarraíl de endpoints sin auth existe ya (`__tests__` de `/api/admin/*` cazó algo parecido: memoria `project-admin-endpoints-sin-auth`).
-- **Relacionadas:** [T-472] (de donde sale), y la memoria `project-admin-endpoints-sin-auth` (mismo fallo, otra familia de rutas).
-
-
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
@@ -4697,6 +4679,17 @@ respuesta definitiva a *"por qué 4 y no 3"* depende de esa decisión, no de est
   (elegir una oposición sin temario), [T-545] y [T-523] (la familia de las oposiciones
   personalizadas/de comunidad).
 
+### [T-482] ✅ [HECHA 05/08] Dos endpoints de tests sin autenticación: `/review` lee el examen de cualquiera y `/recover` escribe en la cuenta que le digas
+
+- **Cómo salió:** verificando [T-472] en producción. Para comprobar el arreglo se hizo `curl` a `/api/tests/<uuid>/review` **sin sesión** y respondió 200 con el examen entero.
+- **Los dos casos NO eran el mismo problema, y el segundo era peor:**
+  - **`GET /api/tests/[testId]/review`** — **lectura ajena (IDOR)**: no llamaba a `getAuthenticatedUser` ni comprobaba que el test fuera tuyo. Con el UUID (que viaja en la URL del navegador, `/revisar/<testId>`) se leían enunciados, respuestas, aciertos y tiempos de otra persona.
+  - **`POST /api/tests/recover`** (`lib/api/tests/queries.ts`) — **escritura con el `userId` del CUERPO**: sin sesión, se podía crear un test con respuestas para el usuario que se indicara y tocar su `user_profiles`.
+- **Arreglo:** `requireUsuarioPropio`/`getAuthenticatedUser` en los tres endpoints (`/api/tests/[testId]/review`, `/api/tests/recover`, `/api/psychometric/review`), cliente de `/revisar/[testId]` migrado a mandar Bearer, y guardarraíl `user-scoping-c2` extendido para ver también el query builder de Drizzle (no solo `sql\`\``), con la zona ciega restante CONGELADA como trinquete.
+- **GOTCHA descubierto verificando en vivo (05/08):** con el guard ya desplegado, un GET pelado a `/api/tests/<uuid>/review` seguía devolviendo **200 con el examen entero**, mientras la MISMA URL con `?cb=123` daba 401. No era CloudFront (`x-cache: Miss`, contestaba el origen): era **Next sirviendo el handler GET desde su propia caché** porque no declaraba `dynamic`, así que la petición nunca llegaba al código que autentica. Se delató por contraste con el gemelo psicotécnico, que sí declaraba `force-dynamic` y sí daba 401. Arreglo: `export const dynamic = 'force-dynamic'` (commit `544f9c5e5`) + guardarraíl nuevo `__tests__/guardrails/rutaAutenticadaEsDinamica.guardrail.test.ts` con las 100 rutas GET que autentican sin declararse dinámicas congeladas como trinquete (triarlas es trabajo aparte).
+- **RE-VERIFICADO EN VIVO el 05/08** tras el deploy, sobre frontend `5d09fce0` (incluye `544f9c5e5`): 4 `testId` reales y recién creados (sacados de `observable_events`) dieron 401 sin fuga, pelados y con `?cb=`, en varias repeticiones. Con un script efímero (playwright + cookie de sesión propia, no commiteado) contra pares `(userId, testId)` reales: A pidiendo el test de B → **403 sin fuga** (el caso central del IDOR, confirmado con datos reales); sin sesión → 401 con y sin cache-buster; el guard de identidad dejó pasar al dueño (Bearer presente, sin 401/403). `POST /api/tests/recover` sin sesión → 401 `no_bearer_token`, sin escribir nada. Gemelo `/api/psychometric/review` → 401. Guardarraíl `rutaAutenticadaEsDinamica` en verde (6/6).
+- **Nota de acceso (no bloquea, ya registrada en [T-573]):** el sim oficial `scripts/sim/sim-repaso-ajeno.ts` no pudo correr tal cual con las credenciales de un trabajador de la flota — necesita leer `tests`/`test_questions`, con RLS activo y sin policy para el rol de solo-lectura (`vence_lector`): 0 filas, sin error. La re-verificación de arriba se hizo por vías alternativas (curl directo + `observable_events` para obtener pares reales).
+- **Relacionadas:** [T-472] (de donde sale), [T-573] (RLS sin policy bloquea en silencio ~70 tablas para `vence_lector`), y la memoria `project-admin-endpoints-sin-auth` (mismo fallo, otra familia de rutas).
 
 ### [T-551] ✅ [HECHA 05/08] El contador del configurador dice 0 donde el test serviría 1.283: la guarda de degradación está en un camino y no en su gemelo
 
