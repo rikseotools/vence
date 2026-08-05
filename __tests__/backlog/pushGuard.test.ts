@@ -6,7 +6,7 @@
 // copia: así el test no da falso verde el día que el guard cambie.
 //
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { extractTaskIds, parseGitLog, clasificarMenciones, evaluatePush } = require('@/lib/backlog/pushGuard.cjs')
+const { extractTaskIds, parseGitLog, clasificarMenciones, evaluatePush, fichaAusenteEnPush } = require('@/lib/backlog/pushGuard.cjs')
 
 const AHORA = new Date('2026-07-20T12:00:00Z')
 const mins = (n: number) => new Date(AHORA.getTime() + n * 60_000).toISOString()
@@ -378,5 +378,65 @@ describe('el escape del push-guard usa el criterio COMPARTIDO', () => {
     expect(src).toContain('evaluarEscape')
     // La comparación literal contra '1' es exactamente el agujero que esta tarea cierra.
     expect(src).not.toMatch(/BACKLOG_GUARD_SKIP\s*===\s*'1'/)
+  })
+})
+
+// T-443: la ficha de T-435 se escribió, `sync` la reconcilió con la tabla, y `git log -S` no la
+// encontró en NINGUNA revisión — se perdió antes de llegar a un commit. `mia_sin_escribir` ya
+// distinguía el caso dentro de `sync`, pero solo se veía corriendo ese comando A MANO. Esto lo
+// asoma en el momento en que de verdad importa: cuando el push va a publicar el estado.
+describe('fichaAusenteEnPush — mi tarea se publica sin ficha en el markdown', () => {
+  const MD_CON_T042 = '## Abiertas\n\n### [T-042] 🔴 [ABIERTO 01/08] Un título cualquiera\n\nCuerpo.\n'
+  const MD_SIN_T042 = '## Abiertas\n\n### [T-099] 🔴 [ABIERTO 01/08] Otra tarea distinta\n\nCuerpo.\n'
+
+  it('no dice nada si la ficha SÍ está en el markdown que se va a publicar', () => {
+    const r = fichaAusenteEnPush({
+      referencedIds: ['T-042'],
+      tasksById: new Map([['T-042', { status: 'in_progress', claimed_by: SID }]]),
+      sid: SID,
+      mdHeadContent: MD_CON_T042,
+    })
+    expect(r).toEqual([])
+  })
+
+  it('avisa si la tarea es MÍA, está viva, y su ficha no aparece por ningún lado', () => {
+    const r = fichaAusenteEnPush({
+      referencedIds: ['T-042'],
+      tasksById: new Map([['T-042', { status: 'in_progress', claimed_by: SID }]]),
+      sid: SID,
+      mdHeadContent: MD_SIN_T042,
+    })
+    expect(r).toEqual(['T-042'])
+  })
+
+  it('NO avisa de una tarea AJENA sin ficha: no es mi trabajo el que se pierde', () => {
+    const r = fichaAusenteEnPush({
+      referencedIds: ['T-042'],
+      tasksById: new Map([['T-042', { status: 'in_progress', claimed_by: OTRA }]]),
+      sid: SID,
+      mdHeadContent: MD_SIN_T042,
+    })
+    expect(r).toEqual([])
+  })
+
+  it('NO avisa de una tarea CERRADA: su ficha puede vivir en otra sección (## Hechas)', () => {
+    const r = fichaAusenteEnPush({
+      referencedIds: ['T-042'],
+      tasksById: new Map([['T-042', { status: 'done', claimed_by: SID }]]),
+      sid: SID,
+      mdHeadContent: MD_SIN_T042,
+    })
+    expect(r).toEqual([])
+  })
+
+  it('no confunde T-042 con T-4202 (límite de palabra en el id)', () => {
+    const md = '### [T-4202] 🔴 [ABIERTO] Título\n'
+    const r = fichaAusenteEnPush({
+      referencedIds: ['T-042'],
+      tasksById: new Map([['T-042', { status: 'in_progress', claimed_by: SID }]]),
+      sid: SID,
+      mdHeadContent: md,
+    })
+    expect(r).toEqual(['T-042'])
   })
 })

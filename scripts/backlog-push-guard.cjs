@@ -21,7 +21,7 @@ const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
 const {
-  clasificarMenciones, evaluatePush, parseGitLog, GIT_LOG_FORMAT,
+  clasificarMenciones, evaluatePush, parseGitLog, GIT_LOG_FORMAT, fichaAusenteEnPush, MD_BACKLOG,
 } = require('../lib/backlog/pushGuard.cjs')
 // El criterio de qué vale como escape es COMPARTIDO con el resto de guardarraíles (T-497): vive
 // junto a la medida en el núcleo de fricción, para que no diverjan.
@@ -157,6 +157,18 @@ async function main() {
   // Los avisos se imprimen SIEMPRE, pase o no: una excepción silenciosa es una excepción que
   // nadie revisa. Que se vea por qué el guard dejó pasar algo que antes bloqueaba.
   for (const n of notices || []) console.log(`ℹ️  backlog-push-guard: ${n.id} — ${n.reason}`)
+
+  // ¿Alguna de MIS tareas se va a publicar sin ficha en el markdown? (T-443). Nunca bloquea —ver
+  // `fichaAusenteEnPush`— y por eso corre pase lo que pase con el resto del guard.
+  const mdHeadContent = git(['show', `HEAD:${MD_BACKLOG}`])
+  const sinFicha = fichaAusenteEnPush({ referencedIds, tasksById, sid, mdHeadContent })
+  for (const id of sinFicha) {
+    console.error(`🟠 backlog-push-guard: ${id} — la reclamas y este push la menciona, pero su ficha`)
+    console.error(`   no está en ${MD_BACKLOG} (ni en el markdown que vas a publicar).`)
+    console.error(`   Si ya la escribiste y no aparece, es EXACTAMENTE el fallo de [T-435]: revisa`)
+    console.error(`   \`git log -S'### [${id}]' -- ${MD_BACKLOG}\` antes de asumir que está a salvo.`)
+  }
+  if (sinFicha.length) friccion('guard_aviso', 'backlog-push', sinFicha.join(','))
 
   if (allowed) return 0
 

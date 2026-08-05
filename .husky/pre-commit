@@ -10,14 +10,24 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#    (T-443, 05/08) El dispatcher de husky (.husky/_/h) invoca este script con `sh -e`, no con
+#    `sh` a secas — así que un `npm run db:check` puesto como sentencia SUELTA aborta el hook
+#    entero en cuanto falla, ANTES de llegar al `if [ $SCHEMA_EXIT_CODE -ne 0 ]` de abajo, y el
+#    comentario "no bloquea el commit" se volvía falso en la práctica: cualquier fallo de
+#    conexión (típico de un worker de flota, cuyo DATABASE_URL es solo de coordinación, 4
+#    tablas) bloqueaba TODOS los commits sin excepción. Envolver en `if` es lo que exime a un
+#    comando de `set -e` en POSIX sh — así el resto del hook sí se ejecuta.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
+  if npm run db:check; then
+    SCHEMA_EXIT_CODE=0
+  else
+    SCHEMA_EXIT_CODE=$?
+  fi
 
   if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo ""
-    echo "⚠️  Schema desincronizado. Ver errores arriba."
+    echo "⚠️  Schema desincronizado (o sin acceso desde esta credencial). Ver errores arriba."
     echo "   Para sincronizar: npm run db:pull"
     echo ""
     # Solo warning, no bloquea el commit
@@ -64,13 +74,30 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 if [ -n "$DATABASE_URL" ]; then
-  npm run audit:display-drift
-  if [ $? -ne 0 ]; then
+  # (T-443, 05/08) Mismo problema de `set -e` que el paso 1 — envuelto en `if` para que el resto
+  # del hook no dependa de que este comando en concreto tenga éxito. Y el script YA distingue
+  # dos fallos distintos por exit code (scripts/audit-temario-display-drift.cjs): 1 = DRIFT REAL
+  # encontrado (esto SÍ debe bloquear, es la razón de ser del check) — 2 = no se pudo ni
+  # ejecutar la consulta (sin DATABASE_URL, conexión caída, o — el caso normal de un worker de
+  # flota — permission denied porque su credencial es solo de coordinación y no llega a
+  # `topics`). Antes se trataban igual (`$? -ne 0`), así que un worker de flota nunca podía
+  # pasar este paso pasara lo que pasara en su commit.
+  if npm run audit:display-drift; then
+    DRIFT_EXIT_CODE=0
+  else
+    DRIFT_EXIT_CODE=$?
+  fi
+  if [ $DRIFT_EXIT_CODE -eq 1 ]; then
     echo ""
     echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
     echo "   Al modificar un tema, actualiza los 4 campos: title + epigrafe + description + descripcion_corta."
     echo "   Detalle: docs/maintenance/verificar-epigrafe-topic-scope.md"
     exit 1
+  elif [ $DRIFT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "⚠️  audit:display-drift no pudo completarse contra la BD (ver error arriba) — no es un"
+    echo "   drift confirmado, así que no bloquea. Normal si tu credencial no llega a 'topics'."
+    echo ""
   fi
 else
   echo "⏭️  Saltando audit:display-drift contra BD (DATABASE_URL no configurada)"

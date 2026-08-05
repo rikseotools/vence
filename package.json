@@ -142,6 +142,7 @@
     "sim:cola-reserva": "node scripts/impugnaciones/sim-reserva-cola.cjs",
     "sim:cabecera": "tsx scripts/sim/sim-cabecera-alcanzable.ts",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",
+    "sim:codigo-guard": "node scripts/backlog/sim-codigo-guard.cjs",
     "scope:pendientes": "node scripts/scope-over-inclusion.cjs --pendientes",
     "canary:opciones-duplicadas": "node scripts/canary-opciones-duplicadas.cjs",
     "canary:cupo-vs-respuestas": "node scripts/canary-cupo-vs-respuestas.cjs",

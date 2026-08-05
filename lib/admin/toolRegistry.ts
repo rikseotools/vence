@@ -815,6 +815,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'además la ficha VACIADA —que para el otro está sana, porque su id sigue existiendo—. Se solapan '+
       'solo en «desaparecida»: red detrás de puerta, no dos puertas con criterios distintos.',
   },
+  codigo_push_guard: {
+    titulo: 'Avisar (sin bloquear) cuando un push suprime código de la infra de coordinación que ya está en origin/main',
+    ruta: 'scripts/codigo-push-guard.cjs',
+    estado: 'vivo',
+    notas:
+      'Hook `.husky/pre-push`, hermano de `contexto_push_guard` pero sobre CÓDIGO en vez del ' +
+      'markdown del backlog. Nace de [T-443]: el 31/07 una copia rancia de `scripts/backlog.cjs` ' +
+      '(6f3e26261) borró 74 líneas del cableado de [T-427] hacia `lib/backlog/gitFichas.cjs` sin ' +
+      'que nada protestara — el módulo y sus 13 tests seguían en `main`, pero ya no los llamaba ' +
+      'nadie. Un arreglo vivo e inerte, cazado por casualidad. **AVISA y NUNCA BLOQUEA, a ' +
+      'diferencia de su hermano del markdown**: medido contra los 650 commits reales de este ' +
+      'mismo alcance (`npm run sim:codigo-guard`), el umbral que atrapa el incidente (≥15 líneas ' +
+      'significativas suprimidas) dispara en el 4,5% de los commits, y **28 de los 29 son ' +
+      'refactors LEGÍTIMOS** (simplificar un auditor, consolidar tres copias) indistinguibles ' +
+      'del incidente por su FORMA — la diferencia es semántica (¿lo borrado sigue vivo en otro ' +
+      'sitio, huérfano de quien lo llamaba?) y eso no se lee de un diff de líneas. Con ese ratio, ' +
+      'bloquear entrena el reflejo de [T-375]: un guardarraíl que se salta casi siempre se acaba ' +
+      'saltando siempre. Alcance a propósito estrecho — solo `scripts/*.cjs` de raíz, ' +
+      '`lib/backlog/**`, `lib/sessions/**`, `lib/calidad/**`, `.husky/*`: el propio sistema de ' +
+      'coordinación protegiéndose primero. Núcleo puro `lib/backlog/codigoSuprimido.cjs` (12 ' +
+      'tests, incluida la reproducción exacta del incidente) + calibración ' +
+      '`scripts/backlog/sim-codigo-guard.cjs`. Fail-open; sin escape propio porque nunca bloquea.',
+  },
   purgar_feedback_espurio: {
     titulo: 'Borrar del historial de una persona los apuntes que escribió otro (con respaldo y rastro)',
     ruta: 'scripts/purgar-feedback-espurio.cjs',

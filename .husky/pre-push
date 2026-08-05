@@ -24,6 +24,20 @@
 #    que señala alguien tuvo que restaurarlas a mano. Puro en lib/backlog/perdidaDeContexto.cjs.
 #    Fail-open. Escape PROPIO: CONTEXTO_GUARD_SKIP=1 (compartirlo apagaría dos guardarraíles).
 #
+# 2.ter) Código suprimido en la infraestructura de coordinación (T-443): AVISA (nunca bloquea)
+#    si el push suprime código de scripts/*.cjs (raíz), lib/backlog/**, lib/sessions/**,
+#    lib/calidad/** o .husky/* que sigue publicado en origin/main. Es el gemelo de 2.bis pero
+#    sobre CÓDIGO en vez de sobre el markdown: el 31/07 una copia rancia de scripts/backlog.cjs
+#    (6f3e26261) borró 74 líneas del cableado de T-427 sin que nada protestara — un arreglo vivo
+#    pero inerte, cazado por casualidad. AVISA y no bloquea porque, medido contra los 650 commits
+#    reales de este mismo alcance (`npm run sim:codigo-guard`), el umbral que atrapa el incidente
+#    dispara en el 4,5% de los commits y 28 de cada 29 son refactors LEGÍTIMOS (simplificar,
+#    consolidar) indistinguibles del incidente por su FORMA — la diferencia es semántica (¿sigue
+#    vivo en otro sitio lo que se borra?) y eso no se lee del diff. Bloquear con ese ratio
+#    entrena el reflejo de T-375: un guardarraíl que se salta casi siempre se acaba saltando
+#    siempre. Puro en lib/backlog/codigoSuprimido.cjs (12 tests, incluida la reproducción del
+#    incidente). Fail-open. Sin escape propio: nunca bloquea, no hay nada que saltarse.
+#
 # 3) Typecheck (T-225, 28/07): `tsc` NO estaba en ningún hook y los tests unitarios no ven un
 #    error de tipos → el único sitio donde se detectaba era el CI, o sea DESPUÉS de pushear.
 #    Y el `Typecheck` en rojo en `main` BLOQUEA EL DEPLOY DE TODAS LAS SESIONES (gate de CI de
@@ -36,5 +50,6 @@
 node scripts/sessions/latir.cjs --cmd pre-push >/dev/null 2>&1 || true
 node scripts/backlog-push-guard.cjs || exit 1
 node scripts/contexto-push-guard.cjs || exit 1
+node scripts/codigo-push-guard.cjs || true
 node scripts/robustez-push-guard.cjs || exit 1
 node scripts/typecheck-push-guard.cjs || exit 1

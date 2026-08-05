@@ -473,6 +473,25 @@ recuperaron por casualidad, porque alguien volvió a abrir la ficha.
 `git diff origin/main -- docs/roadmap/tareas-pendientes.md` y **conserva los dos lados**: son fichas
 distintas de sesiones distintas, casi nunca hay que elegir.
 
+**⚠️ «Conservar SIEMPRE los dos lados» NO es universal — comprueba antes de aplicarla a ciegas
+([T-443], 05/08).** Al rebasar, este fichero dio conflicto 2 de cada 3 veces en una sesión real, y en
+uno de ellos conservar los dos lados habría **DUPLICADO** un bloque que otra sesión había **MOVIDO**
+a otro sitio del fichero (por ejemplo con `reubicar`): el lado de `HEAD`/`origin/main` estaba vacío
+en esa posición **a propósito**, no por accidente. La regla protege contra el fallo común —perder el
+bloque del todo— pero aplicada sin mirar, en ese caso minoritario crea el fallo contrario: una ficha
+duplicada. Antes de resolver quedándote con ambos lados, UNA línea de `grep` que descarta el caso raro:
+
+```bash
+grep -c '### \[T-042\]' <(git show origin/main:docs/roadmap/tareas-pendientes.md)
+# 0 → el bloque no está en origin/main: consérvalo (el caso normal).
+# 1+ → YA ESTÁ en otro sitio del fichero: el lado que parece "borrado" es la posición NUEVA
+#      tras un `reubicar` o una reordenación, y conservarlo aquí lo duplicaría.
+```
+
+Y aunque se te escape: un id de ficha duplicado no pasa desapercibido — `backlogRegistry.guardrail`
+("los ids son ÚNICOS") corre en `pre-commit` y en CI, así que un duplicado real bloquea el COMMIT
+antes de llegar siquiera al push. Esa es la red; el `grep` de arriba es evitar pagar la vuelta.
+
 **Si el borrado es a propósito** (renumerar una ficha, quitar una entrada que no era una tarea —los
 dos casos legítimos que aparecieron al medir la historia—):
 
