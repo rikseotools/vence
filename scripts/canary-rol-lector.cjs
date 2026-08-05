@@ -57,6 +57,9 @@ const DEBE_LEER = [
   ['articles', 'los artículos, para generar preguntas'],
   ['laws', 'las leyes'],
   ['topics', 'los temas'],
+  // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
+  // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
+  ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */

@@ -962,6 +962,102 @@ export const RULE_CRON_SIN_EXITO: AlertRule<CronSinExitoRow> = {
 };
 
 // ────────────────────────────────────────────────────────────────
+// Un CERO de un detector del barrido de salud no se distingue de un detector MUERTO (T-529,
+// 05/08/2026)
+//
+// `content_health_findings` solo guarda lo que se ENCUENTRA: la ausencia de filas de un kind
+// significa a la vez «vigilado y limpio» y «nadie lo miró», y hoy se leen igual. Salió
+// tropezando TRES veces el mismo día: [T-406] (opciones_duplicadas) y la mitad psicotécnica de
+// [T-384] no se podían cerrar porque un 0 no se podía afirmar, y [T-501] estuvo a punto de dar
+// una falsa alarma leyendo `cron_runs` — tabla MUERTA desde el 24/05 — en vez de la señal de
+// vida real.
+//
+// El arreglo (`content-health-sweep.service.ts` → `SweepSummary.kindsEvaluados`) hace que cada
+// pasada registre, en el `cron_run` que ya emite, qué kinds EVALUÓ y con cuántos sujetos —
+// aparte de lo que ENCONTRÓ. Esta regla lee ese historial y avisa cuando un kind que SÍ se
+// evaluaba deja de aparecer: exactamente el caso que impedía cerrar T-406/T-384 con el dato
+// delante.
+// ────────────────────────────────────────────────────────────────
+
+export interface ContentHealthKindEvaluadoRow {
+  ts: Date | string;
+  status: string | null;
+  kindsEvaluados: Record<string, number> | null;
+}
+
+export interface KindSinEvaluar {
+  kind: string;
+  diasSinEvaluar: number;
+  sujetos: number;
+}
+
+/**
+ * Mirror de `lib/health/kindsEvaluados.cjs` (`kindsSinEvaluar`) — el backend NestJS no puede
+ * importar el `lib/` del frontend (build separado), así que el criterio se replica aquí.
+ * MANTENER EN SYNC; `__tests__/health/content-sweep-parity.test.ts` compara el comportamiento
+ * de los dos por VALOR (mismas fixtures, mismo resultado), no solo el texto.
+ *
+ * Criterio AUTORREFERENCIAL a propósito (ver el núcleo para el razonamiento completo): un kind
+ * entra en la comparación si apareció en AL MENOS una pasada dentro de `ventanaDias` — así un
+ * kind recién nacido (sin su primer deploy aún) o uno gateado por un feature flag OFF no generan
+ * falso positivo, sin mantener una lista aparte de excepciones.
+ */
+export function kindsSinEvaluarBackend(
+  rows: ContentHealthKindEvaluadoRow[],
+  nowMs: number,
+  umbralDias = 2,
+  ventanaDias = 14,
+): KindSinEvaluar[] {
+  const ventanaMs = ventanaDias * 24 * 60 * 60 * 1000;
+  const ultima = new Map<string, { ultimaVezMs: number; sujetos: number }>();
+  for (const r of rows) {
+    const ms = r.ts instanceof Date ? r.ts.getTime() : Date.parse(String(r.ts));
+    if (!Number.isFinite(ms) || nowMs - ms > ventanaMs) continue;
+    for (const [kind, n] of Object.entries(r.kindsEvaluados ?? {})) {
+      const prev = ultima.get(kind);
+      if (!prev || ms > prev.ultimaVezMs) ultima.set(kind, { ultimaVezMs: ms, sujetos: n });
+    }
+  }
+  const out: KindSinEvaluar[] = [];
+  for (const [kind, info] of ultima) {
+    const diasSinEvaluar = (nowMs - info.ultimaVezMs) / (24 * 60 * 60 * 1000);
+    if (diasSinEvaluar > umbralDias) {
+      out.push({ kind, diasSinEvaluar: Math.round(diasSinEvaluar * 10) / 10, sujetos: info.sujetos });
+    }
+  }
+  out.sort((a, b) => b.diasSinEvaluar - a.diasSinEvaluar);
+  return out;
+}
+
+export const RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR: AlertRule<ContentHealthKindEvaluadoRow> = {
+  name: 'content_health_kind_sin_evaluar',
+  severity: 'warn',
+  query: sql`
+    SELECT ts, metadata->>'status' AS status, metadata->'kindsEvaluados' AS "kindsEvaluados"
+    FROM observable_events
+    WHERE event_type = 'cron_run' AND endpoint = 'content-health-sweep'
+      AND ts > NOW() - INTERVAL '14 days'
+    ORDER BY ts DESC
+  `,
+  shouldFire: (rows) => kindsSinEvaluarBackend(rows, Date.now()).length > 0,
+  buildNotification: (rows) => {
+    const sin = kindsSinEvaluarBackend(rows, Date.now());
+    return {
+      title: `${sin.length} kind(s) del barrido de salud llevan >2 días sin evaluarse`,
+      body:
+        `Estos kinds aparecían en el latido de \`content-health-sweep\` y dejaron de hacerlo — ` +
+        `un 0 suyo en content_health_findings ya NO se puede leer como "limpio":\n\n` +
+        sin.map((s) => `  - ${s.kind}: ${s.diasSinEvaluar}d sin evaluarse (${s.sujetos} sujeto(s) la última vez)`).join('\n') +
+        `\n\nDiagnóstico: npm run health:kinds-evaluados -- --kind <kind>`,
+      metadata: { kinds: sin.map((s) => s.kind).join(','), count: sin.length },
+    };
+  },
+  // Es un aviso de "algo dejó de mirarse", no una urgencia por minuto — con el barrido diario,
+  // dos avisos al día ya dicen todo lo que hay que decir.
+  cooldownMin: 720,
+};
+
+// ────────────────────────────────────────────────────────────────
 // Reglas añadidas 2026-05-26 (Bloque 4 Fase 1.6 del roadmap):
 // cubren los eventos nuevos capturados en esta sesión (runtime_kill
 // del Gap 14, tts_error cascade, hydration mismatch tras deploy,
@@ -6348,6 +6444,9 @@ export const ALERT_RULES: AlertRule[] = [
   // en 1 h, así que un cron diario roto no alertaba nunca (el sweep de contenido estuvo
   // dos días muerto con el panel en verde).
   RULE_CRON_SIN_EXITO as AlertRule,
+  // T-529: un kind del barrido que dejó de aparecer en su propio latido de evaluación —
+  // el 0 de content_health_findings ya no se puede leer como "limpio" sin esto.
+  RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR as AlertRule,
   // Reglas Fase 1.6 (2026-05-26) — cierran loop de eventos nuevos
   RULE_RUNTIME_KILL as AlertRule,
   RULE_TTS_ERROR_BURST as AlertRule,

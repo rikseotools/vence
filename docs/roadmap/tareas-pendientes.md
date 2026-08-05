@@ -11150,6 +11150,43 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - **Ojo al leer cifras de este bucket (falso pánico de esta sesión):** medido sobre TODAS las leyes salen «482 sin fuente», pero la mayoría son **contenedores editoriales** (`is_virtual`: Inglés PN, Biblioteconomía, temario de enfermería, Word 365) que no tienen BOE que consultar y que el clasificador **ya exime**. Filtrando `is_virtual=false` quedan **165**, y de esas las accionables son 65. **Siempre filtrar por `is_virtual` antes de dar un número.**
 
 ### [T-038] 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
+> **🚧 [BLOQUEO ESTRUCTURAL para la FLOTA, medido 05/08 — worker w3, sesión de un solo turno.**
+> Esta tarea es de las que la ficha ya avisa que exige escritura en BD (relink de artículo,
+> reescritura de explicación, `transition_question_state`). Un trabajador de la flota **no tiene
+> permiso de escritura en la BD de negocio por diseño** (`vence_lector` es SOLO SELECT — regla dura
+> del encargo, no un guardarraíl que se pueda rodear) → **T-038 no se puede ejecutar de punta a
+> punta desde un `claude -p` de la flota**, solo diagnosticar/proponer. Las secciones ✅ de arriba
+> las aplicó una sesión con `.env.local` completo (persona), no un trabajador restringido.
+> **Y encima el diagnóstico estaba roto:** `ai_verification_results` (la tabla que dice qué
+> campaña marcó cada `needs_human` y con qué artículo sugerido — imprescindible para la cola A/B de
+> esta ficha) tiene RLS activo y **CERO políticas**, así que `vence_lector` la ve por el `GRANT`
+> pero cualquier `SELECT` devuelve 0 filas **en silencio, sin error** — mismo fallo ya diagnosticado
+> y corregido para `question_disputes` en `20260805_rls_impugnaciones_flota.sql`. Corregido con la
+> migración `supabase/migrations/20260805_rls_ai_verification_results_lector.sql` (política
+> `FOR SELECT TO vence_lector USING (true)`; la tabla no tiene ningún identificador directo, solo
+> UUIDs de contenido y texto de veredicto de IA — mismo criterio de seguridad que T-486). **De
+> propina, el mismo barrido encontró que `test_questions` tenía el idéntico fallo** —y esa tabla
+> YA estaba declarada como necesaria en el propio `20260805_rol_lector_flota.sql`, así que no es
+> alcance nuevo, es una promesa sin cumplir: migración gemela
+> `20260805_rls_test_questions_lector.sql`. **El canario `scripts/canary-rol-lector.cjs` daba FALSO
+> VERDE en los dos casos** porque comprobaba `SELECT 1 … LIMIT 1` sin excepción = OK; con RLS activo
+> y sin política el motor no lanza excepción, devuelve 0 filas — reforzado a `count(*) > 0`, lo cazó
+> al momento (`ai_verification_results`: 0 filas · `test_questions`: 0 filas, el resto de la lista
+> con datos reales). **Ninguna migración está aplicada a RDS** (un trabajador no tiene las
+> credenciales para correr `psql -f` contra producción — lo hace una persona, ver
+> `docs/runbooks/sistema-sesiones-paralelas.md:838`); quedan en el repo listas para revisar y
+> aplicar. **Hallazgo más grande, NO tocado (fuera de alcance de esta tarea, necesita criterio
+> humano tabla por tabla):** hay **85 tablas** en `public` con RLS activo y cero políticas. La
+> mayoría son las que YA se querían bloquear (coinciden con el `REVOKE` de T-486: `user_profiles`,
+> `payment_settlements`…, protección redundante y correcta) pero dentro de esas 85 hay tablas de
+> contenido/coordinación con pinta de necesarias para otros runbooks de la flota (`fraud_alerts`,
+> `oep_detection_signals`, `detection_sources`, `question_lifecycle_history`,
+> `daily_question_usage`, `psychometric_test_sessions`…) que podrían estar SILENCIOSAMENTE ciegas
+> igual que estas dos — decidir cuál abre y cuál se queda cerrada es el mismo trabajo cuidadoso que
+> ya hizo el autor de `20260805_rol_lector_flota.sql` (dónde vive un identificador directo), no algo
+> para decidir sin revisión. **Propuesta:** una tarea nueva, con un humano triando esa lista de 85
+> una a una antes de escribir más políticas. Sin esa tabla legible, ni yo ni el próximo trabajador
+> puede retomar la cola A/B de diagnóstico de esta ficha.
 > **⚠️ Cifras corregidas por la auditoría del 20/07:** Cifras rotas por sobreconteo (la fila AVR vieja sobrevive a la reescritura). Reales: **cola A 3.652** (no 3.874) · **cola B 2.567**, de las que **2.476 NO se han servido nunca** y solo **91** tienen tráfico. El tramo "874 con 1-9 respuestas" que la ficha anuncia como pendiente **ya está drenado**.
 Al cerrar los cubos 1, 2 y 3 quedan dos colas de trabajo consolidadas, ambas trazadas en BD (no urgentes, pero anotadas para no perderlas):
 - **A) Relink de las preguntas en `needs_human`** (mislinks confirmados, la clave suele ser correcta, solo el artículo está mal → tema equivocado). Fuentes:

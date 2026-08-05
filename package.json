@@ -120,6 +120,7 @@
     "llm:ingest-claude-code": "node scripts/observabilidad/ingest-claude-code-usage.cjs",
     "llm:gasto": "node scripts/observabilidad/llm-gasto.cjs",
     "stripe:pago-fallido-falsos": "node scripts/stripe/medir-pago-fallido-falsos.cjs",
+    "health:kinds-evaluados": "node scripts/health/kinds-evaluados.cjs",
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",
     "docs:bandeja": "node scripts/convocatoria/bandeja-documentos.cjs",
     "audit:verificacion-cosmetica": "node --max-old-space-size=3000 scripts/audit-verificacion-cosmetica.cjs",

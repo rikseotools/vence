@@ -78,6 +78,12 @@ async function main() {
 
   const F = []; // {category, severity, slug, kind, message, detail}
   const add = (category, severity, slug, kind, message, detail) => F.push({ category, severity, slug, kind, message, detail: detail || null });
+  // Latido de lo EVALUADO (T-529): kind → nº de sujetos mirados esta pasada, con o sin hallazgos.
+  // El gemelo real es el `@Cron` del backend (el que ESCRIBE el latido en `observable_events`);
+  // este script es manual/DRY, así que aquí solo se IMPRIME al final — sirve para comprobar a
+  // mano, antes de desplegar un detector nuevo, que su kind quedó cableado en el punto correcto.
+  const kindsEvaluados = {};
+  const marcar = (kind, n) => { kindsEvaluados[kind] = (kindsEvaluados[kind] || 0) + n; };
 
   // ── Detección: AISLADA del resto (T-307, 30/07/2026) ──
   // Mismo contrato que el @Cron del backend: un detector que revienta NO se lleva la pasada. Se
@@ -85,7 +91,7 @@ async function main() {
   // foto está a medias en vez de enseñar la de ayer como si fuera de hoy.
   let incompleto = null;
   try {
-    await detectarTodo(c, add, now);
+    await detectarTodo(c, add, marcar, now);
   } catch (e) {
     const msg = String(e?.message || e);
     const m = msg.match(/Failed query:\s*([\s\S]{0,400})/);
@@ -123,6 +129,7 @@ async function main() {
           { endpoint, techoMs: techo.techoMs, enTecho: techo.enTecho, porEncima: techo.porEncima, motivo: techo.motivo });
       }
     }
+    marcar('latencia_techo_timeout', eps.length);
   } catch (e) { console.warn('⚠️ techo de timeout no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
@@ -131,6 +138,7 @@ async function main() {
     for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
     console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
   }
+  console.log(`ℹ️  kinds evaluados esta pasada: ${Object.keys(kindsEvaluados).length} (npm run health:kinds-evaluados lee el latido REAL, el del @Cron)`);
   await c.end();
 
   // ── Emails ──
@@ -190,7 +198,7 @@ async function main() {
  * Todos los detectores, en secuencia. Aparte de main() para que main() pueda aislar el fallo de
  * uno y conservar lo ya recogido (T-307). No escribe nada: solo llena F vía add().
  */
-async function detectarTodo(c, add, now) {
+async function detectarTodo(c, add, marcar, now) {
   // ⚠️ Las tarjetas se leen de `oposiciones_ssot`, NO de `oposiciones` (bug corregido 16/07/2026).
   // La vista resuelve COALESCE(convocatorias, oposiciones): la fila de convocatoria GANA y es lo que
   // ve el opositor. Auditar `oposiciones.landing_estadisticas` es auditar una copia que NADIE VE.
@@ -208,6 +216,7 @@ async function detectarTodo(c, add, now) {
     if (land !== 200) add('app', 'error', o.slug, 'http_down', `landing /${o.slug} → ${land}`);
     if (tema !== 200) add('app', 'error', o.slug, 'http_down', `/${o.slug}/temario → ${tema}`);
     if (test !== 200) add('app', 'error', o.slug, 'http_down', `/${o.slug}/test → ${test}`);
+    marcar('http_down', 3);
     // ── APP: cobertura (MV, misma fuente que la app) ──
     // `tp.is_active` NO estaba, y eso daba VERDE FALSO en la tarjeta de temas (T-384, 31/07/2026):
     // un topic desactivado no existe para el opositor, pero contaba igual, así que una landing que
@@ -222,10 +231,12 @@ async function detectarTodo(c, add, now) {
       WHERE tp.position_type = $1 AND tp.is_active
       GROUP BY tp.topic_number, tp.disponible`, [pt])).rows;
     const disp = topics.filter(t => t.disponible);
+    marcar('empty_topic', topics.length);
     if (topics.length && disp.length === 0) add('app', 'error', o.slug, 'empty_topic', `${o.slug}: 0 temas disponibles (publicado vacío)`);
     const vacios = disp.filter(t => t.n === 0);
     if (vacios.length) add('app', 'error', o.slug, 'empty_topic', `${o.slug}: ${vacios.length} tema(s) disponible(s) SIN preguntas (T${vacios.slice(0, 5).map(v => v.topic_number).join(',T')})`);
     const finos = disp.filter(t => t.n > 0 && t.n < 6);
+    marcar('low_coverage', disp.length);
     if (finos.length) add('content', 'warn', o.slug, 'low_coverage', `${o.slug}: ${finos.length} tema(s) con cobertura fina (<6q)`);
     // ── CONTENIDO: hueco OCULTO de cobertura de artículos (caso M, SMS Tema 7,
     // 13/07: 6 arts con contenido y 0 preguntas en un tema por lo demás cubierto).
@@ -263,6 +274,7 @@ async function detectarTodo(c, add, now) {
            AND count(*) - count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) >= 4
       ) t
       ORDER BY topic_number`, [pt])).rows;
+    marcar('article_no_coverage', topics.length);
     if (sinPreg.length) {
       const tot = sinPreg.reduce((a2, r) => a2 + r.n, 0);
       add('content', 'warn', o.slug, 'article_no_coverage',
@@ -309,6 +321,8 @@ async function detectarTodo(c, add, now) {
         `${o.slug}: ${bandaCiega.length} tema(s) con cobertura de artículos <60% y pocas preguntas para notarlo (${tot} arts sin cubrir; p.ej. T${bandaCiega[0].topic_number}: ${bandaCiega[0].preguntas} preg, ${(bandaCiega[0].ejemplos || []).join(', ')})`,
         { temas: bandaCiega.map(r => ({ tema: r.topic_number, preguntas: r.preguntas, arts_sin_preguntas: r.huerfanos, ejemplos: r.ejemplos })) });
     }
+    // El bloque TERMINÓ de mirar su población: un 0 aquí es «vigilado y limpio», no «nadie miró».
+    marcar('cobertura_banda_ciega', bandaCiega.length);
 
     // ── ARTÍCULO SERVIDO MUDO (T-596) ──
     // El temario pinta cada artículo con su rúbrica y, si no la hay, con un extracto de su
@@ -345,6 +359,7 @@ async function detectarTodo(c, add, now) {
         `${o.slug}: ${tot} artículo(s) del temario se sirven SIN NADA que leer (ni rúbrica ni texto; p.ej. T${mudos[0].topic_number}: ${(mudos[0].ejemplos || []).join(', ')})`,
         { temas: mudos.map(r => ({ tema: r.topic_number, arts_mudos: r.n, ejemplos: r.ejemplos })) });
     }
+    marcar('articulo_servido_sin_texto', mudos.length);
 
     // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
     const nTopics = topics.length;
@@ -354,11 +369,13 @@ async function detectarTodo(c, add, now) {
     // un bloque de inglés de apoyo). Compararla con los topics servidos ponía a este detector a
     // pelearse con la honestidad de la landing; esas tarjetas las verifica `audit:landing` contra
     // el documento oficial (T-142).
-    for (const card of cardsAbout(o.landing_estadisticas, 'tema')) {
+    const temaCards = cardsAbout(o.landing_estadisticas, 'tema');
+    for (const card of temaCards) {
       if (/oficial|programa/i.test(String(card.texto || ''))) continue;
       const v = cardInt(card.numero);
       if (v != null && v !== nTopics) add('content', 'error', o.slug, 'temas_card', `tarjeta "${card.texto}"=${v} pero hay ${nTopics} topics`);
     }
+    marcar('temas_card', 1 + temaCards.length);
     const conv = (await c.query(`SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
       FROM convocatorias WHERE oposicion_id = $1 AND is_current = true LIMIT 1`, [o.id])).rows[0];
     if (conv) {
@@ -369,12 +386,16 @@ async function detectarTodo(c, add, now) {
       const O = Array.isArray(conv.plazas_otros_turnos)
         ? conv.plazas_otros_turnos.reduce((a, t) => a + Number(t?.plazas || 0), 0) : 0;
       const valid = new Set([L, D, P, L + D, L + P, D + P, L + D + P, L + D + P + O].filter(x => x > 0));
-      for (const card of cardsAbout(o.landing_estadisticas, 'plaza')) { const v = cardInt(card.numero); if (v != null && !valid.has(v)) add('content', 'error', o.slug, 'plaza_card', `tarjeta "${card.texto}"=${v} no cuadra con conv (L=${L} D=${D} P=${P})`); }
+      const plazaCards = cardsAbout(o.landing_estadisticas, 'plaza');
+      for (const card of plazaCards) { const v = cardInt(card.numero); if (v != null && !valid.has(v)) add('content', 'error', o.slug, 'plaza_card', `tarjeta "${card.texto}"=${v} no cuadra con conv (L=${L} D=${D} P=${P})`); }
+      marcar('plaza_card', plazaCards.length);
       const faltan = ['boe_reference', 'programa_url', 'examen_config', 'landing_faqs', 'landing_estadisticas', 'landing_description'].filter(k => conv[k] == null);
       if (faltan.length) add('content', 'warn', o.slug, 'dual_write', `dual-write convocatoria incompleto: ${faltan.join(', ')}`);
+      marcar('dual_write', 1);
       if (conv.estado_proceso === 'inscripcion_abierta') {
         const h = Number((await c.query(`SELECT COUNT(*)::int n FROM convocatoria_hitos WHERE oposicion_id = $1`, [o.id])).rows[0].n);
         if (h === 0) add('content', 'error', o.slug, 'no_hitos', `${o.slug}: inscripción abierta pero 0 hitos (timeline vacío)`);
+        marcar('no_hitos', 1);
       }
     }
   }
@@ -417,6 +438,8 @@ async function detectarTodo(c, add, now) {
           { incidencias: stale.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) });
       }
     }
+    marcar('convocatoria_timeline_incoherente', inc.length);
+    marcar('convocatoria_timeline_caducado', inc.length);
   }
 
   // ── APP: observable_events críticos 24h ──
@@ -424,6 +447,7 @@ async function detectarTodo(c, add, now) {
   const obs = (await c.query(`SELECT event_type, endpoint, COUNT(*)::int n, MAX(error_message) sample FROM observable_events
     WHERE severity='error' AND event_type = ANY($1) AND ts > now() - interval '24 hours' GROUP BY event_type, endpoint ORDER BY n DESC LIMIT 25`, [CRIT])).rows;
   for (const o of obs) add('app', 'error', null, o.event_type, `${o.n}× ${o.event_type} @ ${o.endpoint}${o.sample ? ' — ' + o.sample.slice(0, 80) : ''}`, { n: o.n });
+  for (const k of CRIT) marcar(k, obs.filter((o) => o.event_type === k).reduce((a, o) => a + o.n, 0));
 
   // ── CONTENIDO: tablas APLANADAS (importadas de PDF sin rejilla) ──
   // Mirror INLINE de lib/teoria/detectFlattenedTable.ts (el sweep es self-contained;
@@ -446,14 +470,17 @@ async function detectarTodo(c, add, now) {
     return best;
   };
   const flat = [];
+  let flatEscaneados = 0;
   for (let off = 0; off <= 60000; off += 4000) {
     const rows = (await c.query(`SELECT l.slug, a.id aid, a.article_number an, a.content
       FROM articles a JOIN laws l ON a.law_id = l.id
       WHERE a.is_active AND l.is_active AND position('<' in a.content) = 0 AND length(a.content) > 200 AND a.article_number ~ '^[0-9]+$'
       ORDER BY a.id LIMIT 4000 OFFSET ${off}`)).rows;
     if (!rows.length) break;
+    flatEscaneados += rows.length;
     for (const r of rows) { const cells = detectFlattenedTable(r.content); if (cells) flat.push({ slug: r.slug, an: r.an, aid: r.aid, n: cells.length, cells: cells.slice(0, 6) }); }
   }
+  marcar('flattened_table', flatEscaneados);
   if (flat.length) {
     const leyes = [...new Set(flat.map((f) => f.slug))];
     // UN finding agregado (no inundar el snapshot/email con ~140 filas). El detalle
@@ -484,6 +511,7 @@ async function detectarTodo(c, add, now) {
   if (anRows.length) add('content', 'warn', null, 'audit_note_explanation',
     `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
+  marcar('audit_note_explanation', anRows.length);
 
   // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
   // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido de salud
@@ -502,11 +530,13 @@ async function detectarTodo(c, add, now) {
   // que es como debe nacer un trinquete: si algún día habla, es que ha entrado una regresión.
   const psi = (await c.query(`
     SELECT
+      (SELECT count(*) FROM psychometric_questions WHERE is_active)::int AS total_activas,
       (SELECT count(*) FROM psychometric_questions WHERE is_active AND section_id IS NULL)::int AS sin_seccion,
       (SELECT count(*) FROM psychometric_questions q JOIN psychometric_sections s ON s.id = q.section_id
         WHERE q.is_active AND s.category_id <> q.category_id)::int AS seccion_ajena,
       (SELECT count(*) FROM psychometric_questions WHERE is_active
         AND (correct_option IS NULL OR correct_option < 0 OR correct_option > 3))::int AS clave_invalida`)).rows[0];
+  marcar('psicotecnico_integridad', psi.total_activas);
   {
     const partes = [];
     if (psi.sin_seccion) partes.push(`${psi.sin_seccion} sin sección (no se sirven)`);
@@ -542,6 +572,7 @@ async function detectarTodo(c, add, now) {
     if (avisos.length) add('content', 'warn', null, 'opciones_duplicadas',
       `${avisos.length} pregunta(s) activas con dos distractores idénticos: se quedan en tres opciones sin decirlo`,
       { count: avisos.length, banda: 'distractores', sample: muestra(avisos) });
+    marcar('opciones_duplicadas', opcRows.length);
   }
 
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
@@ -569,6 +600,7 @@ async function detectarTodo(c, add, now) {
         { law_id: l.id, year: yr, oposiciones: opos });
     }
   }
+  marcar('stale_dated_law', scopedLaws.length);
 
   // ── CONTENIDO: leyes NO verificadas contra su fuente oficial (falso verde) ──
   // Mirror INLINE de lib/laws/completeness.ts — MANTENER EN SYNC (guardado por
@@ -616,6 +648,7 @@ async function detectarTodo(c, add, now) {
       (estimado ? ' (fecha ESTIMADA sin publicar; no se muestra, pero revísala)'
                 : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'));
   }
+  marcar('hito_vencido_abierto', hitosVencidos.length);
 
   // ── hitos que se PRESENTAN como fecha oficial sin tener ninguna fuente ────────────────
   // `origen` NO es documentación: el RENDER decide con él (un `registro` se muestra como
@@ -657,6 +690,7 @@ async function detectarTodo(c, add, now) {
                 : ' (fecha futura sin url, cita ni documento)'),
       { count: hs.length, hitos: hs.slice(0, 10).map(h => ({ id: h.id, titulo: h.titulo, fecha: h.fecha })) });
   }
+  marcar('hito_registro_sin_fuente', hitosSinFuente.length);
 
   // ── estado_proceso que se contradice con sus PROPIAS fechas ────────────────────────────
   // Misma lógica que `npm run audit:estados` (núcleo compartido `estadoCoherencia.cjs`): antes
@@ -681,6 +715,7 @@ async function detectarTodo(c, add, now) {
         `${o.slug}${o.is_active ? ' [PUBLICADA]' : ''}: ${inc.mensaje}`, { regla: inc.regla });
     }
   }
+  marcar('convocatoria_estado_incoherente', estados.length);
 
   // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ─────────
   // El peor tipo de fallo: la URL responde 200, no da error, no sale en rojo — pero apunta a
@@ -702,6 +737,7 @@ async function detectarTodo(c, add, now) {
     add('content', d.severidad, r.slug, 'seguimiento_url_stale',
       `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`);
   }
+  marcar('seguimiento_url_stale', urlRows.length);
 
   // ── seguimiento_url que responde 200 pero NO VIGILA NADA (ceguera silenciosa) ───────────
   // Hermano del anterior, causa distinta: allí la URL apunta al ciclo equivocado; aquí apunta
@@ -746,6 +782,7 @@ async function detectarTodo(c, add, now) {
     add('content', 'error', r.slug, 'seguimiento_fuente_ciega',
       `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`);
   }
+  marcar('seguimiento_fuente_ciega', ciegaRows.length);
 
   // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──
   // La caja "Ver … en BOE" de la landing muestra una referencia (boe_reference) pero el enlace
@@ -797,6 +834,7 @@ async function detectarTodo(c, add, now) {
       `${h.slug}: el campo ${h.campo} publica una nota interna [${h.tipo}] — ${h.extracto.slice(0, 90)}`,
       h.extracto);
   }
+  marcar('nota_interna_publicada', notaRows.length);
 
   for (const r of linkRows) {
     const issues = checkConvocatoriaLinks({
@@ -823,6 +861,9 @@ async function detectarTodo(c, add, now) {
       // el año de seguimiento ya lo cubre seguimiento_url_stale
     }
   }
+  marcar('convocatoria_link_mismatch', linkRows.length);
+  marcar('convocatoria_etiqueta_boletin', linkRows.length);
+  marcar('convocatoria_enlace_no_boletin', linkRows.length);
 
   // ── Lo que la landing AFIRMA vs el documento oficial: MEDIDO Y DESCARTADO del sweep (T-142) ──
   // Se construyó, se simuló sobre las 123 landings activas y NO se enchufa aquí, a propósito:
@@ -863,6 +904,7 @@ async function detectarTodo(c, add, now) {
       `${r.slug}: ${r.n} documento(s) oficial(es) clonado(s) SIN revisar (el más antiguo, del ${String(r.mas_viejo).slice(0, 10)}) — revísalos con npm run docs:bandeja`,
       `${r.n} pendientes`);
   }
+  marcar('documentos_sin_revisar', docsRows.length);
 
   // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
   // Una oposición activa puede llevar semanas servida con el hero sin tarjetas, sin FAQs y sin
@@ -886,6 +928,7 @@ async function detectarTodo(c, add, now) {
       `${r.slug}: landing publicada ${cl.nivel === 'incompleta' ? 'INCOMPLETA' : 'mejorable'} — falta ${cl.faltan.join(', ')}`,
       cl.ids.join(','));
   }
+  marcar('landing_incompleta', landRows.length);
 
   // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad `oep` (T-108) ──
   // El histórico de la landing muestra el AÑO DE OEP derivado del enlace `convocatoria_oep`.
@@ -902,6 +945,7 @@ async function detectarTodo(c, add, now) {
     add('content', 'warn', r.slug, 'convocatoria_oep_sin_enlace',
       `${r.slug}: ${r.n} convocatoria(s) con OEP en texto pero SIN enlazar a la entidad oep → el histórico muestra el año de convocatoria, no el de OEP. Correr: node scripts/oep/poblar-historico.cjs ${r.slug}`);
   }
+  marcar('convocatoria_oep_sin_enlace', oepLinkRows.length);
 
   // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
   // El badge de rollover mira `exam_date`, pero los textos (FAQs, descripción) pueden seguir
@@ -928,6 +972,7 @@ async function detectarTodo(c, add, now) {
     add('content', 'warn', r.slug, 'texto_examen_pasado',
       `${r.slug}: los textos de la landing anuncian un examen ya pasado como vigente (${fechas}) — el opositor ve una fecha vieja como la próxima`);
   }
+  marcar('texto_examen_pasado', textoRows.length);
 
   const lawRows = (await c.query(`
     SELECT l.id, l.short_name, l.name, l.scope, l.is_virtual, l.boe_url,
@@ -946,6 +991,7 @@ async function detectarTodo(c, add, now) {
       `${unverified.length} ley(es) sirviendo en temas vivos SIN verificar contra su fuente oficial (${Object.entries(byState).map(([k, v]) => `${k}:${v}`).join(', ')}) — importadas a medias o falso verde`,
       { count: unverified.length, byState, sample: unverified.slice(0, 20) });
   }
+  marcar('law_unverified_source', lawRows.length);
 
   // ── CONTENIDO: TÍTULOS HUÉRFANOS del temario (hueco INTERNO del topic_scope) ──
   // Un título de una ley que la oposición SÍ usa, con preguntas activas, con 0
@@ -997,6 +1043,7 @@ async function detectarTodo(c, add, now) {
       `${scopeGaps.length} título(s) con preguntas huérfanas (hueco INTERNO del scope) en ${nOpos} oposición(es) — el epígrafe puede pedirlos; adjudicar con verify:scope`,
       { count: scopeGaps.length, oposiciones: nOpos, sample: scopeGaps.slice(0, 20) });
   }
+  marcar('scope_titulo_huerfano', titSecs.length);
 
   // ── CONTENIDO: incisos ANULADOS por el TC — preguntas activas cuya CLAVE cae en el inciso ──
   // Gemelo del backend (content-health-sweep.service.ts). Barato (DB-only): reusa el gate de
@@ -1021,6 +1068,7 @@ async function detectarTodo(c, add, now) {
       `${total} pregunta(s) activa(s) cuya clave reproduce (≥60 car.) un inciso ANULADO por el TC en ${annulledBugs.length} artículo(s) — CANDIDATO: verificar la clave contra la sentencia (puede ser falso positivo si solo comparten la cláusula inicial; NUNCA auto-flip)`,
       { total, articulos: annulledBugs.length, sample: annulledBugs.slice(0, 20) });
   }
+  marcar('answer_in_annulled_fragment', annulledBugs.length);
 
   // ── CONTENIDO: PROVENANCE de documentos de convocatoria (referenciado sin clonar/enlazar) ──
   // Lee la VISTA convocatoria_docs_coverage (migración 20260721). Un hito cita un
@@ -1044,6 +1092,7 @@ async function detectarTodo(c, add, now) {
       { año: r.año, docs_clonados: r.docs_clonados, hitos_con_url: r.hitos_con_url,
         docs_por_clonar: r.docs_por_clonar, enlazables: r.hitos_enlazables, citas_sin_fuente: r.citas_sin_fuente });
   }
+  marcar('convocatoria_docs_incompletos', cov.length);
   // hitos huérfanos: cuelgan de la oposición pero sin convocatoria → provenance no
   // atribuible a un ciclo (invisible a la vista). Hay que asignarlos a su convocatoria.
   const orf = (await c.query(`
@@ -1055,6 +1104,7 @@ async function detectarTodo(c, add, now) {
       `${orf.con_url} hito(s) con URL y ${orf.con_cita} con cita SIN convocatoria (provenance no atribuible; asignar a su ciclo)`,
       { orphan: true, con_url: orf.con_url, con_cita: orf.con_cita });
   }
+  marcar('convocatoria_docs_incompletos', orf ? orf.con_url + orf.con_cita : 0);
 
   // ── CONTENIDO: CIFRA DE PLAZAS AFIRMADA SIN NINGÚN DOCUMENTO QUE LA CONTENGA ──
   //
@@ -1097,6 +1147,7 @@ async function detectarTodo(c, add, now) {
         : `${h.slug}: afirma ${h.plazas_libres} plazas (ciclo ${h.año}) y ninguno de sus ${h.docs} documento(s) contiene esa cifra, ni en dígitos ni en letra: o el documento clonado no es el que la prueba, o la cifra está mal`,
       { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año, docs: h.docs });
   }
+  marcar('plazas_afirmadas_sin_documento', huerfanas.length);
 
   // ── CONTENIDO: PROVENANCE de EPÍGRAFES (verified_literal sin documento del hub enlazado) ──
   // Gemelo del anterior para el 2.º consumidor del hub. verified_literal con source_documento_id
@@ -1114,6 +1165,7 @@ async function detectarTodo(c, add, now) {
       `${r.slug}: ${r.huerfanos} epígrafe(s) verified_literal sin documento del hub enlazado (source_documento_id NULL) — re-verificar o enlazar vía ensure_convocatoria_documento`,
       { huerfanos: r.huerfanos });
   }
+  marcar('epigrafe_provenance_no_doc', epiOrf.length);
 
   // ── CONTENIDO: REVISIÓN de temario pendiente (Fase 2 de temario-versionado-por-convocatoria) ──
   // Oposición activa con convocatoria vigente cuyo temario NO está verificado del todo contra su
@@ -1139,6 +1191,7 @@ async function detectarTodo(c, add, now) {
       `${revQ.length} oposiciones con convocatoria vigente cuyo temario NO está verificado del todo contra su fuente oficial (${usuarios} usuarios) — revisar con verify:epigrafe/scope`,
       { oposiciones: revQ.length, usuarios, top: revQ.slice(0, 15) });
   }
+  marcar('temario_revision_pendiente', revQ.length);
 
   // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
   // Mirror INLINE de lib/laws/scopeOverInclusion.ts — MANTENER EN SYNC (guardado por
@@ -1234,6 +1287,7 @@ async function detectarTodo(c, add, now) {
       `${oiHigh.length} tema(s) con SCOPE MÁS ANCHO que el epígrafe (mete casi la ley entera) en ${nOpos} oposición(es) — sirve preguntas fuera de programa; adjudicar con verify:scope y recortar el scope`,
       { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) });
   }
+  marcar('scope_over_inclusion_suspect', overIncl.length);
 
   // ── CONTENIDO: recortes de sobre-inclusión ya CONFIRMADOS y sin aplicar ──
   // Hermano del de arriba y su continuación natural. El de arriba dice «esto HUELE a
@@ -1268,6 +1322,7 @@ async function detectarTodo(c, add, now) {
       `${oiConf.length} recorte(s) de scope ya ADJUDICADOS contra la fuente oficial y sin aplicar, en ${nOpos} oposición(es) — esos temas siguen sirviendo materia fuera de programa; aplicar con verify:scope plan/apply`,
       { count: oiConf.length, oposiciones: nOpos, sample: oiConf.slice(0, 20) });
   }
+  marcar('scope_over_inclusion_confirmed', oiConf.length);
 
   // NOTA: el detector de OFF-BY-ONE DE FRONTERA DE TÍTULO (art. escopado de un
   // título que el epígrafe no nombra; caso Mario/LOSU 24/07) NO se ejecuta aquí
@@ -1328,6 +1383,7 @@ async function detectarTodo(c, add, now) {
       `${real.length} artículo(s) escopado(s) que NO sirven (0 preguntas/teoría en silencio) en ${leyesReal.length} ley(es): ${inex} inexistente(s) + ${desact} desactivado(s) — importar del BOE / reactivar / o recortar el scope si la ley no lo tiene`,
       { count: real.length, laws: leyesReal.length, inexistentes: inex, desactivados: desact, virtual_ofimatica: virt.length, sample: real.slice(0, 25).map(p => ({ ley: p.ley, art: p.art, causa: p.causa })) });
   }
+  marcar('scope_phantom_article', phantom.length);
 
   // ── Drift del barajado de opciones (verificación robusta) ──
   // Delega en el script tsx que usa el detector REAL (sin copiar la lógica aquí): caza
@@ -1364,6 +1420,9 @@ async function detectarTodo(c, add, now) {
         `${drift.criterio_viejo} veredicto(s) de barajabilidad que el detector de HOY contradice — el criterio mejoró y nadie los recalculó; se arreglan con backfill-shuffle-safety.ts --recriterio --apply`,
         { total: drift.criterio_viejo, sample: drift.criterio_sample });
     }
+    marcar('shuffle_safe_regressed', drift.regressions || 0);
+    marcar('shuffle_narrativa_letra_clavada', drift.narrative_stale_letters || 0);
+    marcar('shuffle_veredicto_criterio_viejo', drift.criterio_viejo || 0);
   } catch (e) { console.warn('⚠️ drift barajado no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Citas NO literales: la explicación atribuye al artículo algo que no dice ──
@@ -1386,6 +1445,7 @@ async function detectarTodo(c, add, now) {
         `${citas.ajenas} pregunta(s) visibles cuya cita en blockquote NO aparece en el artículo vinculado (${citas.ajenas_vistas} ya vistas por usuarios) — cita inventada o pregunta mal vinculada`,
         { ajenas: citas.ajenas, ajenas_vistas: citas.ajenas_vistas, dudosas: citas.dudosas, retocadas_no_defecto: citas.retocadas, sample: citas.sample });
     }
+    marcar('cita_no_literal', citas.ajenas || 0);
   } catch (e) { console.warn('⚠️ barrido de citas no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──
@@ -1414,6 +1474,7 @@ async function detectarTodo(c, add, now) {
       `${ctDups.length} ley(es) REAL duplicada(s) entre temas (misma ley entera/solape grande en ≥2 temas → preguntas repetidas en varios tests) en ${nOpos} oposición(es) — repartir por materia con verify:scope (npm run scope:health -- --pending)`,
       { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) });
   }
+  marcar('scope_cross_tema_dup', ctRows.length);
 
   // ── CONTENIDO: scope SIN VERIFICAR contra el epígrafe (cierra el punto ciego) ──
   // Un topic_scope nunca auditado (o `stale`) contra el epígrafe oficial es un HUECO:
@@ -1439,6 +1500,7 @@ async function detectarTodo(c, add, now) {
       `${r.slug}: ${r.sin_auditar}/${r.temas} tema(s) con scope SIN auditar (o stale) contra el epígrafe oficial — el temario podría servir preguntas fuera de programa sin avisar. Verifica con verify:scope.`,
       { temas: r.temas, verificados: r.verificados, sin_auditar: r.sin_auditar });
   }
+  marcar('scope_sin_verificar', svRows.length);
 
   // ── CONTENIDO: preguntas con DEIXIS VISUAL pero SIN imagen almacenada ──
   // El enunciado apunta a un icono/símbolo/imagen que DEBE mostrarse ("el siguiente
@@ -1471,6 +1533,7 @@ async function detectarTodo(c, add, now) {
   if (vdRows.length) add('content', 'warn', null, 'visual_deixis_no_image',
     `${vdRows.length}${vdRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) que invocan un icono/símbolo/imagen SIN imagen almacenada (image_url NULL) — irresolubles; reconstruir la imagen o jubilar (admin_image_unavailable)`,
     { count: vdRows.length, sample: vdRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
+  marcar('visual_deixis_no_image', vdRows.length);
 
   // ── §2.2-quater: enunciado que cita una norma SIN nombrarla (29/07/2026) ──
   // «Según el artículo 75 DE LA LEY, ¿cuál es el contenido mínimo…?»: fuera del test no hay forma
@@ -1489,6 +1552,7 @@ async function detectarTodo(c, add, now) {
   if (acRows.length) add('content', 'warn', null, 'enunciado_norma_sin_nombrar',
     `${acRows.length}${acRows.length >= 60 ? '+' : ''} pregunta(s) visible(s) cuyo enunciado cita un artículo «de la ley» sin nombrarla nunca — incumple §2.2-quater (autocontenida); el nombre está en la ley vinculada`,
     { count: acRows.length, sample: acRows.slice(0, 15).map(r => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })) });
+  marcar('enunciado_norma_sin_nombrar', acRows.length);
 
   // ── CHAT IA caído: respuestas de error servidas a usuarios (28/07/2026) ──
   // El chat sirvió 210 respuestas de error y `had_error` estaba en false en las 210, así que
@@ -1510,6 +1574,7 @@ async function detectarTodo(c, add, now) {
   if (chatErr && chatErr.n > 0) add('app', 'error', null, 'chat_ia_errores',
     `${chatErr.n} respuesta(s) de ERROR servidas por el chat IA en 24h a ${chatErr.usuarios} usuario(s) — el asistente está fallando (mira el errorStatus en ai_chat_traces: sin saldo del proveedor, modelo inexistente…)`,
     { n: chatErr.n, usuarios: chatErr.usuarios, ultimo: chatErr.ult });
+  marcar('chat_ia_errores', chatErr ? chatErr.n : 0);
 
   // ── Feedback INCONTESTABLE: pendiente y sin conversación (T-247, 28/07/2026) ──
   // `/api/v2/feedback/respond` se NIEGA a responder si el feedback no tiene fila en
@@ -1536,6 +1601,7 @@ async function detectarTodo(c, add, now) {
   if (sinConv.length) add('app', 'error', null, 'feedback_sin_conversacion',
     `${sinConv.length} feedback(s) PENDIENTES sin conversación: el endpoint de respuesta los rechaza (409), así que son incontestables y el usuario nunca recibirá contestación`,
     { n: sinConv.length, sample: sinConv.slice(0, 10).map(r => ({ id: r.id, type: r.type, msg: r.msg, creado: r.created_at })) });
+  marcar('feedback_sin_conversacion', sinConv.length);
 
   // ── Barajado ENCENDIDO pero sin rastro (28/07/2026) ──
   //
@@ -1557,6 +1623,7 @@ async function detectarTodo(c, add, now) {
         `El barajado está ACTIVO y ninguna de las ${barajado.respuestas} respuestas de las últimas 24h guarda el orden servido: o no baraja de verdad (piloto inerte) o la permutación no vuelve al guardar (y entonces se están registrando fallos falsos)`,
         { respuestas24h: barajado.respuestas, conOrden: barajado.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null });
     }
+    marcar('shuffle_encendido_sin_efecto', barajado.respuestas);
   }
 
   // ── Mapa de visibilidad frío: index-only scans que NO lo son (T-275) ──
@@ -1602,6 +1669,8 @@ async function detectarTodo(c, add, now) {
         `\`${f.relname}\` con solo el ${f.pctVisible}% de páginas marcadas visibles (${f.paginasFrias.toLocaleString('es-ES')} frías): sus index-only scans bajan al heap y pueden tardar 100× más`,
         { tabla: f.relname, pctVisible: f.pctVisible, paginasFrias: f.paginasFrias, relpages: f.relpages, remedio: remedioVisibilidad(f) });
     }
+    marcar('visibility_map_sin_ajuste', norm.length);
+    marcar('visibility_map_frio', norm.length);
   } catch (e) { console.warn('⚠️ mapa de visibilidad no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Epígrafe con la cabecera/pie del PDF del boletín incrustada (T-171) ──
@@ -1619,6 +1688,7 @@ async function detectarTodo(c, add, now) {
         `${e.slug} T${e.tema}: el epígrafe trae incrustada la cabecera/pie del PDF del boletín (${e.marcadores.slice(0, 2).join(' · ')})`,
         { slug: e.slug, tema: e.tema, marcadores: e.marcadores });
     }
+    marcar('epigrafe_ruido_boletin', eps.length);
   } catch (e) { console.warn('⚠️ ruido de boletín en epígrafes no evaluado:', String(e.message || e).slice(0, 120)); }
 
 
@@ -1641,6 +1711,7 @@ async function detectarTodo(c, add, now) {
         `${rotas.length} explicación(es) estructurada(s) se renderizan rotas (${exposiciones} exposiciones acumuladas)`,
         { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
     }
+    marcar('explicacion_estructura_rota', filas.length);
   } catch (e) { console.warn('⚠️ estructura de explicaciones no evaluada:', String(e.message || e).slice(0, 120)); }
 
   // ── Explicación CORTADA a mitad de frase (T-250) ──
@@ -1674,6 +1745,7 @@ async function detectarTodo(c, add, now) {
             .map((f) => ({ id: f.id, motivo: f.v.motivo, cola: f.v.cola.slice(-70), servidas: f.servidas })),
         });
     }
+    marcar('explicacion_truncada', filas.length);
   } catch (e) { console.warn('⚠️ explicaciones truncadas no evaluadas:', String(e.message || e).slice(0, 120)); }
   // ── Plazas publicadas con una SUMA que puede ser falsa (29/07/2026, caso Concha) ──
   // Cuando `plazas_discapacidad_incluidas` es NULL no consta si la reserva va dentro del
@@ -1694,6 +1766,7 @@ async function detectarTodo(c, add, now) {
       add('content', h.severity, h.slug, 'plazas_reserva_sin_declarar', h.mensaje,
         { plazas_en_duda: h.plazas_en_duda });
     }
+    marcar('plazas_reserva_sin_declarar', filas.length);
   } catch (e) { console.warn('⚠️ reserva de discapacidad sin declarar no evaluada:', String(e.message || e).slice(0, 120)); }
 }
 

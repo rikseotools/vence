@@ -62,6 +62,17 @@ echo ""
 #     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la
 #     descripcion_corta stale/desalineada). El self-test es puro (sin BD, rápido);
 #     el audit contra BD solo si DATABASE_URL está disponible. BLOQUEA en 🔴.
+#
+#     El script distingue a propósito exit 1 (drift REAL, encontrado) de exit 2 (no se pudo
+#     comprobar: sin conexión, o con una credencial sin permiso sobre `topics`) — este hook,
+#     hasta el 05/08/2026, los trataba igual y bloqueaba los dos como si fueran el mismo caso.
+#     Eso rompe para el rol de coordinación de la flota (T-486): su DATABASE_URL solo alcanza
+#     4 tablas de coordinación, así que CUALQUIER commit de un trabajador —tocara o no el
+#     temario— moría aquí con «permission denied for table topics» leído como drift real.
+#     Mismo criterio que `db:check` unas líneas arriba: sin poder comprobar, se avisa y se
+#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre. Y por la misma
+#     razón que ese bloque, los dos comandos van como CONDICIÓN de un `if` — sueltos, `-e`
+#     los trata como fatales antes de que el `if [ $? -ne 0 ]` posterior pueda leer el código.
 echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
 # [T-566] `cmd; if [ $? -ne 0 ]` es un statement SUELTO bajo `sh -e` (husky invoca
 # los hooks así, .husky/_/h): su fallo abortaba el script aquí, en silencio, antes
