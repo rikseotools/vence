@@ -443,6 +443,26 @@ Cada uno **se imprime al usarse** y **se cuenta**. Un escape con nombre es infin
 que `--no-verify`, que apaga todo a la vez y no deja rastro. Y contarlos es lo que permite saber
 si un guardarraíl sigue vivo (§3.9).
 
+### 6.quinquies. El CONTEXTO se acaba, y hay que cerrar ANTES — al 80%
+
+Una sesión larga se compacta. Lo que sobrevive es lo que esté **escrito fuera**: la ficha, el
+`resume_check`, la entrega, la pregunta en el embudo. Lo que solo esté en la conversación —el
+número que costó media hora medir, el porqué de una decisión, el cabo suelto que se vio de paso—
+**desaparece sin avisar y sin dejar hueco**.
+
+**La regla: al 80% de contexto se deja de abrir frentes y se dedica el resto a cerrar.** No al
+95%, porque cerrar bien cuesta: actualizar la ficha con lo medido, dejar el estado con `revision`
+o `pause --hecho/--falta`, y anotar lo que se vio y no se hizo.
+
+Aplica igual a una persona y a un trabajador, y por eso va en el ENCARGO
+(`lib/flota/encargo.cjs`): un trabajador autónomo no tiene a nadie que se lo recuerde a media
+tarea, y es justo quien más se juega — su conversación no la lee nadie, así que lo que no escriba
+en la ficha **no ha pasado**.
+
+> **Por qué no basta con «acuérdate»:** es el mismo modo de fallo que el recordatorio de método
+> ([T-495]) vino a cerrar. Una instrucción que se lee al empezar está sepultada cuando llega el
+> momento de aplicarla. Aquí el momento es tarde y llega solo.
+
 ### 6.ter. Fail-open es para PERSONAS: un trabajador autónomo tiene que fallar cerrado (T-539, 04/08)
 
 Todo el andamiaje de este documento hace **fail-open** cuando no puede hablar con la BD: el latido
