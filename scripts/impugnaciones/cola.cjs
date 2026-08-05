@@ -45,6 +45,17 @@ const { sqlReservaLibre, etiquetaReserva } = require(require('path').join(__dirn
 // Abreviar un sid es cosa de `sid.cjs` (T-538): a 8 caracteres, cinco sesiones del mismo día se
 // escriben igual y el listado hacía pasar por propias las reservas ajenas.
 const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
+// «Ya hay borrador abierto para este caso» (T-588): avisa, no bloquea. Nace de que 4 sesiones
+// analizaron la misma impugnación en 2h26min porque nada lo decía al repartir.
+const { borradoresQueCitan, lineasBorradorAbierto } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'borradorAbierto.cjs'));
+async function avisarSiHayBorrador(disputeId) {
+  try {
+    const filas = await s.unsafe(
+      `SELECT id, sid, status, draft_target, asked_at FROM public.session_questions WHERE kind='borrador' AND status='open'`);
+    const lineas = lineasBorradorAbierto(borradoresQueCitan(filas, String(disputeId)));
+    if (lineas.length) console.log('\n' + lineas.join('\n') + '\n');
+  } catch { /* nunca tumbar el reparto por esto */ }
+}
 
 // Tablas de cada cola: [tabla, estados-abiertos, herramienta/flujo a usar]
 const DISPUTE_TBL = [
@@ -244,6 +255,7 @@ async function inconsistentesResueltasEnPending() {
       }
       if (row.kind === 'feedback') console.log(`   → siguiente: flujo docs/procedures/gestionar-feedback-bug.md`);
       else console.log(`   → siguiente: node scripts/impugnaciones/revisar-impugnacion.cjs ${row.id}`);
+      if (row.kind !== 'feedback') await avisarSiHayBorrador(row.id);
       return;
     }
 
@@ -303,6 +315,7 @@ async function inconsistentesResueltasEnPending() {
           ));
           (hermanas || []).forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
         }
+        if (!esFeedback) await avisarSiHayBorrador(row.id);
         return;
       }
       console.log('No se pudo coger (¿id inexistente, ya cerrada, o la tiene otra sesión?).');

@@ -239,6 +239,18 @@ if (require.main !== module) {
       const lineas = lineasDossier(fichasQueCitan(md, [String(d.id), idCorto]));
       if (lineas.length) console.log('\n' + lineas.join('\n'));
     } catch { /* el backlog no es imprescindible para el dossier: nunca lo tumba */ }
+
+    // --- 📝 ¿YA HAY BORRADOR ABIERTO EN EL EMBUDO PARA ESTE CASO? (T-588) ---
+    // Distinto de la ficha de arriba: aquí se mira session_questions directamente, así que
+    // avisa aunque nadie haya llegado a documentar el hallazgo en el backlog.
+    try {
+      const { borradoresQueCitan, lineasBorradorAbierto } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'borradorAbierto.cjs'));
+      const filas = await s.unsafe(
+        `SELECT id, sid, status, draft_target, asked_at FROM public.session_questions WHERE kind='borrador' AND status='open'`);
+      const propios = borradoresQueCitan(filas, String(d.id));
+      const lineasB = lineasBorradorAbierto(propios);
+      if (lineasB.length) console.log('\n' + lineasB.join('\n'));
+    } catch { /* igual que arriba: nunca tumba el dossier */ }
     if (alreadyWarn) console.log(alreadyWarn);
     if (profileWarn) console.log(profileWarn);
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
