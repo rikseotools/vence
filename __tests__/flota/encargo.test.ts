@@ -432,3 +432,52 @@ describe('el rastro del turno lo deja la puerta, no el llamador', () => {
     expect(src).toMatch(/'encargado'/)
   })
 })
+
+// ── RESCATAR ES ADITIVO; DESCARTAR, NO ──────────────────────────────────────────────────────
+// La puerta del clon rehúsa dar trabajo nuevo a quien tiene cambios sin commitear —y hace bien:
+// pueden ser la única copia— pero eso deja al trabajador ENCALLADO hasta que alguien lo mira. Pasó
+// cuatro veces el 05/08 y las cuatro se resolvió a mano con los mismos tres comandos.
+//
+// Automatizarlo es seguro porque rescatar solo AÑADE: en el peor caso deja un commit de más, que
+// se descarta leyéndolo. Lo que destruye es lo contrario, y eso sigue siendo de una persona.
+describe('el rescate automático', () => {
+  const src = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+  const bloque = src.slice(src.indexOf("cmd === 'rescatar'"), src.indexOf('VIGILAR: la flota se mantiene'))
+
+  it('solo añade: commit y push, jamás descarta', () => {
+    expect(bloque).toMatch(/git add -A/)
+    expect(bloque).toMatch(/git push/)
+    expect(bloque).not.toMatch(/reset|clean -|checkout --|stash/)
+  })
+
+  // La salida cómoda ante un `non-fast-forward` es `--force`, y es exactamente lo que un rescate no
+  // puede hacer: destruiría lo que hubiera en el remoto, o sea lo que se venía a proteger.
+  it('NUNCA fuerza el push', () => {
+    // `push --force`, `push -f`, o el `+` del refspec. Nada de eso puede aparecer.
+    expect(bloque).not.toMatch(/push[^\n]*--force|push\s+-f\b|HEAD:\+|:\+refs/)
+  })
+
+  // Una referencia nueva por rescate no choca con nada. Y como lleva el SHA dentro, rescatar dos
+  // veces el mismo commit escribe la MISMA ref: idempotente sin comprobar nada.
+  it('empuja a una referencia nueva que lleva el SHA', () => {
+    expect(bloque).toMatch(/rescate\/\$\{w\}-\$\(git rev-parse --short HEAD\)/)
+  })
+
+  // Si no hay nada que salvar no debe crear ruido: ni commits vacíos ni ramas.
+  it('si no hay nada que salvar, sale sin tocar nada', () => {
+    expect(bloque).toMatch(/echo NADA && exit 0/)
+  })
+
+  // Un commit de rescate NO introduce trabajo, lo CONSERVA: las comprobaciones tienen que pasar
+  // cuando alguien lo lleve a main, no para impedir que se guarde. Sin esto el rescate moriría en
+  // el mismo `pre-commit` que ya bloqueó al trabajador.
+  it('el commit de rescate no pasa por el hook, y el mensaje dice que no está aprobado', () => {
+    expect(bloque).toMatch(/--no-verify/)
+    expect(bloque).toMatch(/rescatar no es aprobar/)
+  })
+
+  it('y deja rastro, salga bien o mal', () => {
+    expect(bloque).toMatch(/emitirTurno\(w, ok \? 'rescatado' : 'rescate_fallido'/)
+  })
+})
