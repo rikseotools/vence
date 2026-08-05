@@ -285,7 +285,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'oficiales" y el que el usuario lee antes de decidir, así que si cuenta oficiales de otras ' +
       'oposiciones sobre leyes compartidas (CE, LOTC…) promete preguntas que el test no va a servir ' +
       '— el bug del label "115" de Seg. Social T3, por el otro lado. Un test con mocks no lo caza. ' +
-      'Correrla al tocar `lib/api/test-config/queries.ts` o el conteo de oficiales.',
+      'Correrla al tocar `lib/api/test-config/queries.ts` o el conteo de oficiales. ⚠️ **Mide la ' +
+      'copia del FRONTEND, que producción no ejecuta** — para el camino servido, `sim_estimate_servido`.',
+  },
+  sim_estimate_servido: {
+    titulo: 'El contador «por leyes» dice la verdad EN EL CAMINO QUE DE VERDAD SIRVE',
+    ruta: 'scripts/sim/sim-estimate-servido.ts',
+    estado: 'vivo',
+    runbook: 'docs/roadmap/tareas-pendientes.md',
+    notas:
+      '`npm run sim:estimate-servido` (o `SIM_BASE=https://www.vence.es …`). Solo lectura. Va por ' +
+      'HTTP a `/api/v2/test-config/estimate`, así que le da igual quién responda: **mide lo que ve ' +
+      'el usuario**, no una función. Nace de que el mismo defecto se escapó TRES veces —T-326 (la ' +
+      'lógica solo en el frontend), T-551 (la guarda en un camino y no en su gemelo) y el arreglo de ' +
+      'T-551, aplicado otra vez solo al frontend— mientras las capas daban verde porque preguntaban ' +
+      'a la copia equivocada: la familia `test-config` está enrutada al backend (`x-served-by: ' +
+      'vence-backend`). Dos casos y los DOS hacen falta: **degradación** (oposición sin temario ' +
+      'construido → acotar no puede dar 0) y **control** (oposición con temario → acotar TIENE que ' +
+      'recortar); sin el control, un "degradar siempre" pasaría la prueba y estaríamos sirviendo ' +
+      'materia fuera de programa, que es el defecto opuesto y peor. Los fixtures se descubren de la ' +
+      'BD, no se clavan, para que siga valiendo cuando esas oposiciones tengan temario.',
   },
   audit_verificacion_cosmetica: {
     titulo: 'Preguntas que figuran VERIFICADAS apoyándose solo en un pase cosmético',

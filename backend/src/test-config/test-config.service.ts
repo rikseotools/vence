@@ -24,6 +24,8 @@ import {
   getTopicScopeMappings,
   getValidExamPositions,
 } from './test-config.helpers';
+import { esDegradacion } from './alcance-de-ley';
+import { ObservabilityService } from '../observability/observability.service';
 import type {
   EstimateQuestionsRequest,
   EstimateQuestionsResponse,
@@ -40,7 +42,10 @@ import type {
 export class TestConfigService {
   private readonly logger = new Logger(TestConfigService.name);
 
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   // ============================================
   // 1. ARTÍCULOS POR LEY
@@ -237,6 +242,29 @@ export class TestConfigService {
   }
 
   /**
+   * ¿Tiene esa oposición ALGUNA fila de `topic_scope` para esa ley?
+   *
+   * Gemela de `positionHasScopeForLaw` en `lib/api/_shared/topicScopeSql.ts`, para que
+   * «sin temario» signifique EXACTAMENTE lo mismo aquí y allí. Es la pregunta que decide
+   * si se acota o se degrada ([T-551]); ver `alcance-de-ley.ts`.
+   */
+  private async positionHasScopeForLaw(
+    positionType: string,
+    lawId: string,
+  ): Promise<boolean> {
+    const res = (await this.db.execute(sql`
+      SELECT 1
+      FROM topic_scope ts
+      INNER JOIN topics t ON t.id = ts.topic_id
+      WHERE t.position_type = ${positionType}
+        AND ts.law_id = ${lawId}
+      LIMIT 1
+    `)) as { rows?: unknown[] } | unknown[];
+    const rows = Array.isArray(res) ? res : (res?.rows ?? []);
+    return rows.length > 0;
+  }
+
+  /**
    * Estimación en modo "por leyes" (sin tema): cuenta sobre la selección real de leyes,
    * artículos y secciones, con los MISMOS filtros que aplicará el test al servir.
    *
@@ -277,6 +305,8 @@ export class TestConfigService {
 
     const byLaw: Record<string, number> = {};
     let totalCount = 0;
+    // Leyes en las que se pidió acotar y NO se pudo (oposición sin temario) — se observa al final.
+    const degradedLaws: string[] = [];
 
     for (const lawShortName of selectedLaws) {
       // Con leyes duplicadas se prefiere DETERMINISTA la fila con más preguntas activas,
@@ -296,6 +326,22 @@ export class TestConfigService {
         .limit(1);
       const lawId = lawResult[0]?.id;
       if (!lawId) continue;
+
+      // ¿Acotar al temario, o DEGRADAR? Se decide UNA vez por ley y vale para los DOS
+      // sitios que acotan más abajo (el filtro de secciones y el conteo). Decidirlo dos
+      // veces es como nació este defecto: dos guardas del mismo recurso que divergen.
+      const tieneScopeDeLaLey = scopeToPosition
+        ? await this.positionHasScopeForLaw(String(positionType ?? ''), lawId)
+        : false;
+      const acotarAlTemario = !!scopeToPosition && tieneScopeDeLaLey;
+      if (
+        esDegradacion({
+          acotarAlTemario: !!scopeToPosition,
+          tieneScopeDeLaLey,
+        })
+      ) {
+        degradedLaws.push(lawShortName);
+      }
 
       const conditions = [
         eq(questions.isActive, true),
@@ -319,7 +365,7 @@ export class TestConfigService {
             inArray(articles.articleNumber, articleNumbers),
           );
         }
-        if (scopeToPosition) {
+        if (acotarAlTemario) {
           candidateConditions.push(this.articleInPositionScope(positionType));
         }
         const candidates = await this.db
@@ -346,7 +392,11 @@ export class TestConfigService {
 
       // Acotar al temario de la oposición (mismo predicado que el selector de artículos,
       // para que el número y la lista que el usuario ve hablen de lo mismo).
-      if (scopeToPosition) {
+      //
+      // …salvo que la oposición NO tenga temario construido para esta ley: entonces se
+      // DEGRADA igual que el camino del test, en vez de intersecar contra vacío y devolver
+      // 0. Ver `alcance-de-ley.ts` — [T-551].
+      if (acotarAlTemario) {
         conditions.push(this.articleInPositionScope(positionType));
       }
 
@@ -375,6 +425,25 @@ export class TestConfigService {
       const count = Number(countResult[0]?.count || 0);
       byLaw[lawShortName] = (byLaw[lawShortName] || 0) + count;
       totalCount += count;
+    }
+
+    // MISMO eventType que el camino del test y que el gemelo del frontend
+    // (`filtered_questions_unbuilt_oposicion_degrade`): un solo evento para un solo
+    // fenómeno — qué oposiciones sin construir está usando la gente. Dos emisores del
+    // mismo hecho no miden el doble, divergen. `source` sí cambia ('fargate'), que es
+    // justo el dato que faltaba para saber QUIÉN sirvió.
+    if (degradedLaws.length > 0) {
+      this.observability.emitFireAndForget({
+        source: 'fargate',
+        severity: 'info',
+        eventType: 'filtered_questions_unbuilt_oposicion_degrade',
+        endpoint: '/api/v2/test-config/estimate',
+        metadata: {
+          positionType: String(positionType ?? '').slice(0, 80),
+          degradedLaws: degradedLaws.slice(0, 20),
+          mode: 'estimate',
+        },
+      });
     }
 
     return { success: true, count: totalCount, byLaw };

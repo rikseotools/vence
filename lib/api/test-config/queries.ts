@@ -310,6 +310,17 @@ async function estimateByLaws(
     const lawId = await resolveLawIdByShortName(db, lawShortName)
     if (!lawId) continue
 
+    // ¿Acotar al temario, o DEGRADAR? Se decide UNA vez por ley y vale para los DOS sitios
+    // que acotan más abajo (el filtro de secciones y el conteo). Decidirlo dos veces es
+    // exactamente como nació este defecto: dos guardas del mismo recurso que divergen.
+    const tieneScopeDeLaLey = scopeToPosition
+      ? await positionHasScopeForLaw(db, { positionType, lawId })
+      : false
+    const acotarAlTemario = !!scopeToPosition && tieneScopeDeLaLey
+    if (esDegradacion({ acotarAlTemario: !!scopeToPosition, tieneScopeDeLaLey })) {
+      degradedLaws.push(lawShortName)
+    }
+
     const conditions = [eq(questions.isActive, true), eq(articles.lawId, lawId)]
 
     // Artículos elegidos por el usuario para ESTA ley
@@ -324,7 +335,7 @@ async function estimateByLaws(
       if (articleNumbers) {
         candidateConditions.push(inArray(articles.articleNumber, articleNumbers))
       }
-      if (scopeToPosition) {
+      if (acotarAlTemario) {
         candidateConditions.push(
           articleInPositionScopeExists({
             lawId: articles.lawId,
@@ -358,14 +369,9 @@ async function estimateByLaws(
     //
     // …salvo que la oposición NO tenga temario construido para esta ley: entonces se DEGRADA
     // igual que el camino del test, en vez de intersecar contra vacío y devolver 0. La decisión
-    // vive en `_shared/topicScopeSql` para que contador y test no puedan divergir ([T-551]).
-    const tieneScopeDeLaLey = scopeToPosition
-      ? await positionHasScopeForLaw(db, { positionType, lawId })
-      : false
-    if (esDegradacion({ acotarAlTemario: !!scopeToPosition, tieneScopeDeLaLey })) {
-      degradedLaws.push(lawShortName)
-    }
-    if (scopeToPosition && tieneScopeDeLaLey) {
+    // vive en `_shared/topicScopeSql` para que contador y test no puedan divergir ([T-551]),
+    // y se tomó arriba (una sola vez por ley).
+    if (acotarAlTemario) {
       conditions.push(
         articleInPositionScopeExists({
           lawId: articles.lawId,
