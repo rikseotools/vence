@@ -276,10 +276,13 @@ describe('al trabajador que viene de su rama se le devuelve a main', () => {
     expect(v.volverAMain).toBeUndefined()
   })
 
-  it('la orden cambia de rama sin poder perder nada', () => {
-    const o = ACT.ORDEN_A_MAIN('~/x')
-    expect(o).toContain('checkout -q main')
-    expect(o).toContain('--ff-only')
+  // ⚠️ NO puede hacer `checkout main`: git prohíbe la misma rama en dos worktrees y `main` la
+  // tiene el árbol principal. El primer intento murió con «'main' is already used by worktree at…».
+  it('usa una rama propia del trabajador, no main', () => {
+    const o = ACT.ORDEN_A_MAIN('~/x', 'l6')
+    expect(o).toContain('flota/l6')
+    expect(o).toContain('origin/main')
+    expect(o).not.toMatch(/checkout -q main\b/)
     expect(o).not.toMatch(/reset|clean|--force/)
   })
 })
