@@ -33,6 +33,8 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env.loc
 const { Client } = require('pg');
 const crypto = require('crypto');
 const fs = require('fs');
+// Lo que sale hacia una persona lo aprueba una persona (T-486).
+const { exigirPersona } = require('../../lib/sessions/aprobacion.cjs');
 
 const configPath = process.argv[2];
 const previewIdx = process.argv.indexOf('--preview');
@@ -105,6 +107,8 @@ const BASE_VARS = {
   ctaUrl: `https://www.vence.es/${cfg.slug}/test?utm_source=email&utm_campaign=nueva_oposicion`,
   slug: cfg.slug,
 };
+
+if (!exigirPersona('newsletter')) process.exit(4);
 
 (async () => {
   const c = new Client({ connectionString: CONN, ssl: { rejectUnauthorized: false } });

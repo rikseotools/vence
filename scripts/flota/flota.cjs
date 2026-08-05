@@ -226,7 +226,8 @@ async function main() {
         SELECT id, title, review_requested_by FROM public.backlog_tasks
          WHERE review_requested_at IS NOT NULL AND status <> 'done'`
       const preguntas = await sql`
-        SELECT id, sid, question FROM public.session_questions WHERE status = 'open'`.catch(() => [])
+        SELECT id, sid, question, kind, draft_target FROM public.session_questions WHERE status = 'open'
+         ORDER BY (kind = 'borrador') DESC, asked_at`.catch(() => [])
 
       const filas = MAQ.comparar(sesiones)
       const porSid = new Map(sesiones.map((s) => [s.slug, s.sid]))
@@ -277,9 +278,23 @@ async function main() {
         console.log(`\n🙋 ${entregas.length} ENTREGADA(S) esperando que las revises:`)
         for (const e of entregas) console.log(`   ${e.id}  ${String(e.title).slice(0, 62)}`)
       }
-      if (preguntas.length) {
-        console.log(`\n❓ ${preguntas.length} PREGUNTA(S):`)
-        for (const p of preguntas) console.log(`   ${sidCorto(p.sid)}: ${String(p.question).slice(0, 90)}`)
+      // ── BORRADORES: lo PRIMERO, porque es lo único que va a salir hacia una persona ────
+      // «Siempre tengo que aprobar lo que se envía» (Manuel). Van separados de las preguntas y
+      // por delante: una pregunta espera una decisión, un borrador espera un permiso, y
+      // confundirlos haría que lo segundo se leyera como lo primero.
+      const borradores = preguntas.filter((p) => p.kind === 'borrador')
+      const dudas = preguntas.filter((p) => p.kind !== 'borrador')
+      if (borradores.length) {
+        console.log(`\n📝 ${borradores.length} BORRADOR(ES) esperando tu OK — nada de esto se ha enviado:`)
+        for (const b of borradores) {
+          console.log(`   #${b.id} → ${String(b.draft_target || '?').slice(0, 40)}  (${sidCorto(b.sid)})`)
+          console.log(`        ${String(b.question).slice(0, 88)}`)
+        }
+        console.log('   léelos enteros:  node scripts/backlog.cjs preguntas')
+      }
+      if (dudas.length) {
+        console.log(`\n❓ ${dudas.length} PREGUNTA(S):`)
+        for (const p of dudas) console.log(`   ${sidCorto(p.sid)}: ${String(p.question).slice(0, 90)}`)
       }
       // ── ¿PUEDEN DE VERDAD TRABAJAR? (T-486) ────────────────────────────────────────
       // El latido dice que la máquina vive; no dice nada de Claude Code. Sin esta sonda, un

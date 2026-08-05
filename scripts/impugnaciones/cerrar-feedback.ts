@@ -23,6 +23,7 @@ import { readFileSync } from 'fs'
 import { config } from 'dotenv'
 import { identidadDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
+const { exigirPersona } = require('../../lib/sessions/aprobacion.cjs')
 
 config({ path: '.env.local' })
 
@@ -49,6 +50,9 @@ export function parsearArgs(argv: string[]) {
 
 async function main() {
   const a = parsearArgs(process.argv.slice(2))
+  // Lo que sale hacia una persona lo aprueba una persona (T-486): esto le escribe por correo a
+  // quien mandó el feedback. Un trabajador autónomo deja el borrador, no lo envía.
+  if (!exigirPersona('feedback')) process.exit(4)
   if (!a.feedbackId || (!a.mensajeFichero && !a.silencioso)) {
     console.error('uso: cerrar-feedback.ts <feedback_id> [--mensaje <f.txt> | --silencioso] [--aplicar]')
     process.exit(1)

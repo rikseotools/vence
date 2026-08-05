@@ -40,6 +40,7 @@ import { readFileSync } from 'fs'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { extraerEnlacesBoe, anclaDe, articuloCitadoEnElTexto, extraerCitas, verificarDocumento } = require('../../lib/impugnaciones/verificarEnlaces.cjs')
 const { validarVerdictoSistemico } = require('../../lib/impugnaciones/verdictoSistemico.cjs')
+const { exigirPersona } = require('../../lib/sessions/aprobacion.cjs')
 import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
@@ -170,6 +171,10 @@ async function trazarCierreSilencioso(disputeId: string, motivo: string): Promis
 
 async function main() {
   const a = parsearArgs(process.argv.slice(2))
+  // ── LO QUE SALE HACIA UNA PERSONA LO APRUEBA UNA PERSONA (T-486) ─────────────────────────
+  // Antes que nada, incluso antes de validar los argumentos: esto le escribe por correo a quien
+  // presentó la impugnación. Un trabajador autónomo no manda eso, deja el borrador.
+  if (!exigirPersona('impugnacion')) process.exit(4)
   if (!a.disputeId || !a.estado || (!a.mensajeFichero && !a.silencioso)) {
     console.error('uso: cerrar.ts <dispute_id> --estado resolved|rejected (--mensaje <fichero.txt> | --silencioso --nota "<por qué>") [--aplicar]')
     process.exit(1)

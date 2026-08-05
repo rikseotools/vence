@@ -1946,6 +1946,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'describiendo otro repo. Prueba: `npm run sim:clon-al-dia` (13 casos con repos git reales, ' +
       'incluido ese citado). Evento `flota_clon_desactualizado` + regla `RULE_FLOTA_CLON`.',
   },
+  aprobacion_envios: {
+    titulo: 'Lo que sale HACIA UNA PERSONA lo aprueba una persona — la puerta que impide que un trabajador envíe correos',
+    ruta: 'lib/sessions/aprobacion.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Regla de Manuel (05/08), no negociable: «siempre tengo que aprobar lo que se envía, porque ' +
+      'ahí se detectan fallos y los usuarios necesitan que haya personas detrás, no la IA». Lo que ' +
+      'HOY lo impide de verdad es el PERMISO —un trabajador no tiene `.env.local`, ni credenciales ' +
+      'AWS (no saca `AUTH_SECRET` de SSM), ni clave de correo, y su rol de lectura no ve la ' +
+      'dirección de nadie: medido, cero variables sensibles en su entorno—, pero eso es un ' +
+      'accidente del aprovisionamiento. Por eso el criterio vive AQUÍ (`puedeEnviar` puro + ' +
+      '`exigirPersona`) y los **cuatro** scripts que entregan a una persona (impugnaciones, ' +
+      'feedback, dos newsletters) lo invocan al empezar y salen con código 4. **Un rol sin ' +
+      'declarar cuenta como trabajador.** La salida obligatoria es `backlog.cjs borrador`, que ' +
+      'deja el texto en el MISMO embudo (`session_questions.kind`) y lo saca el primero en ' +
+      '`npm run flota` — un bloqueo sin salida se rodea ([T-375]). Guardarraíl: ' +
+      '`aprobacionEnvios.guardrail.test.ts` (27) exige que ningún script de envío se quede sin la ' +
+      'puerta, que es como se pierden las protecciones: añadiendo un quinto que no la tiene.',
+  },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
     ruta: 'lib/flota/cuentas.cjs',

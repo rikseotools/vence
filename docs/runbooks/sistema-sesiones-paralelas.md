@@ -581,6 +581,43 @@ La verdad la tiene su panel de tmux (`pane_current_command`): un shell = esperan
 cosa = trabajando, y **sin dato no se manda**. Es el mismo principio que `sesionViva`: se observa,
 no se declara, y sin estado nuevo que mantener.
 
+#### Nada sale hacia una persona sin que Manuel lo apruebe
+
+> «No puedo permitir que los trabajadores envíen correos sin mi supervisión. Siempre tengo que
+> aprobar lo que se envía, porque ahí se detectan fallos y los usuarios necesitan que haya personas
+> detrás, no la IA.» — Manuel, 05/08
+
+No es una formalidad. Un opositor que impugna una pregunta está discutiendo con alguien, y la
+respuesta que recibe tiene que haber pasado por ese alguien.
+
+**Lo que HOY lo impide de verdad es el permiso.** Un trabajador no tiene `.env.local`, ni
+credenciales de AWS (así que no puede sacar `AUTH_SECRET` de SSM), ni clave del proveedor de correo,
+y su rol de lectura ni siquiera puede ver la dirección de nadie. Medido el 05/08 en el VPS: **cero
+variables sensibles en su entorno**. Eso es una propiedad del permiso, que es la buena.
+
+**Pero es también un accidente del aprovisionamiento**: el día que un trabajador necesite una
+credencial para otra cosa, la contención desaparece sin que nadie lo decida. Por eso la regla se
+declara en **un** sitio (`lib/sessions/aprobacion.cjs`) y se hace cumplir **en el punto de envío**:
+los cuatro scripts que entregan algo a una persona —impugnaciones, feedback y las dos newsletters—
+se niegan a funcionar si el rol no es `persona`, y salen con código 4. Un rol **sin declarar cuenta
+como trabajador**: su ausencia dentro de algo automatizado no es «hay una persona delante».
+
+Un guardarraíl de TEXTO no es un guardarraíl — el encargo ya decía «esto no es para ti» y un encargo
+se puede ignorar. Comprobado **ejecutando** los scripts, no leyéndolos.
+
+**Y la otra mitad, sin la cual el bloqueo se rodea:** el trabajador tiene dónde dejar lo redactado.
+
+```bash
+node scripts/backlog.cjs borrador --para "<a quién>" --texto <fichero.md> [--tarea T-nnn]
+```
+
+Va por el **mismo embudo** que las preguntas (`session_questions`, con `kind='borrador'`) porque es
+el mismo canal: cosas que una sesión le manda a Manuel y que esperan su palabra. Dos colas
+significarían dos sitios donde mirar y una de las dos olvidada. Sale **el primero** en
+`npm run flota`, separado de las preguntas: una pregunta espera una decisión, un borrador espera un
+permiso. El cuerpo íntegro es obligatorio (≥40 caracteres, lo exige un CHECK) y el destinatario
+también — un borrador sin destinatario no se puede revisar.
+
 **Tres gotchas que costaron una vuelta cada uno:**
 
 - **Los nombres van en minúscula.** El árbol se llama como el trabajador y `crear-worktree.sh`
