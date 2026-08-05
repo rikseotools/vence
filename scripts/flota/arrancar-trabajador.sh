@@ -146,7 +146,10 @@ chown "$USUARIO:$USUARIO" "$WT/.env.local"
 # ── 6. LA CREDENCIAL, PERSISTIDA UNA SOLA VEZ ───────────────────────────────────────────────
 # Fichero de entorno con permisos 0600 que lee systemd. Es lo que hace que el token se pida UNA
 # vez: sobrevive a reinicios, a que se caiga el SSH y a que se cierre la terminal.
-mkdir -p "$ENV_DIR"; chmod 700 "$ENV_DIR"
+# El directorio es del TRABAJADOR, no de root: con 700 de root, él no puede ni entrar, y el
+# preflight se cae con «Permission denied» antes de leer su propia credencial. root sigue pudiendo
+# leerlo (se salta los permisos), que es lo que necesita systemd para el EnvironmentFile.
+mkdir -p "$ENV_DIR"; chown "$USUARIO:$USUARIO" "$ENV_DIR"; chmod 700 "$ENV_DIR"
 umask 077
 cat > "$ENV_FILE" <<ENVF
 # Trabajador '$SLUG' de la flota de Vence. Generado por arrancar-trabajador.sh — NO editar a mano.
