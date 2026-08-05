@@ -206,14 +206,42 @@ describe('las órdenes que se ejecutan en la máquina', () => {
   })
 })
 
-describe('severidad: lo que se arregla solo no grita', () => {
+// ── CALIBRADO CON LA SERIE DELANTE, NO A OJO ────────────────────────────────────────────────
+// Primera versión: todo lo que no fuera «al día» era `error`. Medido a las 24 h: **53 errores en un
+// día**, casi todos trabajadores con trabajo sin commitear — que NO es una avería, es el sistema
+// rehusando pisar algo que puede ser único. Una alerta que salta 53 veces al día por operación
+// normal se ignora, y con ella se ignoran las que sí importan.
+describe('severidad: distinguir «hay que mirar algo» de «algo falla»', () => {
   it.each([
     ['al_dia', {}, 'info'],
     ['atrasado', { ATRAS: 30 }, 'info'],
-    ['sucio', { SUCIO: 1 }, 'error'],
-    ['sin_red', { FETCH: 'fallo' }, 'error'],
-  ])('%s → %s', (_c, campos, sev) => {
+    ['en_su_rama', { ATRAS: 4, FUERA_DE_MAIN: 1 }, 'info'],
+  ])('%s se arregla solo → %s', (_c, campos, sev) => {
     expect(ACT.severidad(ACT.evaluarClon(sonda(campos)))).toBe(sev)
+  })
+
+  // El sistema funcionando bien: rehúsa, avisa, y no ha roto nada.
+  it.each([
+    ['sucio', { SUCIO: 1 }],
+    ['adelantado', { ADELANTE: 1 }],
+    ['divergido', { SUCIO: 1, ADELANTE: 1 }],
+  ])('%s pide que alguien mire, pero no es avería → warn', (_c, campos) => {
+    expect(ACT.severidad(ACT.evaluarClon(sonda(campos)))).toBe('warn')
+  })
+
+  // Esto sí: no se puede saber, o la máquina no está aprovisionada.
+  it.each([
+    ['sin_red', { FETCH: 'fallo' }],
+    ['sin_repo', {}],
+  ])('%s → error', (caso, campos) => {
+    const v = caso === 'sin_repo' ? ACT.evaluarClon(ACT.leerSonda('')) : ACT.evaluarClon(sonda(campos))
+    expect(ACT.severidad(v)).toBe('error')
+  })
+
+  // El que se retoma con el árbol a medias es el caso NORMAL de un turno que murió: si gritara,
+  // gritaría cada vez que el vigía hace su trabajo.
+  it('retomar lo propio a medias no grita', () => {
+    expect(ACT.severidad(ACT.evaluarClon(sonda({ SUCIO: 11 }), { reanuda: true }))).toBe('info')
   })
 })
 
