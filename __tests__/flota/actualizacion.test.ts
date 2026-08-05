@@ -18,7 +18,7 @@ const ACT = require('@/lib/flota/actualizacion.cjs')
 
 const sonda = (o: Record<string, unknown> = {}) =>
   ACT.leerSonda(
-    Object.entries({ FETCH: 'ok', HEAD: 'abc1234', ATRAS: 0, ADELANTE: 0, SUCIO: 0, ...o })
+    Object.entries({ FETCH: 'ok', HEAD: 'abc1234', ATRAS: 0, ADELANTE: 0, FUERA_DE_MAIN: 0, SUCIO: 0, ...o })
       .map(([k, v]) => `${k}=${v}`)
       .join('\n'),
   )
@@ -103,6 +103,25 @@ describe('cuándo NO, y por qué en cada caso', () => {
 // medias es exactamente el estado en que se dejó, y bloquearlo dejaría al trabajador encallado
 // para siempre — un bloqueo que no se puede satisfacer se acaba rodeando ([T-375]). Medido el
 // 05/08 con `l1`: turno terminado a media tarea, 11 ficheros sin commitear y ni un commit.
+// Un trabajador trabaja en SU rama. Intentar `pull --ff-only` de main sobre ella no puede ser
+// avance directo en cuanto tenga un commit propio, así que fallaba SIEMPRE y se reportaba como
+// «no se sabe» — dejando al trabajador sin poder recibir nada (05/08, l3 y l6).
+describe('un trabajador en su propia rama', () => {
+  it('no se le intenta mover la rama: le basta con que el fetch deje origin/main al día', () => {
+    const v = ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 1 }))
+    expect(v).toMatchObject({ estado: 'en_su_rama', puedeEncargar: true, hayQueActualizar: false })
+  })
+
+  it('pero si está EN main y solo va por detrás, sí se actualiza', () => {
+    expect(ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: 0 })))
+      .toMatchObject({ estado: 'atrasado', hayQueActualizar: true })
+  })
+
+  it('y sin saber si puede avanzar, no se inventa', () => {
+    expect(ACT.evaluarClon(sonda({ ATRAS: 4, FUERA_DE_MAIN: -1 })).puedeEncargar).toBe(false)
+  })
+})
+
 describe('cuando RETOMA su propia tarea', () => {
   it.each([
     ['ficheros sin commitear', { SUCIO: 11 }, /11 fichero/],
@@ -151,6 +170,10 @@ describe('las órdenes que se ejecutan en la máquina', () => {
   it('lo que cuenta como trabajo en peligro es lo que no está en NINGÚN remoto', () => {
     expect(ACT.SONDA_GIT('~/x')).toContain('HEAD --not --remotes')
     expect(ACT.SONDA_GIT('~/x')).not.toMatch(/ADELANTE=\$\(git rev-list --count origin\/main\.\.HEAD/)
+  })
+
+  it('la sonda pregunta si el avance sería directo', () => {
+    expect(ACT.SONDA_GIT('~/x')).toContain('FUERA_DE_MAIN=')
   })
 
   it('la sonda no escribe: solo mira', () => {
