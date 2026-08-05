@@ -70,7 +70,9 @@ echo ""
 #     4 tablas de coordinación, así que CUALQUIER commit de un trabajador —tocara o no el
 #     temario— moría aquí con «permission denied for table topics» leído como drift real.
 #     Mismo criterio que `db:check` unas líneas arriba: sin poder comprobar, se avisa y se
-#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre.
+#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre. Y por la misma
+#     razón que ese bloque, los dos comandos van como CONDICIÓN de un `if` — sueltos, `-e`
+#     los trata como fatales antes de que el `if [ $? -ne 0 ]` posterior pueda leer el código.
 echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
 # [T-566] `cmd; if [ $? -ne 0 ]` es un statement SUELTO bajo `sh -e` (husky invoca
 # los hooks así, .husky/_/h): su fallo abortaba el script aquí, en silencio, antes
