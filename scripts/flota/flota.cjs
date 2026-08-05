@@ -464,6 +464,8 @@ async function main() {
         const tareaDe = (w) => enCurso.find((t) => t.claimed_by === porSlug.get(w))
 
         const sello = new Date().toISOString().slice(11, 19)
+        // Dos trabajadores no pueden llevarse la MISMA tarea en la misma vuelta.
+        const repartidas = new Set()
         let movidos = 0
         for (const { trabajador } of MAQ.trabajadoresEsperados()) {
           if (!sesionViva(trabajador)) continue
@@ -480,9 +482,34 @@ async function main() {
               if (r.ok) { console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++ }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             } else {
+              // ── IMPUGNACIONES Y BACKLOG, ALTERNANDO ──────────────────────────────
+              // Las dos colas importan y las dos se quedan atrás. Repartir solo impugnaciones
+              // dejaría el backlog parado (y al revés), así que se alterna de forma
+              // DETERMINISTA por el nombre del trabajador: los pares a una cola, los impares a
+              // la otra. Sin azar, para que el reparto sea el mismo en cada vuelta y se pueda
+              // comparar consigo mismo — el mismo criterio que el reparto de cuentas.
+              const aImpugnaciones = (trabajador.charCodeAt(trabajador.length - 1) % 2) === 0
+              let texto = null, queEs = null
+              if (!aImpugnaciones) {
+                const libres = await sql`
+                  SELECT id, title FROM public.backlog_tasks
+                   WHERE status = 'open' AND claimed_by IS NULL
+                     AND (snooze_until IS NULL OR snooze_until <= now())
+                     AND wake_on_deploy_sha IS NULL AND review_requested_at IS NULL
+                   ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, id
+                   LIMIT 60`
+                const { tarea: elegida } = ENC.elegir(libres.filter((t) => !repartidas.has(t.id)))
+                if (elegida) {
+                  repartidas.add(elegida.id)
+                  texto = ENC.encargo({ trabajador, tarea: elegida })
+                  queEs = elegida.id
+                }
+              }
+              // Si no había tarea apta libre, se cae a impugnaciones: mejor eso que dejarlo parado.
+              if (!texto) { texto = ENC.encargoImpugnacion({ trabajador }); queEs = 'una impugnación' }
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
-              const r = mandarEncargo(trabajador, ENC.encargoImpugnacion({ trabajador }), { alDia })
-              if (r.ok) { console.log(`   [${sello}] ✅ ${trabajador} → una impugnación`); movidos++ }
+              const r = mandarEncargo(trabajador, texto, { alDia })
+              if (r.ok) { console.log(`   [${sello}] ✅ ${trabajador} → ${queEs}`); movidos++ }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             }
           } catch (e) {

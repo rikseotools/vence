@@ -242,6 +242,15 @@ describe('el registro de máquinas crece por FILAS, no por copias', () => {
   })
 
   // `crear-worktree.sh` exige kebab-case: con 'L1' el arranque muere en la validación del slug.
+  // El techo lo puso Manuel en RAM, no en número de trabajadores: «lanza hasta que la RAM esté al
+  // 80%, no más». Así que el registro puede crecer, pero cada máquina tiene que seguir siendo UNA
+  // fila con su árbol propio — que es lo que estos tres tests protegen.
+  it('el registro declara los trabajadores de cada máquina, sin duplicar nombres', () => {
+    const todos = MAQ.trabajadoresEsperados().map((x: any) => x.trabajador)
+    expect(new Set(todos).size).toBe(todos.length)
+    expect(todos.length).toBeGreaterThanOrEqual(4)
+  })
+
   it('los nombres son válidos como slug de worktree', () => {
     for (const { trabajador } of MAQ.trabajadoresEsperados()) {
       expect(trabajador).toMatch(/^[a-z0-9][a-z0-9-]*$/)
