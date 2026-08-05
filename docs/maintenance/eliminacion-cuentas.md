@@ -118,6 +118,24 @@ const { data: events } = await supabase.from('user_interactions')
 - **Abandono**: page_exit sin test_test_completed → test abandonado
 - **Deploy mid-test**: cambio de `deploy_version` durante una sesión activa → bug caso francofila (ver useVersionCheck.ts)
 
+> ⚠️ **EL ORDEN DENTRO DE UN MISMO SEGUNDO NO ES REAL — no deduzcas nada de él (05/08/2026).**
+> El tracking envía los eventos **en lote**, y todos los del lote se guardan con **la MISMA
+> `created_at`** (mismos segundos y milisegundos). `ORDER BY created_at` los devuelve entonces en
+> orden de inserción, que no es el de los clicks. Importa justo aquí porque este manual pide
+> reconstruir el journey **minuto a minuto** y la secuencia del borrado entera cabe en un lote.
+>
+> **Caso que lo fija:** dos bajas del 05/08 (Susana `29d0cd91`, Agnieszka `87436d63`) mostraban
+> `[Solicitar eliminación] → [Mantener mi cuenta] → [Solicitar eliminación] → ELIMINAR →
+> [Confirmar]`, todo a la misma marca de tiempo. Leído como una secuencia, parece que se
+> retractaron y volvieron atrás; y «pulsó Mantener mi cuenta» es exactamente la clase de detalle
+> que decide si una solicitud es inequívoca o no. **No se puede saber en qué orden ocurrió.**
+>
+> **Qué SÍ vale como señal:** lo que pasa en lotes POSTERIORES (minutos u horas después) —volver a
+> la app, responder preguntas, cerrar sesión— y el estado final. En esos dos casos la decisión no
+> se tomó por el orden de los clicks sino por lo de después: Susana volvió al día siguiente y
+> Belén (`dcdca431`) respondió 12 preguntas tras pedirla → a las dos se les preguntó, no se las
+> borró. Agnieszka no volvió → se borró.
+
 Ver también: `docs/procedures/investigar-journey-usuario.md`
 
 ---
