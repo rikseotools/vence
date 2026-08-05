@@ -206,6 +206,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'y solo cubre los call-sites instrumentados: los que hablan en crudo con el proveedor están ' +
       'listados en lib/observability/llmCallSites.ts, con guardarraíl de trinquete en CI.',
   },
+  // ── Un cero de un detector no se distingue de un detector muerto (T-529) ──────────────────
+  health_kinds_evaluados: {
+    titulo: 'Ver si un kind del barrido de salud se EVALUÓ de verdad, o si nadie lo mira',
+    ruta: 'scripts/health/kinds-evaluados.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'npm run health:kinds-evaluados [-- --kind <kind>] [--dias N] [--umbral N] [--json]. Lee el ' +
+      'latido que `content-health-sweep.service.ts` (el @Cron real) y su gemelo CLI escriben en ' +
+      'CADA pasada — `cron_run` en `observable_events` con `metadata.kindsEvaluados` (kind → nº de ' +
+      'sujetos mirados esta vez, con hallazgos o sin ellos). Antes de esto, `content_health_findings` ' +
+      'a 0 para un kind significaba a la vez "vigilado y limpio" y "nadie lo miró", y no había forma ' +
+      'de distinguirlos ([T-406], [T-384]). Núcleo puro en `lib/health/kindsEvaluados.cjs`: criterio ' +
+      'AUTORREFERENCIAL (un kind visto en pasadas recientes que deja de aparecer = sospechoso), sin ' +
+      'mantener una TERCERA copia del universo de ~50 kinds (ya duplicado entre el script CLI y el ' +
+      '@Cron). Credencial: VENCE_LECTOR_URL (cae a DATABASE_URL si no está).',
+  },
   llm_ingest_claude_code: {
     titulo: 'Meter el consumo de Claude Code (suscripción) en el stream de observabilidad',
     ruta: 'scripts/observabilidad/ingest-claude-code-usage.cjs',

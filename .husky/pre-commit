@@ -57,6 +57,15 @@ echo ""
 #     Caza el fallo del 08/07/2026 (re-scope Cantabria a Win11/365 que dejó la
 #     descripcion_corta stale/desalineada). El self-test es puro (sin BD, rápido);
 #     el audit contra BD solo si DATABASE_URL está disponible. BLOQUEA en 🔴.
+#
+#     El script distingue a propósito exit 1 (drift REAL, encontrado) de exit 2 (no se pudo
+#     comprobar: sin conexión, o con una credencial sin permiso sobre `topics`) — este hook,
+#     hasta el 05/08/2026, los trataba igual y bloqueaba los dos como si fueran el mismo caso.
+#     Eso rompe para el rol de coordinación de la flota (T-486): su DATABASE_URL solo alcanza
+#     4 tablas de coordinación, así que CUALQUIER commit de un trabajador —tocara o no el
+#     temario— moría aquí con «permission denied for table topics» leído como drift real.
+#     Mismo criterio que `db:check` unas líneas arriba: sin poder comprobar, se avisa y se
+#     sigue; el rojo de verdad (exit 1) sigue bloqueando igual que siempre.
 echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
 npm run audit:display-drift -- --selftest
 if [ $? -ne 0 ]; then
@@ -65,12 +74,17 @@ if [ $? -ne 0 ]; then
 fi
 if [ -n "$DATABASE_URL" ]; then
   npm run audit:display-drift
-  if [ $? -ne 0 ]; then
+  DRIFT_EXIT_CODE=$?
+  if [ $DRIFT_EXIT_CODE -eq 1 ]; then
     echo ""
     echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
     echo "   Al modificar un tema, actualiza los 4 campos: title + epigrafe + description + descripcion_corta."
     echo "   Detalle: docs/maintenance/verificar-epigrafe-topic-scope.md"
     exit 1
+  elif [ $DRIFT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "⚠️  audit:display-drift no pudo comprobar contra la BD (ver error arriba) — no bloquea."
+    echo "   Si esperabas que SÍ pudiera, revisa tu credencial (VENCE_LECTOR_URL / permisos de topics)."
   fi
 else
   echo "⏭️  Saltando audit:display-drift contra BD (DATABASE_URL no configurada)"

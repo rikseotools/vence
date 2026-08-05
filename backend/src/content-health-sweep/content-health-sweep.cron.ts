@@ -83,6 +83,11 @@ export class ContentHealthSweepCron {
           contentWarn: result.contentWarn,
           wrote: result.wrote,
           emailsSent: result.emailsSent,
+          // Latido de lo EVALUADO (T-529): qué kinds miró esta pasada y cuántos sujetos, no
+          // solo lo que encontró. Con `incompleto`, solo llevan los que completaron su bloque
+          // ANTES del corte — es la foto de lo que sí se pudo mirar esta noche.
+          kindsEvaluados: result.kindsEvaluados,
+          kindsEvaluadosCount: Object.keys(result.kindsEvaluados).length,
           ...(parcial ? { queryQueFallo: parcial.sql } : {}),
         },
       });

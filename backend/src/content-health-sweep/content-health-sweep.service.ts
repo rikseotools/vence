@@ -47,6 +47,21 @@ export interface SweepSummary {
    * o se escribía, o se avisaba.
    */
   incompleto: { mensaje: string; sql: string | null } | null;
+  /**
+   * Qué `kind`s EVALUÓ esta pasada y cuántos sujetos miró cada uno (T-529, 05/08/2026).
+   *
+   * `content_health_findings` solo guarda lo que se ENCUENTRA: la ausencia de filas de un
+   * kind significa a la vez «vigilado y limpio» y «nadie lo miró», y hoy se leen igual. Un
+   * kind entra aquí en cuanto su bloque de detección TERMINA de mirar su población — con
+   * hallazgos o sin ellos — así que un 0 en `content_health_findings` se puede afirmar como
+   * «se evaluó y no hay nada» en vez de sospecharse como detector muerto. Si el barrido se
+   * corta a mitad (`incompleto`), solo llevan los kinds cuyo bloque llegó a completarse antes
+   * del corte — es justo la foto que hace falta para saber qué NO se pudo mirar esta noche.
+   *
+   * Resumen POR PASADA (kind → nº de sujetos mirados), no una fila por sujeto: son ~45 kinds
+   * y el barrido ya es largo.
+   */
+  kindsEvaluados: Record<string, number>;
 }
 
 const esc = (s: unknown): string =>
@@ -1050,6 +1065,15 @@ export class ContentHealthSweepService {
         detail: detail || null,
       });
 
+    // Latido de lo EVALUADO (T-529): kind → nº de sujetos mirados esta pasada, con
+    // hallazgos o sin ellos. Vive fuera de `detectarTodo` para que sobreviva a un
+    // `catch` (T-307): si el barrido se corta a mitad, aquí quedan los kinds que SÍ
+    // llegaron a completar su bloque antes del corte.
+    const kindsEvaluados: Record<string, number> = {};
+    const marcar = (kind: string, n: number) => {
+      kindsEvaluados[kind] = (kindsEvaluados[kind] ?? 0) + n;
+    };
+
     // ── Detección: AISLADA del resto (T-307, 30/07/2026) ──
     // El 29 y el 30/07 el barrido murió entero porque UN detector (la query de notas de
     // auditoría) superó el `statement_timeout` de 30 s: el throw se llevó por delante a los
@@ -1068,7 +1092,7 @@ export class ContentHealthSweepService {
     // detector. El aislamiento fino queda anotado en la ficha, no fingido aquí.
     let incompleto: { mensaje: string; sql: string | null } | null = null;
     try {
-      await this.detectarTodo(add, now);
+      await this.detectarTodo(add, marcar, now);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // El error de postgres.js trae la query que falló: es lo que identifica al detector.
@@ -1122,6 +1146,7 @@ export class ContentHealthSweepService {
       wrote,
       emailsSent,
       incompleto,
+      kindsEvaluados,
     };
   }
 
@@ -1138,6 +1163,7 @@ export class ContentHealthSweepService {
       message: string,
       detail?: Record<string, unknown> | null,
     ) => void,
+    marcar: (kind: string, n: number) => void,
     now: Date,
   ): Promise<void> {
     const opos = (await this.db.execute(sql`
@@ -1175,6 +1201,7 @@ export class ContentHealthSweepService {
         );
       if (test !== 200)
         add('app', 'error', o.slug, 'http_down', `/${o.slug}/test → ${test}`);
+      marcar('http_down', 3);
       // ── APP: cobertura (MV, misma fuente que la app) ──
       // `tp.is_active` NO estaba y daba VERDE FALSO en la tarjeta de temas (T-384): un topic
       // desactivado no existe para el opositor pero contaba igual, así que una landing que promete
@@ -1190,6 +1217,7 @@ export class ContentHealthSweepService {
         n: number;
       }>;
       const disp = topics.filter((t) => t.disponible);
+      marcar('empty_topic', topics.length);
       if (topics.length && disp.length === 0)
         add(
           'app',
@@ -1211,6 +1239,7 @@ export class ContentHealthSweepService {
             .join(',T')})`,
         );
       const finos = disp.filter((t) => t.n > 0 && t.n < 6);
+      marcar('low_coverage', disp.length);
       if (finos.length)
         add(
           'content',
@@ -1255,6 +1284,7 @@ export class ContentHealthSweepService {
         ) t
         ORDER BY topic_number
       `)) as unknown as Array<{ topic_number: number; n: number; ejemplos: string[] | null }>;
+      marcar('article_no_coverage', topics.length);
       if (sinPreg.length) {
         const tot = sinPreg.reduce((a2, r) => a2 + r.n, 0);
         add(
@@ -1287,7 +1317,8 @@ export class ContentHealthSweepService {
         );
       // Espejo del CLI (T-142): una tarjeta que habla del programa OFICIAL no se compara con los
       // topics servidos — pueden diferir legítimamente (45 del Anexo I + 1 bloque de apoyo).
-      for (const card of cardsAbout(o.landing_estadisticas, 'tema')) {
+      const temaCards = cardsAbout(o.landing_estadisticas, 'tema');
+      for (const card of temaCards) {
         if (/oficial|programa/i.test(String(card.texto || ''))) continue;
         const v = cardInt(card.numero);
         if (v != null && v !== nTopics)
@@ -1299,6 +1330,7 @@ export class ContentHealthSweepService {
             `tarjeta "${card.texto}"=${v} pero hay ${nTopics} topics`,
           );
       }
+      marcar('temas_card', 1 + temaCards.length);
       const convRows = (await this.db.execute(sql`
         SELECT plazas_libres, plazas_discapacidad, plazas_promocion_interna, plazas_otros_turnos, estado_proceso, boe_reference, programa_url, examen_config, landing_faqs, landing_estadisticas, landing_description
         FROM convocatorias WHERE oposicion_id = ${o.id} AND is_current = true LIMIT 1
@@ -1325,7 +1357,8 @@ export class ContentHealthSweepService {
             (x) => x > 0,
           ),
         );
-        for (const card of cardsAbout(o.landing_estadisticas, 'plaza')) {
+        const plazaCards = cardsAbout(o.landing_estadisticas, 'plaza');
+        for (const card of plazaCards) {
           const v = cardInt(card.numero);
           if (v != null && !valid.has(v))
             add(
@@ -1336,6 +1369,7 @@ export class ContentHealthSweepService {
               `tarjeta "${card.texto}"=${v} no cuadra con conv (L=${L} D=${D} P=${P} O=${O})`,
             );
         }
+        marcar('plaza_card', plazaCards.length);
         const faltan = [
           'boe_reference',
           'programa_url',
@@ -1352,6 +1386,7 @@ export class ContentHealthSweepService {
             'dual_write',
             `dual-write convocatoria incompleto: ${faltan.join(', ')}`,
           );
+        marcar('dual_write', 1);
         if (conv.estado_proceso === 'inscripcion_abierta') {
           const hRows = (await this.db.execute(sql`
             SELECT COUNT(*)::int n FROM convocatoria_hitos WHERE oposicion_id = ${o.id}
@@ -1364,6 +1399,7 @@ export class ContentHealthSweepService {
               'no_hitos',
               `${o.slug}: inscripción abierta pero 0 hitos (timeline vacío)`,
             );
+          marcar('no_hitos', 1);
         }
       }
     }
@@ -1429,6 +1465,7 @@ export class ContentHealthSweepService {
           }
         }
       }
+      marcar('latencia_techo_timeout', filas.length);
     } catch (e) {
       this.logger.warn(`techo de timeout no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
@@ -1454,6 +1491,8 @@ export class ContentHealthSweepService {
         `${ev.n}× ${ev.event_type} @ ${ev.endpoint}${ev.sample ? ' — ' + ev.sample.slice(0, 80) : ''}`,
         { n: ev.n },
       );
+    for (const k of CRIT)
+      marcar(k, obs.filter((ev) => ev.event_type === k).reduce((a, ev) => a + ev.n, 0));
 
     // ── CONTENIDO: tablas APLANADAS (importadas de PDF sin rejilla) ──
     const flat: Array<{
@@ -1463,6 +1502,7 @@ export class ContentHealthSweepService {
       n: number;
       cells: string[];
     }> = [];
+    let flatEscaneados = 0;
     for (let off = 0; off <= 60000; off += 4000) {
       const rows = (await this.db.execute(sql`
         SELECT l.slug, a.id aid, a.article_number an, a.content
@@ -1476,6 +1516,7 @@ export class ContentHealthSweepService {
         content: string;
       }>;
       if (!rows.length) break;
+      flatEscaneados += rows.length;
       for (const r of rows) {
         const cells = detectFlattenedTable(r.content);
         if (cells)
@@ -1488,6 +1529,7 @@ export class ContentHealthSweepService {
           });
       }
     }
+    marcar('flattened_table', flatEscaneados);
     if (flat.length) {
       const leyes = [...new Set(flat.map((f) => f.slug))];
       add(
@@ -1575,6 +1617,7 @@ export class ContentHealthSweepService {
         `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
         { count: anRows.length, sample: anRows.slice(0, 15).map((r) => r.id) },
       );
+    marcar('audit_note_explanation', anRows.length);
 
     // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
@@ -1584,17 +1627,20 @@ export class ContentHealthSweepService {
     // Los tres invariantes salen de esas suites, no de un criterio nuevo. Medido el 31/07: 0/0/0.
     const psiRows = (await this.db.execute(sql`
       SELECT
+        (SELECT count(*) FROM psychometric_questions WHERE is_active)::int AS total_activas,
         (SELECT count(*) FROM psychometric_questions WHERE is_active AND section_id IS NULL)::int AS sin_seccion,
         (SELECT count(*) FROM psychometric_questions q JOIN psychometric_sections s ON s.id = q.section_id
           WHERE q.is_active AND s.category_id <> q.category_id)::int AS seccion_ajena,
         (SELECT count(*) FROM psychometric_questions WHERE is_active
           AND (correct_option IS NULL OR correct_option < 0 OR correct_option > 3))::int AS clave_invalida
     `)) as unknown as Array<{
+      total_activas: number
       sin_seccion: number
       seccion_ajena: number
       clave_invalida: number
     }>;
-    const psi = psiRows[0] ?? { sin_seccion: 0, seccion_ajena: 0, clave_invalida: 0 };
+    const psi = psiRows[0] ?? { total_activas: 0, sin_seccion: 0, seccion_ajena: 0, clave_invalida: 0 };
+    marcar('psicotecnico_integridad', psi.total_activas);
     {
       const partes: string[] = [];
       if (psi.sin_seccion) partes.push(`${psi.sin_seccion} sin sección (no se sirven)`);
@@ -1684,6 +1730,7 @@ export class ContentHealthSweepService {
           `${avisos.length} pregunta(s) activas con dos distractores idénticos: se quedan en tres opciones sin decirlo`,
           { count: avisos.length, banda: 'distractores', sample: avisos.slice(0, 15) },
         );
+      marcar('opciones_duplicadas', opcRows.length);
     }
 
     // ── CONTENIDO: preguntas que invocan una imagen/icono AUSENTE (visual deixis sin image_url) ──
@@ -1740,6 +1787,7 @@ export class ContentHealthSweepService {
           sample: vdRows.slice(0, 15).map((r) => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })),
         },
       );
+    marcar('visual_deixis_no_image', vdRows.length);
 
     // ── §2.2-quater: enunciado que cita una norma SIN nombrarla (29/07/2026) ──
     // «Según el artículo 75 DE LA LEY, …»: fuera del test no hay forma de saber de qué norma habla.
@@ -1780,6 +1828,7 @@ export class ContentHealthSweepService {
           sample: acRows.slice(0, 15).map((r) => ({ id: r.id, q: (r.question_text || '').slice(0, 90) })),
         },
       );
+    marcar('enunciado_norma_sin_nombrar', acRows.length);
 
     // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
     const CURR_YEAR = now.getFullYear();
@@ -1810,6 +1859,7 @@ export class ContentHealthSweepService {
         );
       }
     }
+    marcar('stale_dated_law', scopedLaws.length);
 
     // ── CONTENIDO: leyes NO verificadas contra su fuente oficial (falso verde) ──
     const lawRows = (await this.db.execute(sql`
@@ -1868,6 +1918,7 @@ export class ContentHealthSweepService {
         { count: unverified.length, byState, sample: unverified.slice(0, 20) },
       );
     }
+    marcar('law_unverified_source', lawRows.length);
 
     // ── CONTENIDO: TÍTULOS HUÉRFANOS del temario (hueco INTERNO del topic_scope) ──
     const SCOPE_GAP_MIN_Q = Number(process.env.SCOPE_GAP_MIN_Q || 8);
@@ -1970,6 +2021,7 @@ export class ContentHealthSweepService {
         },
       );
     }
+    marcar('scope_titulo_huerfano', titSecs.length);
 
     // ── Incisos anulados por el TC: preguntas activas cuya CLAVE cae en un inciso anulado ──
     // Barato (DB-only, sin red): reusa el gate de T-048 `answer_falls_in_annulled_fragment`
@@ -2005,6 +2057,7 @@ export class ContentHealthSweepService {
         { total, articulos: annulledBugs.length, sample: annulledBugs.slice(0, 20) },
       );
     }
+    marcar('answer_in_annulled_fragment', annulledBugs.length);
 
     // ── CONTENIDO: PROVENANCE de documentos de convocatoria (referenciado sin clonar/enlazar) ──
     // Lee la VISTA convocatoria_docs_coverage (migración 20260721). Un hito cita un
@@ -2050,6 +2103,7 @@ export class ContentHealthSweepService {
         },
       );
     }
+    marcar('convocatoria_docs_incompletos', cov.length);
     const orf = (await this.db.execute(sql`
       SELECT count(*) FILTER (WHERE url IS NOT NULL)::int con_url,
              count(*) FILTER (WHERE cita_literal IS NOT NULL AND length(btrim(cita_literal)) > 0)::int con_cita
@@ -2065,6 +2119,7 @@ export class ContentHealthSweepService {
         { orphan: true, con_url: orf[0].con_url, con_cita: orf[0].con_cita },
       );
     }
+    marcar('convocatoria_docs_incompletos', orf[0] ? orf[0].con_url + orf[0].con_cita : 0);
 
     // ── CONTENIDO: CIFRA DE PLAZAS AFIRMADA SIN NINGÚN DOCUMENTO QUE LA CONTENGA ──
     // Hermano del anterior, un escalón más grave: aquel dice «falta papeleo», este dice «la landing
@@ -2103,6 +2158,7 @@ export class ContentHealthSweepService {
         { plazas: h.plazas_libres, referencia: h.boe_reference, año: h.año, docs: h.docs },
       );
     }
+    marcar('plazas_afirmadas_sin_documento', huerfanas.length);
 
     // ── CONTENIDO: PROVENANCE de EPÍGRAFES (verified_literal sin documento del hub enlazado) ──
     // Gemelo del anterior para el OTRO consumidor del hub convocatoria_documentos. Un epígrafe
@@ -2127,6 +2183,7 @@ export class ContentHealthSweepService {
         { huerfanos: r.huerfanos },
       );
     }
+    marcar('epigrafe_provenance_no_doc', epiOrf.length);
 
     // ── CONTENIDO: REVISIÓN de temario pendiente (Fase 2 de temario-versionado-por-convocatoria) ──
     // Oposición activa con convocatoria vigente cuyo temario NO está verificado del todo contra su
@@ -2161,6 +2218,7 @@ export class ContentHealthSweepService {
         { oposiciones: revQ.length, usuarios, top: revQ.slice(0, 15) },
       );
     }
+    marcar('temario_revision_pendiente', revQ.length);
 
     // ── CONVOCATORIAS: invariantes deterministas del timeline (vista convocatoria_hito_incidencias) ──
     // I1/I2/I9 = graves (error); I7/I8 = caducado (warn). I5 se excluye a propósito (línea base sin docs).
@@ -2214,6 +2272,8 @@ export class ContentHealthSweepService {
             { incidencias: stale.map((r) => ({ invariante: r.invariante, detalle: r.detalle })) },
           );
       }
+      marcar('convocatoria_timeline_incoherente', inc.length);
+      marcar('convocatoria_timeline_caducado', inc.length);
     }
 
     // ── Hitos que anuncian un evento con la fecha YA PASADA ──
@@ -2238,6 +2298,7 @@ export class ContentHealthSweepService {
             : ' (fecha REAL: el evento ocurrió y el hito sigue anunciándolo como futuro)'),
       );
     }
+    marcar('hito_vencido_abierto', hitosVencidos.length);
 
     // ── seguimiento_url que vigilan un ciclo YA CERRADO (falso negativo silencioso) ──
     const urlRows = (await this.db.execute(sql`
@@ -2270,6 +2331,7 @@ export class ContentHealthSweepService {
         `${r.slug}: seguimiento_url ${d.nivel === 'stale_boletin' ? 'DESFASADA' : 'sospechosa'} — ${d.motivo}`,
       );
     }
+    marcar('seguimiento_url_stale', urlRows.length);
 
     // ── estado_proceso que se contradice con sus PROPIAS fechas ─────────────────────────
     // Misma detección que `npm run audit:estados`. Esa lógica llevaba desde el 18/06 en un CLI
@@ -2301,6 +2363,7 @@ export class ContentHealthSweepService {
           );
         }
       }
+      marcar('convocatoria_estado_incoherente', filas.length);
     }
 
     // ── seguimiento_url que responde 200 pero NO VIGILA NADA (seguimiento_fuente_ciega) ──
@@ -2353,6 +2416,7 @@ export class ContentHealthSweepService {
         `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`,
       );
     }
+    marcar('seguimiento_fuente_ciega', ciegaRows.length);
 
     // ── NOTAS INTERNAS PUBLICADAS EN LA LANDING (nota_interna_publicada, T-435) ──
     // Los campos de REFERENCIA se PINTAN en el hero y bajo el botón oficial, y se estaban usando
@@ -2396,6 +2460,7 @@ export class ContentHealthSweepService {
         `${h.slug}: el campo ${h.campo} publica una nota interna [${h.tipo}] — ${h.extracto.slice(0, 90)}`,
       );
     }
+    marcar('nota_interna_publicada', notaRows.length);
 
     // ── Enlace "Ver en BOE" que NO corresponde a la referencia mostrada (convocatoria_link_mismatch) ──
     // Se lee de `oposiciones_ssot` (lo que VE el opositor): la landing compone la tarjeta
@@ -2486,7 +2551,9 @@ export class ContentHealthSweepService {
         }
       }
     }
-
+    marcar('convocatoria_link_mismatch', linkRows.length);
+    marcar('convocatoria_etiqueta_boletin', linkRows.length);
+    marcar('convocatoria_enlace_no_boletin', linkRows.length);
 
     // ── Documentos oficiales clonados que NADIE ha revisado (documentos_sin_revisar) ────────
     // Espejo del gemelo CLI. El cron clona los documentos de las oposiciones que preparamos y la
@@ -2515,6 +2582,7 @@ export class ContentHealthSweepService {
         `${r.slug}: ${r.n} documento(s) oficial(es) clonado(s) SIN revisar (el más antiguo, del ${String(r.mas_viejo).slice(0, 10)}) — revísalos con npm run docs:bandeja`,
       );
     }
+    marcar('documentos_sin_revisar', docsRows.length);
     // ── Feedback PENDIENTE sin conversación (feedback_sin_conversacion) ────────────────────
     // Espejo del gemelo CLI. El endpoint de respuesta exige un hilo: sin fila en
     // `feedback_conversations` devuelve 409 y el feedback es INCONTESTABLE — el usuario espera
@@ -2551,6 +2619,7 @@ export class ContentHealthSweepService {
           })),
         },
       );
+    marcar('feedback_sin_conversacion', sinConvRows.length);
 
     // ── CHAT IA caído: respuestas de ERROR servidas a usuarios (chat_ia_errores) ──────────
     // Espejo del gemelo CLI (scripts/health-sweep.cjs). El chat sirvió 210 respuestas de error
@@ -2582,6 +2651,7 @@ export class ContentHealthSweepService {
         `${chatErr[0].n} respuesta(s) de ERROR servidas por el chat IA en 24h a ${chatErr[0].usuarios} usuario(s) — el asistente está fallando (mira el errorStatus en ai_chat_traces: sin saldo del proveedor, modelo inexistente…)`,
         { n: chatErr[0].n, usuarios: chatErr[0].usuarios, ultimo: chatErr[0].ult },
       );
+    marcar('chat_ia_errores', chatErr[0]?.n ?? 0);
 
     // ── Landings PUBLICADAS a medio hacer (landing_incompleta) ──
     // Caso raíz 25/07: Aux. Admin. UAL llevaba semanas activa con el hero sin tarjetas, 0 FAQs,
@@ -2631,6 +2701,7 @@ export class ContentHealthSweepService {
         `${r.slug}: landing publicada ${hayError ? 'INCOMPLETA' : 'mejorable'} — falta ${faltan.join(', ')}`,
       );
     }
+    marcar('landing_incompleta', landRows.length);
 
     // ── Convocatorias con OEP en texto pero SIN enlazar a la entidad oep (convocatoria_oep_sin_enlace) ──
     const oepLinkRows = (await this.db.execute(sql`
@@ -2649,6 +2720,7 @@ export class ContentHealthSweepService {
         `${r.slug}: ${r.n} convocatoria(s) con OEP en texto pero SIN enlazar a la entidad oep → el histórico muestra el año de convocatoria, no el de OEP. Correr: node scripts/oep/poblar-historico.cjs ${r.slug}`,
       );
     }
+    marcar('convocatoria_oep_sin_enlace', oepLinkRows.length);
 
     // ── Textos libres que anuncian un examen pasado como vigente (punto ciego del rollover) ──
     const hoyIso = now.toISOString().slice(0, 10);
@@ -2675,6 +2747,7 @@ export class ContentHealthSweepService {
         `${r.slug}: los textos de la landing anuncian un examen ya pasado como vigente (${fechas}) — el opositor ve una fecha vieja como la próxima`,
       );
     }
+    marcar('texto_examen_pasado', textoRows.length);
 
     // ── CONTENIDO: SOBRE-INCLUSIÓN de topic_scope (epígrafe enumera, scope = ley entera) ──
     // Solo banda HIGH (título con hueco / arts citados = precisión alta); MEDIUM (prosa) no pinga.
@@ -2743,6 +2816,7 @@ export class ContentHealthSweepService {
         { count: oiHigh.length, oposiciones: nOpos, sample: oiHigh.slice(0, 20) },
       );
     }
+    marcar('scope_over_inclusion_suspect', overIncl.length);
 
     // ── CONTENIDO: recortes de sobre-inclusión ya CONFIRMADOS y sin aplicar ──
     // Mirror de scripts/health-sweep.cjs — MANTENER EN SYNC.
@@ -2772,6 +2846,7 @@ export class ContentHealthSweepService {
         { count: oiConf.length, oposiciones: nOpos, sample: oiConf.slice(0, 20) },
       );
     }
+    marcar('scope_over_inclusion_confirmed', oiConf.length);
 
     // ── CONTENIDO: ARTÍCULOS FANTASMA del scope (integridad referencial) ──
     // Nº en topic_scope.article_numbers sin fila ACTIVA en articles (mismo law_id) → 0
@@ -2818,6 +2893,7 @@ export class ContentHealthSweepService {
           },
         );
     }
+    marcar('scope_phantom_article', phantom.length);
 
     // ── CONTENIDO: MISMA LEY REAL duplicada ENTRE TEMAS (repartir por materia) ──
     // Mirror INLINE de scripts/health-sweep.cjs (scope_cross_tema_dup) — MANTENER EN SYNC.
@@ -2888,6 +2964,7 @@ export class ContentHealthSweepService {
         { count: ctDups.length, oposiciones: nOpos, sample: ctDups.slice(0, 20) },
       );
     }
+    marcar('scope_cross_tema_dup', ctRows.length);
 
     // ── CONTENIDO: scope SIN VERIFICAR contra el epígrafe (cierra el punto ciego) ──
     // Un topic_scope nunca auditado (o `stale`) contra el epígrafe oficial es un HUECO:
@@ -2918,6 +2995,7 @@ export class ContentHealthSweepService {
         { temas: r.temas, verificados: r.verificados, sin_auditar: r.sin_auditar },
       );
     }
+    marcar('scope_sin_verificar', svRows.length);
 
     // Mirror INLINE de scripts/health-sweep.cjs (shuffle_encendido_sin_efecto) — MANTENER EN SYNC.
     //
@@ -2943,6 +3021,7 @@ export class ContentHealthSweepService {
           { respuestas24h: shuf.respuestas, conOrden: shuf.con_orden, scope: process.env.FEATURE_SHUFFLE_OPTIONS_SCOPE || null },
         );
       }
+      marcar('shuffle_encendido_sin_efecto', shuf ? shuf.respuestas : 0);
     }
 
     // ── Hitos que se presentan como fecha OFICIAL sin ninguna fuente ───────────────
@@ -2985,6 +3064,7 @@ export class ContentHealthSweepService {
         { count: hs.length, hitos: hs.slice(0, 10).map((h) => ({ id: h.id, titulo: h.titulo, fecha: h.fecha })) },
       );
     }
+    marcar('hito_registro_sin_fuente', hitosSinFuenteRows.length);
 
     // ── Mapa de visibilidad frío: index-only scans que NO lo son (T-275) ──
     // Cuando el mapa se enfría, Postgres sigue diciendo «Index Only Scan» en el plan pero baja al
@@ -3071,6 +3151,8 @@ export class ContentHealthSweepService {
           },
         );
       }
+      marcar('visibility_map_sin_ajuste', vmRows.length);
+      marcar('visibility_map_frio', vmRows.length);
     } catch (e) {
       this.logger.warn(`mapa de visibilidad no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
@@ -3105,6 +3187,7 @@ export class ContentHealthSweepService {
           `${e.slug} T${e.tema}: el epígrafe trae incrustada la cabecera/pie del PDF del boletín (${e.marcadores.slice(0, 2).join(' · ')})`,
           { slug: e.slug, tema: e.tema, marcadores: e.marcadores });
       }
+      marcar('epigrafe_ruido_boletin', epRows.length);
     } catch (e) {
       this.logger.warn(`ruido de boletín en epígrafes no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
@@ -3154,6 +3237,7 @@ export class ContentHealthSweepService {
           `${rotas.length} explicación(es) estructurada(s) se renderizan rotas (${exposiciones} exposiciones acumuladas)`,
           { total: rotas.length, exposiciones, muestra: rotas.slice(0, 10) });
       }
+      marcar('explicacion_estructura_rota', exRows.length);
     } catch (e) {
       this.logger.warn(`estructura de explicaciones no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
@@ -3216,6 +3300,7 @@ export class ContentHealthSweepService {
           `${cortadas.length} explicación(es) se cortan a mitad de frase (${exposiciones} exposiciones acumuladas)`,
           { total: cortadas.length, exposiciones, muestra: cortadas.slice(0, 10) });
       }
+      marcar('explicacion_truncada', trRows.length);
     } catch (e) {
       this.logger.warn(`explicaciones truncadas no evaluadas: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
@@ -3239,6 +3324,7 @@ export class ContentHealthSweepService {
           plazas_en_duda: h.plazas_en_duda,
         });
       }
+      marcar('plazas_reserva_sin_declarar', filasReserva.length);
     } catch (e) {
       this.logger.warn(`reserva de discapacidad sin declarar no evaluada: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
