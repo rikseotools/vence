@@ -1223,6 +1223,45 @@ export class ContentHealthSweepService {
       // 13/07). Grano más fino que low_coverage: solo temas MAYORMENTE cubiertos a nivel
       // de artículo (≥60%) con ≥4 huecos. Excluye derogados/vacíos y artículos INACTIVOS
       // (a.is_active): un escopado is_active=false NO es "genera preguntas" (puede tenerlas
+      // ARTÍCULO SERVIDO MUDO (T-596) — espejo EXACTO del CLI (`scripts/health-sweep.cjs`).
+      // El temario pinta cada artículo con su rúbrica y, si no la hay, con un extracto de su
+      // contenido (`lib/teoria/encabezadoArticulo`). Queda mudo —número pelado, sin nada que
+      // leer— solo si no tiene ninguna de las dos. Nace de que el encabezado colgaba SOLO de
+      // `title`, que 13.952 artículos activos (23% del banco) tienen a NULL teniendo el texto
+      // guardado: se servían mudos 48 de 62 en un tema y lo destapó un premium, no un detector.
+      const mudos = (await this.db.execute(sql`
+        SELECT tp.topic_number,
+          count(*)::int AS n,
+          (array_agg(l.short_name || ' ' || a.article_number ORDER BY (substring(a.article_number from '^[0-9]+'))::int, a.article_number))[1:6] AS ejemplos
+        FROM topic_scope ts
+        JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
+        JOIN laws l ON l.id = ts.law_id
+        JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                       AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+        WHERE tp.position_type = ${pt}
+          AND coalesce(btrim(a.title), '') = ''
+          AND length(btrim(coalesce(a.content, ''))) = 0
+        GROUP BY tp.topic_number
+        ORDER BY tp.topic_number
+      `)) as unknown as Array<{ topic_number: number; n: number; ejemplos: string[] | null }>;
+      if (mudos.length) {
+        const totMudos = mudos.reduce((a2, r) => a2 + r.n, 0);
+        add(
+          'content',
+          'warn',
+          o.slug,
+          'articulo_servido_sin_texto',
+          `${o.slug}: ${totMudos} artículo(s) del temario se sirven SIN NADA que leer (ni rúbrica ni texto; p.ej. T${mudos[0].topic_number}: ${(mudos[0].ejemplos || []).join(', ')})`,
+          {
+            temas: mudos.map((r) => ({
+              tema: r.topic_number,
+              arts_mudos: r.n,
+              ejemplos: r.ejemplos,
+            })),
+          },
+        );
+      }
+
       // ya) sino servibilidad → lo cubre scope_phantom_article. Partición limpia.
       const sinPreg = (await this.db.execute(sql`
         SELECT topic_number, (n_content - n_cov)::int AS n, ejemplos FROM (

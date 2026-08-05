@@ -141,6 +141,8 @@
     "sim:indice-parcial": "node scripts/sim/sim-indice-parcial.cjs",
     "sim:clon-al-dia": "node scripts/sim/sim-clon-al-dia.cjs",
     "sim:cola-reserva": "node scripts/impugnaciones/sim-reserva-cola.cjs",
+    "sim:articulo-con-texto": "tsx --env-file=.env.local scripts/sim/sim-articulo-con-texto.ts",
+    "teoria:encabezado-articulo": "node scripts/teoria/aplicar-encabezado-articulo.cjs",
     "sim:vale-marca": "tsx --env-file=.env.local scripts/sim/sim-vale-marca.ts",
     "sim:cabecera": "tsx scripts/sim/sim-cabecera-alcanzable.ts",
     "sim:perdida-contexto": "node scripts/backlog/sim-perdida-contexto.cjs",

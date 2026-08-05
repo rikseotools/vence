@@ -268,12 +268,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     comando: 'npm run huerfanos:plan',
     claudeHace: 'localiza los artículos que están en el topic_scope y tienen contenido real pero 0 preguntas activas (al usuario nunca le salen en los tests aunque el tema en conjunto sí tenga preguntas), y genera preguntas ancladas al texto del artículo con doble auditoría ciega antes de activarlas. Excluye derogados.',
   },
-  cobertura_banda_ciega: {
-    title: 'Tema con baja cobertura de artículos y pocas preguntas para notarlo (banda ciega, T-543)',
-    triggerPhrase: 'revisa la banda ciega de cobertura',
+  articulo_servido_sin_texto: {
+    title: 'Artículos del temario que no tienen NADA que leer',
+    triggerPhrase: 'revisa los artículos sin texto',
     runbook: 'docs/runbooks/salud-contenido.md',
-    comando: 'npm run huerfanos:plan',
-    claudeHace: 'para cada tema marcado, mira `npm run huerfanos:plan -- --oposicion <slug>` (deuda completa, sin acotar al badge) para ver TODOS los artículos huérfanos de esa oposición, incluidos los que no disparan ningún otro finding. Prioriza los temas con MENOS preguntas servidas (se notan antes al estudiar) y genera preguntas ancladas al artículo con doble auditoría ciega, mismo pipeline que `article_no_coverage`. Es la banda que queda ENTRE `article_no_coverage` (exige ≥60% cubierto) y `low_coverage` (exige <6 preguntas): un tema con cobertura de artículos <60% pero con las preguntas suficientes (6-50) para que un opositor note la repetición dentro de una sola sesión de estudio. NUNCA bajar el umbral de `article_no_coverage` al 60% para "arreglarlo" — eso inunda el badge con 218 hallazgos de golpe (medido 05/08); este detector existe precisamente para no tener que hacerlo.',
+    claudeHace:
+      'localiza los artículos escopados en un tema vivo que se sirven MUDOS (ni rúbrica ni contenido: el usuario ve el número y el botón «Hacer test», y ni una línea que estudiar) e importa su texto VERBATIM desde la fuente oficial, con la doble auditoría de siempre. NO confundir con «revisa los artículos sin preguntas», que es lo contrario: allí el artículo se lee bien y lo que falta son preguntas. Origen (T-596): hasta el 05/08/2026 el encabezado de la tarjeta colgaba solo de `title`, que 13.952 artículos activos (23% del banco) tienen a NULL TENIENDO el texto guardado, así que se servían mudos 48 de 62 artículos en un tema; el arreglo fue de render (`lib/teoria/encabezadoArticulo`) y este detector vigila lo que queda, que es la deuda de contenido real. Lo destapó un usuario premium, no una alerta.',
   },
   flattened_table: {
     title: 'Tabla aplanada (import PDF sin rejilla)',
@@ -544,6 +544,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     comando: 'npm run enunciados:sin-norma',
     claudeHace:
       'para cada pregunta señalada, el enunciado cita un artículo «de la ley» / «de la normativa» sin decir NUNCA de cuál se trata («Según el artículo 75 de la ley, ¿cuál es el contenido mínimo…?»). Incumple la §2.2-quater del manual de generación (cada pregunta debe ser AUTOCONTENIDA): los tests salen barajados y sueltos, así que el opositor no tiene ese contexto. El dato para arreglarlo YA está en la BD: la pregunta cuelga de un artículo y ese artículo tiene su ley, así que se reescribe el enunciado nombrándola («Según el artículo 75 de la Ley 9/2017, de Contratos del Sector Público, …»). Ir por LEY, no pregunta a pregunta: el defecto viene de remesas de generación enteras y dentro de una ley el arreglo es el mismo. NUNCA tocar el enunciado de una pregunta de examen OFICIAL (ahí el enunciado es el que salió publicado; si aparece alguna, se deja), ni cambiar opciones, clave o explicación al hacerlo. Gate hermano que vigila la otra mitad de la misma regla al GENERAR: lib/generacion/siglasSinDesarrollar.js (siglas sin desarrollar).',
+  },
+  cobertura_banda_ciega: {
+    title: 'Tema con baja cobertura de artículos y pocas preguntas para notarlo (banda ciega, T-543)',
+    triggerPhrase: 'revisa la banda ciega de cobertura',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run huerfanos:plan',
+    claudeHace: 'para cada tema marcado, mira `npm run huerfanos:plan -- --oposicion <slug>` (deuda completa, sin acotar al badge) para ver TODOS los artículos huérfanos de esa oposición, incluidos los que no disparan ningún otro finding. Prioriza los temas con MENOS preguntas servidas (se notan antes al estudiar) y genera preguntas ancladas al artículo con doble auditoría ciega, mismo pipeline que `article_no_coverage`. Es la banda que queda ENTRE `article_no_coverage` (exige ≥60% cubierto) y `low_coverage` (exige <6 preguntas): un tema con cobertura de artículos <60% pero con las preguntas suficientes (6-50) para que un opositor note la repetición dentro de una sola sesión de estudio. NUNCA bajar el umbral de `article_no_coverage` al 60% para "arreglarlo" — eso inunda el badge con 218 hallazgos de golpe (medido 05/08); este detector existe precisamente para no tener que hacerlo.',
   },
   visual_deixis_no_image: {
     title: 'Pregunta que invoca una imagen que no existe',
