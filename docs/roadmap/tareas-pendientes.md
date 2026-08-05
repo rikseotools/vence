@@ -880,6 +880,25 @@
 - **Eso explica el caso «fáciles»:** hay **67** easy y pidió **100**; tras agotar las nunca vistas rellena repitiendo. Por diseño.
 - **Y destapa la INCOHERENCIA, que es el bug de verdad:** con `easy` **sí** rellena hasta 100 repitiendo, pero con `hard` **no** rellenó (3 existentes → sirvió 3, no 10). El mismo configurador promete un número y el servicio unas veces lo completa repitiendo y otras no. Cualquiera de las dos conductas es defendible; **tenerlas las dos a la vez no**, y es lo que hace que el contador parezca mentir.
 
+**⚠️ CORRECCIÓN DEL 05/08 (3.ª vuelta) — EL CONTADOR NO MIENTE. Lo que sirve de menos es el TEST.**
+
+Las dos primeras vueltas de esta ficha midieron por el campo equivocado (`questions.difficulty`). El código —los DOS caminos— filtra por `global_difficulty_category` **con fallback** a `difficulty`. Medido con ese criterio real sobre el tema 1 de Sergio:
+
+| dificultad | pool REAL (criterio del código) | le ofreció | le sirvió |
+|---|---|---|---|
+| `hard` | **10** | 10 ✅ | **3** ❌ |
+| `medium` | **64** | 64 ✅ | **26** ❌ |
+| `easy` | 112 | 100 (tope) | 100, repitiendo |
+
+**El contador acierta clavado.** Así que la hipótesis de las dos primeras vueltas («el contador no aplica el filtro de dificultad») es FALSA y no hay que perseguirla.
+
+**Dónde mirar entonces, que es el servicio:**
+- `lib/api/filtered-questions/queries.ts` línea ~764 aplica el MISMO filtro de dificultad que el contador. No es eso.
+- El paso **6a** aparta las respondidas recientemente en `recentReserve` y el **7c** (`backfillFromReserve`) las repesca *«para no devolver un test corto a quien ha practicado mucho el tema»*. Con `easy` ese relleno SÍ actúa (le da 100 repitiendo); con `hard` **no** actuó (3 de 10). **La pregunta es por qué la repesca no rellena en unos casos y en otros sí** — ahí está el defecto.
+- Segundo sospechoso a descartar: `applyExamPositionFilter` / el acotado por `positionType`, que en una oposición **personalizada** puede estrechar el pool de forma distinta a como lo cuenta el estimador. La medición de arriba NO lo aplica, así que es la diferencia más probable entre 10 y 3.
+
+**DECISIÓN DE PRODUCTO YA TOMADA (Manuel, 05/08):** cuando se pidan más preguntas de las que hay, **el contador dice la verdad y nunca ofrece más de las que existen**. Con la medición de arriba resulta que ya lo hace; lo que hay que alinear es el servicio, que debe entregar lo que el contador prometió (repescando) o explicar por qué no puede.
+
 **POR DÓNDE SEGUIR:** comparar el contador del configurador POR TEMA con `lib/api/filtered-questions/queries.ts`, igual que [T-551] hizo con `estimateByLaws`. La pregunta a responder es qué filtra cada uno: dificultad, exclusión de ya respondidas, y con qué campo (`difficulty` declarada vs `global_difficulty`, que es un porcentaje y no una etiqueta).
 
 ⚠️ **NO te atasques con el 🛑 del dossier.** Salta el bloqueo de epígrafes con «13 temas `never_sourced`», pero **su oposición es PERSONALIZADA, creada por él**: no hay programa oficial que clonar, así que ese Paso 1 no aplica a este caso. Es el mismo falso bloqueo que ya costó tiempo el 04/08.
