@@ -842,6 +842,61 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-581] 🟡 [ABIERTO 05/08] Herramientas de impugnaciones/feedback revientan con el rol de lectura de la flota (permission denied sin capturar)
+
+**QUÉ PASA.** `scripts/impugnaciones/revisar-impugnacion.cjs`, `scripts/impugnaciones/cola.cjs`
+(`release`, `mine`, y probablemente `list`) y `scripts/impugnaciones/revisar-feedback.cjs` se
+escribieron asumiendo que quien los ejecuta tiene la credencial completa de la app
+(`.env.local`, que abre `user_profiles`/`user_feedback`/etc). Un **trabajador de la flota**
+(rol `vence_coordinacion` o `vence_lector`, ver `sistema-sesiones-paralelas.md` §6.quater y
+`scripts/canary-rol-lector.cjs`) tiene **negado a propósito** el acceso a esas tablas —ahí viven
+los identificadores directos (correo, nombre)— y las queries no van en `try/catch`, así que la
+excepción de Postgres (`42501 permission denied`) queda **sin capturar** y tumba el proceso
+entero con un `UnhandledPromiseRejection`.
+
+**MEDIDO el 05/08/2026, trabajando la impugnación `968b0a9d`:**
+1. `revisar-impugnacion.cjs <id>` — moría en la query de `user_profiles` (línea ~135) ANTES de
+   imprimir nada del dossier (cuestionario, artículo, hermanas, checklist). **Arreglado** en la
+   rama `flota/dossier-impugnaciones-rol-lector` (commit `4aef6bcee`, en este worktree, sin
+   pushear — el trabajador no tiene credenciales git de push): se degrada con un aviso
+   (`👤 Nombre/email/plan no disponibles: tu rol no puede leer user_profiles…`) en vez de morir;
+   el resto del fichero ya usaba `p?.` en todos los sitios, así que no hacía falta tocar nada más.
+2. `cola.cjs release <id>` — **hace su trabajo** (la fila SE libera, comprobado con `SELECT
+   claimed_by` tras el crash: quedó en `NULL`) pero **revienta DESPUÉS** al intentar tocar
+   `user_feedback` (parece que recorre las tres colas —`question_disputes`,
+   `psychometric_question_disputes`, `user_feedback`— para las operaciones de mantenimiento).
+   Sale un stack trace feo pero el efecto deseado ya ocurrió.
+3. `cola.cjs mine` — revienta igual, en `user_feedback`, sin llegar a imprimir nada (ni siquiera
+   los claims de impugnaciones, que sí podría leer).
+4. `revisar-feedback.cjs` — **peor**: `user_feedback` es la tabla BASE del dossier (línea 42,
+   `SELECT * FROM user_feedback WHERE id=…`), así que un trabajador **no puede generar el dossier
+   de NINGÚN feedback**, no solo degradarse sin nombre. Tiene además el mismo patrón sin
+   try/catch sobre `user_profiles` en la línea 105 (igual que tenía `revisar-impugnacion.cjs`).
+   **No lo he tocado** — es un cambio más grande (la tabla base entera, no un campo opcional) y
+   se sale del alcance de "arreglo acotado" de mi encargo de una impugnación.
+
+**POR QUÉ IMPORTA.** El encargo estándar de un trabajador de la flota para impugnaciones
+(`docs/maintenance/impugnaciones-claude-code.md`, seguido al pie de la letra) manda usar
+exactamente estas herramientas. Sin el arreglo del punto 1, **ningún trabajador puede generar
+un dossier de impugnación** — que es la mitad del encargo. El feedback (punto 4) está peor: el
+dossier no arranca en absoluto.
+
+**QUÉ HACE FALTA (no lo he hecho, esfuerzo mayor que "un query suelto"):**
+- Auditar `cola.cjs` (los tres subcomandos que tocan `user_feedback`: `next`, `release`, `mine`,
+  `list`) y envolver cada acceso a `user_feedback`/`user_profiles` en el mismo patrón de
+  degradación (capturar `42501`, avisar, seguir sin ese dato) en vez de dejar que la excepción
+  suba sin capturar.
+- `revisar-feedback.cjs`: decidir el diseño correcto para cuando `user_feedback` no es legible
+  en absoluto — probablemente el dossier de feedback simplemente NO es una herramienta que un
+  trabajador pueda ejecutar (a diferencia de impugnaciones, cuyo dato vive en tablas que sí
+  tiene O puede tener), y hay que documentarlo en vez de fingir que funciona.
+- Repasar si hay más escritores del mismo patrón (`tools:buscar -- "user_profiles"` /
+  `"user_feedback"` sobre `scripts/impugnaciones/`).
+
+**Cómo medí que NO es un caso aislado dentro de este hallazgo:** grep directo de
+`user_profiles`/`user_feedback` en `scripts/impugnaciones/*.cjs` — aparecen en los 3 ficheros
+citados, sin un solo `try/catch` alrededor en ninguno de los casos salvo el que ya arreglé.
+
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
 - **Qué pasó (05/08).** El supervisor de la flota necesitaba comprobar si el arreglo de [T-576] hacía pasar el `pre-commit` con un rol restringido. En vez de reproducirlo en su propio árbol, **entró en el worktree de `l2`** —una sesión ajena— y ejecutó `git checkout HEAD -- .` para dejarlo limpio. Eso borró los **6 ficheros modificados** que `l2` tenía sin commitear: su trabajo entero de T-518, cuya única copia estaba ahí.
