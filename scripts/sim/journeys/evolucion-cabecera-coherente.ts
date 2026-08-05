@@ -60,9 +60,23 @@ const journey: Journey = {
       const b = ctx.page.getByRole('button', { name: /Aceptar todo|Rechazar todo/i }).first()
       if (await b.count()) await b.click({ timeout: 4000 }).catch(() => {})
     })
-    // `test/aleatorio` no lleva a las preguntas: es el configurador. Hay que darle a empezar.
+    // `test/aleatorio` no lleva a las preguntas: es el configurador (RandomTestClient.tsx). Y no
+    // preselecciona NINGÚN tema (`selectedThemes` arranca en `[]`) → el botón de abajo ni
+    // siquiera dice "Generar…": dice «Selecciona al menos un tema» y no matchea ningún regex de
+    // arranque. ESE es el motivo real por el que el paso moría "por debajo del pliegue" — no
+    // era scroll (Playwright ya hace auto-scroll al hacer click), era que el botón correcto
+    // nunca llegaba a existir. Hay que pulsar «Todos» primero (selecciona todos los temas).
+    await ctx.step('seleccionar todos los temas', async () => {
+      const todos = ctx.page.getByRole('button', { name: /^(Todos|Deseleccionar)$/ }).first()
+      await todos.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
+      if (await todos.count()) await todos.click({ timeout: 6000 }).catch(() => {})
+      // dispara /api/random-test/availability (debounced por el cambio de selectedThemes) —
+      // hasta que no resuelve, poolCap=0 y el botón de generar sigue deshabilitado.
+      await ctx.page.waitForTimeout(3000)
+    }, { shot: true })
     await ctx.step('arrancar el test', async () => {
-      const empezar = ctx.page.getByRole('button', { name: /Comenzar|Empezar|Iniciar|Generar/i }).first()
+      const empezar = ctx.page.getByRole('button', { name: /Comenzar|Empezar|Iniciar Test|Generar Test/i }).first()
+      await empezar.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
       if (await empezar.count()) await empezar.click({ timeout: 6000 }).catch(() => {})
       await ctx.page.waitForTimeout(6000)
     }, { shot: true })
