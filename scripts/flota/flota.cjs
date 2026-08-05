@@ -238,16 +238,31 @@ async function main() {
 
       console.log('\nFLOTA')
       console.log('='.repeat(60))
+      // ── LA PREGUNTA QUE EL LATIDO NO CONTESTA: ¿HAY ALGUIEN EJECUTANDO? ─────────────
+      // El latido demuestra que un comando del andamiaje corrió; el claim, que alguien cogió la
+      // tarea. Ninguno de los dos dice si AHORA MISMO hay un proceso trabajando. Medido el 05/08:
+      // el panel decía «✅ toda la flota viva y trabajando» con los cuatro 🟢 y sus tareas… y el
+      // VPS estaba a **carga 0,05 con CERO procesos de Claude**. Los turnos habían terminado
+      // solos y las tareas se quedaron cogidas por nadie.
+      //
+      // Un trabajador con tarea cogida y sin proceso es el estado PEOR de todos: bloquea la tarea
+      // para los demás y no avanza. Se pinta aparte porque se arregla distinto — no hay que
+      // levantarlo (su tmux vive), hay que volver a lanzarle el turno.
+      const abandonadas = []
       for (const f of filas) {
+        const ejecutando = ENC.puedeRecibir(comandoDelPanel(f.trabajador)).libre === false
         // Un trabajador callado PERO con sesión viva está LIBRE, no caído. Confundirlos manda a
         // levantar lo que solo hacía falta encargar.
-        const libre = f.estado !== 'vivo' && sesionViva(f.trabajador)
-        const icono = f.estado === 'vivo' ? '🟢' : libre ? '🔵' : f.estado === 'callado' ? '🟠' : '🔴'
+        const libre = !ejecutando && sesionViva(f.trabajador)
         const t = tareaDe(f.trabajador)
+        const abandonada = !!t && !ejecutando
+        if (abandonada) abandonadas.push({ trabajador: f.trabajador, tarea: t })
+        const icono = abandonada ? '🟠' : ejecutando ? '🟢' : libre ? '🔵' : '🔴'
         const cuando = f.antiguedadMin == null ? 'sin señal nunca'
           : f.antiguedadMin < 1 ? 'ahora mismo' : `hace ${f.antiguedadMin} min`
-        console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}`)
-        console.log(`       ${t ? `${t.id} — ${String(t.title).slice(0, 60)}`
+        console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}${ejecutando ? '  · ejecutando' : ''}`)
+        console.log(`       ${abandonada ? `⚠️ ${t.id} COGIDA Y SIN PROCESO — su turno terminó (relánzalo: flota -- encargar ${f.trabajador} --tarea ${t.id})`
+          : t ? `${t.id} — ${String(t.title).slice(0, 60)}`
           : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'
           : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
       }
@@ -351,6 +366,7 @@ async function main() {
       const partes = []
       if (sinSenal.length) partes.push(`${sinSenal.length} sin señal`)
       if (malAutenticados.length) partes.push(`${malAutenticados.length} sin poder trabajar`)
+      if (abandonadas.length) partes.push(`${abandonadas.length} con la tarea cogida y SIN PROCESO`)
       console.log(partes.length ? `\n⚠️  ${partes.join(' · ')}` : '\n✅ toda la flota viva y trabajando')
       return partes.length ? 3 : 0
     }

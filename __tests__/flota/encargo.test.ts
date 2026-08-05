@@ -94,6 +94,11 @@ describe('el encargo dice lo que un trabajador solo no puede deducir', () => {
     // método (no apagues el guardarraíl, no metas una credencial de más, manda lo medido sobre la
     // ficha) y solo una era de verdad de Manuel. Un embudo con ruido se deja de leer.
     ['pensar si el método ya lo contesta antes de preguntar', /ANTES DE PREGUNTAR/],
+    // Un `claude -p` es de un solo tiro: lo que se deja «corriendo en segundo plano» no lo recoge
+    // nadie. Medido el 05/08 — dos trabajadores terminaron su turno con «me paro aquí a esperar a
+    // que acabe la prueba», y las tareas quedaron COGIDAS por nadie con la máquina a carga 0,05.
+    ['no dejar nada en segundo plano: el turno no tiene futuro', /NO DEJES NADA/],
+    ['y cerrar bien si no cabe, para no bloquear la tarea', /pause.*revision|revision.*--entrega/],
     ['y qué merece de verdad una pregunta', /usuario, a dinero/],
   ])('lleva la regla: %s', (_c, patron) => {
     expect(texto).toMatch(patron)

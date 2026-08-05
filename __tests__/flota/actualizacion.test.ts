@@ -64,8 +64,8 @@ describe('cuándo NO, y por qué en cada caso', () => {
   // Meterlos en un solo «no se puede» mandaría a mirar donde no es.
   it.each([
     ['cambios sin commitear', { SUCIO: 3 }, 'sucio', /sin commitear/],
-    ['commits que no están en origin', { ADELANTE: 2 }, 'adelantado', /no están en origin/],
-    ['las dos cosas', { SUCIO: 3, ADELANTE: 2 }, 'divergido', /sin commitear.*no están en origin/],
+    ['commits que solo existen ahí', { ADELANTE: 2 }, 'adelantado', /NING[ÚU]N remoto|solo existen/],
+    ['las dos cosas', { SUCIO: 3, ADELANTE: 2 }, 'divergido', /sin commitear.*solo existen/],
     ['no pudo hablar con origin', { FETCH: 'fallo' }, 'sin_red', /no se sabe/],
   ])('%s → no se encarga', (_c, campos, estado, motivo) => {
     const v = ACT.evaluarClon(sonda(campos))
@@ -143,6 +143,14 @@ describe('las órdenes que se ejecutan en la máquina', () => {
   it('el pull no puede perder nada', () => {
     expect(ACT.ORDEN_ACTUALIZAR('~flota/vence')).toContain('--ff-only')
     expect(ACT.ORDEN_ACTUALIZAR('~flota/vence')).not.toMatch(/reset|clean|--force/)
+  })
+
+  // Un trabajador trabaja en SU rama: medir contra `origin/main` haría que sus commits salieran
+  // «adelantados» para siempre aunque estuvieran empujados y a salvo, y ese bloqueo no se puede
+  // satisfacer ([T-375]). Lo que hay que proteger es el commit que solo vive en esa máquina.
+  it('lo que cuenta como trabajo en peligro es lo que no está en NINGÚN remoto', () => {
+    expect(ACT.SONDA_GIT('~/x')).toContain('HEAD --not --remotes')
+    expect(ACT.SONDA_GIT('~/x')).not.toMatch(/ADELANTE=\$\(git rev-list --count origin\/main\.\.HEAD/)
   })
 
   it('la sonda no escribe: solo mira', () => {
