@@ -637,7 +637,10 @@ async function main() {
         // Dos trabajadores no pueden llevarse la MISMA tarea en la misma vuelta.
         const repartidas = new Set()
         let movidos = 0
-        for (const { trabajador } of MAQ.trabajadoresEsperados()) {
+        // Solo los que RECIBEN trabajo solos: el portátil quedó fuera del reparto automático
+        // (`reparte: false`) porque es el sitio donde Manuel trabaja. Siguen existiendo para el
+        // panel y para un encargo explícito.
+        for (const { trabajador } of MAQ.trabajadoresQueReciben()) {
           if (!sesionViva(trabajador)) continue
           // ¿Está ejecutando algo? Entonces no se le toca, tenga tarea o no.
           if (!ENC.puedeRecibir(comandoDelPanel(trabajador)).libre) continue
@@ -670,7 +673,22 @@ async function main() {
               // Así que **quien puede cerrar el ciclo entero se lleva el backlog**, y quien no,
               // las impugnaciones. Sale más trabajo TERMINADO con los mismos trabajadores, que es
               // lo que se pedía; y deja de generarse cola de «hecho, falta desplegar».
-              const aImpugnaciones = !MAQ.puedeDesplegar(trabajador).puede
+              // ── PERO DESDE EL 05/08 NINGUNO VA A IMPUGNACIONES ──────────────────────────
+              // Decisión de Manuel tras revisar la primera tanda. El motivo no es que analicen
+              // mal —la que se verificó a fondo (`2477d39d`) la acertaron, y tres por separado—
+              // sino DÓNDE cuesta el error: una impugnación acaba en un correo a una persona.
+              //
+              // Y ahí el criterio que evita el fallo no está en el repo: la trampa de las páginas
+              // `support.microsoft.com/es-es` (que dan los atajos internacionales aunque la
+              // instalación española use otros) y la prueba discriminante de localización viven
+              // en la memoria de Manuel, no en el manual. Los tres trabajadores verificaron
+              // contra esa página —la única fuente que el manual desaconseja— y ninguno aplicó la
+              // prueba. Mientras ese conocimiento no baje al repo, van a repetirlo.
+              //
+              // En el backlog un error es un commit malo que la revisión caza, y hay 250 tareas
+              // abiertas: ahí su volumen sí compensa. Para volver a activarlo: VENCE_FLOTA_IMPUGNACIONES=1.
+              const IMPUGNACIONES_A_LA_FLOTA = process.env.VENCE_FLOTA_IMPUGNACIONES === '1'
+              const aImpugnaciones = IMPUGNACIONES_A_LA_FLOTA && !MAQ.puedeDesplegar(trabajador).puede
               let texto = null, queEs = null
               if (!aImpugnaciones) {
                 const libres = await sql`
@@ -687,8 +705,16 @@ async function main() {
                   queEs = elegida.id
                 }
               }
-              // Si no había tarea apta libre, se cae a impugnaciones: mejor eso que dejarlo parado.
-              if (!texto) { texto = ENC.encargoImpugnacion({ trabajador, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }); queEs = 'una impugnación' }
+              // Sin tarea apta libre, antes se caía a impugnaciones («mejor eso que pararlo»). Ya
+              // no: con la flota fuera de esa cola, un trabajador ocioso es preferible a uno
+              // escribiéndole a una persona. Se dice en voz alta para que se vea el hueco.
+              if (!texto) {
+                if (!IMPUGNACIONES_A_LA_FLOTA) {
+                  console.log(`   [${sello}] ⏸️  ${trabajador}: sin tarea apta libre (no se le dan impugnaciones)`)
+                  continue
+                }
+                texto = ENC.encargoImpugnacion({ trabajador, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }); queEs = 'una impugnación'
+              }
               const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
               const r = mandarEncargo(trabajador, texto,
                 { alDia, turno: () => emitirTurno(trabajador, 'encargado', { tarea: queEs.startsWith('T-') ? queEs : null, tipo: queEs.startsWith('T-') ? 'backlog' : 'impugnacion' }) })
@@ -728,7 +754,12 @@ async function main() {
       const conTarea = new Set(ocupadas.map((t) => t.claimed_by))
       // «Vivo» aquí es «hay sesión a la que mandarle algo», no «ha latido hace poco»: un
       // trabajador entre tareas no late y seguiría siendo un destinatario perfectamente válido.
-      const vivos = MAQ.comparar(sesiones).filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador))
+      // …y que además RECIBAN reparto: el portátil está fuera (`reparte: false`), porque es donde
+      // Manuel abre sus consolas y seis autónomos se lo dejaban parado.
+      const reciben = new Set(MAQ.trabajadoresQueReciben().map((x) => x.trabajador))
+      const vivos = MAQ.comparar(sesiones)
+        .filter((f) => reciben.has(f.trabajador))
+        .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador))
       const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
       const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
 

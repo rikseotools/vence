@@ -371,10 +371,14 @@ describe('a cada trabajador, el trabajo que PUEDE terminar', () => {
     expect(v.porQueNo).toMatch(/T-485/)      // con el porqué, no como dogma
   })
 
-  it('y el vigía reparte por eso, no por el nombre', () => {
+  // Desde el 05/08 la capacidad de desplegar ya no manda a nadie a impugnaciones (la flota salió
+  // de esa cola), pero sigue decidiendo QUÉ tareas se le ofrecen: `esApta` descarta las de deploy
+  // para quien no puede. El criterio se conserva; lo que cambió es su consecuencia.
+  it('y el vigía sigue repartiendo por esa capacidad, no por el nombre', () => {
     const src = require('fs').readFileSync(
       require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
-    expect(src).toMatch(/const aImpugnaciones = !MAQ\.puedeDesplegar\(trabajador\)\.puede/)
+    expect(src).toMatch(/MAQ\.puedeDesplegar\(trabajador\)\.puede/)
+    expect(src).not.toMatch(/const aImpugnaciones = !MAQ\.puedeDesplegar/)
   })
 
   it('un trabajador no declarado no despliega (fail-closed)', () => {
@@ -392,7 +396,7 @@ describe('repartir y vigilar reparten igual', () => {
   it('los dos consultan puedeDesplegar para decidir la cola', () => {
     const enRepartir = src.slice(src.indexOf("cmd === 'repartir'"))
     expect(enRepartir).toMatch(/MAQ\.puedeDesplegar\(f\.trabajador\)\.puede/)
-    expect(src).toMatch(/const aImpugnaciones = !MAQ\.puedeDesplegar\(trabajador\)\.puede/)
+    expect(src).toMatch(/MAQ\.puedeDesplegar\(trabajador\)\.puede/)
   })
 
   it('y ninguno de los dos manda por su cuenta: pasan por mandarEncargo', () => {
@@ -546,5 +550,38 @@ describe('la criba y sus falsos positivos', () => {
   it('y `elegir` le pasa la capacidad a la criba', () => {
     const r = ENC.elegir([t('Desplegar el frontend', 'T-1'), t('Auditar el scope', 'T-2')], { puedeDesplegar: true })
     expect(r.tarea.id).toBe('T-1')
+  })
+})
+
+// ── LA FLOTA NO TOCA IMPUGNACIONES, Y EL PORTÁTIL NO RECIBE REPARTO ─────────────────────────
+// Dos decisiones de Manuel del 05/08, y las dos tienen que poder comprobarse sin arrancar nada:
+// «cámbialos a backlog» y «no uses trabajadores locales porque voy a abrir consolas y se me va a
+// colgar el ordenador».
+describe('a quién y a qué se reparte', () => {
+  const MAQ = require(require('path').join(process.cwd(), 'lib', 'flota', 'maquinas.cjs'))
+  const fuente = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('el portátil sigue DECLARADO (si no, se pierde la ruta de sus árboles y lo que tengan sin empujar)', () => {
+    const todos = MAQ.trabajadoresEsperados().map((x: any) => x.trabajador)
+    expect(todos).toEqual(expect.arrayContaining(['l1', 'l6', 'w1', 'w4']))
+  })
+
+  it('pero NO recibe reparto automático: solo los del VPS', () => {
+    const reciben = MAQ.trabajadoresQueReciben().map((x: any) => x.trabajador)
+    expect(reciben).toEqual(['w1', 'w2', 'w3', 'w4'])
+    expect(reciben).not.toContain('l1')
+  })
+
+  it('los dos repartidores (vigilar y repartir) usan la lista de los que RECIBEN', () => {
+    // Si uno de los dos se queda con `trabajadoresEsperados`, el portátil vuelve a recibir
+    // trabajo por esa puerta y el bloqueo no sirve de nada.
+    expect((fuente.match(/trabajadoresQueReciben\(\)/g) || []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('las impugnaciones no se reparten solas, y hace falta declararlo para reactivarlas', () => {
+    expect(fuente).toMatch(/VENCE_FLOTA_IMPUGNACIONES/)
+    // El fallback «si no hay tarea, dale una impugnación» ya no puede ser incondicional.
+    expect(fuente).not.toMatch(/if \(!texto\) \{ texto = ENC\.encargoImpugnacion/)
   })
 })
