@@ -520,13 +520,19 @@ async function main() {
               if (r.ok) { console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++ }
               else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
             } else {
-              // ── IMPUGNACIONES Y BACKLOG, ALTERNANDO ──────────────────────────────
-              // Las dos colas importan y las dos se quedan atrás. Repartir solo impugnaciones
-              // dejaría el backlog parado (y al revés), así que se alterna de forma
-              // DETERMINISTA por el nombre del trabajador: los pares a una cola, los impares a
-              // la otra. Sin azar, para que el reparto sea el mismo en cada vuelta y se pueda
-              // comparar consigo mismo — el mismo criterio que el reparto de cuentas.
-              const aImpugnaciones = (trabajador.charCodeAt(trabajador.length - 1) % 2) === 0
+              // ── SE REPARTE POR CAPACIDAD, NO POR TURNO ───────────────────────────
+              // Primera versión: alternar por el nombre. Funcionaba, pero repartía mal — mandaba
+              // tareas de backlog a máquinas que no pueden cerrarlas.
+              //
+              // Una tarea de backlog casi siempre acaba en «desplegar y verificar en producción»,
+              // y eso solo lo puede hacer quien comparte el candado del deploy (los locales). Una
+              // impugnación, en cambio, es análisis puro: no despliega nada, así que la cierra
+              // igual de bien un trabajador del VPS.
+              //
+              // Así que **quien puede cerrar el ciclo entero se lleva el backlog**, y quien no,
+              // las impugnaciones. Sale más trabajo TERMINADO con los mismos trabajadores, que es
+              // lo que se pedía; y deja de generarse cola de «hecho, falta desplegar».
+              const aImpugnaciones = !MAQ.puedeDesplegar(trabajador).puede
               let texto = null, queEs = null
               if (!aImpugnaciones) {
                 const libres = await sql`

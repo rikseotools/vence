@@ -351,3 +351,33 @@ describe('el panel distingue «ocupado» de «no se pudo ver»', () => {
     expect(src).toMatch(/const ejecutando = comando !== ''/)
   })
 })
+
+// ── EL REPARTO VA POR CAPACIDAD, NO POR TURNO ───────────────────────────────────────────────
+// Una tarea de backlog casi siempre acaba en «desplegar y verificar en producción», y eso solo lo
+// puede hacer quien comparte el candado del deploy. Una impugnación es análisis puro: la cierra
+// igual de bien un trabajador del VPS. Repartir por turno mandaba backlog a quien no podía
+// terminarlo, y generaba cola de «hecho, falta desplegar».
+describe('a cada trabajador, el trabajo que PUEDE terminar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const MAQ = require('@/lib/flota/maquinas.cjs')
+
+  it('quien puede desplegar cierra el ciclo entero: le toca el backlog', () => {
+    expect(MAQ.puedeDesplegar('l1').puede).toBe(true)
+  })
+
+  it('quien no puede, a impugnaciones — que no necesitan deploy', () => {
+    const v = MAQ.puedeDesplegar('w1')
+    expect(v.puede).toBe(false)
+    expect(v.porQueNo).toMatch(/T-485/)      // con el porqué, no como dogma
+  })
+
+  it('y el vigía reparte por eso, no por el nombre', () => {
+    const src = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+    expect(src).toMatch(/const aImpugnaciones = !MAQ\.puedeDesplegar\(trabajador\)\.puede/)
+  })
+
+  it('un trabajador no declarado no despliega (fail-closed)', () => {
+    expect(MAQ.puedeDesplegar('no-existe').puede).toBe(false)
+  })
+})
