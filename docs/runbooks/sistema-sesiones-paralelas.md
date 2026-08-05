@@ -588,6 +588,28 @@ Y `npm run deploy:pendiente` sigue siendo la señal de si hay trabajo terminado 
 La política de **agrupar** no cambia: no se despliega en cada push, se despliega cuando hay algo que
 verificar.
 
+#### `npm run flota -- rescatar [<w>]` — poner a salvo lo que un turno dejó atrás
+
+La puerta del clon **rehúsa dar trabajo nuevo** a quien tiene cambios sin commitear, y hace bien:
+pueden ser la única copia. Pero eso deja al trabajador **encallado** hasta que alguien lo mira —
+pasó cuatro veces el 05/08, y las cuatro se resolvió a mano con los mismos tres comandos.
+
+**Por qué esto sí se puede automatizar y `reset --hard` no:** rescatar es **puramente aditivo**
+(commit en su rama + push). En el peor caso deja un commit de más, que se descarta leyéndolo. Lo
+que destruye es lo contrario, y eso sigue siendo de una persona.
+
+Tres decisiones que lo hacen seguro:
+
+- **Nunca fuerza el push.** La salida cómoda ante un `non-fast-forward` es `--force`, y es justo lo
+  que un rescate no puede hacer: destruiría lo que hubiera en el remoto, o sea lo que venía a
+  proteger. En vez de eso, **cada rescate empuja a una referencia NUEVA** — `rescate/<w>-<sha>`,
+  que no puede chocar con nada y que, al llevar el SHA dentro, es idempotente sin comprobar nada.
+- **`--no-verify` a propósito.** Un commit de rescate no INTRODUCE trabajo, lo CONSERVA: las
+  comprobaciones tienen que pasar cuando alguien lo lleve a `main`, no para impedir que se guarde.
+  Sin esto el rescate moriría en el mismo `pre-commit` que ya bloqueó al trabajador.
+- **El mensaje dice que no está aprobado.** *«Se conserva tal cual, sin revisar ni completar:
+  rescatar no es aprobar.»*
+
 #### Un borrador por destinatario
 
 El claim de la cola de impugnaciones protege el trabajo **simultáneo**; no protegía el **ya hecho**.

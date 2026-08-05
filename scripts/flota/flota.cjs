@@ -559,6 +559,65 @@ async function main() {
       return m.veredicto.color === 'rojo' ? 3 : 0
     }
 
+    // ── RESCATAR: poner a salvo lo que un trabajador dejó sin empujar ─────────────────────
+    // La puerta del clon rehúsa darle trabajo nuevo a quien tiene cambios sin commitear, y hace
+    // bien: pueden ser la única copia. Pero eso deja al trabajador ENCALLADO hasta que alguien lo
+    // mira — pasó cuatro veces el 05/08 y las cuatro lo resolví a mano con los mismos tres
+    // comandos. Un bloqueo que siempre se resuelve igual es trabajo que debería hacer la máquina.
+    //
+    // ── POR QUÉ ESTO SÍ SE PUEDE AUTOMATIZAR, Y `reset --hard` NO ──────────────────────────
+    // Rescatar es **puramente aditivo**: commit en su propia rama y push. No puede perder nada —
+    // en el peor caso deja un commit de más, que se descarta leyéndolo. Lo que destruye es lo
+    // contrario (descartar), y eso sigue siendo de una persona.
+    //
+    // `--no-verify` a propósito: un commit de rescate NO introduce trabajo, lo CONSERVA. Las
+    // comprobaciones tienen que pasar cuando alguien lleve eso a `main`, no para impedir que se
+    // guarde. Sin esto el rescate moriría en el mismo `pre-commit` que ya bloqueó al trabajador.
+    if (cmd === 'rescatar') {
+      const quienes = process.argv[3] ? [process.argv[3]] : MAQ.trabajadoresEsperados().map((x) => x.trabajador)
+      let n = 0
+      for (const w of quienes) {
+        const m = MAQ.maquinaDe(w)
+        if (!m) { console.log(`   ⏭️  ${w}: no está declarado`); continue }
+        const como = m.local ? '' : 'sudo -u flota '
+        const arbol = MAQ.arbolDe(w)
+        // ── LA REFERENCIA ES NUEVA CADA VEZ, Y ESO ES EL DISEÑO ─────────────────────────
+        // Primer intento: empujar a `sesion/<w>`. Falló con `non-fast-forward` en cuanto una rama
+        // ya había divergido (l6, 05/08). Y la salida cómoda —`--force`— es exactamente lo que un
+        // rescate NO puede hacer: forzar destruye lo que hubiera en el remoto, o sea justo lo que
+        // se venía a proteger.
+        //
+        // Una referencia nueva por rescate no puede chocar con nada. Lleva el SHA dentro, así que
+        // rescatar dos veces el mismo commit escribe la MISMA ref: es idempotente sin comprobar
+        // nada. Salen ramas de más, y esas se borran leyéndolas; un trabajo perdido no.
+        // Una sola orden: si no hay nada que salvar, sale sin tocar nada y lo dice.
+        const orden = [
+          `cd ${arbol} 2>/dev/null || exit 90`,
+          'SUCIO=$(git status --porcelain | wc -l)',
+          'FUERA=$(git rev-list --count HEAD --not --remotes 2>/dev/null || echo 0)',
+          '[ "$SUCIO" = "0" ] && [ "$FUERA" = "0" ] && echo NADA && exit 0',
+          'if [ "$SUCIO" != "0" ]; then git add -A && git commit -q --no-verify -m "wip: trabajo puesto a salvo por el supervisor de la flota\n\nSu turno termino sin commitear esto. Se conserva TAL CUAL, sin revisar ni\ncompletar: rescatar no es aprobar. Quien retome la tarea decide que hacer.\n\nCo-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"; fi',
+          `RAMA=rescate/${w}-$(git rev-parse --short HEAD)`,
+          'echo RAMA=$RAMA',
+          'BACKLOG_GUARD_SKIP="rescate del supervisor: pone a salvo lo que un trabajador dejo sin empujar, en una referencia NUEVA; no se esta trabajando ninguna tarea" ROBUSTEZ_GUARD_SKIP=1 CONTEXTO_GUARD_SKIP=1 git push -q origin HEAD:refs/heads/$RAMA 2>&1 | tail -2',
+          'echo SALVADO=$(git rev-list --count HEAD --not --remotes)',
+        ].join('; ')
+        let salida = ''
+        try { salida = enMaquina(w, `${como}bash -lc ${citar(orden)}`) }
+        catch (e) { salida = String((e && e.stdout) || e.message || '') }
+        if (/NADA/.test(salida)) { console.log(`   ✅ ${w}: nada que salvar`); continue }
+        const ok = /SALVADO=0/.test(salida)
+        const rama = (salida.match(/^RAMA=(.+)$/m) || [])[1] || '(?)'
+        console.log(ok
+          ? `   💾 ${w}: rescatado y empujado a ${rama}`
+          : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux attach -t ${w}) · ${salida.trim().slice(-120)}`)
+        emitirTurno(w, ok ? 'rescatado' : 'rescate_fallido', { rama, motivo: ok ? null : 'no se pudo empujar lo que dejó sin salvar' })
+        if (ok) n++
+      }
+      console.log(`\n${n} trabajador(es) rescatado(s).`)
+      return 0
+    }
+
     // ── VIGILAR: la flota se mantiene ocupada SOLA ────────────────────────────────────────
     // Hasta aquí el supervisor sabía repartir… pero solo cuando alguien se lo pedía. Y como el
     // turno de un `claude -p` muere al terminar, la consecuencia real era que **la flota se paraba
