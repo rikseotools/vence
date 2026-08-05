@@ -842,6 +842,36 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-591] 🟡 [ABIERTO 05/08] Vales de otra marca: la tarjeta decía «Amazon.es» y enlazaba a Amazon fuera cual fuera la marca
+
+**Qué pasaba.** `VoucherCard.tsx` tenía la marca escrita a mano en el JSX (`{v.amount} € · Amazon.es`)
+y el enlace `amazon.es/gc/redeem` clavado. Correcto mientras TODOS los vales fueron de Amazon.es. Al
+comprar los tres primeros de **Nike España** (retirada del propietario, 50+20+20 = 90 €, invoice
+`74cc3d9b…`), esos vales se servían con **la marca de otra tienda y un enlace donde su código no
+funciona**: la tarjeta mentía en las dos cosas que necesita quien va a canjear.
+
+**Qué se ha hecho.**
+- Núcleo puro `lib/referrals/voucherView.ts`: la marca se **deriva** del vale (`_product` del
+  `giftcard_ref`, con `reward_payouts.method` de respaldo para las filas antiguas). Registro
+  `POR_CLAVE` con Amazon.es y Nike España.
+- **Una marca desconocida NO hereda el enlace de Amazon**: se queda sin destino y lo dice. Un enlace
+  equivocado es peor que ninguno — manda a un sitio donde el código falla y parece un vale roto.
+- El mismo módulo hace de mapeo ÚNICO para los dos endpoints (`/api/referrals/vouchers` y
+  `/api/admin/embajadores/[userId]/panel`), que **duplicaban el `parse`** — justo la divergencia que
+  motivó el guardarraíl `voucherCard` en su día.
+- Nike no tiene página de canje (se aplica al pagar con número + PIN), así que su enlace va a las
+  instrucciones oficiales + consulta de saldo. **Verificados con navegador real: Nike responde 403 a
+  fetch/WebFetch** (WAF).
+
+**Capas.** `__tests__/referrals/voucherBrand.test.ts` (10) · guardarraíl `voucherCard.guardrail`
+ampliado (la marca no puede volver al JSX) · `npm run sim:vale-marca` sobre los vales REALES de RDS.
+Medido: 16 vales, 3 Nike bien etiquetados, 0 sin destino.
+
+**Gotcha para la próxima marca.** Las denominaciones son POR MARCA: Nike España no vende 90 € (solo
+10/20/50/100/150…), de ahí los tres vales. Manual actualizado: `embajadores-recompensas.md` §3.ter.bis.
+
+**Falta:** desplegar y mirarlo en `/recompensas` con los ojos (la simulación cubre el dato, no el render).
+
 ### [T-574] 🔴 [ABIERTO 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
 
 - **Medido en producción (05/08), no en la ficha:** 85 tablas de `public` tienen `relrowsecurity=true` y CERO filas en `pg_policies` (bajó de las 87 originales; no se investigó cuáles se cerraron entre medias, probablemente trabajo en curso de [T-573]). La inmensa mayoría son operativas o con PII (`user_profiles`, `fraud_confirmations`, `payment_settlements`, `email_logs`…) y **bloquearlas es el comportamiento correcto** — RLS deniega por defecto sin política. El problema real son las pocas que el trabajo de la flota SÍ necesita y están bloqueadas igual: confirmadas `test_questions` y `tests` (0 filas siempre, aunque la tabla tenga datos).

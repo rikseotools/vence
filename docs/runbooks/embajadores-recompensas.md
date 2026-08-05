@@ -145,6 +145,32 @@ que el propietario se había comprado. Cinco veces el coste real. Migración
 su saldo en negativo, que es exactamente lo que refleja la realidad — se ha llevado más de lo que ha
 ganado. Lo que se excluye es el **coste del programa**, que es otra pregunta.
 
+#### 3.ter.bis — Vales de OTRA MARCA (no Amazon): denominaciones y etiqueta
+
+**Bitrefill vende más marcas que Amazon.es**, y la retirada del propietario es donde aparecen. Dos
+cosas que no se deducen de la sección anterior:
+
+- **Las denominaciones son POR MARCA y no admiten importe libre.** Nike España solo vende
+  10/20/50/100/150/200/250/300/350/400 €, así que **un vale de 90 € no existe**: se compra 50+20+20
+  (tres códigos). Un `value` que no sea una denominación del producto da `wrong_value`. Míralas antes
+  de prometer un importe: `GET /v2/products/<product_id>` → `packages[].value`.
+- **Guarda `_product` en el `giftcard_ref` y pon el `method` de la marca** (`nike_giftcard`), porque
+  de ahí sale la **etiqueta y el enlace de canje** que ve el usuario. Si no, el vale se sirve como
+  «Tarjeta regalo» genérica y sin destino.
+
+**La marca la DERIVA la app, no el JSX** (`lib/referrals/voucherView.ts` → `brandForVoucher`). Hasta
+el 05/08/2026 la tarjeta ponía «Amazon.es» y enlazaba a `amazon.es/gc/redeem` **fuera cual fuera la
+marca**: los tres primeros vales de Nike salieron etiquetados como Amazon con un enlace donde su
+código no funciona. Regla del registro: **una marca desconocida NO hereda el enlace de Amazon** — se
+queda sin destino y lo dice, porque mandar a un sitio donde el código falla parece un vale roto.
+
+**Añadir una marca = una entrada en `POR_CLAVE`** (por `product_id` y por `method`), con el enlace de
+canje **abierto y verificado a mano**. Nike responde **403 a `fetch`/WebFetch** (WAF): se verifica con
+navegador real. Y ojo — **no todas las marcas tienen página de canje**: Amazon sí; Nike se aplica *al
+pagar* con número + PIN, así que su enlace va a las instrucciones oficiales, no a un formulario que no
+existe. Comprobar cómo queda: `npm run sim:vale-marca [-- --email <correo>]` (lee los vales reales y
+enseña marca + destino de cada uno).
+
 ### 3.quater — CONCILIACIÓN: que las cuentas cuadren siempre
 
 ```bash

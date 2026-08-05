@@ -1,6 +1,6 @@
 'use client'
 // components/embajadores/VoucherCard.tsx
-// LA tarjeta de un vale (gift card de Amazon.es). Única implementación: la usan tanto el panel del
+// LA tarjeta de un vale (gift card). Única implementación: la usan tanto el panel del
 // embajador (`MisVales`, en /embajadores) como la vista de admin "ver como el usuario"
 // (`EmbajadorPanelView`, en /admin/referidos/[userId]).
 //
@@ -17,8 +17,16 @@
 // constante es el código, así que el «dónde se canjea» lo tiene que poner la app — antes el
 // embajador veía un código suelto y ningún sitio donde meterlo.
 
+// LA MARCA NO SE ESCRIBE AQUÍ (T-591, 05/08/2026). Hasta esa fecha la tarjeta ponía «Amazon.es» y
+// enlazaba a `amazon.es/gc/redeem` a pelo en el JSX, porque todos los vales eran de Amazon. Al
+// comprar los primeros de **Nike España**, esos vales salían con la marca equivocada y un enlace de
+// canje que no sirve — la tarjeta mentía dos veces. Ahora la marca y el destino vienen del vale
+// (`brand`, derivado en `lib/referrals/voucherView`) y una marca desconocida se queda SIN enlace en
+// vez de heredar el de Amazon: mandar a un sitio donde el código no funciona es peor que no mandar.
+
 import { useState } from 'react'
 import CopyCode from './CopyCode'
+import type { VoucherBrand } from '@/lib/referrals/voucherView'
 
 /** Lo que devuelven `/api/referrals/vouchers` y `/api/admin/embajadores/[userId]/panel`. */
 export interface Voucher {
@@ -30,10 +38,21 @@ export interface Voucher {
   fallbackLink?: string | null
   via?: string | null
   date: string | null
+  /** Marca del vale (etiqueta + dónde se canjea). La calcula el servidor. */
+  brand?: VoucherBrand | null
 }
 
 /** Página donde Amazon.es canjea cualquier tarjeta regalo, venga en el formato que venga. */
 export const AMAZON_REDEEM_URL = 'https://www.amazon.es/gc/redeem'
+
+/** Respaldo para un vale servido por una versión anterior del endpoint (sin `brand`). */
+const BRAND_POR_DEFECTO: VoucherBrand = {
+  label: 'Amazon.es',
+  redeemUrl: AMAZON_REDEEM_URL,
+  redeemCta: 'Canjear en Amazon',
+  redeemHint: 'pega el código en «Canjear tarjeta regalo»',
+  balanceUrl: null,
+}
 
 export function formatVoucherDate(d: string | null): string {
   if (!d) return ''
@@ -47,11 +66,12 @@ export default function VoucherCard({ voucher }: { voucher: Voucher }) {
   const v = voucher
   const [revealed, setRevealed] = useState(false)
   const hasSecret = !!(v.pin || v.serial)
+  const brand = v.brand ?? BRAND_POR_DEFECTO
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg px-4 py-3">
       <div className="flex items-baseline justify-between gap-3 mb-3">
-        <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · Amazon.es</div>
+        <div className="font-semibold text-gray-800 dark:text-gray-100">{v.amount} € · {brand.label}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400">{formatVoucherDate(v.date)}</div>
       </div>
 
@@ -89,18 +109,31 @@ export default function VoucherCard({ voucher }: { voucher: Voucher }) {
         )}
       </div>
 
+      {/* El «dónde se canjea» va SIEMPRE y FUERA del condicional de pin/serial/fallbackLink: la
+          mayoría de vales solo traen código, y sin esto el usuario se queda con un número suelto.
+          Lo que cambia por marca es el destino — y si no lo sabemos, se dice, no se inventa. */}
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <a
-          href={AMAZON_REDEEM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Canjear en Amazon →
-        </a>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          pega el código en «Canjear tarjeta regalo»
-        </span>
+        {brand.redeemUrl ? (
+          <a
+            href={brand.redeemUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {brand.redeemCta} →
+          </a>
+        ) : null}
+        <span className="text-xs text-gray-500 dark:text-gray-400">{brand.redeemHint}</span>
+        {brand.balanceUrl ? (
+          <a
+            href={brand.balanceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Consultar saldo →
+          </a>
+        ) : null}
       </div>
     </div>
   )
