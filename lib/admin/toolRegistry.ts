@@ -2080,6 +2080,50 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`claimGate` dejaba pasar la tarea igual — lo destapó `npm run sim:espera-revision` (17 casos ' +
       'contra la BD real), no los 19 tests unitarios.',
   },
+  backlog_archivado: {
+    titulo: 'El último escalón del ciclo de una tarea: `done` ≠ archivada (verificación en producción)',
+    ruta: 'lib/backlog/archivo.cjs',
+    estado: 'vivo',
+    escribe: ['backlog_tasks'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      'Fase 2/3 de [T-392]. La Fase 1 (`done_verificacion`) ya impide cerrar una tarea cuyo ' +
+      'código servido no está desplegado; esto cubre la otra mitad del encargo de Manuel tras ' +
+      'cerrar [T-363] con cobros en main sin desplegar y sin que nadie lo mirase — *"cuando está ' +
+      'verificada [en producción] y todo correcto, ponerle estado archivado"*. `backlog.cjs done` ' +
+      'reutiliza el MISMO análisis de superficie servida de la Fase 1 (sin recalcularlo) para ' +
+      'decidir, en el momento de cerrar: si no toca nada servido, se ARCHIVA SOLA (regla 1: sin ' +
+      'superficie servida no hay nada que ver funcionar en producción); si sí toca, queda ' +
+      '`requiere_archivo=true` y hace falta `backlog.cjs archive <id> --evidencia "…"` —evidencia ' +
+      'obligatoria, ≥20 caracteres y sin vocabulario vacío ("ok"/"listo"/"funciona"), mismo criterio ' +
+      'que `backlog_espera_revision`—. El cubo de cerradas-sin-archivar sale en `list` (🗄, con aviso ' +
+      'a partir de 3 días) para no repetir el error de dejarlo invisible (regla 3 de la ficha). ' +
+      'DELIBERADAMENTE no son estados nuevos de `status` (la ficha original los dibujaba como ' +
+      '`verificando`/`archivada`): decenas de `WHERE status IN (...)` a lo largo de `backlog.cjs` ' +
+      'asumen que `done` es terminal, y el ciclo real ya vivía repartido en otras columnas — esto ' +
+      'es aditivo sobre `done`, no un `status` más ancho. **Migración `supabase/migrations/' +
+      '20260805_backlog_archivado.sql` pendiente de aplicar** (05/08): el rol `vence_coordinacion` ' +
+      'que usan claim/heartbeat/done tiene DML pero NO es owner de `backlog_tasks` (dueño: ' +
+      '`venceadmin`), así que un trabajador de la flota no puede correr el ALTER TABLE — necesita ' +
+      'una persona. Por eso TODO lector/escritor de las columnas nuevas es fail-open ante "columna ' +
+      'no existe" (42703): con la migración sin aplicar, `done`/`list`/`archive` funcionan EXACTO ' +
+      'igual que antes, sin el escalón nuevo — se activa solo en cuanto alguien corra el `.sql`. ' +
+      '23 tests en `lib/backlog/archivo.cjs`.',
+  },
+  backlog_archivado_migracion: {
+    titulo: 'Backfill de las ~350 tareas `done` anteriores al ciclo de archivado (T-392 F3)',
+    ruta: 'scripts/backlog/migrar-archivado-t392.cjs',
+    estado: 'historico',
+    escribe: ['backlog_tasks'],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      'Un solo uso: marca `archived_at`/`archive_evidence` de todo lo `done` de antes SIN ' +
+      're-verificar (la propia ficha [T-392] lo pide así — repasar 350 cierres contra producción ' +
+      'no es el trabajo, y bloquearía el estreno del ciclo). `requiere_archivo` queda en NULL a ' +
+      'propósito (no `false`): no se AFIRMA que no tocaran superficie servida, solo que no entran ' +
+      'en el cubo retroactivamente. **Bloqueado el 05/08 hasta que se aplique la migración de ' +
+      'esquema** (ver `backlog_archivado`) — dry-run por defecto, `--apply` para escribir.',
+  },
   canary_rol_coordinacion: {
     titulo: 'El rol de BD de la flota, ejercitado: que SÍ puede coordinarse y que NO puede leer negocio',
     ruta: 'scripts/canary-rol-coordinacion.cjs',

@@ -21,6 +21,7 @@
 //   node scripts/backlog.cjs snooze T-042 --horas 12 --motivo "…"   # espera a un reloj (no la sugiere `next`)
 //   node scripts/backlog.cjs wake T-042                # la despierta antes de tiempo
 //   node scripts/backlog.cjs sync                      # importa ids nuevos del markdown
+//   node scripts/backlog.cjs archive T-042 --evidencia "…" # confirma que se vio funcionar en prod (T-392)
 //
 // El session-id se resuelve solo: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
 'use strict';
@@ -392,6 +393,12 @@ const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 // respuestas tiene que ver una sesión— vive en el núcleo puro, no aquí.
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'));
+// El último escalón del ciclo: `done` ≠ archivada (T-392 F2/F3). Todo lo que toca las columnas
+// nuevas (`archived_at`/`requiere_archivo`/…) es fail-open si la migración aún no está aplicada
+// en esta base de datos: `esColumnaAusente` distingue "no existe la columna" de cualquier otro
+// error, que sí debe seguir reventando.
+const ARCH = require(path.join(REPO, 'lib', 'backlog', 'archivo.cjs'));
+const esColumnaAusente = (e) => e && (e.code === '42703' || /column .* does not exist/i.test(String(e.message || '')));
 // Qué tarea toca ahora: criterio ÚNICO, compartido por `next` y por la sugerencia de `done`.
 const ORDEN = require(path.join(REPO, 'lib', 'backlog', 'orden.cjs'));
 // El recordatorio de método: qué recordar y CUÁNDO (T-495). Momentos, nunca un temporizador.
@@ -594,6 +601,25 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         }
         console.log('   (cógelas con `claim <id>`: imprime dónde se dejaron)');
       }
+      // ── CERRADAS SIN ARCHIVAR (T-392 F2/F3) ────────────────────────────────────────────
+      // Distinta de la de arriba: aquella es código sin comprobar TODAVÍA cerrado (`done`
+      // pendiente); esta ya está `done` y sigue sin que nadie haya confirmado, con evidencia,
+      // que funciona en producción. Regla 3 de la ficha: si este cubo no sale en algún sitio, el
+      // problema que resuelve reaparece un nivel más arriba —una tarea "cerrada" indistinguible
+      // de una realmente terminada—. Fail-open si la migración aún no está aplicada.
+      try {
+        const cerradas = await s`
+          SELECT id, title, closed_at, status, archived_at, requiere_archivo
+            FROM public.backlog_tasks
+           WHERE status = 'done' AND archived_at IS NULL AND requiere_archivo = true
+           ORDER BY closed_at ASC NULLS LAST`;
+        if (cerradas.length) {
+          const urgentes = cerradas.filter((r) => (ARCH.diasCerrada(r) ?? 0) >= ARCH.DIAS_URGENTE).length;
+          console.log(`\n🗄 ${cerradas.length} CERRADA(S) SIN ARCHIVAR${urgentes ? ` — ${urgentes} llevan ${ARCH.DIAS_URGENTE}+ días` : ''}:`);
+          for (const r of cerradas) console.log(ARCH.lineaPendienteArchivar(r));
+          console.log('   (código ya en producción, nadie ha confirmado que funciona — `archive <id> --evidencia "…"`)');
+        }
+      } catch (e) { if (!esColumnaAusente(e)) throw e; }
       // ── EL EMBUDO, LO PRIMERO (T-493) ─────────────────────────────────────────────────
       // Va por delante incluso de las listas para verificar: una pregunta abierta puede tener a
       // una sesión parada AHORA, y ese coste corre mientras nadie la lee.
@@ -848,24 +874,31 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // cobra a alguien y se cerró con el código en `main`, sin desplegar y sin verificar.
       //
       // Fail-open y silencioso ante cualquier problema: un fallo de red no puede impedir cerrar.
+      //
+      // El análisis se guarda en `vArchivo` (T-392 F2/F3) porque sirve para DOS cosas: bloquear
+      // aquí si el deploy no ha llegado, y decidir más abajo si esta tarea necesita `archive`
+      // —confirmación de que alguien la vio funcionar en producción— antes de darla por cerrada
+      // del todo. Un solo análisis para las dos decisiones: no puede divergir de sí mismo.
+      let vArchivo = null;
+      try {
+        const { analizar } = require(path.join(REPO, 'scripts', 'backlog', 'verificacion.cjs'));
+        vArchivo = await analizar(id);
+      } catch { /* fail-open: sin análisis, ni bloquea ni exige archivo — se sabrá al archivar a mano */ }
+
       if (!process.argv.includes('--igualmente')) {
-        try {
-          const { analizar } = require(path.join(REPO, 'scripts', 'backlog', 'verificacion.cjs'));
-          const v = await analizar(id);
-          if (v.exige) {
-            const sup = v.superficies.length === 2 ? 'both' : v.superficies[0];
-            console.error(`❌ NO cerrada: ${v.motivo}.`);
-            console.error('   Su código todavía NO está vivo, así que no se puede haber verificado:');
-            for (const f of v.servidos.slice(0, 5)) console.error(`     [${f.superficie}] ${f.fichero}`);
-            if (v.servidos.length > 5) console.error(`     …y ${v.servidos.length - 5} más`);
-            console.error('   Prográmale la vuelta — el propio deploy la despierta:');
-            console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie ${sup} \\`);
-            console.error('       --hecho "…lo que ya está…" --falta "…qué mirar cuando esté vivo…"');
-            console.error('   Si de verdad ya lo verificaste (o el análisis se equivoca):  --igualmente');
-            friccion('guard_bloqueo', 'done-verificacion', id);
-            process.exit(2);
-          }
-        } catch { /* fail-open: el gate no puede tumbar un cierre por un fallo suyo */ }
+        if (vArchivo && vArchivo.exige) {
+          const sup = vArchivo.superficies.length === 2 ? 'both' : vArchivo.superficies[0];
+          console.error(`❌ NO cerrada: ${vArchivo.motivo}.`);
+          console.error('   Su código todavía NO está vivo, así que no se puede haber verificado:');
+          for (const f of vArchivo.servidos.slice(0, 5)) console.error(`     [${f.superficie}] ${f.fichero}`);
+          if (vArchivo.servidos.length > 5) console.error(`     …y ${vArchivo.servidos.length - 5} más`);
+          console.error('   Prográmale la vuelta — el propio deploy la despierta:');
+          console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy --superficie ${sup} \\`);
+          console.error('       --hecho "…lo que ya está…" --falta "…qué mirar cuando esté vivo…"');
+          console.error('   Si de verdad ya lo verificaste (o el análisis se equivoca):  --igualmente');
+          friccion('guard_bloqueo', 'done-verificacion', id);
+          process.exit(2);
+        }
       } else {
         friccion('guard_escape', 'done-verificacion', id);
       }
@@ -886,6 +919,34 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // Si venía de una pausa, se cierra algo que estaba pendiente de COMPROBAR: recordar qué
       // significa la palabra, porque `done` se lee como «funciona» y solo garantiza «lo hice».
       if (row.resume_check) console.log('   (venía de «implementada y sin comprobar»: el outcome debería decir QUÉ verificaste)');
+      // ── T-392 F2/F3: el último escalón, encadenado a la Fase 1 sin repetir el análisis ──────
+      // `vArchivo.superficies` (no `.exige`) es la pregunta correcta aquí: `.exige` solo dice "el
+      // deploy no ha llegado todavía", que ya bloqueó arriba o se saltó con `--igualmente`. Lo que
+      // hace falta ahora es "¿toca algo que un humano tiene que VER funcionar?", que es verdad
+      // tanto si el deploy ya llegó como si se forzó el cierre.
+      try {
+        const requiereArchivo = vArchivo ? vArchivo.superficies.length > 0 : null;
+        if (requiereArchivo) {
+          await s`UPDATE public.backlog_tasks SET requiere_archivo = true WHERE id = ${id}`;
+          console.log('   🗄 toca superficie servida: archívala en cuanto la veas funcionar en producción —');
+          console.log(`      node scripts/backlog.cjs archive ${id} --evidencia "qué comprobaste y con qué dato"`);
+        } else if (requiereArchivo === false) {
+          // Regla 1 de la ficha: sin superficie servida no hay nada que un humano tenga que ver
+          // funcionar en producción — archivar a mano sería un trámite vacío.
+          await s`
+            UPDATE public.backlog_tasks
+               SET requiere_archivo = false, archived_at = now(),
+                   archive_evidence = ${ARCH.MOTIVO_AUTO}, archived_by = ${ARCH.SID_AUTO}
+             WHERE id = ${id}`;
+          console.log('   🗄 sin superficie servida: archivada automáticamente (regla 1 de T-392).');
+        }
+        // requiereArchivo === null (sin análisis, fail-open): no se afirma nada; queda para
+        // decidirse a mano con `archive` si hiciera falta.
+      } catch (e) {
+        if (!esColumnaAusente(e)) throw e;
+        // La migración de T-392 (archivado) todavía no está aplicada en esta base de datos:
+        // `done` sigue funcionando exactamente igual que antes, sin el escalón nuevo.
+      }
       // Contrastar lo DECLARADO con lo que costó. Es la razón de ser del campo de esfuerzo: sin
       // este momento, la estimación no se puede desmentir nunca y acaba siendo decorativa.
       if (row.worked_seconds > 0) {
@@ -1495,6 +1556,54 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log('   Si ya no queda trabajo, ciérrala:  node scripts/backlog.cjs done ' + id + ' --outcome "…"');
     }
 
+    // ── EL ÚLTIMO ESCALÓN: `done` ≠ archivada (T-392 F2/F3) ─────────────────────────────────
+    // `done` dice «el código está en main» (y, desde Fase 1, «el deploy ya lo incluye si tocaba
+    // algo servido»). Ninguna de las dos cosas es «lo vi funcionar en producción», que es lo que
+    // pidió Manuel tras cerrar [T-363] —cobros, en main, sin desplegar y sin que nadie lo mirase—.
+    // `archive` es ese acto explícito: exige evidencia (no un «ok») igual que `revision`/`due`.
+    else if (cmd === 'archive') {
+      needSid();
+      const id = process.argv[3];
+      const evidencia = arg('--evidencia');
+      const v = ARCH.validarEvidencia(evidencia);
+      if (!id || !v.ok) {
+        console.error('Uso: backlog.cjs archive <T-xxx> --evidencia "qué comprobaste en producción y con qué dato"');
+        if (v.problema) console.error(`   ❌ ${v.problema}`);
+        process.exit(2);
+      }
+      let prev;
+      try {
+        [prev] = await s`SELECT id, title, status, archived_at FROM public.backlog_tasks WHERE id = ${id}`;
+      } catch (e) {
+        if (esColumnaAusente(e)) {
+          console.error(`❌ la migración de T-392 (archivado) todavía no está aplicada en esta base de datos.`);
+          console.error('   Alguien con permiso de owner (el rol de coordinación NO lo tiene) tiene que correr:');
+          console.error('     supabase/migrations/20260805_backlog_archivado.sql');
+          process.exit(1);
+        }
+        throw e;
+      }
+      if (!prev) { console.error(`❌ ${id} no existe.`); process.exit(1); }
+      if (prev.status !== 'done') {
+        console.error(`❌ ${id} no está cerrada (status: ${prev.status}) — solo se archiva lo que ya está en \`done\`.`);
+        process.exit(2);
+      }
+      if (prev.archived_at) {
+        console.error(`❌ ${id} ya está archivada desde ${new Date(prev.archived_at).toLocaleString('es-ES')}.`);
+        process.exit(2);
+      }
+      const [row] = await s`
+        UPDATE public.backlog_tasks
+           SET archived_at = now(), archive_evidence = ${evidencia}, archived_by = ${sid},
+               requiere_archivo = true
+         WHERE id = ${id} AND archived_at IS NULL
+        RETURNING id, title`;
+      if (!row) { console.error(`❌ no pude archivar ${id} (¿la archivó otra sesión mientras tanto?)`); process.exit(1); }
+      console.log(`🗄  ${row.id} ARCHIVADA — ${row.title}`);
+      console.log(`   ✔ evidencia: ${evidencia}`);
+      console.log('   Ciclo completo: implementada → verificada en producción → archivada.');
+    }
+
     else if (cmd === 'deployed') {
       // Lo llama el propio script de deploy al terminar (best-effort, nunca rompe un deploy).
       // Comparte implementación con la reconciliación perezosa de `list`: dos copias acabarían
@@ -1837,7 +1946,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | archive <id> --evidencia "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);
