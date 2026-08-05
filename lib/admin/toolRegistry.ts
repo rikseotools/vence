@@ -1924,7 +1924,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Medido en el primer arranque real (05/08): dos trabajadores 🟢, latiendo, preflight verde y ' +
       'NINGUNO autenticado. El encargo se manda por tmux y sale de `lib/flota/encargo.cjs`, que ' +
       'también descarta las tareas no aptas (impugnaciones, cobros, deploys, nada que hable con ' +
-      'usuarios) — aunque lo que de verdad protege es la credencial, no el texto.',
+      'usuarios) — aunque lo que de verdad protege es la credencial, no el texto. **Antes de cada ' +
+      'encargo pone su clon al día y comprueba que no esté ya trabajando** (ver `flota_clon_al_dia`).',
+  },
+  flota_clon_al_dia: {
+    titulo: 'El clon de un trabajador, al día ANTES de cada encargo — si no se puede, no se le da trabajo',
+    ruta: 'lib/flota/actualizacion.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Un clon viejo no es «una versión anterior»: trae **los guardarraíles de su fecha**, que son ' +
+      'lo único que hace segura a la flota. Medido el 05/08 — `w1` llevaba **30 commits de retraso**, ' +
+      'así que no tenía el canario con el que habría comprobado su propio permiso ni el comando ' +
+      '`revision` que su situación pedía, y se quedó una hora parado preguntando algo que su propio ' +
+      'repo ya sabía responder. Falla CERRADO ([T-539]): si no se puede comprobar, no se encarga. ' +
+      'Y **nunca a la brava** — un árbol sucio o con commits sin empujar puede ser el único rastro ' +
+      'de un trabajo ([T-431]): se rehúsa y se dice qué hay; tirarlo lo decide una persona. ' +
+      'GOTCHA que costó el primer intento: la sonda hay que citarla en comillas SIMPLES — con ' +
+      '`JSON.stringify` el shell de fuera expande los `$(…)` antes de tiempo y la sonda acaba ' +
+      'describiendo otro repo. Prueba: `npm run sim:clon-al-dia` (13 casos con repos git reales, ' +
+      'incluido ese citado). Evento `flota_clon_desactualizado` + regla `RULE_FLOTA_CLON`.',
   },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',

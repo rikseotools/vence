@@ -5923,6 +5923,58 @@ export const RULE_FLOTA_AUTENTICACION: AlertRule<{
 };
 
 // ────────────────────────────────────────────────────────────────
+// EL CLON DE UN TRABAJADOR NO SE PUEDE PONER AL DÍA (T-486, 2026-08-05)
+//
+// Hermana de la anterior y con el mismo modo de fallo: un trabajador arrancado, latiendo, verde en
+// el panel… y sin poder recibir trabajo. Allí porque no puede hablar con Claude Code; aquí porque
+// su copia del repo no se puede actualizar.
+//
+// No es «va con una versión vieja». Lo que hace segura a la flota son los guardarraíles, y un clon
+// viejo trae los de SU fecha. Medido el 05/08: `w1` llevaba 30 commits de retraso, así que le
+// faltaban el canario con el que habría comprobado su propio permiso y el comando `revision` que
+// su situación pedía — y se quedó una hora parado preguntando algo que su repo ya sabía responder.
+//
+// Solo vigila lo que NO se arregla solo: `atrasado` es `info` (el supervisor lo actualiza ahí
+// mismo) y no entra aquí. Lo que entra es árbol sucio, commits sin empujar, o no poder mirar.
+export const RULE_FLOTA_CLON: AlertRule<{
+  n: number;
+  trabajadores: string | null;
+  ultimoEstado: string | null;
+  motivo: string | null;
+}> = {
+  name: 'flota_clon_desactualizado',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           STRING_AGG(DISTINCT metadata->>'trabajador', ', ') AS trabajadores,
+           (ARRAY_AGG(metadata->>'estado' ORDER BY created_at DESC))[1] AS "ultimoEstado",
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS motivo
+    FROM observable_events
+    WHERE event_type = 'flota_clon_desactualizado'
+      AND severity = 'error'
+      AND created_at > NOW() - INTERVAL '6 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `⬆️ Flota: a ${r.trabajadores ?? '?'} no se le puede dar trabajo (${r.ultimoEstado})`,
+      body:
+        `El supervisor rehusó mandar encargo porque su clon del repo no se pudo dejar al día.\n\n` +
+        `Motivo: ${r.motivo ?? '(n/a)'}\n` +
+        `Estado: ${r.ultimoEstado}\n` +
+        `Veces en 6 h: ${r.n}\n\n` +
+        `Si es "sucio" o "adelantado", hay trabajo en esa máquina que puede no estar en ningún otro ` +
+        `sitio: míralo antes de tirarlo (tmux attach -t <trabajador>). NO se descarta solo a propósito.\n` +
+        `Estado completo: npm run flota`,
+      metadata: { count: r.n, trabajadores: r.trabajadores, estado: r.ultimoEstado },
+      fingerprint: 'flota_clon_desactualizado',
+    };
+  },
+  cooldownMin: 360,
+};
+
+// ────────────────────────────────────────────────────────────────
 // LEY SIN RESOLVER (T-559, 2026-08-05)
 //
 // `test_questions.law_name` guardaba el literal 'unknown' cuando el cliente no mandaba la
@@ -6065,6 +6117,9 @@ export const ALERT_RULES: AlertRule[] = [
   // Un trabajador de la flota latiendo pero sin poder autenticar (T-486): el latido no puede
   // verlo, porque es node hablando con Postgres y eso funciona igual con la sesión en el login.
   RULE_FLOTA_AUTENTICACION as AlertRule,
+  // Y el otro modo de «arrancado pero sin poder trabajar»: su clon del repo no se pone al día, así
+  // que el supervisor rehúsa darle encargo (T-486).
+  RULE_FLOTA_CLON as AlertRule,
   RULE_SIM_RUTA_ROTA as AlertRule,
   // Y el evento VIEJO de Vence Sim, sin vigilancia desde que existe el harness (T-491): el
   // catch-all tampoco lo cubría, porque exige 150 del mismo tipo en una hora.

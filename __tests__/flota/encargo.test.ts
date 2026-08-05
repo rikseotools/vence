@@ -137,3 +137,27 @@ describe('el encargo dice lo que un trabajador solo no puede deducir', () => {
     expect(ENC.encargo({ trabajador: 'l1', tarea: null })).toMatch(/backlog\.cjs next/)
   })
 })
+
+// ── ¿ESTÁ LIBRE PARA RECIBIRLO? ─────────────────────────────────────────────────────────────
+// «Libre» se decidía solo por el claim, y entre mandar el encargo y que el trabajador reclame
+// pasan minutos. En esa ventana es invisible y se le manda otro: pasó el 05/08 con `w1`, que
+// recibió dos encargos seguidos — el segundo se tecleó dentro del proceso que ya corría y se
+// perdió, desperdiciando la vuelta de reparto de esa tarea.
+describe('a quién se le puede mandar un encargo AHORA', () => {
+  it.each(['bash', 'zsh', '-bash', 'SH', ' fish '])('«%s» = esperando: se le manda', (c) => {
+    expect(ENC.puedeRecibir(c).libre).toBe(true)
+  })
+
+  it.each(['claude', 'node', 'npm', 'vim', 'git'])('«%s» = trabajando: no se le manda', (c) => {
+    const v = ENC.puedeRecibir(c)
+    expect(v.libre).toBe(false)
+    expect(v.motivo).toContain(c)
+  })
+
+  // Fail-closed: no saber qué hace no es lo mismo que saber que está libre.
+  it.each([null, undefined, '', '   '])('sin dato (%s) NO se le manda', (c) => {
+    const v = ENC.puedeRecibir(c as any)
+    expect(v.libre).toBe(false)
+    expect(v.motivo).toMatch(/no se pudo ver/)
+  })
+})

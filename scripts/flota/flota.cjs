@@ -32,6 +32,7 @@ const MAQ = require(path.join(REPO, 'lib', 'flota', 'maquinas.cjs'))
 const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
+const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
 // El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
 const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 
@@ -77,6 +78,117 @@ function sesionViva(trabajador) {
   } catch { return false }
 }
 
+/** Qué está ejecutando el panel de un trabajador. Cadena vacía si no se puede ver (≠ «nada»). */
+function comandoDelPanel(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  const como = m && m.local ? '' : 'sudo -u flota '
+  try {
+    return enMaquina(trabajador,
+      `${como}tmux list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
+  } catch { return '' }
+}
+
+/**
+ * Envuelve un script para que el shell de la máquina lo pase INTACTO a `bash -c`.
+ *
+ * Con comillas dobles (`JSON.stringify`) el shell de fuera expande los `$(…)` ANTES de que el
+ * script llegue a su sitio: la sonda del clon acabó ejecutando `git rev-parse` en el directorio
+ * equivocado y reportando «no hay repo» de una máquina que lo tenía (05/08). En comillas simples
+ * no se expande nada.
+ */
+const citar = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`
+
+/**
+ * Deja el clon del trabajador al día ANTES de darle trabajo. Si no puede, NO se le da. (T-486)
+ *
+ * ── POR QUÉ ES UNA PUERTA Y NO UN AVISO ─────────────────────────────────────────────────────
+ * Un clon viejo no es «una versión anterior»: trae **los guardarraíles de su fecha**, que son lo
+ * único que hace segura a la flota. Medido el 05/08 — `w1` llevaba 30 commits de retraso, así que
+ * no tenía el canario con el que habría comprobado su propio permiso, ni el comando `revision` que
+ * su situación pedía, y se quedó una hora parado preguntando algo que su repo ya sabía responder.
+ *
+ * Falla CERRADO, como manda [T-539] para un autónomo: si no se puede comprobar, no se encarga.
+ * Y nunca a la brava — un clon con cambios sin commitear puede ser el único rastro de un trabajo
+ * ([T-431]): se rehúsa y se dice qué hay, que tirarlo lo decide una persona.
+ */
+function ponerAlDia(trabajador, { emitir = null } = {}) {
+  const como = MAQ.maquinaDe(trabajador)?.local ? '' : 'sudo -u flota '
+  const arbol = MAQ.arbolDe(trabajador)
+  let salida = ''
+  try {
+    salida = enMaquina(trabajador, `${como}bash -lc ${citar(ACTU.SONDA_GIT(arbol))}`)
+  } catch (e) { salida = String((e && e.stdout) || '') }
+  const v = ACTU.evaluarClon(ACTU.leerSonda(salida))
+
+  let commits = null
+  if (v.hayQueActualizar) {
+    try {
+      commits = `ahora en ${enMaquina(trabajador, `${como}bash -lc ${citar(ACTU.ORDEN_ACTUALIZAR(arbol))}`).trim()}`
+    } catch (e) {
+      // Se creía que se podía avanzar y el pull falló: eso ya no es «atrasado», es no saber.
+      const fallo = { estado: 'sin_red', puedeEncargar: false, hayQueActualizar: false,
+        motivo: `el pull falló: ${String((e && e.message) || e).slice(0, 120)}` }
+      if (emitir) emitir(fallo)
+      return { ...fallo, linea: ACTU.diagnostico(trabajador, fallo) }
+    }
+  }
+  if (emitir) emitir(v)
+  return { ...v, linea: ACTU.diagnostico(trabajador, v, { commits }) }
+}
+
+/**
+ * Manda un encargo a un trabajador. **Única puerta**: `encargar` y `repartir` pasan por aquí.
+ *
+ * Estaba escrito dos veces —una por comando— y así es como una de las dos se queda sin el
+ * guardarraíl que se añade a la otra ([T-130]). El paso por el clon al día va DENTRO, no en cada
+ * llamador, por el mismo motivo: un guardarraíl que hay que acordarse de invocar no es un
+ * guardarraíl (§8, «impedir en el punto de escritura»).
+ *
+ * El encargo va a un FICHERO en la máquina y se lanza con `claude -p "$(cat …)"`.
+ *
+ * Por qué no al TUI interactivo: `CLAUDE_CODE_OAUTH_TOKEN` autentica `claude -p` pero el TUI lo
+ * IGNORA y se queda en la pantalla de login (medido el 05/08 con un token válido). Y por qué por
+ * fichero y no como argumento: el encargo es multilínea y acabaría roto por las comillas, además
+ * de quedar visible en `ps` para cualquier usuario de la máquina.
+ *
+ * ── POR QUÉ `bypassPermissions` Y POR QUÉ ES DEFENDIBLE AQUÍ ────────────────────────────────
+ * Un trabajador autónomo no tiene a quién pedirle permiso: con el modo por defecto se queda
+ * preguntando «¿puedo ejecutar claim?» a una terminal que nadie mira, que es como pasó la primera
+ * vez. La contención NO es el diálogo de permisos, son las credenciales: esta máquina tiene el rol
+ * `vence_coordinacion` (4 tablas, ninguna de negocio, ningún DELETE) y el de lectura (sin
+ * identificadores directos, sin escritura), no tiene claves de AWS ni de Stripe, y no puede
+ * desplegar.
+ *
+ * ⚠️ Riesgo residual conocido y NO cerrado: el clon del repo tiene escritura sobre `main`. Mientras
+ * eso siga así, lo que impide un push indebido es el push-guard y el encargo, no el permiso.
+ *
+ * Todo se hace COMO el usuario del trabajador: su tmux, su fichero de encargo, su log. Claude Code
+ * se niega a trabajar sin supervisión con privilegios de root (y hace bien). En el portátil ya
+ * eres tú: ni sudo ni chown.
+ */
+function mandarEncargo(trabajador, texto, { alDia = null } = {}) {
+  // ¿Está libre AHORA? El claim tarda minutos en aparecer desde que se manda el encargo, y en esa
+  // ventana el trabajador es invisible para el reparto. La verdad la tiene su panel.
+  const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
+  if (!ocupacion.libre) return { ok: false, ocupado: true, motivo: ocupacion.motivo }
+
+  const al = alDia || ponerAlDia(trabajador)
+  if (al.linea) console.log(`   ${al.linea}`)
+  if (!al.puedeEncargar) return { ok: false, al }
+
+  const m = MAQ.maquinaDe(trabajador)
+  const env = ficheroEntorno(trabajador)
+  const enc = env.replace(/\.env$/, '.encargo')
+  const como = m.local ? '' : 'sudo -u flota '
+  const dueno = m.local ? '' : `&& chown flota ${enc} `
+  enMaquina(trabajador,
+    `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
+    `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
+    `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
+    { entrada: texto })
+  return { ok: true, al }
+}
+
 /** Dónde vive el fichero de entorno de un trabajador, que en local no está en /etc. */
 function ficheroEntorno(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
@@ -89,6 +201,15 @@ async function main() {
   const u = url()
   if (!u) { console.error('❌ sin DATABASE_URL'); return 1 }
   const sql = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
+
+  // Al bus, para que la serie EXISTA: cada cuánto se queda atrás la flota y cuántas veces no se le
+  // puede dar trabajo. Sin esto, «el clon estaba viejo» solo se sabe cuando alguien lo mira.
+  // Fail-open a propósito (§9): la telemetría no puede impedir gobernar la flota.
+  const emitirClon = (trabajador, v) => sql`
+    INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+    VALUES ('fargate', ${ACTU.severidad(v)}, 'flota_clon_desactualizado', 'flota', ${v.motivo},
+            ${sql.json({ trabajador, maquina: MAQ.maquinaDe(trabajador)?.nombre || null, estado: v.estado })})`
+    .catch(() => {})
 
   try {
     if (cmd === 'estado') {
@@ -234,39 +355,17 @@ async function main() {
         }
       }
 
-      const texto = ENC.encargo({ trabajador: w, tarea })
-      // El encargo va a un FICHERO en la máquina y se lanza con `claude -p "$(cat …)"`.
-      //
-      // Por qué no al TUI interactivo: `CLAUDE_CODE_OAUTH_TOKEN` autentica `claude -p` pero el TUI
-      // lo IGNORA y se queda en la pantalla de login (medido el 05/08 con un token válido). Y por
-      // qué por fichero y no como argumento: el encargo es multilínea y acabaría roto por las
-      // comillas, además de quedar visible en `ps` para cualquier usuario de la máquina.
-      //
-      // ── POR QUÉ `bypassPermissions` Y POR QUÉ ES DEFENDIBLE AQUÍ ────────────────────────
-      // Un trabajador autónomo no tiene a quién pedirle permiso: con el modo por defecto se
-      // queda preguntando «¿puedo ejecutar claim?» a una terminal que nadie mira, que es como
-      // pasó la primera vez. La contención NO es el diálogo de permisos, son las credenciales:
-      // esta máquina tiene el rol `vence_coordinacion` (4 tablas, ninguna de negocio, ningún
-      // DELETE), no tiene claves de AWS ni de Stripe, y no puede desplegar. Es exactamente para
-      // esto para lo que se construyó ese rol.
-      //
-      // ⚠️ Riesgo residual conocido y NO cerrado: el clon del repo tiene escritura sobre `main`.
-      // Mientras eso siga así, lo que impide un push indebido es el push-guard y el encargo, no
-      // el permiso. Cerrarlo por permiso es lo siguiente que hay que hacer.
-      // Todo se hace COMO el usuario del trabajador: su tmux, su fichero de encargo, su log.
-      // Claude Code se niega a trabajar sin supervisión con privilegios de root (y hace bien).
-      const m = MAQ.maquinaDe(w)
-      const env = ficheroEntorno(w)
-      const enc = env.replace(/\.env$/, '.encargo')
-      // En el VPS todo se hace COMO el usuario `flota` (Claude Code se niega a trabajar solo con
-      // privilegios de root). En el portátil ya eres tú: ni sudo ni chown.
-      const como = m.local ? '' : 'sudo -u flota '
-      const dueno = m.local ? '' : `&& chown flota ${enc} `
-      enMaquina(w,
-        `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
-        `${como}tmux send-keys -t ${w} 'set -a; . ${env}; set +a; ` +
-        `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${w}.log' Enter`,
-        { entrada: texto })
+      // ── EL CÓDIGO PRIMERO, LUEGO EL TRABAJO ─────────────────────────────────────────────
+      // Un encargo sobre código viejo es tiempo que luego hay que tirar, y peor: son los
+      // guardarraíles de otra fecha protegiendo a quien nadie mira.
+      const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) } })
+      const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea }), { alDia })
+      if (!r.ok) {
+        console.error(r.ocupado
+          ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
+          : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+        return 1
+      }
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
       console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
       return 0
@@ -314,19 +413,18 @@ async function main() {
         // el claim evita, pero mandarles a los dos a por ella desperdicia una vuelta entera.
         const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)))
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
-        dadas.add(tarea.id)
-        const texto = ENC.encargo({ trabajador: f.trabajador, tarea })
-        const m = MAQ.maquinaDe(f.trabajador)
-        const env = ficheroEntorno(f.trabajador)
-        const enc = env.replace(/\.env$/, '.encargo')
-        const como = m.local ? '' : 'sudo -u flota '
-        const dueno = m.local ? '' : `&& chown flota ${enc} `
         try {
-          enMaquina(f.trabajador,
-            `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
-            `${como}tmux send-keys -t ${f.trabajador} 'set -a; . ${env}; set +a; ` +
-            `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${f.trabajador}.log' Enter`,
-            { entrada: texto })
+          const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
+          const r = mandarEncargo(f.trabajador, ENC.encargo({ trabajador: f.trabajador, tarea }), { alDia })
+          // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
+          // vez de quedarse sin repartir por un problema que no es suyo.
+          // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
+          // vez de quedarse sin repartir por un problema que no es suyo.
+          if (!r.ok) {
+            console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : `no se le encarga (${r.al.estado})`}`)
+            continue
+          }
+          dadas.add(tarea.id)
           console.log(`   ✅ ${f.trabajador.padEnd(4)} → ${tarea.id}  ${String(tarea.title).slice(0, 54)}`)
           n++
         } catch (e) {

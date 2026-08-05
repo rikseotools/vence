@@ -545,6 +545,42 @@ acotados, igual que el VPS.
 > **`trabajadores` en el registro son los AUTÓNOMOS, no todas tus sesiones.** Las que abras tú a
 > mano siguen siendo tuyas, salen como personas en el parte y nadie les manda encargos.
 
+#### Antes de cada encargo: el clon al día, y el trabajador libre
+
+Dos comprobaciones que van **dentro** de la puerta de envío (`mandarEncargo`), no en cada comando,
+porque un guardarraíl que hay que acordarse de invocar no es un guardarraíl (§8). `encargar` y
+`repartir` pasan las dos por ahí — estaban escritas por duplicado, que es como una se queda sin lo
+que se añade a la otra.
+
+**1. El clon, al día — y si no se puede, no se le da trabajo** (`lib/flota/actualizacion.cjs`).
+
+Un clon viejo no es «una versión anterior»: trae **los guardarraíles de su fecha**, que son lo único
+que hace segura a la flota. Medido el 05/08: `w1` llevaba **30 commits de retraso**, congelado en el
+commit con el que se aprovisionó la máquina. Le faltaban el canario con el que habría comprobado su
+propio permiso de lectura en diez segundos, y el comando `revision` —la quinta espera— que era
+exactamente la salida que su situación pedía. Se quedó **una hora parado preguntando algo que su
+propio repo ya sabía responder**.
+
+Falla **cerrado** (§ del rol trabajador): si no se puede comprobar, no se encarga. Y **nunca a la
+brava** — ni `reset --hard` ni `clean`: un árbol sucio o con commits sin empujar puede ser el único
+rastro de un trabajo (la lección de los worktrees huérfanos). Se rehúsa, se dice qué hay, y tirarlo
+lo decide una persona. El `pull` es `--ff-only`, que es la diferencia entre actualizar y poder
+perder algo.
+
+> **GOTCHA que costó el primer intento:** la sonda hay que citarla en **comillas simples**. Con
+> `JSON.stringify` (dobles) el shell de la máquina expande los `$(…)` **antes** de que el script
+> llegue a su sitio, así que `git rev-parse` corre en otro directorio y la sonda informa de «no hay
+> clon» sobre una máquina perfectamente sana. Lo fija `npm run sim:clon-al-dia`, que monta repos git
+> reales y comprueba los dos citados.
+
+**2. ¿Está libre AHORA?** «Libre» se decidía solo por el claim, y **entre mandar el encargo y que el
+trabajador reclame la tarea pasan minutos**: en esa ventana es invisible para el reparto y se le
+manda otro. Pasó el 05/08 con `w1`, que recibió dos encargos seguidos — el segundo se tecleó dentro
+del proceso que ya estaba corriendo y se perdió, desperdiciando la vuelta de reparto de esa tarea.
+La verdad la tiene su panel de tmux (`pane_current_command`): un shell = esperando, cualquier otra
+cosa = trabajando, y **sin dato no se manda**. Es el mismo principio que `sesionViva`: se observa,
+no se declara, y sin estado nuevo que mantener.
+
 **Tres gotchas que costaron una vuelta cada uno:**
 
 - **Los nombres van en minúscula.** El árbol se llama como el trabajador y `crear-worktree.sh`
