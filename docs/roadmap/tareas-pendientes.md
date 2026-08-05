@@ -842,6 +842,62 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-579] 🟡 [ABIERTO 05/08] Flota no puede leer `user_profiles` (nombre real) para NINGUNA impugnación — bloqueo DELIBERADO, distinto de T-573/T-574
+
+**Encontrada resolviendo mi encargo de flota (l6, 05/08): "analiza UNA impugnación y deja borrador".**
+Con la disputa `4683e35b` (art. 68 TREBEP) sí pude leer `question_disputes`/`questions`/`articles`/`laws`
+(vía `DATABASE_URL`=`vence_coordinacion` para la cola, y `VENCE_LECTOR_URL`=`vence_lector` para el
+contenido) y completar el análisis legal entero contra el BOE. Pero `revisar-impugnacion.cjs` muere con
+`42501 permission denied for table user_profiles` en las dos credenciales, y esa tabla es la que da el
+`full_name`/`plan_type` del usuario que exige el manual (§11: "SIEMPRE obtener el nombre real del
+usuario antes de redactar") y el check de recompensa (§0, "1€ automático si premium").
+
+**NO es el mismo bug que [T-573]/[T-574].** Aquellas hablan de ~70 tablas que quedaron bloqueadas
+*por accidente* (RLS activo + 0 policies, sin estar en la lista de REVOKE de la migración —
+`test_questions`, `oep_detection_signals`, etc.). `user_profiles` es justo lo contrario: está
+**deliberadamente** en la lista de `REVOKE` de `20260805_rol_lector_flota.sql` ("correo, nombre o
+teléfono de una persona") y `vence_coordinacion` (`20260804_rol_coordinacion_flota.sql`) **nunca tuvo
+grant sobre ella a propósito** — el comentario de esa migración dice explícitamente que evitar abrir
+`user_profiles` a la flota era EL MOTIVO de crear el rol restringido. Arreglar T-573/T-574 (añadir
+policies a las ~70 tablas fuera del REVOKE) **no va a tocar esto**: `user_profiles` seguiría bloqueada,
+porque su bloqueo es intencional, no un descuido.
+
+**Verificado, no supuesto:**
+```sql
+SELECT c.relname, c.relrowsecurity, (SELECT count(*) FROM pg_policy p WHERE p.polrelid=c.oid) n
+FROM pg_class c WHERE c.relname='user_profiles';
+-- user_profiles | relrowsecurity=true | n_policies=0
+```
+Y en `20260805_rol_lector_flota.sql` línea ~51: `REVOKE SELECT ON public.user_profiles, ...` con el
+comentario "correo, nombre o teléfono de una persona". En `20260804_rol_coordinacion_flota.sql` línea 8:
+"esa credencial abre `user_profiles`... N trabajadores = N copias de un secreto de negocio" — la razón
+explícita de NO dárselo.
+
+**Impacto: 100% de las impugnaciones que trabaje la flota, siempre, no solo esta.** El manual exige el
+nombre real antes de redactar cualquier mensaje; sin `user_profiles` ningún trabajador puede cumplirlo.
+Con el encargo actual de flota ("analiza una impugnación y deja el borrador") esto no es un caso límite,
+es el 100% de los casos.
+
+**Lo que SÍ pude hacer con esta impugnación (no bloqueado):** el análisis legal completo contra el BOE,
+el borrador de la respuesta (con saludo genérico "Hola," en vez del nombre — mismo patrón que el manual
+ya usa para nombres claramente ficticios) y el veredicto de sistemicidad. Solo falta que quien apruebe
+el borrador añada el nombre real antes de mandarlo (ya lo va a leer entero de todas formas, por la
+regla de "nada sale sin que Manuel lo apruebe").
+
+**Decisión que le toca a Manuel, no a una sesión (cambio de superficie de seguridad en prod):**
+- (A) Crear una vista/columna restringida (`id, full_name, plan_type`, sin email/teléfono/pago) con
+  policy `USING (true)` SOLO para esa vista, no para `user_profiles` entera — desbloquea el saludo y el
+  check de recompensa sin exponer el resto de datos personales de la tabla.
+- (B) Dejar el bloqueo tal cual y que el saludo genérico + nombre añadido por el revisor humano sea el
+  flujo normal para la flota (ya funciona hoy, es lo que hice en `4683e35b`) — no requiere tocar RLS.
+- (C) Alguna otra combinación (p. ej. dar el nombre pero no el plan_type, calculando la recompensa aparte).
+
+**No lo he tocado**: nada de RLS ni policies nuevas — es exactamente el tipo de cambio de seguridad en
+prod que el encargo de flota prohíbe rodear o decidir por mi cuenta.
+
+**Esfuerzo: rato** (la decisión es rápida; si se elige (A), la migración es mecánica y calcada al
+patrón ya usado en T-573/T-574).
+
 ### [T-573] 🔴 [ABIERTO 05/08] `vence_lector`: RLS sin policy bloquea en silencio ~70 tablas (incl. `question_disputes`) pese al GRANT
 
 **Encontrada resolviendo mi encargo de flota (l6, 05/08): "analiza UNA impugnación" — con `VENCE_LECTOR_URL`,
