@@ -25,6 +25,27 @@ describe('db/schema.ts declara las columnas que sostienen algo', () => {
     }
   })
 
+  test('backlog_tasks: la QUINTA espera y el escalón de archivado', () => {
+    // Mismo fallo que arriba, repetido (05/08): estas 11 columnas vivían en RDS y no en
+    // este fichero. Las dos familias sostienen el final del ciclo de una tarea, que es
+    // justo donde se pierde el trabajo:
+    //   · review_* — «hecho, esperando que lo mires» (T-539). Sin ellas, una entrega no
+    //     se distingue de una tarea abandonada y nadie la revisa.
+    //   · archived_* / requiere_archivo — el escalón DESPUÉS de `done` (T-392): `done`
+    //     dice que el deploy incluye el commit; `archived_at` dice que alguien MIRÓ
+    //     producción. Confundirlos es cerrar sin verificar, que es el fallo que originó
+    //     esa ficha.
+    //   · effort / worked_seconds — lo declarado contra lo medido (T-414). Un campo que
+    //     nadie puede desmentir se rellena a ojo.
+    for (const col of [
+      'reviewNote', 'reviewRequestedAt', 'reviewRequestedBy',
+      'archivedAt', 'archiveEvidence', 'archivedBy', 'requiereArchivo',
+      'effort', 'firstClaimedAt', 'lastClaimedBy', 'workedSeconds',
+    ]) {
+      expect(backlogTasks).toHaveProperty(col)
+    }
+  })
+
   test('user_profiles: la traza de un premium concedido a mano', () => {
     // Un premium sin cobro es una DECISIÓN, y una decisión sobre dinero tiene que poder
     // auditarse: quién lo dio, cuándo y por qué. Un booleano suelto no vale.
