@@ -11,7 +11,7 @@
 // dedicado (Redis/in-memory). Estas funciones son uncached y deterministas.
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import {
   articles,
@@ -21,6 +21,7 @@ import {
 } from '../db/schema';
 import {
   applyArticleSectionFilter,
+  buildOfficialExamFilter,
   getTopicScopeMappings,
   getValidExamPositions,
 } from './test-config.helpers';
@@ -631,6 +632,17 @@ export class TestConfigService {
                 (${questions.globalDifficultyCategory} IS NULL AND ${questions.difficulty} = ${difficultyMode}))`,
           );
         }
+
+        // [T-507 / T-566] Los dos filtros que el serve aplica SIEMPRE y que esta
+        // estimación no aplicaba, así que prometía preguntas que el test no da:
+        //   · oficiales de OTRA oposición (buildOfficialExamFilter, caso Laura)
+        //   · supuestos prácticos (sin su contexto narrativo no se sirven en tests)
+        // Van al final para cubrir también la rama focusEssentialArticles, que
+        // reconstruye `conditions` desde cero. Ya vive en el frontend
+        // (`lib/api/test-config/queries.ts`) desde T-507; nunca llegó a este
+        // gemelo, que es el que producción ejecuta (`test-config` → backend).
+        conditions.push(isNull(questions.examCaseId));
+        conditions.push(buildOfficialExamFilter(positionType));
 
         const countResult = await this.db
           .select({ count: sql<number>`count(*)` })

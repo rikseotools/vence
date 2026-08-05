@@ -10,14 +10,19 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#
+# [T-566] `npm run db:check` como statement suelto se ejecuta bajo `sh -e` (husky
+# invoca los hooks así, ver .husky/_/h): CUALQUIER fallo —drift real o un simple
+# "permission denied" de un rol restringido (trabajador de la flota, solo 4 tablas
+# de coordinación)— abortaba el script AQUÍ MISMO, antes de imprimir el aviso de
+# abajo y sin llegar a NINGUNO de los pasos siguientes del hook. El comentario
+# "solo warning, no bloquea" llevaba tiempo siendo falso. `if ! cmd; then` es la
+# forma exenta de `-e` (POSIX): así SÍ se ejecuta el cuerpo y sigue el hook.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
-
-  if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+  if ! npm run db:check; then
     echo ""
-    echo "⚠️  Schema desincronizado. Ver errores arriba."
+    echo "⚠️  Schema desincronizado (o sin permisos para comprobarlo). Ver errores arriba."
     echo "   Para sincronizar: npm run db:pull"
     echo ""
     # Solo warning, no bloquea el commit
@@ -58,19 +63,32 @@ echo ""
 #     descripcion_corta stale/desalineada). El self-test es puro (sin BD, rápido);
 #     el audit contra BD solo si DATABASE_URL está disponible. BLOQUEA en 🔴.
 echo "🔎 Verificando drift de display del temario (audit:display-drift)..."
-npm run audit:display-drift -- --selftest
-if [ $? -ne 0 ]; then
+# [T-566] `cmd; if [ $? -ne 0 ]` es un statement SUELTO bajo `sh -e` (husky invoca
+# los hooks así, .husky/_/h): su fallo abortaba el script aquí, en silencio, antes
+# de imprimir el mensaje de abajo. `if ! cmd; then` está EXENTO de `-e` (POSIX).
+if ! npm run audit:display-drift -- --selftest; then
   echo "❌ audit:display-drift: el self-test del detector falló (lógica rota). Commit cancelado."
   exit 1
 fi
 if [ -n "$DATABASE_URL" ]; then
-  npm run audit:display-drift
-  if [ $? -ne 0 ]; then
+  DISPLAY_DRIFT_EXIT_CODE=0
+  npm run audit:display-drift || DISPLAY_DRIFT_EXIT_CODE=$?
+  if [ $DISPLAY_DRIFT_EXIT_CODE -eq 1 ]; then
+    # Exit 1 = drift REAL encontrado (redCount > 0). Esto sí bloquea.
     echo ""
     echo "❌ Drift título ↔ descripcion_corta/epigrafe en el temario (ver 🔴 arriba)."
     echo "   Al modificar un tema, actualiza los 4 campos: title + epigrafe + description + descripcion_corta."
     echo "   Detalle: docs/maintenance/verificar-epigrafe-topic-scope.md"
     exit 1
+  elif [ $DISPLAY_DRIFT_EXIT_CODE -ne 0 ]; then
+    # Exit 2 (o cualquier otro) = NO se pudo comprobar (sin permiso sobre `topics`,
+    # DATABASE_URL de un rol restringido tipo trabajador de la flota, BD caída…).
+    # Ausencia de evidencia no es evidencia de ausencia — mismo criterio que db:check
+    # arriba: avisa y NO bloquea. Bloquear aquí impedía commitear a CUALQUIER sesión
+    # sin acceso de negocio completo (T-576 es la misma clase de fallo en test:unit).
+    echo ""
+    echo "⚠️  audit:display-drift no pudo comprobar contra la BD (exit $DISPLAY_DRIFT_EXIT_CODE) — sin bloquear."
+    echo "   Si tu DATABASE_URL es de un rol restringido (coordinación), es esperado: no tiene grants sobre \`topics\`."
   fi
 else
   echo "⏭️  Saltando audit:display-drift contra BD (DATABASE_URL no configurada)"

@@ -98,6 +98,9 @@ export const questions = pgTable('questions', {
   examPosition: text('exam_position'),
   difficulty: text('difficulty'),
   globalDifficultyCategory: text('global_difficulty_category'),
+  // [T-566] excluye supuestos prácticos del contador — sin su contexto
+  // narrativo el serve no los sirve (mismo filtro que el frontend).
+  examCaseId: uuid('exam_case_id'),
 });
 
 /** Tabla `articles` — artículos de leyes, JOIN target desde questions. */

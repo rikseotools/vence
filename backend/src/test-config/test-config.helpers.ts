@@ -4,13 +4,14 @@
 //     getTopicScopeMappings)
 //   - frontend lib/config/exam-positions.ts (EXAM_POSITION_MAP,
 //     getValidExamPositions)
+//   - frontend lib/api/oposicion-scope/queries.ts (buildOfficialExamFilter)
 //
 // No tienen estado ni dependencias de NestJS — son funciones puras o queries
 // que reciben el cliente `db` como parámetro.
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, or, type SQL } from 'drizzle-orm';
 import type { DrizzleDB } from '../db/database.module';
-import { laws, topicScope, topics } from '../db/schema';
+import { laws, questions, topicScope, topics } from '../db/schema';
 import type { SectionFilter } from './test-config.types';
 
 // ============================================
@@ -208,6 +209,30 @@ export function getValidExamPositions(positionType: string): string[] {
   if (!positionType) return [];
   const normalized = positionType.toLowerCase().replace(/-/g, '_');
   return EXAM_POSITION_MAP[normalized] || [];
+}
+
+/**
+ * Gemelo de `buildOfficialExamFilter` (frontend `lib/api/oposicion-scope/queries.ts`).
+ * El serve (`getFilteredQuestions`) lo aplica SIEMPRE: una pregunta oficial solo se
+ * sirve si su `exam_position` es de ESTA oposición (anti-contaminación cruzada sobre
+ * leyes compartidas — caso Laura). [T-507] llevó este filtro a `estimateAvailableQuestions`
+ * del FRONTEND; nunca llegó a este gemelo, que es el que producción ejecuta de verdad
+ * (`test-config` está enrutado al backend, `lib/api/backend-router.ts`) — mismo patrón
+ * de fallo que [T-551]. Sin oposiciones válidas (no registrada en EXAM_POSITION_MAP) no
+ * se cuenta NINGUNA oficial, en vez de omitir el filtro y contar las de otras oposiciones.
+ */
+export function buildOfficialExamFilter(positionType: string): SQL {
+  const validPositions = getValidExamPositions(positionType);
+  if (validPositions.length === 0) {
+    return eq(questions.isOfficialExam, false);
+  }
+  return or(
+    eq(questions.isOfficialExam, false),
+    and(
+      eq(questions.isOfficialExam, true),
+      inArray(questions.examPosition, validPositions),
+    ),
+  )!;
 }
 
 // ============================================
