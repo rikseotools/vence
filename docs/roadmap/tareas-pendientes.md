@@ -842,6 +842,48 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-591] 🟡 [ABIERTO 05/08] Vales de otra marca: la tarjeta decía «Amazon.es» y enlazaba a Amazon fuera cual fuera la marca
+
+**Qué pasaba.** `VoucherCard.tsx` tenía la marca escrita a mano en el JSX (`{v.amount} € · Amazon.es`)
+y el enlace `amazon.es/gc/redeem` clavado. Correcto mientras TODOS los vales fueron de Amazon.es. Al
+comprar los tres primeros de **Nike España** (retirada del propietario, 50+20+20 = 90 €, invoice
+`74cc3d9b…`), esos vales se servían con **la marca de otra tienda y un enlace donde su código no
+funciona**: la tarjeta mentía en las dos cosas que necesita quien va a canjear.
+
+**Qué se ha hecho.**
+- Núcleo puro `lib/referrals/voucherView.ts`: la marca se **deriva** del vale (`_product` del
+  `giftcard_ref`, con `reward_payouts.method` de respaldo para las filas antiguas). Registro
+  `POR_CLAVE` con Amazon.es y Nike España.
+- **Una marca desconocida NO hereda el enlace de Amazon**: se queda sin destino y lo dice. Un enlace
+  equivocado es peor que ninguno — manda a un sitio donde el código falla y parece un vale roto.
+- El mismo módulo hace de mapeo ÚNICO para los dos endpoints (`/api/referrals/vouchers` y
+  `/api/admin/embajadores/[userId]/panel`), que **duplicaban el `parse`** — justo la divergencia que
+  motivó el guardarraíl `voucherCard` en su día.
+- Nike no tiene página de canje (se aplica al pagar con número + PIN), así que su enlace va a las
+  instrucciones oficiales + consulta de saldo. **Verificados con navegador real: Nike responde 403 a
+  fetch/WebFetch** (WAF).
+
+**Capas.** `__tests__/referrals/voucherBrand.test.ts` (10) · guardarraíl `voucherCard.guardrail`
+ampliado (la marca no puede volver al JSX) · `npm run sim:vale-marca` sobre los vales REALES de RDS.
+Medido: 16 vales, 3 Nike bien etiquetados, 0 sin destino.
+
+**Gotcha para la próxima marca.** Las denominaciones son POR MARCA: Nike España no vende 90 € (solo
+10/20/50/100/150…), de ahí los tres vales. Manual actualizado: `embajadores-recompensas.md` §3.ter.bis.
+
+**Falta:** desplegar y mirarlo en `/recompensas` con los ojos (la simulación cubre el dato, no el render).
+
+### [T-574] 🔴 [ABIERTO 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
+
+- **Medido en producción (05/08), no en la ficha:** 85 tablas de `public` tienen `relrowsecurity=true` y CERO filas en `pg_policies` (bajó de las 87 originales; no se investigó cuáles se cerraron entre medias, probablemente trabajo en curso de [T-573]). La inmensa mayoría son operativas o con PII (`user_profiles`, `fraud_confirmations`, `payment_settlements`, `email_logs`…) y **bloquearlas es el comportamiento correcto** — RLS deniega por defecto sin política. El problema real son las pocas que el trabajo de la flota SÍ necesita y están bloqueadas igual: confirmadas `test_questions` y `tests` (0 filas siempre, aunque la tabla tenga datos).
+- **El canario daba falso verde de verdad, y se ha reproducido el mecanismo:** `scripts/canary-rol-lector.cjs` comprobaba `test_questions` con `SELECT 1 FROM … LIMIT 1` y solo miraba «¿lanzó error?». Con RLS activo y sin política, ese SELECT **no lanza** — el motor filtra en silencio y devuelve 0 filas siempre, sea cual sea el contenido real de la tabla. El canario decía `✅ lee test_questions` y `19/19 comprobaciones` mientras la tabla era ilegible de verdad. Coincide con la nota ya dejada en [T-472]/[T-573] sobre `scripts/sim/sim-repaso-ajeno.ts`: "0 filas, sin error".
+- **Arreglado — SOLO el detector, sin tocar políticas (para no pisar [T-573], que va por la BD):**
+  - Núcleo puro `lib/db/rlsSelectBlocked.cjs` (`seleccionBloqueadaPorRls`, 9 tests en `__tests__/db/rlsSelectBlocked.test.js`): cruza `pg_class.relrowsecurity` + `pg_policies` (legibles por cualquier rol sin GRANT explícito, comprobado contra prod) para decidir si el SELECT quedaría filtrado, en vez de fiarse de "¿lanzó?".
+  - `canary-rol-lector.cjs` usa ese núcleo en cada tabla de `DEBE_LEER`: ahora sale **18/19** contra el rol vivo (antes 19/19), con `test_questions` correctamente en rojo y el motivo explicado. **El rojo es el arreglo, no una regresión** — pasará a verde solo cuando exista la política (trabajo de T-573).
+  - Añadida una sección informativa (no cuenta para el veredicto) que imprime el recuento TOTAL de tablas RLS-sin-política, para que la cifra deje de vivir solo en una ficha y alguien la vea cada vez que se corre el canario.
+  - `lib/admin/toolRegistry.ts` actualizado (la nota decía "19/19", que ya no es verdad).
+- **Deliberadamente NO tocado:** no se ha escrito ninguna política RLS ni migración — eso es exactamente [T-573] (`vence_lector`: RLS sin policy bloquea ~70 tablas pese al GRANT), reclamada en paralelo por otra sesión (`l1-fedora-1a16fb`) mientras se trabajaba esta. Añadir políticas aquí habría arriesgado un choque de migraciones sobre el mismo recurso. Cuando [T-573] añada la política de `test_questions` (y `tests`, si se decide que hace falta), el canario pasará a verde solo — es la prueba de que el arreglo del detector es real y no cosmético.
+- **Verificado:** `npm run canary:rol-lector` corrido contra RDS de producción con `VENCE_LECTOR_URL` — confirma el 18/19 y el mensaje de diagnóstico. `npx jest __tests__/db/rlsSelectBlocked.test.js` en verde (9/9).
+- **Relacionadas:** [T-573] (el arreglo de fondo: añadir las políticas que faltan), [T-472] (donde se vio el síntoma por primera vez, con el rodeo documentado).
 ### [T-582] 🟢 [REVISADA 05/08 — NO se aplica: la premisa era falsa] Ley 13/2007 Andalucía: el Art. 0 estructural NO hay que añadirlo a esas 4 oposiciones
 
 > **⚠️ EL `UPDATE` QUE PROPONÍA LA VERSIÓN ANTERIOR DE ESTA FICHA NO SE DEBE EJECUTAR.** Se revisó antes de

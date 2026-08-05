@@ -17,6 +17,7 @@ import {
   getReferralCode, getReferralStats, getReferralDetails, getReferralFunnelCounts,
   getEmbajadorEarnings, getUnseenEarningsCount, getRecentEarnings, getEmbajadorBreakdown,
 } from '@/lib/referrals/queries'
+import { toVoucherDTO } from '@/lib/referrals/voucherView'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -66,28 +67,15 @@ async function _GET(
 
   // Vales (gift cards) emitidos al usuario — mismo criterio que /api/referrals/vouchers (excluye dry-run).
   const vRes = await db.execute(sql`
-    SELECT amount, giftcard_ref, purchased_via, paid_at FROM reward_payouts
+    SELECT amount, giftcard_ref, purchased_via, method, paid_at FROM reward_payouts
     WHERE beneficiary_user_id = ${userId} AND status = 'paid' AND giftcard_ref IS NOT NULL
       AND coalesce(purchased_via, '') <> 'bitrefill_dryrun'
     ORDER BY paid_at DESC`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const vRows: any[] = Array.isArray(vRes) ? vRes : ((vRes as any)?.rows ?? [])
-  // El giftcard_ref puede ser JSON {code,pin,serial,_fallback_link} (compras nuevas) o texto plano
-  // (código, legacy). Algunas tarjetas Amazon vienen SOLO con código (pin/serial vacíos) + un enlace
-  // de "revelar" del proveedor → lo exponemos para que la tarjeta code-only quede completa.
-  const parse = (raw: string): { code: string; pin: string | null; serial: string | null; fallbackLink: string | null } => {
-    try {
-      const j = JSON.parse(raw)
-      if (j && typeof j === 'object' && j.code) return {
-        code: String(j.code), pin: j.pin || null, serial: j.serial || null, fallbackLink: j._fallback_link || null,
-      }
-    } catch { /* plano */ }
-    return { code: raw, pin: null, serial: null, fallbackLink: null }
-  }
-  const vouchers = vRows.map((r) => {
-    const p = parse(String(r.giftcard_ref))
-    return { amount: Number(r.amount), code: p.code, pin: p.pin, serial: p.serial, fallbackLink: p.fallbackLink, via: r.purchased_via || null, date: r.paid_at ? new Date(r.paid_at).toISOString() : null }
-  })
+  // MISMO mapeo que el endpoint del usuario, no una copia: esta vista promete enseñar el panel
+  // «tal cual lo ve él», y aquí ya había un `parse` duplicado que servía la misma fila distinta.
+  const vouchers = vRows.map(toVoucherDTO)
 
   return NextResponse.json({
     isAmbassador: true,

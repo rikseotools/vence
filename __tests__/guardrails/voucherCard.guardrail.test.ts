@@ -37,14 +37,27 @@ describe('VoucherCard — una sola implementación de la tarjeta del vale', () =
 
   it('la tarjeta ofrece SIEMPRE dónde canjear, no solo cuando el vale trae extras', () => {
     const card = src('components/embajadores/VoucherCard.tsx')
-    expect(card).toContain('https://www.amazon.es/gc/redeem')
-    expect(card).toMatch(/Canjear en Amazon/)
-    // El enlace vive FUERA del condicional de pin/serial/fallbackLink: si alguien lo mete dentro,
-    // los vales que solo traen código (3 de los 5 primeros) se quedan otra vez sin destino.
-    // Se compara el USO en el JSX (href=...), no la declaración de la constante, que va arriba.
+    // El bloque de canje vive FUERA del condicional de pin/serial/fallbackLink: si alguien lo mete
+    // dentro, los vales que solo traen código (3 de los 5 primeros) se quedan otra vez sin destino.
     const iCondFin = card.indexOf('solo con el código')
-    const iLinkUso = card.indexOf('href={AMAZON_REDEEM_URL}')
-    expect(iLinkUso).toBeGreaterThan(iCondFin)
+    const iDestino = card.indexOf('brand.redeemHint')
+    expect(iDestino).toBeGreaterThan(iCondFin)
+    // La pista del proveedor se pinta SIEMPRE (no cuelga de que haya enlace).
+    expect(card).toMatch(/\{brand\.redeemHint\}/)
+  })
+
+  it('la MARCA no está escrita a mano en la tarjeta (T-591)', () => {
+    const card = src('components/embajadores/VoucherCard.tsx')
+    // Hasta el 05/08/2026 el JSX ponía «{v.amount} € · Amazon.es» y el enlace de Amazon a pelo, así
+    // que un vale de Nike se servía con la marca y el destino de otra tienda. La marca y el enlace
+    // salen ahora del vale; si alguien vuelve a clavarlos aquí, esto se pone rojo.
+    expect(card).toMatch(/\{brand\.label\}/)
+    expect(card).toMatch(/href=\{brand\.redeemUrl\}/)
+    // Ni el título ni el enlace del JSX pueden nombrar una tienda concreta.
+    const jsx = card.slice(card.indexOf('export default function'))
+    expect(jsx).not.toMatch(/·\s*Amazon\.es/)
+    expect(jsx).not.toContain('amazon.es/gc/redeem')
+    expect(jsx).not.toMatch(/Canjear en Amazon/)
   })
 
   it('los tres formatos de Bitrefill están contemplados en la tarjeta', () => {
