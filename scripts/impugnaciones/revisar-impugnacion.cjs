@@ -132,7 +132,18 @@ if (require.main !== module) {
       }
     }
 
-    const [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    // `user_profiles` tiene PII y algunas credenciales de lectura (p.ej. `vence_lector`, o el rol
+    // `vence_coordinacion` de los trabajadores de la flota, T-539) NO la tienen concedida a
+    // propósito. Sin esto el dossier moría entero por un dato que no es imprescindible para
+    // diagnosticar la pregunta — solo para el saludo del borrador y el check de recompensa.
+    let p = null, profileWarn = '';
+    try {
+      [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    } catch (e) {
+      profileWarn = `⚠️ user_profiles no accesible con esta credencial (${e.message.slice(0, 80)}). `
+        + `Nombre/email/oposición/plan desconocidos — el borrador no podrá personalizarse por nombre, `
+        + `y el check de recompensa/scope se calcula sin esos datos.`;
+    }
 
     // --- CONSECUENCIA ECONÓMICA de aceptar, calculada ANTES de decidir ---
     // Aceptar una impugnación mueve dinero real. Que eso se vea en el momento de decidir —y no se
@@ -198,6 +209,7 @@ if (require.main !== module) {
       if (lineas.length) console.log('\n' + lineas.join('\n'));
     } catch { /* el backlog no es imprescindible para el dossier: nunca lo tumba */ }
     if (alreadyWarn) console.log(alreadyWarn);
+    if (profileWarn) console.log(profileWarn);
     console.log(`Usuario: ${p?.full_name || '?'} (${p?.email || '?'})`);
     console.log(`Tipo: ${d.dispute_type} | estado: ${d.status}`);
     console.log(`Descripción: ${d.description}`);

@@ -1600,10 +1600,11 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       let reservado = null;
       for (let intento = 0; intento < 10 && !reservado; intento++) {
         const filas = await s`SELECT id FROM public.backlog_tasks`;
-        const nums = filas
-          .map((r) => parseInt(String(r.id).replace(/\D/g, ''), 10))
-          .filter((n) => Number.isFinite(n));
-        const siguiente = `T-${String(Math.max(0, ...nums) + 1).padStart(3, '0')}`;
+        // La numeración vive en `lib/backlog/siguienteId.cjs` (núcleo puro con tests): SOLO votan
+        // los ids con forma `T-NNN`. Antes se le quitaban los no-dígitos a CUALQUIER id y un
+        // canario llamado `CANARY-coord-20450` hizo nacer la ficha siguiente como T-20451.
+        const { siguienteId } = require(require('path').join(__dirname, '..', 'lib', 'backlog', 'siguienteId.cjs'));
+        const siguiente = siguienteId(filas).siguiente;
         const [r] = await s`
           INSERT INTO public.backlog_tasks (id, title, priority, status, effort)
           VALUES (${siguiente}, ${titulo}, 'media', 'open', ${esfuerzo})
@@ -1718,6 +1719,60 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(bloquea
         ? '   Si no puedes avanzar en NADA, suelta la tarea:  backlog.cjs pause <id> --hasta … --hecho "…" --falta "…"'
         : '   Sigue con otra cosa: la respuesta te la enseña cualquier comando del backlog.');
+    }
+
+    // ── BORRADORES: lo que se le enviaría a una persona, esperando el OK de Manuel (T-486) ───
+    // «Siempre tengo que aprobar lo que se envía, porque ahí se detectan fallos y los usuarios
+    // necesitan que haya personas detrás, no la IA.» Los tres scripts que envían ya se niegan si
+    // el rol no es `persona`; esto es lo OTRO que hacía falta: dónde va lo redactado. Sin un
+    // sitio, el borrador muere en el log de una terminal que nadie mira — el mismo fallo que el
+    // embudo cerró para las preguntas, por eso va por el MISMO canal y no por una cola nueva.
+    else if (cmd === 'borrador') {
+      const para = arg('--para');
+      const fichero = arg('--texto');
+      const tarea = arg('--tarea');
+      const resumen = arg('--resumen');
+      if (!para || !fichero) {
+        console.error('uso: node scripts/backlog.cjs borrador --para "<a quién>" --texto <fichero.md> [--tarea T-nnn] [--resumen "…"]');
+        console.error('   El fichero lleva el mensaje ÍNTEGRO tal y como se enviaría. Manuel lo lee y decide.');
+        process.exit(1);
+      }
+      let cuerpo = '';
+      try { cuerpo = fs.readFileSync(fichero, 'utf8'); }
+      catch (e) { console.error(`❌ no se pudo leer ${fichero}: ${e.message}`); process.exit(1); }
+      if (cuerpo.trim().length < 40) {
+        console.error('❌ eso no es un mensaje (menos de 40 caracteres). Un borrador se aprueba leyéndolo entero.');
+        process.exit(2);
+      }
+      if (tarea) {
+        const [t] = await s`SELECT id FROM public.backlog_tasks WHERE id = ${tarea}`;
+        if (!t) { console.error(`❌ la tarea ${tarea} no existe`); process.exit(2); }
+      }
+      // ── UN BORRADOR POR DESTINATARIO ───────────────────────────────────────────────────
+      // El claim de la cola protege el trabajo SIMULTÁNEO; nada protegía el YA HECHO. Al terminar,
+      // el trabajador suelta la fila (hace bien: no puede cerrarla) y vuelve al pool, así que el
+      // siguiente la re-analiza desde cero. Medido al estrenarlo: de los diez primeros borradores,
+      // TRES pares duplicados. El coste no es la cuota — es que Manuel tenga que decidir cuál de
+      // los dos mandar, que es justo el trabajo que la flota venía a ahorrarle.
+      const BORR = require('../lib/backlog/borradores.cjs');
+      if (!process.argv.includes('--igualmente')) {
+        const abiertos = await s`
+          SELECT id, draft_target, sid FROM public.session_questions
+           WHERE kind = 'borrador' AND status = 'open'`;
+        const dup = BORR.yaHayUno(para, abiertos);
+        if (dup.duplicado) { console.error(BORR.mensajeDuplicado(dup)); process.exit(3); }
+      }
+
+      // El «question» es lo que Manuel ve en una línea; el cuerpo íntegro va en `context`.
+      const titular = (resumen || `Borrador para ${para}: ¿lo apruebo tal cual?`).trim();
+      const [r] = await s`
+        INSERT INTO public.session_questions (sid, task_id, kind, draft_target, question, context, blocking)
+        VALUES (${sid}, ${tarea || null}, 'borrador', ${para}, ${titular}, ${cuerpo}, false)
+        RETURNING id`;
+      console.log(`📝 borrador #${r.id} en el embudo, esperando el OK de Manuel.`);
+      console.log(`   Para: ${para}`);
+      console.log('   NO lo envíes tú: lo que sale hacia una persona lo aprueba y lo manda una persona.');
+      console.log('   Lo verá en «npm run flota» y en «backlog.cjs preguntas».');
     }
 
     else if (cmd === 'preguntas') {

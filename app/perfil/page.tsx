@@ -1929,10 +1929,14 @@ function PerfilPageContent() {
       return
     }
 
-    // Verificar si hay cambios REALES
+    // Verificar si hay cambios REALES. target_oposicion queda FUERA a propósito (T-397): se
+    // guarda por su propio endpoint dedicado en cuanto el usuario lo cambia (no espera a
+    // "Guardar"), y compararlo aquí contra `formData.target_oposicion` — que la carga sanea a
+    // '' para cualquier objetivo real que no esté en `ALL_OPOSICION_IDS` — encendía el botón
+    // "Guardar cambios" solo con abrir la página, invitando a un guardado que ya no lo toca
+    // pero que antes de este fix sí lo borraba.
     const currentNickname = profile.nickname || ''
     const currentStudyGoal = profile.study_goal || 25
-    const currentOposicion = profile.target_oposicion || ''
     const currentAge = profile.age?.toString() || ''
     const currentGender = profile.gender || ''
     const currentCiudad = profile.ciudad || ''
@@ -1941,7 +1945,6 @@ function PerfilPageContent() {
     const hasRealChanges =
       formData.nickname.trim() !== currentNickname ||
       parseInt(formData.study_goal) !== currentStudyGoal ||
-      formData.target_oposicion !== currentOposicion ||
       formData.age !== currentAge ||
       formData.gender !== currentGender ||
       formData.ciudad.trim() !== currentCiudad ||
@@ -2182,27 +2185,27 @@ function PerfilPageContent() {
     try {
       setSaving(true)
 
-      // Preparar datos de la oposición
-      let oposicionData = null
-      if (formData.target_oposicion) {
-        const selectedOposicion = oposiciones.find(op => op.value === formData.target_oposicion)
-        if (selectedOposicion && selectedOposicion.data) {
-          oposicionData = selectedOposicion.data
-        }
-      }
-
       // Validar meta diaria
       const studyGoalNum = parseInt(formData.study_goal)
       if (isNaN(studyGoalNum) || studyGoalNum < 1) {
         throw new Error('La meta diaria debe ser al menos 1 pregunta')
       }
 
-      // Datos en formato camelCase para la API
+      // Datos en formato camelCase para la API.
+      // NO se manda target_oposicion/target_oposicion_data aquí (T-397): ya tiene su ÚNICO
+      // punto de escritura dedicado (`/api/profile/target`, vía `promoteToTarget` y
+      // `OposicionChangeModal`), que valida el id contra el catálogo/personalizadas y rechaza
+      // vacíos. Este guardado genérico re-enviaba `formData.target_oposicion` sin condición, y
+      // esa variable se resetea a '' en la carga (arriba) para CUALQUIER valor real que no esté
+      // en `ALL_OPOSICION_IDS` — exactamente el caso de las oposiciones catalogadas sin
+      // temario que persigue esta tarea, y también el de un UUID de personalizada. Resultado:
+      // guardar cualquier cambio ajeno (nickname, meta, edad…) borraba el objetivo real del
+      // usuario a cadena vacía en BD sin que él tocara nada de oposición. Caso medido: Félix
+      // Peña (premium), 04/08/2026. Mismo patrón que ya sigue `DailyGoalBanner.tsx`: cada PUT
+      // manda solo los campos que de verdad está cambiando.
       const apiData = {
         nickname: formData.nickname.trim(),
         studyGoal: studyGoalNum,
-        targetOposicion: formData.target_oposicion,
-        targetOposicionData: oposicionData,
         // Campos del onboarding
         age: formData.age ? parseInt(formData.age) : null,
         gender: formData.gender || null,
@@ -2225,12 +2228,11 @@ function PerfilPageContent() {
         throw new Error(result.error || 'Error al guardar perfil')
       }
 
-      // Actualizar el perfil local (convertir a snake_case)
+      // Actualizar el perfil local (convertir a snake_case). Sin target_oposicion/
+      // target_oposicion_data: este guardado ya no los toca (ver comentario arriba).
       const updateData: Partial<UserProfile> = {
         nickname: formData.nickname.trim(),
         study_goal: parseInt(formData.study_goal),
-        target_oposicion: formData.target_oposicion,
-        target_oposicion_data: oposicionData || null,
         age: formData.age ? parseInt(formData.age) : undefined,
         gender: formData.gender || undefined,
         ciudad: formData.ciudad.trim() || undefined,

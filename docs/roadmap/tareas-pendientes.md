@@ -3202,6 +3202,66 @@ sus dos lecturas separadas por 45 minutos.
 indistinguible salvo que alguien mire por casualidad, como pasó aquí. Un evento en el punto de
 escritura del objetivo cerraría la pregunta en un día de datos.
 
+#### ✅ MECANISMO ENCONTRADO (05/08) — el «ELEGIRLA te BORRA el objetivo» de arriba, explicado por código, no solo por dato
+
+**No hace falta el evento pendiente para explicarlo: `app/perfil/page.tsx` tiene, desde antes de
+esta tarea, una sanitización de carga que deja el terreno preparado para que CUALQUIER guardado
+ajeno lo detone.**
+
+- **La carga de `/perfil`** (línea ~1679) hace `if (currentOposicion && !ALL_OPOSICION_IDS.includes(currentOposicion)) currentOposicion = ''`
+  — pensada para limpiar «datos sucios» (UUIDs sueltos, JSON, slugs desconocidos de verdad), pero
+  `ALL_OPOSICION_IDS` es el catálogo ESTÁTICO del código (`lib/config/oposiciones.ts`), que **no
+  contiene** ninguna de las 182 oposiciones catalogadas-sin-temario de esta tarea (confirmado:
+  `cuerpo_superior_de_la_administracion_castilla_y_leon_bocyl` no aparece en ese fichero) **ni**
+  los UUID de oposición personalizada. Resultado inmediato, solo con ABRIR la página: `formData.target_oposicion`
+  pasa a `''` en el estado local — el usuario ve «Sin oposición seleccionada» aunque sí tiene una.
+- **`saveProfile()` (el guardado genérico de nickname/meta/edad/ciudad/horas, `PUT /api/profile`)
+  reenviaba `formData.target_oposicion` SIN CONDICIÓN** en cada guardado — ya `''` por lo de
+  arriba. Y `PUT /api/profile` (a diferencia del endpoint dedicado `/api/profile/target`, que
+  valida y **rechaza** vacíos) escribe lo que le llega tal cual: `lib/api/profile/queries.ts`
+  hace un `.set(params.data)` liso.
+- **Y `hasChanges` comparaba `formData.target_oposicion` contra el `profile.target_oposicion`
+  real**, así que para TODA esta población el botón «Guardar cambios» salía ya ACTIVO con solo
+  entrar en `/perfil` — sin que el usuario tocara nada de oposición. Encaja con el caso de Félix:
+  «Hacer objetivo» (que sí usa el endpoint dedicado, y ese rechaza vacíos — no es la causa
+  directa) probablemente coincidió con un guardado del formulario genérico ya contaminado.
+- **Confirmado por lectura de código, no requiere escribir en BD:** `git log -L` sobre esa línea
+  muestra que la sanitización es anterior a la Fase 8 (favoritas) y a T-327 (personalizadas) — de
+  hecho el propio `lib/oposicion/objetivoPersonalizado.ts` documenta en su cabecera que este
+  MISMO patrón («el contexto la trata como dato sucio, borra la oposición del usuario») es el bug
+  que ese módulo vino a resolver para `OposicionContext.tsx` (que sí usa `esObjetivoValido` desde
+  entonces) — pero `/perfil/page.tsx` tiene su PROPIA copia vieja del check y nunca se migró.
+
+**Arreglo aplicado (rama `fix/T-397-target-oposicion-se-borra-en-guardar-perfil`, sin pushear ni
+desplegar — soy un worker de flota, no toco BD de negocio ni main):** `saveProfile()` deja de
+mandar `targetOposicion`/`targetOposicionData` — no hace falta, porque el objetivo YA tiene su
+único punto de escritura dedicado (`promoteToTarget` y `OposicionChangeModal`, ambos vía
+`/api/profile/target`, que sí valida). Mismo patrón que ya sigue `DailyGoalBanner.tsx` (cada PUT
+manda solo el campo que cambia). `hasChanges` deja de comparar `target_oposicion` por el mismo
+motivo. Guardarraíl nuevo:
+`__tests__/guardrails/perfilGuardadoNoTocaTargetOposicion.test.ts` (falla contra el código viejo,
+pasa con el arreglo — verificado con `git stash` en los dos sentidos).
+
+**Lo que este arreglo NO hace — sigue abierto:**
+1. **No repara el dato ya corrompido** de Félix ni de nadie más (requiere UPDATE en BD de
+   negocio — fuera del alcance de un worker; lo puede hacer quien revise esta rama).
+2. **No decide ninguna de las 3 preguntas de producto** de la cabecera de esta ficha (si se puede
+   seguir eligiendo una oposición sin temario, qué hacer con los premium, si se construye
+   `agente_hacienda`). Este bug existía DE TODAS FORMAS —incluso si la respuesta a la pregunta 1
+   es «no, bloquéalo»— porque afecta también a los usuarios que YA tienen el estado (histórico) y,
+   más grave aún, a **cualquiera con una oposición PERSONALIZADA (UUID)** que abra `/perfil` y
+   guarde algo — población bastante mayor que los 586 de este ticket (585 filas activas en
+   `custom_oposiciones` a 03/08, per `lib/oposicion/objetivoPersonalizado.ts`).
+3. **La pantalla de `/perfil` sigue mostrando «Sin oposición seleccionada»** para esta población
+   (el síntoma visual del sanitize-on-load sigue vivo; solo se cerró la vía de ESCRITURA/pérdida
+   de dato). Corregir el display exige decidir CÓMO nombrar/tratar una oposición catalogada-sin-
+   temario o una personalizada sin blob de nombre — que es terreno de la pregunta 1, no una bala
+   suelta de bug.
+4. **Bloqueado para medir en flota:** `scripts/health/oposicion-sin-temario.cjs` necesita
+   `user_profiles`, y NINGUNA credencial de worker lo tiene (`DATABASE_URL` es solo coordinación;
+   `VENCE_LECTOR_URL` da `permission denied for table user_profiles`, es de solo negocio-sin-datos-
+   personales). No pude refrescar la cifra de 586 usuarios/182 oposiciones desde aquí.
+
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
 - **Qué hay, medido el 31/07:** `auxiliar_archivos_bibliotecas_museos_madrid` tiene **50 temas activos, los 50 con epígrafe**, y **0 filas de `topic_scope`**. Como la pregunta llega al tema por el scope, esos 50 temas sirven **cero preguntas**. La oposición está en `oposiciones` con `is_active=false` (o sea, no la preparamos) y **sin entrada en `lib/config/oposiciones.ts`**, así que la app ni siquiera sabe enrutarla.
@@ -4460,6 +4520,15 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-580] ✅ 🟡 [HECHA 05/08] Flota no puede resolver impugnaciones: revisar-impugnacion.cjs exige user_profiles y ningún credencial de worker lo alcanza
+
+**DUPLICADO de T-579 — ver esa ficha.** Reservado por error al toparme con el mismo bloqueo
+(`revisar-impugnacion.cjs` exige `user_profiles`, ninguna credencial de worker lo alcanza) al
+coger `dba485dc`/`410025b4` de la cola de impugnaciones. `reserve` avisó de la similitud con
+T-579, que ya lo documenta con más detalle (incluye un caso real resuelto con el workaround de
+saludo genérico, pendiente de decisión de Manuel: vista restringida vs saludo genérico+nombre
+añadido por el revisor). No se abre ficha nueva — todo el contenido va en T-579.
 
 ### [T-477] ✅ [HECHA 05/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`
 

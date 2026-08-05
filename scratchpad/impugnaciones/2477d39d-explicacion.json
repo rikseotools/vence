@@ -1,0 +1,11 @@
+{
+  "estilo": "impugnacion",
+  "intro": "En Outlook, los atajos para crear elementos nuevos (Ctrl+Mayús+letra) no se traducen entre idiomas: Microsoft usa la misma combinación en la versión inglesa y en la española.",
+  "options": {
+    "0": "No crea ninguna tarea: dentro del editor de un mensaje, aumenta la sangría del párrafo (el mismo comportamiento que en Word).",
+    "1": "Tampoco crea una tarea: es la acción contraria a la anterior, disminuye la sangría del párrafo. Ninguna de las dos combinaciones con la letra T gestiona tareas.",
+    "2": "Es el atajo que documenta Microsoft para crear una nueva tarea desde cualquier vista de Outlook, sin tener que entrar antes en el módulo Tareas. Se mantiene igual en inglés y en español.",
+    "3": "Crea una nota nueva, que en Outlook es un tipo de elemento distinto de una tarea."
+  },
+  "outro": "**Fuente:** [Microsoft Support — Métodos abreviados de teclado para Outlook](https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-para-outlook-3cdeb221-7ae5-4c1d-8c1d-9e63216c1efd)"
+}

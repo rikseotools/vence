@@ -1,0 +1,9 @@
+{
+  "cita": { "ref": "Art. 27.1 Ley 39/2015", "texto": "Las copias auténticas de documentos privados surten únicamente efectos administrativos." },
+  "options": {
+    "0": "El precepto lo dice literalmente: las copias auténticas de documentos privados surten únicamente efectos administrativos.",
+    "1": "La Ley no condiciona los efectos de la copia auténtica a que sean favorables al interesado.",
+    "2": "La eficacia de la copia auténtica no se vincula a la fecha en que el interesado la solicita.",
+    "3": "El artículo 85 de la Ley 39/2015 regula la terminación en los procedimientos sancionadores, materia ajena a las copias auténticas."
+  }
+}
