@@ -855,6 +855,29 @@
 - **NO convertir la lista en una allowlist de 76 entradas.** Es el modo de fallo escrito en este repo: un guardarraíl con una excepción por caso deja de proteger. Si al triar aparecen muchas legítimas del mismo tipo, la salida buena es que el detector **entienda esa forma** (como ya entiende `requireAdmin`), no anotarlas una a una.
 - **Medir antes de tocar cada una:** cuántas llamadas reales recibe y desde dónde (`observable_events`), igual que se hizo en [T-482] — ahí se vio que `/api/tests/[testId]/review` recibía ~200 eventos muestreados en 30 días **todos con `user_id` nulo**, que es precisamente la firma de un endpoint que no sabe quién le pregunta.
 - **Relacionadas:** [T-482] (de donde sale, y de donde salen las capas), la memoria `project-admin-endpoints-sin-auth` (el mismo fallo en otra familia de rutas, ya cerrado), y `__tests__/security/crossUserIsolationC3.test.ts` (el gemelo conductual para la familia que sí usa `` sql`` ``).
+### [T-566] 🔴 [ABIERTO 05/08] El configurador por TEMA ofrece más preguntas de las que el test puede servir
+
+- **Esfuerzo: rato.** El diagnóstico está a medias y las mediciones ya están hechas (abajo): lo que falta es leer los dos caminos.
+- 👤 **HAY UN USUARIO ESPERANDO.** Feedback `87e987d8`, **Sergio (premium, `pcsergio0@gmail.com`)**, que el 05/08 estaba usando la app mientras se diagnosticaba. Sus palabras: *«al seleccionar las preguntas, ej. tema 1, le pongo 10 difíciles, dice que el máx son 10, luego deberían ser diez, empiezo el test y únicamente me hace 3»* y *«al elegir de tipo medio me marca 64, sale test de 64 preguntas pero luego solo me hace 26»*. El hilo quedó **soltado sin responder** a propósito: contestarle con una hipótesis a medias es peor que callar.
+
+**LO QUE ESTÁ PROBADO (medido el 05/08 sobre su tema 1, oposición `personalizada_a92faefaf41b4d36b723c274f90a59f7`, scope = 5 arts de la CE):**
+
+| dificultad declarada | hay | ya las vio Sergio | nuevas |
+|---|---|---|---|
+| `medium` | 115 | 67 | 48 |
+| `easy` | 67 | 59 | 8 |
+| **`hard`** | **3** | 2 | 1 |
+| `extreme` | 1 | 1 | 0 |
+
+- **El caso «difícil» está explicado:** existen **3** preguntas `hard` y el contador le ofreció **10**. El test le sirvió 3. O sea que **el contador no aplica el filtro de dificultad** que sí aplica el servicio. Es [T-551] por el lado contrario: allí el contador dice **0 de menos**, aquí dice **10 de más**.
+
+**LO QUE NO ESTÁ PROBADO, y por eso no se le ha respondido:** el caso «medio» no cuadra con ninguna de las dos cifras — pidió 64, le sirvió **26**, y hay 115 en total o **48 sin ver**. Ni 115 ni 48 dan 26. Y hay una **incoherencia entre los dos caminos** que es la pista: en `hard` **sí** le sirvió preguntas que ya había respondido (las 3, teniendo 2 vistas), mientras que en `medium` parece excluir algo. Los dos caminos no filtran igual y eso hay que leerlo en el código, no deducirlo.
+
+**POR DÓNDE SEGUIR:** comparar el contador del configurador POR TEMA con `lib/api/filtered-questions/queries.ts`, igual que [T-551] hizo con `estimateByLaws`. La pregunta a responder es qué filtra cada uno: dificultad, exclusión de ya respondidas, y con qué campo (`difficulty` declarada vs `global_difficulty`, que es un porcentaje y no una etiqueta).
+
+⚠️ **NO te atasques con el 🛑 del dossier.** Salta el bloqueo de epígrafes con «13 temas `never_sourced`», pero **su oposición es PERSONALIZADA, creada por él**: no hay programa oficial que clonar, así que ese Paso 1 no aplica a este caso. Es el mismo falso bloqueo que ya costó tiempo el 04/08.
+
+- **Relacionadas:** [T-551] (el gemelo: mismo defecto de fondo, contador y test que no cuentan lo mismo — **arreglarlos juntos**, y ojo porque el 05/08 la tenía otra sesión), [T-397] (elegir una oposición sin temario), [T-545] y [T-523] (la familia de las oposiciones personalizadas/de comunidad).
 
 ### [T-564] 🟠 [ABIERTO 05/08] 19 oposiciones ACTIVAS tienen el seguimiento de convocatorias en `error` y ningún detector lo mira
 
