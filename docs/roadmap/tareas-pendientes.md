@@ -842,6 +842,24 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-562] 🟠 [ABIERTO 05/08] El selector de oposición manda a un callejón sin salida: tira `short_name` y `coverage_level`, y no ofrece la construida equivalente
+
+- **Lo destapó una baja de cuenta.** ELISABET se registró el 04/08, buscó su oposición y **borró la cuenta a los tres minutos**. Su journey, entero: `➕ Otra oposición` → `Crear` → `Cambiar oposición` → **«🇪🇸 Auxiliar de Biblioteca C2 🔜 En elaboración»** → `Cambiar` → la misma otra vez → `Cambiar` → `Buscar oposición…` → baja.
+- **Y la teníamos.** `auxiliar-biblioteca-estado` está activa con **48 temas y 13.891 preguntas**. Ella acabó con `target_oposicion='bibliotecario'`, que tiene **0**.
+- **NO es que falten alias.** Los tiene, y son los correctos: `'bibliotecario'`, `'auxiliar biblioteca'`, `'auxiliar de biblioteca'`, `'biblioteca estado'`… (112 de 131 construidas tienen alias, y `lib/utils/searchOposicion.ts` ya es fuente única de los tres selectores). Buscando «biblioteca» salen **las dos**. El problema es que **la vacía se lee mejor**.
+- **Lo que ve quien busca «biblioteca» en /perfil: 44 entradas**, donde la que se llama exactamente como se dice en español —«Auxiliar de Biblioteca» (C2)— está vacía, y la que tiene 13.891 preguntas aparece como *«Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Bibliotec…»*, **cortada** y en orden alfabético.
+- **EL DATO YA LLEGA Y SE TIRA.** `/api/oposiciones/catalog` devuelve por cada entrada:
+  ```json
+  { "short_name": "Auxiliar de Biblioteca (Estado)", "coverage_level": "con_tests", "is_active": true, "demand_score": null }
+  ```
+  y `lib/hooks/useOposicionesCatalog.ts` se queda **solo** con `{ id, nombre, categoria, administracion, icon }`. El nombre bueno viaja y no se enseña; la cobertura viaja y no ordena.
+- **Los tres arreglos, todos con piezas que ya existen:**
+  1. **«¿Te sirve esta?»** en el punto exacto donde hoy muere: `OposicionChangeModal` ya detecta la no implementada (`if (!info)`), guarda la demanda —bien— y muestra un aviso. Ahí, buscar entre las 131 construidas con `matchesOposicion(construida, nombreElegido)` y ofrecer la mejor. Elegir «Auxiliar de Biblioteca» habría ofrecido «Auxiliar de Biblioteca (Estado) · 13.891 preguntas», **porque ese texto ya está en sus alias**.
+  2. **Ordenar por `coverage_level`** — con 44 resultados, las `con_tests` primero.
+  3. **Enseñar `short_name`** cuando exista, en vez del nombre de BOE truncado.
+- **Alcance, medido el 05/08:** **913 de 11.615 usuarios con oposición fijada (8%) apuntan a algo con 0 temas.** Las cabezas no son oposiciones sino etiquetas genéricas (`auxiliar_ayuntamiento` 37, `auxiliar_enfermeria` 28, `subalterno_ordenanza_conserje` 24) — o sea, el selector deja elegir una categoría y detrás no hay nada. Hermano de [T-545], que mide solo las creadas por usuarios.
+- **Lo que NO hay que hacer:** dejar de guardar la elección cuando no está construida. Es deliberado y es lo que permite medir la demanda; lo que falta es no dejar a la persona en el callejón.
+
 ### [T-560] 🟠 [ABIERTO 05/08] El panel de admin sigue con el `unnest` ciego a los scopes de «ley entera» que [T-451] arregló en el barrido
 
 - **De dónde sale.** Verificando el cierre de [T-451] (que arregló `unnest(NULL)` en el barrido y hoy, ya desplegado, sube de 371 a **461 temas**), fui a mirar si el patrón sobrevivía en otro sitio. Sobrevive: **tres consultas** de `lib/api/admin-contenido/queries.ts` (líneas ~159, ~357 y ~376) hacen `JOIN LATERAL unnest(ts.article_numbers)` **sin la guarda**, así que un scope `NULL` —que en este proyecto significa LA LEY ENTERA— no produce ni una fila y desaparece del cálculo de cobertura por artículo.
@@ -4471,6 +4489,15 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Arreglo:** aceptar `impugnacion` en el POST admin exigiendo `disputeId` (igual que `bug` exige `feedbackId` y `ugc` exige `url`), y cubrirlo en `__tests__/referrals/rewards-endpoints.test.ts`, que ya prueba los otros dos. **Ojo al tope:** `impugnacion` tiene su propio `IMPUGNACION_MONTHLY_CAP` de 10/mes y `canCreateReward` ya lo aplica — no hay que duplicar esa lógica en el endpoint.
 - **Relacionadas:** [T-467] y [T-470] (el caso de donde sale), `docs/runbooks/embajadores-recompensas.md` §2, `docs/maintenance/impugnaciones-claude-code.md` §6.bis.
 - **HECHO (05/08).** La puerta acepta `impugnacion` **exigiendo `disputeId`**, y ese requisito no es formalismo: es el motivo trazable con el que el índice único parcial sobre `dispute_id` impide pagar dos veces la misma impugnación (el mismo papel que `feedback_id` en `bug` y `url` en `ugc`). No se duplicó nada del dominio: el tope mensual propio lo sigue aplicando `canCreateReward`. **Capas:** 4 tests nuevos en `rewards-endpoints.test.ts` —incluido uno que fija que un `type` inventado **sigue** rechazándose, porque la puerta se abre a UNO y no a cualquiera— vistos en ROJO quitando el arreglo (2 fallos) y en verde al restaurarlo. Y el **runbook** (§2), que era donde vivía la promesa incumplida, ya describe la vía con su importe y su condición.
+
+### [T-563] ✅ [HECHA 05/08] El asignador de ids del backlog contaba también los que no son fichas, y un canario lo mandó a T-20451
+
+- **Cómo apareció:** al reservar una ficha el 05/08, `reserve` devolvió **`T-20451`** en vez de `T-562`. La tabla tenía una fila de canario llamada **`CANARY-coord-20450`**.
+- **La causa, en una línea:** `parseInt(String(r.id).replace(/\D/g, ''), 10)` sobre **TODOS** los ids. Quitarle los no-dígitos a cualquier id significa que `CANARY-coord-20450` vota como **20450**.
+- **Por qué era peligroso: NO fallaba.** La unicidad la garantiza la PK, así que el `INSERT` fue correcto y nadie se enteró. El backlog habría seguido en T-20452, T-20453… hasta que alguien mirara la lista y se preguntara qué pasó. **Un cálculo que se equivoca sin romperse es el que nadie descubre.**
+- **ARREGLADO:** la numeración pasa a `lib/backlog/siguienteId.cjs` (núcleo puro, 7 tests) — **solo votan los ids con forma `T-NNN`**; cualquier otra cosa en la tabla es invisible para la serie y se devuelve en `ignorados`, que es justo el dato que faltaba para depurarlo. `backlog.cjs` lo requiere en vez de calcularlo dentro.
+- **Limpieza:** la reserva anómala `T-20451` se retiró de la tabla (no llegó a tener ficha escrita) y se volvió a reservar, dando `T-562`.
+- **Nota sobre el canario:** su id es legítimo — no es basura que haya que borrar. Lo que estaba mal era que la numeración lo mirase.
 
 
 ### [T-451] ✅ [HECHA 05/08] `huerfanos:plan` no ve las leyes escopadas como «ley entera»: 4.865 artículos sin preguntas fuera del radar

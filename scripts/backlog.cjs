@@ -1600,10 +1600,11 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       let reservado = null;
       for (let intento = 0; intento < 10 && !reservado; intento++) {
         const filas = await s`SELECT id FROM public.backlog_tasks`;
-        const nums = filas
-          .map((r) => parseInt(String(r.id).replace(/\D/g, ''), 10))
-          .filter((n) => Number.isFinite(n));
-        const siguiente = `T-${String(Math.max(0, ...nums) + 1).padStart(3, '0')}`;
+        // La numeración vive en `lib/backlog/siguienteId.cjs` (núcleo puro con tests): SOLO votan
+        // los ids con forma `T-NNN`. Antes se le quitaban los no-dígitos a CUALQUIER id y un
+        // canario llamado `CANARY-coord-20450` hizo nacer la ficha siguiente como T-20451.
+        const { siguienteId } = require(require('path').join(__dirname, '..', 'lib', 'backlog', 'siguienteId.cjs'));
+        const siguiente = siguienteId(filas).siguiente;
         const [r] = await s`
           INSERT INTO public.backlog_tasks (id, title, priority, status, effort)
           VALUES (${siguiente}, ${titulo}, 'media', 'open', ${esfuerzo})
