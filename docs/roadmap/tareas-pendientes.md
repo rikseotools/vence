@@ -851,6 +851,85 @@
 - **Mitigado, no arreglado:** [T-566] encontró que ADEMÁS `.husky/pre-commit` corre con `sh -e` (`.husky/_/h`) y dos de sus bloques (`db:check`, `audit:display-drift`) tenían el patrón `cmd; if [ $? -ne 0 ]` como statement suelto — bajo `-e` CUALQUIER fallo de esos comandos (drift real, "permission denied" de un rol restringido, o cualquier otra cosa) abortaba el hook entero antes de decidir si bloquear o solo avisar. Reescrito con `if ! cmd; then … fi` (exento de `-e`). Esto hace el hook más robusto a fallos DENTRO de un `sh` que sí arranca, pero **no evita** que `core.hooksPath` corrupto impida a git encontrar el hook en absoluto — ese síntoma sigue vivo.
 - **Por dónde seguir:** (1) instrumentar quién invoca husky con qué argv — un wrapper temporal en `.bin/husky` que loguee `process.argv` a un fichero antes de delegar, dejarlo un día y ver qué cae; (2) mientras tanto, un guardarraíl barato: un check (en `sesion:preflight` o el propio latido) que verifique `core.hooksPath == .husky/_` y lo corrija solo, para que ninguna sesión se quede bloqueada por esto sin saber por qué.
 - **Relacionadas:** [T-566] (donde se encontró y se mitigó de paso), [T-576] (mismo síntoma general — el pre-commit bloqueando a la flota — causa distinta).
+### [T-586] 🟡 [ABIERTO 05/08] Universidad de León: 19 de sus 21 epígrafes siguen `never_sourced` — gemela exacta de [T-471] (UC3M), y las dos venden
+
+**Medido el 05/08/2026** sobre `topic_epigrafe_verification`:
+
+| Oposición | € (90 d) | epígrafes con fuente |
+|---|---|---|
+| `auxiliar_administrativo_universidad_leon` | 172 € | **2 de 21** (19 sin fila) |
+| `auxiliar_administrativo_universidad_carlos_iii` | 244 € | **2 de 20** (18 sin fila) → [T-471] |
+
+Son las **dos únicas** del top-20 por ingresos que no están al 100 % `verified_literal`; el resto del top
+(Madrid 21/21, Estado 28/28, Valencia 24/24, SMS 24/24, Tramitación 37/37) sí lo está. O sea que esto no es
+la norma de la casa, son dos rezagadas.
+
+**Ojo: [T-556] se cerró HOY sobre esta misma oposición y NO cubre esto.** Aquella arreglaba un Título I
+incompleto que cazó una usuaria premium y dejaba dicho que el `verify:scope` se había apoyado en un epígrafe
+nunca clonado. El Paso 1 de los otros 19 temas sigue sin hacerse — que es justo la causa raíz que aquella
+ficha identificó y no llegó a cerrar.
+
+**Consecuencia concreta, ya vista dos veces:** el 🛑 del dossier de impugnaciones (`npm run epigrafe:revision`)
+bloquea el envío del email en cuanto llegue una queja de temario de esta oposición, y el `verified_correct`
+de scope que hay encima no respalda nada porque se selló sin epígrafe contrastado (familia [T-518] / [T-528]).
+
+**Qué hacer** (es el Paso 1 estándar, sin inventar nada):
+1. Localizar el temario oficial de la convocatoria vigente (BOCyL / sede de la Universidad de León) y **clonarlo
+   al hub** — no vale una URL suelta.
+2. `verify-epigrafe-literality.cjs record` por tema, que ya enlaza `source_documento_id`.
+3. Con el epígrafe literal en su sitio, re-correr `verify:scope` (dump → 2 agentes → plan → apply) y aplicar los
+   diffs que salgan.
+4. Cerrar con `npm run epigrafe:revision -- auxiliar_administrativo_universidad_leon` en verde (exit 0).
+
+**NUNCA** dar por bueno un epígrafe parafraseado ni marcar `verified_literal` sin el documento clonado.
+
+**Relacionadas:** [T-471] (la gemela de UC3M — mismo trabajo, hacerlas seguidas), [T-556] (León, Título I),
+[T-107] (campaña de clonado Paso 1), [T-528] (el 59 % de scopes verdes sobre epígrafe sin contrastar),
+[T-518] (sellos de Paso 2 sin pipeline).
+
+### [T-585] 🟠 [ABIERTO 05/08] El corpus documental de las oposiciones que MÁS VENDEN está casi vacío: Aux. Admin. Madrid factura 1.691 €/90d con UN solo documento clonado
+
+**Medido el 05/08/2026** cruzando `payment_settlements` × `user_profiles.target_oposicion` (90 días) contra
+`convocatoria_documentos`. El orden por ingresos y el orden por respaldo documental están **invertidos**:
+
+| Oposición | € (90 d) | documentos clonados |
+|---|---|---|
+| **Aux. Admin. Madrid** (`_madrid` + `_madrid_2027`) | **1.691 €** | **1 + 1** (solo tipo `convocatoria`) |
+| Aux. Admin. Valencia | 913 € | 3 |
+| Tramitación procesal | 618 € | 3 |
+| Aux. Admin. Dip. Córdoba | 567 € | 2 |
+| *(contraste)* Aux. Admin. Estado | 1.016 € | **22** |
+| *(contraste)* Aux. Admin. Dip. Cádiz | 285 € | **18** |
+
+Las convocatorias NO vigentes de esas oposiciones tienen **0 documentos** (Madrid 2025, Valencia 2022 y 2026-no-vigente,
+Tramitación 2019/2022/2024), así que no hay histórico contra el que contrastar un rollover.
+
+**Por qué importa y no es papeleo.** El hub de documentos es el suelo sobre el que se apoyan otras cuatro
+comprobaciones, y sin él **todas fallan abiertas, no cerradas**:
+- `plazas_afirmadas_sin_documento` y `landing_cifra_sin_respaldo` no pueden probar ninguna cifra que la landing afirme.
+- `npm run audit:landing -- <slug>` — la puerta antes de mandar campaña — no tiene contra qué medir.
+- `epigrafe_provenance_no_doc`: los epígrafes verificados quedan colgados de una URL suelta, no del documento clonado.
+- El saneo de `nota_interna_publicada` (`--verificado`) EXIGE el documento en el hub para aceptar la cita.
+
+O sea: la oposición donde más dinero entra es donde menos podemos demostrar lo que publicamos. Y a Madrid
+se le manda campaña (ver [T-152], [T-110]).
+
+**Qué hacer** (por orden de ingresos, sin salirse de las 6 primeras):
+1. Por cada slug, abrir el `programa_url` y el boletín de la convocatoria vigente y clonar con el camino
+   canónico `backend/scripts/clonar-documento.ts` los documentos que existan: `convocatoria`, `bases`,
+   `temario`/programa y `oep_decreto`. **Tipo REAL, nunca `nota`** (ver [T-147]).
+2. Enlazar lo clonado: `scripts/provenance/link-epigrafe-docs.cjs --apply` (epígrafes) y
+   `backfill-hito-source-documento.cjs` (hitos).
+3. Cerrar con `npm run audit:landing -- <slug>` y anotar el veredicto en la ficha.
+
+**Cómo se comprueba que está hecho:** los `docs` por slug suben de 1-3 a la decena, `audit:landing` sale en verde
+para Madrid y Valencia, y `plazas_afirmadas_sin_documento` deja de tener hallazgos de estas oposiciones.
+
+**NUNCA** inventar la cifra ni clonar una URL sin abrirla; si el enlace da 403 o no es un boletín, dejar el hueco
+anotado en la ficha (mismo criterio que [T-188]).
+
+**Relacionadas:** [T-147] (documentos clonados como `nota`), [T-188] (los que no se pudieron clonar),
+[T-190] (extracción pobre), [T-181] (clonados en la convocatoria equivocada), [T-152] y [T-110] (campañas a Madrid).
 
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
