@@ -1160,22 +1160,6 @@ Es decir, ~1,45× más probable que no lleguen a hacer nada. No es un abismo, pe
 2. Si se elige una, la app debería **decir que aún no tiene contenido** y ofrecer la equivalente nuestra, en vez de dejar al usuario en una pantalla vacía dándole a «Cambiar oposición».
 3. `target_oposicion` guardando dos cosas distintas (slug o UUID de otra tabla) es un contrato ambiguo: conviene decidir si eso se queda así a propósito y, si se queda, que los lectores lo traten explícitamente.
 
-### [T-544] 🟡 [ABIERTO 04/08] Baja de Sara Chamorro: confirmar o ejecutar el borrado antes de que venza el plazo RGPD
-
-**Qué hay que hacer.** El 04/08/2026 Sara Chamorro (`0a41f4e1-9593-427d-ad55-49aac2244af7`, free, Escala Administrativa UGR) pidió eliminar su cuenta (feedback `88cd06d3`). **No se ejecutó**, y por buen motivo: pidió la baja a las 07:56:02 y **siguió usando la plataforma 17 minutos más**, con un test completo de 25 preguntas a las 08:00 y otro a las 08:12. Borrar ahí habría destruido la cuenta de alguien que estaba estudiando.
-
-Se le escribió preguntando si quiere el borrado definitivo o solo dejar de recibir avisos (mensaje enviado ese día, campana + email OK).
-
-**Las dos salidas:**
-- **Contesta** → hacer lo que diga (borrar con `docs/maintenance/eliminacion-cuentas.md`, o conservar la cuenta y ayudarla con su oposición).
-- **No contesta** → **ejecutar el borrado** antes del plazo. El RGPD (art. 12.3) da **un mes** desde la solicitud: vence el **04/09/2026**.
-
-**Por qué esto necesita ficha y no basta con acordarse.** `/api/v2/feedback/respond` solo admite `resolved`/`dismissed`, así que responderle **cierra su solicitud**. Sin esta ficha, una petición de borrado contestada queda `resolved` y **no vuelve a aparecer en ninguna cola**: si ella no responde, nadie la borra y el plazo legal pasa en silencio.
-
-**Gotcha del camino, que costó un 409.** Un feedback de `account_deletion` **no trae conversación**, así que `cerrar-feedback.ts` lo rechaza con *«El feedback no tiene conversacion abierta»*. Hay que crearla primero con `POST /api/v2/admin/feedback/start-conversation` (`{feedbackId, userId}`) y entonces responder. Es el mismo modo de fallo que el kind `feedback_sin_conversacion`, del que las bajas están **excluidas a propósito** porque normalmente no se contestan: en cuanto una baja sí merece respuesta, aparece la pared.
-
-**Relacionadas:** [T-545] (el hallazgo de las oposiciones de comunidad, que es lo que la dejó sin contenido).
-
 ### [T-537] 🟡 [ABIERTO 04/08] Psicotécnicas servidas SIN su premisa: `content_data` lleva campos que el render no pinta
 
 **Qué es.** `ContentDataRenderer` pinta exactamente seis claves de `content_data`: `instructions`, `instruction`, `text_passage`, `image_base64`, `table_data` y `tables`. Todo lo demás se descarta **en silencio**: `question_context`, `chart_title`, `operation_type`, `evaluation_description`, `explanation_sections` y —la cara— **`footer_note` de cada tabla**. Nadie avisa: la pregunta se sirve, se responde y se corrige como si estuviera completa.
@@ -4502,6 +4486,23 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-544] ✅ 🟡 [HECHA 05/08] Baja de Sara Chamorro: confirmar o ejecutar el borrado antes de que venza el plazo RGPD
+
+**Qué hay que hacer.** El 04/08/2026 Sara Chamorro (`0a41f4e1-9593-427d-ad55-49aac2244af7`, free, Escala Administrativa UGR) pidió eliminar su cuenta (feedback `88cd06d3`). **No se ejecutó**, y por buen motivo: pidió la baja a las 07:56:02 y **siguió usando la plataforma 17 minutos más**, con un test completo de 25 preguntas a las 08:00 y otro a las 08:12. Borrar ahí habría destruido la cuenta de alguien que estaba estudiando.
+
+Se le escribió preguntando si quiere el borrado definitivo o solo dejar de recibir avisos (mensaje enviado ese día, campana + email OK).
+
+**Las dos salidas:**
+- **Contesta** → hacer lo que diga (borrar con `docs/maintenance/eliminacion-cuentas.md`, o conservar la cuenta y ayudarla con su oposición).
+- **No contesta** → **ejecutar el borrado** antes del plazo. El RGPD (art. 12.3) da **un mes** desde la solicitud: vence el **04/09/2026**.
+
+**Por qué esto necesita ficha y no basta con acordarse.** `/api/v2/feedback/respond` solo admite `resolved`/`dismissed`, así que responderle **cierra su solicitud**. Sin esta ficha, una petición de borrado contestada queda `resolved` y **no vuelve a aparecer en ninguna cola**: si ella no responde, nadie la borra y el plazo legal pasa en silencio.
+
+**Gotcha del camino, que costó un 409.** Un feedback de `account_deletion` **no trae conversación**, así que `cerrar-feedback.ts` lo rechaza con *«El feedback no tiene conversacion abierta»*. Hay que crearla primero con `POST /api/v2/admin/feedback/start-conversation` (`{feedbackId, userId}`) y entonces responder. Es el mismo modo de fallo que el kind `feedback_sin_conversacion`, del que las bajas están **excluidas a propósito** porque normalmente no se contestan: en cuanto una baja sí merece respuesta, aparece la pared.
+
+**Relacionadas:** [T-545] (el hallazgo de las oposiciones de comunidad, que es lo que la dejó sin contenido).
+
 
 ### [T-477] ✅ [HECHA 05/08] Premiar «a mano» una impugnación no tiene puerta: el endpoint admin de recompensas solo acepta `bug` y `ugc`
 

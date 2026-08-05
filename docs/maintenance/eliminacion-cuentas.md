@@ -31,6 +31,27 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 
 > ⚠️ **La app NO captura un motivo de baja — no lo leas de la UI.** El flujo de `/perfil` tiene 2 pasos (`deleteStep: 'retention' | 'confirm'`, `app/perfil/page.tsx`): un gate de retención "Antes de irte…" con 2 botones — **"Mantener mi cuenta"** y **"No me interesa estar al día, darme de baja"** — y luego escribir ELIMINAR. Ese segundo texto es la **etiqueta del botón de "continuar con el borrado"**, lo clica **TODO** el que se da de baja → **NO es el motivo declarado del usuario.** El `user_feedback` solo guarda `[Solicitud de eliminación de cuenta desde perfil]`, sin razón. Deduce el motivo real del **comportamiento** (journey, actividad, comunicaciones, suscripción), **nunca** de ese texto (verlo en el journey solo significa "pasó el gate de retención").
 >
+> 🤐 **SI SE LE PREGUNTA Y NO CONTESTA, NO SE BORRA — y la solicitud se retira (Manuel, 05/08/2026).**
+> Cuando hay motivo para dudar de que la solicitud sea inequívoca (ver el aviso de abajo, o el caso
+> de alguien que **sigue usando la app después de pedirla**), se le escribe preguntando si quiere el
+> borrado o solo dejar de recibir avisos. **Si no responde: no se borra, y la solicitud se da por
+> retirada — el silencio significa que quiere seguir.** No queda nada programado ni ningún plazo
+> que vigilar.
+>
+> **Por qué, y no es pereza:** el botón se llama *«No me interesa estar al día, darme de baja»*, que
+> en español corriente se lee como darse de baja **de los avisos**. Una solicitud que puede
+> significar dos cosas no es inequívoca, y preguntar sin obtener respuesta la deja igual de
+> ambigua. Entre destruir la cuenta de alguien que quizá solo quería dejar de recibir correos y
+> conservarla, se conserva: lo primero es irreversible y lo segundo no.
+>
+> **Caso que lo fija (Sara Chamorro, 04/08/2026, feedback `88cd06d3`):** pidió la baja a las
+> 07:56:02 y **siguió estudiando 17 minutos**, con un test completo de 25 preguntas a las 08:00 y
+> otro a las 08:12. Se le escribió preguntando y no contestó. No se borró.
+>
+> ⚠️ **Esto NO dice que se pueda ignorar una solicitud clara.** Quien la pide y no da señales de
+> ambigüedad se borra por el flujo normal de este manual. La excepción es solo para las que ya
+> nacieron dudosas y se preguntaron.
+>
 > 💳 **Ojo PREMIUM — "darse de baja" ≠ borrar cuenta.** En lenguaje común "darse de baja" = **cancelar la suscripción / no pagar más**, pero el botón lleva al **borrado total de datos**. Un premium puede clicarlo queriendo solo **parar la renovación**. Antes de borrar a un premium — sobre todo si la solicitud llega poco después de un `renewal_reminder` o cerca del fin de periodo — asume que lo que quiere es **no renovar**: cancela `cancel_at_period_end` (ver `docs/procedures/reembolsos.md`), **conserva la cuenta** y confirma con el usuario si de verdad quiere borrar sus datos. Borrar por defecto puede destruir la cuenta de alguien que solo quería cancelar el cobro.
 
 ### Ejemplo de deletion_reason exhaustivo
