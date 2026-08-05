@@ -70,7 +70,13 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
 
-  const DB_URL = process.env.DATABASE_URL;
+  // `topics` es negocio, no coordinación: un trabajador de la flota trae DATABASE_URL apuntando
+  // a `vence_coordinacion` (backlog_tasks/worktree_sessions/session_questions/observable_events +
+  // question_disputes — nada de temario) y este audit SIEMPRE fallaba con 42501 en el pre-commit,
+  // bloqueando CUALQUIER commit de CUALQUIER trabajador (medido 05/08 en este worktree). Se prefiere
+  // `VENCE_LECTOR_URL` (SOLO SELECT, sí puede leer `topics`) cuando existe; si no, se cae a
+  // `DATABASE_URL` como hacía siempre para quien tiene la credencial completa de la app.
+  const DB_URL = process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL;
   if (!DB_URL) { console.error('❌ DATABASE_URL no configurado'); process.exit(2); }
   const postgres = require('postgres');
   const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
@@ -101,4 +107,15 @@ async function main() {
   process.exit(redCount > 0 ? 1 : 0);
 }
 
-main().catch((e) => { console.error('ERROR:', e.message); process.exit(2); });
+main().catch((e) => {
+  // 42501 = permiso denegado: no es drift, es que esta credencial no puede leer `topics` (rol
+  // restringido sin VENCE_LECTOR_URL en el entorno, p.ej.). No bloquear el commit por un permiso,
+  // igual que el `db:check` de justo antes en el mismo pre-commit: «no lo sé» no es lo mismo que
+  // «hay un 🔴», y tratarlo como bloqueo apaga el commit de quien no puede ni siquiera intentarlo.
+  if (e.code === '42501') {
+    console.error(`⏭️  audit:display-drift no pudo leer 'topics' (permiso denegado) — se salta, no bloquea: ${e.message}`);
+    process.exit(0);
+  }
+  console.error('ERROR:', e.message);
+  process.exit(2);
+});

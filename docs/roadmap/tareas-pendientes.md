@@ -897,6 +897,36 @@ dossier no arranca en absoluto.
 `user_profiles`/`user_feedback` en `scripts/impugnaciones/*.cjs` — aparecen en los 3 ficheros
 citados, sin un solo `try/catch` alrededor en ninguno de los casos salvo el que ya arreglé.
 
+**AMPLIACIÓN 05/08/2026 (misma tarde, impugnación `4683e35b`) — el hallazgo original se quedó
+corto: no es solo `user_profiles`/`user_feedback` (identificadores directos, negados A PROPÓSITO),
+también fallan tablas de NEGOCIO normales por usar la credencial EQUIVOCADA, no por faltar un
+try/catch:**
+
+1. **`revisar-impugnacion.cjs` moría en `questions`** (línea ~190, tras el arreglo del punto 1 de
+   arriba): `DATABASE_URL` de un trabajador es el rol `vence_coordinacion` (T-539), que **solo
+   tiene 4 tablas de coordinación** + SELECT de `question_disputes`/`psychometric_question_disputes`
+   (T-574) — **cero** acceso a `questions`/`articles`/`test_questions`. Esas SÍ son legibles con
+   `VENCE_LECTOR_URL` (rol `vence_lector`, T-486), que el trabajador también tiene pero el script
+   nunca usaba. **Arreglado** en la misma rama (commit siguiente a `4aef6bcee`): se abre una
+   segunda conexión sobre `VENCE_LECTOR_URL` para toda lectura de negocio (`questions`, `articles`,
+   `test_questions`, hermanas, `reward_submissions`, `scopeEnforcement`) y se deja `DATABASE_URL`
+   solo para lo que de verdad es coordinación (leer/reclamar el dispute). Si `VENCE_LECTOR_URL` no
+   está en el entorno se reusa la misma conexión — no cambia nada para quien tiene `.env.local`
+   completo. Verificado con la propia `4683e35b`: el dossier ahora imprime entero.
+2. **El mismo patrón bloqueaba el `pre-commit` de CUALQUIER commit de CUALQUIER trabajador,
+   no solo de impugnaciones.** `.husky/pre-commit` corre `npm run audit:display-drift` cuando hay
+   `DATABASE_URL` en el entorno (que para un trabajador SIEMPRE está — es su forma de coordinarse),
+   y ese audit lee `topics` (negocio) con `DATABASE_URL` sin condicional ni try/catch → `42501` →
+   exit≠0 → `.husky/pre-commit` lo trata como 🔴 real y **cancela el commit**. A diferencia del
+   `db:check` de dos pasos antes en el MISMO hook (que explícitamente solo avisa, no bloquea, ante
+   un fallo de conexión), este SÍ bloqueaba. Medido intentando commitear el arreglo del punto 1:
+   `ERROR: permission denied for table topics` y commit cancelado. **Arreglado** en la misma rama:
+   `audit-temario-display-drift.cjs` prefiere `VENCE_LECTOR_URL` si existe (igual que el punto 1) y,
+   por si aparece otra tabla sin cubrir, el `catch` final trata un `42501` como "no puedo mirar" (se
+   salta, no bloquea) en vez de como hallazgo. Sin este arreglo **ningún trabajador de la flota
+   puede pushear NADA**, así que era bloqueante para completar cualquier encargo con entrega en rama.
+   No he auditado si hay más pasos del mismo `pre-commit` con el mismo patrón (queda para quien siga).
+
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
 - **Qué pasó (05/08).** El supervisor de la flota necesitaba comprobar si el arreglo de [T-576] hacía pasar el `pre-commit` con un rol restringido. En vez de reproducirlo en su propio árbol, **entró en el worktree de `l2`** —una sesión ajena— y ejecutó `git checkout HEAD -- .` para dejarlo limpio. Eso borró los **6 ficheros modificados** que `l2` tenía sin commitear: su trabajo entero de T-518, cuya única copia estaba ahí.
