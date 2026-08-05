@@ -842,6 +842,33 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-558] 🟡 [ABIERTO 05/08] La explicación analiza opción por opción y se salta la meta-opción, que es justo la que el usuario elige
+
+- **Quién lo destapa.** La impugnación `5eb40bda` de Marta Pérez Llorente (premium, Aux. Admin. Madrid): *«La D también es correcta»*. La D era **«La segunda y la tercera respuesta son correctas»**, la clave era la B… y la explicación analizaba A, B y C **sin decir una palabra de la D**. O sea: la única opción sobre la que la usuaria tenía dudas era la única que nadie le explicaba. La clave estaba bien; lo que faltaba era la respuesta a su pregunta.
+- **Por qué duele más que una explicación floja normal:** una meta-opción («todas las anteriores», «la segunda y la tercera») no se puede juzgar leyendo el artículo, porque no afirma nada por sí misma — depende de si las otras son ciertas. Es la que más se elige por descarte y la única que **exige** que se la razonen. Callarla convierte la explicación en un texto que responde a todo menos a la duda.
+- **MEDIDO (05/08), y la cifra buena costó tres pasadas:**
+  | corte | cuántas | qué era |
+  |---|---|---|
+  | activas con meta-opción en la D | 3.567 | universo |
+  | …cuya explicación no la menciona | 2.614 | **número inútil**: la mayoría no analiza NINGUNA opción — eso es el cubo de «explicación apelotonada», ya fichado |
+  | …restringido a las que SÍ analizan por opción | 754 | seguía inflado: cuando la D **es** la clave, la explicación abre con «La respuesta correcta es la D» y mi detector no lo veía |
+  | **la D NO es la clave + analiza las otras + se la salta** | **106** | el defecto de verdad |
+  - Los 4 abiertos a mano encajan: enumeran las razones de A, B y C y **paran ahí**.
+- **Cómo se repara** (el caso de Marta ya está hecho, sirve de patrón): reescribir con `aplicar-explicacion.ts` dando a la meta-opción su propia razón, y que esa razón **no cite letras ni posiciones** —«solo sería cierta si X valiera también por sí sola, y no vale: …»— porque «la segunda y la tercera» no sobrevive al barajado. Ojo: estas preguntas son `shuffle_safety='unsafe'` **por construcción** (el enunciado de la propia opción cita a otras por su posición), y eso está bien; lo que se arregla es la explicación, no el barajado.
+- **HERMANA de [T-557]**, abierta el mismo día por otra sesión desde otra impugnación: allí la explicación **repite** la opción correcta en vez de razonarla; aquí **razona todas menos una**. Mismo síntoma para el usuario (la explicación no contesta lo que preguntaba) y causas distintas, así que se arreglan por separado — pero quien coja una debería mirar la otra: comparten el reparador (`aplicar-explicacion.ts`) y la misma cola de preguntas.
+- **Dónde NO meterse:** las 2.508 que no analizan ninguna opción son el cubo de apelotonadas que ya tiene dueño. Mezclarlas aquí volvería la cola inútil, que es lo que pasó en la primera medición.
+- **La consulta que las lista** (los tres filtros son los que sobrevivieron a las tres pasadas, en este orden):
+  ```js
+  // 1) universo: meta-opción en la D y la D NO es la clave
+  //    where is_active and correct_option <> 3
+  //      and option_d ~* '(segunda y (la )?tercera|todas las (respuestas|anteriores)|a y b son|b y c son)'
+  // 2) en JS, con el mismo reconocedor para las cuatro letras:
+  const men = (e, L) => new RegExp('(\\*\\*'+L+'\\)|\\b'+L+'\\)|opci[oó]n\\s+\\*?\\*?'+L+'\\b|la\\s+\\*?\\*?'+L+'\\*?\\*?[.,: ]|respuesta\\s+\\*?\\*?'+L+'\\b)', 'im').test(e)
+  const analiza = q => ['A','B','C'].filter(L => men(q.explanation, L)).length >= 2   // 3) …y se salta la D
+  const roto   = q => analiza(q) && !men(q.explanation, 'D') && !/todas las (respuestas|anteriores|opciones)/i.test(q.explanation)
+  ```
+- **Sin detector automático de momento, a propósito:** el criterio se apoya en reconocer «la opción X» en prosa libre, y las tres pasadas de arriba muestran lo fácil que es que el reconocedor mienta en las dos direcciones. Si esto se convierte en cola recurrente, el sitio es el cubo de explicaciones, no un detector nuevo.
+
 ### [T-557] 🟠 [ABIERTO 05/08] Explicaciones que no explican: repiten la opción correcta, y a veces con el texto falseado y el verdadero PEGADOS
 
 - **Lo nombró un usuario, no un detector.** Adrián (premium) impugnó `c805e7c0` con una frase exacta: *«No explica nada, repite literalmente la respuesta correcta»*. Tenía razón, y su explicación entera era: *«Garantizar derechos económicos para las mujeres víctimas de violencia de género, con el fin de mejorar su posición facilitar su integración social.»* — o sea, la opción repetida **y encima con dos finales pegados**.
