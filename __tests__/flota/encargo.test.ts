@@ -381,3 +381,21 @@ describe('a cada trabajador, el trabajo que PUEDE terminar', () => {
     expect(MAQ.puedeDesplegar('no-existe').puede).toBe(false)
   })
 })
+
+// Las dos puertas de reparto (`repartir` y `vigilar`) tienen que usar el MISMO criterio: si no, el
+// trabajo que le toca a alguien dependería de por dónde entrases — y así es como una de las dos se
+// queda sin lo que se añade a la otra ([T-130]).
+describe('repartir y vigilar reparten igual', () => {
+  const src = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('los dos consultan puedeDesplegar para decidir la cola', () => {
+    const enRepartir = src.slice(src.indexOf("cmd === 'repartir'"))
+    expect(enRepartir).toMatch(/MAQ\.puedeDesplegar\(f\.trabajador\)\.puede/)
+    expect(src).toMatch(/const aImpugnaciones = !MAQ\.puedeDesplegar\(trabajador\)\.puede/)
+  })
+
+  it('y ninguno de los dos manda por su cuenta: pasan por mandarEncargo', () => {
+    expect((src.match(/tmux send-keys -t \$\{trabajador\}/g) || []).length).toBeLessThanOrEqual(1)
+  })
+})

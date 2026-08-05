@@ -607,6 +607,20 @@ async function main() {
       for (const f of libres) {
         // Cada uno se lleva una DISTINTA: repartir la misma a dos es exactamente la colisión que
         // el claim evita, pero mandarles a los dos a por ella desperdicia una vuelta entera.
+        // Mismo criterio que el vigía: quien puede cerrar el ciclo entero se lleva el backlog;
+        // quien no, impugnaciones (análisis puro, sin deploy). Si esto no fuera igual en los dos
+        // sitios, el reparto dependería de por dónde entrases — que es como una de las dos puertas
+        // se queda sin lo que se añade a la otra ([T-130]).
+        if (!MAQ.puedeDesplegar(f.trabajador).puede) {
+          try {
+            const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
+            const r = mandarEncargo(f.trabajador,
+              ENC.encargoImpugnacion({ trabajador: f.trabajador, puedeDesplegar: false }), { alDia })
+            if (r.ok) { console.log(`   ✅ ${f.trabajador.padEnd(4)} → una impugnación (no despliega: ${MAQ.puedeDesplegar(f.trabajador).porQueNo})`); n++ }
+            else console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+          } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
+          continue
+        }
         const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)))
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
