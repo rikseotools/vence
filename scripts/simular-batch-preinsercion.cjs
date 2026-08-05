@@ -25,6 +25,7 @@ const {
   aplicarLeyPorDefecto,
 } = require(path.join(__dirname, '..', 'lib/generacion/simularBatch.js'))
 const { equilibrarLote } = require(path.join(__dirname, '..', 'lib/generacion/transponerPosicion.js'))
+const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib/db/negocioSoloLectura.cjs'))
 
 const FILE = process.argv[2]
 // Ley POR DEFECTO del lote, igual que en `insertar-batch-generado.cjs <fichero> <law_slug> <batch>`.
@@ -57,7 +58,7 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   }
 
   const c = new Client({
-    connectionString: (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, ''),
+    connectionString: urlLecturaNegocio().replace(/[?&]sslmode=require/, ''),
     ssl: { rejectUnauthorized: false },
   })
   await c.connect()

@@ -70,8 +70,14 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
 
-  const DB_URL = process.env.DATABASE_URL;
-  if (!DB_URL) { console.error('❌ DATABASE_URL no configurado'); process.exit(2); }
+  const { urlLecturaNegocio } = require('../lib/db/negocioSoloLectura.cjs');
+  let DB_URL;
+  try {
+    DB_URL = urlLecturaNegocio();
+  } catch {
+    console.error('❌ ni VENCE_LECTOR_URL ni DATABASE_URL configurados');
+    process.exit(2);
+  }
   const postgres = require('postgres');
   const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 

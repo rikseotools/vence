@@ -19,12 +19,12 @@
  *
  * exit 0 = todos coinciden · exit 2 = alguno diverge o no existe en el BOE.
  */
-const fs = require('fs')
 const path = require('path')
 const pg = require('postgres')
 const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
 const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
 const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
+const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -32,8 +32,7 @@ if (!SLUG || !BOE_ID) {
   process.exit(1)
 }
 
-const envPath = path.join(__dirname, '..', '.env.local')
-const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
+const url = urlLecturaNegocio()
 const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
 
 const API = 'https://www.boe.es/datosabiertos/api/legislacion-consolidada/id'

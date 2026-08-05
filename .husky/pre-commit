@@ -10,10 +10,21 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
+#    OJO (T-115, 05/08/2026): el runner de husky invoca este script con `sh -e`
+#    (ver .git/hooks/h). Bajo `-e`, una sentencia SUELTA que falla aborta el hook
+#    ENTERO en el acto — antes de que `SCHEMA_EXIT_CODE=$?` llegara a ejecutarse,
+#    así que el "no bloquea" de este comentario era falso siempre que `db:check`
+#    fallara por CUALQUIER motivo (red caída, y desde T-539 también el rol de
+#    coordinación de la flota, que no tiene permiso sobre tablas de negocio).
+#    La condición de un `if` SÍ está exenta de `-e`: por eso el bloque de tests
+#    de más abajo (con `&&`) nunca tuvo este problema y este si lo tenía.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  npm run db:check
-  SCHEMA_EXIT_CODE=$?
+  if npm run db:check; then
+    SCHEMA_EXIT_CODE=0
+  else
+    SCHEMA_EXIT_CODE=$?
+  fi
 
   if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo ""

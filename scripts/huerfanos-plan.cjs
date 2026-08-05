@@ -16,17 +16,16 @@
  * con contenido real y no derogados); el juicio de qué dispara y qué conviene
  * hacer vive en el núcleo puro, que está testeado y en paridad con el sweep.
  */
-const fs = require('fs')
 const path = require('path')
 const pg = require('postgres')
 const plan = require(path.join(__dirname, '..', 'lib', 'generacion', 'huerfanosPlan'))
+const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const argv = process.argv.slice(2)
 const flag = (n) => argv.indexOf(n)
 const valor = (n) => (flag(n) >= 0 ? argv[flag(n) + 1] : null)
 
-const envPath = path.join(__dirname, '..', '.env.local')
-const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
+const url = urlLecturaNegocio()
 const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
 
 const SQL = `
@@ -78,10 +77,20 @@ const tabla = (filas) => { console.table(filas); return filas }
   // Demanda real por oposición: el alcance dice en cuántos sitios sale el hueco,
   // no a cuánta gente llega, y no es lo mismo (26/07: dos leyes con idéntico
   // rendimiento por artículo, 3.130 vs 733 opositores detrás).
-  const demRows = await s.unsafe(
-    `SELECT target_oposicion AS pt, count(*)::int usuarios FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`,
-  )
-  const demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+  //
+  // `user_profiles` no está en el rol de lectura de la flota (T-486): es donde
+  // vive el correo/nombre, así que el grant es de tabla completa, no de columna.
+  // Degradar en vez de morir — el ranking por artículo/tema/oposición sigue
+  // siendo válido sin la columna "usuarios", que queda a 0.
+  let demanda = {}
+  try {
+    const demRows = await s.unsafe(
+      `SELECT target_oposicion AS pt, count(*)::int usuarios FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`,
+    )
+    demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+  } catch (e) {
+    console.log(`⚠️ sin acceso a la demanda por usuario (${e.message.trim()}) — la columna "usuarios" queda a 0`)
+  }
 
   // Leyes con batch generado en las últimas 24h por CUALQUIER sesión. Nace de la
   // colisión del 26/07: dos sesiones sobre los mismos 5 artículos de la LPRL con
