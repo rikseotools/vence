@@ -2820,7 +2820,16 @@ pero eso hay que comprobarlo, no suponerlo.
 
 **Dato transversal:** los cinco se descubrieron **por casualidad**, ninguno por una alerta. Encaja con lo que mide `npm run sesiones:friccion` ([T-423]): lo que hay que vigilar no es cuántas veces salta un guardarraíl, sino cuántas veces el trabajo se pierde sin que salte ninguno.
 
-- **Relacionadas:** [T-427] (de donde salen 1, 2 y 3), [T-428] (protege el markdown, no el código), [T-400] (avisa del solape, no de la destrucción), [T-423] (medir la fricción), [T-415] (una sesión por directorio).
+**6. (AÑADIDO 05/08/2026) El LANZADOR DE DEPLOY borra el commit de quien esté trabajando en el mismo checkout — y es el más reproducible de los seis.**
+- **Qué pasó, dos veces seguidas.** Con `scripts/deploy-cuando-verde.sh frontend` corriendo en segundo plano, un commit ya hecho y con el árbol limpio desapareció de la rama. En el reflog: `HEAD@{0}: reset: moving to origin/main`. La segunda vez fue el lanzador de **otra sesión**, arrancado 97 s antes.
+- **Causa, y no es un despiste:** el lanzador hace **`git reset --hard origin/main` en CADA vuelta** (lo dice su propio `guardia-worktree.sh`). Es correcto para él —quiere desplegar exactamente `origin/main`— pero lo ejecuta sobre el **árbol compartido**, así que se lleva por delante cualquier commit local que aún no esté en `origin`.
+- **Por qué es peor que los otros cinco:** no hace falta que dos sesiones toquen el mismo fichero, ni que nadie resuelva mal un conflicto. Basta con **commitear mientras alguien despliega**, que es la situación normal con 2-10 sesiones. Y no avisa: el commit desaparece en silencio y `git status` queda limpio.
+- **Lo que NO protege:** `guardia-worktree.sh` avisa a **quien lanza** el deploy, no a quien está commiteando en paralelo. [T-415] (una sesión por directorio) tampoco lo cubre: el `pre-commit` mira sesiones vivas con `.session-id`, y el lanzador no es una sesión.
+- **Se recupera** (`git reflog` → `git cherry-pick <sha>`), pero solo si alguien se da cuenta. Si la sesión cierra sin volver a mirar la rama, el trabajo se pierde y **el CI queda verde**, porque lo que falta nunca llegó a `origin`.
+- **Cómo se salió del atolladero (patrón útil):** pelearse a `cherry-pick` + `push` en el checkout compartido es una carrera que se pierde —el lanzador resetea otra vez—. Lo que funcionó fue **llevarse el commit a un worktree** (`git worktree add`), rebasar y empujar desde allí, que es inmune a sus `reset`. Ojo: el worktree no hereda `node_modules`, así que el guard de typecheck del `pre-push` no puede correr; enlazarlos (`ln -s`) en vez de usar `TYPECHECK_GUARD_SKIP`, para que el guard se ejecute de verdad.
+- **Pistas de arreglo (ninguna decidida):** que el lanzador **construya desde un worktree propio** en vez de resetear el árbol compartido (el backend ya lo hace desde [T-385] fase 1 — «ya no toca el árbol desde el que lo lanzas»; el frontend no); o que se **niegue a resetear** si hay commits locales por delante de `origin/main`; o que al menos lo emita a `observable_events`, que hoy es lo que mide [T-423].
+
+- **Relacionadas:** [T-427] (de donde salen 1, 2 y 3), [T-428] (protege el markdown, no el código), [T-400] (avisa del solape, no de la destrucción), [T-423] (medir la fricción), [T-415] (una sesión por directorio), [T-385] (el backend ya despliega desde worktree propio: el precedente del arreglo del punto 6).
 
 ### [T-435] 🟠 [ABIERTO 31/07] Notas internas de auditoría publicadas en la landing: el campo de referencia usado como bloc de notas, y la vista SSOT lo sirve
 
