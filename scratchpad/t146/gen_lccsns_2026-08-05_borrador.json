@@ -1,0 +1,248 @@
+[
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "8 bis",
+    "primary_article_id": "c47502e3-6ed4-4f9c-9569-08bf1fe91d6f",
+    "article_label": "Art 8 bis LCCSNS",
+    "question_text": "Según el artículo 8 bis de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, ¿qué comprende la cartera común básica de servicios asistenciales del Sistema Nacional de Salud?",
+    "question_type": "single",
+    "option_a": "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública.",
+    "option_b": "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario no urgente, cubiertos de forma completa por financiación pública.",
+    "option_c": "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, sujeto a aportación y/o reembolso por parte del usuario.",
+    "option_d": "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen exclusivamente en centros sanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública.",
+    "options": [
+      "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública.",
+      "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario no urgente, cubiertos de forma completa por financiación pública.",
+      "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, sujeto a aportación y/o reembolso por parte del usuario.",
+      "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen exclusivamente en centros sanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 8 bis.1 Ley 16/2003",
+        "texto": "La cartera común básica de servicios asistenciales del Sistema Nacional de Salud comprende todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública."
+      },
+      "options": {
+        "0": "Reproduce literalmente el apartado 1 del artículo 8 bis: la cartera básica cubre prevención, diagnóstico, tratamiento y rehabilitación en centros sanitarios o sociosanitarios, más el transporte urgente, con financiación pública completa.",
+        "1": "El artículo 8 bis cubre el transporte sanitario urgente. El transporte sanitario no urgente pertenece a la cartera común suplementaria (artículo 8 ter.3) y sí conlleva aportación del usuario.",
+        "2": "El artículo 8 bis no sujeta estas actividades a aportación y/o reembolso del usuario: esa fórmula es la que usa el artículo 8 quáter.1 para la cartera común de servicios accesorios, no la básica, que se financia de forma completa con fondos públicos.",
+        "3": "El artículo 8 bis incluye expresamente los centros sociosanitarios, no solo los sanitarios: omitirlos deja fuera una parte de la cartera básica que la ley sí cubre."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 8 bis.1 Ley 16/2003**\n> \"La cartera común básica de servicios asistenciales del Sistema Nacional de Salud comprende todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública.\"\n\n**Por qué A es correcta:** Reproduce literalmente el apartado 1 del artículo 8 bis: la cartera básica cubre prevención, diagnóstico, tratamiento y rehabilitación en centros sanitarios o sociosanitarios, más el transporte urgente, con financiación pública completa.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo 8 bis cubre el transporte sanitario urgente. El transporte sanitario no urgente pertenece a la cartera común suplementaria (artículo 8 ter.3) y sí conlleva aportación del usuario.\n- **C)** El artículo 8 bis no sujeta estas actividades a aportación y/o reembolso del usuario: esa fórmula es la que usa el artículo 8 quáter.1 para la cartera común de servicios accesorios, no la básica, que se financia de forma completa con fondos públicos.\n- **D)** El artículo 8 bis incluye expresamente los centros sociosanitarios, no solo los sanitarios: omitirlos deja fuera una parte de la cartera básica que la ley sí cubre.",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  },
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "8 ter",
+    "primary_article_id": "adfce378-1f8e-4223-b119-46f77c6d7117",
+    "article_label": "Art 8 ter LCCSNS",
+    "question_text": "Según el apartado 2 del artículo 8 ter de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, ¿qué prestaciones enumera como integrantes de la cartera común suplementaria del Sistema Nacional de Salud?",
+    "question_type": "single",
+    "option_a": "Prestación farmacéutica, prestación ortoprotésica y transporte sanitario no urgente.",
+    "option_b": "Prestación farmacéutica, prestación ortoprotésica y prestación con productos dietéticos.",
+    "option_c": "Prestación farmacéutica, prestación ortoprotésica y transporte sanitario urgente.",
+    "option_d": "Prestación farmacéutica, prestación ortoprotésica y servicios accesorios del Sistema Nacional de Salud.",
+    "options": [
+      "Prestación farmacéutica, prestación ortoprotésica y transporte sanitario no urgente.",
+      "Prestación farmacéutica, prestación ortoprotésica y prestación con productos dietéticos.",
+      "Prestación farmacéutica, prestación ortoprotésica y transporte sanitario urgente.",
+      "Prestación farmacéutica, prestación ortoprotésica y servicios accesorios del Sistema Nacional de Salud."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 8 ter.2 Ley 16/2003",
+        "texto": "Esta cartera común suplementaria del Sistema Nacional de Salud incluirá las siguientes prestaciones: a) Prestación farmacéutica. b) Prestación ortoprotésica. c) Prestación con productos dietéticos."
+      },
+      "options": {
+        "0": "El transporte sanitario no urgente no es una de las tres prestaciones que enumera el apartado 2: el propio artículo lo añade aparte, en el apartado 3, como una prestación que 'también gozará de esta consideración', no como sustituto de la prestación con productos dietéticos.",
+        "1": "El apartado 2 del artículo 8 ter enumera de forma tasada las tres prestaciones de la cartera común suplementaria: farmacéutica, ortoprotésica y con productos dietéticos.",
+        "2": "El transporte sanitario urgente no forma parte de la cartera común suplementaria: pertenece a la cartera común básica de servicios asistenciales, regulada en el artículo 8 bis.",
+        "3": "Los servicios accesorios del Sistema Nacional de Salud son una cartera distinta, regulada en el artículo 8 quáter, y no una de las prestaciones que enumera el apartado 2 del artículo 8 ter."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 8 ter.2 Ley 16/2003**\n> \"Esta cartera común suplementaria del Sistema Nacional de Salud incluirá las siguientes prestaciones: a) Prestación farmacéutica. b) Prestación ortoprotésica. c) Prestación con productos dietéticos.\"\n\n**Por qué B es correcta:** El apartado 2 del artículo 8 ter enumera de forma tasada las tres prestaciones de la cartera común suplementaria: farmacéutica, ortoprotésica y con productos dietéticos.\n\n**Por qué las demás son incorrectas:**\n- **A)** El transporte sanitario no urgente no es una de las tres prestaciones que enumera el apartado 2: el propio artículo lo añade aparte, en el apartado 3, como una prestación que 'también gozará de esta consideración', no como sustituto de la prestación con productos dietéticos.\n- **C)** El transporte sanitario urgente no forma parte de la cartera común suplementaria: pertenece a la cartera común básica de servicios asistenciales, regulada en el artículo 8 bis.\n- **D)** Los servicios accesorios del Sistema Nacional de Salud son una cartera distinta, regulada en el artículo 8 quáter, y no una de las prestaciones que enumera el apartado 2 del artículo 8 ter.",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  },
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "8 quáter",
+    "primary_article_id": "2dc80035-97e1-4a0a-b18b-54df3e7770aa",
+    "article_label": "Art 8 quáter LCCSNS",
+    "question_text": "Según el artículo 8 quáter de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, ¿qué caracteriza a las actividades, servicios o técnicas que integran la cartera común de servicios accesorios del Sistema Nacional de Salud?",
+    "question_type": "single",
+    "option_a": "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, cubiertas de forma completa por financiación pública.",
+    "option_b": "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de cualquier patología, estando sujetas a aportación y/o reembolso por parte del usuario.",
+    "option_c": "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario.",
+    "option_d": "Actividades, servicios o técnicas con carácter de prestación farmacéutica, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario.",
+    "options": [
+      "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, cubiertas de forma completa por financiación pública.",
+      "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de cualquier patología, estando sujetas a aportación y/o reembolso por parte del usuario.",
+      "Actividades, servicios o técnicas sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario.",
+      "Actividades, servicios o técnicas con carácter de prestación farmacéutica, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 8 quáter.1 Ley 16/2003",
+        "texto": "La cartera común de servicios accesorios del Sistema Nacional de Salud incluye todas aquellas actividades, servicios o técnicas, sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario."
+      },
+      "options": {
+        "0": "El artículo 8 quáter no financia estos servicios de forma completa con fondos públicos: los sujeta expresamente a aportación y/o reembolso del usuario. La financiación pública completa es la regla de la cartera común básica (artículo 8 bis), no la de los servicios accesorios.",
+        "1": "El artículo 8 quáter acota estos servicios a los que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, no de cualquier patología: es una condición expresa del apartado 1.",
+        "2": "Reproduce el apartado 1 del artículo 8 quáter: actividades sin carácter de prestación, no esenciales o coadyuvantes/de apoyo para una patología crónica, sujetas a aportación o reembolso del usuario.",
+        "3": "El artículo 8 quáter califica estas actividades como servicios sin carácter de prestación, precisamente para distinguirlos de prestaciones como la farmacéutica, que forma parte de la cartera común suplementaria (artículo 8 ter.2.a)."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 8 quáter.1 Ley 16/2003**\n> \"La cartera común de servicios accesorios del Sistema Nacional de Salud incluye todas aquellas actividades, servicios o técnicas, sin carácter de prestación, que no se consideran esenciales y/o que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, estando sujetas a aportación y/o reembolso por parte del usuario.\"\n\n**Por qué C es correcta:** Reproduce el apartado 1 del artículo 8 quáter: actividades sin carácter de prestación, no esenciales o coadyuvantes/de apoyo para una patología crónica, sujetas a aportación o reembolso del usuario.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 8 quáter no financia estos servicios de forma completa con fondos públicos: los sujeta expresamente a aportación y/o reembolso del usuario. La financiación pública completa es la regla de la cartera común básica (artículo 8 bis), no la de los servicios accesorios.\n- **B)** El artículo 8 quáter acota estos servicios a los que son coadyuvantes o de apoyo para la mejora de una patología de carácter crónico, no de cualquier patología: es una condición expresa del apartado 1.\n- **D)** El artículo 8 quáter califica estas actividades como servicios sin carácter de prestación, precisamente para distinguirlos de prestaciones como la farmacéutica, que forma parte de la cartera común suplementaria (artículo 8 ter.2.a).",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  },
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "8 quinquies",
+    "primary_article_id": "76b745e7-e3ca-4c51-bb42-2c9505f31aa1",
+    "article_label": "Art 8 quinquies.1 LCCSNS",
+    "question_text": "Según el artículo 8 quinquies de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, ¿qué debe incluir, como mínimo, la cartera de servicios que apruebe una comunidad autónoma en el ámbito de sus competencias?",
+    "question_type": "single",
+    "option_a": "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y complementaria, garantizándose a todos los usuarios del mismo.",
+    "option_b": "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo.",
+    "option_c": "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a los usuarios que lo soliciten expresamente.",
+    "option_d": "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo.",
+    "options": [
+      "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y complementaria, garantizándose a todos los usuarios del mismo.",
+      "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo.",
+      "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a los usuarios que lo soliciten expresamente.",
+      "Cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 8 quinquies.1 Ley 16/2003",
+        "texto": "Las comunidades autónomas, en el ámbito de sus competencias, podrán aprobar sus respectivas carteras de servicios que incluirán, cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo."
+      },
+      "options": {
+        "0": "La 'cartera de servicios complementaria' es precisamente la que regula este artículo 8 quinquies como capa adicional y potestativa de la comunidad autónoma (apartado 2); no es una de las tres modalidades mínimas de la cartera común que el apartado 1 exige garantizar.",
+        "1": "El apartado 1 exige las tres modalidades — básica, suplementaria y de servicios accesorios —, no solo dos: omitir la modalidad básica de servicios asistenciales deja fuera el suelo mínimo que la ley impone.",
+        "2": "El apartado 1 no condiciona la garantía a que el usuario la solicite: la cartera común, en sus tres modalidades, se garantiza a todos los usuarios del Sistema Nacional de Salud.",
+        "3": "Reproduce el apartado 1 del artículo 8 quinquies: la cartera autonómica debe incluir, como mínimo, las tres modalidades de la cartera común (básica, suplementaria y de servicios accesorios), garantizada a todos los usuarios."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 8 quinquies.1 Ley 16/2003**\n> \"Las comunidades autónomas, en el ámbito de sus competencias, podrán aprobar sus respectivas carteras de servicios que incluirán, cuando menos, la cartera común de servicios del Sistema Nacional de Salud en sus modalidades básica de servicios asistenciales, suplementaria y de servicios accesorios, garantizándose a todos los usuarios del mismo.\"\n\n**Por qué D es correcta:** Reproduce el apartado 1 del artículo 8 quinquies: la cartera autonómica debe incluir, como mínimo, las tres modalidades de la cartera común (básica, suplementaria y de servicios accesorios), garantizada a todos los usuarios.\n\n**Por qué las demás son incorrectas:**\n- **A)** La 'cartera de servicios complementaria' es precisamente la que regula este artículo 8 quinquies como capa adicional y potestativa de la comunidad autónoma (apartado 2); no es una de las tres modalidades mínimas de la cartera común que el apartado 1 exige garantizar.\n- **B)** El apartado 1 exige las tres modalidades — básica, suplementaria y de servicios accesorios —, no solo dos: omitir la modalidad básica de servicios asistenciales deja fuera el suelo mínimo que la ley impone.\n- **C)** El apartado 1 no condiciona la garantía a que el usuario la solicite: la cartera común, en sus tres modalidades, se garantiza a todos los usuarios del Sistema Nacional de Salud.",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  },
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "8 quinquies",
+    "primary_article_id": "76b745e7-e3ca-4c51-bb42-2c9505f31aa1",
+    "article_label": "Art 8 quinquies.7 LCCSNS",
+    "question_text": "Según el artículo 8 quinquies.7 de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, ¿quién asume los costes de aplicar la cartera de servicios complementaria a las personas aseguradas o beneficiarias?",
+    "question_type": "single",
+    "option_a": "Las comunidades autónomas asumirán, con cargo a sus propios presupuestos, todos los costes de aplicación de la cartera de servicios complementaria.",
+    "option_b": "El Consejo Interterritorial del Sistema Nacional de Salud asumirá, con cargo a fondos propios, todos los costes de aplicación de la cartera de servicios complementaria.",
+    "option_c": "El Ministerio de Sanidad asumirá, con cargo a los Presupuestos Generales del Estado, todos los costes de aplicación de la cartera de servicios complementaria.",
+    "option_d": "Las comunidades autónomas y el Ministerio de Sanidad asumirán, a partes iguales, todos los costes de aplicación de la cartera de servicios complementaria.",
+    "options": [
+      "Las comunidades autónomas asumirán, con cargo a sus propios presupuestos, todos los costes de aplicación de la cartera de servicios complementaria.",
+      "El Consejo Interterritorial del Sistema Nacional de Salud asumirá, con cargo a fondos propios, todos los costes de aplicación de la cartera de servicios complementaria.",
+      "El Ministerio de Sanidad asumirá, con cargo a los Presupuestos Generales del Estado, todos los costes de aplicación de la cartera de servicios complementaria.",
+      "Las comunidades autónomas y el Ministerio de Sanidad asumirán, a partes iguales, todos los costes de aplicación de la cartera de servicios complementaria."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 8 quinquies.7 Ley 16/2003",
+        "texto": "Las comunidades autónomas asumirán, con cargo a sus propios presupuestos, todos los costes de aplicación de la cartera de servicios complementaria a las personas que tengan la condición de asegurado o de beneficiario del mismo."
+      },
+      "options": {
+        "0": "El apartado 7 del artículo 8 quinquies atribuye el coste íntegro a las comunidades autónomas, con cargo a sus propios presupuestos.",
+        "1": "El Consejo Interterritorial del Sistema Nacional de Salud es un órgano de coordinación, mencionado en el apartado 5 de este mismo artículo, no el responsable de sufragar la cartera complementaria.",
+        "2": "El artículo 8 quinquies no traslada el coste al Ministerio de Sanidad ni a los Presupuestos Generales del Estado: es la comunidad autónoma la que asume los costes con cargo a su propio presupuesto, no a fondos estatales.",
+        "3": "El apartado 7 no reparte el coste entre la comunidad autónoma y el Ministerio de Sanidad: lo asume íntegramente la comunidad autónoma con cargo a sus propios presupuestos."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 8 quinquies.7 Ley 16/2003**\n> \"Las comunidades autónomas asumirán, con cargo a sus propios presupuestos, todos los costes de aplicación de la cartera de servicios complementaria a las personas que tengan la condición de asegurado o de beneficiario del mismo.\"\n\n**Por qué A es correcta:** El apartado 7 del artículo 8 quinquies atribuye el coste íntegro a las comunidades autónomas, con cargo a sus propios presupuestos.\n\n**Por qué las demás son incorrectas:**\n- **B)** El Consejo Interterritorial del Sistema Nacional de Salud es un órgano de coordinación, mencionado en el apartado 5 de este mismo artículo, no el responsable de sufragar la cartera complementaria.\n- **C)** El artículo 8 quinquies no traslada el coste al Ministerio de Sanidad ni a los Presupuestos Generales del Estado: es la comunidad autónoma la que asume los costes con cargo a su propio presupuesto, no a fondos estatales.\n- **D)** El apartado 7 no reparte el coste entre la comunidad autónoma y el Ministerio de Sanidad: lo asume íntegramente la comunidad autónoma con cargo a sus propios presupuestos.",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  },
+  {
+    "law_slug": "lccsns",
+    "primary_article_number": "65 bis",
+    "primary_article_id": "765a7975-f061-4a54-9820-5c9e3ed01466",
+    "article_label": "Art 65 bis LCCSNS",
+    "question_text": "Según el artículo 65 bis de la Ley 16/2003, de 28 de mayo, de cohesión y calidad del Sistema Nacional de Salud, en una situación de emergencia para la salud pública, ¿qué información deben aportar con carácter inmediato al Ministerio de Sanidad los órganos competentes en materia de salud pública de las comunidades autónomas?",
+    "question_type": "single",
+    "option_a": "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas presupuestarias y de contratación de personal adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+    "option_b": "La información económica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+    "option_c": "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+    "option_d": "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas exclusivamente por la propia comunidad autónoma.",
+    "options": [
+      "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas presupuestarias y de contratación de personal adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+      "La información económica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+      "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial.",
+      "La información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas exclusivamente por la propia comunidad autónoma."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 65 bis Ley 16/2003",
+        "texto": "Los órganos competentes en materia de salud pública de las comunidades autónomas deberán, en el caso de una situación de emergencia para la salud pública y sin perjuicio de lo establecido en el artículo 65 de esta ley, aportar con carácter inmediato al Ministerio de Sanidad la información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial, en los términos que se establezcan por el Ministerio de Sanidad."
+      },
+      "options": {
+        "0": "El artículo 65 bis se refiere a medidas de prevención, control y contención de la emergencia sanitaria, no a medidas presupuestarias o de contratación de personal, que no son objeto de este precepto.",
+        "1": "El artículo 65 bis exige información epidemiológica, no económica: la emergencia que regula este artículo es de salud pública, y el dato que se reclama con carácter inmediato es epidemiológico y asistencial.",
+        "2": "Reproduce el artículo 65 bis: en emergencia de salud pública, las comunidades autónomas deben aportar de inmediato al Ministerio de Sanidad la información epidemiológica, la de capacidad asistencial, la identificación de responsables y las medidas de prevención, control y contención adoptadas, incluidas las de las entidades locales de su ámbito.",
+        "3": "El artículo 65 bis incluye expresamente las medidas adoptadas por las entidades locales del ámbito territorial de la comunidad autónoma, que además es quien debe recabar esa información y transmitirla al Ministerio; no se limita a lo actuado por la propia comunidad autónoma."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 65 bis Ley 16/2003**\n> \"Los órganos competentes en materia de salud pública de las comunidades autónomas deberán, en el caso de una situación de emergencia para la salud pública y sin perjuicio de lo establecido en el artículo 65 de esta ley, aportar con carácter inmediato al Ministerio de Sanidad la información epidemiológica y la relativa a la capacidad asistencial que se requiera y la identificación de las personas responsables de la misma, así como las medidas de prevención, control y contención adoptadas por las comunidades autónomas y las entidades locales comprendidas en su ámbito territorial, en los términos que se establezcan por el Ministerio de Sanidad.\"\n\n**Por qué C es correcta:** Reproduce el artículo 65 bis: en emergencia de salud pública, las comunidades autónomas deben aportar de inmediato al Ministerio de Sanidad la información epidemiológica, la de capacidad asistencial, la identificación de responsables y las medidas de prevención, control y contención adoptadas, incluidas las de las entidades locales de su ámbito.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 65 bis se refiere a medidas de prevención, control y contención de la emergencia sanitaria, no a medidas presupuestarias o de contratación de personal, que no son objeto de este precepto.\n- **B)** El artículo 65 bis exige información epidemiológica, no económica: la emergencia que regula este artículo es de salud pública, y el dato que se reclama con carácter inmediato es epidemiológico y asistencial.\n- **D)** El artículo 65 bis incluye expresamente las medidas adoptadas por las entidades locales del ámbito territorial de la comunidad autónoma, que además es quien debe recabar esa información y transmitirla al Ministerio; no se limita a lo actuado por la propia comunidad autónoma.",
+    "tags": [
+      "ia_generada",
+      "gen_lccsns_2026-08-05"
+    ],
+    "lifecycle_state": "draft",
+    "deactivation_reason": "Pendiente de revisión post-generación IA",
+    "topic_review_status": "pending"
+  }
+]
