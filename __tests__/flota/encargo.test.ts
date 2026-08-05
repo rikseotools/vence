@@ -296,3 +296,20 @@ describe('el bucle de vigilancia', () => {
     expect(bloque).not.toMatch(/responder|answer\s*=|aprob/i)
   })
 })
+
+// ── «NO SE PUDO VER» NO ES «ESTÁ EJECUTANDO» ────────────────────────────────────────────────
+// `puedeRecibir('')` devuelve libre:false, que es correcto para decidir si se le manda un encargo
+// (sin dato no se manda). Pero leerlo al revés —«no está libre, luego está trabajando»— pinta de
+// verde a un trabajador que NO EXISTE: paso con w3 y w4 el 05/08, declarados en el registro y
+// nunca arrancados, saliendo «🟢 ejecutando» en el panel.
+describe('el panel distingue «ocupado» de «no se pudo ver»', () => {
+  it('sin dato, puedeRecibir dice que NO se le mande (eso está bien)', () => {
+    expect(ENC.puedeRecibir('').libre).toBe(false)
+  })
+
+  it('pero el panel exige un comando REAL antes de pintarlo ejecutando', () => {
+    const src = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+    expect(src).toMatch(/const ejecutando = comando !== ''/)
+  })
+})

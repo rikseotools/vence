@@ -545,6 +545,29 @@ acotados, igual que el VPS.
 > **`trabajadores` en el registro son los AUTÓNOMOS, no todas tus sesiones.** Las que abras tú a
 > mano siguen siendo tuyas, salen como personas en el parte y nadie les manda encargos.
 
+#### ¿Produce la flota, y a qué coste? — `npm run flota -- productividad`
+
+La ficha del piloto declaró **antes de empezar** cómo se sabría si salía bien, para no juzgarlo por
+la impresión: tareas cerradas y verificadas por trabajador, ratio de escape de guardarraíles, y
+**horas de revisión de Manuel por tarea entregada**. De las tres, solo la segunda tenía comando
+(`npm run sesiones:friccion`, al que este parte remite en vez de recalcularlo).
+
+**Dos cosas que solo se vieron al medir de verdad (05/08):**
+
+1. **«Tareas cerradas por trabajador» sale 0 por construcción.** Un trabajador no cierra: **entrega**.
+   Cerrar exige verificar, y verificar es de una persona — eso es la quinta espera, no un defecto.
+   Medido: 162 cerradas en 7 días, **todas por personas**, con nueve entregas de la flota en cola al
+   mismo tiempo. La métrica declarada era ciega: la producción de la flota son sus **entregas**, y lo
+   que dice si sirven es cuántas acaban aceptadas.
+2. **El semáforo mira la cola de REVISIÓN, no la producción.** Es el criterio de fracaso declarado:
+   si la flota produce el doble pero duplica tu tiempo, ha fallado aunque los contadores suban. Rojo
+   cuando la mitad de las entregas lleva ≥24 h sin mirar.
+
+Dos decisiones de medida que evitan engañarse: se usa la **mediana** (una entrega olvidada de hace
+tres días desplaza la media y esconde el resto) y se dice **«no medido»** en vez de rellenar
+(`worked_seconds` no existe en las tareas anteriores a [T-414], y promediar solo sobre las que lo
+tienen daría una cifra que nadie puede desmentir).
+
 #### Antes de cada encargo: el clon al día, y el trabajador libre
 
 Dos comprobaciones que van **dentro** de la puerta de envío (`mandarEncargo`), no en cada comando,

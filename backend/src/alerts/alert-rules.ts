@@ -5923,6 +5923,42 @@ export const RULE_FLOTA_AUTENTICACION: AlertRule<{
 };
 
 // ────────────────────────────────────────────────────────────────
+// LA COLA DE REVISIÓN DE LA FLOTA ENVEJECE (T-486, 2026-08-05)
+//
+// El criterio de FRACASO del piloto lo declaró su propia ficha antes de empezar: si las horas de
+// revisión de Manuel por tarea entregada suben, la flota ha fallado **aunque produzca más**. Él es
+// el recurso escaso, no el cómputo.
+//
+// Por eso esta regla no mira producción: mira si lo entregado se queda sin revisar. Una flota que
+// entrega más rápido de lo que una persona puede mirar no está produciendo, está acumulando.
+export const RULE_FLOTA_PRODUCTIVIDAD: AlertRule<{
+  n: number;
+  motivo: string | null;
+}> = {
+  name: 'flota_productividad',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS motivo
+    FROM observable_events
+    WHERE event_type = 'flota_productividad'
+      AND severity = 'error'
+      AND created_at > NOW() - INTERVAL '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => ({
+    title: '🙋 Flota: las entregas se quedan sin revisar',
+    body:
+      `${rows[0].motivo ?? '(n/a)'}\n\n` +
+      `Era el criterio de fracaso declarado del piloto: producir mas a costa del tiempo de ` +
+      `revision es perder. Detalle: npm run flota -- productividad`,
+    metadata: { count: rows[0].n },
+    fingerprint: 'flota_productividad',
+  }),
+  cooldownMin: 720,
+};
+
+// ────────────────────────────────────────────────────────────────
 // EL CLON DE UN TRABAJADOR NO SE PUEDE PONER AL DÍA (T-486, 2026-08-05)
 //
 // Hermana de la anterior y con el mismo modo de fallo: un trabajador arrancado, latiendo, verde en
@@ -6120,6 +6156,8 @@ export const ALERT_RULES: AlertRule[] = [
   // Y el otro modo de «arrancado pero sin poder trabajar»: su clon del repo no se pone al día, así
   // que el supervisor rehúsa darle encargo (T-486).
   RULE_FLOTA_CLON as AlertRule,
+  // Y si lo entregado se queda sin revisar: el criterio de fracaso declarado del piloto (T-486).
+  RULE_FLOTA_PRODUCTIVIDAD as AlertRule,
   RULE_SIM_RUTA_ROTA as AlertRule,
   // Y el evento VIEJO de Vence Sim, sin vigilancia desde que existe el harness (T-491): el
   // catch-all tampoco lo cubría, porque exige 150 del mismo tipo en una hora.

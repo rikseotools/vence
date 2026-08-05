@@ -35,6 +35,7 @@ const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
 // El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
 const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
+const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 
 const cmd = process.argv[2] || 'estado'
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
@@ -250,7 +251,13 @@ async function main() {
       // levantarlo (su tmux vive), hay que volver a lanzarle el turno.
       const abandonadas = []
       for (const f of filas) {
-        const ejecutando = ENC.puedeRecibir(comandoDelPanel(f.trabajador)).libre === false
+        // ⚠️ «No se pudo ver» NO es «está ejecutando». `comandoDelPanel` devuelve cadena vacía
+        // cuando no hay sesión de tmux —o no se puede alcanzar la máquina—, y leer eso como
+        // «ocupado» pintaba de verde a un trabajador que NO EXISTE: pasó con w3 y w4 el 05/08,
+        // declarados en el registro y nunca arrancados, saliendo «🟢 ejecutando». Es el mismo
+        // verde falso que este repo persigue en el contenido, aquí en el panel que lo vigila.
+        const comando = comandoDelPanel(f.trabajador)
+        const ejecutando = comando !== '' && ENC.puedeRecibir(comando).libre === false
         // Un trabajador callado PERO con sesión viva está LIBRE, no caído. Confundirlos manda a
         // levantar lo que solo hacía falta encargar.
         const libre = !ejecutando && sesionViva(f.trabajador)
@@ -435,6 +442,36 @@ async function main() {
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
       console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
       return 0
+    }
+
+    // ── PRODUCTIVIDAD: ¿produce, y a qué coste para Manuel? ───────────────────────────────
+    // Va AQUÍ y no en un script suelto porque es la misma pregunta que el panel: cómo va la flota.
+    // El ratio de escape de guardarraíles —el otro criterio declarado— ya lo mide
+    // `npm run sesiones:friccion`, así que se REMITE a él en vez de calcularlo otra vez ([T-130]).
+    if (cmd === 'productividad') {
+      const dias = Math.max(1, Number(arg('--dias') || 7))
+      const cerradas = await sql`
+        SELECT id, closed_at AS done_at, claimed_by, worked_seconds, review_requested_by
+          FROM public.backlog_tasks
+         WHERE closed_at > now() - (${dias} || ' days')::interval`
+      const entregadas = await sql`
+        SELECT id, review_requested_at, review_requested_by
+          FROM public.backlog_tasks
+         WHERE review_requested_at IS NOT NULL AND status <> 'done'`
+      const m = PROD.medir({ cerradas, entregadas, ahora: new Date() })
+      console.log('')
+      for (const l of PROD.formatear(m, { dias })) console.log(l)
+      console.log('')
+      console.log('   el tercer criterio del piloto (¿se erosionan los guardarraíles?):')
+      console.log('     npm run sesiones:friccion')
+      // Al bus, para que la serie exista: sin histórico, el veredicto de hoy no se puede comparar
+      // con nada — y este parte nace justamente porque no había con qué comparar.
+      await sql`
+        INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+        VALUES ('fargate', ${m.veredicto.color === 'rojo' ? 'error' : m.veredicto.color === 'ambar' ? 'warn' : 'info'},
+                'flota_productividad', 'flota', ${m.veredicto.razon},
+                ${sql.json({ dias, ...m.porOrigen, entregas: m.entregas, tiempo: m.tiempo })})`.catch(() => {})
+      return m.veredicto.color === 'rojo' ? 3 : 0
     }
 
     // ── VIGILAR: la flota se mantiene ocupada SOLA ────────────────────────────────────────
@@ -693,7 +730,7 @@ async function main() {
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | vigilar [--cada 300] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    console.error('Uso: flota.cjs [estado] | productividad [--dias 7] | vigilar [--cada 300] | repartir | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}

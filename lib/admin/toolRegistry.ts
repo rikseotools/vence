@@ -1967,6 +1967,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`aprobacionEnvios.guardrail.test.ts` (27) exige que ningún script de envío se quede sin la ' +
       'puerta, que es como se pierden las protecciones: añadiendo un quinto que no la tiene.',
   },
+  flota_productividad: {
+    titulo: '¿La flota produce, y a qué coste para Manuel? — el criterio de fracaso declarado del piloto',
+    ruta: 'lib/sessions/productividad.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run flota -- productividad [--dias 7]`. La ficha del piloto declaró ANTES de empezar ' +
+      'cómo se sabría si salía bien; de sus tres criterios solo uno tenía comando (`sesiones:friccion`, ' +
+      'que se REMITE, no se copia). **DOS HALLAZGOS al estrenarlo (05/08):** (1) «tareas cerradas por ' +
+      'trabajador» sale **0 por construcción** —un trabajador no cierra, ENTREGA; cerrar exige ' +
+      'verificar y eso es de una persona ([T-539])—, así que la métrica declarada era ciega y la ' +
+      'producción real de la flota son sus entregas y su tasa de aceptación; (2) medido en vivo: ' +
+      '162 cerradas en 7 días, TODAS por personas, con 9 entregas de la flota en cola. El semáforo ' +
+      'mira la COLA DE REVISIÓN, no la producción, porque ése era el criterio de fracaso: producir ' +
+      'más a costa del tiempo de Manuel es perder. Usa MEDIANA (una entrega olvidada desplaza la ' +
+      'media y esconde el resto) y **dice «no medido» en vez de rellenar** (`worked_seconds` solo ' +
+      'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`. 23 tests.',
+  },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
     ruta: 'lib/flota/cuentas.cjs',
