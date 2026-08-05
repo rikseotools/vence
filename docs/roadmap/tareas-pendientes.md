@@ -2418,220 +2418,6 @@ ponerse a verificar una por una.
 - **Cómo se resuelve (y cómo NO):** pipeline `verify:scope` (dump → plan → apply), que manda los recortes a **puerta de juicio** y nunca los aplica solo; los de Canarias/Madrid necesitaron `--include-gate` con la decisión humana ya tomada. **NUNCA un `UPDATE` a mano** (el `article_numbers` tiene trinquete) ni **recortar por simetría** con otras oposiciones — es el error que este hallazgo desmonta.
 - **Impacto acotado, por eso es 🟡:** se sirve materia de MÁS, no de menos. Nadie deja de estudiar lo suyo; algunos practican lo que no les van a preguntar.
 - **Relacionadas:** [T-421] (de donde sale), [T-088] (campaña de recortes de sobre-inclusión), frase-gatillo *«revisa la sobre-inclusión del temario»* y *«revisa los scopes sin verificar»* (los 2 que quedan son casos suyos).
-### [T-434] 🔴 [ABIERTO 31/07] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
-
-- **Esfuerzo: larga** (el diagnóstico está hecho; falta encontrar por qué la reconciliación no les alcanza, y eso es tocar identidad).
-- **🔴 HAY DINERO EN JUEGO AHORA MISMO.** El 30/07 a las 06:43, el usuario `140ef91a` intentó contratar premium y recibió **`404 · User not found in database`** — 16 llamadas a `/api/stripe/create-checkout` rechazadas. Es **exactamente** el caso que motivó [T-245] (Sergio, 24 intentos), repitiéndose **dos días después de darla por hecha**.
-- **Lo medido el 31/07 (24 h, sesión `central-izquierdo`):**
-  - **31 usuarios distintos** provocan `Usuario no existe` desde el SERVIDOR (`event_type='auth'`, `severity='warn'`, endpoint `/api/v2/user-stats`): 183 eventos.
-  - **33 usuarios** con la firma de cliente `UserAvatar: v2 stats error: Usuario no existe` (81 eventos).
-  - **Los 33 son fantasmas completos:** 0 de 33 existen en `user_profiles`, 0 en `test_questions`. No es una carrera de milisegundos al crear el perfil: `64a2b250` lleva **dos días** navegando (91 peticiones, banners, TTS, temario) con **68 «Usuario no existe»** a su nombre.
-  - Y **sí pasan por donde debería curarles**: 162 llamadas a `/api/auth/token` desde 28 de los 29, 2.210 en total.
-- **El arreglo de [T-245] ESTÁ desplegado — comprobado, no supuesto.** El commit `e3035a601` (`lib/auth/canonicalSub.ts`) es ancestro de los tres deploys vivos del 30-31/07 (`a933bd3e`, `2fdbcf4e`, `26174822`). O sea: **el problema no es que falte desplegar.**
-- **Y la vigilancia que aquella ficha dejó como red de seguridad NO lo ve.** Su consulta (`auth_sub_reconciliado` por día) devuelve **1 solo evento en 14 días** —un `huerfano` del 29/07— mientras hay 31 usuarios al día con el síntoma. Quien mire esa consulta concluye «drenado, todo bien». **Es un falso verde**, y es lo primero que hay que arreglar: una señal que no ve el caso es peor que no tenerla, porque da por cerrado lo que sigue abierto.
-- **✅ PRIMER PASO HECHO (31/07) — y descarta las dos hipótesis fáciles. Esto es lo que hay:**
-  1. **NO son cuentas eliminadas.** El propio endpoint lo da por hecho en un comentario (*«FK violation: user_id no existe (eliminado por admin-delete-user), sesión zombi»*) y **es falso para estos casos**: **0 de 29** aparecen en `deleted_users_log` (110 filas). Quien lea ese comentario concluirá que no hay nada que arreglar.
-  2. **NO es que la reconciliación no se ejecute.** Uno de los afectados (`64a2b250`) acuña token con **HTTP 200 setenta y dos veces** entre el 30 y el 31/07. Pasa por `canonicalSubForToken` en cada tick y **no emite ni `reconciliado` ni `huerfano`** — que es justo lo que ocurre cuando la consulta responde que el perfil **sí existe**.
-  3. **NACEN ROTOS, y llevan SEMANAS así.** El dato que lo cierra: el hueco entre el primer evento de cada usuario y su primer «Usuario no existe» es de **0, 1, 7 y 14 minutos** en la mayoría. No se rompen por el camino: llegan rotos. Y no es de ayer — hay afectados desde el **7 de julio** (666 eventos), el **9** (499) y el **13** (**1.127 eventos**), es decir gente usando la plataforma **hasta 24 días** con la identidad rota. [T-245] se cerró el 28/07 y no les ha alcanzado.
-- **✅ CAUSA CONFIRMADA (31/07) y la mitad observable YA HECHA — falta la decisión de fondo.**
-  - **La cadena, leída en el código:** `lib/auth/authjs.ts`, callback `jwt` → `const appUserId = await resolveAppUserId(...)` → **`if (appUserId) token.appUserId = appUserId`**. Cuando devuelve `null`, **no se fija nada y la sesión se firma igual**; el callback `session` solo copia `session.user.id` *si* hay `appUserId`, así que el id se queda con el **valor por defecto de Auth.js, que no existe en `user_profiles`**. Desde ese instante el usuario está roto, y por eso **nace roto** (gap de 0-14 min, medido).
-  - **Y era invisible del todo:** `resolveAppUserId` solo deja un `console.warn` que **no se persiste** — comprobado: **0 eventos** con esa firma en `observable_events` y en `validation_error_logs`.
-  - **La suposición del código es FALSA y conviene borrarla de la cabeza:** el comentario de `resolveAppUserId` dice que devolver `null` es *«SEGURO: el emisor no acuñará token sin sub válido (`/api/auth/token` responde 503)»*. No ocurre: uno de los afectados acuñó **72 tokens con HTTP 200**. La sesión de Auth.js y el `sub` del access token son cosas distintas, y la primera se firma sin mirar la segunda.
-  - **HECHO en esta sesión (`lib/auth/authjs.ts` + regla de alerta):** se emite **`auth_alta_sin_perfil`** (`error`, con **prefijo y dominio del email, nunca el email en claro**) en la rama del fallo, y **nace vigilada**: regla `alta_sin_perfil` en `ALERT_RULES`, que dispara **con UNA sola alta rota** —no hay volumen mínimo aceptable— y explica en el aviso a quién afecta y dónde mirar. Capas: 3 de cableado en `__tests__/auth/canonicalSub.test.ts` (mismo patrón que [T-245], validan que la emisión está en la rama del fallo y que no filtra el email) + 6 de la regla + el test de que está registrada. **Esto NO arregla el alta: la hace visible.**
-- **📡 PRIMERA LECTURA TRAS EL DEPLOY (01/08, ~10 h después): `auth_alta_sin_perfil` = 0 eventos, con 8 altas nuevas y 30 usuarios rotos en 24 h.** Ese cero **es coherente, no concluyente**: la señal solo se emite en el PRIMER sign-in, así que los 30 rotos —que vienen de antes— no la disparan; y 8 altas es muy poca muestra. **El umbral para sospechar sigue siendo el escrito: si a las 48 h sigue en 0 habiendo decenas de altas, la emisión no está en el camino real y hay que volver al callback `jwt`.**
-- **🔑 CAUSA RAÍZ ENCONTRADA (01/08) — y NO es dónde se estaba buscando.** El defecto no es *por qué* falla la resolución la primera vez: es que **la resolución se intenta UNA SOLA VEZ EN LA VIDA DE LA SESIÓN y no se reintenta nunca**.
-  - `token.appUserId` se escribe **en un único sitio del repo** (`lib/auth/authjs.ts:103`), y está **dentro de `if (user?.email)`**. En Auth.js, `user` **solo llega en el primer sign-in**; en cada rotación posterior de la sesión —una por carga de página— viene `undefined`, así que **el bloque entero se salta**.
-  - Consecuencia: si esa única resolución falla —por lo que sea, incluido un hipo transitorio de la BD—, el usuario queda **roto para siempre**, hasta que cierre sesión y vuelva a entrar. No hay segunda oportunidad.
-  - **Esto explica lo que no encajaba:** por qué siguen rotos SEMANAS (el más antiguo desde el 7 de julio) y por qué las **2.210 llamadas a `/api/auth/token`** no les curan — ese endpoint LEE `appUserId` del token, no lo resuelve. Ningún camino vuelve a intentarlo.
-- **Descartado con datos, para que nadie lo repita:**
-  - **NO hay ninguna FK a `auth.users`.** El comentario de `resolveAppUser.ts` que lo supone (*«FK a auth.users aún viva (pre-cutover)»*) está **obsoleto**: las restricciones de `user_profiles` son PK, `UNIQUE(email)` y tres CHECK. Nada más.
-  - **`create_organic_user` FUNCIONA** para un alta nueva. Probado contra RDS en transacción con `ROLLBACK`: usuario nuevo → OK.
-- **⚠️ DEFECTO LATENTE encontrado por el camino (aún no ha causado daño, pero lo causará):** la búsqueda previa usa `lower(email)` y el índice único es sobre `email` **en crudo** (`user_profiles_email_key`). Son **dos criterios distintos sobre la misma columna**. Probado: insertar el mismo email en MAYÚSCULAS con otro id **no choca y crea un duplicado**; e insertar uno ya existente da `23505` que el `ON CONFLICT (id)` de la función **no captura**. Hoy los datos están limpios (**0 duplicados, 0 espacios, 0 mayúsculas en 11.713 perfiles**), así que es una bomba sin estallar: o el índice pasa a ser sobre `lower(email)`, o la función contempla el conflicto por email.
-- **📐 EL ARREGLO QUE SE DEDUCE, y cura a los ya rotos sin tocarlos:** reintentar la resolución **en cualquier rotación** en la que falte `appUserId`, no solo en el sign-in — el email viaja en `token.email`, así que el dato está. Con eso: (a) un fallo transitorio deja de ser permanente; (b) los **235 rotos se curan solos** la próxima vez que carguen una página, sin campaña ni avisarles; (c) el emisor `auth_alta_sin_perfil` pasa a contar los fallos REALES en vez de solo los del primer intento. **Falta decidirlo y probarlo**: es el camino por el que pasa la sesión de todos los usuarios.
-- **Medición del daño (01/08 08:50):** 30 usuarios rotos activos en 24 h · **235 en total** · **85 checkouts rechazados en 7 días de 12 personas distintas** · 0 de ellos recuperable desde la telemetría (no guardamos su email en ningún evento).
-
-- **✅ ARREGLADO (01/08) — decisión de Manuel: «encontrar el fallo y que no vuelva a pasar».** Cuatro piezas, y las cuatro tienen su porqué:
-
-  | Pieza | Qué cierra |
-  |---|---|
-  | **Índice** `user_profiles_email_lower_key` (migración `20260801_…`) | La búsqueda era `lower(email)` y el único índice era sobre `email` CRUDO: **Seq Scan de 426 ms** en cada sign-in. Ahora **0,04 ms**. Sin esto, reintentar sería empeorar |
-  | **Reintento** en el callback `jwt` (`lib/auth/authjs.ts`) | Se resuelve el perfil en **cualquier rotación** en la que falte, no solo en el alta. Cura solos a los ya rotos |
-  | **Núcleo puro** `lib/auth/reintentoPerfil.ts` | Decide *cuándo* reintentar: ventana de 5 min, marca en el propio token, y una marca FUTURA no puede silenciarlo de por vida |
-  | **Resolutor** `resolverPerfilPorEmail` | Dice **por qué** salió lo que salió, para poder emitir el evento justo |
-
-- **Y dos agujeros de robustez que se vieron al mirarlo de cerca, ninguno de ellos el fallo original:**
-  1. **La CONSULTA estaba fuera del `try`.** Si fallaba, la excepción subía al callback de Auth.js, que no la espera. Ahora se captura **y no se intenta crear nada**: sin saber si el perfil existe, crearlo puede duplicar a un usuario — el peor fallo posible aquí, y lo dice la cabecera del propio fichero.
-  2. **La carrera entre pestañas.** Con el reintento, varias peticiones del mismo usuario roto pueden coincidir. El `ON CONFLICT (id)` de `create_organic_user` NO las protege (los ids difieren); las corta el índice nuevo, y el `23505` resultante se trata como **«otro lo creó»**: se relee y se devuelve ESE id. Sin esto, la reparación sería un error intermitente.
-- **⚠️ EL DUPLICADO POR MAYÚSCULAS: cerrado, y estaba abierto.** Probado contra RDS **antes**: el mismo email en MAYÚSCULAS con otro id **se insertaba**. Probado **después**: `23505 user_profiles_email_lower_key`. Los datos estaban limpios (0 duplicados / 0 espacios / 0 mayúsculas en 11.713 perfiles), así que no llegó a estallar.
-- **CAPAS (todas verdes el 01/08):**
-  - **15 unitarios** del núcleo puro, incluida la regresión de la marca futura y la basura en el token.
-  - **9 unitarios** del resolutor con doble de BD, **para las dos ramas que la simulación no pudo ejercer**: el `23505` y el fallo de lectura. Y esto es un hallazgo del propio trabajo — la simulación lanzó 6 peticiones a la vez y salieron `creado`+5×`existia`, o sea que **la rama de la carrera no se ejecutó ni una vez**. Una rama que solo corre «a veces» no está probada.
-  - **Simulación contra la BD real** (`npm run sim:reintento-perfil`): 7 casos con usuarios efímeros que se borran solos — alta nueva, el caso de los 235, insensibilidad a mayúsculas, 6 peticiones simultáneas, la ventana, sin email, y que el usuario sano no consulte nada.
-  - **Guardarraíl** `perfilSeReintenta.guardrail.test.ts` (14): el cableado, los tres eventos, que el email nunca viaje en claro, y que la expresión del resolutor siga casando con el índice. **Probado por mutación**: borrando el reintento, 5 comprobaciones se ponen rojas.
-  - **Canario** `npm run canary:perfil-sin-resolver`: cruza rotos × curados × checkouts rechazados. Medido AHORA (antes de desplegar): **🔴 29 rotos, 0 curaciones, 7 checkouts rechazados** — la línea base contra la que se comprobará.
-  - **Observabilidad**: `auth_perfil_recuperado` (info, la métrica del drenaje) y `auth_sesion_sin_email` (error, el caso que el reintento NO puede curar), **cada uno con su regla de alerta**. La de `sesion_sin_email` dispara a la primera; la de `perfil_roto_no_drena` salta si hay curaciones **7 días seguidos**, porque eso significa que siguen naciendo rotos y el arreglo estaría tapando el goteo en vez de dejarlo ver.
-- **✅ DESPLEGADO Y VERIFICADO EL MECANISMO (01/08, frontend `9cbdc06f` rollout 11:07 UTC + backend task def 156).** `npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es` da **VERDE los 5 casos** contra producción, y `auth_alta_sin_perfil` con `enReintento=true` está a **0**: ningún reintento ha fallado.
-- **⏳ LO ÚNICO QUE FALTA ES EL DRENAJE, y tarda — no lo leas como avería.** Media hora después del deploy: 27 rotos y **0 curaciones reales**. Son **dos retrasos que se suman**, medidos: (a) el reintento corre en la **rotación de sesión**, no en cada llamada a la API, así que quien está dentro haciendo un test sin recargar tarda en rotar; (b) el **Bearer dura 1 h**, así que quien lo acuñó antes del deploy sigue rebotando con el viejo **aunque su sesión ya esté curada** — caso real: rebote a las 11:12 con token de las 10:59, rollout a las 11:07. Espera 1-2 h antes de concluir nada; detalle en `docs/runbooks/health-check.md` §3.
-- **Y por eso el canario NO basta solo:** «0 curaciones» se lee igual siendo *«no hay nadie a quien curar»* que *«el reintento no corre»*. La **simulación** es la que lo distingue, y su veredicto rojo ya enumera las dos causas en vez de acusar a una.
-- **🐛 HALLAZGO COLATERAL, arreglado: el canario se contaba a sí mismo.** Cantó *«2 usuarios curados»* justo cuando había que decidir si el arreglo servía, y los dos eran **corridas de la propia simulación**. Causa estructural, no de este canario: una simulación con identidad recorre la app **de verdad**, así que sus eventos son indistinguibles de los de una persona — y la regla `sesion_sin_email`, que dispara a la primera, **mandaba una alerta falsa en cada ejecución**. Arreglado en el sitio **compartido** (`CLAIM_SIMULACION` en `lib/sim/session.ts`, dentro de `sessionTokenPayload`) para que **toda simulación futura nazca marcada**; `authjs.ts` la propaga y canario + 3 reglas la excluyen. Como mete en el token un claim que la app LEE, lleva guardarraíl propio (`simulacionNoDaPoder`, 7): **etiqueta, NUNCA autoriza**.
-- **⚠️ OJO AL ESTADO PARCIAL (mientras `e6b117b3e` no esté en las DOS superficies):** lo vivo lleva el arreglo pero **no** la marca ni los filtros. Correr la sim contra producción antes de eso contamina el canario y dispara la alerta falsa → marcar los eventos a mano tras la corrida.
-- **▶ FALTA:** solo mirar el canario cuando haya drenado (🟡 con curaciones > 0 y rotos bajando) y vigilar `auth_sesion_sin_email` (caso que este arreglo **no puede** curar: se investiga en el **proveedor de identidad**) y `auth_reintento_roto` (infraestructura).
-- **Lo que NO se ha tocado, a propósito:** si la sesión debe firmarse o no cuando no hay perfil. Con el reintento esa decisión deja de ser urgente, y mezclarla habría hecho el cambio de autenticación más difícil de revisar y de revertir.
-
-- **✅ DECIDIDO POR MANUEL (01/08): SE LE DEJA PASAR.** La pregunta era qué hacer cuando el perfil no se puede resolver: **(a)** no firmar la sesión —error de login honesto, pero la persona se queda FUERA y no puede ni estudiar— o **(b)** dejarle entrar y repararlo. **Se queda la (b), que es lo que ya hace el código.** *«Déjalo como está, le dejamos pasar.»*
-  - **Lo que hace que (b) sea buena ahora y no antes:** hasta el reintento, dejar pasar significaba quedarse roto **para siempre**; hoy significa quedarse roto **hasta la siguiente carga de página**. La opción no cambió, cambió su coste.
-  - **Cuándo reabrirla, y solo entonces:** si `auth_alta_sin_perfil` con `enReintento=true` deja de estar a 0 de forma sostenida — es decir, si aparecen usuarios a los que el reintento **tampoco** cura. Ahí «dejar pasar» volvería a significar «roto para siempre» y la (a) recupera su sentido. **No la reabras sin ese dato.**
-  - **Y los ya rotos no necesitan nada:** se curan solos al volver, sin campaña ni avisarles. Era la otra mitad de esta decisión y el reintento la resolvió.
-- **Hipótesis descartada por el camino (no la repitas):** que fuera un fallo de `create_organic_user` en sí. La rama de fallo de `resolveAppUserId` existe y está documentada: *«si NO existe → intenta crearlo (organic) con un UUID nuevo… si no se puede crear (p. ej. FK a `auth.users` aún viva pre-cutover) → null»*. Si esa creación falla y aun así se acuña token con el `sub` original, el resultado es exactamente lo observado: sesión válida, perfil inexistente, reconciliación que no ve nada que reconciliar. **Confirmarlo o descartarlo es el siguiente paso**, y se hace mirando qué devuelve esa rama para un alta reciente.
-- **Lo que esto significa para [T-245]:** aquella ficha se cerró curando el SÍNTOMA y dejando escrito, con todas las letras, que *«no explica por qué desaparece un perfil, así que la causa de fondo sigue abierta»*. Pues es esa causa la que sigue produciendo **29-31 usuarios al día**. La diferencia con entonces es de escala: se cerró midiendo *«8 usuarios en 3 semanas»*.
-  ```sql
-  -- los afectados de las últimas 24 h
-  SELECT user_id, count(*) FROM observable_events
-   WHERE event_type='auth' AND severity='warn' AND error_message='Usuario no existe'
-     AND created_at > now() - interval '24 hours' AND user_id IS NOT NULL
-   GROUP BY 1 ORDER BY 2 DESC;
-  ```
-- **El agravante de siempre, que sigue vigente:** un usuario roto **no puede avisarnos** (el soporte falla por la misma FK), así que esto no va a llegar por feedback. O lo caza la observabilidad o no lo caza nadie.
-- **Relacionadas:** [T-245] (el arreglo que no basta), [T-271] (el cubo de `console_error` donde apareció la firma), [T-260].
-
-
-
-- **📊 MEDIDO POR OTRA SESIÓN (31/07 ~00:20) — ESTO NO ES HISTÓRICO, ESTÁ PASANDO AHORA:**
-  - **359 eventos en las últimas 24 h**, 7 en la última hora, **el último hace 1 minuto**.
-  - Por día, la última semana: `07-31=337 · 07-30=387 · 07-29=511 · 07-28=405 · 07-27=422 · 07-26=239 · 07-25=210`. **No decae: es un caudal estable.**
-  - Consulta para reproducirlo:
-    ```sql
-    SELECT count(*) FROM observable_events
-     WHERE error_message ILIKE '%usuario no existe%' AND created_at > now() - interval '24 hours';
-    ```
-  - **QUÉ CAMBIA ESTO:** la investigación estaba escrita en pasado («desde el 7 de julio»), y con ese marco la hipótesis viva —que el perfil no llegue a crearse en el alta— habría que confirmarla **reconstruyéndola del historial**. Con usuarios entrando **ahora mismo** se puede confirmar o descartar **HOY**, mirando un alta en vivo: si se acuña token en la rama de fallo de creación de perfil, se ve en el momento.
-  - **Y cambia la prioridad, no solo el método:** no es una investigación de algo que pasó. **Hay gente sin poder pagar en este instante**, y lleva así semanas. Merece fecha límite (`backlog.cjs due`), no solo 🔴.
-
-#### 🔴 AL VERIFICARLA (01/08 ~16:30) — EL ARREGLO ESTÁ VIVO Y NO LES ALCANZA. La explicación que daba la ficha queda descartada
-
-Fui a hacer la comprobación que pedía `--falta` (canario de rojo a 🟡). **Sigue rojo, y no por la razón que estaba escrita.**
-
-- **Medido:** 25 usuarios rebotando en 24 h, **0 curaciones reales**. Las **13** `auth_perfil_recuperado` de la ventana son **TODAS de simulación** (`simulacion=true`, la última a las 11:28Z). O sea: el canario, ya corregido para no contarse a sí mismo, ahora dice la verdad — y la verdad es cero.
-- **La explicación (b) de la ficha —«corre, pero ningún roto ha cargado página aún»— ES FALSA, y se puede demostrar:** **9 de los 25 rebotaron DESPUÉS del rollout**, el último a las **15:16Z**, o sea **cuatro horas** después. El aviso del Bearer de 1 h no cubre eso: a las 15:16 ya no queda ningún token acuñado antes del despliegue. **Han vuelto, y han vuelto rotos.**
-- **Y la explicación (a) —«el reintento no corre»— es correcta, pero por un motivo que nadie había considerado.** No es que falle: es que **ni siquiera se intenta**. Las tres señales del bloque están **a CERO**: `auth_alta_sin_perfil` (0 eventos en 24 h), `auth_sesion_sin_email` (0) y `auth_reintento_roto` (0). Si el reintento hubiera corrido y fallado, alguna tendría que hablar.
-- **🔎 LA CAUSA SIGUE SIN ESTAR IDENTIFICADA, y conviene decirlo así.** Durante esta misma sesión di por buena una explicación —«el token trae un `appUserId` colgado, así que `decidirReintentoPerfil` corta en `ya_resuelto`»— y **la evidencia la descarta**. Queda escrita para que nadie la vuelva a proponer sin comprobarla: si fuera eso, seguiría sin explicar que `auth_alta_sin_perfil` **no se haya emitido NUNCA en toda la BD** (0 filas históricas, no 0 en 24 h).
-- **Lo que SÍ está medido, y acota mucho el sitio donde mirar:**
-  - **Nada de lo suyo se guarda.** Los 25 ids tienen **CERO filas** en `daily_question_usage`, `tests`, `test_questions`, `user_devices` y `email_preferences`. No es «no pueden pagar»: es que **no existen para el sistema**, aunque naveguen.
-  - **Y no es de ahora.** El caso trazado entero (`a4c93cd6`) está roto **desde el 19/07**, y **su PRIMER evento ya es un 401**: nunca tuvo un periodo sano. 155 eventos, todos rebotando.
-  - **Rebota TODO lo autenticado**, no solo las stats: `/api/profile`, `/api/v2/user-stats` y `/api/v2/topic-progress/theme-stats`, los tres con 401 en el mismo segundo.
-  - **El 401 de `/api/profile` viene de `verifyAuth`**, o sea de que **el access token no vale** — no de un perfil que falte. Junto con `/api/auth/token` apareciendo en su rastro, apunta a que lo que falla primero es **el acuñado del token**, y que la falta de perfil sea consecuencia y no causa. Es la hipótesis a comprobar, NO una conclusión.
-- **⚠️ EL PUNTO CIEGO QUE IMPIDE CERRAR ESTO, y es lo siguiente que hay que construir:** de las cuatro salidas de `decidirReintentoPerfil`, **`sin_email` y `reintentar` emiten evento, pero `ya_resuelto` y `en_espera` son MUDAS**. Y son justo las dos que habría que distinguir para saber por qué el reintento no actúa. Mientras sigan mudas, la pregunta «¿por qué no se cura nadie?» **no tiene respuesta observable**, y cualquier arreglo que se escriba será a ciegas. Instrumentarlas tiene su propio problema —`ya_resuelto` dispara en cada carga de página de cada usuario sano, así que emitir a pelo sería un diluvio— y por eso es trabajo de diseño, no una línea.
-- **NO se ha tocado el código a propósito.** Se llegó a autorizar un arreglo (que el rebote provocara una rotación que borrase `appUserId`), pero se apoyaba en la causa que este mismo apartado descarta. **Escribirlo habría sido arreglar algo que no está roto** y, peor, habría dado la tarea por resuelta.
-
-##### 🎯 Y SIGUIENDO EL HILO: por qué el reintento NO PUEDE alcanzarles (01/08, mismo día)
-
-Buscando dónde instrumentar apareció que **la instrumentación que hacía falta YA EXISTE** — `auth_sub_reconciliado`, que emite `huerfano` con severidad `error` justo cuando un `sub` no tiene perfil ([T-245], en `/api/auth/token`). No hubo que construir nada; hubo que **mirarla**:
-
-- **Ha hablado UNA sola vez en toda su vida** (30/07, un usuario) y **NINGUNO de los 25 aparece** en ella, ni como `user_id` ni como `subOriginal`.
-- Eso solo puede significar una cosa: **no llegan a esa comprobación**. Se quedan antes, en el `if (!userId) return 401 unauthenticated` de `/api/auth/token` — o sea que **no tienen sesión Auth.js y el bridge tampoco les rescata**.
-- **Y ahí encaja TODO lo demás sin forzar nada:** sin sesión Auth.js, **el callback `jwt` no se ejecuta para ellos NUNCA**. Por eso las cuatro señales del reintento están a cero en producción; por eso la simulación de navegador —que sí abre sesión Auth.js— da verde; y por eso el canario no ve una sola curación.
-- **En una frase: el arreglo de esta tarea vive detrás de una puerta por la que esta gente no pasa.** No es que el reintento falle: es que no le llega el turno.
-- **Lo que queda por confirmar** es de dónde saca el cliente un id de usuario si no hay sesión. Candidato encontrado y **NO probado**: `AuthContext.tsx` tiene un rescate a los 12 s de timeout que **resucita una sesión legacy de Supabase desde `localStorage`** (`sb-<proyecto>-auth`) y hace `setUser(parsed.user)` — con lo que la app se comporta como logueada sin que exista sesión. Cuadra con el perfil medido (id UUID legacy, sin fila en ninguna tabla, todo a 401 desde el primer evento), pero **no hay prueba directa**: ese camino solo deja `console.log`/`console.warn` y no aparece en `observable_events`. **No dar por buena esta parte sin comprobarla.**
-
-##### 🕳️ EL PUNTO CIEGO REAL (y no es el que se dijo antes)
-
-**El 401 de `/api/auth/token` está silenciado A PROPÓSITO** (`expectedStatuses: [401]` en `withErrorLogging`), y con razón: un cliente deslogueado hace polling y generaría ~340k eventos/día. Pero ese silencio mete en el mismo saco dos cosas que no son iguales:
-
-1. **El 401 anónimo** — nadie ha iniciado sesión. Es ruido y debe seguir callado.
-2. **El 401 de un cliente que CREE estar dentro** — manda un id de usuario, navega, responde preguntas, y no se le guarda nada. **Ese es un usuario roto y hoy es invisible.**
-
-Distinguirlos es barato (el segundo trae identidad reclamada y el primero no) y **no crea nada nuevo**: la señal encaja en el canario `perfil-sin-resolver` que ya existe y en sus reglas.
-
-##### ✅ CONSTRUIDO (01/08) — el canario ya los ve, y son 46
-
-Segundo bloque **dentro** del canario que ya existía (`npm run canary:perfil-sin-resolver`), no un script aparte. Núcleo puro `lib/auth/rebotePersistente.cjs` con **13 tests**; registro y runbook actualizados.
-
-- **Medido en producción al estrenarlo: 46 personas**, la más antigua **desde el 19/07** (13 días rebotando), una con 150 rebotes. Y **no se solapan con las 26 de la ventana corta**: solo 3 coinciden, o sea que las otras 43 **eran completamente invisibles** para todo lo que había.
-- **NO se emitió ninguna señal nueva, porque el dato ya estaba.** Los 401 de `/api/auth/token` sí se registran (3.777 en 24 h); lo que faltaba era **mirarlos**. De esos 3.777, solo **22 llevan identidad** — el resto es polling anónimo, que es exactamente el ruido que justifica el silencio de `expectedStatuses`. El discriminador sale gratis: `user_id IS NOT NULL`.
-- **La señal es la PERSISTENCIA, no el volumen, y esto es lo que evita la chapuza.** La tentación era contar rebotes; al medirlo, los de un solo día acumulaban 1-4 peticiones, **igual que un roto**. Un detector por volumen habría marcado caducidades normales y perdido a los rotos.
-- **Corte calibrado, no intuido** (483 usuarios en 14 días): **391 (81%) en un solo día** → caducidad normal, se descartan; 46 en dos días → zona gris, no se reporta; **46 en 3+ días** → rotos.
-- **Banda `error` desde el primero, sin margen de tolerancia:** cada unidad es una persona usando la aplicación a la que no se le guarda nada. No hay un número aceptable de eso.
-- **⚠️ AVISO QUE VA EN EL RUNBOOK, porque casi me engaña:** el propio `--falta` de esta ficha decía *«si `auth_alta_sin_perfil` con `enReintento=true` sigue a 0, es que ningún reintento ha fallado»*. Estaba a 0… **y nunca se ha emitido en toda la BD**. Cero no significaba «ninguno falló», significaba «no se ejecuta». **Una señal que nunca ha hablado no puede tranquilizar a nadie** — antes de leer una ausencia como buena noticia, comprobar que esa señal ha hablado alguna vez.
-- **Lo que este bloque NO hace:** no cura a nadie. Los hace **visibles y contables**, que es lo que faltaba para poder decidir el arreglo con la causa delante en vez de a ciegas. Y deja dicho en el propio canario que **esta cifra no baja al desplegar**, para que nadie lea su terquedad como un deploy fallido.
-
-##### 🎯 CAUSA CONFIRMADA (01/08) — dos guardas del cliente que se alimentan entre sí
-
-El cabo del `localStorage` **está confirmado en el código, de punta a punta**, en `contexts/AuthContext.tsx`:
-
-1. **El pre-hydrate corre en CADA carga** (no solo tras el timeout de 12 s, como se creyó primero). Lee el blob de sesión **legacy de Supabase** (`sb-<proyecto>-auth`) y hace `setUser(parsed.user)` **y además** `updateUserProfile(cachedProfile)`. La interfaz queda completa: la persona se ve dentro, con su nombre y su plan.
-2. **Después llega `INITIAL_SESSION` con la sesión a `null`** —porque no hay sesión Auth.js— y la limpieza NO ocurre:
-   ```js
-   if (newUser || !userProfileRef.current) setUser(newUser)
-   else console.warn('session null PERO hay perfil cacheado — NO limpiando user aún')
-   ```
-   El comentario de esa guarda dice que *«`setUser(null)` se hace SOLO tras confirmar que la sesión está realmente perdida»*. **Ese camino de confirmación NO EXISTE.** Nada la limpia nunca.
-3. **Y el paso 1 fabrica justo la condición que bloquea el paso 2:** el perfil cacheado que impide limpiar lo acaba de poner el propio pre-hydrate. Las dos guardas son razonables por separado —una evita el parpadeo de la interfaz, la otra evita mostrar «Regístrate» a un premium cuando Supabase no podía refrescar el token— y **juntas dejan a la persona encerrada indefinidamente** en una sesión que no existe.
-- **Resultado:** navega, responde preguntas, ve su perfil… y **cada llamada al servidor le rebota**, no se le guarda nada y no puede pagar. Para siempre, porque nada rompe el bucle.
-- **⚠️ CORRECCIÓN DE MEDIDA — «cohorte del 19/07» era un ARTEFACTO.** Lo dije mirando la ventana de 14 días, y el 19/07 era **el borde de la ventana**, no un comienzo. Con 90 días: empieza el **07/07** con un pico (9-14-8 personas los días 7, 8 y 9) y sigue con un **goteo de 1-5 al día hasta hoy**. Total **~90 personas**, no 46. El pico encaja con el flip de Auth.js a producción (03/07) y **el goteo significa que SIGUE PASANDO**: no son bajas de una migración, nacen rotos nuevos cada día.
-- **EL ARREGLO, y por qué necesita decisión:** `INITIAL_SESSION` con sesión `null` **ES** la confirmación que esa guarda dice esperar — Auth.js ya ha hablado. Ahí hay que limpiar el usuario fantasma, el perfil cacheado y el blob legacy, y enseñar «entrar» (un clic). Es pequeño, pero **toca identidad y puede desloguear a alguien si me equivoco**, así que no se escribe sin OK. La guarda que hay que retirar se puso para un fallo de la ÉPOCA DE SUPABASE (pool saturado sin poder refrescar), que con Auth.js ya no aplica.
-- **NO son bajas de cuenta.** Era la otra hipótesis razonable, porque el `catch` que emite el rebote está comentado como *«sesión zombie de user eliminado por admin-delete-user»*. Descartada: **0 de los 25** tienen registro en `deleted_users_log`. Ese comentario describe una causa posible del `23503`, no la que se está dando.
-- **Lo que NO se ha tocado, y por qué:** el arreglo evidente —comprobar que `appUserId` existe— costaría **una consulta a BD en cada rotación de sesión de cada usuario sano**, que es justo lo que la guarda de la línea 80 evita. La salida barata es usar el rebote como señal: cuando un endpoint responde «Usuario no existe», que el cliente pida una rotación que **borre `appUserId`** del token, y entonces el reintento que ya existe hace su trabajo en la siguiente carga. **Eso toca identidad y es decisión de Manuel** (la ficha ya reserva la otra decisión de auth), así que se deja propuesto, no hecho.
-
-##### ✅ CABLEADO Y PROBADO POR MUTACIÓN (04/08) — con OK de Manuel
-
-**El núcleo puro, sus 9 unitarios y la simulación YA EXISTÍAN desde el 01/08. Lo que no existía era la línea que los usa:** `contexts/AuthContext.tsx` no importaba `decidirSesionFantasma` por ningún lado. Todo construido y nada conectado — por eso las 44 personas seguían rotas mientras la ficha parecía avanzada. Es el mismo patrón que ya costó caro en esta ficha (una señal que nunca habló leída como buena noticia): **lo que no se ejecuta, no cuenta.**
-
-- **DÓNDE estaba el agujero, que NO es donde parecía.** La limpieza definitiva —tras los dos reintentos, 15 s después— sí soltaba usuario y perfil cacheado, pero **NO el blob legacy de Supabase**. Así que en la siguiente carga el pre-hydrate volvía a leerlo, volvía a poner usuario + perfil, y la guarda volvía a impedir la limpieza. **El bucle no era que no se limpiara: era que la limpieza estaba incompleta y se deshacía sola en la recarga siguiente.** El arreglo son tres líneas en ese punto: soltar también el blob (helper único; la fórmula de esa clave estaba escrita a mano en cuatro sitios del fichero) y emitir la señal.
-- **⚠️ MI PRIMERA VERSIÓN ERA DEMASIADO AGRESIVA Y LA CAZÓ EL `pre-commit`.** Limpiaba en cuanto `INITIAL_SESSION` llegaba sin sesión, sin esperar a los reintentos. Eso puso ROJO el test del **«caso Nila»** (`__tests__/contexts/AuthContext.test.tsx`), que fija justo lo contrario: el premium cuya sesión SÍ existe y cuyo `INITIAL_SESSION` vuelve nulo por un fallo transitorio **tiene que recuperarse**. O sea que mi versión **deslogueaba a premium sanos** — el modo de fallo caro que la propia simulación advierte («soltar de MÁS»), y que su caso 2 no podía ver porque ahí la cookie es válida y `INITIAL_SESSION` devuelve usuario a la primera. **El test se respetó y se cambió el diseño, no al revés.** La guarda de arriba queda intacta con un comentario que explica por qué no se toca.
-- **⚠️ OTRO FALLO PROPIO, en la versión descartada:** hacía `setUser` solo dentro de `if (decision.limpiar)`, y como con sesión válida `limpiar` es `false`, **un login sano no se habría aplicado nunca**. Lo cazó releer el módulo puro antes de compilar, no un test.
-- **EL FIXTURE DE LA SIMULACIÓN ERA EL PROBLEMA, y la ficha ya lo sospechaba.** Guardaba `{user:{id,email}}` sin `access_token` ni `expires_at`, así que el cliente lo trataba como **token caducado** —rama que YA limpiaba— y el caso 1 salía VERDE contra código SIN arreglo. Un verde que no depende del arreglo no prueba nada. Ahora el blob es realista (sesión completa y **no caducada**), que es el estado real de las personas medidas.
-- **LA ESPERA DE LA SIMULACIÓN MEDÍA LA VENTANA EQUIVOCADA:** esperaba 6 s, que es justo el hueco en el que el cliente **está conservando el perfil a propósito** (los reintentos vencen a los 15 s). Subida a 22 s. Sin esto, la versión buena habría salido roja sin que nada estuviera mal — y una prueba que castiga el diseño correcto se acaba «arreglando» aflojando el diseño.
-- **PROBADO POR MUTACIÓN, en las dos direcciones y con la MISMA espera**, que es lo que demuestra que discrimina por la fuga y no por el reloj:
-  - contra **producción (sin el arreglo) → ROJO**, y el detalle es exactamente el diagnóstico: `perfil cacheado=borrado` (producción SÍ limpia eso) · **`blob legacy=SIGUE`** ← la fuga que reencierra en la recarga siguiente;
-  - contra **local con el arreglo → 2/2 VERDE**, los dos borrados.
-  - El contraste que protege el dinero —usuario real con cookie válida— **intacto en los dos**.
-- **Observabilidad, y por qué NO podía nacer muda:** el tipo `sesion_fantasma_soltada` estaba declarado desde el 01/08 y **jamás se había emitido**. Ahora se emite (`warn`) al soltar, verificado de extremo a extremo: emitido en el navegador y **leído en `observable_events`**. El canario `perfil-sin-resolver` gana un bloque *«La cura, ¿corre?»* que hace INTERPRETABLE un cero — exactamente el error que esta ficha ya cometió con `auth_alta_sin_perfil`: si nunca se ha emitido, lo dice con todas las letras («un 0 aquí NO es buena noticia»).
-- **El contador excluye el tráfico de la propia simulación** (`userAgent` con `HeadlessChrome`): el caso del fantasma **no puede llevar la marca en cookie** que usan las demás sims —se define justamente por no tener cookie—, así que cada corrida habría sumado una «cura» falsa y el canario habría dicho que el arreglo drena cuando solo es que alguien lo probó.
-- **Registrada en `toolRegistry`** la simulación, que tampoco lo estaba.
-- **Estado al cerrar la sesión: en `main`, SIN desplegar.** Los 44 rotos **no bajan hasta el deploy**, y el canario lo dice solo. Verificación pendiente en producción: que el bloque de la cura deje de decir «nunca se ha emitido» y que los rebotes persistentes empiecen a caer.
-
-#### 🎯 CAUSA REAL, ENCONTRADA Y ARREGLADA (05/08/2026) — y las DOS explicaciones anteriores eran falsas
-
-Todo lo de arriba supone que estas personas están **rotas** o **deslogueadas**. Ninguna de las dos cosas. Medido sobre los **182** que rebotaban en 14 días:
-
-| | |
-|---|---|
-| con alguna petición de identidad **VERIFICADA** (o sea, sesión buena) | **180 de 182** |
-| con fila en `user_profiles` **con el id que rebota** | **0** |
-| en `deleted_users_log` (no son bajas) | **0** |
-| 401 de `/api/v2/user-stats` cuya identidad **no viene de token** sino del `?userId=` | **1.920** |
-| eventos con `identityMismatch` (el cliente manda un id ≠ del token) | **372, de 120 usuarios** |
-
-**Son usuarios SANOS con DOS identidades en el navegador.** El pre-hydrate resucita el id de la sesión Supabase legacy de `localStorage`, la sesión Auth.js llega ~700 ms después con el id BUENO, y lo que se montó en ese hueco manda el viejo. Lo que va por **token** funciona; lo que lleva el id **por parámetro** rebota. Muestra real, con el perfil de cada uno al lado:
-
-```
-token=0479a6bc (perfil:1)   cliente-dice=c1aee21c (perfil:0)   ← c1aee21c es uno de los 8 persistentes
-token=02b3c75e (perfil:1)   cliente-dice=e32e9372 (perfil:0)
-```
-
-Por eso **ninguna señal del servidor los veía** (`auth_sub_reconciliado` = 1 evento en TODA la base, `auth_alta_sin_perfil` = 0) y por eso el reintento no podía curarles: **no hay nada que reparar en el servidor**.
-
-**Cómo se cayeron las dos explicaciones previas, que es la parte reutilizable:** las dos estaban escritas con seguridad y las dos eran razonables. No las tumbó leer más código —eso solo producía la tercera hipótesis— sino **una consulta que preguntaba por el CONTRASTE** («¿tienen sesión verificada, sí o no?») en vez de por la confirmación.
-
-**Construido (todo con su contraste, porque este cambio falla hacia los dos lados y solo uno se nota):**
-
-| Pieza | Qué cierra |
-|---|---|
-| `decidirIdentidadAjena` en `lib/auth/sesionFantasma.ts` (+16 unitarios) | La decisión: si el rastro pre-hidratado es de OTRO id, se suelta; si es del mismo, **no se toca nada**. Va en el módulo de su hermana `decidirSesionFantasma`, no en uno nuevo, y un test comprueba que **nunca opinan a la vez** |
-| Cableado en `AuthContext.tsx` | Se anota el id pre-hidratado en los **dos** caminos que resucitan un usuario (pre-hydrate y rescate del timeout de 12 s) y se contrasta en el veredicto de `INITIAL_SESSION` |
-| `lib/auth/legacySupabaseStorage.ts` | Criterio ÚNICO de cuál es el rastro legacy y cómo se borra. Estaba escrito **dos veces y distinto** (`AuthContext` componía la clave a mano y no cubría el sufijo `-token`), así que una rama borraba una clave que la otra no. El `code_verifier` de PKCE **nunca** se toca, con test |
-| Evento `auth_identidad_ajena_descartada` + regla `identidad_ajena_no_drena` | Es la ÚNICA señal posible del caso. La regla **no dispara por volumen** (el pico inicial es el drenaje) sino por **7 días seguidos**: eso significa que algo vuelve a escribir el rastro |
-| Tercer bloque del canario `perfil-sin-resolver` | Cruza el gemelo del SERVIDOR (`identityMismatch`) con el drenaje del CLIENTE. **`identityMismatch` existía desde el 07/07 y no la miraba NADIE**: no hubo que construir detector, hubo que mirarla |
-| `__tests__/guardrails/identidadAjenaSeDescarta.guardrail.test.ts` (14) | Impide el modo de fallo de [T-443]: que un commit rancio borre la llamada y el arreglo quede vivo pero inerte |
-
-**Comprobado EJECUTANDO, no leyendo** (`npm run sim:sesion-fantasma`, navegador real): **rojo contra producción sin el arreglo, verde en local con él**, y el caso del usuario sano verde en las dos. Dos gotchas que hacían inútil la simulación anterior, ambos fijados por guardarraíl: el blob del fixture **tiene que llevar `access_token`** (sin él supabase-js lo borra antes de que React monte — el fantasma no llegaba a nacer y el caso salía verde sin probar nada), y **se mide a los 10 s**, después del veredicto y **antes** del rescate tardío de 15 s del camino antiguo, que si no también saldría verde.
-
-**Lo que queda, y por qué no se ha hecho:**
-
-1. **Desplegar y leer el drenaje.** Hasta que no esté vivo, el tercer bloque del canario dice 🔴 «120 navegadores con dos identidades y ningún descarte», que es la línea base correcta.
-2. **El caso «sin sesión» lo cableó OTRA SESIÓN el 04/08** (el apartado de arriba), en paralelo a esto y sin que ninguna de las dos lo supiera — las dos, además, encontraron por separado que el fixture de la simulación no llevaba `access_token`. Al fusionar se conserva su cableado y se corrige **su ventana de medida**: esperaba 22 s, y a esa altura **el código SIN el arreglo también ha limpiado** (medido: el rescate tardío cierra a los ~18-21 s), así que su caso 1 pasaría igual estando roto. Queda en 10 s, la única franja en la que el resultado depende del arreglo. Los dos casos son **distintos y complementarios**: el suyo es «no hay sesión», el mío es «la hay y el cliente cree ser otro» — 180 de los 182 medidos son el segundo.
-3. **🔓 HALLAZGO COLATERAL DE SEGURIDAD, no arreglado aquí:** `/api/v2/user-stats` coge el `userId` **del query string y no del token** — no llama a `verifyAuth`. Es decir, cualquiera puede leer las estadísticas de cualquier usuario pasando su id. Encaja con **[T-482]** (endpoints de tests sin autenticación), que tiene lease vivo de otra sesión, así que se deja **dicho y no tocado** para no pisarlo.
-
 ### [T-416] 🟠 [ABIERTO 31/07] El filtro de preguntas oficiales sigue oculto en la pantalla de una ley suelta, y donde sí está el contador funciona por accidente
 
 - **Esfuerzo:** el destapado son dos líneas; **lo que cuesta es la decisión de criterio**, que es de Manuel y está sin tomar (abajo). No empieces por el código.
@@ -4760,6 +4546,229 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-434] ✅ [HECHA 05/08] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
+
+- **Esfuerzo: larga** (el diagnóstico está hecho; falta encontrar por qué la reconciliación no les alcanza, y eso es tocar identidad).
+- **🔴 HAY DINERO EN JUEGO AHORA MISMO.** El 30/07 a las 06:43, el usuario `140ef91a` intentó contratar premium y recibió **`404 · User not found in database`** — 16 llamadas a `/api/stripe/create-checkout` rechazadas. Es **exactamente** el caso que motivó [T-245] (Sergio, 24 intentos), repitiéndose **dos días después de darla por hecha**.
+- **Lo medido el 31/07 (24 h, sesión `central-izquierdo`):**
+  - **31 usuarios distintos** provocan `Usuario no existe` desde el SERVIDOR (`event_type='auth'`, `severity='warn'`, endpoint `/api/v2/user-stats`): 183 eventos.
+  - **33 usuarios** con la firma de cliente `UserAvatar: v2 stats error: Usuario no existe` (81 eventos).
+  - **Los 33 son fantasmas completos:** 0 de 33 existen en `user_profiles`, 0 en `test_questions`. No es una carrera de milisegundos al crear el perfil: `64a2b250` lleva **dos días** navegando (91 peticiones, banners, TTS, temario) con **68 «Usuario no existe»** a su nombre.
+  - Y **sí pasan por donde debería curarles**: 162 llamadas a `/api/auth/token` desde 28 de los 29, 2.210 en total.
+- **El arreglo de [T-245] ESTÁ desplegado — comprobado, no supuesto.** El commit `e3035a601` (`lib/auth/canonicalSub.ts`) es ancestro de los tres deploys vivos del 30-31/07 (`a933bd3e`, `2fdbcf4e`, `26174822`). O sea: **el problema no es que falte desplegar.**
+- **Y la vigilancia que aquella ficha dejó como red de seguridad NO lo ve.** Su consulta (`auth_sub_reconciliado` por día) devuelve **1 solo evento en 14 días** —un `huerfano` del 29/07— mientras hay 31 usuarios al día con el síntoma. Quien mire esa consulta concluye «drenado, todo bien». **Es un falso verde**, y es lo primero que hay que arreglar: una señal que no ve el caso es peor que no tenerla, porque da por cerrado lo que sigue abierto.
+- **✅ PRIMER PASO HECHO (31/07) — y descarta las dos hipótesis fáciles. Esto es lo que hay:**
+  1. **NO son cuentas eliminadas.** El propio endpoint lo da por hecho en un comentario (*«FK violation: user_id no existe (eliminado por admin-delete-user), sesión zombi»*) y **es falso para estos casos**: **0 de 29** aparecen en `deleted_users_log` (110 filas). Quien lea ese comentario concluirá que no hay nada que arreglar.
+  2. **NO es que la reconciliación no se ejecute.** Uno de los afectados (`64a2b250`) acuña token con **HTTP 200 setenta y dos veces** entre el 30 y el 31/07. Pasa por `canonicalSubForToken` en cada tick y **no emite ni `reconciliado` ni `huerfano`** — que es justo lo que ocurre cuando la consulta responde que el perfil **sí existe**.
+  3. **NACEN ROTOS, y llevan SEMANAS así.** El dato que lo cierra: el hueco entre el primer evento de cada usuario y su primer «Usuario no existe» es de **0, 1, 7 y 14 minutos** en la mayoría. No se rompen por el camino: llegan rotos. Y no es de ayer — hay afectados desde el **7 de julio** (666 eventos), el **9** (499) y el **13** (**1.127 eventos**), es decir gente usando la plataforma **hasta 24 días** con la identidad rota. [T-245] se cerró el 28/07 y no les ha alcanzado.
+- **✅ CAUSA CONFIRMADA (31/07) y la mitad observable YA HECHA — falta la decisión de fondo.**
+  - **La cadena, leída en el código:** `lib/auth/authjs.ts`, callback `jwt` → `const appUserId = await resolveAppUserId(...)` → **`if (appUserId) token.appUserId = appUserId`**. Cuando devuelve `null`, **no se fija nada y la sesión se firma igual**; el callback `session` solo copia `session.user.id` *si* hay `appUserId`, así que el id se queda con el **valor por defecto de Auth.js, que no existe en `user_profiles`**. Desde ese instante el usuario está roto, y por eso **nace roto** (gap de 0-14 min, medido).
+  - **Y era invisible del todo:** `resolveAppUserId` solo deja un `console.warn` que **no se persiste** — comprobado: **0 eventos** con esa firma en `observable_events` y en `validation_error_logs`.
+  - **La suposición del código es FALSA y conviene borrarla de la cabeza:** el comentario de `resolveAppUserId` dice que devolver `null` es *«SEGURO: el emisor no acuñará token sin sub válido (`/api/auth/token` responde 503)»*. No ocurre: uno de los afectados acuñó **72 tokens con HTTP 200**. La sesión de Auth.js y el `sub` del access token son cosas distintas, y la primera se firma sin mirar la segunda.
+  - **HECHO en esta sesión (`lib/auth/authjs.ts` + regla de alerta):** se emite **`auth_alta_sin_perfil`** (`error`, con **prefijo y dominio del email, nunca el email en claro**) en la rama del fallo, y **nace vigilada**: regla `alta_sin_perfil` en `ALERT_RULES`, que dispara **con UNA sola alta rota** —no hay volumen mínimo aceptable— y explica en el aviso a quién afecta y dónde mirar. Capas: 3 de cableado en `__tests__/auth/canonicalSub.test.ts` (mismo patrón que [T-245], validan que la emisión está en la rama del fallo y que no filtra el email) + 6 de la regla + el test de que está registrada. **Esto NO arregla el alta: la hace visible.**
+- **📡 PRIMERA LECTURA TRAS EL DEPLOY (01/08, ~10 h después): `auth_alta_sin_perfil` = 0 eventos, con 8 altas nuevas y 30 usuarios rotos en 24 h.** Ese cero **es coherente, no concluyente**: la señal solo se emite en el PRIMER sign-in, así que los 30 rotos —que vienen de antes— no la disparan; y 8 altas es muy poca muestra. **El umbral para sospechar sigue siendo el escrito: si a las 48 h sigue en 0 habiendo decenas de altas, la emisión no está en el camino real y hay que volver al callback `jwt`.**
+- **🔑 CAUSA RAÍZ ENCONTRADA (01/08) — y NO es dónde se estaba buscando.** El defecto no es *por qué* falla la resolución la primera vez: es que **la resolución se intenta UNA SOLA VEZ EN LA VIDA DE LA SESIÓN y no se reintenta nunca**.
+  - `token.appUserId` se escribe **en un único sitio del repo** (`lib/auth/authjs.ts:103`), y está **dentro de `if (user?.email)`**. En Auth.js, `user` **solo llega en el primer sign-in**; en cada rotación posterior de la sesión —una por carga de página— viene `undefined`, así que **el bloque entero se salta**.
+  - Consecuencia: si esa única resolución falla —por lo que sea, incluido un hipo transitorio de la BD—, el usuario queda **roto para siempre**, hasta que cierre sesión y vuelva a entrar. No hay segunda oportunidad.
+  - **Esto explica lo que no encajaba:** por qué siguen rotos SEMANAS (el más antiguo desde el 7 de julio) y por qué las **2.210 llamadas a `/api/auth/token`** no les curan — ese endpoint LEE `appUserId` del token, no lo resuelve. Ningún camino vuelve a intentarlo.
+- **Descartado con datos, para que nadie lo repita:**
+  - **NO hay ninguna FK a `auth.users`.** El comentario de `resolveAppUser.ts` que lo supone (*«FK a auth.users aún viva (pre-cutover)»*) está **obsoleto**: las restricciones de `user_profiles` son PK, `UNIQUE(email)` y tres CHECK. Nada más.
+  - **`create_organic_user` FUNCIONA** para un alta nueva. Probado contra RDS en transacción con `ROLLBACK`: usuario nuevo → OK.
+- **⚠️ DEFECTO LATENTE encontrado por el camino (aún no ha causado daño, pero lo causará):** la búsqueda previa usa `lower(email)` y el índice único es sobre `email` **en crudo** (`user_profiles_email_key`). Son **dos criterios distintos sobre la misma columna**. Probado: insertar el mismo email en MAYÚSCULAS con otro id **no choca y crea un duplicado**; e insertar uno ya existente da `23505` que el `ON CONFLICT (id)` de la función **no captura**. Hoy los datos están limpios (**0 duplicados, 0 espacios, 0 mayúsculas en 11.713 perfiles**), así que es una bomba sin estallar: o el índice pasa a ser sobre `lower(email)`, o la función contempla el conflicto por email.
+- **📐 EL ARREGLO QUE SE DEDUCE, y cura a los ya rotos sin tocarlos:** reintentar la resolución **en cualquier rotación** en la que falte `appUserId`, no solo en el sign-in — el email viaja en `token.email`, así que el dato está. Con eso: (a) un fallo transitorio deja de ser permanente; (b) los **235 rotos se curan solos** la próxima vez que carguen una página, sin campaña ni avisarles; (c) el emisor `auth_alta_sin_perfil` pasa a contar los fallos REALES en vez de solo los del primer intento. **Falta decidirlo y probarlo**: es el camino por el que pasa la sesión de todos los usuarios.
+- **Medición del daño (01/08 08:50):** 30 usuarios rotos activos en 24 h · **235 en total** · **85 checkouts rechazados en 7 días de 12 personas distintas** · 0 de ellos recuperable desde la telemetría (no guardamos su email en ningún evento).
+
+- **✅ ARREGLADO (01/08) — decisión de Manuel: «encontrar el fallo y que no vuelva a pasar».** Cuatro piezas, y las cuatro tienen su porqué:
+
+  | Pieza | Qué cierra |
+  |---|---|
+  | **Índice** `user_profiles_email_lower_key` (migración `20260801_…`) | La búsqueda era `lower(email)` y el único índice era sobre `email` CRUDO: **Seq Scan de 426 ms** en cada sign-in. Ahora **0,04 ms**. Sin esto, reintentar sería empeorar |
+  | **Reintento** en el callback `jwt` (`lib/auth/authjs.ts`) | Se resuelve el perfil en **cualquier rotación** en la que falte, no solo en el alta. Cura solos a los ya rotos |
+  | **Núcleo puro** `lib/auth/reintentoPerfil.ts` | Decide *cuándo* reintentar: ventana de 5 min, marca en el propio token, y una marca FUTURA no puede silenciarlo de por vida |
+  | **Resolutor** `resolverPerfilPorEmail` | Dice **por qué** salió lo que salió, para poder emitir el evento justo |
+
+- **Y dos agujeros de robustez que se vieron al mirarlo de cerca, ninguno de ellos el fallo original:**
+  1. **La CONSULTA estaba fuera del `try`.** Si fallaba, la excepción subía al callback de Auth.js, que no la espera. Ahora se captura **y no se intenta crear nada**: sin saber si el perfil existe, crearlo puede duplicar a un usuario — el peor fallo posible aquí, y lo dice la cabecera del propio fichero.
+  2. **La carrera entre pestañas.** Con el reintento, varias peticiones del mismo usuario roto pueden coincidir. El `ON CONFLICT (id)` de `create_organic_user` NO las protege (los ids difieren); las corta el índice nuevo, y el `23505` resultante se trata como **«otro lo creó»**: se relee y se devuelve ESE id. Sin esto, la reparación sería un error intermitente.
+- **⚠️ EL DUPLICADO POR MAYÚSCULAS: cerrado, y estaba abierto.** Probado contra RDS **antes**: el mismo email en MAYÚSCULAS con otro id **se insertaba**. Probado **después**: `23505 user_profiles_email_lower_key`. Los datos estaban limpios (0 duplicados / 0 espacios / 0 mayúsculas en 11.713 perfiles), así que no llegó a estallar.
+- **CAPAS (todas verdes el 01/08):**
+  - **15 unitarios** del núcleo puro, incluida la regresión de la marca futura y la basura en el token.
+  - **9 unitarios** del resolutor con doble de BD, **para las dos ramas que la simulación no pudo ejercer**: el `23505` y el fallo de lectura. Y esto es un hallazgo del propio trabajo — la simulación lanzó 6 peticiones a la vez y salieron `creado`+5×`existia`, o sea que **la rama de la carrera no se ejecutó ni una vez**. Una rama que solo corre «a veces» no está probada.
+  - **Simulación contra la BD real** (`npm run sim:reintento-perfil`): 7 casos con usuarios efímeros que se borran solos — alta nueva, el caso de los 235, insensibilidad a mayúsculas, 6 peticiones simultáneas, la ventana, sin email, y que el usuario sano no consulte nada.
+  - **Guardarraíl** `perfilSeReintenta.guardrail.test.ts` (14): el cableado, los tres eventos, que el email nunca viaje en claro, y que la expresión del resolutor siga casando con el índice. **Probado por mutación**: borrando el reintento, 5 comprobaciones se ponen rojas.
+  - **Canario** `npm run canary:perfil-sin-resolver`: cruza rotos × curados × checkouts rechazados. Medido AHORA (antes de desplegar): **🔴 29 rotos, 0 curaciones, 7 checkouts rechazados** — la línea base contra la que se comprobará.
+  - **Observabilidad**: `auth_perfil_recuperado` (info, la métrica del drenaje) y `auth_sesion_sin_email` (error, el caso que el reintento NO puede curar), **cada uno con su regla de alerta**. La de `sesion_sin_email` dispara a la primera; la de `perfil_roto_no_drena` salta si hay curaciones **7 días seguidos**, porque eso significa que siguen naciendo rotos y el arreglo estaría tapando el goteo en vez de dejarlo ver.
+- **✅ DESPLEGADO Y VERIFICADO EL MECANISMO (01/08, frontend `9cbdc06f` rollout 11:07 UTC + backend task def 156).** `npm run sim:perfil-roto-se-cura -- --url=https://www.vence.es` da **VERDE los 5 casos** contra producción, y `auth_alta_sin_perfil` con `enReintento=true` está a **0**: ningún reintento ha fallado.
+- **⏳ LO ÚNICO QUE FALTA ES EL DRENAJE, y tarda — no lo leas como avería.** Media hora después del deploy: 27 rotos y **0 curaciones reales**. Son **dos retrasos que se suman**, medidos: (a) el reintento corre en la **rotación de sesión**, no en cada llamada a la API, así que quien está dentro haciendo un test sin recargar tarda en rotar; (b) el **Bearer dura 1 h**, así que quien lo acuñó antes del deploy sigue rebotando con el viejo **aunque su sesión ya esté curada** — caso real: rebote a las 11:12 con token de las 10:59, rollout a las 11:07. Espera 1-2 h antes de concluir nada; detalle en `docs/runbooks/health-check.md` §3.
+- **Y por eso el canario NO basta solo:** «0 curaciones» se lee igual siendo *«no hay nadie a quien curar»* que *«el reintento no corre»*. La **simulación** es la que lo distingue, y su veredicto rojo ya enumera las dos causas en vez de acusar a una.
+- **🐛 HALLAZGO COLATERAL, arreglado: el canario se contaba a sí mismo.** Cantó *«2 usuarios curados»* justo cuando había que decidir si el arreglo servía, y los dos eran **corridas de la propia simulación**. Causa estructural, no de este canario: una simulación con identidad recorre la app **de verdad**, así que sus eventos son indistinguibles de los de una persona — y la regla `sesion_sin_email`, que dispara a la primera, **mandaba una alerta falsa en cada ejecución**. Arreglado en el sitio **compartido** (`CLAIM_SIMULACION` en `lib/sim/session.ts`, dentro de `sessionTokenPayload`) para que **toda simulación futura nazca marcada**; `authjs.ts` la propaga y canario + 3 reglas la excluyen. Como mete en el token un claim que la app LEE, lleva guardarraíl propio (`simulacionNoDaPoder`, 7): **etiqueta, NUNCA autoriza**.
+- **⚠️ OJO AL ESTADO PARCIAL (mientras `e6b117b3e` no esté en las DOS superficies):** lo vivo lleva el arreglo pero **no** la marca ni los filtros. Correr la sim contra producción antes de eso contamina el canario y dispara la alerta falsa → marcar los eventos a mano tras la corrida.
+- **▶ FALTA:** solo mirar el canario cuando haya drenado (🟡 con curaciones > 0 y rotos bajando) y vigilar `auth_sesion_sin_email` (caso que este arreglo **no puede** curar: se investiga en el **proveedor de identidad**) y `auth_reintento_roto` (infraestructura).
+- **Lo que NO se ha tocado, a propósito:** si la sesión debe firmarse o no cuando no hay perfil. Con el reintento esa decisión deja de ser urgente, y mezclarla habría hecho el cambio de autenticación más difícil de revisar y de revertir.
+
+- **✅ DECIDIDO POR MANUEL (01/08): SE LE DEJA PASAR.** La pregunta era qué hacer cuando el perfil no se puede resolver: **(a)** no firmar la sesión —error de login honesto, pero la persona se queda FUERA y no puede ni estudiar— o **(b)** dejarle entrar y repararlo. **Se queda la (b), que es lo que ya hace el código.** *«Déjalo como está, le dejamos pasar.»*
+  - **Lo que hace que (b) sea buena ahora y no antes:** hasta el reintento, dejar pasar significaba quedarse roto **para siempre**; hoy significa quedarse roto **hasta la siguiente carga de página**. La opción no cambió, cambió su coste.
+  - **Cuándo reabrirla, y solo entonces:** si `auth_alta_sin_perfil` con `enReintento=true` deja de estar a 0 de forma sostenida — es decir, si aparecen usuarios a los que el reintento **tampoco** cura. Ahí «dejar pasar» volvería a significar «roto para siempre» y la (a) recupera su sentido. **No la reabras sin ese dato.**
+  - **Y los ya rotos no necesitan nada:** se curan solos al volver, sin campaña ni avisarles. Era la otra mitad de esta decisión y el reintento la resolvió.
+- **Hipótesis descartada por el camino (no la repitas):** que fuera un fallo de `create_organic_user` en sí. La rama de fallo de `resolveAppUserId` existe y está documentada: *«si NO existe → intenta crearlo (organic) con un UUID nuevo… si no se puede crear (p. ej. FK a `auth.users` aún viva pre-cutover) → null»*. Si esa creación falla y aun así se acuña token con el `sub` original, el resultado es exactamente lo observado: sesión válida, perfil inexistente, reconciliación que no ve nada que reconciliar. **Confirmarlo o descartarlo es el siguiente paso**, y se hace mirando qué devuelve esa rama para un alta reciente.
+- **Lo que esto significa para [T-245]:** aquella ficha se cerró curando el SÍNTOMA y dejando escrito, con todas las letras, que *«no explica por qué desaparece un perfil, así que la causa de fondo sigue abierta»*. Pues es esa causa la que sigue produciendo **29-31 usuarios al día**. La diferencia con entonces es de escala: se cerró midiendo *«8 usuarios en 3 semanas»*.
+  ```sql
+  -- los afectados de las últimas 24 h
+  SELECT user_id, count(*) FROM observable_events
+   WHERE event_type='auth' AND severity='warn' AND error_message='Usuario no existe'
+     AND created_at > now() - interval '24 hours' AND user_id IS NOT NULL
+   GROUP BY 1 ORDER BY 2 DESC;
+  ```
+- **El agravante de siempre, que sigue vigente:** un usuario roto **no puede avisarnos** (el soporte falla por la misma FK), así que esto no va a llegar por feedback. O lo caza la observabilidad o no lo caza nadie.
+- **Relacionadas:** [T-245] (el arreglo que no basta), [T-271] (el cubo de `console_error` donde apareció la firma), [T-260].
+
+
+
+- **📊 MEDIDO POR OTRA SESIÓN (31/07 ~00:20) — ESTO NO ES HISTÓRICO, ESTÁ PASANDO AHORA:**
+  - **359 eventos en las últimas 24 h**, 7 en la última hora, **el último hace 1 minuto**.
+  - Por día, la última semana: `07-31=337 · 07-30=387 · 07-29=511 · 07-28=405 · 07-27=422 · 07-26=239 · 07-25=210`. **No decae: es un caudal estable.**
+  - Consulta para reproducirlo:
+    ```sql
+    SELECT count(*) FROM observable_events
+     WHERE error_message ILIKE '%usuario no existe%' AND created_at > now() - interval '24 hours';
+    ```
+  - **QUÉ CAMBIA ESTO:** la investigación estaba escrita en pasado («desde el 7 de julio»), y con ese marco la hipótesis viva —que el perfil no llegue a crearse en el alta— habría que confirmarla **reconstruyéndola del historial**. Con usuarios entrando **ahora mismo** se puede confirmar o descartar **HOY**, mirando un alta en vivo: si se acuña token en la rama de fallo de creación de perfil, se ve en el momento.
+  - **Y cambia la prioridad, no solo el método:** no es una investigación de algo que pasó. **Hay gente sin poder pagar en este instante**, y lleva así semanas. Merece fecha límite (`backlog.cjs due`), no solo 🔴.
+
+#### 🔴 AL VERIFICARLA (01/08 ~16:30) — EL ARREGLO ESTÁ VIVO Y NO LES ALCANZA. La explicación que daba la ficha queda descartada
+
+Fui a hacer la comprobación que pedía `--falta` (canario de rojo a 🟡). **Sigue rojo, y no por la razón que estaba escrita.**
+
+- **Medido:** 25 usuarios rebotando en 24 h, **0 curaciones reales**. Las **13** `auth_perfil_recuperado` de la ventana son **TODAS de simulación** (`simulacion=true`, la última a las 11:28Z). O sea: el canario, ya corregido para no contarse a sí mismo, ahora dice la verdad — y la verdad es cero.
+- **La explicación (b) de la ficha —«corre, pero ningún roto ha cargado página aún»— ES FALSA, y se puede demostrar:** **9 de los 25 rebotaron DESPUÉS del rollout**, el último a las **15:16Z**, o sea **cuatro horas** después. El aviso del Bearer de 1 h no cubre eso: a las 15:16 ya no queda ningún token acuñado antes del despliegue. **Han vuelto, y han vuelto rotos.**
+- **Y la explicación (a) —«el reintento no corre»— es correcta, pero por un motivo que nadie había considerado.** No es que falle: es que **ni siquiera se intenta**. Las tres señales del bloque están **a CERO**: `auth_alta_sin_perfil` (0 eventos en 24 h), `auth_sesion_sin_email` (0) y `auth_reintento_roto` (0). Si el reintento hubiera corrido y fallado, alguna tendría que hablar.
+- **🔎 LA CAUSA SIGUE SIN ESTAR IDENTIFICADA, y conviene decirlo así.** Durante esta misma sesión di por buena una explicación —«el token trae un `appUserId` colgado, así que `decidirReintentoPerfil` corta en `ya_resuelto`»— y **la evidencia la descarta**. Queda escrita para que nadie la vuelva a proponer sin comprobarla: si fuera eso, seguiría sin explicar que `auth_alta_sin_perfil` **no se haya emitido NUNCA en toda la BD** (0 filas históricas, no 0 en 24 h).
+- **Lo que SÍ está medido, y acota mucho el sitio donde mirar:**
+  - **Nada de lo suyo se guarda.** Los 25 ids tienen **CERO filas** en `daily_question_usage`, `tests`, `test_questions`, `user_devices` y `email_preferences`. No es «no pueden pagar»: es que **no existen para el sistema**, aunque naveguen.
+  - **Y no es de ahora.** El caso trazado entero (`a4c93cd6`) está roto **desde el 19/07**, y **su PRIMER evento ya es un 401**: nunca tuvo un periodo sano. 155 eventos, todos rebotando.
+  - **Rebota TODO lo autenticado**, no solo las stats: `/api/profile`, `/api/v2/user-stats` y `/api/v2/topic-progress/theme-stats`, los tres con 401 en el mismo segundo.
+  - **El 401 de `/api/profile` viene de `verifyAuth`**, o sea de que **el access token no vale** — no de un perfil que falte. Junto con `/api/auth/token` apareciendo en su rastro, apunta a que lo que falla primero es **el acuñado del token**, y que la falta de perfil sea consecuencia y no causa. Es la hipótesis a comprobar, NO una conclusión.
+- **⚠️ EL PUNTO CIEGO QUE IMPIDE CERRAR ESTO, y es lo siguiente que hay que construir:** de las cuatro salidas de `decidirReintentoPerfil`, **`sin_email` y `reintentar` emiten evento, pero `ya_resuelto` y `en_espera` son MUDAS**. Y son justo las dos que habría que distinguir para saber por qué el reintento no actúa. Mientras sigan mudas, la pregunta «¿por qué no se cura nadie?» **no tiene respuesta observable**, y cualquier arreglo que se escriba será a ciegas. Instrumentarlas tiene su propio problema —`ya_resuelto` dispara en cada carga de página de cada usuario sano, así que emitir a pelo sería un diluvio— y por eso es trabajo de diseño, no una línea.
+- **NO se ha tocado el código a propósito.** Se llegó a autorizar un arreglo (que el rebote provocara una rotación que borrase `appUserId`), pero se apoyaba en la causa que este mismo apartado descarta. **Escribirlo habría sido arreglar algo que no está roto** y, peor, habría dado la tarea por resuelta.
+
+##### 🎯 Y SIGUIENDO EL HILO: por qué el reintento NO PUEDE alcanzarles (01/08, mismo día)
+
+Buscando dónde instrumentar apareció que **la instrumentación que hacía falta YA EXISTE** — `auth_sub_reconciliado`, que emite `huerfano` con severidad `error` justo cuando un `sub` no tiene perfil ([T-245], en `/api/auth/token`). No hubo que construir nada; hubo que **mirarla**:
+
+- **Ha hablado UNA sola vez en toda su vida** (30/07, un usuario) y **NINGUNO de los 25 aparece** en ella, ni como `user_id` ni como `subOriginal`.
+- Eso solo puede significar una cosa: **no llegan a esa comprobación**. Se quedan antes, en el `if (!userId) return 401 unauthenticated` de `/api/auth/token` — o sea que **no tienen sesión Auth.js y el bridge tampoco les rescata**.
+- **Y ahí encaja TODO lo demás sin forzar nada:** sin sesión Auth.js, **el callback `jwt` no se ejecuta para ellos NUNCA**. Por eso las cuatro señales del reintento están a cero en producción; por eso la simulación de navegador —que sí abre sesión Auth.js— da verde; y por eso el canario no ve una sola curación.
+- **En una frase: el arreglo de esta tarea vive detrás de una puerta por la que esta gente no pasa.** No es que el reintento falle: es que no le llega el turno.
+- **Lo que queda por confirmar** es de dónde saca el cliente un id de usuario si no hay sesión. Candidato encontrado y **NO probado**: `AuthContext.tsx` tiene un rescate a los 12 s de timeout que **resucita una sesión legacy de Supabase desde `localStorage`** (`sb-<proyecto>-auth`) y hace `setUser(parsed.user)` — con lo que la app se comporta como logueada sin que exista sesión. Cuadra con el perfil medido (id UUID legacy, sin fila en ninguna tabla, todo a 401 desde el primer evento), pero **no hay prueba directa**: ese camino solo deja `console.log`/`console.warn` y no aparece en `observable_events`. **No dar por buena esta parte sin comprobarla.**
+
+##### 🕳️ EL PUNTO CIEGO REAL (y no es el que se dijo antes)
+
+**El 401 de `/api/auth/token` está silenciado A PROPÓSITO** (`expectedStatuses: [401]` en `withErrorLogging`), y con razón: un cliente deslogueado hace polling y generaría ~340k eventos/día. Pero ese silencio mete en el mismo saco dos cosas que no son iguales:
+
+1. **El 401 anónimo** — nadie ha iniciado sesión. Es ruido y debe seguir callado.
+2. **El 401 de un cliente que CREE estar dentro** — manda un id de usuario, navega, responde preguntas, y no se le guarda nada. **Ese es un usuario roto y hoy es invisible.**
+
+Distinguirlos es barato (el segundo trae identidad reclamada y el primero no) y **no crea nada nuevo**: la señal encaja en el canario `perfil-sin-resolver` que ya existe y en sus reglas.
+
+##### ✅ CONSTRUIDO (01/08) — el canario ya los ve, y son 46
+
+Segundo bloque **dentro** del canario que ya existía (`npm run canary:perfil-sin-resolver`), no un script aparte. Núcleo puro `lib/auth/rebotePersistente.cjs` con **13 tests**; registro y runbook actualizados.
+
+- **Medido en producción al estrenarlo: 46 personas**, la más antigua **desde el 19/07** (13 días rebotando), una con 150 rebotes. Y **no se solapan con las 26 de la ventana corta**: solo 3 coinciden, o sea que las otras 43 **eran completamente invisibles** para todo lo que había.
+- **NO se emitió ninguna señal nueva, porque el dato ya estaba.** Los 401 de `/api/auth/token` sí se registran (3.777 en 24 h); lo que faltaba era **mirarlos**. De esos 3.777, solo **22 llevan identidad** — el resto es polling anónimo, que es exactamente el ruido que justifica el silencio de `expectedStatuses`. El discriminador sale gratis: `user_id IS NOT NULL`.
+- **La señal es la PERSISTENCIA, no el volumen, y esto es lo que evita la chapuza.** La tentación era contar rebotes; al medirlo, los de un solo día acumulaban 1-4 peticiones, **igual que un roto**. Un detector por volumen habría marcado caducidades normales y perdido a los rotos.
+- **Corte calibrado, no intuido** (483 usuarios en 14 días): **391 (81%) en un solo día** → caducidad normal, se descartan; 46 en dos días → zona gris, no se reporta; **46 en 3+ días** → rotos.
+- **Banda `error` desde el primero, sin margen de tolerancia:** cada unidad es una persona usando la aplicación a la que no se le guarda nada. No hay un número aceptable de eso.
+- **⚠️ AVISO QUE VA EN EL RUNBOOK, porque casi me engaña:** el propio `--falta` de esta ficha decía *«si `auth_alta_sin_perfil` con `enReintento=true` sigue a 0, es que ningún reintento ha fallado»*. Estaba a 0… **y nunca se ha emitido en toda la BD**. Cero no significaba «ninguno falló», significaba «no se ejecuta». **Una señal que nunca ha hablado no puede tranquilizar a nadie** — antes de leer una ausencia como buena noticia, comprobar que esa señal ha hablado alguna vez.
+- **Lo que este bloque NO hace:** no cura a nadie. Los hace **visibles y contables**, que es lo que faltaba para poder decidir el arreglo con la causa delante en vez de a ciegas. Y deja dicho en el propio canario que **esta cifra no baja al desplegar**, para que nadie lea su terquedad como un deploy fallido.
+
+##### 🎯 CAUSA CONFIRMADA (01/08) — dos guardas del cliente que se alimentan entre sí
+
+El cabo del `localStorage` **está confirmado en el código, de punta a punta**, en `contexts/AuthContext.tsx`:
+
+1. **El pre-hydrate corre en CADA carga** (no solo tras el timeout de 12 s, como se creyó primero). Lee el blob de sesión **legacy de Supabase** (`sb-<proyecto>-auth`) y hace `setUser(parsed.user)` **y además** `updateUserProfile(cachedProfile)`. La interfaz queda completa: la persona se ve dentro, con su nombre y su plan.
+2. **Después llega `INITIAL_SESSION` con la sesión a `null`** —porque no hay sesión Auth.js— y la limpieza NO ocurre:
+   ```js
+   if (newUser || !userProfileRef.current) setUser(newUser)
+   else console.warn('session null PERO hay perfil cacheado — NO limpiando user aún')
+   ```
+   El comentario de esa guarda dice que *«`setUser(null)` se hace SOLO tras confirmar que la sesión está realmente perdida»*. **Ese camino de confirmación NO EXISTE.** Nada la limpia nunca.
+3. **Y el paso 1 fabrica justo la condición que bloquea el paso 2:** el perfil cacheado que impide limpiar lo acaba de poner el propio pre-hydrate. Las dos guardas son razonables por separado —una evita el parpadeo de la interfaz, la otra evita mostrar «Regístrate» a un premium cuando Supabase no podía refrescar el token— y **juntas dejan a la persona encerrada indefinidamente** en una sesión que no existe.
+- **Resultado:** navega, responde preguntas, ve su perfil… y **cada llamada al servidor le rebota**, no se le guarda nada y no puede pagar. Para siempre, porque nada rompe el bucle.
+- **⚠️ CORRECCIÓN DE MEDIDA — «cohorte del 19/07» era un ARTEFACTO.** Lo dije mirando la ventana de 14 días, y el 19/07 era **el borde de la ventana**, no un comienzo. Con 90 días: empieza el **07/07** con un pico (9-14-8 personas los días 7, 8 y 9) y sigue con un **goteo de 1-5 al día hasta hoy**. Total **~90 personas**, no 46. El pico encaja con el flip de Auth.js a producción (03/07) y **el goteo significa que SIGUE PASANDO**: no son bajas de una migración, nacen rotos nuevos cada día.
+- **EL ARREGLO, y por qué necesita decisión:** `INITIAL_SESSION` con sesión `null` **ES** la confirmación que esa guarda dice esperar — Auth.js ya ha hablado. Ahí hay que limpiar el usuario fantasma, el perfil cacheado y el blob legacy, y enseñar «entrar» (un clic). Es pequeño, pero **toca identidad y puede desloguear a alguien si me equivoco**, así que no se escribe sin OK. La guarda que hay que retirar se puso para un fallo de la ÉPOCA DE SUPABASE (pool saturado sin poder refrescar), que con Auth.js ya no aplica.
+- **NO son bajas de cuenta.** Era la otra hipótesis razonable, porque el `catch` que emite el rebote está comentado como *«sesión zombie de user eliminado por admin-delete-user»*. Descartada: **0 de los 25** tienen registro en `deleted_users_log`. Ese comentario describe una causa posible del `23503`, no la que se está dando.
+- **Lo que NO se ha tocado, y por qué:** el arreglo evidente —comprobar que `appUserId` existe— costaría **una consulta a BD en cada rotación de sesión de cada usuario sano**, que es justo lo que la guarda de la línea 80 evita. La salida barata es usar el rebote como señal: cuando un endpoint responde «Usuario no existe», que el cliente pida una rotación que **borre `appUserId`** del token, y entonces el reintento que ya existe hace su trabajo en la siguiente carga. **Eso toca identidad y es decisión de Manuel** (la ficha ya reserva la otra decisión de auth), así que se deja propuesto, no hecho.
+
+##### ✅ CABLEADO Y PROBADO POR MUTACIÓN (04/08) — con OK de Manuel
+
+**El núcleo puro, sus 9 unitarios y la simulación YA EXISTÍAN desde el 01/08. Lo que no existía era la línea que los usa:** `contexts/AuthContext.tsx` no importaba `decidirSesionFantasma` por ningún lado. Todo construido y nada conectado — por eso las 44 personas seguían rotas mientras la ficha parecía avanzada. Es el mismo patrón que ya costó caro en esta ficha (una señal que nunca habló leída como buena noticia): **lo que no se ejecuta, no cuenta.**
+
+- **DÓNDE estaba el agujero, que NO es donde parecía.** La limpieza definitiva —tras los dos reintentos, 15 s después— sí soltaba usuario y perfil cacheado, pero **NO el blob legacy de Supabase**. Así que en la siguiente carga el pre-hydrate volvía a leerlo, volvía a poner usuario + perfil, y la guarda volvía a impedir la limpieza. **El bucle no era que no se limpiara: era que la limpieza estaba incompleta y se deshacía sola en la recarga siguiente.** El arreglo son tres líneas en ese punto: soltar también el blob (helper único; la fórmula de esa clave estaba escrita a mano en cuatro sitios del fichero) y emitir la señal.
+- **⚠️ MI PRIMERA VERSIÓN ERA DEMASIADO AGRESIVA Y LA CAZÓ EL `pre-commit`.** Limpiaba en cuanto `INITIAL_SESSION` llegaba sin sesión, sin esperar a los reintentos. Eso puso ROJO el test del **«caso Nila»** (`__tests__/contexts/AuthContext.test.tsx`), que fija justo lo contrario: el premium cuya sesión SÍ existe y cuyo `INITIAL_SESSION` vuelve nulo por un fallo transitorio **tiene que recuperarse**. O sea que mi versión **deslogueaba a premium sanos** — el modo de fallo caro que la propia simulación advierte («soltar de MÁS»), y que su caso 2 no podía ver porque ahí la cookie es válida y `INITIAL_SESSION` devuelve usuario a la primera. **El test se respetó y se cambió el diseño, no al revés.** La guarda de arriba queda intacta con un comentario que explica por qué no se toca.
+- **⚠️ OTRO FALLO PROPIO, en la versión descartada:** hacía `setUser` solo dentro de `if (decision.limpiar)`, y como con sesión válida `limpiar` es `false`, **un login sano no se habría aplicado nunca**. Lo cazó releer el módulo puro antes de compilar, no un test.
+- **EL FIXTURE DE LA SIMULACIÓN ERA EL PROBLEMA, y la ficha ya lo sospechaba.** Guardaba `{user:{id,email}}` sin `access_token` ni `expires_at`, así que el cliente lo trataba como **token caducado** —rama que YA limpiaba— y el caso 1 salía VERDE contra código SIN arreglo. Un verde que no depende del arreglo no prueba nada. Ahora el blob es realista (sesión completa y **no caducada**), que es el estado real de las personas medidas.
+- **LA ESPERA DE LA SIMULACIÓN MEDÍA LA VENTANA EQUIVOCADA:** esperaba 6 s, que es justo el hueco en el que el cliente **está conservando el perfil a propósito** (los reintentos vencen a los 15 s). Subida a 22 s. Sin esto, la versión buena habría salido roja sin que nada estuviera mal — y una prueba que castiga el diseño correcto se acaba «arreglando» aflojando el diseño.
+- **PROBADO POR MUTACIÓN, en las dos direcciones y con la MISMA espera**, que es lo que demuestra que discrimina por la fuga y no por el reloj:
+  - contra **producción (sin el arreglo) → ROJO**, y el detalle es exactamente el diagnóstico: `perfil cacheado=borrado` (producción SÍ limpia eso) · **`blob legacy=SIGUE`** ← la fuga que reencierra en la recarga siguiente;
+  - contra **local con el arreglo → 2/2 VERDE**, los dos borrados.
+  - El contraste que protege el dinero —usuario real con cookie válida— **intacto en los dos**.
+- **Observabilidad, y por qué NO podía nacer muda:** el tipo `sesion_fantasma_soltada` estaba declarado desde el 01/08 y **jamás se había emitido**. Ahora se emite (`warn`) al soltar, verificado de extremo a extremo: emitido en el navegador y **leído en `observable_events`**. El canario `perfil-sin-resolver` gana un bloque *«La cura, ¿corre?»* que hace INTERPRETABLE un cero — exactamente el error que esta ficha ya cometió con `auth_alta_sin_perfil`: si nunca se ha emitido, lo dice con todas las letras («un 0 aquí NO es buena noticia»).
+- **El contador excluye el tráfico de la propia simulación** (`userAgent` con `HeadlessChrome`): el caso del fantasma **no puede llevar la marca en cookie** que usan las demás sims —se define justamente por no tener cookie—, así que cada corrida habría sumado una «cura» falsa y el canario habría dicho que el arreglo drena cuando solo es que alguien lo probó.
+- **Registrada en `toolRegistry`** la simulación, que tampoco lo estaba.
+- **Estado al cerrar la sesión: en `main`, SIN desplegar.** Los 44 rotos **no bajan hasta el deploy**, y el canario lo dice solo. Verificación pendiente en producción: que el bloque de la cura deje de decir «nunca se ha emitido» y que los rebotes persistentes empiecen a caer.
+
+#### 🎯 CAUSA REAL, ENCONTRADA Y ARREGLADA (05/08/2026) — y las DOS explicaciones anteriores eran falsas
+
+Todo lo de arriba supone que estas personas están **rotas** o **deslogueadas**. Ninguna de las dos cosas. Medido sobre los **182** que rebotaban en 14 días:
+
+| | |
+|---|---|
+| con alguna petición de identidad **VERIFICADA** (o sea, sesión buena) | **180 de 182** |
+| con fila en `user_profiles` **con el id que rebota** | **0** |
+| en `deleted_users_log` (no son bajas) | **0** |
+| 401 de `/api/v2/user-stats` cuya identidad **no viene de token** sino del `?userId=` | **1.920** |
+| eventos con `identityMismatch` (el cliente manda un id ≠ del token) | **372, de 120 usuarios** |
+
+**Son usuarios SANOS con DOS identidades en el navegador.** El pre-hydrate resucita el id de la sesión Supabase legacy de `localStorage`, la sesión Auth.js llega ~700 ms después con el id BUENO, y lo que se montó en ese hueco manda el viejo. Lo que va por **token** funciona; lo que lleva el id **por parámetro** rebota. Muestra real, con el perfil de cada uno al lado:
+
+```
+token=0479a6bc (perfil:1)   cliente-dice=c1aee21c (perfil:0)   ← c1aee21c es uno de los 8 persistentes
+token=02b3c75e (perfil:1)   cliente-dice=e32e9372 (perfil:0)
+```
+
+Por eso **ninguna señal del servidor los veía** (`auth_sub_reconciliado` = 1 evento en TODA la base, `auth_alta_sin_perfil` = 0) y por eso el reintento no podía curarles: **no hay nada que reparar en el servidor**.
+
+**Cómo se cayeron las dos explicaciones previas, que es la parte reutilizable:** las dos estaban escritas con seguridad y las dos eran razonables. No las tumbó leer más código —eso solo producía la tercera hipótesis— sino **una consulta que preguntaba por el CONTRASTE** («¿tienen sesión verificada, sí o no?») en vez de por la confirmación.
+
+**Construido (todo con su contraste, porque este cambio falla hacia los dos lados y solo uno se nota):**
+
+| Pieza | Qué cierra |
+|---|---|
+| `decidirIdentidadAjena` en `lib/auth/sesionFantasma.ts` (+16 unitarios) | La decisión: si el rastro pre-hidratado es de OTRO id, se suelta; si es del mismo, **no se toca nada**. Va en el módulo de su hermana `decidirSesionFantasma`, no en uno nuevo, y un test comprueba que **nunca opinan a la vez** |
+| Cableado en `AuthContext.tsx` | Se anota el id pre-hidratado en los **dos** caminos que resucitan un usuario (pre-hydrate y rescate del timeout de 12 s) y se contrasta en el veredicto de `INITIAL_SESSION` |
+| `lib/auth/legacySupabaseStorage.ts` | Criterio ÚNICO de cuál es el rastro legacy y cómo se borra. Estaba escrito **dos veces y distinto** (`AuthContext` componía la clave a mano y no cubría el sufijo `-token`), así que una rama borraba una clave que la otra no. El `code_verifier` de PKCE **nunca** se toca, con test |
+| Evento `auth_identidad_ajena_descartada` + regla `identidad_ajena_no_drena` | Es la ÚNICA señal posible del caso. La regla **no dispara por volumen** (el pico inicial es el drenaje) sino por **7 días seguidos**: eso significa que algo vuelve a escribir el rastro |
+| Tercer bloque del canario `perfil-sin-resolver` | Cruza el gemelo del SERVIDOR (`identityMismatch`) con el drenaje del CLIENTE. **`identityMismatch` existía desde el 07/07 y no la miraba NADIE**: no hubo que construir detector, hubo que mirarla |
+| `__tests__/guardrails/identidadAjenaSeDescarta.guardrail.test.ts` (14) | Impide el modo de fallo de [T-443]: que un commit rancio borre la llamada y el arreglo quede vivo pero inerte |
+
+**Comprobado EJECUTANDO, no leyendo** (`npm run sim:sesion-fantasma`, navegador real): **rojo contra producción sin el arreglo, verde en local con él**, y el caso del usuario sano verde en las dos. Dos gotchas que hacían inútil la simulación anterior, ambos fijados por guardarraíl: el blob del fixture **tiene que llevar `access_token`** (sin él supabase-js lo borra antes de que React monte — el fantasma no llegaba a nacer y el caso salía verde sin probar nada), y **se mide a los 10 s**, después del veredicto y **antes** del rescate tardío de 15 s del camino antiguo, que si no también saldría verde.
+
+**Lo que queda, y por qué no se ha hecho:**
+
+1. **Desplegar y leer el drenaje.** Hasta que no esté vivo, el tercer bloque del canario dice 🔴 «120 navegadores con dos identidades y ningún descarte», que es la línea base correcta.
+2. **El caso «sin sesión» lo cableó OTRA SESIÓN el 04/08** (el apartado de arriba), en paralelo a esto y sin que ninguna de las dos lo supiera — las dos, además, encontraron por separado que el fixture de la simulación no llevaba `access_token`. Al fusionar se conserva su cableado y se corrige **su ventana de medida**: esperaba 22 s, y a esa altura **el código SIN el arreglo también ha limpiado** (medido: el rescate tardío cierra a los ~18-21 s), así que su caso 1 pasaría igual estando roto. Queda en 10 s, la única franja en la que el resultado depende del arreglo. Los dos casos son **distintos y complementarios**: el suyo es «no hay sesión», el mío es «la hay y el cliente cree ser otro» — 180 de los 182 medidos son el segundo.
+3. **🔓 HALLAZGO COLATERAL DE SEGURIDAD, no arreglado aquí:** `/api/v2/user-stats` coge el `userId` **del query string y no del token** — no llama a `verifyAuth`. Es decir, cualquiera puede leer las estadísticas de cualquier usuario pasando su id. Encaja con **[T-482]** (endpoints de tests sin autenticación), que tiene lease vivo de otra sesión, así que se deja **dicho y no tocado** para no pisarlo.
+
+#### ✅ CERRADA (05/08) — deploy confirmado en las dos superficies y drenaje verificado contra producción
+
+- **Deploy verificado, no supuesto:** el commit `d5701747` (causa real = navegador con dos identidades, no perfil roto) ya era ancestro del SHA vivo en frontend (`ca1bc7cd`) y backend (`ee1288d6`) al retomar la tarea — confirmado con `git merge-base --is-ancestor`, no leído de la ficha.
+- **Canario `perfil-sin-resolver` contra RDS real (no local):** el bloque «Navegadores con DOS identidades» pasó de la línea base 0 descartes a **32 rastros ajenos descartados y 1 cura en 24 h** — el mecanismo drena con tráfico real. `npm run backlog:verificacion -- T-434` confirma que el código servido incluye los 21 commits declarantes.
+- **La simulación `sim:sesion-fantasma` no se pudo ejecutar** (exige `AUTH_SECRET` de SSM, fuera del rol de trabajador); la evidencia de producción (descartes reales no-cero) sustituye a la simulación para este cierre.
+- **Los 44 «persistentes» del canario son histórico de hasta 12 días** que se vacía solo según cada navegador vuelva a cargar página — el propio canario lo documenta, no es una regresión.
+- **El cabo de seguridad sobre `/api/v2/user-stats`** (userId por query sin `verifyAuth`) ya está cubierto por **[T-353]** (abierta, sin reclamar), que agrupa los 38 endpoints con el mismo patrón — no se duplica ficha.
+
 
 ### [T-574] ✅ [HECHA 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
 
