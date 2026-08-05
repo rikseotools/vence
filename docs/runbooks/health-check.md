@@ -186,6 +186,19 @@ Además del bloque CRÍTICOS, mirar SIEMPRE (añadidos 05/07/2026 — cerraron u
 7. **🖥️ Errores de cliente** (sección OBSERVABILIDAD) — errores capturados IN-HOUSE en el navegador (Sentry se retiró): `unhandled_error`, `unhandled_rejection`, `react_error_boundary`, `client_error`, `http_5xx`/`http_4xx`/`http_network_error` (fetch del navegador), `chunk_load_error`. Verde <100, ámbar ≥100, rojo ≥500. **CLAVE:** el servidor puede decir 0 5xx y el panel/monitor "verde" mientras los clientes sufren (p.ej. **502 de `/api/auth/token`** = error de EDGE que el servidor no registra). Mirar el breakdown por `event_type` + `topEndpoint`.
 8. **🧯 Todas las señales error/warn (catch-all, sin gaps)** — tabla con TODA señal error/warn de `observable_events` agrupada. Garantía por diseño: **nada capturado queda oculto**, ni tipos futuros. Las filas **benignas** (auth, forbidden, scraping, request_completed…) van en gris y no cuentan; las **accionables** (coloreadas por volumen) son las que investigar. Si aparece una accionable con volumen alto que no reconoces → sección 2.
 
+9. **🤖 Flota de trabajadores** (T-486) — trabajadores autónomos dando señal, entregas esperando tu
+   revisión, borradores esperando tu OK y turnos muertos con la tarea cogida. **Va la PRIMERA del
+   grid a propósito: una flota parada NO SE NOTA** — sigue apareciendo en el registro, nadie recibe
+   una queja y puede estar así horas. Rojo = todos sin señal, o **≥5 turnos muertos en 3 h** (eso ya
+   no es azar: apunta a cuota agotada, un guardarraíl que no pueden satisfacer o una tarea fuera de
+   su alcance). Ámbar = cola de revisión ≥8, algún borrador esperando OK, o faltan trabajadores.
+   - **Lo que esta tarjeta NO dice, y no lo finge:** si un proceso está ejecutando de verdad. El
+     panel es una página web y no entra en las máquinas; eso lo sabe `npm run flota` mirando el
+     tmux. Aquí solo consta lo que está en la BD.
+   - Antes de esto, las señales de la flota llegaban **por el catch-all**, que es la red de
+     seguridad y no una vista: servía para que nada quedara oculto, no para responder «¿está la
+     flota bien?».
+
 Si CRÍTICOS + errores de cliente + catch-all están en verde, no hay fuego activo. Tarea cerrada en 30 segundos.
 
 Si alguno está ámbar o rojo, ir a la sección 2 con esa pista.

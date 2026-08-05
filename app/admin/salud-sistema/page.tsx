@@ -104,6 +104,19 @@ interface SystemHealthResponse {
       thresholds: { amber: string; red: string }
       note?: string
     }
+    // ─── LA FLOTA DE TRABAJADORES (T-486) ───
+    // `flota` puede no venir: el endpoint es resiliente por indicador y este puede quedar
+    // `unknown` sin tumbar el panel. Opcional a propósito.
+    flota?: {
+      status: Status
+      vivos: number | null
+      esperados: number | null
+      entregas_esperando: number | null
+      borradores_esperando: number | null
+      turnos_muertos_3h: number | null
+      espera_max_h: number | null
+      detalle: string | null
+    }
     errors_5xx: {
       status: Status
       count: number | null
@@ -315,6 +328,38 @@ export default function SaludSistemaPage() {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 0) LA FLOTA — va la primera porque una flota parada NO SE NOTA: sigue en el
+                registro, nadie recibe una queja, y puede estar así horas. (T-486) */}
+            {data.indicators.flota && (
+              <IndicatorCard
+                title="🤖 Flota de trabajadores"
+                status={data.indicators.flota.status}
+                metric={
+                  data.indicators.flota.esperados
+                    ? `${data.indicators.flota.vivos ?? '—'}/${data.indicators.flota.esperados}`
+                    : '—'
+                }
+                hint="Trabajadores dando señal. El detalle vivo (¿está ejecutando?): npm run flota"
+              >
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
+                  {data.indicators.flota.detalle ?? 'sin datos'}
+                </p>
+                <ul className="text-xs space-y-1 mt-2 text-gray-600 dark:text-gray-300">
+                  <li>
+                    🙋 <strong>{data.indicators.flota.entregas_esperando ?? '—'}</strong> entrega(s) esperando revisión
+                    {data.indicators.flota.espera_max_h != null && ` · la más vieja, ${data.indicators.flota.espera_max_h} h`}
+                  </li>
+                  <li>
+                    📝 <strong>{data.indicators.flota.borradores_esperando ?? '—'}</strong> borrador(es) esperando tu OK
+                    {' '}<span className="text-gray-400">(nada de eso se ha enviado)</span>
+                  </li>
+                  <li>
+                    ↻ <strong>{data.indicators.flota.turnos_muertos_3h ?? '—'}</strong> turno(s) muerto(s) con la tarea cogida (3 h)
+                  </li>
+                </ul>
+              </IndicatorCard>
+            )}
+
             {/* 1) Errores 5xx */}
             <IndicatorCard
               title="Errores 5xx últimas 24h"

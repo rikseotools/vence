@@ -1983,6 +1983,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'destinatario con su prosa); **sin id NO deduplica** a propósito, porque dos destinatarios ' +
       'sin identificador pueden ser legítimamente distintos. Escape: `--igualmente`. 11 tests.',
   },
+  flota_salud_panel: {
+    titulo: 'La salud de la FLOTA en el panel donde se mira la del resto del sistema',
+    ruta: 'lib/flota/salud.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'Tarjeta 🤖 en `/admin/salud-sistema`, alimentada desde el MISMO endpoint que el resto ' +
+      '(`/api/admin/system-health`) y con su mismo `run` resiliente: si la flota no se puede leer, ' +
+      'ese indicador queda `unknown` y el panel sigue en pie. Nace porque sus señales ya llegaban ' +
+      '**por el catch-all**, que es la red de seguridad y no una vista — servía para que nada ' +
+      'quedara oculto, no para responder «¿está la flota bien?», y eso obligaba a abrir una ' +
+      'terminal. **Va la PRIMERA del grid** porque una flota parada NO SE NOTA: sigue en el ' +
+      'registro, nadie recibe una queja y puede estar así horas. Rojo = todos sin señal, o ≥5 ' +
+      'turnos muertos en 3 h (eso ya no es azar); ámbar = cola de revisión, borradores esperando ' +
+      'OK, o faltan trabajadores. **Lo que NO finge:** el panel no entra en las máquinas, así que ' +
+      'no dice si un proceso vive — eso lo sabe `npm run flota` mirando el tmux.',
+  },
   flota_turno: {
     titulo: 'El TURNO de un trabajador, visible: qué se le encargó y si murió con la tarea cogida',
     ruta: 'scripts/flota/flota.cjs',

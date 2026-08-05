@@ -49,6 +49,11 @@ import { esSenalBenigna, tieneReglaPropia } from '@/lib/observability/benignSign
 // Núcleo puro en .cjs para poder compartirlo con los barridos, que son CommonJS.
 import { endpointsQueFallanMucho } from '@/lib/observability/tasaFallo.cjs'
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { saludFlota } = require('@/lib/flota/salud.cjs')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { trabajadoresEsperados } = require('@/lib/flota/maquinas.cjs')
+
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15
 
@@ -801,6 +806,34 @@ async function _GET(request: NextRequest) {
     })),
   )
 
+  // ─── SALUD DE LA FLOTA (T-486) ───────────────────────────────────────────────────────────
+  // Sus señales ya llegaban por el catch-all, que es la RED DE SEGURIDAD y no una vista: servía
+  // para que nada quedara oculto, no para responder «¿está la flota bien?». Eso obligaba a abrir
+  // una terminal, y era la única salud que no se podía mirar donde se mira todo lo demás.
+  //
+  // Va en ESTE endpoint y no en uno nuevo: es el mismo panel y la misma pregunta. Y con el mismo
+  // `run` resiliente, así que si la flota no se puede leer, el resto del panel sigue en pie.
+  const flotaResult = await run(async () => {
+    const [ses, entregas, borradores, muertos] = await Promise.all([
+      db.execute(sql`SELECT slug, last_signal_at FROM worktree_sessions WHERE rol = 'trabajador'`),
+      db.execute(sql`SELECT review_requested_at FROM backlog_tasks WHERE review_requested_at IS NOT NULL AND status <> 'done'`),
+      db.execute(sql`SELECT count(*)::int AS n FROM session_questions WHERE kind = 'borrador' AND status = 'open'`),
+      db.execute(sql`SELECT count(*)::int AS n FROM observable_events WHERE event_type = 'flota_turno' AND metadata->>'fase' = 'muerto' AND created_at > NOW() - INTERVAL '3 hours'`),
+    ])
+    const filas = (r: unknown) => ((r as { rows?: unknown[] })?.rows ?? r ?? []) as Record<string, unknown>[]
+    return {
+      data: [saludFlota({
+        sesiones: filas(ses),
+        esperados: trabajadoresEsperados().length,
+        entregas: filas(entregas),
+        borradores: Number(filas(borradores)[0]?.n ?? 0),
+        turnosMuertos: Number(filas(muertos)[0]?.n ?? 0),
+      })],
+      count: null,
+    }
+  })
+  const flota = flotaResult.data?.[0] ?? null
+
   const _payload: Record<string, unknown> = {
     success: true,
     generatedAt: new Date().toISOString(),
@@ -980,6 +1013,21 @@ async function _GET(request: NextRequest) {
         note: 'Sanity check del sink de observability. Caída drástica vs baseline = sink roto, no caída de tráfico real.',
       },
 
+      // ─── LA FLOTA DE TRABAJADORES (T-486) ───
+      // `unknown` si no se pudo leer: «no lo sé» tiene que poder decirse, y un verde por no haber
+      // mirado es peor que un rojo.
+      flota: {
+        status: flota ? flota.estado : 'unknown',
+        vivos: flota?.vivos ?? null,
+        esperados: flota?.esperados ?? null,
+        entregas_esperando: flota?.entregas ?? null,
+        borradores_esperando: flota?.borradores ?? null,
+        turnos_muertos_3h: flota?.turnosMuertos ?? null,
+        espera_max_h: flota?.esperaMaxH ?? null,
+        detalle: flota?.detalle ?? null,
+        note: 'Trabajadores autónomos. El panel NO puede entrar en las máquinas: esto es lo que consta en la BD (quién late, qué entregó, qué dejó para aprobar, cuántos turnos murieron). Si un proceso vive de verdad lo dice `npm run flota`.',
+      },
+
       // ─── ERRORES DE CLIENTE (in-house, 2026-07-05 — antes iban a Sentry muerto) ───
       client_errors: {
         status: clientErrorsStatus,
@@ -1000,6 +1048,7 @@ async function _GET(request: NextRequest) {
     },
   }
   setHealthCache(window, _payload)
+
   return NextResponse.json(_payload)
 }
 
