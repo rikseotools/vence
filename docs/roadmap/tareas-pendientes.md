@@ -927,6 +927,34 @@ try/catch:**
    puede pushear NADA**, así que era bloqueante para completar cualquier encargo con entrega en rama.
    No he auditado si hay más pasos del mismo `pre-commit` con el mismo patrón (queda para quien siga).
 
+**AMPLIACIÓN 05/08/2026 (misma tarde, impugnación `2477d39d`) — el punto "QUÉ HACE FALTA" de arriba
+sobre `cola.cjs` ya está hecho:**
+
+Al pedir trabajo con el flujo normal (`cola.cjs next` → dossier → borrador), **`cola.cjs list`,
+`mine` y `release-all` reventaban** con el mismo `42501 permission denied for table user_feedback`
+sin capturar — medido en vivo con el rol `vence_coordinacion` de este trabajador. `release <id>`
+es el caso más engañoso: **hacía su trabajo** (la fila se liberaba, confirmado con `list` después)
+y **luego** reventaba al recorrer `user_feedback` para las mismas operaciones de mantenimiento, así
+que el stack trace parecía indicar que nada había funcionado cuando sí. `next` (el que de verdad
+hace falta para coger trabajo) **no estaba afectado**: solo recorre `FEEDBACK_TBL` cuando se pide
+`--queue feedback`, así que el flujo normal de impugnaciones nunca tocaba `user_feedback`.
+
+**Arreglado** en esta misma rama (commit siguiente a este): mismo patrón de degradación que el
+punto 1 de arriba (capturar `42501`, avisar UNA vez con `warnFeedbackPerm()`, seguir sin esa cola)
+envolviendo los CINCO sitios que tocan `user_feedback` — `listQueue`, `elegirFeedbackPorPrioridad`,
+`claimFrom`, `mine`, `claim <id>`, `release` y `release-all` —. Verificado contra RDS real: los
+tres subcomandos que antes reventaban ahora imprimen el aviso una vez y siguen (`list` muestra las
+16 impugnaciones pendientes con normalidad, `mine`/`release-all` responden limpio). Los tests que
+tocaban el texto exacto de `cola.cjs` (`__tests__/lib/feedback/prioridadCola.test.js`,
+`__tests__/guardrails/reservaColaCriterioUnico.test.ts`) siguen en verde — se mantuvo intacta la
+línea literal que uno de esos guardarraíles exige (`tbl === 'user_feedback' ? await
+elegirFeedbackPorPrioridad(open) : null`) en vez de tocarlo.
+
+**Pendiente aún (no lo he tocado, es lo que queda del punto "QUÉ HACE FALTA" original):**
+`revisar-feedback.cjs`, cuya tabla BASE es `user_feedback` — un trabajador de la flota no puede
+generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin repensar el diseño
+(el manual ya lo señalaba como "esfuerzo mayor", no un query suelto).
+
 ### [T-577] 🔴 [ABIERTO 05/08] El supervisor destruyó trabajo sin commitear de un trabajador con un `git checkout` dentro de su árbol
 
 - **Qué pasó (05/08).** El supervisor de la flota necesitaba comprobar si el arreglo de [T-576] hacía pasar el `pre-commit` con un rol restringido. En vez de reproducirlo en su propio árbol, **entró en el worktree de `l2`** —una sesión ajena— y ejecutó `git checkout HEAD -- .` para dejarlo limpio. Eso borró los **6 ficheros modificados** que `l2` tenía sin commitear: su trabajo entero de T-518, cuya única copia estaba ahí.

@@ -59,6 +59,27 @@ const age = (t) => {
   return mins < 60 ? `${mins}m` : `${Math.round(mins / 60)}h`;
 };
 
+// El rol de LECTURA de la flota (vence_coordinacion/vence_lector) no tiene NUNCA acceso a
+// `user_feedback` (T-581): es negocio, no coordinación. Antes cualquier operación que tocara esa
+// tabla —list/next/mine/claim/release/release-all— reventaba con un 42501 sin capturar y tumbaba
+// el proceso entero, aunque la parte de impugnaciones (question_disputes) ya se hubiera resuelto
+// bien (medido: `release` SÍ liberaba la fila y el crash posterior lo ocultaba). Se degrada igual
+// que `revisar-impugnacion.cjs` hizo con `user_profiles`: avisar una vez y seguir sin esa cola.
+let feedbackPermWarned = false;
+function warnFeedbackPerm() {
+  if (feedbackPermWarned) return;
+  feedbackPermWarned = true;
+  console.error('⚠️  Tu rol no puede leer user_feedback (T-581): la cola de FEEDBACK queda fuera de esta operación. Las impugnaciones siguen funcionando con normalidad.');
+}
+async function tocaFeedback(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e.code === '42501') { warnFeedbackPerm(); return null; }
+    throw e;
+  }
+}
+
 /**
  * Cola de feedback: el ORDEN DE ATENCIÓN lo decide `lib/feedback/prioridadCola.js` (bug →
  * pre-venta → premium → baja), no la antigüedad.
@@ -73,15 +94,15 @@ const age = (t) => {
  */
 async function elegirFeedbackPorPrioridad(open) {
   const { ordenarCola } = require(require('path').join(__dirname, '..', '..', 'lib', 'feedback', 'prioridadCola.js'));
-  const libres = await s.unsafe(
+  const libres = await tocaFeedback(() => s.unsafe(
     `SELECT f.id, f.type, f.message, f.created_at, u.plan_type AS plan
        FROM public.user_feedback f
        LEFT JOIN public.user_profiles u ON u.id = f.user_id
       WHERE f.status = ANY($2)
         AND ${sqlReservaLibre('f.', '$1')}`,
     [sid, open]
-  );
-  if (!libres.length) return null;
+  ));
+  if (!libres || !libres.length) return null;
   return ordenarCola(libres)[0].id;
 }
 
@@ -92,12 +113,13 @@ async function claimFrom(list) {
   // Detalle: manual impugnaciones §7.5 (clustering mismo-usuario). Sigue respondiéndose UNA POR UNA.
   for (const { tbl, open, kind } of list) {
     const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
+    const esFeedback = tbl === 'user_feedback';
     // El feedback se reparte por PRIORIDAD (ver arriba); las impugnaciones, por antigüedad.
     // El id elegido entra en el mismo UPDATE atómico con el mismo guard, así que dos sesiones
     // que elijan a la vez el mismo siguen sin poder llevárselo las dos (FOR UPDATE SKIP LOCKED).
     const elegido = tbl === 'user_feedback' ? await elegirFeedbackPorPrioridad(open) : null;
-    if (tbl === 'user_feedback' && !elegido) continue;
-    const [row] = await s.unsafe(
+    if (esFeedback && !elegido) continue; // sin acceso a user_feedback o cola vacía: siguiente tabla
+    const claimado = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
       `UPDATE public.${tbl}
          SET claimed_by = $1, claimed_at = now()
        WHERE id = (
@@ -110,12 +132,14 @@ async function claimFrom(list) {
           LIMIT 1)
        RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
       elegido ? [sid, open, elegido] : [sid, open]
-    );
+    ));
+    if (!claimado) continue;
+    const [row] = claimado;
     if (!row) continue;
     // Cluster del mismo usuario: coge sus otras pendientes libres (SKIP LOCKED = no bloquea si otra sesión las tiene).
     let siblings = [];
     if (row.user_id != null) {
-      siblings = await s.unsafe(
+      siblings = (await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
         `UPDATE public.${tbl}
            SET claimed_by = $1, claimed_at = now()
          WHERE id IN (
@@ -125,7 +149,7 @@ async function claimFrom(list) {
             FOR UPDATE SKIP LOCKED)
          RETURNING id, ${typeCol} AS dispute_type, created_at`,
         [sid, open, row.user_id, row.id]
-      );
+      ))) || [];
     }
     return { ...row, kind, tbl, siblings };
   }
@@ -135,10 +159,11 @@ async function claimFrom(list) {
 async function listQueue(list) {
   const out = [];
   for (const { tbl, open, kind } of list) {
-    const rows = await s.unsafe(
-      `SELECT id, ${tbl === 'user_feedback' ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at
-         FROM public.${tbl} WHERE status = ANY($1) ORDER BY created_at`, [open]);
-    rows.forEach((r) => out.push({ ...r, kind }));
+    const esFeedback = tbl === 'user_feedback';
+    const rows = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+      `SELECT id, ${esFeedback ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at
+         FROM public.${tbl} WHERE status = ANY($1) ORDER BY created_at`, [open]));
+    (rows || []).forEach((r) => out.push({ ...r, kind }));
   }
   return out;
 }
@@ -227,10 +252,11 @@ async function inconsistentesResueltasEnPending() {
       const all = [...DISPUTE_TBL, ...FEEDBACK_TBL];
       let any = false;
       for (const { tbl, open, kind } of all) {
-        const rows = await s.unsafe(
+        const esFeedback = tbl === 'user_feedback';
+        const rows = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
           `SELECT id, status, claimed_at FROM public.${tbl}
-            WHERE claimed_by = $1 AND status = ANY($2) ORDER BY claimed_at`, [sid, open]);
-        rows.forEach((r) => { any = true; console.log(`  [${kind}] ${r.id} | ${r.status} | cogida hace ${age(r.claimed_at)}`); });
+            WHERE claimed_by = $1 AND status = ANY($2) ORDER BY claimed_at`, [sid, open]));
+        (rows || []).forEach((r) => { any = true; console.log(`  [${kind}] ${r.id} | ${r.status} | cogida hace ${age(r.claimed_at)}`); });
       }
       if (!any) console.log('No tienes claims activos.');
       return;
@@ -246,7 +272,8 @@ async function inconsistentesResueltasEnPending() {
       if (!id || !sid) { console.error('Uso: cola.cjs claim <id> --sid <ID>'); process.exit(2); }
       for (const { tbl, open, kind } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
         const typeCol = tbl === 'user_feedback' ? 'type' : 'dispute_type';
-        const [row] = await s.unsafe(
+        const esFeedback = tbl === 'user_feedback';
+        const claimado = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
           `UPDATE public.${tbl}
              SET claimed_by = $1, claimed_at = now()
            WHERE id = (
@@ -256,13 +283,15 @@ async function inconsistentesResueltasEnPending() {
               FOR UPDATE SKIP LOCKED)
            RETURNING id, user_id, ${typeCol} AS dispute_type, created_at`,
           [sid, open, id]
-        );
+        ));
+        if (!claimado) continue;
+        const [row] = claimado;
         if (!row) continue;
         console.log(`✅ CLAIM hecho por ${sidCorto(sid)} (usuario ${String(row.user_id ?? '?').slice(0, 8)}):`);
         console.log(`   id:   ${row.id}`);
         console.log(`   tipo: [${kind}] ${row.dispute_type} | creada hace ${age(row.created_at)}`);
         if (row.user_id != null) {
-          const hermanas = await s.unsafe(
+          const hermanas = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
             `UPDATE public.${tbl} SET claimed_by = $1, claimed_at = now()
              WHERE id IN (
                SELECT id FROM public.${tbl}
@@ -271,8 +300,8 @@ async function inconsistentesResueltasEnPending() {
                 FOR UPDATE SKIP LOCKED)
              RETURNING id, ${typeCol} AS dispute_type`,
             [sid, open, row.user_id, row.id]
-          );
-          hermanas.forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
+          ));
+          (hermanas || []).forEach((h) => console.log(`   + del mismo usuario: ${h.id} (${h.dispute_type})`));
         }
         return;
       }
@@ -285,9 +314,10 @@ async function inconsistentesResueltasEnPending() {
       if (!id || !sid) { console.error('Uso: cola.cjs release <id> --sid <ID>'); process.exit(2); }
       let done = false;
       for (const { tbl } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
-        const res = await s.unsafe(
-          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE id = $1 AND claimed_by = $2 RETURNING id`, [id, sid]);
-        if (res.length) { done = true; console.log(`✅ Liberada ${id} de ${tbl}.`); }
+        const esFeedback = tbl === 'user_feedback';
+        const res = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE id = $1 AND claimed_by = $2 RETURNING id`, [id, sid]));
+        if (res && res.length) { done = true; console.log(`✅ Liberada ${id} de ${tbl}.`); }
       }
       if (!done) console.log('No se liberó nada (¿id no existe o no es tuyo?).');
       return;
@@ -297,9 +327,10 @@ async function inconsistentesResueltasEnPending() {
       if (!sid) { console.error('Falta --sid (o .session-id)'); process.exit(2); }
       let n = 0;
       for (const { tbl } of [...DISPUTE_TBL, ...FEEDBACK_TBL]) {
-        const res = await s.unsafe(
-          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]);
-        n += res.length;
+        const esFeedback = tbl === 'user_feedback';
+        const res = await (esFeedback ? tocaFeedback : (fn) => fn())(() => s.unsafe(
+          `UPDATE public.${tbl} SET claimed_by = NULL, claimed_at = NULL WHERE claimed_by = $1 RETURNING id`, [sid]));
+        n += (res || []).length;
       }
       console.log(`✅ Liberados ${n} claims del sid ${sidCorto(sid)}.`);
       return;
