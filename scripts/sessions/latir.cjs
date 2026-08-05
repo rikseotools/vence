@@ -138,6 +138,42 @@ function avisarIdentidadCompartida({ sid, host, hostPrevio }) {
   } catch { /* la telemetría nunca estorba (regla 1) */ }
 }
 
+/**
+ * ¿`core.hooksPath` (compartido por TODOS los worktrees, ver `lib/sessions/hooksPath.cjs`) sigue
+ * apuntando a los hooks reales? Si no, TODA la flota tiene `pre-commit`/`pre-push` apagados sin
+ * saberlo — así que esto corre en CADA latido, no solo al arrancar (T-568).
+ *
+ * Deliberadamente FUERA del propio hook: si `core.hooksPath` está roto, git no ejecuta
+ * `.husky/pre-commit` ni `.husky/pre-push`, así que un self-heal escrito ahí dentro nunca se
+ * dispararía cuando hace falta. `latir.cjs` no depende de ningún hook — lo llaman `preflight` y
+ * el CLI del backlog directamente con `node` — así que corre igual con los hooks vivos o muertos.
+ *
+ * Fail-open total (regla 1 de la cabecera): un fallo aquí nunca puede impedir el latido en sí.
+ */
+function repararHooksPathSiCorrupto(base) {
+  const { execFileSync } = require('child_process')
+  const { diagnosticar, VALOR_CORRECTO } = require(path.join(REPO, 'lib', 'sessions', 'hooksPath.cjs'))
+  try {
+    let configurado = null
+    try {
+      configurado = execFileSync('git', ['config', '--get', 'core.hooksPath'],
+        { cwd: base, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 4000 }).trim() || null
+    } catch { /* no configurado: exit 1 de `git config --get` es el caso normal, no un error */ }
+    const huskyDirValida = fs.existsSync(path.join(base, '.husky', '_', 'pre-commit'))
+    const d = diagnosticar({ configurado, huskyDirValida })
+    if (!d.corrupto) return
+    execFileSync('git', ['config', 'core.hooksPath', VALOR_CORRECTO],
+      { cwd: base, stdio: 'ignore', timeout: 4000 })
+    console.error(`\n🔧 core.hooksPath estaba corrupto y se ha arreglado: ${d.motivo}\n`)
+    try {
+      require('child_process').spawn(process.execPath,
+        [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), '--clase', 'hookspath_corrupto',
+          '--guard', 'latido', '--detalle', d.motivo],
+        { detached: true, stdio: 'ignore' }).unref()
+    } catch { /* la telemetría nunca estorba (regla 1) */ }
+  } catch { /* fail-open total: ver cabecera del fichero */ }
+}
+
 async function cerrar(slug) {
   const u = url()
   if (!u) return
@@ -154,6 +190,9 @@ async function main() {
   const slugCerrar = arg('--cerrar')
   if (slugCerrar) return cerrar(slugCerrar)
   const { sid, base } = resolverSesion()
+  // Corre ANTES del `return` de abajo: no depende de sid ni de DATABASE_URL, y es lo único de
+  // este fichero que protege a sesiones que ni siquiera pueden latir todavía.
+  if (base) repararHooksPathSiCorrupto(base)
   if (!sid) { if (VERBOSE) console.log('sin .session-id: no hay a quién atribuir el latido'); return }
   const u = url()
   if (!u) { if (VERBOSE) console.log('sin DATABASE_URL: no late'); return }
