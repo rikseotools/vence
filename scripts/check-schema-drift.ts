@@ -87,7 +87,7 @@ async function main() {
     }
   }
 
-  const sql = postgres(DATABASE_URL!, { max: 1 })
+  const sql = postgres(DATABASE_URL!, { max: 1, ssl: 'require' })
 
   try {
     // Obtener tablas de la BD (solo schema public)
