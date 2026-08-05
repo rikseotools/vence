@@ -268,6 +268,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     comando: 'npm run huerfanos:plan',
     claudeHace: 'localiza los artículos que están en el topic_scope y tienen contenido real pero 0 preguntas activas (al usuario nunca le salen en los tests aunque el tema en conjunto sí tenga preguntas), y genera preguntas ancladas al texto del artículo con doble auditoría ciega antes de activarlas. Excluye derogados.',
   },
+  cobertura_banda_ciega: {
+    title: 'Tema con baja cobertura de artículos y pocas preguntas para notarlo (banda ciega, T-543)',
+    triggerPhrase: 'revisa la banda ciega de cobertura',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run huerfanos:plan',
+    claudeHace: 'para cada tema marcado, mira `npm run huerfanos:plan -- --oposicion <slug>` (deuda completa, sin acotar al badge) para ver TODOS los artículos huérfanos de esa oposición, incluidos los que no disparan ningún otro finding. Prioriza los temas con MENOS preguntas servidas (se notan antes al estudiar) y genera preguntas ancladas al artículo con doble auditoría ciega, mismo pipeline que `article_no_coverage`. Es la banda que queda ENTRE `article_no_coverage` (exige ≥60% cubierto) y `low_coverage` (exige <6 preguntas): un tema con cobertura de artículos <60% pero con las preguntas suficientes (6-50) para que un opositor note la repetición dentro de una sola sesión de estudio. NUNCA bajar el umbral de `article_no_coverage` al 60% para "arreglarlo" — eso inunda el badge con 218 hallazgos de golpe (medido 05/08); este detector existe precisamente para no tener que hacerlo.',
+  },
   flattened_table: {
     title: 'Tabla aplanada (import PDF sin rejilla)',
     triggerPhrase: 'revisa las tablas de artículos',

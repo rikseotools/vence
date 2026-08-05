@@ -2,13 +2,16 @@ const fs = require('fs')
 const path = require('path')
 const {
   UMBRALES,
+  UMBRAL_BANDA_CIEGA,
   naturalezaArticulo,
   disparaFinding,
+  disparaBandaCiega,
   temasQueDisparan,
   rankingHuerfanos,
   simulaCobertura,
   proponeLote,
   marcaEnCurso,
+  usarDeudaCompleta,
 } = require('../../../lib/generacion/huerfanosPlan')
 
 /** Fixture: n artículos de una ley en un tema, `cubiertos` de ellos con preguntas. */
@@ -56,6 +59,66 @@ describe('disparaFinding (umbrales del detector article_no_coverage)', () => {
     expect(disparaFinding({ n: 55, cubiertos: 28 })).toBe(false)
     // se cubren 6 artículos → 34/55 = 61,8%, cruza el 60% y aún le quedan 21 huecos: entra.
     expect(disparaFinding({ n: 55, cubiertos: 34 })).toBe(true)
+  })
+})
+
+// ── T-543: la banda que ni article_no_coverage ni low_coverage ven ──────────────
+describe('disparaBandaCiega (umbrales del detector cobertura_banda_ciega)', () => {
+  it('dispara con ≥4 huecos, cobertura <60% y preguntas dentro de la banda', () => {
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: 20 })).toBe(true) // 45%
+  })
+
+  it('NO dispara si la cobertura llega al 60%: eso es article_no_coverage, otro detector', () => {
+    expect(disparaBandaCiega({ n: 10, cubiertos: 6, preguntas: 20 })).toBe(false)
+  })
+
+  it('NO dispara con menos de 4 huecos', () => {
+    expect(disparaBandaCiega({ n: 10, cubiertos: 7, preguntas: 20 })).toBe(false) // 3 huecos
+  })
+
+  it('NO dispara en temas de menos de 4 artículos', () => {
+    expect(disparaBandaCiega({ n: 3, cubiertos: 0, preguntas: 20 })).toBe(false)
+  })
+
+  it('NO dispara por debajo de 6 preguntas: eso ya lo caza low_coverage', () => {
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: 5 })).toBe(false)
+  })
+
+  it('NO dispara por encima del techo calibrado: con tantas preguntas no se nota al estudiar', () => {
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: 51 })).toBe(false)
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: 287 })).toBe(false) // caso real medido
+  })
+
+  it('SÍ dispara en los dos extremos de la banda calibrada (6 y 50 incluidos)', () => {
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: UMBRAL_BANDA_CIEGA.minPreguntas })).toBe(true)
+    expect(disparaBandaCiega({ n: 20, cubiertos: 9, preguntas: UMBRAL_BANDA_CIEGA.maxPreguntas })).toBe(true)
+  })
+
+  it('el tema entero cubierto no dispara', () => {
+    expect(disparaBandaCiega({ n: 10, cubiertos: 10, preguntas: 20 })).toBe(false)
+  })
+
+  // Caso real medido el 05/08/2026 contra RDS: auxiliar_administrativo_universidad_alcala T16.
+  it('caso real: 6/20 artículos (30%) y 6 preguntas — el más doloroso de la banda', () => {
+    expect(disparaBandaCiega({ n: 20, cubiertos: 6, preguntas: 6 })).toBe(true)
+  })
+})
+
+describe('usarDeudaCompleta (T-543 — --oposicion no puede depender del finding)', () => {
+  it('sin --deuda ni --oposicion, se acota a lo que mueve el badge', () => {
+    expect(usarDeudaCompleta({})).toBe(false)
+  })
+
+  it('--deuda pide deuda completa aunque no haya oposición', () => {
+    expect(usarDeudaCompleta({ deudaPedida: true })).toBe(true)
+  })
+
+  it('--oposicion IMPLICA deuda completa aunque no se pida --deuda explícitamente', () => {
+    expect(usarDeudaCompleta({ oposicion: 'subalterno_gva' })).toBe(true)
+  })
+
+  it('--oposicion --deuda sigue siendo deuda completa (idempotente)', () => {
+    expect(usarDeudaCompleta({ deudaPedida: true, oposicion: 'subalterno_gva' })).toBe(true)
   })
 })
 
@@ -164,6 +227,37 @@ describe('paridad con el detector article_no_coverage', () => {
     expect(having).toContain(`HAVING count(*) >= ${UMBRALES.minArticulos}`)
     expect(having).toContain(`/ count(*) >= ${UMBRALES.minCobertura}`)
     expect(having).toMatch(new RegExp(`count\\(\\*\\) - count\\(\\*\\) FILTER[\\s\\S]*?>= ${UMBRALES.minHuecos}`))
+  })
+})
+
+// ── GUARDARRAÍL: cobertura_banda_ciega es un ESPEJO del sweep (T-543) ────────
+// Mismo patrón que el bloque anterior: si alguien recalibra el detector en el backend
+// y no toca este lib (o al revés), el badge y `huerfanos:plan` dejan de estar de acuerdo
+// sobre qué tema está en la banda ciega.
+describe('paridad con el detector cobertura_banda_ciega', () => {
+  const SERVICE = path.join(__dirname, '../../../backend/src/content-health-sweep/content-health-sweep.service.ts')
+  const SCRIPT = path.join(__dirname, '../../../scripts/health-sweep.cjs')
+
+  it('el umbral de huecos/artículos/cobertura del backend sigue siendo el del lib', () => {
+    const src = fs.readFileSync(SERVICE, 'utf8')
+    const marker = src.indexOf("'cobertura_banda_ciega'")
+    expect(marker).toBeGreaterThan(-1)
+    const bloque = src.slice(Math.max(0, marker - 3500), marker)
+    const having = bloque.slice(bloque.indexOf('HAVING count(*) >='))
+
+    expect(having).toContain(`HAVING count(*) >= ${UMBRALES.minArticulos}`)
+    expect(having).toMatch(new RegExp(`count\\(\\*\\) - count\\(\\*\\) FILTER[\\s\\S]*?>= ${UMBRALES.minHuecos}`))
+    expect(having).toMatch(new RegExp(`/ count\\(\\*\\) < ${UMBRALES.minCobertura}`))
+  })
+
+  it('el rango de preguntas del backend coincide con UMBRAL_BANDA_CIEGA', () => {
+    const src = fs.readFileSync(SERVICE, 'utf8')
+    expect(src).toContain(`WHERE q.preguntas BETWEEN ${UMBRAL_BANDA_CIEGA.minPreguntas} AND ${UMBRAL_BANDA_CIEGA.maxPreguntas}`)
+  })
+
+  it('el rango de preguntas del CLI (gemelo) coincide con UMBRAL_BANDA_CIEGA', () => {
+    const src = fs.readFileSync(SCRIPT, 'utf8')
+    expect(src).toContain('WHERE q.preguntas BETWEEN ${UMBRAL_BANDA_CIEGA.minPreguntas} AND ${UMBRAL_BANDA_CIEGA.maxPreguntas}')
   })
 })
 
