@@ -871,73 +871,44 @@ Medido: 16 vales, 3 Nike bien etiquetados, 0 sin destino.
 10/20/50/100/150…), de ahí los tres vales. Manual actualizado: `embajadores-recompensas.md` §3.ter.bis.
 
 **Falta:** desplegar y mirarlo en `/recompensas` con los ojos (la simulación cubre el dato, no el render).
+### [T-593] 🟡 [ABIERTO 05/08] Las preguntas llevan tags de OTRA oposición («Tema 1», «Galicia»), el usuario los lee y concluye que la pregunta no entra en su temario: 4 impugnaciones en 2 minutos por eso
 
-### [T-574] 🔴 [ABIERTO 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
+**Origen medido el 05/08/2026.** Un usuario de `auxiliar_administrativo_diputacion_cordoba` (Manolo) mandó
+**cuatro impugnaciones en dos minutos**, todas con el mismo texto: *«Este artículo no entra en el Temario»*
+(arts. 108, 110, 112 y 114 CE — disputes `066a3d65`, `ea65996b`, `4ac133b7`, `21be6a56`). **Las cuatro son
+falsas**: esos artículos SÍ entran en su Tema 2, cuyo epígrafe oficial dice literalmente «Relaciones entre el
+Gobierno y las Cortes Generales» (verificado en las bases, `BOP-A-2026-1795` pág. 12, y el Título V CE son los
+arts. 108-116 según el índice del BOE). Su `topic_scope` del Tema 2 incluye 62 artículos, del 66 al 127.
 
-- **Medido en producción (05/08), no en la ficha:** 85 tablas de `public` tienen `relrowsecurity=true` y CERO filas en `pg_policies` (bajó de las 87 originales; no se investigó cuáles se cerraron entre medias, probablemente trabajo en curso de [T-573]). La inmensa mayoría son operativas o con PII (`user_profiles`, `fraud_confirmations`, `payment_settlements`, `email_logs`…) y **bloquearlas es el comportamiento correcto** — RLS deniega por defecto sin política. El problema real son las pocas que el trabajo de la flota SÍ necesita y están bloqueadas igual: confirmadas `test_questions` y `tests` (0 filas siempre, aunque la tabla tenga datos).
-- **El canario daba falso verde de verdad, y se ha reproducido el mecanismo:** `scripts/canary-rol-lector.cjs` comprobaba `test_questions` con `SELECT 1 FROM … LIMIT 1` y solo miraba «¿lanzó error?». Con RLS activo y sin política, ese SELECT **no lanza** — el motor filtra en silencio y devuelve 0 filas siempre, sea cual sea el contenido real de la tabla. El canario decía `✅ lee test_questions` y `19/19 comprobaciones` mientras la tabla era ilegible de verdad. Coincide con la nota ya dejada en [T-472]/[T-573] sobre `scripts/sim/sim-repaso-ajeno.ts`: "0 filas, sin error".
-- **Arreglado — SOLO el detector, sin tocar políticas (para no pisar [T-573], que va por la BD):**
-  - Núcleo puro `lib/db/rlsSelectBlocked.cjs` (`seleccionBloqueadaPorRls`, 9 tests en `__tests__/db/rlsSelectBlocked.test.js`): cruza `pg_class.relrowsecurity` + `pg_policies` (legibles por cualquier rol sin GRANT explícito, comprobado contra prod) para decidir si el SELECT quedaría filtrado, en vez de fiarse de "¿lanzó?".
-  - `canary-rol-lector.cjs` usa ese núcleo en cada tabla de `DEBE_LEER`: ahora sale **18/19** contra el rol vivo (antes 19/19), con `test_questions` correctamente en rojo y el motivo explicado. **El rojo es el arreglo, no una regresión** — pasará a verde solo cuando exista la política (trabajo de T-573).
-  - Añadida una sección informativa (no cuenta para el veredicto) que imprime el recuento TOTAL de tablas RLS-sin-política, para que la cifra deje de vivir solo en una ficha y alguien la vea cada vez que se corre el canario.
-  - `lib/admin/toolRegistry.ts` actualizado (la nota decía "19/19", que ya no es verdad).
-- **Deliberadamente NO tocado:** no se ha escrito ninguna política RLS ni migración — eso es exactamente [T-573] (`vence_lector`: RLS sin policy bloquea ~70 tablas pese al GRANT), reclamada en paralelo por otra sesión (`l1-fedora-1a16fb`) mientras se trabajaba esta. Añadir políticas aquí habría arriesgado un choque de migraciones sobre el mismo recurso. Cuando [T-573] añada la política de `test_questions` (y `tests`, si se decide que hace falta), el canario pasará a verde solo — es la prueba de que el arreglo del detector es real y no cosmético.
-- **Verificado:** `npm run canary:rol-lector` corrido contra RDS de producción con `VENCE_LECTOR_URL` — confirma el 18/19 y el mensaje de diagnóstico. `npx jest __tests__/db/rlsSelectBlocked.test.js` en verde (9/9).
-- **Relacionadas:** [T-573] (el arreglo de fondo: añadir las políticas que faltan), [T-472] (donde se vio el síntoma por primera vez, con el rodeo documentado).
-### [T-582] 🟢 [REVISADA 05/08 — NO se aplica: la premisa era falsa] Ley 13/2007 Andalucía: el Art. 0 estructural NO hay que añadirlo a esas 4 oposiciones
+**La hipótesis que hay que confirmar o descartar** (esto es lo que pide la ficha): dos de esas cuatro preguntas
+llevan en `questions.tags` **`['Tema 1','CE','Galicia','TuTestDigital']`**, y otra `['…,'tema-5']`. Si alguna
+superficie le muestra al usuario ese «Tema 1» o ese «Galicia», el mensaje que recibe es *«esta pregunta es del
+Tema 1 de Galicia»* — y como su Tema 1 no cubre las relaciones Gobierno-Cortes, la conclusión razonable de
+quien estudia es que la pregunta está mal colocada. No estaría equivocándose él: estaríamos etiquetando la
+pregunta con el temario de otra oposición.
 
-> **⚠️ EL `UPDATE` QUE PROPONÍA LA VERSIÓN ANTERIOR DE ESTA FICHA NO SE DEBE EJECUTAR.** Se revisó antes de
-> aplicarlo (05/08) y las dos premisas en las que se apoyaba no se sostienen. Se deja escrito qué se midió
-> para que nadie lo vuelva a proponer.
+**Lo que ya está comprobado y lo que NO:**
+- ✅ Los tags existen y son de otra oposición: `CLAUDE.md` ya advierte que `questions.tags` «suelen venir
+  cruzados/stale de otra oposición» y que **NO mandan en la colocación** (eso lo hace `topic_scope`).
+- ❌ **SIN comprobar: si esos tags se PINTAN en alguna superficie que ve el usuario** (tarjeta de la pregunta,
+  cabecera del test, ficha de impugnación, chat de IA). Es lo primero que hay que mirar: si no se ven, esta
+  ficha se cierra en cinco minutos y la causa de las 4 impugnaciones es otra.
 
-**Lo que decía la versión anterior:** que el cierre de la impugnación `f34b88ad` afirmó *«ya la hemos añadido»*
-siendo falso, porque el artículo `"0"` (estructura de la ley) no está en el `topic_scope` de 4 de las 6
-oposiciones con scope explícito de la Ley 13/2007 — y proponía un `UPDATE` que añadía `'0'` a esas 4 filas.
+**Cómo medir el alcance si se confirma:** cuántas preguntas activas tienen en `tags` un «Tema N» o un nombre de
+comunidad que no corresponde a la oposición desde la que se sirven. El cruce es `topic_scope` (quién la sirve
+de verdad) contra `tags` (lo que dice de sí misma).
 
-**Premisa 1 — FALSA: la oposición del usuario.** La versión anterior dedujo por los *tags* de la pregunta
-(«Tema 8», «Andalucía») que el usuario era de `auxiliar_administrativo_andalucia`, y avisaba honestamente de
-que no lo podía confirmar porque `target_oposicion` es PII. **Confirmado el 05/08 con acceso a la columna: el
-usuario `2eebe749…` es de `auxiliar_administrativo_diputacion_cordoba`** — que es justamente **la única de las
-seis que SÍ tiene el `'0'`** en su `article_numbers` (fila `b3b9f7d5…`, Tema 4). Para él la estructura **sí
-está** en su temario, así que el cierre no le dijo nada falso.
+**Por qué importa más de lo que parece:** cada impugnación falsa cuesta el análisis completo de una sesión
+—dossier, verificación contra boletín, borrador, aprobación— y este usuario generó cuatro de golpe. Y en el
+camino se propuso un `UPDATE` de `topic_scope` en 4 oposiciones basado en esos mismos tags, que habría servido
+preguntas fuera de programa (ver [T-582], donde se paró al revisarlo). Los tags ya han engañado a un usuario
+**y** a un trabajador el mismo día.
 
-**Premisa 2 — NO DEMOSTRABLE: el «ya estaba desde el 15/06».** La versión anterior sostenía que ese `'0'` era
-anterior a la impugnación y por tanto «no fue el fix». Ese dato salía de `topic_scope.created_at` = 15/06,
-**pero `topic_scope` no tiene columna `updated_at`** (comprobado: sus columnas son `id, topic_id, law_id,
-article_numbers, title_numbers, chapter_numbers, include_full_title, include_full_chapter, weight,
-created_at`). O sea que `created_at` fecha la CREACIÓN DE LA FILA, no la última modificación del array — con
-esa columna es imposible afirmar cuándo entró el `'0'`. La cronología apunta a lo contrario de lo que decía la
-ficha: la impugnación se resolvió el **04/08 a las 12:35:37**, y la sesión que la trabajó registró haber
-tocado el scope a las **12:30** del mismo día.
+**NUNCA** arreglar esto reescribiendo `topic_scope` para que encaje con los tags: la fuente de verdad es el
+epígrafe oficial, y los tags son metadatos. Si sobran, se quitan o se dejan de pintar.
 
-**Premisa 3 — el arreglo habría sido SOBRE-INCLUSIÓN.** Revisados uno a uno los epígrafes de las 4 filas que
-el `UPDATE` iba a tocar, **ninguno pide la estructura de la ley**:
-
-| Oposición · tema | Epígrafe (extracto) | ¿pide la estructura? |
-|---|---|---|
-| `auxiliar_administrativo_ayuntamiento_marbella` t15 | «La **ampliación del concepto de víctima** en la normativa andaluza y **derechos de las víctimas**» | No |
-| `auxiliar_administrativo_ayuntamiento_cordoba` t5 | «**Políticas públicas** para la igualdad… **derechos** de las mujeres víctimas» | No |
-| `auxiliar_administrativo_andalucia` t8 | «Igualdad de Género: **conceptos generales**. Violencia de género: conceptos generales» | No — «conceptos generales» es materia, no el índice de la norma |
-| `administrativo_andalucia` t15 | (el mismo epígrafe que el anterior) | No |
-
-Añadir el `'0'` a esas cuatro habría puesto **2 preguntas activas fuera de programa en 4 oposiciones** para
-resolver un problema que no existía. Es exactamente el fenómeno que persiguen `scope_over_inclusion_suspect`
-y la regla nuclear del temario: **NUNCA añadir al scope lo que el epígrafe no pide**.
-
-**Lo único cierto que queda del hallazgo**, y no es menor: `topic_scope` **no registra cuándo se modificó**.
-Sin `updated_at` (ni historial por fila) es imposible responder «¿cuándo entró este artículo y quién lo puso?»,
-que es justo la pregunta que hay que contestar cuando un usuario impugna que algo no estaba en su temario.
-Esa carencia es lo que permitió construir un hallazgo entero sobre una inferencia equivocada. **Follow-up
-propuesto:** `updated_at` + trigger de auditoría en `topic_scope`, al estilo de `question_lifecycle_history`.
-No se abre ficha aparte hasta decidirlo — cabe en [T-088]/[T-528], que ya viven en este terreno.
-
-**Estado:** nada aplicado en BD. La réplica de la impugnación se contesta con que la estructura **sí** está en
-su Tema 4 — **verificado sobre el HTML servido** (`https://www.vence.es/auxiliar-administrativo-diputacion-cordoba/temario/tema-4`
-responde 200 y contiene «Estructura de la Ley 13/2007…»), así que no hace falta purgar caché ni pedirle que
-recargue.
-
-**Relacionadas:** [T-573] (la PII que impidió a la flota confirmar la oposición y es la causa del error),
-[T-088] y [T-528] (sobre-inclusión y scopes verdes sin contrastar).
+**Relacionadas:** [T-582] (el mismo tag engañó al análisis de un trabajador), [T-583] (Test Rápido sirviendo
+fuera de `topic_scope`, que podría ser otra vía por la que llegan preguntas «que no entran»).
 
 ### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
 
@@ -4771,6 +4742,61 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Deliberadamente NO tocado:** no se ha escrito ninguna política RLS ni migración — eso es exactamente [T-573] (`vence_lector`: RLS sin policy bloquea ~70 tablas pese al GRANT), reclamada en paralelo por otra sesión mientras se trabajaba esta. Añadir políticas aquí habría arriesgado un choque de migraciones sobre el mismo recurso. Cuando [T-573] añada la política de `test_questions` (y `tests`, si se decide que hace falta), el canario pasará a verde solo — es la prueba de que el arreglo del detector es real y no cosmético.
 - **Verificado:** `npm run canary:rol-lector` corrido contra RDS de producción con `VENCE_LECTOR_URL` — confirma el 18/19 y el mensaje de diagnóstico. `npx jest __tests__/db/rlsSelectBlocked.test.js` en verde (9/9).
 - **Relacionadas:** [T-573] (el arreglo de fondo: añadir las políticas que faltan), [T-472] (donde se vio el síntoma por primera vez, con el rodeo documentado).
+### [T-582] ✅ [HECHA 05/08 — NO se aplica: la premisa era falsa] Ley 13/2007 Andalucía: el Art. 0 estructural NO hay que añadirlo a esas 4 oposiciones
+
+> **⚠️ EL `UPDATE` QUE PROPONÍA LA VERSIÓN ANTERIOR DE ESTA FICHA NO SE DEBE EJECUTAR.** Se revisó antes de
+> aplicarlo (05/08) y las dos premisas en las que se apoyaba no se sostienen. Se deja escrito qué se midió
+> para que nadie lo vuelva a proponer.
+
+**Lo que decía la versión anterior:** que el cierre de la impugnación `f34b88ad` afirmó *«ya la hemos añadido»*
+siendo falso, porque el artículo `"0"` (estructura de la ley) no está en el `topic_scope` de 4 de las 6
+oposiciones con scope explícito de la Ley 13/2007 — y proponía un `UPDATE` que añadía `'0'` a esas 4 filas.
+
+**Premisa 1 — FALSA: la oposición del usuario.** La versión anterior dedujo por los *tags* de la pregunta
+(«Tema 8», «Andalucía») que el usuario era de `auxiliar_administrativo_andalucia`, y avisaba honestamente de
+que no lo podía confirmar porque `target_oposicion` es PII. **Confirmado el 05/08 con acceso a la columna: el
+usuario `2eebe749…` es de `auxiliar_administrativo_diputacion_cordoba`** — que es justamente **la única de las
+seis que SÍ tiene el `'0'`** en su `article_numbers` (fila `b3b9f7d5…`, Tema 4). Para él la estructura **sí
+está** en su temario, así que el cierre no le dijo nada falso.
+
+**Premisa 2 — NO DEMOSTRABLE: el «ya estaba desde el 15/06».** La versión anterior sostenía que ese `'0'` era
+anterior a la impugnación y por tanto «no fue el fix». Ese dato salía de `topic_scope.created_at` = 15/06,
+**pero `topic_scope` no tiene columna `updated_at`** (comprobado: sus columnas son `id, topic_id, law_id,
+article_numbers, title_numbers, chapter_numbers, include_full_title, include_full_chapter, weight,
+created_at`). O sea que `created_at` fecha la CREACIÓN DE LA FILA, no la última modificación del array — con
+esa columna es imposible afirmar cuándo entró el `'0'`. La cronología apunta a lo contrario de lo que decía la
+ficha: la impugnación se resolvió el **04/08 a las 12:35:37**, y la sesión que la trabajó registró haber
+tocado el scope a las **12:30** del mismo día.
+
+**Premisa 3 — el arreglo habría sido SOBRE-INCLUSIÓN.** Revisados uno a uno los epígrafes de las 4 filas que
+el `UPDATE` iba a tocar, **ninguno pide la estructura de la ley**:
+
+| Oposición · tema | Epígrafe (extracto) | ¿pide la estructura? |
+|---|---|---|
+| `auxiliar_administrativo_ayuntamiento_marbella` t15 | «La **ampliación del concepto de víctima** en la normativa andaluza y **derechos de las víctimas**» | No |
+| `auxiliar_administrativo_ayuntamiento_cordoba` t5 | «**Políticas públicas** para la igualdad… **derechos** de las mujeres víctimas» | No |
+| `auxiliar_administrativo_andalucia` t8 | «Igualdad de Género: **conceptos generales**. Violencia de género: conceptos generales» | No — «conceptos generales» es materia, no el índice de la norma |
+| `administrativo_andalucia` t15 | (el mismo epígrafe que el anterior) | No |
+
+Añadir el `'0'` a esas cuatro habría puesto **2 preguntas activas fuera de programa en 4 oposiciones** para
+resolver un problema que no existía. Es exactamente el fenómeno que persiguen `scope_over_inclusion_suspect`
+y la regla nuclear del temario: **NUNCA añadir al scope lo que el epígrafe no pide**.
+
+**Lo único cierto que queda del hallazgo**, y no es menor: `topic_scope` **no registra cuándo se modificó**.
+Sin `updated_at` (ni historial por fila) es imposible responder «¿cuándo entró este artículo y quién lo puso?»,
+que es justo la pregunta que hay que contestar cuando un usuario impugna que algo no estaba en su temario.
+Esa carencia es lo que permitió construir un hallazgo entero sobre una inferencia equivocada. **Follow-up
+propuesto:** `updated_at` + trigger de auditoría en `topic_scope`, al estilo de `question_lifecycle_history`.
+No se abre ficha aparte hasta decidirlo — cabe en [T-088]/[T-528], que ya viven en este terreno.
+
+**Estado:** nada aplicado en BD. La réplica de la impugnación se contesta con que la estructura **sí** está en
+su Tema 4 — **verificado sobre el HTML servido** (`https://www.vence.es/auxiliar-administrativo-diputacion-cordoba/temario/tema-4`
+responde 200 y contiene «Estructura de la Ley 13/2007…»), así que no hace falta purgar caché ni pedirle que
+recargue.
+
+**Relacionadas:** [T-573] (la PII que impidió a la flota confirmar la oposición y es la causa del error),
+[T-088] y [T-528] (sobre-inclusión y scopes verdes sin contrastar).
+
 
 ### [T-566] ✅ [HECHA 05/08] El configurador por TEMA ofrece más preguntas de las que el test puede servir
 
