@@ -65,13 +65,24 @@ function selftest() {
   process.exit(ok === cases.length ? 0 : 1);
 }
 
+// --- Selección de credencial (exportada para test: sin ella, requerir el fichero ejecuta
+// main() contra la BD de verdad y no se puede probar la preferencia sin red). ---
+// Este SELECT es de solo lectura sobre `topics` (temario), NO sobre las 4 tablas de
+// coordinación de la flota. VENCE_LECTOR_URL (rol vence_lector) tiene grants sobre
+// negocio; DATABASE_URL de un trabajador (rol vence_coordinacion) no — permission
+// denied, que el pre-commit ya trata como "no se pudo comprobar" y no bloquea. Con
+// VENCE_LECTOR_URL disponible, la comprobación real SÍ se hace en vez de rendirse.
+function pickDbUrl(env) {
+  return env.VENCE_LECTOR_URL || env.DATABASE_URL || null;
+}
+
 // --- Main (BD) ---
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
 
-  const DB_URL = process.env.DATABASE_URL;
-  if (!DB_URL) { console.error('❌ DATABASE_URL no configurado'); process.exit(2); }
+  const DB_URL = pickDbUrl(process.env);
+  if (!DB_URL) { console.error('❌ ni VENCE_LECTOR_URL ni DATABASE_URL configurados'); process.exit(2); }
   const postgres = require('postgres');
   const sql = postgres(DB_URL, { prepare: false, max: 4, idle_timeout: 20, connect_timeout: 10, ssl: 'require', onnotice: () => {} });
 
@@ -101,4 +112,8 @@ async function main() {
   process.exit(redCount > 0 ? 1 : 0);
 }
 
-main().catch((e) => { console.error('ERROR:', e.message); process.exit(2); });
+module.exports = { pickDbUrl };
+
+if (require.main === module) {
+  main().catch((e) => { console.error('ERROR:', e.message); process.exit(2); });
+}
