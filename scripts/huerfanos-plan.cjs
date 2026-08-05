@@ -15,6 +15,11 @@
  * La consulta reproduce el universo del detector (artículos escopados, activos,
  * con contenido real y no derogados); el juicio de qué dispara y qué conviene
  * hacer vive en el núcleo puro, que está testeado y en paridad con el sweep.
+ *
+ * ⚠️ `--oposicion` enseña la DEUDA COMPLETA de esa oposición, no solo lo que dispara el
+ * badge (T-543): pregunta "qué le falta a ESTE tema", así que un hueco de la banda ciega
+ * (huecos reales que ningún finding dispara) también sale. `--deuda` sigue existiendo
+ * para pedir la deuda completa SIN acotar a una oposición.
  */
 const fs = require('fs')
 const path = require('path')
@@ -147,11 +152,13 @@ const tabla = (filas) => { console.table(filas); return filas }
   }
 
   // --ley <slug> · --deuda · --oposicion <slug>
-  const soloQueDisparan = flag('--deuda') < 0
-  const ley = valor('--ley')
   // Acepta el slug con guiones (como en la URL) o el position_type con guiones bajos.
   const opoArg = valor('--oposicion')
   const oposicion = opoArg ? opoArg.replace(/-/g, '_') : null
+  // `--oposicion` implica DEUDA COMPLETA por defecto (T-543): pregunta "qué le falta a
+  // ESTE tema", no "qué mueve el badge global" — un tema de la banda ciega (huecos
+  // reales que no disparan ningún finding) salía invisible si no se pedía --deuda a la vez.
+  const soloQueDisparan = !plan.usarDeudaCompleta({ deudaPedida: flag('--deuda') >= 0, oposicion })
   if (ley || oposicion || flag('--deuda') >= 0) {
     const r = plan
       .marcaEnCurso(plan.rankingHuerfanos(filas, { soloQueDisparan, demanda, oposicion }), enCurso)
