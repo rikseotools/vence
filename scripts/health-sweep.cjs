@@ -1448,6 +1448,25 @@ async function detectarTodo(c, add, marcar, now) {
     marcar('cita_no_literal', citas.ajenas || 0);
   } catch (e) { console.warn('⚠️ barrido de citas no evaluado:', String(e.message || e).slice(0, 120)); }
 
+  // ── Explicaciones que reproducen la opción FALSA sin veredicto (T-525) ──
+  // La explicación cita casi carácter por carácter la opción falsa, con la palabra corregida
+  // pegada detrás (o delante), y NUNCA dice que esa opción es incorrecta: el opositor falla, lee
+  // la "explicación" y encuentra una frase que no está en la ley y no sabe distinguir del texto
+  // legal real. Subproceso por la misma razón que `cita_no_literal`: compara, opción por opción,
+  // el segmento de la explicación contra el texto de esa opción — no cabe en un `WHERE`.
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('node scripts/audit-explicacion-yuxtaposicion.cjs --json', {
+      cwd: process.cwd(), encoding: 'utf8', env: process.env, timeout: 900000, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const yux = JSON.parse(out.trim().match(/\{[\s\S]*\}$/)[0]);
+    if (yux.yuxtaposicion > 0) {
+      add('content', yux.vistas > 0 ? 'error' : 'warn', null, 'explicacion_yuxtaposicion',
+        `${yux.yuxtaposicion} pregunta(s) visibles cuya explicación reproduce una opción FALSA casi literal con la palabra corregida pegada, sin decir en ningún momento que es incorrecta (${yux.oficiales} de examen oficial, ${yux.vistas} ya vistas)`,
+        { yuxtaposicion: yux.yuxtaposicion, oficiales: yux.oficiales, vistas: yux.vistas, sample: yux.sample });
+    }
+  } catch (e) { console.warn('⚠️ barrido de yuxtaposición no evaluado:', String(e.message || e).slice(0, 120)); }
+
   // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──
   // Punto ciego de over-inclusion (mira 1 tema vs epígrafe) y de huecos (los temas rebosan).
   // Umbral: ley entera/NULL compartida por >1 tema, o ≥20 arts solapados (1-10 = cross-cutting legítimo).
