@@ -497,6 +497,19 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'se coló el fallo del 30/07: la sim daba verde midiendo el arranque de la suplantación, nunca ' +
       'su final. Correrla tras tocar `verifyAuth`, `authjs.ts`, `mintAccessToken` o el endpoint.',
   },
+  medir_pago_fallido_falsos: {
+    titulo: 'Medir a cuánta gente que PAGA BIEN le mandamos «Problema con el pago» (T-594)',
+    ruta: 'scripts/stripe/medir-pago-fallido-falsos.cjs',
+    estado: 'vivo',
+    notas:
+      'npm run stripe:pago-fallido-falsos [-- --dias 30]. Solo LEE. Cruza los correos ' +
+      '`pago_fallido` con la suscripción del destinatario: si su periodo arrancó a los pocos ' +
+      'segundos, el «fallo» era la autenticación del banco (3DS/SCA), que Stripe anuncia con un ' +
+      '`invoice.payment_failed` que no es un rechazo. Medido el 05/08/2026 antes del arreglo: ' +
+      '**148 de 214 (69%)** en 30 días, la mayoría ~5 s ANTES de que arrancara su periodo, es ' +
+      'decir en mitad de la compra. Sirve para dimensionarlo y para comprobar tras el despliegue ' +
+      'que baja a cero. El criterio del arreglo vive en `lib/stripe/falloPagoReal.ts`.',
+  },
   sim_identidad_pago: {
     titulo: 'Comprobar que en los endpoints de pago la identidad sale del token y no del cliente',
     ruta: 'scripts/sim/sim-identidad-pago.ts',

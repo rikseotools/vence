@@ -13,6 +13,7 @@ import { emitReferralEvent } from '@/lib/referrals/observability'
 import { computeSettlementAfterRefund } from '@/lib/stripe-settlement-helpers'
 import { hashEmail } from '@/lib/services/googleAds'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
+import { decidirAvisoPagoFallido, type PaymentIntentMinimo } from '@/lib/stripe/falloPagoReal'
 import { sendEmailV2 } from '@/lib/api/emails'
 import { invalidateProfileCache } from '@/lib/api/profile'
 
@@ -1097,6 +1098,36 @@ async function handlePaymentFailed(
 
   if (invoice.subscription) {
     try {
+      // ¿Ha fallado el pago de verdad, o es la autenticación del banco (3DS/SCA) en curso?
+      // Stripe manda `invoice.payment_failed` en los dos casos. Ver lib/stripe/falloPagoReal.ts.
+      let pi: PaymentIntentMinimo | null = null
+      if (invoice.payment_intent) {
+        try {
+          pi = (await sc.paymentIntents.retrieve(invoice.payment_intent as string)) as PaymentIntentMinimo
+        } catch (piErr) {
+          // Sin PaymentIntent no juzgamos: el veredicto falla hacia avisar.
+          console.error('No se pudo leer el PaymentIntent de la factura:', piErr)
+        }
+      }
+
+      const veredicto = decidirAvisoPagoFallido(invoice, pi)
+      if (!veredicto.avisar) {
+        console.log(`🤫 Pago fallido NO avisado (${veredicto.motivo}) — invoice ${invoice.id}`)
+        await emit({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'pago_fallido_email_omitido',
+          endpoint: '/api/stripe/webhook',
+          metadata: {
+            invoiceId: invoice.id,
+            customerId: invoice.customer,
+            motivo: veredicto.motivo,
+            piStatus: pi?.status ?? null,
+          },
+        })
+        return
+      }
+
       const subscription = await getSubscription(invoice.subscription as string, sc)
 
       let userId = subscription.metadata?.supabase_user_id
