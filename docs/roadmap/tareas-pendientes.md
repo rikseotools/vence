@@ -1034,6 +1034,67 @@ página real** — es UI y aquí un test de texto no demuestra nada.
 
 - **Relacionadas:** [T-486] (la flota y su supervisor), [T-397] y [T-588] (el trabajo que estaba en riesgo), [T-415] (una sesión por directorio).
 
+### [T-573] 🔴 [ABIERTO 05/08] `vence_lector`: RLS activo sin política bloqueaba `test_questions`/`tests` pese al GRANT — arreglado el par que hacía falta, el resto se queda bloqueado a propósito
+
+**QUÉ PASABA.** `20260805_rol_lector_flota.sql` concedió `GRANT SELECT ON ALL TABLES IN SCHEMA
+public TO vence_lector`, pero un `GRANT` de tabla no basta cuando la tabla tiene **RLS activo**:
+sin al menos una política, el motor **filtra en silencio y devuelve 0 filas siempre** — no lanza
+error, así que no se distingue de una tabla vacía de verdad (mismo mecanismo ya diagnosticado en
+T-574 para `question_disputes`, con núcleo puro en `lib/db/rlsSelectBlocked.cjs`).
+
+**MEDIDO contra RDS (05/08), no contra la ficha:**
+- `test_questions` y `tests`: `relrowsecurity=true`, CERO filas en `pg_policies`,
+  `has_table_privilege('vence_lector', …, 'SELECT') = true`. Exactamente el patrón "pese al
+  GRANT" del título.
+- `question_disputes` YA tiene política (`flota_coordinacion_lee`, de T-574) — no hacía falta
+  tocarla.
+- **85 tablas en total** con `relrowsecurity=true` y cero políticas. De ellas, comprobado contra
+  `DEBE_LEER` de `scripts/canary-rol-lector.cjs` (lo que el trabajo REAL usa, no una lista a
+  ojo): **solo `test_questions` está en esa lista** y bloqueada así. `tests` no está en
+  `DEBE_LEER` pero la necesita `scripts/sim/sim-repaso-ajeno.ts` (ya anotado en T-472: "0 filas,
+  sin error"). El resto de las 85 son operativas o con PII (`user_profiles`,
+  `fraud_confirmations`, `payment_settlements`…) y **bloquearlas es el comportamiento correcto**
+  — no se han tocado.
+- Columnas de ambas tablas revisadas una a una contra el catálogo (`pg_attribute`, sin depender
+  de `information_schema` que ya estaba bloqueado para el rol de coordinación): ninguna es
+  identificador directo (correo/nombre/teléfono/IP/pago). Solo `user_id` (uuid) + actividad de
+  test + jsonb de analítica — mismo perfil que `questions`/`topic_scope`, ya concedidas.
+
+**HECHO:** migración `supabase/migrations/20260805_rls_test_questions_lector.sql` — política
+`flota_lector_lee`, `FOR SELECT TO vence_lector USING (true)`, idempotente (`DROP POLICY IF
+EXISTS` antes), **solo esas dos tablas, solo `vence_lector`** (NO `vence_coordinacion`: ese rol
+se queda en sus 4 tablas de coordinación, no necesita actividad de tests). Con guarda propia:
+aborta si el GRANT de tabla no está (para que la política nunca sea el único candado).
+
+**Capas:** `__tests__/db/rlsTestQuestionsLectorMigration.test.js` (5 tests, forma del fichero:
+alcance exacto de tablas, idempotencia, solo SELECT, no se cuela `vence_coordinacion`) +
+`__tests__/db/rlsSelectBlocked.test.js` (ya existente, T-574: el caso "política SELECT nombrando
+exactamente al rol: no bloquea" es la prueba de que la forma de la política es la correcta).
+
+**NO PODIDO: aplicar la migración a producción.** Este worker (`w4`, credencial
+`vence_coordinacion`) no tiene privilegio para `CREATE POLICY` — ni siquiera lee el catálogo de
+grants de esas dos tablas vía `information_schema` (permission denied; se verificó por
+`pg_attribute`/`has_table_privilege` en su lugar, que sí son legibles sin grant). Aplicarla
+necesita la credencial con la que se aplicaron las migraciones RLS anteriores del mismo día
+(`20260805_rol_lector_flota.sql`, `20260805_rls_impugnaciones_flota.sql`). Tras aplicar: `npm run
+canary:rol-lector` debería pasar a **18/18** en la sección DEBE_LEER (hoy 6/7 — solo
+`test_questions` en rojo) sin tocar el detector, que es la prueba de que el arreglo es real y no
+cosmético (mismo criterio que dejó escrito T-574).
+
+**NO PUSHEADO:** este worker no tiene ninguna credencial de git configurada (sin `~/.ssh`, sin
+`~/.git-credentials`, sin `credential.helper`, sin `GITHUB_TOKEN`/`gh auth`) — comprobado en el
+clon compartido `/home/flota/vence` y en el worktree `vence-sessions/w4`, los dos igual. **Esto
+es diseño, no un fallo de esta tarea**: el rescate del supervisor (`lib/flota/rescate.cjs`) es
+quien empuja el trabajo del worker desde la máquina que sí tiene credenciales — ya documentado
+en T-529/T-543 con el mismo síntoma exacto. Commit local en `sesion/w4`.
+
+**Relacionadas:** [T-574] (mismo mecanismo, ya arreglado para `question_disputes` — la plantilla
+que sigue esta migración), [T-486] (la flota), [T-472] (donde `tests`/`test_questions` aparecen
+por primera vez como necesarios y bloqueados).
+
+**Esfuerzo: minutos** (para quien tiene la credencial de aplicar migraciones — es un `psql -f` +
+confirmar con el canario).
+
 ### [T-591] 🟡 [ABIERTO 05/08] Vales de otra marca: la tarjeta decía «Amazon.es» y enlazaba a Amazon fuera cual fuera la marca
 
 **Qué pasaba.** `VoucherCard.tsx` tenía la marca escrita a mano en el JSX (`{v.amount} € · Amazon.es`)
@@ -4979,6 +5040,70 @@ Por eso **ninguna señal del servidor los veía** (`auth_sub_reconciliado` = 1 e
 - **Los 44 «persistentes» del canario son histórico de hasta 12 días** que se vacía solo según cada navegador vuelva a cargar página — el propio canario lo documenta, no es una regresión.
 - **El cabo de seguridad sobre `/api/v2/user-stats`** (userId por query sin `verifyAuth`) ya está cubierto por **[T-353]** (abierta, sin reclamar), que agrupa los 38 endpoints con el mismo patrón — no se duplica ficha.
 
+### [T-590] ✅ [HECHA 05/08] w3 y w4 arrancados sin `VENCE_LECTOR_URL`: no pueden diagnosticar ninguna impugnación
+
+> **VERIFICADO 05/08 (w4):** `VENCE_LECTOR_URL` ya está poblada y funcional en `w4`
+> (`npm run canary:rol-lector` da 18/19; el único rojo es `test_questions`, que es RLS-sin-política
+> y va por [T-573], no por esta ficha) y `w3` tiene la variable poblada en su
+> `/etc/vence-flota/w3.env` (valor no vacío confirmado). Lo que esta ficha pedía —relanzar w3/w4
+> con `VENCE_LECTOR_URL`— está hecho. **Sigue sin resolver el blocker gemelo [T-581]**
+> (`revisar-impugnacion.cjs` sin fusionar a `main`, en rama
+> `origin/rescate/w1-flota-dossier-impugnaciones-rol-lector-95dd9dfd0`): diagnosticar
+> impugnaciones desde w3/w4 depende de esa fusión, ya rastreada en su propia ficha, no en esta.
+
+**QUÉ PASA.** Encargo estándar de un trabajador de la flota: `cola.cjs next` → coger una
+impugnación → `revisar-impugnacion.cjs <id>` para el dossier. En el trabajador **w4** eso muere
+de raíz porque su `.env.local` **solo tiene `DATABASE_URL`** (rol `vence_coordinacion`, las 4
+tablas de coordinación) — **no tiene `VENCE_LECTOR_URL`** (rol `vence_lector`, lectura de
+negocio: `questions`, `articles`, etc.). `npm run canary:rol-lector` lo confirma con el mismo
+veredicto que da cuando la variable no existe: `⏭️ falta VENCE_LECTOR_URL: el rol aún no está
+provisionado.`
+
+**MEDIDO, no supuesto — comparación directa de los 4 `.env.local` de la flota local (05/08):**
+
+| Worker | `DATABASE_URL` | `VENCE_LECTOR_URL` |
+|---|---|---|
+| w1 | ✅ | ✅ |
+| w2 | ✅ | ✅ |
+| w3 | ✅ | ❌ (ausente) |
+| w4 | ✅ | ❌ (ausente) |
+
+`arrancar-trabajador.sh` (§1, `if [ -z "${VENCE_LECTOR_URL:-}" ]`) ya anticipa este caso — avisa
+en vez de exigir, porque un trabajador solo-coordinación es legítimo — pero el aviso vive en el
+log de arranque, que nadie relee después. El propio encargo estándar de la flota lo cita de
+memoria (*"la primera tarea de la flota se quedó a medias por no saberlo"*), así que el modo de
+fallo es conocido mientras que ESTA instancia (w3 y w4 concretamente) no lo estaba.
+
+**Efecto medido en mi turno (w4, 05/08):** cogí un cluster de 5 impugnaciones del mismo usuario
+con `cola.cjs next` (esto SÍ funciona: solo toca `question_disputes`, que el rol de coordinación
+sí puede leer/escribir desde T-574). Al intentar `revisar-impugnacion.cjs <id>` para generar el
+dossier, la conexión única de ese script usa `DATABASE_URL` (el rol de coordinación) y muere sin
+capturar en la primera tabla de negocio que toca (`user_profiles`, línea ~135) — antes de
+imprimir una sola línea del dossier. Con `VENCE_LECTOR_URL` puesto tampoco se arreglaría solo:
+el script en `main` **no lo usa en absoluto** (ver T-581, que ya lo diagnosticó y lo arregló en
+una rama sin pushear — `flota/dossier-impugnaciones-rol-lector`, hecha por w1, hoy en estado
+`revision` esperando que Manuel la mire). O sea: hay DOS blockers apilados para mí — (a) esta
+ficha, la credencial que falta en mi máquina, y (b) T-581, el código que aún no usa esa
+credencial en `main`. Arreglar solo (a) no me habría desbloqueado hoy sin (b) también.
+
+**Las 5 impugnaciones que había cogido las he liberado** (`cola.cjs release <id>` — libera bien
+aunque el propio comando revienta después al tocar `user_feedback`, verificado con una consulta
+directa: las 5 quedaron con `claimed_by: null`), para que una sesión con las credenciales
+completas (portátil, o w1/w2) pueda trabajarlas. Quedan en la cola: la primera es
+`f34b88ad-1519-46fe-aea4-460dcf60845b` (`[legislative] otro`), con 4 hermanas del mismo usuario.
+
+**QUÉ HACE FALTA (no lo puedo hacer yo — necesita acceso a la máquina/VPS con root o al
+lanzador):** volver a correr `arrancar-trabajador.sh w3` y `arrancar-trabajador.sh w4` con
+`VENCE_LECTOR_URL` exportado (o añadir la línea a mano en `/etc/vence-flota/w3.env` y
+`/etc/vence-flota/w4.env` + `printf 'VENCE_LECTOR_URL=%s\n' "$VENCE_LECTOR_URL" >>
+$WT/.env.local`) y reiniciar el servicio (`systemctl restart vence-flota@w3 vence-flota@w4`).
+Confirmar con `npm run canary:rol-lector` en cada árbol tras el reinicio.
+
+**Relacionadas:** [T-581] (el código de `revisar-impugnacion.cjs`/`cola.cjs` no soporta bien el
+rol restringido — bloqueador gemelo, con fix ya escrito y esperando revisión), [T-486] (la
+flota), [T-539] (ceguera de un trabajador sin credenciales — mismo principio, otra credencial).
+
+**Esfuerzo: minutos** (para quien tiene acceso al VPS/lanzador — es una variable + un reinicio).
 
 ### [T-574] ✅ [HECHA 05/08] El rol `vence_lector` no puede leer 87 tablas (RLS activado sin políticas) y el canario que debía cazarlo da falso verde
 

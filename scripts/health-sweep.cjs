@@ -48,7 +48,7 @@ const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SR
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
-const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO } = require('../lib/generacion/huerfanosPlan.js');
+const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -268,6 +268,46 @@ async function detectarTodo(c, add, now) {
       add('content', 'warn', o.slug, 'article_no_coverage',
         `${o.slug}: ${sinPreg.length} tema(s) con artículos del temario SIN preguntas (${tot} arts; p.ej. T${sinPreg[0].topic_number}: ${(sinPreg[0].ejemplos || []).join(', ')})`,
         { temas: sinPreg.map(r => ({ tema: r.topic_number, arts_sin_preguntas: r.n, ejemplos: r.ejemplos })) });
+    }
+
+    // ── CONTENIDO: banda ciega de cobertura (T-543, 05/08/2026) ──
+    // La zona que NI `article_no_coverage` (exige ≥60% cubierto) NI `low_coverage` (exige
+    // <6 preguntas servidas) ven: un tema con ≥4 huecos, cobertura de artículos <60% y, aun
+    // así, un volumen de preguntas servidas donde SÍ se nota al estudiar (calibrado contra
+    // RDS: acotado a <=50 porque por encima la mediana de la banda es 92 y esas preguntas
+    // no se agotan en una sesión de estudio — ver `UMBRAL_BANDA_CIEGA` en huerfanosPlan.js).
+    // Caso raíz: Neus A.B. repitiendo el tema 3 de subalterno_gva (EACV) tres veces en 19h.
+    const bandaCiega = (await c.query(`
+      SELECT topic_number, n_content, n_cov, (n_content - n_cov)::int AS huerfanos, preguntas, ejemplos FROM (
+        SELECT tp.topic_number, tp.id AS topic_id,
+          count(*)::int AS n_content,
+          count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov,
+          (array_agg(l.short_name || ' ' || a.article_number ORDER BY ${SQL_ORDEN_ARTICULO})
+            FILTER (WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)))[1:6] AS ejemplos
+        FROM topic_scope ts
+        JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active AND tp.disponible
+        JOIN laws l ON l.id = ts.law_id
+        JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                       AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+        WHERE tp.position_type = $1 AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
+          AND ${SQL_UNIVERSO_COBERTURA}
+        GROUP BY tp.topic_number, tp.id
+        HAVING count(*) >= 4
+           AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)
+           AND count(*) - count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) >= 4
+           AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::float / count(*) < 0.6
+      ) t
+      JOIN LATERAL (
+        SELECT COALESCE(SUM(s.total_questions), 0)::int AS preguntas
+          FROM topic_law_question_summary s WHERE s.topic_id = t.topic_id
+      ) q ON true
+      WHERE q.preguntas BETWEEN ${UMBRAL_BANDA_CIEGA.minPreguntas} AND ${UMBRAL_BANDA_CIEGA.maxPreguntas}
+      ORDER BY q.preguntas ASC, topic_number`, [pt])).rows;
+    if (bandaCiega.length) {
+      const tot = bandaCiega.reduce((a2, r) => a2 + Number(r.huerfanos), 0);
+      add('content', 'warn', o.slug, 'cobertura_banda_ciega',
+        `${o.slug}: ${bandaCiega.length} tema(s) con cobertura de artículos <60% y pocas preguntas para notarlo (${tot} arts sin cubrir; p.ej. T${bandaCiega[0].topic_number}: ${bandaCiega[0].preguntas} preg, ${(bandaCiega[0].ejemplos || []).join(', ')})`,
+        { temas: bandaCiega.map(r => ({ tema: r.topic_number, preguntas: r.preguntas, arts_sin_preguntas: r.huerfanos, ejemplos: r.ejemplos })) });
     }
 
     // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──

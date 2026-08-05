@@ -1275,6 +1275,67 @@ export class ContentHealthSweepService {
 
       }
 
+      // ── CONTENIDO: banda ciega de cobertura (T-543, 05/08/2026) ──
+      // Ni `article_no_coverage` (exige ≥60% cubierto) ni `low_coverage` (exige <6
+      // preguntas servidas) ven esta zona: ≥4 huecos, cobertura de artículos <60% y, aun
+      // así, un volumen de preguntas servidas donde SÍ se nota al estudiar. Acotado a
+      // <=50 (Mirror INLINE de UMBRAL_BANDA_CIEGA de lib/generacion/huerfanosPlan.js —
+      // MANTENER EN SYNC, lo vigila __tests__/health/content-sweep-parity.test.ts):
+      // calibrado contra RDS el 05/08 — por encima de 50 la mediana de la banda sin
+      // acotar es 92 preguntas, y esas no se agotan en una sesión de estudio.
+      const bandaCiega = (await this.db.execute(sql`
+        SELECT topic_number, n_content, n_cov, (n_content - n_cov)::int AS huerfanos, preguntas, ejemplos FROM (
+          SELECT tp.topic_number, tp.id AS topic_id,
+            count(*)::int AS n_content,
+            count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov,
+            (array_agg(l.short_name || ' ' || a.article_number ORDER BY (substring(a.article_number from '^[0-9]+'))::int, a.article_number)
+              FILTER (WHERE NOT EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)))[1:6] AS ejemplos
+          FROM topic_scope ts
+          JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active AND tp.disponible
+          JOIN laws l ON l.id = ts.law_id
+          JOIN articles a ON a.law_id = ts.law_id AND a.is_active
+                         AND (ts.article_numbers IS NULL OR a.article_number = ANY(ts.article_numbers))
+          WHERE tp.position_type = ${pt} AND length(coalesce(a.content,'')) > 40 AND a.content NOT ILIKE '%derogado%'
+            AND (a.article_number ~ '^[0-9]+$' OR a.article_number ~* '^[0-9]+ ?(bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies)$')
+          GROUP BY tp.topic_number, tp.id
+          HAVING count(*) >= 4
+             AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) < count(*)
+             AND count(*) - count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active)) >= 4
+             AND count(*) FILTER (WHERE EXISTS (SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::float / count(*) < 0.6
+        ) t
+        JOIN LATERAL (
+          SELECT COALESCE(SUM(s.total_questions), 0)::int AS preguntas
+            FROM topic_law_question_summary s WHERE s.topic_id = t.topic_id
+        ) q ON true
+        WHERE q.preguntas BETWEEN 6 AND 50
+        ORDER BY q.preguntas ASC, topic_number
+      `)) as unknown as Array<{
+        topic_number: number;
+        n_content: number;
+        n_cov: number;
+        huerfanos: number;
+        preguntas: number;
+        ejemplos: string[] | null;
+      }>;
+      if (bandaCiega.length) {
+        const totBanda = bandaCiega.reduce((a2, r) => a2 + Number(r.huerfanos), 0);
+        add(
+          'content',
+          'warn',
+          o.slug,
+          'cobertura_banda_ciega',
+          `${o.slug}: ${bandaCiega.length} tema(s) con cobertura de artículos <60% y pocas preguntas para notarlo (${totBanda} arts sin cubrir; p.ej. T${bandaCiega[0].topic_number}: ${bandaCiega[0].preguntas} preg, ${(bandaCiega[0].ejemplos || []).join(', ')})`,
+          {
+            temas: bandaCiega.map((r) => ({
+              tema: r.topic_number,
+              preguntas: r.preguntas,
+              arts_sin_preguntas: r.huerfanos,
+              ejemplos: r.ejemplos,
+            })),
+          },
+        );
+      }
+
       // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
       const nTopics = topics.length;
       if (o.temas_count != null && Number(o.temas_count) !== nTopics)
