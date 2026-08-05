@@ -842,6 +842,37 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-592] 🔴 [ABIERTO 05/08] El clon del trabajador nunca se actualiza si tiene el árbol a medias, y el supervisor mira un árbol que no es el suyo
+
+- **Esfuerzo: rato.** Son dos defectos pequeños en el mismo camino, y se refuerzan: juntos dejaron a `w2` **70 commits por detrás** trabajando sin enterarse.
+- **ORIGEN:** al rescatar la flota el 05/08 ([T-486]) el supervisor dijo «nada que salvar» en las cuatro máquinas del VPS, y `w2` había preguntado por el embudo (#27) que `backlog.cjs borrador` «no existe en el repo» — existe desde hace días. Las dos cosas son el mismo fallo visto por dos sitios.
+
+#### (1) `arbolDe` devuelve el CLON BASE, no el worktree donde el trabajador trabaja
+
+- **Medido:** `MAQ.arbolDe('w1'..'w4')` devuelve `~flota/vence` para los cuatro. Pero cada uno tiene el suyo: `~flota/vence-sessions/w1`, `…/w2`, `…/w3`, `…/w4`. Ahí es donde tienen su rama, sus ficheros y su trabajo sin commitear.
+- **Consecuencia 1 — el rescate no ve lo sin commitear.** Salvó las 8 ramas (los *branches* son del repositorio, así que se ven desde cualquier worktree: acertó **por casualidad**) pero el `git status --porcelain` miró el clon base, que estaba limpio. En los worktrees reales había: **`w2` con 8 ficheros de código sin commitear** (`app/perfil/page.tsx`, un guardarraíl nuevo, `lib/backlog/borradores.cjs`, `lib/backlog/siguienteId.cjs` — la entrega de [T-397]) y **`w1` con 4 borradores de impugnación** (744f0db0, 2477d39d, 1707bb9d + ficha T-588). Única copia, las dos.
+- **Consecuencia 2 — `ponerAlDia` actualiza el clon equivocado.** Al mandar el encargo a `w3` imprimió *«clon 9 commit(s) por detrás — se actualiza antes del encargo»*: los 9 eran del clon base. Su worktree seguía **27 por detrás**, y ahí es donde corre.
+- **Ojo al arreglarlo:** el registro (`lib/flota/maquinas.cjs`) tiene que distinguir el CLON (uno por máquina, para `git fetch`) del ÁRBOL (uno por trabajador). Hoy `arbol()` mezcla los dos papeles.
+
+#### (2) `a_medias` da trabajo y NO actualiza — así que un trabajador que empieza a descolgarse ya no vuelve
+
+- `clasificar()` (`lib/flota/actualizacion.cjs`) devuelve para `a_medias` → `puedeEncargar: true, hayQueActualizar: false`. El estado se introdujo por una razón buena ([T-486]): retomar TU tarea con el árbol sucio es normal, y bloquearlo dejaba al trabajador encallado.
+- **El efecto que no se vio:** `a_medias` se dispara con `sucio > 0 || adelante > 0`, o sea el estado NORMAL de quien está trabajando. Y como en ese estado no se actualiza nunca, **cuanto más trabaja más se descuelga**, sin que nada lo diga. Medido el 05/08: `w2` **70 commits por detrás**, `w1` 31, `w3` 27, `w4` 10.
+- **Y el daño no es teórico:** con 70 commits de retraso a `w2` le faltaba el subcomando `borrador`, que es por donde el encargo le manda entregar. Gastó su turno inventando un rodeo (dejar el análisis en `scratchpad/`, que no lo ve nadie) y preguntando por un hueco de tooling **que en `main` no existía**. Es el gotcha del «clon al día» que la propia ficha de [T-486] ya documenta, reapareciendo por otra puerta.
+- **La tensión real a resolver:** no se puede actualizar a la brava (lo sin commitear puede ser el único rastro) pero tampoco se puede no actualizar nunca. Salida probable: **rescatar primero** (que es aditivo y ya existe) y actualizar después — con el trabajo a salvo, `a_medias` deja de ser motivo para no actualizar. Nótese que al rescatar `w1` y `w2` el 05/08, los dos pasaron a `sucio=0, fuera_de_remotos=0` y quedaron actualizables.
+
+#### (3) De propina: `encargar` en bucle reparte la MISMA tarea dos veces
+
+- `repartir` lleva un `Set` de repartidas dentro de UNA pasada, pero `encargar <w>` no comparte nada entre invocaciones. Llamarlo dos veces seguidas (`for w in w3 w4; do … encargar $w; done`) mandó **T-038 a los dos**. El claim atómico impidió el trabajo duplicado (ganó `w3`), pero `w4` gastó el turno descubriéndolo.
+- No es urgente como los otros dos, pero es la misma familia: el supervisor no recuerda lo que acaba de hacer.
+
+#### Cómo se comprueba que está arreglado
+
+- `npm run sim:rescate-flota` cubre la orden de rescate, no el registro: hace falta un caso que monte un clon con **worktrees** y verifique que se mira el del trabajador. Sin eso, (1) puede volver sin que nada lo note — que es exactamente como llegó.
+- Para (2): un trabajador con el árbol sucio tiene que acabar actualizado, no exento.
+
+- **Relacionadas:** [T-486] (la flota y su supervisor), [T-397] y [T-588] (el trabajo que estaba en riesgo), [T-415] (una sesión por directorio).
+
 ### [T-591] 🟡 [ABIERTO 05/08] Vales de otra marca: la tarjeta decía «Amazon.es» y enlazaba a Amazon fuera cual fuera la marca
 
 **Qué pasaba.** `VoucherCard.tsx` tenía la marca escrita a mano en el JSX (`{v.amount} € · Amazon.es`)

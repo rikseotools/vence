@@ -42,6 +42,9 @@ const s = pg(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_tim
 // mira si la sesión dueña sigue LATIENDO. Así una revisión larga pero viva conserva su reserva,
 // y un ordenador apagado la suelta sola. Ver lib/impugnaciones/reserva.cjs.
 const { sqlReservaLibre, etiquetaReserva } = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'reserva.cjs'));
+// Una impugnación con borrador esperando el OK de Manuel NO está libre, aunque nadie la tenga
+// cogida: ya está trabajada. Ver `sqlSinBorradorPendiente` para por qué el claim no puede verlo.
+const { sqlSinBorradorPendiente } = require(require('path').join(__dirname, '..', '..', 'lib', 'backlog', 'borradores.cjs'));
 // Abreviar un sid es cosa de `sid.cjs` (T-538): a 8 caracteres, cinco sesiones del mismo día se
 // escriben igual y el listado hacía pasar por propias las reservas ajenas.
 const { sidCorto } = require(require('path').join(__dirname, '..', '..', 'lib', 'sessions', 'sid.cjs'));
@@ -104,6 +107,7 @@ async function claimFrom(list) {
          SELECT id FROM public.${tbl}
           WHERE status = ANY($2)
             AND ${sqlReservaLibre('', '$1')}
+            AND ${sqlSinBorradorPendiente(`public.${tbl}.`)}
             ${elegido ? 'AND id = $3' : ''}
           ORDER BY created_at
           FOR UPDATE SKIP LOCKED
@@ -135,8 +139,12 @@ async function claimFrom(list) {
 async function listQueue(list) {
   const out = [];
   for (const { tbl, open, kind } of list) {
+    // El borrador pendiente se pinta con el MISMO criterio que impide repartirla (T-474): un panel
+    // que dijera «libre» sobre algo que la puerta no entrega manda a la siguiente sesión a
+    // trabajar en balde, que es justo lo que esta columna existe para evitar.
     const rows = await s.unsafe(
-      `SELECT id, ${tbl === 'user_feedback' ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at
+      `SELECT id, ${tbl === 'user_feedback' ? 'type' : 'dispute_type'} AS t, status, created_at, claimed_by, claimed_at,
+              NOT (${sqlSinBorradorPendiente(`public.${tbl}.`)}) AS con_borrador
          FROM public.${tbl} WHERE status = ANY($1) ORDER BY created_at`, [open]);
     rows.forEach((r) => out.push({ ...r, kind }));
   }
@@ -197,8 +205,15 @@ async function inconsistentesResueltasEnPending() {
       const sesiones = await s`SELECT sid, last_signal_at FROM public.worktree_sessions`;
       console.log(`COLA (RDS) — ${rows.length} pendientes:\n`);
       for (const r of rows) {
-        const lock = etiquetaReserva({ claimedBy: r.claimed_by, claimedAt: r.claimed_at, sesiones, sid });
+        const lock = r.con_borrador
+          ? '📝 YA TRABAJADA — borrador esperando el OK de Manuel (no se reparte)'
+          : etiquetaReserva({ claimedBy: r.claimed_by, claimedAt: r.claimed_at, sesiones, sid });
         console.log(`  [${r.kind}] ${r.id} | ${r.t} | ${r.status} | hace ${age(r.created_at)} | ${lock}`);
+      }
+      const conB = rows.filter((r) => r.con_borrador).length;
+      if (conB) {
+        console.log(`\n📝 ${conB} de ${rows.length} ya tienen borrador escrito y esperan aprobación.`);
+        console.log('   Eso NO es cola de trabajo: es cola de decisión. Léelos con  node scripts/backlog.cjs preguntas');
       }
       return;
     }

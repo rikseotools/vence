@@ -67,3 +67,37 @@ describe('la puerta', () => {
     expect(m.indexOf('preguntas')).toBeLessThan(m.indexOf('--igualmente'))
   })
 })
+
+// ── LA COLA NO PUEDE REPARTIR LO QUE YA ESTÁ TRABAJADO ──────────────────────────────────────
+// `yaHayUno` corta al FINAL: el trabajador ya gastó el turno entero leyendo la impugnación y
+// contrastándola contra el BOE, y entonces se le dice que ya había un borrador. Como un
+// `claude -p` muere al acabar, ese trabajo no se recupera. Lo que hay que impedir es que se la
+// ENTREGUEN — y el claim no puede verlo, porque el trabajador SUELTA la fila al terminar.
+// Medido el 05/08 contra producción: 15 de 16 impugnaciones abiertas ya tenían borrador.
+describe('sqlSinBorradorPendiente — el mismo criterio, en la puerta de la cola', () => {
+  const { sqlSinBorradorPendiente, claveDe } = require(
+    require('path').join(process.cwd(), 'lib', 'backlog', 'borradores.cjs'))
+
+  it('excluye por el prefijo de 8 hex, que es la MISMA clave que usa claveDe', () => {
+    const sql = sqlSinBorradorPendiente('public.question_disputes.')
+    expect(sql).toMatch(/left\(public\.question_disputes\.id::text, 8\)/)
+    // La clave tiene que ser la misma en las dos puertas: si una compara 8 hex y la otra el uuid
+    // entero, la cola repartiría justo lo que el guard de creación va a rechazar.
+    expect(claveDe('impugnación 744f0db0-1234-… (cita errónea)')).toBe('744f0db0')
+  })
+
+  it('solo mira borradores ABIERTOS: uno ya aprobado no puede bloquear la cola para siempre', () => {
+    const sql = sqlSinBorradorPendiente()
+    expect(sql).toMatch(/kind = 'borrador'/)
+    expect(sql).toMatch(/status = 'open'/)
+  })
+
+  it('es una exclusión, no un filtro positivo (NOT EXISTS)', () => {
+    expect(sqlSinBorradorPendiente()).toMatch(/NOT EXISTS/)
+  })
+
+  it('acepta prefijo de tabla para poder calificarse dentro del UPDATE atómico', () => {
+    expect(sqlSinBorradorPendiente('d.')).toContain('left(d.id::text, 8)')
+    expect(sqlSinBorradorPendiente()).toContain('left(id::text, 8)')
+  })
+})
