@@ -32,6 +32,8 @@ const MAQ = require(path.join(REPO, 'lib', 'flota', 'maquinas.cjs'))
 const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
+// El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
+const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 
 const cmd = process.argv[2] || 'estado'
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
@@ -72,9 +74,12 @@ async function main() {
 
   try {
     if (cmd === 'estado') {
-      const sesiones = await sql`
-        SELECT sid, slug, host, rol, last_signal_at FROM public.worktree_sessions
-         WHERE rol = 'trabajador'`
+      // TODAS las sesiones, no solo los trabajadores: el supervisor tiene que enseñar en UNA
+      // pantalla lo que está pasando, y las sesiones que abre Manuel a mano son la mitad de eso.
+      // Se ven pero no se gobiernan: a la terminal de una persona no se le mandan encargos.
+      const todas = await sql`
+        SELECT sid, slug, host, rol, last_signal_at, last_command FROM public.worktree_sessions`
+      const sesiones = todas.filter((s) => s.rol === 'trabajador')
       const tareas = await sql`
         SELECT id, title, claimed_by FROM public.backlog_tasks
          WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
@@ -97,6 +102,29 @@ async function main() {
           : f.antiguedadMin < 1 ? 'ahora mismo' : `hace ${f.antiguedadMin} min`
         console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}`)
         console.log(`       ${t ? `${t.id} — ${String(t.title).slice(0, 60)}` : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
+      }
+
+      // ── TUS SESIONES ────────────────────────────────────────────────────────────────
+      // Las que tienes abiertas en pantalla. No se gobiernan desde aquí —son tuyas— pero salen,
+      // porque «una sola pantalla» no puede significar «la mitad de lo que pasa».
+      const ahora = new Date()
+      const personas = todas.filter((s) => s.rol !== 'trabajador')
+      const { trabajando, paradas } = PARTE.cruzarTrabajo(tareas, personas, { ahora })
+      const vivasPersonas = personas.filter((s) => {
+        const min = (ahora.getTime() - new Date(s.last_signal_at).getTime()) / 60000
+        return min <= 45
+      })
+      if (vivasPersonas.length) {
+        console.log(`\n👤 ${vivasPersonas.length} SESIÓN(ES) TUYAS (no se les manda trabajo: son tuyas)`)
+        for (const p of vivasPersonas) {
+          const t = tareas.find((x) => x.claimed_by === p.sid)
+          const min = Math.round((ahora.getTime() - new Date(p.last_signal_at).getTime()) / 60000)
+          console.log(`   ${(p.slug || '?').padEnd(16)} ${min < 1 ? 'ahora mismo' : `hace ${min} min`.padEnd(12)} ${t ? `${t.id} — ${String(t.title).slice(0, 44)}` : '(sin tarea cogida)'}`)
+        }
+      }
+      if (paradas.length) {
+        console.log(`\n🟠 ${paradas.length} TAREA(S) TUYAS SIN SEÑAL DE SU SESIÓN:`)
+        for (const p of paradas) console.log(`   ${p.id}  ${String(p.title).slice(0, 56)} — ${p.detalle}`)
       }
 
       // Lo que espera a Manuel va SIEMPRE, aunque la flota esté perfecta: es lo único cuyo coste

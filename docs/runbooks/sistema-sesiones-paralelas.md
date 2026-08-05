@@ -469,7 +469,9 @@ VENCE_SESSION_ROLE=trabajador npm run sesion:preflight      # trabajador: exit 1
 VENCE_SESSION_ROLE=trabajador VENCE_SESSION_HOME=/ruta/a/su/worktree  <arranque del trabajador>
 ```
 
-#### El SUPERVISOR: un solo comando para todo — `npm run flota`
+#### El SUPERVISOR DE TAREAS: un solo comando para todo — `npm run flota`
+
+> Frases-gatillo: *«supervisor de tareas»*, *«supervisor de trabajos»*, *«cómo va la flota»*.
 
 El reparto ya era común (todo pasa por RDS), así que **una sesión del portátil y una del VPS son lo
 mismo para el sistema**. Lo único que las diferenciaba era que a las remotas se les podía dar
@@ -485,6 +487,12 @@ npm run flota -- arrancar|parar w2
 
 El registro de máquinas (`lib/flota/maquinas.cjs`) trata el portátil como una más, con
 `local: true` = sin SSH. **Añadir una máquina o un trabajador es una fila.**
+
+**Y enseña TODO, no solo la flota.** En la misma pantalla salen los trabajadores autónomos y **las
+sesiones que tienes abiertas en tus terminales**, con lo que tiene cogido cada una y cuáles llevan
+rato calladas. La diferencia es de gobierno, no de visibilidad: a una sesión tuya se la VE pero no
+se le manda un encargo — es tu terminal. «Una sola pantalla» no puede significar «la mitad de lo
+que pasa», que es lo que enseñaba la primera versión.
 
 Un trabajador local es idéntico a uno remoto salvo en dos cosas: no hay usuario nuevo ni unidad de
 systemd (la sesión es tuya, no del sistema). Lo que sí se conserva es lo que importa — **árbol
