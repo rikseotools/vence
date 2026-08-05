@@ -873,6 +873,13 @@
 
 **LO QUE NO ESTÁ PROBADO, y por eso no se le ha respondido:** el caso «medio» no cuadra con ninguna de las dos cifras — pidió 64, le sirvió **26**, y hay 115 en total o **48 sin ver**. Ni 115 ni 48 dan 26. Y hay una **incoherencia entre los dos caminos** que es la pista: en `hard` **sí** le sirvió preguntas que ya había respondido (las 3, teniendo 2 vistas), mientras que en `medium` parece excluir algo. Los dos caminos no filtran igual y eso hay que leerlo en el código, no deducirlo.
 
+**AVANCE 05/08 (2.ª vuelta) — Sergio escribió DOS mensajes más y cambian el diagnóstico:**
+*«al elegir las fáciles sí pone 100, pero repite muchas»* y *«me pone arriba nunca vistas, ¿hay alguna forma de que me ponga estas solas?»*.
+
+- **«Nunca vistas» NO es un filtro, es una PRIORIDAD.** `lib/api/filtered-questions/queries.ts` ordena primero las nunca vistas (`getNeverSeenQuestionIds`) y **rellena detrás con las ya respondidas**. Lo que él ve en la página del tema (*«N vistas / N nunca vistas»*) es una estadística, no un selector. **Su cuarta pregunta tiene respuesta definitiva: esa opción NO existe hoy** — y es una petición de producto razonable, no un bug.
+- **Eso explica el caso «fáciles»:** hay **67** easy y pidió **100**; tras agotar las nunca vistas rellena repitiendo. Por diseño.
+- **Y destapa la INCOHERENCIA, que es el bug de verdad:** con `easy` **sí** rellena hasta 100 repitiendo, pero con `hard` **no** rellenó (3 existentes → sirvió 3, no 10). El mismo configurador promete un número y el servicio unas veces lo completa repitiendo y otras no. Cualquiera de las dos conductas es defendible; **tenerlas las dos a la vez no**, y es lo que hace que el contador parezca mentir.
+
 **POR DÓNDE SEGUIR:** comparar el contador del configurador POR TEMA con `lib/api/filtered-questions/queries.ts`, igual que [T-551] hizo con `estimateByLaws`. La pregunta a responder es qué filtra cada uno: dificultad, exclusión de ya respondidas, y con qué campo (`difficulty` declarada vs `global_difficulty`, que es un porcentaje y no una etiqueta).
 
 ⚠️ **NO te atasques con el 🛑 del dossier.** Salta el bloqueo de epígrafes con «13 temas `never_sourced`», pero **su oposición es PERSONALIZADA, creada por él**: no hay programa oficial que clonar, así que ese Paso 1 no aplica a este caso. Es el mismo falso bloqueo que ya costó tiempo el 04/08.
