@@ -132,7 +132,20 @@ if (require.main !== module) {
       }
     }
 
-    const [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    // `user_profiles` guarda datos personales y los roles de la flota NO tienen acceso (a
+    // propósito): con ellos esta consulta muere con 42501 y se llevaba por delante el dossier
+    // ENTERO, así que un trabajador no podía preparar NINGUNA impugnación (T-578). Se cae a
+    // `flota_dispute_contexto`, que expone solo lo no identificativo —oposición y plan— y deja
+    // fuera nombre y email. Sin esto, el trabajador deduce la oposición de los TAGS de la
+    // pregunta: así fue como el 05/08 se propuso tocar el scope de 4 oposiciones por error (T-582).
+    let p;
+    try {
+      [p] = await s`SELECT full_name, email, target_oposicion, plan_type FROM user_profiles WHERE id=${d.user_id}`;
+    } catch (e) {
+      if (e.code !== '42501') throw e;
+      const [ctx] = await s`SELECT reporter_oposicion, reporter_plan FROM flota_dispute_contexto WHERE dispute_id=${did}`;
+      p = ctx ? { full_name: null, email: null, target_oposicion: ctx.reporter_oposicion, plan_type: ctx.reporter_plan } : undefined;
+    }
 
     // --- CONSECUENCIA ECONÓMICA de aceptar, calculada ANTES de decidir ---
     // Aceptar una impugnación mueve dinero real. Que eso se vea en el momento de decidir —y no se
