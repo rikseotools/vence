@@ -7,6 +7,15 @@ import {
   type SaveAnswerRequest,
   type SaveAnswerResponse,
 } from './test-answers.types';
+import { articles, laws } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import {
+  decidirLawNamePersistida,
+  esLeyResuelta,
+  EVENTO_LAW_NAME_SIN_RESOLVER,
+  type DecisionLawName,
+} from './law-name-resuelta';
+import { ObservabilityService } from '../observability/observability.service';
 
 /**
  * Resultado de buildTestAnswerRow — el row listo para INSERT en
@@ -16,6 +25,12 @@ import {
 export interface BuiltTestAnswerRow {
   questionId: string;
   row: Record<string, unknown>;
+  /**
+   * T-559 — qué se decidió sobre `law_name` y si el hueco hay que emitirlo.
+   * Sale del helper puro para que quien tiene observabilidad (insertTestAnswer)
+   * lo emita: un `null` que podía haberse rellenado no se guarda en silencio.
+   */
+  decisionLaw: DecisionLawName;
 }
 
 /**
@@ -33,7 +48,12 @@ export interface BuiltTestAnswerRow {
 export class TestAnswersService {
   private readonly logger = new Logger(TestAnswersService.name);
 
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    // Opcional a propósito: los tests unitarios instancian el service sin él, y la
+    // observabilidad nunca puede ser motivo de que no se guarde una respuesta.
+    private readonly observability?: ObservabilityService,
+  ) {}
 
   /**
    * Helper puro estático — mapea selectedAnswer numérico a letra A-D.
@@ -150,7 +170,7 @@ export class TestAnswersService {
   buildTestAnswerRow(
     req: SaveAnswerRequest,
     userId: string,
-    options: { resolvedTema?: number } = {},
+    options: { resolvedTema?: number; lawResueltaDesdeArticulo?: string | null } = {},
   ): BuiltTestAnswerRow {
     const isPsychometric = req.questionData.questionType === 'psychometric';
 
@@ -174,6 +194,16 @@ export class TestAnswersService {
       `tema-${calculatedTema}-art-${req.questionData.article?.number || 'unknown'}-${req.questionData.article?.law_short_name || 'unknown'}-${TestAnswersService.generateContentHash(req.questionData.question, req.questionData.options)}`;
 
     const articleId = req.questionData.article?.id || null;
+
+    // T-559 — decisión ÚNICA de qué ley se persiste (núcleo `law-name-resuelta.ts`,
+    // copia paritaria del de Next). Este helper es puro, así que la resolución contra
+    // BD llega ya hecha en `options.lawResueltaDesdeArticulo`.
+    const decisionLaw = decidirLawNamePersistida({
+      delCliente: req.questionData.article?.law_short_name ?? null,
+      resueltaDesdeArticulo: options.lawResueltaDesdeArticulo ?? null,
+      tieneArticulo: !!articleId,
+      esPsicotecnica: isPsychometric,
+    });
 
     const hesitationTime = req.firstInteractionTime
       ? Math.max(0, req.firstInteractionTime - (req.questionStartTime || 0))
@@ -205,7 +235,11 @@ export class TestAnswersService {
         psychometricQuestionId: isPsychometric ? questionId : null,
         articleId,
         articleNumber: req.questionData.article?.number || 'unknown',
-        lawName: req.questionData.article?.law_short_name || 'unknown',
+        // T-559: qué ley se persiste lo decide el núcleo compartido, NO un `|| 'unknown'`.
+        // Ese relleno guardaba una ley inventada que aguas abajo se publicaba como real
+        // (notificación «Artículos Problemáticos: unknown» → /teoria/unknown → 404).
+        // `lawResueltaDesdeArticulo` lo precalcula `insertTestAnswer`, que es quien tiene BD.
+        lawName: decisionLaw.lawName,
         temaNumber: calculatedTema,
         questionType: isPsychometric ? 'psychometric' : 'legislative',
 
@@ -242,7 +276,36 @@ export class TestAnswersService {
         userBehaviorData: TestAnswersService.buildBehaviorData(req),
         learningAnalytics: TestAnswersService.buildLearningAnalytics(req),
       },
+      decisionLaw,
     };
+  }
+
+  /**
+   * Resuelve el short_name de la ley desde el `article_id` (fuente de verdad).
+   * Gemelo de `resolveLawShortNameFromArticle` del frontend.
+   *
+   * Se llama SOLO cuando el cliente no trajo una ley usable — ni ausente ni un relleno
+   * tipo 'unknown' (T-559). Devuelve null si no se puede resolver; quién decide qué se
+   * persiste con ese null es `decidirLawNamePersistida`, no este helper.
+   */
+  private async resolveLawShortNameFromArticle(
+    articleId: string | null,
+  ): Promise<string | null> {
+    if (!articleId) return null;
+    try {
+      const rows = await this.db
+        .select({ shortName: laws.shortName })
+        .from(articles)
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(eq(articles.id, articleId))
+        .limit(1);
+      return rows[0]?.shortName ?? null;
+    } catch (err) {
+      // Fallo del lookup: devolvemos null y el núcleo lo clasificará como
+      // `irresoluble_con_articulo` → se EMITE. No se traga en silencio.
+      this.logger.warn(`resolveLawShortNameFromArticle falló para ${articleId}: ${String(err)}`);
+      return null;
+    }
   }
 
   /**
@@ -262,14 +325,45 @@ export class TestAnswersService {
     options: { resolvedTema?: number } = {},
   ): Promise<SaveAnswerResponse> {
     try {
-      const { questionId, row } = this.buildTestAnswerRow(
-        req,
-        userId,
-        options,
-      );
+      // T-559 — la ley se RESUELVE antes de construir la fila. Solo se paga el lookup
+      // cuando el cliente no trajo una ley usable: su relleno ('unknown') no cuenta
+      // como ley, que es justo lo que persistió 15.109 filas con una ley inventada.
+      const lawDelCliente = req.questionData.article?.law_short_name ?? null;
+      const lawResueltaDesdeArticulo = esLeyResuelta(lawDelCliente)
+        ? null
+        : await this.resolveLawShortNameFromArticle(
+            req.questionData.article?.id || null,
+          );
+
+      const { questionId, row, decisionLaw } = this.buildTestAnswerRow(req, userId, {
+        ...options,
+        lawResueltaDesdeArticulo,
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await this.db.insert(testQuestions).values(row as any);
+
+      // Regla dura: un `null` que PODÍA haberse rellenado no se guarda en silencio.
+      // Antes esto no dejaba rastro y el defecto vivió seis meses hasta que lo
+      // reportó una usuaria. Fire-and-forget: no puede tumbar el guardado.
+      if (decisionLaw.emitir) {
+        void this.observability
+          ?.emit({
+            source: 'fargate',
+            severity: 'warn',
+            eventType: EVENTO_LAW_NAME_SIN_RESOLVER,
+            endpoint: '/api/v2/answer-and-save',
+            userId,
+            metadata: {
+              motivo: decisionLaw.motivo,
+              articleId: req.questionData.article?.id ?? null,
+              questionId,
+              escritor: 'backend',
+              lawDelCliente,
+            },
+          })
+          .catch(() => undefined);
+      }
 
       return {
         success: true,

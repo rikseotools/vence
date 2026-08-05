@@ -79,6 +79,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`npm run canary:perfil-sin-resolver`, que cuenta las curas EXCLUYENDO el tráfico headless ' +
       'de esta misma simulación.',
   },
+  // ── La ley que se guardó como "unknown" y se publicaba como si fuera una ley ──────────────
+  backfill_law_name_relleno: {
+    titulo: 'Reponer la ley real donde se guardó un relleno ("unknown") en test_questions y en las stats (T-559)',
+    ruta: 'scripts/calidad/backfill-law-name-unknown.cjs',
+    estado: 'vivo',
+    escribe: ['law_name'],
+    notas:
+      'node scripts/calidad/backfill-law-name-unknown.cjs [--apply] [--lote N]. Dry-run por ' +
+      'defecto. Resuelve la ley desde el `article_id` que la propia fila ya tiene: NO inventa ' +
+      'nada, y lo que no resuelve lo deja en NULL y lo CUENTA. Idempotente. ' +
+      'REPARA DOS TABLAS y la segunda es la que más duele: en `user_article_stats` la columna ' +
+      'va DENTRO del índice único, así que el relleno no ensuciaba un campo — PARTÍA en dos las ' +
+      'estadísticas por artículo del usuario (medido: 15.811 filas, 493 usuarios, MÁS que en el ' +
+      'origen porque ahí quedó lo anterior al backfill de junio). Por eso ahí no vale un UPDATE: ' +
+      '9.050 filas ya tienen hermana con la ley buena y el índice las rechazaría, así que se ' +
+      'FUNDEN sumando contadores y se borra la fila-relleno, en transacción. ' +
+      '`user_article_stats_pre_outbox` se deja fuera a propósito (foto congelada del cutover que ' +
+      'no lee nadie). Correrlo DESPUÉS de desplegar el arreglo del escritor: si no, el gemelo ' +
+      'del backend sigue produciendo ~800 filas/día y vuelve a crecer. Si esto vuelve a dar >0 ' +
+      'filas cuando ya estaba limpio, el defecto ha REAPARECIDO — mirar quién escribe sin pasar ' +
+      'por `lib/laws/lawNameResuelta` antes de re-ejecutar (lo canta la regla ' +
+      '`law_name_relleno_escrito` de alert-rules).',
+  },
   // ── La cabecera nunca deja nada fuera de la pantalla ──────────────────────────────────────
   sim_cabecera_alcanzable: {
     titulo: 'Comprobar que la cabecera no deja perfil ni notificaciones fuera de la pantalla (T-504)',

@@ -130,6 +130,23 @@ export const RECURSOS_SENSIBLES: RecursoSensible[] = [
       'es el temario SERVIDO: un escritor sin simulación de huérfanas puede dejar preguntas fuera de los tests en silencio. Los 31 primeros son scripts de construcción puntuales, legítimos. El 32.º (26/07/2026) es `scripts/reanclar-preguntas.cjs`: solo QUITA de la lista números explícitamente enumerados en un plan revisado (nunca añade), y lo hace en la misma transacción en la que re-ancla las preguntas de ese artículo fantasma — separarlo en verify:scope dejaría el hueco entre las dos escrituras. Trae su propia simulación de huérfanas (`lib/contenido/reanclarGuardas.js`, 13 tests): bloquea el destino sin scope y la pérdida de temas no declarada, que es justo el fallo silencioso que este trinquete vigila. ' +
       '**33.º y 34.º (01/08/2026, T-327): el creador de OPOSICIÓN PERSONALIZADA** (`lib/api/oposicionPersonalizada/guardar.ts` y su simulación). Y no pasan por `verify:scope` a propósito, porque ese pipeline **no puede aplicarse aquí**: verifica el scope contra el EPÍGRAFE OFICIAL de la oposición, y una oposición personalizada no tiene epígrafe oficial — la autoridad sobre qué entra es el propio usuario, que para eso la está creando. Someterla a `verify:scope` sería pedirle a un pipeline que compare contra un documento que no existe. Lo que sí trae, que es lo que este trinquete protege de verdad: escribe SIEMPRE scope recién creado (nunca modifica el de otra oposición, porque su `position_type` deriva del id de su propia fila y no puede colisionar), en una transacción con sus `topics`, y con simulación contra BD real (`npm run sim:oposicion-personalizada`) que comprueba lo único que puede fallar en silencio aquí — repetidos que inflan, temas vacíos y `article_numbers` a `{}` en vez de NULL',
   },
+  {
+    columna: 'law_name',
+    propiedad: 'lawName',
+    regla: 'trinquete',
+    // 6, medido el 05/08/2026 con el MISMO escaneo que hace el guardarraíl. Son 5 previos
+    // (`_cuidador_insert_tema.cjs`, `backfill-materialized-stats.mjs`,
+    // `recompute-gap-materialized-stats.mjs`, `lib/api/exam/queries.ts` y el handler del
+    // outbox) más el backfill de T-559. Una primera medición dio 3 porque el barrido se
+    // dejaba los `.mjs`: contar con un escaneo propio en vez de con el del guardarraíl es
+    // cómo se fija un trinquete por debajo de la realidad y se cree que protege.
+    techo: 6,
+    guardarrailPropio:
+      'núcleo `lib/laws/lawNameResuelta` (+ su copia paritaria `backend/src/test-answers/law-name-resuelta`, vigilada por __tests__/guardrails/lawNameResueltaParidad.test.ts) y, sobre todo, la regla `law_name_relleno_escrito` de alert-rules, que mira la TABLA y no los eventos — un escritor nuevo que se salte el núcleo tampoco emitiría',
+    porQue:
+      'NO es "una columna con el nombre de la ley": es la clave por la que se AGRUPA. La notificación de artículos problemáticos agrupa por ella, y `user_article_stats` la lleva dentro de su índice único, así que un valor de relleno no deja un hueco — inventa una ley. En T-559 (05/08/2026) el gemelo del backend guardaba el literal `unknown` mientras el de Next ya resolvía desde `article_id`: se publicó una tarjeta titulada «2 Artículos Problemáticos: unknown» que fundía Excel 365, Word 365 y Access 365, con un botón de teoría hacia /teoria/unknown (404) y un test intensivo que servía otra materia; y en la tabla derivada PARTIÓ en dos las estadísticas por artículo de 493 usuarios. 15.109 filas, 253 usuarios, seis meses y CERO eventos: lo destapó una usuaria escribiendo a soporte. ' +
+      'Se elige `trinquete` y no `guardarrail_compartido` porque ninguno de los escritores medidos DECIDE la ley, solo la propaga (el examen la recibe ya resuelta del servidor; el handler del outbox y los dos backfills de materializadas la copian de `test_questions`; el restante es un script de construcción puntual): obligarlos a importar el núcleo sería ceremonia sin protección. Lo que hay que impedir es que aparezca un escritor NUEVO que la decida por su cuenta, que es exactamente como nació el defecto',
+  },
 ]
 
 /** Un fichero de esquema DEFINE columnas, no las escribe. Se detecta por contenido, no por nombre. */

@@ -5873,7 +5873,144 @@ export const RULE_FLOTA_AUTENTICACION: AlertRule<{
   cooldownMin: 120,
 };
 
+// ────────────────────────────────────────────────────────────────
+// LEY SIN RESOLVER (T-559, 2026-08-05)
+//
+// `test_questions.law_name` guardaba el literal 'unknown' cuando el cliente no mandaba la
+// ley. Un relleno así no es un hueco: es un dato que MIENTE, y aguas abajo el sistema lo
+// trataba como una ley más — la notificación de artículos problemáticos publicaba
+// «2 Artículos Problemáticos: unknown», su botón de teoría llevaba a /teoria/unknown (404)
+// y su test intensivo acababa sirviendo otra materia.
+//
+// 15.109 filas, 253 usuarios, **seis meses, CERO eventos**. Lo destapó una usuaria
+// escribiendo a soporte. Esta regla existe para que la próxima vez lo diga la máquina.
+//
+// Vigila las DOS señales que estrena el arreglo, porque su remedio es el mismo (ir al
+// escritor) y separarlas en dos reglas solo repartiría el mismo hecho en dos correos:
+//   · `law_name_sin_resolver`         — un escritor tenía `article_id` y aun así no sacó la
+//     ley. Por construcción debería ser ~0: si sube, hay artículos huérfanos, una ley
+//     borrada o el lookup caído.
+//   · `notificacion_ley_no_resoluble` — el escudo tuvo que DESCARTAR tarjetas. Tras el
+//     backfill debe ser 0; si repunta, es que algún escritor volvió a rellenar.
+//
+// Umbral por USUARIOS distintos y no por eventos: un usuario haciendo un test de 40
+// preguntas puede generar 40 eventos del mismo defecto y eso es UN caso, no cuarenta.
+// ────────────────────────────────────────────────────────────────
+
+export interface LeySinResolverRow {
+  eventType: string;
+  eventos: number;
+  usuarios: number;
+}
+
+/** Usuarios distintos afectados en 24 h a partir de los cuales esto es un defecto y no un blip. */
+export const LEY_SIN_RESOLVER_MIN_USUARIOS = 3;
+
+export const RULE_LEY_SIN_RESOLVER: AlertRule<LeySinResolverRow> = {
+  name: 'ley_sin_resolver',
+  severity: 'warn',
+  query: sql`
+    SELECT event_type AS "eventType",
+           COUNT(*)::int AS eventos,
+           COUNT(DISTINCT user_id)::int AS usuarios
+    FROM observable_events
+    WHERE event_type IN ('law_name_sin_resolver', 'notificacion_ley_no_resoluble')
+      AND ts > NOW() - INTERVAL '24 hours'
+    GROUP BY event_type
+  `,
+  shouldFire: (rows) =>
+    rows.some((r) => r.usuarios >= LEY_SIN_RESOLVER_MIN_USUARIOS),
+  buildNotification: (rows) => {
+    const afectadas = rows.filter(
+      (r) => r.usuarios >= LEY_SIN_RESOLVER_MIN_USUARIOS,
+    );
+    return {
+      title: `Ley sin resolver en ${afectadas.length} superficie(s)`,
+      body:
+        afectadas
+          .map(
+            (r) =>
+              `  - ${r.eventType}: ${r.eventos} evento(s), ${r.usuarios} usuario(s) en 24 h`,
+          )
+          .join('\n') +
+        `\n\nQué mirar: quién escribe \`test_questions.law_name\` sin pasar por ` +
+        `\`decidirLawNamePersistida\` (lib/laws/lawNameResuelta + su copia del backend). ` +
+        `Regresión de T-559.`,
+      metadata: {
+        tipos: afectadas.map((r) => `${r.eventType}:${r.usuarios}`).join(','),
+      },
+    };
+  },
+  cooldownMin: 720, // 12 h: no es una avería que haya que atender al minuto
+};
+
+// ────────────────────────────────────────────────────────────────
+// TRINQUETE: nadie vuelve a ESCRIBIR un relleno por ley (T-559)
+//
+// La regla de arriba mira los EVENTOS que emiten los escritores. Esta mira la TABLA.
+// No es redundancia: son dos instrumentos con modos de fallo distintos, y el que importa
+// es el segundo. Si mañana aparece un escritor NUEVO que no pasa por el núcleo —otro
+// gemelo, un backfill a mano, una migración— no emitirá nada, la regla de eventos seguirá
+// en silencio y ese silencio se leería como salud. Que es exactamente cómo este defecto
+// sobrevivió seis meses.
+//
+// Se comprueba el INVARIANTE donde vive el daño: ninguna fila escrita en las últimas 24 h
+// puede tener un relleno por `law_name`. Después del arreglo + backfill esto es 0 por
+// construcción, así que cualquier fila es una regresión demostrable, no una cuestión de umbral.
+//
+// No se monta como módulo de canario aparte a propósito: el motor de alertas ya corre SQL
+// contra RDS cada ciclo, y añadir un @Cron nuevo para una consulta sería un mecanismo en
+// paralelo al que ya juzga invariantes.
+//
+// La lista de rellenos está replicada en SQL (aquí y en el backfill) porque el filtro tiene
+// que correr dentro de la consulta; `__tests__/guardrails/lawNameResueltaParidad.test.ts`
+// vigila que el criterio no diverja del núcleo.
+// ────────────────────────────────────────────────────────────────
+
+export interface LawNameRellenoRow {
+  filas: number;
+  usuarios: number;
+  ejemploArticleId: string | null;
+}
+
+export const RULE_LAW_NAME_RELLENO_ESCRITO: AlertRule<LawNameRellenoRow> = {
+  name: 'law_name_relleno_escrito',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int                       AS filas,
+           COUNT(DISTINCT user_id)::int        AS usuarios,
+           MAX(article_id::text)               AS "ejemploArticleId"
+    FROM test_questions
+    WHERE created_at > NOW() - INTERVAL '24 hours'
+      AND lower(btrim(law_name)) IN ('unknown', 'undefined', 'null', 'nan')
+  `,
+  // Cero tolerancia: tras el arreglo esto no puede pasar ni una vez.
+  shouldFire: (rows) => (rows[0]?.filas ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Alguien volvió a escribir una ley de relleno (${r.filas} fila(s))`,
+      body:
+        `${r.filas} fila(s) de test_questions escritas en las últimas 24 h llevan un relleno ` +
+        `por law_name, afectando a ${r.usuarios} usuario(s).\n\n` +
+        `Esto debería ser IMPOSIBLE desde T-559: todo escritor pasa por ` +
+        `\`decidirLawNamePersistida\`. Que haya filas significa que hay un escritor nuevo ` +
+        `saltándoselo (otro gemelo, un backfill a mano, una migración).\n\n` +
+        `Ejemplo de article_id afectado: ${r.ejemploArticleId ?? '(sin artículo)'}\n` +
+        `Reparar con: node scripts/calidad/backfill-law-name-unknown.cjs --apply`,
+      metadata: { filas: r.filas, usuarios: r.usuarios },
+    };
+  },
+  cooldownMin: 720,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Trinquete de T-559: la tabla no puede volver a tener una ley de relleno. Mira la BD y no
+  // los eventos a propósito — un escritor nuevo que se salte el núcleo tampoco emitiría.
+  RULE_LAW_NAME_RELLENO_ESCRITO as AlertRule,
+  // Ley sin resolver (2026-08-05, T-559): el escritor guardaba una ley inventada y
+  // NINGUNA regla lo miraba — 15.109 filas y 253 usuarios en seis meses de silencio.
+  RULE_LEY_SIN_RESOLVER as AlertRule,
   // El barrido de rutas encontró una página que un usuario no puede usar (T-487). Vence Sim
   // emitía desde siempre y NINGUNA regla miraba sus eventos: el resultado moría en la terminal.
   // Un trabajador de la flota latiendo pero sin poder autenticar (T-486): el latido no puede

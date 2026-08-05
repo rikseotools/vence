@@ -11,6 +11,12 @@ import { resolveTemaNumber } from '@/lib/api/tema-resolver/queries'
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type { SaveAnswerRequest, SaveAnswerResponse, DeviceInfo } from './schemas'
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
+import {
+  decidirLawNamePersistida,
+  esLeyResuelta,
+  EVENTO_LAW_NAME_SIN_RESOLVER,
+} from '@/lib/laws/lawNameResuelta'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 // ============================================
 // HELPERS PRIVADOS
@@ -154,9 +160,11 @@ async function computeTema(
 
 /**
  * Resuelve el short_name de la ley a partir del article_id (fuente de verdad).
- * Se usa SOLO cuando el cliente no manda `article.law_short_name`, para no
- * persistir el literal "unknown" (causa del bug del enlace /api/teoria/unknown/...
- * → 404; ver feedback Rosa 14/06). Devuelve null si no se puede resolver.
+ * Se usa cuando el cliente no manda una ley USABLE en `article.law_short_name`
+ * — ni ausente ni un relleno tipo "unknown" (causa del bug del enlace
+ * /api/teoria/unknown/... → 404; feedback Rosa 14/06 y T-559 05/08).
+ * Devuelve null si no se puede resolver; quien decide qué se persiste con ese
+ * null es `decidirLawNamePersistida`, no este helper.
  * Cacheable por petición vía `lawCache` para no repetir lookups en batch.
  */
 async function resolveLawShortNameFromArticle(
@@ -204,13 +212,45 @@ async function buildTestAnswerRow(
 
   const articleId = req.questionData.article?.id || null
 
-  // Resolver la ley desde el artículo si el cliente no la mandó, para no guardar
-  // el literal "unknown" (que luego rompe el enlace de teoría → 404). Si no se
-  // puede resolver, va null (honesto), no "unknown".
-  let lawShortName: string | null = req.questionData.article?.law_short_name || null
-  if (!lawShortName && articleId) {
-    lawShortName = await resolveLawShortNameFromArticle(articleId, lawCache)
+  // Qué ley se persiste: lo decide el núcleo puro `lib/laws/lawNameResuelta` (T-559),
+  // compartido con el gemelo del backend y con los escudos de UI. Aquí solo se le da
+  // de comer y se emite si dice que hay hueco.
+  //
+  // El lookup contra la BD solo se paga cuando el cliente NO trajo una ley usable —
+  // pero su relleno ('unknown') tampoco le gana a la verdad, que es justo el bug que
+  // persistió 15.109 filas con una ley inventada.
+  const lawDelCliente = req.questionData.article?.law_short_name ?? null
+  const lawResueltaDesdeArticulo = esLeyResuelta(lawDelCliente)
+    ? null
+    : await resolveLawShortNameFromArticle(articleId, lawCache)
+
+  const decisionLaw = decidirLawNamePersistida({
+    delCliente: lawDelCliente,
+    resueltaDesdeArticulo: lawResueltaDesdeArticulo,
+    tieneArticulo: !!articleId,
+    esPsicotecnica: isPsychometric,
+  })
+
+  // Regla dura: un `null` que PODÍA haberse rellenado no se guarda en silencio.
+  // Antes esto no dejaba rastro y el defecto vivió seis meses hasta que escribió una usuaria.
+  if (decisionLaw.emitir) {
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: EVENTO_LAW_NAME_SIN_RESOLVER,
+      endpoint: '/api/v2/answer-and-save',
+      userId,
+      metadata: {
+        motivo: decisionLaw.motivo,
+        articleId,
+        questionId,
+        escritor: 'next',
+        lawDelCliente,
+      },
+    })
   }
+
+  const lawShortName = decisionLaw.lawName
 
   const hesitationTime = req.firstInteractionTime
     ? Math.max(0, req.firstInteractionTime - req.questionStartTime)

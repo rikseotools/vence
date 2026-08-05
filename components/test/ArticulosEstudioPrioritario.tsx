@@ -4,13 +4,17 @@
 'use client'
 
 import { useMemo } from 'react'
+import { esLeyResuelta } from '@/lib/laws/lawNameResuelta'
 
 // Escudo UI: una ley es "enlazable" a teoría solo si está resuelta. El literal
 // "unknown" (o vacío) venía del bug del WRITE y generaba /api/teoria/unknown/N → 404.
-// Exportada para test.
-export function isResolvableLaw(lawName: string | null | undefined): boolean {
-  return !!lawName && lawName.trim().toLowerCase() !== 'unknown'
-}
+//
+// T-559: el criterio ya NO se escribe aquí — vive en `lib/laws/lawNameResuelta` y lo
+// comparten el escritor, el escudo de la notificación, el backfill y el canario. Había
+// dos copias sueltas (esta y el `if` de TemaTestPage) y solo cubrían 'unknown', así que
+// 'undefined'/'null' pasaban limpios. Se conserva el nombre exportado por los tests que
+// ya lo usan.
+export const isResolvableLaw = esLeyResuelta
 
 interface ArticulosEstudioPrioritarioProps {
   userAnswers: any[]

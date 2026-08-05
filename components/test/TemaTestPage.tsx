@@ -12,6 +12,7 @@ import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import ArticleModal from '@/components/ArticleModal'
 import ArticulosEstudioPrioritario from '@/components/test/ArticulosEstudioPrioritario'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import { esLeyResuelta } from '@/lib/laws/lawNameResuelta'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 
@@ -316,9 +317,14 @@ export default function TemaTestPage({
   }
 
   function openArticleModal(articleNumber: string, lawName: string) {
-    // Escudo: si la ley no se resolvió (vacío o el literal "unknown" del bug del
+    // Escudo: si la ley no se resolvió (vacío o un relleno tipo "unknown" del bug del
     // WRITE), no abrir teoría — generaba /api/teoria/unknown/N → 404.
-    if (!lawName || lawName.trim().toLowerCase() === 'unknown') return
+    // T-559: el criterio es el compartido (`lib/laws/lawNameResuelta`), no un `if` propio.
+    // ⚠️ Sin bloques anidados a propósito: el guard de `criticalValidations` parsea este
+    // cuerpo con una regex que se corta en la primera llave de cierre, así que un `if` con
+    // llaves lo deja ciego. Ni siquiera se puede CITAR esa regex aquí: al escribirla en el
+    // comentario, su llave de cierre rompía el mismo guard (pasó al escribir esta línea).
+    if (!esLeyResuelta(lawName)) return
     const lawSlug = generateLawSlug(lawName)
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)

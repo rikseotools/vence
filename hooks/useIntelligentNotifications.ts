@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useLawSlugs } from '../contexts/LawSlugContext'
 import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { particionarPorLeyResuelta } from '@/lib/notifications/leyPublicable'
+import { emitClientEvent } from '@/lib/observability/client'
 import type {
   Notification,
   NotificationTypeId,
@@ -993,7 +995,33 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           law_full_name: string
           articles: Array<{ article_number: string; accuracy_percentage: number; law_short_name: string; [key: string]: unknown }>
         }
-        const articlesByLaw = articles.reduce<Record<string, LawGroup>>((acc, article) => {
+        // 🛡️ ESCUDO T-559 — no publicar una ley que no resuelve.
+        //
+        // El agregador agrupa por `law_name`, así que un relleno persistido ('unknown')
+        // se convertía en una LEY INVENTADA que fundía artículos de Excel 365, Word 365 y
+        // Access 365 en una sola tarjeta, con un botón de teoría hacia `/teoria/unknown`
+        // (404) y un test intensivo que acababa sirviendo otra materia.
+        //
+        // Los otros dos consumidores de este dato (TemaTestPage, ArticulosEstudioPrioritario)
+        // ya tenían escudo desde junio/2026; esta pantalla era la única sin él, y es
+        // justamente la que se lo enseña al usuario.
+        //
+        // Se descarta, NO se rellena con otra cosa: una tarjeta cuya ley no sabemos no se
+        // puede accionar. Y se EMITE, porque tapar en silencio sería el mismo defecto.
+        const { publicables, descartados, leyesDescartadas } = particionarPorLeyResuelta(articles)
+        if (descartados.length > 0) {
+          emitClientEvent({
+            severity: 'warn',
+            eventType: 'notificacion_ley_no_resoluble',
+            metadata: {
+              descartados: descartados.length,
+              total: articles.length,
+              leyes: leyesDescartadas,
+            },
+          })
+        }
+
+        const articlesByLaw = publicables.reduce<Record<string, LawGroup>>((acc, article) => {
           // 🎯 VALIDAR law_name con sistema centralizado (CORREGIDO: usar law_name, no law_short_name)
           const validatedShortName = validateAndMapLawShortName(
             article.law_name,  // ✅ CORRECTO: usar law_name (campo que existe)

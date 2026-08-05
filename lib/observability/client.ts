@@ -134,6 +134,18 @@ export type ClientEventType =
   // cruzado con el canario `perfil-sin-resolver` dice si además dejan de nacer.
   // `metadata`: { motivo, rastroLimpiado }.
   | 'sesion_fantasma_soltada'
+  // Se ha DESCARTADO una tarjeta de "artículos problemáticos" porque su ley no resuelve
+  // (T-559, 05/08/2026). Tipo PROPIO por lo mismo que `usage_limit_hit`: interesa CONSERVAR
+  // visibilidad sin contarlo como error de cliente — igual que `sesion_fantasma_soltada`,
+  // **no es el error, es la CURACIÓN**. El escritor guardaba `law_name='unknown'` y esta
+  // pantalla lo publicaba como si fuera una ley ("2 Artículos Problemáticos: unknown"),
+  // con un botón de teoría que llevaba a `/teoria/unknown` → 404 y un test intensivo que
+  // servía otra materia. 15.109 filas, 253 usuarios, **cero eventos en seis meses**: se supo
+  // porque escribió una usuaria. Sin este evento el escudo sería otro silencio — taparía la
+  // tarjeta rota y nadie sabría cuántas quedan ni si el backfill las está drenando.
+  // Debe tender a 0 al aplicar el backfill; si repunta, es que un escritor volvió a rellenar.
+  // `metadata`: { descartados, total, leyes }.
+  | 'notificacion_ley_no_resoluble'
   // Reintento de red del wrapper fetchWithChallenge (fix 24/07/2026). Un
   // `Failed to fetch` transitorio en la ruta crítica (generar test) se
   // reintenta con backoff en vez de dead-end. `outcome:'recovered'` (severity

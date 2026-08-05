@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ObservabilityModule } from '../observability/observability.module';
 import { TestAnswersService } from './test-answers.service';
 
 /**
@@ -15,6 +16,10 @@ import { TestAnswersService } from './test-answers.service';
  * Ver docs/architecture/bloque3-answer-save-plan.md §2.4.
  */
 @Module({
+  // ObservabilityModule: T-559 — el service emite `law_name_sin_resolver` cuando había
+  // `article_id` y aun así no salió la ley. Es @Global, pero se declara igual que en
+  // AnswerSaveModule para que la dependencia se vea leyendo el módulo.
+  imports: [ObservabilityModule],
   providers: [TestAnswersService],
   exports: [TestAnswersService],
 })
