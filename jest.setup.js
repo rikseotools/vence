@@ -13,6 +13,15 @@ if (typeof globalThis.Request === 'undefined') {
   globalThis.Headers = nodeFetch.Headers
 }
 
+// jsdom 20 no expone BroadcastChannel (llega en jsdom 22.1). Node sí lo trae nativo
+// desde v15 (vía worker_threads) — usamos ese, que es real, no un mock. Sin esto, el
+// guard `typeof BroadcastChannel !== 'undefined'` de useDailyQuestionLimit ([T-418],
+// sincronía del cupo diario entre pestañas) es SIEMPRE falso en tests: el código fail-open
+// no rompe nada, pero tampoco se puede probar la sincronía cross-tab que motivó el cambio.
+if (typeof globalThis.BroadcastChannel === 'undefined') {
+  globalThis.BroadcastChannel = require('worker_threads').BroadcastChannel
+}
+
 // Polyfills para jose (RS256/JWKS): jsdom no expone TextEncoder/TextDecoder ni
 // crypto.subtle, que jose usa para (de)codificar base64url y firmar/verificar.
 // Condicional para no pisar lo que ya provea el entorno.

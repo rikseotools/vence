@@ -234,7 +234,8 @@ export default function TestLayout({
     resetTime,
     showUpgradeModal,
     setShowUpgradeModal,
-    recordAnswer
+    recordAnswer,
+    refreshStatus
   } = useDailyQuestionLimit()
 
   // 📊 Meta diaria de estudio (solo para registrar respuestas)
@@ -286,7 +287,15 @@ export default function TestLayout({
   // El servidor puede rechazar por cupo agotado aunque el contador de ESTA cuenta esté a 0
   // (quien acaba de cambiar de cuenta en el mismo equipo). Sin esto, el rechazo se quedaba en la
   // cola de guardado y el usuario seguía respondiendo sin que se guardara nada. T-304.
-  useDailyLimitEvent(useCallback(() => setShowUpgradeModal(true), [setShowUpgradeModal]))
+  //
+  // `refreshStatus()` [T-418, 05/08]: abrir el modal NO tocaba `isLimitReached`, así que al
+  // cerrarlo la puerta de `handleAnswerClick` seguía abierta y se podía seguir contestando en
+  // balde. Forzar una lectura fresca del servidor (bypassa el cache de 1 min) cierra esa puerta
+  // con el conteo real, sea cual sea la causa del 403 (cuenta o dispositivo).
+  useDailyLimitEvent(useCallback(() => {
+    setShowUpgradeModal(true)
+    refreshStatus()
+  }, [setShowUpgradeModal, refreshStatus]))
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState<number>(0)

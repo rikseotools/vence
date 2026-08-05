@@ -55,9 +55,11 @@ jest.mock('@/lib/api/auth/verifyAuth', () => ({
 
 // Cache Redis: en test ejecuta SIEMPRE la función (sin cachear) para que cada llamada
 // lea "de BD" (mockExecute), igual que el contrato original sin caché.
+const mockInvalidateMany = jest.fn()
 jest.mock('@/lib/cache/redis', () => ({
   getOrSet: (_k: string, _ttl: number, fn: () => unknown) => fn(),
   invalidate: jest.fn(),
+  invalidateMany: (...a: unknown[]) => mockInvalidateMany(...a),
 }))
 
 // Mock the graduated limit module to always return default limit (25)
@@ -89,6 +91,7 @@ beforeEach(() => {
   mockRpc.mockReset()
   mockGetUser.mockReset()
   mockExecute.mockReset()
+  mockInvalidateMany.mockReset()
   // Adaptador SQL→RPC: enruta por nombre de función y reconstruye los params legacy
   // para que mockRpc reciba exactamente ('fn', {p_user_id/p_limit/p_device_id}).
   // Un {error} del setup => execute lanza (Drizzle lanza ante error de query); un
@@ -488,6 +491,21 @@ describe('incrementDailyCount', () => {
   it('does not throw on network exception (fail silent)', async () => {
     mockRpc.mockRejectedValue(new Error('network timeout'))
     await expect(incrementDailyCount('user-123')).resolves.toBeUndefined()
+  })
+
+  // [T-418] `invalidateDailyLimitCache` invalidaba solo `daily_limit:${userId}` (la
+  // clave de /api/daily-limit), pero getDailyLimitStatus — la fuente real de
+  // questionsToday — cachea aparte en `daily_limit_status:${userId}` desde el
+  // incidente del 07/07. Sin invalidar ESA clave, quien respondía justo antes de
+  // topar el cupo del dispositivo podía seguir contestando hasta 30s de más:
+  // el conteo servido seguía siendo el de antes de la respuesta.
+  it('invalida TANTO daily_limit: como daily_limit_status: tras incrementar', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: null })
+    await incrementDailyCount('user-123')
+    expect(mockInvalidateMany).toHaveBeenCalledWith([
+      'daily_limit:user-123',
+      'daily_limit_status:user-123',
+    ])
   })
 })
 

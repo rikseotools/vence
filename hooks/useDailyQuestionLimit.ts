@@ -32,6 +32,40 @@ const CACHE_TTL = 60000 // 1 minuto — para evitar queries excesivas mid-test
 // y ambos hacen fetchStatus(true), solo se ejecuta 1 query real
 let inflightFetch: Promise<void> | null = null
 
+// Sincronización ENTRE PESTAÑAS ([T-418], 05/08/2026). El `CustomEvent('dailyLimitUpdated')`
+// de abajo viaja por `window`, que es UN documento — o sea, dentro de una sola pestaña. Con
+// dos pestañas del mismo test abiertas (lo normal estudiando), cada una lleva su propio
+// contador optimista y ninguna se entera de la otra: la pestaña A gasta la última pregunta, la
+// B sigue creyendo que le queda cupo, le deja contestar, y el servidor rechaza el guardado con
+// 403 — la respuesta se pierde en silencio, corregida en pantalla como si se hubiera guardado.
+// Medido: 607 usuarios, 1.317 rechazos en 14 días; reproducido con navegador real
+// (`scratchpad/t418/sim-goteo-2pestanas.ts`). `BroadcastChannel` sí cruza pestañas del mismo
+// origen. Una sola conexión a nivel de módulo; fail-open si el navegador no lo soporta (no hay
+// sincronía cross-tab, igual que antes — no se rompe nada nuevo).
+const dailyLimitChannel: BroadcastChannel | null =
+  typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
+    ? new BroadcastChannel('vence-daily-limit')
+    : null
+// `unref` es de la implementación de Node (tests/SSR) — no existe en el navegador. Sin
+// esto, cualquier proceso Node que importe este módulo (jest, un script de simulación)
+// se queda colgado tras terminar: el canal es un handle async que nunca se cierra solo.
+;(dailyLimitChannel as unknown as { unref?: () => void } | null)?.unref?.()
+
+interface DailyLimitBroadcastMessage {
+  userId: string
+  status: DailyLimitStatus
+}
+
+function broadcastDailyLimitUpdate(userId: string, detail: DailyLimitStatus): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('dailyLimitUpdated', { detail }))
+  // `userId` viaja en el mensaje porque, a diferencia del CustomEvent (que solo llega
+  // dentro de esta pestaña, con un único usuario logueado), BroadcastChannel es del
+  // ORIGEN entero — si otra pestaña tiene otra cuenta abierta (perfil/incógnito
+  // aparte; el coste de comprobarlo es mínimo), no debe pisar su estado con el ajeno.
+  dailyLimitChannel?.postMessage({ userId, status: detail } satisfies DailyLimitBroadcastMessage)
+}
+
 export function useDailyQuestionLimit() {
   const { user, userProfile, isPremium, isLegacy } = useAuth() as any
 
@@ -159,16 +193,12 @@ export function useDailyQuestionLimit() {
           }
           setStatus(newStatus)
 
-          // Sincronizar otros componentes que usen este hook. Necesario aquí
-          // (no solo en recordAnswer) porque cuando dos componentes se montan
-          // simultáneamente, el segundo cae en la rama de deduplicación
-          // (`inflightFetch`) y no escribe su propio state — solo se entera
-          // del fetch completado vía este evento.
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('dailyLimitUpdated', {
-              detail: newStatus
-            }))
-          }
+          // Sincronizar otros componentes que usen este hook (misma pestaña) y otras
+          // pestañas del mismo origen. Necesario aquí (no solo en recordAnswer) porque
+          // cuando dos componentes se montan simultáneamente, el segundo cae en la rama
+          // de deduplicación (`inflightFetch`) y no escribe su propio state — solo se
+          // entera del fetch completado vía este evento.
+          broadcastDailyLimitUpdate(user.id, newStatus)
         }
 
         lastFetchRef.current = now
@@ -250,12 +280,10 @@ export function useDailyQuestionLimit() {
 
         setStatus(newStatus)
 
-        // Emitir evento para sincronizar otros componentes que usen este hook
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('dailyLimitUpdated', {
-            detail: newStatus
-          }))
-        }
+        // Sincronizar otros componentes del hook, misma pestaña y otras pestañas del
+        // mismo origen ([T-418]: es este optimista, disparado AL CLICAR y sin esperar
+        // red, el que cierra la ventana del goteo entre pestañas).
+        broadcastDailyLimitUpdate(user.id, newStatus)
 
         // Mostrar modal si alcanzó el limite
         if (isLimitReached) {
@@ -307,7 +335,9 @@ export function useDailyQuestionLimit() {
     }
   }, [fetchStatus])
 
-  // Escuchar eventos de sincronización de otros componentes
+  // Escuchar eventos de sincronización de otros componentes (misma pestaña) y de otras
+  // pestañas del mismo origen ([T-418]: sin el segundo listener, el broadcast de arriba
+  // no serviría de nada — hace falta quien lo reciba en la pestaña B).
   useEffect(() => {
     const handleLimitUpdate = (event: Event) => {
       if (isMountedRef.current && (event as CustomEvent).detail) {
@@ -317,12 +347,22 @@ export function useDailyQuestionLimit() {
         }))
       }
     }
-
     window.addEventListener('dailyLimitUpdated', handleLimitUpdate)
+
+    const handleChannelMessage = (event: MessageEvent<DailyLimitBroadcastMessage>) => {
+      if (!isMountedRef.current || !event.data) return
+      // Ignorar broadcasts de OTRA cuenta (pestaña con otro perfil/incógnito abierto en
+      // el mismo origen): aplicarlo pisaría el estado de este usuario con el ajeno.
+      if (!user?.id || event.data.userId !== user.id) return
+      setStatus(prev => ({ ...prev, ...event.data.status }))
+    }
+    dailyLimitChannel?.addEventListener('message', handleChannelMessage)
+
     return () => {
       window.removeEventListener('dailyLimitUpdated', handleLimitUpdate)
+      dailyLimitChannel?.removeEventListener('message', handleChannelMessage)
     }
-  }, [])
+  }, [user?.id])
 
   // Auto-refresh cuando cambia el usuario o perfil
   useEffect(() => {
@@ -349,6 +389,11 @@ export function useDailyQuestionLimit() {
     return () => clearInterval(interval)
   }, [status.resetTime, status.isPremiumUser, fetchStatus])
 
+  // Memoizada ([T-418], 05/08): una función nueva en cada render aquí rompía la
+  // estabilidad que `useDailyLimitEvent` da por hecha vía `useCallback` en el caller —
+  // el efecto se resuscribía en cada render de este hook en vez de solo al montar.
+  const refreshStatus = useCallback(() => fetchStatus(true), [fetchStatus])
+
   return {
     // Estado
     questionsToday: status.questionsToday,
@@ -371,6 +416,6 @@ export function useDailyQuestionLimit() {
 
     // Acciones
     recordAnswer,
-    refreshStatus: () => fetchStatus(true)
+    refreshStatus
   }
 }
