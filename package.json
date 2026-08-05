@@ -155,6 +155,7 @@
     "sim:cupo-simulacro": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-cupo-simulacro.ts",
     "audit:psico-explicacion": "node scripts/audit-psico-explicacion.cjs",
     "audit:explicacion-truncada": "node --env-file=.env.local scripts/audit-explicacion-truncada.cjs",
+    "audit:explicacion-yuxtaposicion": "node --env-file=.env.local scripts/audit-explicacion-yuxtaposicion.cjs",
     "audit:tablas-refluidas": "node scripts/audit-tablas-refluidas.cjs",
     "sim:contador-servible": "npx tsx --env-file=.env.local scripts/sim/sim-contador-servible.ts",
     "epigrafe:revision": "node --env-file=.env.local scripts/temario/revisar-oposicion.cjs",

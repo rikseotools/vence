@@ -235,6 +235,61 @@ auto-corregir la clave ni dar por buena una cita porque «suene» al artículo.
 > artículo fila a fila, así que se emite desde el CLI (`barrido-citas.cjs --json`). Un cero en el
 > badge significa «nadie ha corrido el barrido», no «no hay ninguna».
 
+## La explicación reproduce la opción FALSA sin veredicto (`explicacion_yuxtaposicion`)
+
+**Frase-gatillo:** *"revisa las explicaciones que reproducen la opción falsa"* (T-525).
+
+La explicación (plantilla de viñetas `- A) …`) cita la opción **FALSA** casi carácter por carácter,
+con la palabra corregida **PEGADA** detrás o delante, y **sin decir en ningún momento que es
+incorrecta**. Caso que lo motiva (impugnación `b061898d`, Adrián Castelló):
+
+> Opción A: *«La delimitación de las competencias de la Unión se rige por el principio de
+> cooperación leal»* (el principio real es «atribución», no «cooperación leal»).
+>
+> Explicación: *«- A) Art. 5.1: La delimitación de las competencias de la Unión se rige por el
+> principio de cooperación leal atribución.»*
+
+La corrección («atribución») está pegada al final de la frase FALSA, sin coma, sin veredicto y sin
+decir cuál de las dos palabras es la buena. El opositor falla, lee la "explicación" y encuentra una
+frase que no está en la ley y no sabe distinguir del texto legal real.
+
+**NO confundir** con *"revisa las explicaciones descuadradas"* (`explicacion_estructura_rota`, más
+abajo): aquello es un defecto de FORMATO, esto es de FONDO — la frase que se lee nunca existió.
+Tampoco con *"revisa las citas"* (`cita_no_literal`): aquel juzga el blockquote contra el artículo;
+aquí no hay blockquote, es la opción contra su propio segmento de explicación.
+
+```bash
+npm run audit:explicacion-yuxtaposicion               # informe (top por exposición)
+npm run audit:explicacion-yuxtaposicion -- --json      # resumen para health-sweep
+npm run audit:explicacion-yuxtaposicion -- --muestra 20 # muestra aleatoria, para re-calibrar
+```
+
+**El criterio** (núcleo puro `lib/health/explicacionYuxtaposicion.cjs`): por cada opción que NO es
+la correcta, se compara su segmento de explicación con el texto de la opción, normalizados. Se
+marca cuando uno contiene casi al otro (ratio de longitud 0,85–1,7) y el segmento **no** lleva
+ninguna palabra ni marca de veredicto. Medido el 05/08/2026 sobre las 2.816 activas con plantilla de
+viñetas: **172 preguntas / 210 segmentos, 26 de examen oficial**. Muestra aleatoria de 30 juzgada a
+mano: 28/30 son el fenómeno real.
+
+**Las tres exclusiones que sostienen la precisión:** opción de menos de 20 caracteres (el ratio se
+vuelve ruido con textos cortos tipo checklist de ofimática), marca de veredicto por SÍMBOLO (`✓`/`✗`,
+típico de preguntas «señale la excepción» donde las demás opciones SÍ pertenecen a la lista) y
+afirmación en prosa del mismo fenómeno («: cierto.», «Sí es/está…», «también está…», «está en el
+listado») — todas comunican un veredicto, aunque sea "sí", y no son el silencio que define el
+defecto.
+
+**Cómo se repara:** decir **QUÉ PALABRA SOBRA y CUÁL ES LA DEL PRECEPTO** contra el artículo
+vinculado en la BD — poner un «INCORRECTA» delante NO basta, hay que escribir la corrección
+explícita, que es justo lo que la yuxtaposición se calla. Reescribir con
+`scripts/aplicar-explicacion.ts` (estructura → texto), que además deja la pregunta barajable; el
+formato viejo por texto no se transcribe bien. En las preguntas de examen oficial: tocar **solo** la
+explicación, nunca el enunciado ni las opciones. NUNCA auto-corregir la clave.
+
+> ⚠️ Este hallazgo **no lo refresca el `@Cron` nocturno** (CLI-only, misma razón que `cita_no_literal`):
+> compara, opción por opción, el segmento contra el texto de la opción, y eso no cabe en un `WHERE`.
+> Se emite desde el CLI (`audit-explicacion-yuxtaposicion.cjs --json`). Un cero en el badge significa
+> «nadie ha corrido el barrido», no «no hay ninguna».
+
 ## La explicación se PINTA rota (`explicacion_estructura_rota`)
 
 *Frase-gatillo: **"revisa las explicaciones descuadradas"***

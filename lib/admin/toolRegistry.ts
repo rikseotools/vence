@@ -370,6 +370,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'en MAYÚSCULA (la «O» de una tabla de coordenadas es Oeste, no una conjunción). ' +
       'La muestra es determinista a propósito (sin Math.random): re-calibrar exige reproducirla.',
   },
+  audit_explicacion_yuxtaposicion: {
+    titulo: 'Explicaciones que reproducen la opción FALSA con la palabra buena pegada, sin veredicto',
+    ruta: 'scripts/audit-explicacion-yuxtaposicion.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run audit:explicacion-yuxtaposicion [-- --json] [-- --muestra 20]`. SOLO LEE (T-525). ' +
+      'Núcleo puro `lib/health/explicacionYuxtaposicion.cjs` (27 tests con casos reales del banco), ' +
+      'cableado al sweep (subproceso, kind `explicacion_yuxtaposicion`) desde `scripts/health-sweep.cjs`. ' +
+      'CLI-only por la MISMA razón que `cita_no_literal`/`barrido-citas.cjs`: compara, opción por ' +
+      'opción, el segmento de la explicación contra el texto de esa opción, y eso no cabe en un ' +
+      '`WHERE` ni lo puede correr el backend NestJS (proyecto aparte, sin `lib/`). ' +
+      'CRITERIO: por cada opción que NO es la correcta, ¿su segmento de explicación (viñeta `- A) …`) ' +
+      'CONTIENE casi la opción entera (ratio de longitud 0,85-1,7) y NO lleva ninguna palabra ni ' +
+      'marca de veredicto? Medido 05/08/2026 sobre las 2.816 activas con plantilla de viñetas: 172 ' +
+      'preguntas / 210 segmentos, 26 de examen oficial; 28/30 en muestra aleatoria juzgada a mano. ' +
+      '⚠️ Tres exclusiones sostienen la precisión — sin ellas el ratio de opciones CORTAS (tipo ' +
+      'checklist de ofimática, "Sumar"/"Recuento") se dispara de casualidad, y preguntas «señale la ' +
+      'excepción» marcan las demás opciones con un ✓ o una afirmación en prosa («cierto», «sí está», ' +
+      '«también está», «está en el listado») que SÍ comunican un veredicto (aunque sea "sí") y no son ' +
+      'el silencio que define el defecto. GOTCHA de la calibración: `\\b` en JS NO reconoce vocales ' +
+      'acentuadas como "de palabra", así que un patrón cerrado con `est[aá]\\b` deja de casar "está" ' +
+      'seguida de espacio — el límite ya ocurrió entre la "t" y la "á". Se cierra con lookahead ' +
+      'explícito (`(?=\\s|$|[.,;:])`) en su lugar; el test que lo demuestra pilló el bug antes de mandar.',
+  },
   // ── salud del contenido: teoría servida ───────────────────────────────────────────────────
   audit_tablas_refluidas: {
     titulo: 'Tablas de boletín que se sirven como párrafo corrido (el punto ciego de detectFlattenedTable)',

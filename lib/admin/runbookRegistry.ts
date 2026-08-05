@@ -451,6 +451,23 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'opositor sin la parte que faltaba. Núcleo `lib/health/explicacionTruncada.cjs`; para ver la cola de ' +
       'trabajo por exposición, `npm run audit:explicacion-truncada`.',
   },
+  explicacion_yuxtaposicion: {
+    title: 'La explicación reproduce la opción FALSA con la palabra buena pegada, sin veredicto',
+    triggerPhrase: 'revisa las explicaciones que reproducen la opción falsa',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    comando: 'npm run audit:explicacion-yuxtaposicion',
+    claudeHace:
+      'la explicación (plantilla de viñetas `- A) …`) reproduce la opción FALSA casi carácter por carácter, con la palabra corregida ' +
+      'PEGADA detrás o delante y SIN decir en ningún momento que esa opción es incorrecta: «- A) Art. 5.1: La delimitación de las ' +
+      'competencias de la Unión se rige por el principio de cooperación leal atribución.» — «atribución» es la corrección, pegada sin ' +
+      'coma ni veredicto a la frase FALSA. El opositor falla, lee la "explicación" y no tiene forma de distinguir el texto legal real ' +
+      'del inventado (lo cazó Adrián Castelló, impugnación `b061898d`). NO confundir con «revisa las explicaciones descuadradas» (defecto ' +
+      'de FORMATO) ni con «revisa las citas» (juzga el blockquote; aquí no hay blockquote). Reparar diciendo QUÉ PALABRA SOBRA y CUÁL ES ' +
+      'LA DEL PRECEPTO contra el artículo vinculado —poner un «INCORRECTA» delante NO basta, hay que decir la corrección explícita, que es ' +
+      'justo lo que la yuxtaposición se calla— y reescribir con `scripts/aplicar-explicacion.ts`. En las 26 de examen oficial: tocar SOLO ' +
+      'la explicación, nunca el enunciado ni las opciones. NUNCA auto-corregir la clave. Núcleo `lib/health/explicacionYuxtaposicion.cjs` ' +
+      '(CLI-only: compara, opción por opción, el segmento contra el texto de la opción, y eso no cabe en un `WHERE`).',
+  },
   vinculo_articulo_vecino: {
     title: 'Pregunta colgada de un artículo que no la responde (lo hace un vecino)',
     triggerPhrase: 'revisa los vínculos al artículo vecino',
