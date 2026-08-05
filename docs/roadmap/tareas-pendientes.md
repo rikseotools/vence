@@ -842,6 +842,26 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-578] 🟡 [ABIERTO 05/08/2026] `vence_coordinacion`/`vence_lector` sin GRANT en `user_profiles`: el dossier de impugnaciones no puede obtener nombre/plan del usuario, ni siquiera vía la vista curada
+
+**Distinto de [T-573]** (esa es RLS-sin-policy con el GRANT ya concedido; esto es GRANT que directamente NO EXISTE). Medido hoy trabajando la impugnación `2477d39d` como trabajador de flota (l3):
+
+1. `information_schema.table_privileges` para `user_profiles`: **0 filas** para `vence_coordinacion` Y para `vence_lector` — ningún privilegio, en ninguna columna. No es un problema de RLS (que da 0 filas sin error): es `42501 permission denied for table user_profiles`, un GRANT que nunca se concedió.
+2. Consecuencia directa: `scripts/impugnaciones/revisar-impugnacion.cjs` (el dossier obligatorio del manual) **muere** en su query a `user_profiles` (línea ~135, pide `full_name, email, target_oposicion, plan_type`) con las dos credenciales de un trabajador (`DATABASE_URL` y `VENCE_LECTOR_URL`). Un trabajador de flota no puede generar el dossier completo para NINGUNA impugnación.
+3. **Probé la vía "segura" antes de darlo por imposible:** existe una vista `admin_disputes_dashboard` (concedida a `vence_lector`) con columna `reporter_name` — pensada, aparentemente, para exponer justo el dato que hace falta sin exponer `email`/`plan_type` crudos. **Tampoco funciona**: la consulta a la vista devuelve el MISMO `permission denied for table user_profiles`, lo que indica que la vista corre con `security_invoker=true` (o equivalente) y hereda el permiso de quien consulta en vez de los del dueño de la vista — así que conceder SELECT sobre la vista no sirve de nada mientras la tabla base siga sin GRANT.
+4. **Alcance real:** esto no es solo impugnaciones. `cola.cjs list` (que también mezcla la cola de feedback) falla igual por `permission denied for table user_feedback` — esa tabla SÍ tiene 1 policy RLS pero **tampoco tiene GRANT** para ninguno de los dos roles. Mismo patrón, tabla distinta.
+
+**Por qué no lo arreglo yo:** conceder acceso a `user_profiles` (nombre, email, plan de pago) a un rol que hoy tiene **cero** variables/tablas sensibles es una decisión de seguridad y de exposición de PII a un proceso no supervisado (la propia flota se diseñó así a propósito, ver CLAUDE.md §"NADA SALE HACIA UNA PERSONA SIN QUE MANUEL LO APRUEBE"). No es un GRANT que "falte por descuido" como T-573: podría ser intencional.
+
+**Lo que hice mientras tanto (impugnación `2477d39d`):** analicé y verifiqué contra la fuente oficial sin tocar `user_profiles`, usando solo tablas de contenido (`question_disputes`, `questions`, `articles` vía `VENCE_LECTOR_URL`). El borrador (#21 en el embudo) saluda con "Hola," sin nombre — no pude verificarlo — y no pude comprobar si el usuario es premium para la recompensa de 1€: **la persona que apruebe el cierre debería mirarlo a mano** en `user_profiles` antes de cerrar.
+
+**Opciones para decidir (ninguna la tomo yo):**
+- (a) GRANT SELECT acotado por columna en `user_profiles` (solo `plan_type`, quizá `full_name` truncado/primera palabra) para `vence_lector`, dejando `email` fuera siempre.
+- (b) Arreglar `admin_disputes_dashboard` (quitar `security_invoker` o recrearla como `SECURITY DEFINER`/con dueño con permiso) para que la vista SÍ aísle al rol de la tabla base — es el diseño que parece que ya se intentó y no llegó a funcionar.
+- (c) Dejarlo así a propósito: los trabajadores de flota analizan y verifican el CONTENIDO, pero el saludo personalizado y el veredicto de recompensa los completa la persona que aprueba el borrador (cambiar el manual §11 para reflejarlo, no el permiso).
+
+**Preguntado en el embudo** (#22, sin `--bloquea`: no impide seguir trabajando impugnaciones, solo las deja con saludo genérico).
+
 ### [T-575] 🟡 [ABIERTO 05/08] `core.hooksPath` apunta a un checkout fijo: ningún worktree puede aplicar sus propios cambios a los git hooks
 
 - **Esfuerzo: rato.** Es una línea de config, pero hay que decidir el mecanismo correcto (relativo vs `--worktree`) y verificarlo desde 2+ worktrees a la vez para no dejarlo peor.
