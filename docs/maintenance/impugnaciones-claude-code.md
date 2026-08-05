@@ -103,6 +103,28 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 > decírnoslo"* → **"no des tantos detalles de nuestros fallos, parecemos tontos o incompetentes"**.
 > El usuario quiere saber que se le ha escuchado y que ya funciona: una frase para el
 > reconocimiento y otra para lo que cambia para él.
+>
+> **⚠️ Y NO CUENTA COMO EXCEPCIÓN QUE EL DETALLE SEA «LA EXPLICACIÓN DE POR QUÉ PASÓ» (Manuel, 05/08/2026).**
+> Reincidencia con la regla escrita justo aquí arriba, y por eso se anota: en la impugnación
+> `8055a01c` (Lucia, UC3M) el borrador decía *«estaba redactada con los términos de la ley anterior,
+> que ya está derogada, y hablaba de "ficheros" y de "la LOPDCP" en vez de los términos que usa la
+> ley vigente»*. Veredicto de Manuel: **«muy mal, si dices eso quedamos como incompetentes»**.
+>
+> **Por qué es el mismo error aunque no lo parezca:** eso NO es información para ella, es el
+> diagnóstico interno de cómo nació la pregunta. Al opositor le da igual de qué ley copiamos mal;
+> lo que necesita saber es que acertó y qué le entra. Contárselo solo añade la imagen de que
+> servimos preguntas escritas desde una norma derogada.
+>
+> **La trampa concreta:** el detalle se cuela disfrazado de §7.3.quater («explícale por qué él vio
+> otra cosa»). No es lo mismo. Esa regla es para cuando la impugnación **NO procede** y hay que
+> convencerle de que la pregunta está bien —ahí el «por qué viste otra cosa» está de su lado, es su
+> redacción, su fuente, su versión—. Cuando la impugnación **SÍ procede**, el «por qué» es nuestro
+> defecto, y ese no se cuenta.
+>
+> **El mensaje que se envió, entero, como referencia de longitud:**
+> *«Hola Lucia, tenías razón. Ya está corregida: la pregunta se corresponde ahora con el artículo 2.3
+> de la Ley Orgánica 3/2018, que entra en tu tema 6. Muchas gracias. Equipo de Vence»* — reconocer,
+> decir lo único que le sirve (qué entra y dónde), y parar.
 
 7. **Cerrar** vía `/api/v2/dispute/resolve` (`resolved` / `rejected`) — comprobar `emailSent` y `bellSent` en la respuesta.
 
