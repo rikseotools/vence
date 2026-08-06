@@ -16,6 +16,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const postgres = require('postgres')
+const { exigirPersona } = require('../lib/sessions/aprobacion.cjs')
 
 const COMMIT = process.argv.includes('--commit')
 const LIMIT = (() => { const i = process.argv.indexOf('--limit'); return i > -1 ? Number(process.argv[i + 1]) : null })()
@@ -88,6 +89,12 @@ Equipo de Vence`
       console.log('\n(dry-run: no se ha escrito nada. Repite con --commit para enviarlo)')
       return
     }
+
+    // La puerta va DESPUÉS de enseñar el borrador (para poder revisarlo sin permiso) y ANTES de
+    // cualquier escritura: esto es un aviso PERSONALIZADO a usuarios reales prometiendo dinero,
+    // exactamente lo que la regla de aprobación protege. Mismo patrón que
+    // scripts/soporte/avisar-usuario.cjs (T-486).
+    if (!exigirPersona('aviso')) process.exit(4)
 
     let n = 0
     for (const u of destinatarios) {

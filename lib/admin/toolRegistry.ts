@@ -705,6 +705,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'por qué le escribimos a alguien que no había pedido nada. ⚠️ NO es para campañas (eso es ' +
       '`scripts/newsletters/`): una persona y un motivo concreto.',
   },
+  campana_programa_recompensas: {
+    titulo: 'Aviso en la campana a premium que nunca han abierto el panel de recompensas (T-232)',
+    ruta: 'scripts/campana-programa-recompensas.cjs',
+    estado: 'vivo',
+    escribe: ['notification_logs'],
+    notas:
+      'node scripts/campana-programa-recompensas.cjs [--commit] [--limit N]. DRY-RUN por defecto ' +
+      '(destinatarios + mensaje de ejemplo, sin escribir). El destinatario sale de SQL, no a mano: ' +
+      'premium con actividad real este mes (≥10 días, ≥100 preguntas) que nunca han abierto el ' +
+      'panel (sin `referral_earnings_seen_at`, sin `referral_codes`, sin `referral_page_view` ' +
+      'propio) ni recibieron ya este aviso. Inserta en `notification_logs` con ' +
+      '`context_data.type=programa_recompensas`, que la campana pinta y enruta a ' +
+      '`/recompensas?src=aviso-mencion` (`NOTIFICATION_TYPES`/`generateActionUrl` en ' +
+      '`hooks/useIntelligentNotifications.ts`/`components/NotificationBell.tsx`, probado en ' +
+      '`__tests__/notifications/programaRecompensasAviso.test.ts`). ⚠️ **Se encontró SIN la puerta ' +
+      '`exigirPersona` (T-232, 06/08/2026)** — mensaje personalizado (nombre, días, preguntas) a un ' +
+      'lote de usuarios reales prometiendo dinero, y podía dispararse sin que Manuel lo viera. ' +
+      'Añadida `exigirPersona(\'aviso\')` justo antes del bucle de INSERT (después de enseñar el ' +
+      'dry-run, que sigue siendo revisable sin permiso) + registrada en el guardarraíl ' +
+      '`__tests__/guardrails/aprobacionEnvios.guardrail.test.ts`. Mismo tipo `aviso` que ' +
+      '`avisar_usuario` (lote en vez de uno a uno) — no hizo falta un tipo nuevo.',
+  },
   compras_atascadas: {
     titulo: 'Encontrar a quien lleva días intentando pagarnos y no puede (T-601)',
     ruta: 'scripts/stripe/compras-atascadas.cjs',
