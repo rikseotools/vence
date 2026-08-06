@@ -842,6 +842,120 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-606] 🟡 [ABIERTO 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
+
+**Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
+abiertos** en `session_questions`, **11 (73 %) apuntan a una impugnación que ya está `resolved` o
+`rejected`**. Es decir, casi todo lo que Manuel ve al abrir `npm run backlog.cjs preguntas` es una
+decisión que ya no hay que tomar.
+
+| Embudo | Sesión que lo escribió | Impugnación | Estado real |
+|---|---|---|---|
+| #31 | l5-fedora-e6 | `71a15cae` | rejected |
+| #33 | l2-fedora-1d | `f34b88ad` | resolved |
+| #43 | l2-fedora-1d | `4ac133b7` | rejected |
+| #44 | l2-fedora-1d | `066a3d65` | rejected |
+| #52 | l2-fedora-1d | `199d3ab8` | rejected |
+| #56 | w1-vence-flota | `1aac9e3c` | rejected |
+| #57 | w1-vence-flota | `71a15cae` | rejected |
+| #61 | l3-fedora-2b | `ea65996b` | rejected |
+| #71 | l2-fedora-1d | `21be6a56` | rejected |
+| #76 | w4-vence-flota | `433b900e` | resolved |
+| #77 | w1-vence-flota | `4ac133b7` | rejected |
+
+**Por qué no se limpia solo, que es el fondo del asunto:** `backlog.cjs retirar` lleva
+`WHERE id = … AND sid = <la tuya>` (línea ~1942). O sea que **un borrador solo lo puede retirar la
+sesión que lo escribió**, y esas sesiones son turnos de flota o worktrees de ayer: **están muertas y
+no van a volver a limpiar nada**. Cuando otra sesión cierra el caso —que es el flujo normal, y el
+correcto: quien tiene la reserva es quien cierra— el borrador se queda ahí para siempre. Verificado en
+vivo: `retirar 56` y `retirar 52` devuelven *«no existe, no es tuya o ya está cerrada»*.
+
+**Por qué importa y no es cosmético:** un embudo con ruido **se deja de leer**, y entonces se pierde
+justo la pregunta que sí necesitaba a una persona. Hoy conviven ahí borradores muertos con preguntas
+vivas de trabajadores parados esperando respuesta (`#15`, `#38`, `#45`, `#58`), y las segundas quedan
+sepultadas bajo las primeras. Es el mismo modo de fallo que ya obligó a filtrar la Capa 3 del radar
+cuando inundaba el inbox de OEPs.
+
+**El arreglo, por orden de valor:**
+
+1. **Que el cierre limpie lo suyo.** `cerrar.ts` / `cerrar-feedback.ts` ya saben qué caso están
+   cerrando: al cerrar, marcar `withdrawn` **todos** los borradores abiertos de ese `draft_target`,
+   con motivo automático («caso cerrado por <sid> el <fecha>»). Es el punto de escritura, que es donde
+   este repo impide las cosas.
+2. **Que `retirar` deje de ser propietario cuando el caso está cerrado.** El `AND sid` protege de que
+   una sesión borre el trabajo vivo de otra, y eso está bien; pero sobre un caso YA cerrado no hay
+   trabajo que proteger. Levantar la condición **solo** en ese supuesto.
+3. **Barrido de una vez** para las 11 de hoy (mismo criterio: `draft_target` cuyo dispute no está
+   `pending`/`appealed`).
+
+**Cuidado al implementar el punto 1:** el `draft_target` es **texto libre** («impugnación 4ac133b7
+(CE art.112, …)»), unas veces con el uuid entero y otras con los 8 primeros caracteres. Emparejar por
+`LIKE 'id%'` funciona hoy, pero lo robusto es **guardar el id del caso en una columna propia** en vez
+de seguir parseando prosa — misma lección que `snooze_until`, `due_at` y la espera de revisión: una
+condición en prosa no es una condición.
+
+**Relacionada:** el aviso `#73` del propio embudo (borradores DUPLICADOS del mismo caso: 12 de 26
+redundantes) es la otra mitad de esto — allí sobran borradores del mismo caso vivo, aquí sobran
+borradores de casos muertos. Las dos se arreglan en el mismo sitio: el embudo no sabe en qué estado
+está el caso del que habla. [T-539] (el embudo como canal de entrega de la flota).
+
+### [T-605] 🟡 [ABIERTO 06/08] No hay forma de reescribir la explicación de una psicotécnica: las cinco herramientas de explicaciones son solo del banco legislativo
+
+**Origen medido el 06/08/2026,** resolviendo la impugnación `199d3ab8` (Angelanie Cispas, psicotécnica
+del lote «Ecuaciones PN»). La queja —*«corregid el orden de las cifras»* en `(x-1)(x-2)=0` → `(2,1)`—
+**no procedía** y se rechazó, pero al mirarla apareció un defecto real de la pregunta: **su explicación
+se contradice a sí misma**. Deriva `x = 1` y después `x = 2`, y remata *«La respuesta correcta es
+(2, 1)»*, con el orden invertido respecto a su propia derivación. Es exactamente lo que hizo dudar a la
+usuaria, así que arreglarlo evita la siguiente impugnación igual.
+
+**Y no se pudo arreglar, porque no hay con qué.** El manual de impugnaciones (§7, checklist punto 4)
+obliga a **evaluar SIEMPRE la explicación** y a mejorarla si es mejorable, y para el banco legislativo
+hay tres caminos según el caso:
+
+| Herramienta | Qué escribe | Banco |
+|---|---|---|
+| `scripts/aplicar-explicacion.ts` | `explanation_data` + `explanation` (estructura → render) | `questions` |
+| `scripts/explicaciones/corregir-opcion.cjs` | `option_<x>` (erratas, con rastro) | `questions` |
+| `scripts/explicaciones/corregir-enunciado.cjs` | `question_text` (erratas, con rastro) | `questions` |
+
+**Las tres son de `questions`.** Para `psychometric_questions` no hay ninguna: la única herramienta
+registrada que las mira es `scripts/audit-psico-explicacion.cjs`, y **solo lee**. O sea que el manual
+exige un arreglo que en psicotécnicas **solo se puede hacer con un `UPDATE` a pelo**, que es justo lo
+que `corregir-opcion.cjs` existe para evitar («sin herramienta la alternativa era un UPDATE a pelo que
+no deja constancia de que alguien lo miró»).
+
+**Alcance medido (RDS, 06/08):** **7.098** psicotécnicas activas, **361** impugnaciones psicotécnicas
+históricas y **309** activas con la explicación vacía o de menos de 40 caracteres. No es un caso
+aislado: es un banco entero sin camino de escritura con rastro.
+
+**Consecuencia que ya se está pagando, y es la razón de la ficha:** los borradores de la flota sobre
+psicotécnicas vienen todos con la misma coletilla — *«MEJORA OPCIONAL (no aplicada, sin permiso de
+escritura en psychometric_questions)»* (ver `#52` y `#53` del embudo). Se diagnostica la mejora, se
+escribe en el embudo, y ahí muere. **Un arreglo que nadie puede aplicar no es un arreglo.**
+
+**Qué hay que hacer:**
+1. `scripts/explicaciones/corregir-explicacion-psicotecnica.cjs`, **hermano** de `corregir-opcion.cjs`
+   y con sus mismas propiedades: dry-run por defecto, `--apply` explícito, motivo obligatorio y
+   **evento en `observable_events`** para que quede constancia de quién y por qué.
+   ⚠️ **NO copiar el guardarraíl de los 3 caracteres** de `corregir-opcion.cjs`: ese acota *erratas*
+   de una opción, y aquí el cambio legítimo es reescribir la explicación entera.
+2. **Registrarlo en `lib/admin/toolRegistry.ts`** — `psychometric_questions.explanation` pasa a ser
+   recurso con escritor, y el guardarraíl `toolRegistry.guardrail` exige que todo escritor de recurso
+   sensible esté declarado.
+3. Estrenarlo con el caso que lo origina: reordenar el remate de la explicación de la pregunta
+   `4e37c266` a «Las soluciones son x = 1 y x = 2 (el orden entre paréntesis no importa)».
+
+**Lo que NO hay que hacer:** meter psicotécnicas dentro de `aplicar-explicacion.ts`. Ese escribe
+`explanation_data` estructurado por opción, que es la maquinaria del **barajado** del banco legislativo
+(T-080); las psicotécnicas no la tienen y colarlas ahí mezcla dos modelos. El hermano correcto es
+`corregir-opcion.cjs`, que corrige texto y deja rastro, no `aplicar-explicacion.ts`.
+
+**Antes de escribir nada:** `npm run tools:buscar -- explicacion psicotecnica` (es lo que destapó el
+hueco: 12 resultados y ni uno que escriba).
+
+**Relacionadas:** [T-410] (duplicados psicotécnicos), [T-130] (registro de herramientas: aquí falta la
+herramienta, no sobra).
+
 ### [T-603] 🔴 [ABIERTO 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
 
 **Qué ve el usuario.** En `/leyes/<ley>` acota los artículos con las casillas (p. ej. la LCSP de la 1 a la 112), marca **«solo preguntas falladas»** y le salen preguntas de artículos que **no ha elegido**. No hay aviso: las casillas que acaba de marcar **siguen marcadas** mientras el filtro se tira a la basura.
@@ -882,66 +996,6 @@ Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanza
 - **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
 
 **Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
-### [T-604] 🔴 [ABIERTO 06/08] 936 usuarios (8%) están en una oposición SIN temario construido y la app no se lo dice: 248 altas nuevas al mes caen ahí
-
-**Lo destapa una impugnación que parecía otra cosa.** María Becerril (premium desde abril, Torrelavega)
-mandó cuatro impugnaciones seguidas —`17733d5e`/`7b3dd5e4`/`5f2213d0`/`6c4e43a4`, Ley 9/2017 arts.
-138/143/147/160— diciendo *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»*. Parecía sobre-inclusión de
-`topic_scope`. No lo era: su `target_oposicion` es **`administrativo_comunidad_autonoma`**, que tiene
-**0 temas y 0 filas de `topic_scope`**. No hay selección que violar porque no hay temario.
-
-**Lo que le pasa a quien está así.** No tiene temas, ni tests por tema, ni forma de practicar lo que le
-entra — y **la app no se lo dice**: simplemente no hay nada. María lleva **desde el 27/04 pagando**, y lo
-único que puede hacer es ir **ley por ley**, acotando artículos a mano.
-
-> ⚠️ **La causa inmediata de SUS cuatro impugnaciones es [T-603], no esta ficha** (corregido el 06/08
-> tras encontrarla otra sesión). Ella **sí acotó** los artículos con las casillas y el repaso de fallos
-> **descartó su selección en silencio**, devolviéndole los 138/143/147/160 con las casillas todavía
-> marcadas en pantalla. O sea que su *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»* era literal y exacto.
-> Lo que aporta esta ficha es **por qué estaba ahí**: sin temario construido, filtrar una ley a mano era
-> su única forma de estudiar, así que el bug de T-603 le pegaba de lleno y a diario. Las dos cosas se
-> arreglan por separado.
-
-**Medido el 06/08 (`scratchpad/sin-temario.cjs`):**
-
-| | |
-|---|---|
-| usuarios con oposición fijada | **11.729** |
-| …de ellos SIN temario construido | **936 (8%)** |
-| …premium (pagando) | **4** |
-| altas de los últimos 30 días que caen ahí | **248** |
-
-**No es deuda vieja: sigue entrando gente.** Los valores más poblados —`enfermero` (61),
-`auxiliar_ayuntamiento` (37), `auxiliar_enfermeria` (29), `policia_local` (25),
-`subalterno_ordenanza_conserje_administracion_local` (24), `bombero` (17)— tienen altas de esta misma
-semana, y **la mayoría figuran en el catálogo**, o sea que se pueden elegir en la app.
-
-**Esto NO es «hay que construir 900 temarios».** La casa cataloga ancho y construye estrecho a propósito
-(D/C1/C2), y eso está bien. El defecto es que **elegir una no construida no se distingue de elegir una
-construida**: mismo flujo, misma pantalla, y luego el vacío. La etiqueta «🔜 En elaboración» YA existe
-—una usuaria la vio ayer al buscar Bibliotecario (feedback `5818ca05`, se dio de baja cinco minutos
-después)— pero estos 936 no la están recibiendo.
-
-**Arreglo propuesto** (elegir, no hacer las tres):
-1. **En el punto de elección:** si la oposición no tiene temario, decirlo antes de fijarla y ofrecer la
-   más cercana que sí lo tenga. Es el arreglo de fondo.
-2. **Para los 936 que ya están dentro:** un aviso en su pantalla con la alternativa, no un `UPDATE`
-   silencioso — **la oposición que uno prepara es decisión suya**, y cambiársela sin preguntar es
-   decidir por ella qué estudia. En el caso de María, la suya es casi seguro `administrativo_cantabria`
-   (existe, 40 temas; ella ya practica la Ley 5/2018 de Cantabria y su Estatuto), pero eso lo confirma
-   ella con un clic.
-3. **Detector**, que es lo que faltaba: nadie vio esto en cuatro meses y ha llegado por una impugnación
-   disfrazada. Una consulta —`target_oposicion` sin filas en `topics`, agregado por valor, con el conteo
-   de premium— enganchada al barrido de salud que ya existe (`health-sweep.cjs` + su gemelo `@Cron`),
-   con su frase-gatillo en `runbookRegistry`. **No hace falta sistema nuevo.**
-
-**Por qué es 🔴 y no higiene:** son 4 personas pagando por algo que no pueden usar y 248 altas al mes que
-aterrizan en el vacío justo en el momento de mayor intención. Y el coste ya se ha visto dos veces esta
-semana: María impugnando cuatro veces sin saber por qué, y la usuaria de Bibliotecario dándose de baja.
-
-**Relacionado:** [T-596] (el temario servía artículos sin texto) y [T-599] — misma familia: cosas que el
-usuario ve rotas y ningún barrido nuestro miraba.
-
 ---
 
 #### ✅ HECHO 06/08/2026 — implementado, con capas y medido
@@ -1364,44 +1418,6 @@ Medido: 16 vales, 3 Nike bien etiquetados, 0 sin destino.
 10/20/50/100/150…), de ahí los tres vales. Manual actualizado: `embajadores-recompensas.md` §3.ter.bis.
 
 **Falta:** desplegar y mirarlo en `/recompensas` con los ojos (la simulación cubre el dato, no el render).
-### [T-593] 🟡 [ABIERTO 05/08] Las preguntas llevan tags de OTRA oposición («Tema 1», «Galicia»), el usuario los lee y concluye que la pregunta no entra en su temario: 4 impugnaciones en 2 minutos por eso
-
-**Origen medido el 05/08/2026.** Un usuario de `auxiliar_administrativo_diputacion_cordoba` (Manolo) mandó
-**cuatro impugnaciones en dos minutos**, todas con el mismo texto: *«Este artículo no entra en el Temario»*
-(arts. 108, 110, 112 y 114 CE — disputes `066a3d65`, `ea65996b`, `4ac133b7`, `21be6a56`). **Las cuatro son
-falsas**: esos artículos SÍ entran en su Tema 2, cuyo epígrafe oficial dice literalmente «Relaciones entre el
-Gobierno y las Cortes Generales» (verificado en las bases, `BOP-A-2026-1795` pág. 12, y el Título V CE son los
-arts. 108-116 según el índice del BOE). Su `topic_scope` del Tema 2 incluye 62 artículos, del 66 al 127.
-
-**La hipótesis que hay que confirmar o descartar** (esto es lo que pide la ficha): dos de esas cuatro preguntas
-llevan en `questions.tags` **`['Tema 1','CE','Galicia','TuTestDigital']`**, y otra `['…,'tema-5']`. Si alguna
-superficie le muestra al usuario ese «Tema 1» o ese «Galicia», el mensaje que recibe es *«esta pregunta es del
-Tema 1 de Galicia»* — y como su Tema 1 no cubre las relaciones Gobierno-Cortes, la conclusión razonable de
-quien estudia es que la pregunta está mal colocada. No estaría equivocándose él: estaríamos etiquetando la
-pregunta con el temario de otra oposición.
-
-**Lo que ya está comprobado y lo que NO:**
-- ✅ Los tags existen y son de otra oposición: `CLAUDE.md` ya advierte que `questions.tags` «suelen venir
-  cruzados/stale de otra oposición» y que **NO mandan en la colocación** (eso lo hace `topic_scope`).
-- ❌ **SIN comprobar: si esos tags se PINTAN en alguna superficie que ve el usuario** (tarjeta de la pregunta,
-  cabecera del test, ficha de impugnación, chat de IA). Es lo primero que hay que mirar: si no se ven, esta
-  ficha se cierra en cinco minutos y la causa de las 4 impugnaciones es otra.
-
-**Cómo medir el alcance si se confirma:** cuántas preguntas activas tienen en `tags` un «Tema N» o un nombre de
-comunidad que no corresponde a la oposición desde la que se sirven. El cruce es `topic_scope` (quién la sirve
-de verdad) contra `tags` (lo que dice de sí misma).
-
-**Por qué importa más de lo que parece:** cada impugnación falsa cuesta el análisis completo de una sesión
-—dossier, verificación contra boletín, borrador, aprobación— y este usuario generó cuatro de golpe. Y en el
-camino se propuso un `UPDATE` de `topic_scope` en 4 oposiciones basado en esos mismos tags, que habría servido
-preguntas fuera de programa (ver [T-582], donde se paró al revisarlo). Los tags ya han engañado a un usuario
-**y** a un trabajador el mismo día.
-
-**NUNCA** arreglar esto reescribiendo `topic_scope` para que encaje con los tags: la fuente de verdad es el
-epígrafe oficial, y los tags son metadatos. Si sobran, se quitan o se dejan de pintar.
-
-**Relacionadas:** [T-582] (el mismo tag engañó al análisis de un trabajador), [T-583] (Test Rápido sirviendo
-fuera de `topic_scope`, que podría ser otra vía por la que llegan preguntas «que no entran»).
 
 ### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
 
@@ -3895,6 +3911,39 @@ sus dos lecturas separadas por 45 minutos.
 indistinguible salvo que alguien mire por casualidad, como pasó aquí. Un evento en el punto de
 escritura del objetivo cerraría la pregunta en un día de datos.
 
+---
+
+#### 06/08 — UNO de los 3 premium, con nombre, y por dónde le duele (venía de [T-604], cerrada como duplicada)
+
+**Quién es.** `administrativo_comunidad_autonoma` (9 usuarios, 1 premium) es **María Becerril**,
+premium desde el **27/04**, de **Torrelavega**. Lleva **tres meses pagando sin temario**.
+
+**Su comunidad es Cantabria y el temario que le falta YA EXISTE.** `administrativo_cantabria` está
+construida, con **40 temas**. Ella misma ya practica la **Ley 5/2018 de Cantabria** y el **Estatuto de
+Autonomía de Cantabria**, así que la asignación no es una conjetura. **No se le cambia por nuestra
+cuenta**: la oposición que uno prepara es decisión suya; se le ofrece y la confirma ella.
+
+**Cómo se manifiesta el daño, que es lo que esta ficha no tenía.** Sin temario, lo único que puede
+hacer es ir **ley por ley acotando artículos a mano**… que es exactamente donde vive el bug de
+**[T-603]** (el repaso de fallos descarta la selección de artículos en silencio, con las casillas aún
+marcadas). Resultado: mandó **cuatro impugnaciones seguidas** (`17733d5e`/`7b3dd5e4`/`5f2213d0`/
+`6c4e43a4`, Ley 9/2017 arts. 138/143/147/160) diciendo *«artículo no incluido en mi selección»*, y
+**tenía razón literal**. O sea: no tener temario no es solo «le falta contenido» — **la empuja al
+camino peor mantenido de la app**, y ahí se lleva los bugs de lleno y a diario.
+
+**Detalle que confirma el encaje:** en `administrativo_cantabria` la Ley 9/2017 es el **Tema 15**,
+escopado a los **arts. 1-60**. Los suyos (138-160) caen fuera, así que con su oposición bien asignada
+esas preguntas no le habrían salido nunca.
+
+> ⚠️ **Y una advertencia para quien vuelva a medir esto (06/08).** Una sesión rehízo el recuento a mano
+> y publicó **936 usuarios / 4 premium** en vez de 587/3: contó las personalizadas del formato VIEJO
+> (UUID pelado), que es **el mismo error que esta ficha ya advierte** en el comentario de
+> `esOposicionPersonalizada`. **No rehagas la consulta: corre
+> `node scripts/health/oposicion-sin-temario.cjs`**, que es de donde salen las cifras buenas. Esa misma
+> sesión estuvo a punto de enchufar el detector al barrido nocturno como `error`, sin ver que el runner
+> declara a propósito que NO pinga badge (una alerta sin remediación construida enseña a ignorar el
+> buzón entero).
+
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
 - **Qué hay, medido el 31/07:** `auxiliar_archivos_bibliotecas_museos_madrid` tiene **50 temas activos, los 50 con epígrafe**, y **0 filas de `topic_scope`**. Como la pregunta llega al tema por el scope, esos 50 temas sirven **cero preguntas**. La oposición está en `oposiciones` con `is_active=false` (o sea, no la preparamos) y **sin entrada en `lib/config/oposiciones.ts`**, así que la app ni siquiera sabe enrutarla.
@@ -5202,6 +5251,91 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+### [T-604] ✅ [HECHA 06/08] DUPLICADA de [T-397] — el detector de «oposición elegida sin ni un tema» ya existía
+
+**Se cierra por duplicada el mismo día que se abrió.** El problema es real, pero ya estaba fichado,
+medido y con herramienta desde el **31/07** en **[T-397]** (refinada por [T-508]): núcleo
+`lib/health/oposicionSinTemario.cjs`, runner `scripts/health/oposicion-sin-temario.cjs`, tests y
+entrada en `toolRegistry`.
+
+**Qué salió mal al abrirla, que es lo único que aporta.** La sesión corrió `tools:buscar`, obtuvo 120
+resultados y **leyó solo los primeros**; luego escribió un núcleo nuevo **con el mismo nombre de
+fichero**, sobrescribiendo el que ya existía (restaurado desde git, sin pérdida). Dos consecuencias
+más, las dos previstas por escrito en el fichero que había borrado:
+
+1. **Cifra inflada:** publicó **936 usuarios / 4 premium** contando las personalizadas del formato
+   viejo (UUID pelado), cuyos temas cuelgan de otro `position_type` y por eso siempre dan cero. Las
+   reales son **587 / 3**. El comentario de `esOposicionPersonalizada` avisa de que ese error «ya hizo
+   publicar una cifra equivocada» — y se repitió.
+2. **Iba a enchufarlo al barrido nocturno como `error`**, sin ver que el runner declara a propósito
+   que NO pinga badge: las tres salidas son decisiones de producto que nadie ha tomado, y una alerta
+   sin remediación construida enseña a ignorar el buzón entero.
+
+**Lo aprovechable se movió a [T-397]**: quién es el premium de `administrativo_comunidad_autonoma`
+(María Becerril, Cantabria, `administrativo_cantabria` ya existe con 40 temas) y por qué no tener
+temario **la empuja al camino peor mantenido de la app**, donde se lleva de lleno el bug de [T-603].
+
+**Regla práctica que deja:** buscar por el NOMBRE DEL FICHERO que vas a crear, no solo por conceptos —
+`ls lib/health/` habría bastado.
+
+
+
+### [T-593] ✅ [HECHA 06/08] Las preguntas llevan tags de OTRA oposición («Tema 1», «Galicia»), el usuario los lee y concluye que la pregunta no entra en su temario: 4 impugnaciones en 2 minutos por eso
+
+> **DESCARTADA con evidencia (06/08/2026).** La hipótesis era que esos tags se PINTARAN en alguna
+> superficie. **No se pintan en ninguna**: las dos únicas menciones en el front (`TestLayout.tsx`,
+> `LawTestPageWrapper.tsx`) los transportan a `metadata.tags` y **nadie los consume ni los renderiza**;
+> el modal de impugnar (`QuestionDispute.tsx`) no los menciona y el chat de IA no los recibe. Se cumple
+> literalmente lo que la propia ficha fijaba como criterio: *«si no se ven, esta ficha se cierra en
+> cinco minutos y la causa de las 4 impugnaciones es otra»*.
+>
+> **La causa era [T-596]:** el temario servía los artículos SIN TEXTO cuando `articles.title` era NULL
+> (48 de 62 mudos en su Tema 2, el tramo 109-117 entero en blanco), así que Manolo veía un salto del
+> 107 al 117 y concluía que el Título V no entraba. Lo dice él mismo en su feedback `38b93ac3`:
+> *«no aparece el Título V, saltáis del artículo 107 al 117 y claro luego caen preguntas en los test»*.
+> Ya arreglado y verificado en el HTML servido de producción: los arts. 108, 110, 112 y 114 salen con
+> su texto. Las 4 impugnaciones, cerradas el 06/08.
+>
+> ⚠️ **Lo que NO queda descartado:** que los tags estén cruzados es cierto y sigue siendo cierto
+> (`CLAUDE.md` ya avisa de que vienen stale de otra oposición y de que **no mandan en la colocación**).
+> Lo que se descarta es que ENGAÑEN AL USUARIO. Al trabajador sí lo engañaron — ver [T-582].
+
+**Origen medido el 05/08/2026.** Un usuario de `auxiliar_administrativo_diputacion_cordoba` (Manolo) mandó
+**cuatro impugnaciones en dos minutos**, todas con el mismo texto: *«Este artículo no entra en el Temario»*
+(arts. 108, 110, 112 y 114 CE — disputes `066a3d65`, `ea65996b`, `4ac133b7`, `21be6a56`). **Las cuatro son
+falsas**: esos artículos SÍ entran en su Tema 2, cuyo epígrafe oficial dice literalmente «Relaciones entre el
+Gobierno y las Cortes Generales» (verificado en las bases, `BOP-A-2026-1795` pág. 12, y el Título V CE son los
+arts. 108-116 según el índice del BOE). Su `topic_scope` del Tema 2 incluye 62 artículos, del 66 al 127.
+
+**La hipótesis que hay que confirmar o descartar** (esto es lo que pide la ficha): dos de esas cuatro preguntas
+llevan en `questions.tags` **`['Tema 1','CE','Galicia','TuTestDigital']`**, y otra `['…,'tema-5']`. Si alguna
+superficie le muestra al usuario ese «Tema 1» o ese «Galicia», el mensaje que recibe es *«esta pregunta es del
+Tema 1 de Galicia»* — y como su Tema 1 no cubre las relaciones Gobierno-Cortes, la conclusión razonable de
+quien estudia es que la pregunta está mal colocada. No estaría equivocándose él: estaríamos etiquetando la
+pregunta con el temario de otra oposición.
+
+**Lo que ya está comprobado y lo que NO:**
+- ✅ Los tags existen y son de otra oposición: `CLAUDE.md` ya advierte que `questions.tags` «suelen venir
+  cruzados/stale de otra oposición» y que **NO mandan en la colocación** (eso lo hace `topic_scope`).
+- ❌ **SIN comprobar: si esos tags se PINTAN en alguna superficie que ve el usuario** (tarjeta de la pregunta,
+  cabecera del test, ficha de impugnación, chat de IA). Es lo primero que hay que mirar: si no se ven, esta
+  ficha se cierra en cinco minutos y la causa de las 4 impugnaciones es otra.
+
+**Cómo medir el alcance si se confirma:** cuántas preguntas activas tienen en `tags` un «Tema N» o un nombre de
+comunidad que no corresponde a la oposición desde la que se sirven. El cruce es `topic_scope` (quién la sirve
+de verdad) contra `tags` (lo que dice de sí misma).
+
+**Por qué importa más de lo que parece:** cada impugnación falsa cuesta el análisis completo de una sesión
+—dossier, verificación contra boletín, borrador, aprobación— y este usuario generó cuatro de golpe. Y en el
+camino se propuso un `UPDATE` de `topic_scope` en 4 oposiciones basado en esos mismos tags, que habría servido
+preguntas fuera de programa (ver [T-582], donde se paró al revisarlo). Los tags ya han engañado a un usuario
+**y** a un trabajador el mismo día.
+
+**NUNCA** arreglar esto reescribiendo `topic_scope` para que encaje con los tags: la fuente de verdad es el
+epígrafe oficial, y los tags son metadatos. Si sobran, se quitan o se dejan de pintar.
+
+**Relacionadas:** [T-582] (el mismo tag engañó al análisis de un trabajador), [T-583] (Test Rápido sirviendo
+fuera de `topic_scope`, que podría ser otra vía por la que llegan preguntas «que no entran»).
 
 ### [T-434] ✅ [HECHA 05/08] Usuarios con sesión y SIN perfil siguen sin poder pagar: [T-245] está desplegada, no les cura, y su vigilancia da falso verde
 
