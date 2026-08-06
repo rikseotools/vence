@@ -6,6 +6,7 @@
 // Diseño: docs/roadmap/analizador-competidores.md
 
 import { getDb, getAdminDb } from '@/db/client'
+import { filasAfectadas } from '@/lib/db/filasAfectadas'
 import { sql } from 'drizzle-orm'
 
 function rows<T>(res: unknown): T[] {
@@ -356,5 +357,7 @@ export async function acknowledgeCompetitorChanges(id?: string): Promise<number>
     WHERE reviewed_at IS NULL
       AND change_type IN (${sql.join(BADGE_CHANGE_TYPES.map((t) => sql`${t}`), sql`, `)})
   `)
-  return (res as unknown as { rowCount?: number }).rowCount ?? 0
+  // postgres-js pone las filas afectadas en `count`, no en `rowCount` (T-613):
+  // «marcar todo como revisado» devolvía 0 a la UI aunque marcara decenas.
+  return filasAfectadas(res)
 }

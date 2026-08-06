@@ -59,6 +59,10 @@ export class TelemetryRetentionCron {
           observableEventsDeleted: result.observableEventsDeleted,
           validationErrorLogsDeleted: result.validationErrorLogsDeleted,
           batches: result.batches,
+          // Lo que QUEDA fuera de retención al terminar. Va en el mismo evento a
+          // propósito: «borradas» solo se puede interpretar junto a «pendientes»
+          // (T-613). Lo vigila la regla `drenaje_atrasado`.
+          remaining: result.remaining,
         },
       });
     } catch (error) {

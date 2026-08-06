@@ -694,7 +694,8 @@
 | **16 jul → hoy (normal)** | **3.000-8.000** | **8-25** |
 
   Hoy (27/07): **3.719 tokens · 434 usuarios · 8,6 por usuario**. El flood se arregló y los datos lo confirman sin lugar a duda.
-- **Los 3,23 M se purgan solos:** son filas del 3-10 de julio y la retención de 30 días (`observability-cleanup` + `telemetry-retention`) las borra entre el **2 y el 9 de agosto**. **NO hay que hacer nada.** Merece la pena recordarlo como método: un conteo a 30 días sobre una tabla con retención de 30 días mezcla regímenes y puede hacer sonar una alarma por algo ya resuelto — mirar SIEMPRE la serie, no el agregado.
+- **Los 3,23 M se purgan solos:** son filas del 3-10 de julio y la retención de 30 días (`observability-cleanup` + `telemetry-retention`) las borra entre el **2 y el 9 de agosto**. **NO hay que hacer nada.**
+  > ⚠️ **ESTA PREDICCIÓN NO SE CUMPLIÓ, y nadie se enteró hasta [T-613] (06/08).** El 06/08 seguían ahí: 2,7 M filas fuera de retención, y **los días atascados eran exactamente esos** (04/07: 464 k · 05/07: 753 k · 06/07: 1,09 M · 07/07: 1,29 M). La retención llevaba semanas borrando 50 k por noche en vez de 2,5 M y reportando `0` con `status: 'success'`. **La lección de método no es «la predicción era mala»** —era razonable— **sino que se dio por hecha sin fecha de comprobación.** Confiar en un proceso automático es correcto; no volver a mirar si ocurrió, no. Merece la pena recordarlo como método: un conteo a 30 días sobre una tabla con retención de 30 días mezcla regímenes y puede hacer sonar una alarma por algo ya resuelto — mirar SIEMPRE la serie, no el agregado.
 - **🔎 PERO queda un cabo real, y el guardarraíl es CIEGO a él por construcción.** Medido hoy: **1 cliente de 523 acuña 10-19 tokens/hora las 24 horas del día**, madrugada incluida (312 tokens = **6,1%** del total diario, contra una mediana de **6/día** y un p95 de 33). Eso no es una persona estudiando: es una pestaña en bucle — el rabo del bug del caso Natalia, que a escala se arregló pero en algún cliente sigue.
   - **`RULE_AUTH_TOKEN_MINT_FLOOD` no lo caza y no puede:** exige **≥20 usuarios Y >5 tokens/usuario en 10 min**, es decir, detecta el flood MASIVO. Un solo cliente en bucle nunca cruza ese umbral (su máximo medido es 9 tokens en un minuto, aislado).
   - **Qué NO hacer:** añadir otra regla de alerta a lo tonto. Hoy mismo (T-160) se ha medido que el ruido de alertas tapa lo importante. El criterio barato y sin ruido sería «un `user_id` acuñando en ≥20 horas distintas del día» — hoy daría **exactamente 1**, así que si algún día se cablea, nace calibrado. Pero el arreglo de fondo es de CLIENTE (la pestaña que reintenta), no otra alarma.
@@ -974,6 +975,78 @@ construcción.
 [T-596] (el codemod sobre las 131 copias — el precedente que esta ficha existe para no repetir),
 [T-073] (el CTA de test del temario servía la ley entera; se arregló centralizando en `LawTestCTA`,
 mismo patrón un escalón más abajo), [T-130] (registro de herramientas: comprobar antes de construir).
+### [T-613] 🔴 [ABIERTO 06/08] Los drenadores de tablas gigantes borran 50k por noche en vez de 2,5M — y dicen que 0, así que llevan semanas en verde
+
+- **Esfuerzo: sesion_propia.** Toca tres servicios del backend, uno del frontend, y lo que hace falta de verdad es la capa que impide que vuelva a pasar en silencio.
+- **ORIGEN:** revisión de salud del 06/08. El aviso que se veía era otro (`cron_sin_exito` por `observability-cleanup`, ver abajo); esto apareció al comprobar por qué la tabla no encogía.
+
+**EL DEFECTO, EN UNA LÍNEA.** El backend habla con Postgres por **postgres-js**, cuyo resultado de un
+`DELETE`/`UPDATE` **sin `RETURNING`** es un array VACÍO con las filas afectadas en **`.count`**. Los
+drenadores leen `.rowCount ?? .length ?? 0` — y `rowCount` **no existe** en postgres-js (es de
+node-postgres). Medido en vivo contra RDS (`scratchpad/prueba-count.cjs`, con ROLLBACK):
+
+```
+res.length   : 0          <- lo que lee el código hoy
+res.rowCount : undefined  <- lo que lee el código hoy (primero)
+res.count    : 1000       <- las filas REALMENTE borradas
+=> el código calcula: 0
+```
+
+**POR QUÉ ES CARO Y NO COSMÉTICO.** El bucle de drenaje corta con
+`if (count < batchSize) break`. Como `count` siempre vale 0 y 0 < batchSize, **sale SIEMPRE en la
+primera vuelta**. O sea que un drenador diseñado para 50 batches hace **uno**:
+
+| Cron | Diseñado para | Hace de verdad | Atrasado |
+|---|---|---|---|
+| `telemetry-retention` (04:10) | 2,5 M filas/noche | **50 k** | 2.731.993 filas > 30 d en `observable_events` |
+| `archive-interactions` (03:30) | 200 k filas/noche | **10 k** | 2.465.227 filas > 90 d en `user_interactions` |
+
+Y como entran **~130.000 eventos al día**, el drenador pierde terreno cada noche: no es que vaya
+lento, es que **no puede alcanzar nunca**. `observable_events` va por **6,9 GB / 10,9 M filas** y
+`user_interactions` por **10 GB / 11,6 M filas** (las dos tablas más grandes de la BD). El
+`VACUUM (ANALYZE)` final tampoco corre nunca, porque está detrás de `if (deleted > 0)`.
+
+**LO QUE LO HIZO INVISIBLE (esto es lo que hay que arreglar de fondo).** Los dos crons emiten
+`cron_run` con **`status: 'success'`** y `deleted: 0` / `archived: 0` cada noche desde hace semanas.
+**«Éxito, 0 borradas» se lee igual que «no había nada que borrar».** No hay ninguna regla que
+compare lo que un drenador dice haber hecho con lo que le queda por hacer, así que el sistema
+entero daba verde mientras las dos tablas mayores crecían sin freno. Es el mismo modo de fallo que
+`/api/admin/health` con la tabla `cron_runs` muerta (T-442): cero filas leído como «todo bien».
+
+**QUIÉN LO DELATÓ, y la ironía:** el ÚNICO síntoma visible era `observability-cleanup`, un cron
+**duplicado y viejo** (04:00) que hace la misma poda de `observable_events` de un solo `DELETE`
+gigante con `RETURNING 1`. Lleva fallando desde el 04/08 (muere a los **30.097 ms**, justo el
+`statement_timeout`) y manda un correo al día. **El drenador roto es el único que decía la verdad.**
+Está superado por `telemetry-retention`, que además poda por `created_at` y no por `ts` a propósito
+(un `ts` corrupto de cliente —visto un año 2067— nunca cumpliría la condición y viviría para
+siempre). **Se borra.**
+
+**DÓNDE ESTÁ EL PATRÓN MALO** (`grep "rowCount ?? "`), los cuatro sitios reales:
+- `backend/src/telemetry-retention/telemetry-retention.service.ts:104` — bucle, ROTO
+- `backend/src/archive-interactions/archive-interactions.service.ts:71` y `:89` — bucle, ROTO (es el
+  fichero del que se copió el resto: *«calcado de ArchiveInteractionsService»*)
+- `backend/src/process-outbox/process-outbox.service.ts:41` — no hace bucle, solo miente en el log
+- `lib/api/competitors/queries.ts:359` — frontend (también postgres-js): «marcar todo revisado»
+  siempre devuelve 0 a la UI
+- `lib/api/subscription/queries.ts:984` **NO está afectado**: usa `RETURNING id`, y ahí `.length` sí
+  es correcto. Este es justo el matiz que hace que el patrón parezca funcionar en las revisiones.
+
+**PLAN (lo que hay que hacer):**
+1. Helper único que lea `count` → `rowCount` → `length` (en ese orden: postgres-js primero,
+   node-postgres después, `RETURNING` al final) en `backend/src/db/` y su espejo en `lib/db/`, con
+   guardarraíl de paridad — el backend NO puede importar de `lib/` en runtime (solo en specs).
+2. Cambiar los cuatro sitios.
+3. **La capa que faltaba:** cada drenador mide y publica **lo que le QUEDA** (conteo acotado, no un
+   `count(*)` sobre 10 M) en su `cron_run`, y una regla de alerta dispara cuando un drenador dice
+   haber terminado dejando atrasado por encima del umbral. Sin esto, el siguiente fallo de drenaje
+   vuelve a ser invisible: el arreglo del contador NO es la protección.
+4. Borrar `observability-cleanup` (cron + módulo + registro), que es el duplicado que falla.
+5. Guardarraíl que rechace `rowCount ?? …` sobre un resultado de `db.execute` en cualquier árbol.
+
+**CÓMO SE VERIFICA (no vale leer el código):** tras desplegar el backend, a la mañana siguiente el
+`cron_run` de `telemetry-retention` tiene que traer `observableEventsDeleted` en millones y
+`batches` > 2, y el conteo de filas fuera de retención tiene que BAJAR. Las dos tablas tardan varias
+noches en drenar del todo, que es el diseño.
 
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 

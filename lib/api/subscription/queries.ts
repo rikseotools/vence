@@ -6,6 +6,7 @@ import { getStripeFor, resolveAccount, newSignupAccount } from '@/lib/stripe'
 import type Stripe from 'stripe'
 import { randomUUID } from 'crypto'
 import { emit } from '@/lib/observability/emit'
+import { filasAfectadas } from '@/lib/db/filasAfectadas'
 import {
   esBloqueoPorCheckoutAbierto,
   sesionesAExpirar,
@@ -981,7 +982,10 @@ export async function submitCancellationFeedback(params: {
       RETURNING id
     `)
 
-    const rowCount = Array.isArray(result) ? result.length : (result as { rowCount?: number })?.rowCount ?? 0
+    // Aquí el conteo a mano SÍ acertaba (hay `RETURNING id`, así que `.length` es el
+    // número bueno), pero es justo lo que hacía indistinguibles los cuatro sitios
+    // donde no acertaba: se cuenta por un solo sitio (T-613).
+    const rowCount = filasAfectadas(result)
     if (!rowCount) {
       return { success: false, error: 'No hay cancelación pendiente de feedback para este usuario' }
     }

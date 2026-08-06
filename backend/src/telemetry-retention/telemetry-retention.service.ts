@@ -1,13 +1,24 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { filasAfectadas } from '../db/filasAfectadas';
 
 /** Filas borradas por tabla en una ejecución. */
 export interface TelemetryRetentionResult {
   observableEventsDeleted: number;
   validationErrorLogsDeleted: number;
   batches: number;
+  /**
+   * Lo que QUEDA fuera de retención al terminar, por tabla (acotado, ver
+   * `atrasoDe`). Es la mitad del par: sin esto, «borradas: 0» y «no había nada
+   * que borrar» son la misma frase — que es exactamente cómo T-613 pasó semanas
+   * inadvertido. La regla de alerta `drenaje_atrasado` mira este campo.
+   */
+  remaining: Record<string, number>;
 }
+
+/** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
+export const ATRASO_TOPE = 200_000;
 
 /**
  * Retención de las dos tuberías de telemetría (append-only, alto volumen):
@@ -50,6 +61,7 @@ export class TelemetryRetentionService {
       observableEventsDeleted: 0,
       validationErrorLogsDeleted: 0,
       batches: 0,
+      remaining: {},
     };
 
     // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
@@ -77,7 +89,36 @@ export class TelemetryRetentionService {
       await this.db.execute(sql`VACUUM (ANALYZE) validation_error_logs`);
     }
 
+    // Lo que queda para la próxima noche. Se mide DESPUÉS de podar, a propósito:
+    // es el número con el que se juzga si el drenaje va o no va.
+    result.remaining.observable_events = await this.atrasoDe(
+      'observable_events',
+      'created_at',
+    );
+    result.remaining.validation_error_logs = await this.atrasoDe(
+      'validation_error_logs',
+      'created_at',
+    );
+
     return result;
+  }
+
+  /**
+   * Filas fuera de retención que quedan, **acotado a `ATRASO_TOPE`**. Un
+   * `count(*)` sobre una tabla de 10 M filas es justo lo que no se puede hacer
+   * cada noche; el `LIMIT` lo convierte en un escaneo corto, y para decidir «esto
+   * no está drenando» da igual 200 k que 2 M.
+   */
+  private async atrasoDe(table: string, tsColumn: string): Promise<number> {
+    const res = await this.db.execute(sql`
+      SELECT count(*)::int AS n FROM (
+        SELECT 1 FROM ${sql.raw(table)}
+        WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
+        LIMIT ${ATRASO_TOPE}
+      ) x
+    `);
+    const fila = (res as unknown as Array<{ n?: number }>)[0];
+    return fila?.n ?? 0;
   }
 
   /**
@@ -100,8 +141,9 @@ export class TelemetryRetentionService {
           LIMIT ${this.batchSize}
         )
       `);
-      const count =
-        (res as unknown as { rowCount?: number }).rowCount ?? res.length ?? 0;
+      // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
+      // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
+      const count = filasAfectadas(res);
       deleted += count;
       onBatch(1);
       if (count < this.batchSize) break; // no quedan más filas candidatas
