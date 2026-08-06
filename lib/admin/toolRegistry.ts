@@ -3169,6 +3169,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'variable) y las marca `inaccesible`, que NO es un cambio. Frase-gatillo: «revisa los ' +
       'cambios de fuentes legales».',
   },
+
+  muestrear_fidelidad_leyes: {
+    titulo: 'Muestrear artículos de una ley y comparar su TEXTO (no solo contarlos) contra la fuente oficial',
+    ruta: 'scripts/laws/muestrear-fidelidad.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'npm run laws:fidelidad -- [<law_slug>] [--n 5] [--limite 15] [--umbral 0.6] [--json] [--aplicar]. ' +
+      'Cubre el punto ciego de `audit-law-completeness.cjs` (T-240): ese detector cuenta filas — el ' +
+      'RGPD daba 99/99, is_ok:true, con 72 de esos 99 artículos reescritos en paráfrasis (T-193). ' +
+      'Auditar las 126 leyes activas artículo por artículo es carísimo; MUESTREA unos pocos por ley ' +
+      '(`elegirMuestra`, reparto uniforme, no los primeros N) y reutiliza `compararArticuloOficial` ' +
+      '(NO se reescribe esa clasificación). Núcleo puro `lib/laws/fidelidadMuestra.js` (22 tests). ' +
+      'Veredicto por ley: `fiel`/`revisar_muestra`/`auditoria_completa`/`inconcluso`; ' +
+      '`auditoria_completa` por defecto exige ≥60% de la muestra MEDIBLE en `incompleto`/`contaminado` ' +
+      'Y al menos 3 observaciones medibles (`minMedibles`) — sin el mínimo, un ratio de 1/1 es ruido. ' +
+      'Nace de un falso positivo REAL medido construyendo esto: la LECrim y el Código Civil (leyes ' +
+      'de 1882/1889, "Real Decreto que aprueba un Código") tienen DOS bloques "Artículo 1" en el ' +
+      'índice del BOE —el del decreto aprobatorio y el del propio Código— y `mapaBloquesPorArticulo` ' +
+      '(boeBloqueVigente.js, ya existente y compartido con reactivar-articulo-boe.cjs/' +
+      'actualizar-articulo-oficial.cjs) se queda con el primero: comparar contra ESE bloque da ' +
+      '"contaminado" en un art. 1 que es correcto. Con `n=5` el ratio ya diluye solo (1/4=25%); el ' +
+      'mínimo absoluto cubre leyes con pocos artículos activos. Solo reconoce BOE consolidado ' +
+      '(`BOE-A-AAAA-N`) y EUR-Lex CONSOLIDADO (`CELEX:0…`) — se NIEGA a comparar una norma UE contra ' +
+      'el espejo del BOE (reproduce erratas, T-184) o contra un CELEX del acto original (sector 3): ' +
+      'medido 06/08/2026, NINGUNA de las 42 leyes scope=eu tiene hoy un CELEX consolidado en ' +
+      '`boe_url` (RGPD apunta al espejo DOUE), así que la cobertura real de esta v1 es BOE. Filtra ' +
+      'artículos a `article_number` numérico (excluye preámbulo/disposiciones/la fila estructural ' +
+      '"0": el índice del BOE solo mapea rúbricas "Artículo N", medido en la CE). Es DETECTOR, no ' +
+      'reescribe nada — el remedio es `actualizar-articulo-oficial.cjs`. `--aplicar` deja rastro en ' +
+      'observable_events (`law_fidelity_sampled`); usa VENCE_LECTOR_URL para leer (T-486).',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */
