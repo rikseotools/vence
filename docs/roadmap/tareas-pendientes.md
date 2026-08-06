@@ -842,6 +842,47 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-603] 🔴 [ABIERTO 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
+
+**Qué ve el usuario.** En `/leyes/<ley>` acota los artículos con las casillas (p. ej. la LCSP de la 1 a la 112), marca **«solo preguntas falladas»** y le salen preguntas de artículos que **no ha elegido**. No hay aviso: las casillas que acaba de marcar **siguen marcadas** mientras el filtro se tira a la basura.
+
+**Dónde se pierde exactamente** (no es el filtro de artículos, que funciona):
+- `components/TestConfigurator.tsx:966-977` construye bien el config: `onlyFailedQuestions:true` **+ `selectedArticlesByLaw` + `failedQuestionIds`**.
+- `app/leyes/[law]/LawTestConfigurator.tsx:193-203` intercepta `onlyFailedQuestions` y redirige con `buildLawRepasoFallosUrl(...)`.
+- `lib/test-url/lawRepasoFallosUrl.ts:55-60` construye la URL **solo** con `law`, `order`, `n`, `days` → **`selectedArticlesByLaw` y `failedQuestionIds` se caen ahí**, sin señal ninguna.
+- Y aunque llegaran, el destino no sabría leerlos: `lib/api/tests/schemas.ts:148-179` (`failedQuestionsScopeSchema`) es una unión de 4 variantes (`block`/`topic`/`position`/`law`) **sin variante de artículo**, y el SQL de `lib/api/tests/queries.ts:385` filtra como mucho por ley entera (`laws.short_name = …`).
+
+**Es una decisión deliberada que envejeció mal**, no un olvido: los comentarios de `LawTestConfigurator.tsx:188-192` y `lawRepasoFallosUrl.ts:6-9` explican que se evitó pasar listas de ids por la URL. El problema no es la decisión, es que **el usuario no se entera**: `/avanzado` sabe filtrar artículos pero ignora «falladas», y `repaso-fallos-v2` sabe filtrar falladas pero su scope mínimo es la ley.
+
+**Lo lleva pidiendo la misma persona desde mayo, y se lo prometimos.** María Becerril (`mbecbet@gmail.com`, premium):
+- **21/05/2026**, feedback `a14a71de`, con el caso exacto: *«en el caso de la ley de contratos, aunque he acotado los artículos, me incluye preguntas fuera de mi selección»*. Le respondimos *«vamos a comprobar el filtrado para ver dónde está el escape… te decimos algo en cuanto tengamos diagnóstico y arreglo»*. **No se hizo.**
+- **10/07/2026**, dos impugnaciones (`83ed898a`, `c83e5a2b`) con la misma queja sobre el TUE: cerradas `resolved` **con `admin_response` a NULL** — o sea, cerradas sin contestarle.
+- **05/08/2026**, **cuatro** impugnaciones más en cuatro minutos (`6c4e43a4` art. 147, `5f2213d0` art. 160, `7b3dd5e4` art. 143, `17733d5e` art. 138), todas LCSP.
+
+**Medido (05/08, contra RDS).** Su selección guardada «CONTRATOS» (`user_test_favorites`) son 95 artículos, del 1 al 112. Contrastando cada test suyo de ese día contra esa lista:
+
+| Test | Camino | Artículos LCSP servidos | **Fuera de su selección** |
+|---|---|---|---|
+| 18:44 | `/leyes/ley-9-2017/avanzado` | 25 | 1 → art. 306 |
+| 19:18 | `/test/repaso-fallos-v2` | 20 | **6** → 147, 160, 143, 135, 306, 138 |
+| 19:25 | `/test/repaso-fallos-v2` | 20 | **4** → 147, 160, 143, 138 |
+| 19:25 | `/leyes/ley-9-2017/avanzado` | 25 | **0** |
+
+Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanzado` respeta la selección** (0 de 25 en la última pasada) y **el repaso no** (hasta 6 de 20). El art. **306** colado por `/avanzado` es un caso aparte y más pequeño, **sin diagnosticar todavía** — no confundirlo con esto.
+
+**Qué habría que hacer** (el subagente lo dejó trazado, tres puntos):
+1. Añadir una variante de scope con `articleNumbers` a `failedQuestionsScopeSchema` (`lib/api/tests/schemas.ts:148`).
+2. Propagarla en `buildLawRepasoFallosUrl` (`lib/test-url/lawRepasoFallosUrl.ts`) y en la lectura de `searchParams` de `app/test/repaso-fallos-v2/page.tsx:63-117`.
+3. Añadir el predicado sobre `articles.article_number` junto al `blockFilter` de `lib/api/tests/queries.ts:385`, **reutilizando la comparación por `String()`** de `lib/api/filtered-questions/queries.ts:1454` — si se compara como número, los artículos no numéricos (`DA1`, `55 ter`) se truncan y desaparecen del repaso.
+
+**Capas antes de pushear** (el arreglo toca lo que se le sirve a la gente):
+- Unitarios del núcleo de URL: que `buildLawRepasoFallosUrl` **conserve** los artículos y que un `DA1` sobreviva al viaje de ida y vuelta.
+- Integración contra RDS: repaso de fallos acotado a N artículos → **cero** preguntas fuera de esa lista.
+- Simulación con navegador (`vence-sim`/Playwright): marcar casillas + «solo falladas» y comprobar sobre la página servida que no aparece ningún artículo fuera — es un defecto de **camino entre pantallas**, y eso un test de texto no lo ve.
+- **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
+
+**Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
+
 ### [T-601] 🔴 [ABIERTO 05/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
 
 - **Esfuerzo: rato** para el caso concreto y el arreglo del endpoint. Medir la CLASE puede ser más.
