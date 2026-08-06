@@ -16,6 +16,7 @@ import FavoriteQuestionButton from './FavoriteQuestionButton'
 import ShareQuestion from './ShareQuestion'
 import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
 import { raizPersonalizada, raizPersonalizadaEnRuta } from '@/lib/oposicion/objetivoPersonalizado'
+import { backToLawButtonLabel } from '@/lib/navigation/backToArticleLink'
 import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 
@@ -2044,7 +2045,7 @@ export default function TestLayout({
                     className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm border border-gray-700"
                   >
                     <span>←</span>
-                    <span>{config.customNavigationLinks?.backToLaw?.text || 'Volver a Tests'}</span>
+                    <span>{backToLawButtonLabel(config.customNavigationLinks?.backToLaw)}</span>
                   </button>
                 )}
                 {/* 🎯 Botón de configuración de scroll automático a la derecha */}
