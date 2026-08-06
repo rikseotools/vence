@@ -3603,16 +3603,24 @@ correct» no es un dato.
   de qué títulos sobran, medidos con `sim-title-boundary`.
 
 **Lo que queda:**
-1. **Decidir qué se hace con los 550.** Lo honesto sería degradarlos a `never_verified` (no es un
-   veredicto, es una firma sin respaldo) — pero eso enciende el badge de 45 oposiciones de golpe, así
-   que es **decisión de Manuel**: degradar todo, degradar solo los que además no tienen Paso 1, o
-   dejarlos y atacarlos por orden de usuarios.
-2. **Que el badge no vuelva a poder mentir:** el estado efectivo debería exigir procedencia
+1. **✅ HECHO 06/08/2026 — los sellados sin Paso 1, degradados.** Decisión de Manuel: degradar
+   **solo** los que además NO tienen el Paso 1. De los **881** sellados sin pipeline, **319 sí
+   tienen el epígrafe verificado literal** — su Paso 2 no lo firmó el pipeline pero la fuente está
+   contrastada, así que degradarlos añadía ruido sin añadir información; degradar los 881 encendía
+   45 oposiciones de golpe, que es como se mata un badge. Corrido contra RDS:
+   **562 temas en 32 oposiciones**, `scopeSinPipeline` **881 → 319** (medido llamando a
+   `getScopeVerificationCount` después). Herramienta registrada:
+   `scripts/temario/degradar-sellado-sin-pipeline.cjs` (dry-run por defecto, historial append-only,
+   aborta por encima de `--max`), con guardarraíl que impide que su criterio y el del badge
+   diverjan. **NO toca `topic_scope`**: las preguntas se sirven igual. Y el total del badge no salta
+   porque la pieza del punto 2 ya los contaba como pendientes: lo que cambia es que el estado
+   guardado deja de afirmar que alguien verificó lo que nadie verificó.
+2. **✅ HECHO (fusionado a main el 06/08, `58c2680f3`) — que el badge no vuelva a poder mentir:** el estado efectivo debería exigir procedencia
    (`verified_by` del pipeline + `agent_run_id` real). Hoy `verified_correct` es `verified_correct`
    venga de donde venga.
 3. **León:** los 20 epígrafes restantes (Paso 1) y adjudicar los tres recortes de frontera de
    T1/T3/T4 contra el programa oficial, que ya está localizado y descargado.
-4. `verify:scope apply` **no se identifica** en `topic_scope_history` (`changed_by`/`change_reason`
+4. **✅ HECHO (mismo merge).** `verify:scope apply` **no se identificaba** en `topic_scope_history` (`changed_by`/`change_reason`
    a NULL). Es una línea (`SET LOCAL app.actor`) y hoy el escritor canónico deja misterio.
 5. **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
    nombra (medido el 04/08, al resolver la SEGUNDA impugnación del mismo usuario — `b439a3a7`, art.
