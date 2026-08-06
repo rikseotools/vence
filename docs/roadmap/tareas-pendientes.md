@@ -10997,6 +10997,33 @@ y eso solo ocurre donde las dos se sirven.
     GC T16) — decisión de Manuel, ver arriba.
 
 ### [T-308] 🟠 [ABIERTO 30/07] Premium compartido: comprobar si el enforcement existe y está MUDO, igual que pasó con el límite por dispositivo
+
+> **🔍 COMPROBADO el 06/08/2026 (w2) — NO es el patrón de T-304, pero hay un hueco real
+> distinto.** Detalle completo, reproducible con `node
+> data/pilotos/t308-premium-compartido-06ago/diagnostico.cjs`, en el README de esa carpeta.
+> **(1) DEMOSTRADO por ausencia exhaustiva de código** (grep de `premium_sharing` en todo el
+> repo, 15 apariciones, node_modules/tests excluidos): no hay NINGÚN código de bloqueo/
+> suspensión/revocación — todas las apariciones son el detector escribiendo en `fraud_alerts`
+> o la etiqueta del panel. No es que el enforcement esté mudo por un bug (como T-304); es que
+> no existe, y coincide con la política F0 ya documentada en el runbook para TODOS los `kind`.
+> **(2) DEMOSTRADO leyendo el código fuente vivo en RDS** (`pg_proc.prosrc` de
+> `register_device`): el tope de **2 dispositivos por cuenta SÍ aplica a premium igual que a
+> free** (`v_max := 2`, sin excepción por `is_premium` en la rama que bloquea) y **SÍ corta de
+> verdad hoy** — cifra ya medida por la migración `20260804_device_slot_inactivo_7_dias.sql`
+> (T-418, 04/08): 35 de 289 premium (12%) toparon el límite en 14 días, 183 respuestas
+> rechazadas. Ojo: este mecanismo protege contra COMPARTIR CREDENCIALES (una cuenta, muchos
+> aparatos) y es DISTINTO de lo que detecta `premium_sharing` (un aparato, ≥2 CUENTAS, una
+> premium) — no se solapan. **(3) DEMOSTRADO por trazado de código:** confirmar una señal
+> `premium_sharing` como fraude real (`fraud_confirmations`) hoy **no tiene ningún efecto**
+> sobre la cuenta premium — el único consumidor de esa tabla en TODO el código (frontend y
+> backend) es el cupo diario compartido del plan FREE, que premium esquiva por diseño en 3
+> sitios. Confirmar fraude premium es papeleo sin dientes: éste es el hueco real que sí merece
+> decisión de Manuel. **(4) NO se pudo remedir la cifra "35/289" con datos de hoy**:
+> `fraud_alerts` y `user_devices` dan 0 filas siempre para `vence_lector` (RLS activo, 0
+> políticas — mismo mecanismo de T-573/T-038, pero estas dos tablas son un hueco NUEVO, no
+> catalogado antes en `scripts/canary-rol-lector.cjs`). Se cita la cifra tal como la dejó la
+> migración de T-418, con acceso de escritura que este worker no tiene.
+
 - **Por qué se abre (encargo de Manuel, 30/07):** al cerrar [T-304] apareció un patrón que da miedo por lo repetible — **el enforcement por dispositivo llevaba tres meses construido, cableado y sin cortar ni una vez**, y nadie lo sabía porque un bloqueo que no ocurre no emite ninguna señal. La sospecha razonable es que **`premium_sharing` esté igual**: detectado por el barrido (`fraud_alerts`), quizá con código de bloqueo escrito… y sin cortar nada.
 - **Qué hay hoy, sin verificar:** el runbook de fraudes lista `premium_sharing` como uno de los `kind` del sweep («dispositivo compartido que incluye premium + ≥2 cuentas activas»), y F0 es **solo detección**. Lo que NO se ha comprobado es si existe algún camino que limite de verdad una cuenta premium usada desde varios dispositivos/personas.
 - **Cómo (el método que funcionó en T-304, en este orden — no saltárselo):**
