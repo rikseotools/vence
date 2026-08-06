@@ -128,3 +128,36 @@ export function buildBackToArticleLink(
     isPrimary: true,
   }
 }
+
+/**
+ * ANCLA de un artículo dentro de la página de un tema del temario ([T-611]).
+ *
+ * El bucle temario → «Hacer test Art. N» → volver estaba ABIERTO: el enlace de vuelta guardaba
+ * `window.location.href` SIN ancla y ninguna tarjeta tenía `id`, así que devolvía arriba del
+ * tema y con las leyes plegadas otra vez. Lo reportó una usuaria premium: «después no puedo
+ * volver exactamente al mismo lugar (y mismo formato), tengo que volver al temario y volver a
+ * seleccionar la ley y buscar el artículo por donde me quedé».
+ *
+ * Lleva la LEY además del número porque un mismo tema sirve varias leyes y el artículo 1 de
+ * cada una colisionaría. El identificador no es siempre numérico ('55 ter', 'DA 1', 'D. F. 2ª'),
+ * así que se normaliza a algo que valga como `id` de HTML y como fragmento de URL.
+ */
+export function anclaArticulo(
+  lawShortName: string | null | undefined,
+  articleNumber: string | number | null | undefined,
+): string | null {
+  const ley = normalizarParaAncla(lawShortName)
+  const art = normalizarParaAncla(articleNumber)
+  if (!ley || !art) return null
+  return `art-${ley}-${art}`
+}
+
+function normalizarParaAncla(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return ''
+  return String(v)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '') // tildes: el fragmento viaja en la URL
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}

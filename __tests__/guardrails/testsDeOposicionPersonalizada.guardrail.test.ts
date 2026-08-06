@@ -308,3 +308,47 @@ describe('el temario es UN componente, no uno por oposición', () => {
     expect(leer('components/temario/TopicContentView.tsx')).toContain('<TopicVideoCourses')
   })
 })
+
+/**
+ * OCTAVO ESLABÓN: el bucle temario → test → VUELTA AL ARTÍCULO. [T-611]
+ *
+ * Lo reportó una premium: *«hago un test de un artículo y después no puedo volver exactamente
+ * al mismo lugar, tengo que volver al temario y buscar el artículo por donde me quedé»*. En el
+ * código eran tres piezas y las tres tenían que existir a la vez —por eso van juntas aquí—:
+ * el `id` de la tarjeta (0 de 131 copias lo tenían), la URL de vuelta CON ancla (las 131
+ * guardaban `window.location.href` pelado) y desplegar la ley al llegar (las tarjetas viven
+ * dentro de una sección PLEGADA, así que sin eso el salto no lleva a ninguna parte).
+ *
+ * Quitar cualquiera de las tres no rompe nada visible: simplemente se vuelve a caer arriba
+ * del tema, que es el estado del que venimos.
+ */
+describe('el temario devuelve al artículo del que saliste', () => {
+  const componente = leer('components/temario/TopicContentView.tsx')
+
+  it('la tarjeta del artículo lleva su ancla', () => {
+    expect(componente).toMatch(/id=\{ancla\}/)
+    expect(componente).toMatch(/anclaArticulo\(lawShortName, article\.articleNumber\)/)
+  })
+
+  it('el ancla sale del núcleo puro compartido, no de una plantilla escrita a mano', () => {
+    // Si se construye aquí a mano, el día que cambie de forma la vuelta deja de casar y
+    // falla en SILENCIO (el ancla no encuentra nada y se cae arriba del tema).
+    expect(componente).toMatch(/from '@\/lib\/navigation\/backToArticleLink'/)
+  })
+
+  it('la URL que se guarda para volver lleva el ancla', () => {
+    expect(componente).toMatch(/sessionStorage\.setItem\('temario_return_url'/)
+    expect(componente).toMatch(/ancla \? `\$\{base\}#\$\{ancla\}` : base/)
+  })
+
+  it('al llegar con ancla DESPLIEGA la ley (si no, el artículo sigue oculto)', () => {
+    expect(componente).toMatch(/window\.location\.hash/)
+    expect(componente).toMatch(/setExpandedLaws\(\(prev\) => new Set\(prev\)\.add\(ley\.law\.id\)\)/)
+    expect(componente).toMatch(/scrollIntoView/)
+  })
+
+  it('deja rastro: sin evento no sabríamos si el bucle se cerró de verdad', () => {
+    expect(componente).toMatch(/eventType: 'temario_vuelta_articulo'/)
+    expect(componente).toMatch(/resultado: ley \? 'articulo' : 'no_encontrado'/)
+  })
+})
