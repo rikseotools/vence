@@ -68,7 +68,20 @@ IMG="${REG}:${TAG}"
 # Ver el comentario gemelo en deploy-frontend.sh: el lock serializa pero no se puede consultar
 # sin bloquearse. Esto lo publica donde el resto de sesiones ya mira (scripts/deploy-estado.cjs).
 # Best-effort, y el `trap` cierra la fila aunque el build aborte.
-DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie backend --sha "$SHA" --pid $$ 2>/dev/null || true)"
+# ── CANDADO ENTRE MÁQUINAS (T-485) ───────────────────────────────────────────
+# El `flock` de arriba serializa DENTRO de esta máquina; un fichero en /tmp no cruza a otra. Este
+# candado sí: el arriendo vive en `deploy_runs`, que ven todas. Y a diferencia de `deploy-marcar`
+# —telemetría, fail-open— esto es una PUERTA: si no puede comprobarlo, NO deja pasar (salida 4).
+# Dos `update-service` solapados sobre el mismo servicio es el incidente del 24/07 ([T-075]).
+DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy/candado.cjs" adquirir --superficie backend --sha "$SHA" --pid $$)" || exit $?
+echo "🔒 candado de deploy adquirido (run $DEPLOY_RUN_ID) — visible desde cualquier máquina."
+
+# El arriendo dura 10 min y se renueva mientras el deploy viva: así un build de 40 min no lo
+# pierde a mitad, y un `kill -9` lo suelta solo en 10 en vez de bloquear para siempre. El
+# renovador es HIJO de este shell, así que muere con él — no puede quedarse renovando un deploy
+# que ya no existe.
+( while sleep 120; do node "$(dirname "$0")/deploy/candado.cjs" renovar "$DEPLOY_RUN_ID" >/dev/null 2>&1 || exit 0; done ) &
+DEPLOY_RENOVADOR=$!
 
 # ── UNA SOLA SALIDA (ojo: en bash un segundo `trap … EXIT` REEMPLAZA al primero) ──
 # Hay DOS cosas que cerrar al terminar —la fila de `deploy_runs` (T-404) y el árbol de build
@@ -76,7 +89,8 @@ DEPLOY_RUN_ID="$(node "$(dirname "$0")/deploy-marcar.cjs" --inicio --superficie 
 # primera SIN avisar. Van juntas en una función.
 _al_salir() {
   local code=$?
-  [ -n "${DEPLOY_RUN_ID:-}" ] && node "$(dirname "$0")/deploy-marcar.cjs" --fin "$DEPLOY_RUN_ID" \
+  [ -n "${DEPLOY_RENOVADOR:-}" ] && kill "$DEPLOY_RENOVADOR" 2>/dev/null || true
+  [ -n "${DEPLOY_RUN_ID:-}" ] && node "$(dirname "$0")/deploy/candado.cjs" soltar "$DEPLOY_RUN_ID" \
     --outcome "$([ "$code" = 0 ] && echo ok || echo fail)" >/dev/null 2>&1 || true
   # La ruta va POR ARGUMENTO: `crear_arbol_de_build` corre en un subshell (sustitución de
   # comandos), así que su variable global no llega hasta aquí. Ver el comentario del helper.

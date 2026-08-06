@@ -174,7 +174,8 @@
     "canary:rol-lector": "node scripts/canary-rol-lector.cjs",
     "sim:repaso-ajeno": "tsx --env-file=.env.local scripts/sim/sim-repaso-ajeno.ts",
     "sim:estimate-servido": "npx tsx --env-file=.env.local scripts/sim/sim-estimate-servido.ts",
-    "sim:rescate-flota": "node scripts/flota/sim-rescate.cjs"
+    "sim:rescate-flota": "node scripts/flota/sim-rescate.cjs",
+    "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

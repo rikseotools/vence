@@ -2364,6 +2364,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'propios `deploy-*.sh` vía `scripts/deploy-marcar.cjs`, best-effort y con `trap`, así que ' +
       'un build que aborta no deja la fila abierta y la telemetría nunca puede tumbar un deploy.',
   },
+  candado_deploy: {
+    titulo: 'El candado de deploy que SÍ cruza máquinas (arriendo en deploy_runs)',
+    ruta: 'scripts/deploy/candado.cjs',
+    estado: 'vivo',
+    escribe: ['deploy_runs', 'lease_until'],
+    runbook: 'docs/runbooks/pusheo-revision-despliegue.md',
+    notas:
+      '`adquirir|renovar|soltar|estado`. Cierra el hueco de [T-485]: la exclusión mutua la daba ' +
+      '`flock` sobre /tmp/vence-deploy.lock, que es PER-MÁQUINA, así que dos deploys desde ' +
+      'máquinas distintas NO se veían — y dos `update-service` solapados sobre el mismo servicio ' +
+      'de ECS es el incidente del 24/07 ([T-075]). La detección ya existía (`veredicto()` de ' +
+      '`lib/deploy/estado.cjs` clasifica el run de otro host como en_curso/sospechoso); lo que ' +
+      'faltaba era que BLOQUEARA, y su propio comentario lo admitía: «un dudoso no bloquea a ' +
+      'nadie». Es ARRIENDO, no lock: 10 min renovados mientras el deploy viva, así que un build ' +
+      'de 40 min no lo pierde a mitad y un `kill -9` lo suelta solo. **Fail-CLOSED**, y ahí está ' +
+      'la diferencia con `scripts/deploy-marcar.cjs`, que es telemetría y falla en abierto: si no ' +
+      'puede comprobar la BD, sale 4 y no despliega. El `flock` se QUEDA como segunda puerta ' +
+      'local. Núcleo puro `lib/deploy/candado.cjs`; la exclusión se demuestra ejecutándola con ' +
+      '`npm run sim:candado-deploy` (dos adquisiciones reales, 8 casos) porque un test de texto ' +
+      'habría dado verde también con el flock solo, que era justo el fallo.',
+  },
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
