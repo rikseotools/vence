@@ -176,7 +176,8 @@
     "sim:repaso-articulos": "tsx --env-file=.env.local scripts/sim/sim-repaso-articulos.ts",
     "sim:estimate-servido": "npx tsx --env-file=.env.local scripts/sim/sim-estimate-servido.ts",
     "sim:rescate-flota": "node scripts/flota/sim-rescate.cjs",
-    "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs"
+    "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs",
+    "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

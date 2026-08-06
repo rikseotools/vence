@@ -1947,11 +1947,69 @@ export const RULE_SUBSCRIPTION_CANCEL_ERROR_BURST: AlertRule<{
     const r = rows[0];
     return {
       title: `${r.n} errores en /api/stripe/cancel en 15 min`,
-      body: `Excepciones no controladas en cancelSubscription. Probable: API Stripe degradada o regresión del código.\n\nÚltimo mensaje: ${r.lastMsg ?? '(n/a)'}\n\nInvestigar:\n  - status.stripe.com\n  - SELECT user_id, error_message, metadata, ts FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    ORDER BY ts DESC;`,
+      body: `Excepciones no controladas en cancelSubscription. Probable: API Stripe degradada o regresión del código.\n\nÚltimo mensaje: ${r.lastMsg ?? '(n/a)'}\n\n⚠️ OJO — esta alerta nombra el ENDPOINT, no la causa. El 05/08/2026 saltó por 16 intentos de cancelar de UNA sola persona que llevaba 18 días sin poder pagar (T-601): el fallo de cancelar era la consecuencia, no el problema. Antes de dar por hecho que es Stripe o una regresión, MIRA SI ES UN SOLO USUARIO ATASCADO.\n\nInvestigar:\n  - ¿cuántos usuarios distintos? (si es 1, no es sistémico: es alguien atrapado comprando)\n    SELECT user_id, COUNT(*) FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    GROUP BY user_id ORDER BY 2 DESC;\n  - status.stripe.com\n  - SELECT user_id, error_message, metadata, ts FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    ORDER BY ts DESC;`,
       metadata: { count: r.n, lastMsg: r.lastMsg },
     };
   },
   cooldownMin: 30,
+};
+
+/**
+ * Compra ATASCADA: hubo que expirar un checkout para poder cancelar. [T-601]
+ *
+ * Cada emisión de `subscription_checkout_expirado_para_cancelar` es una persona que estaba
+ * atrapada entre dos puertas: una compra que no cuaja (su pago falla una y otra vez) y una
+ * cancelación que Stripe rechaza mientras el checkout siga abierto.
+ *
+ * **Por qué hace falta una regla propia y no basta la de arriba.** El caso que lo destapó saltó
+ * como `subscription_cancel_error_burst` — «8 errores en /api/stripe/cancel en 15 min» —, que
+ * nombra el ENDPOINT y por eso se lee como «Stripe degradado o regresión nuestra». Lo que había
+ * detrás era `cnicolau2024@gmail.com` llevando **18 días** sin conseguir pagarnos: 6 suscripciones
+ * `incomplete`, 11 checkouts `unpaid` y 16 intentos de cancelar en un minuto. Una alerta que
+ * nombra el síntoma esconde el problema, y ese problema es dinero que no entra.
+ *
+ * **Umbral 1 a propósito.** Medido sobre 60 días de las dos cuentas de Stripe: solo **2 clientes**
+ * llegaron a este estado (los dos muriendo en `link`). Con esa frecuencia, agregar por volumen
+ * dejaría la señal por debajo de cualquier umbral para siempre — que es exactamente cómo el caso
+ * se pasó 18 días invisible. El cooldown de 12 h evita que un reintento del mismo usuario repita
+ * el aviso.
+ */
+export const RULE_COMPRA_ATASCADA_CHECKOUT: AlertRule<{
+  n: number;
+  usuarios: number;
+  ultimoUsuario: string | null;
+}> = {
+  name: 'compra_atascada_checkout_expirado',
+  severity: 'warn',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COUNT(DISTINCT user_id)::int AS usuarios,
+           (ARRAY_AGG(user_id::text ORDER BY ts DESC))[1] AS "ultimoUsuario"
+    FROM observable_events
+    WHERE event_type = 'subscription_checkout_expirado_para_cancelar'
+      AND ts > NOW() - INTERVAL '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.usuarios} persona(s) atascada(s) comprando: hubo que expirar su checkout para poder cancelar`,
+      body:
+        `Se rescataron ${r.n} cancelación(es) bloqueadas por un checkout abierto en 24 h.\n\n` +
+        `Eso significa que alguien intentó comprar, su pago NO cuajó, y al querer deshacerlo Stripe se negaba. ` +
+        `El rescate ya es automático (T-601), así que la persona pudo salir — pero sigue SIN haber pagado.\n\n` +
+        `Último usuario: ${r.ultimoUsuario ?? '(n/a)'}\n\n` +
+        `Qué mirar:\n` +
+        `  1) Por qué falla su pago. En los 2 casos medidos hasta hoy el método era **Link** y el banco lo rechazaba\n` +
+        `     una y otra vez (payment_intent_authentication_failure / issuer_declined).\n` +
+        `  2) Si se repite con varias personas a la vez, sospechar del método de pago, no del usuario.\n` +
+        `  3) SELECT user_id, metadata, ts FROM observable_events\n` +
+        `     WHERE event_type='subscription_checkout_expirado_para_cancelar'\n` +
+        `     AND ts > NOW() - INTERVAL '7 days' ORDER BY ts DESC;`,
+      metadata: { count: r.n, usuarios: r.usuarios, ultimoUsuario: r.ultimoUsuario },
+    };
+  },
+  cooldownMin: 720,
 };
 
 /**
@@ -6473,6 +6531,7 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_SUBSCRIPTION_VOID_FAILED as AlertRule,
   RULE_SUBSCRIPTION_FORCE_CANCEL_BURST as AlertRule,
   RULE_SUBSCRIPTION_CANCEL_ERROR_BURST as AlertRule,
+  RULE_COMPRA_ATASCADA_CHECKOUT as AlertRule,
   // Webhook entrante robusto (2026-05-27 post-caso Rocío/Mercedes)
   RULE_STRIPE_WEBHOOK_SIGNATURE_FAILED as AlertRule,
   RULE_STRIPE_WEBHOOK_4XX_BURST as AlertRule,
