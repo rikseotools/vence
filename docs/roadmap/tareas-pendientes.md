@@ -1123,10 +1123,14 @@ decisión de Manuel** (pregunta en el embudo).
    `node scripts/stripe/compras-atascadas.cjs --rescatar cus_UuROFDD3yalf26`.
 3. Decidir lo de Link.
 
-**Cabo suelto ajeno encontrado de paso (no es de esta ficha):** `__tests__/deploy/candado.test.js` da por
-hecho que el candado sale con código 0, pero sale ≠0 —correctamente— cuando **hay un deploy en curso en
-otra máquina**. O sea que ese test tumba el `pre-commit` de TODAS las sesiones mientras alguien despliega.
-Pasó hoy y obligó a `PRECOMMIT_TESTS_SKIP=1` con 1.065 suites en verde y esa sola en rojo.
+**Cabo suelto ajeno — YA RESUELTO, no lo persigas.** `__tests__/deploy/candado.test.js` daba por hecho
+que el candado sale con código 0, pero sale ≠0 —correctamente— cuando hay un deploy en curso en otra
+máquina, así que tumbaba el `pre-commit` de TODAS las sesiones mientras alguien desplegaba. Me obligó a
+`PRECOMMIT_TESTS_SKIP=1` con 1.065 suites en verde y esa sola en rojo. **Otra sesión lo arregló el mismo
+día a las 09:41 (`2fa0b9935`)**; yo había chocado con él antes de rebasar. Comprobado tras traerlo: sus
+15 casos en verde. Se deja escrito porque el síntoma reaparecerá con otra suite —es la familia de
+[T-576]: cosas que no son unitarias viviendo en `test:unit`— y así el siguiente sabe que el patrón ya
+tiene precedente y solución.
 
 ### [T-600] 🟠 [ABIERTO 05/08] 868 temas activos sin `description`, 745 SERVIDOS, y lo único que lo vigila es un test de integración en rojo que nadie mira
 
@@ -1703,18 +1707,6 @@ generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin r
   2. **Protección real, a decidir:** lo natural es un hook `pre-checkout`… que git no tiene. Alternativas a evaluar: que `flota.cjs` no exponga ninguna orden que corra en el árbol ajeno salvo las de solo lectura (la sonda ya lo es: hay un test que exige que no escriba), o un envoltorio del acceso remoto que rechace verbos destructivos (`checkout --`, `reset`, `clean`, `stash`) sobre un directorio que no sea el propio.
   3. **Y el trinquete de verdad: nada sin commitear más de N minutos en un árbol de trabajador.** El turno de un `claude -p` muere solo; si al morir deja ficheros sin commitear, esos ficheros están a un descuido de desaparecer. `npm run sesiones:huerfanos` mira worktrees ABANDONADOS, no vivos — este es el hueco complementario.
 - **Relacionadas:** [T-486] (la flota), [T-431] (worktrees huérfanos: mismo daño, otra causa), [T-428] (pérdida de contexto al resolver conflictos), [T-539] (la entrega obligatoria, que es lo que permitió recuperarlo).
-- **Esfuerzo: rato.**
-
-### [T-576] 🔴 [ABIERTO 05/08] 12 suites que hablan con la BD corrían en el pre-commit y bloqueaban a TODOS los trabajadores de la flota
-
-- **Síntoma, y lo reportó un trabajador:** `w1` no podía commitear NADA. Ni él, ni `w2`, ni `l2`, ni el supervisor operando dentro de su árbol. El `pre-commit` corre `npm run test:unit`, y ahí dentro había suites que consultan la **BD de negocio** — que un trabajador no puede leer por diseño (`vence_coordinacion` son 4 tablas de coordinación; `vence_lector` no da `conversion_events`, `admin_read_markers`, `temario_pdf_jobs`…).
-- **Medido, no supuesto.** Correr `test:unit` dentro del worktree de `l2` con SU entorno restringido: **12 suites en rojo, 52 tests**, de 1.063 suites totales. La lista textual (grep de `DATABASE_URL`, `postgres(`…) daba **44** y estaba llena de falsos positivos —guardarraíles que leen código como texto, el propio encargo de la flota que menciona la variable—, así que el criterio bueno es **cuáles fallan de verdad con el rol restringido**.
-  Las 12: `canary/{shuffleRoundtripBD,lawTestCtaScopedBD,explanationDataNoRegresionBD,landingSsotContractBD,oposicionIdentityBD}` · `temario/{pdfWorker,pdfJobQueue.integration,pdfHookScope.integration}` · `guardrails/{disputeOpenUnique,temarioPdfQueue}` · `api/admin/salesBadge.integration` · `config/psychometricFlagCoherence`.
-- **No son unitarias, y esa es la clave.** Un test que hace `DELETE`/`INSERT` contra la BD real es de **integración por definición**; que viviera bajo `test:unit` era un error de ETIQUETA, no una propiedad suya. Corregir la etiqueta no debilita el gate: lo hace honesto **y más rápido para todas las sesiones**, no solo para la flota. Tres de las doce ya se llamaban `*.integration.test.ts` — la convención existía y no se estaba respetando.
-- **Arreglo: una regla y cuatro renombrados.** `test:unit` ignora `__tests__/canary/` y `\.integration\.test\.`; `test:integration` los recoge (su patrón pasa a incluir ambos), así que **siguen corriendo en CI** — sacarlos del pre-commit sin que corran en ningún sitio habría sido apagarlos. Los cuatro que no seguían la convención se renombran a `*.integration.test.ts`.
-- **Verificado con la medida que lo destapó:** re-corriendo `test:unit` en el árbol de `l2` con su rol restringido, **de 12 suites en rojo a 1** — y esa una es un test nuevo que el propio `l2` estaba escribiendo, no una de las doce.
-- **Lo que NO se hizo, y por qué:** la otra salida que se barajó era que los trabajadores usaran `PRECOMMIT_TESTS_SKIP=1` en cada commit. Descartada: convertir un escape en rutina es exactamente cómo este repo ha perdido guardarraíles antes ([T-496]/[T-497] lo midieron — el escape se vuelve un prefijo que se copia de un comando a otro, y 6 de 10 no respondían a ningún bloqueo). El trabajador que lo reportó **se paró en vez de rodearlo**, que es lo que su encargo le pide.
-- **Falta (no se ha hecho):** un guardarraíl que impida que una suite que habla con la BD vuelva a colarse en `test:unit`. El registro `lib/admin/suiteRegistry.ts` ya hace esto para las carpetas de integración, con detección por imports; **el hueco es justo el complementario** —las que están FUERA de esas carpetas— y ahí es donde vive el fallo. Sin ese trinquete, esto vuelve en cuanto alguien añada una suite nueva.
 - **Esfuerzo: rato.**
 
 ### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
@@ -5399,6 +5391,24 @@ Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanza
 **Pendiente: DESPLEGAR y volver a pasar la simulación contra producción.** Hasta entonces está arreglado pero no verificado en vivo.
 
 **Gotchas del camino, para la siguiente sesión que monte un dev local en un worktree:** hicieron falta las **dos** notas de memoria — `cp -al` del `node_modules` real (Turbopack no traga el symlink) **y** las 3 claves RS256 además de `AUTH_SECRET` en `.env.local`, o `/api/auth/token` da 401 y la simulación se queda esperando una respuesta que no llega.
+### [T-576] ✅ [HECHA 06/08] 12 suites que hablan con la BD corrían en el pre-commit y bloqueaban a TODOS los trabajadores de la flota
+
+- **Síntoma, y lo reportó un trabajador:** `w1` no podía commitear NADA. Ni él, ni `w2`, ni `l2`, ni el supervisor operando dentro de su árbol. El `pre-commit` corre `npm run test:unit`, y ahí dentro había suites que consultan la **BD de negocio** — que un trabajador no puede leer por diseño (`vence_coordinacion` son 4 tablas de coordinación; `vence_lector` no da `conversion_events`, `admin_read_markers`, `temario_pdf_jobs`…).
+- **Medido, no supuesto.** Correr `test:unit` dentro del worktree de `l2` con SU entorno restringido: **12 suites en rojo, 52 tests**, de 1.063 suites totales. La lista textual (grep de `DATABASE_URL`, `postgres(`…) daba **44** y estaba llena de falsos positivos —guardarraíles que leen código como texto, el propio encargo de la flota que menciona la variable—, así que el criterio bueno es **cuáles fallan de verdad con el rol restringido**.
+  Las 12: `canary/{shuffleRoundtripBD,lawTestCtaScopedBD,explanationDataNoRegresionBD,landingSsotContractBD,oposicionIdentityBD}` · `temario/{pdfWorker,pdfJobQueue.integration,pdfHookScope.integration}` · `guardrails/{disputeOpenUnique,temarioPdfQueue}` · `api/admin/salesBadge.integration` · `config/psychometricFlagCoherence`.
+- **No son unitarias, y esa es la clave.** Un test que hace `DELETE`/`INSERT` contra la BD real es de **integración por definición**; que viviera bajo `test:unit` era un error de ETIQUETA, no una propiedad suya. Corregir la etiqueta no debilita el gate: lo hace honesto **y más rápido para todas las sesiones**, no solo para la flota. Tres de las doce ya se llamaban `*.integration.test.ts` — la convención existía y no se estaba respetando.
+- **Arreglo: una regla y cuatro renombrados.** `test:unit` ignora `__tests__/canary/` y `\.integration\.test\.`; `test:integration` los recoge (su patrón pasa a incluir ambos), así que **siguen corriendo en CI** — sacarlos del pre-commit sin que corran en ningún sitio habría sido apagarlos. Los cuatro que no seguían la convención se renombran a `*.integration.test.ts`.
+- **Verificado con la medida que lo destapó:** re-corriendo `test:unit` en el árbol de `l2` con su rol restringido, **de 12 suites en rojo a 1** — y esa una es un test nuevo que el propio `l2` estaba escribiendo, no una de las doce.
+- **Lo que NO se hizo, y por qué:** la otra salida que se barajó era que los trabajadores usaran `PRECOMMIT_TESTS_SKIP=1` en cada commit. Descartada: convertir un escape en rutina es exactamente cómo este repo ha perdido guardarraíles antes ([T-496]/[T-497] lo midieron — el escape se vuelve un prefijo que se copia de un comando a otro, y 6 de 10 no respondían a ningún bloqueo). El trabajador que lo reportó **se paró en vez de rodearlo**, que es lo que su encargo le pide.
+- **El trinquete ESTÁ HECHO** (`__tests__/guardrails/testUnitSinBd.guardrail.test.ts`, mismo commit `ec566f813`): le pregunta a jest qué suites correría `test:unit` hoy —no reimplementa el patrón— y exige que ninguna importe un cliente de BD. Complementa a `lib/admin/suiteRegistry.ts`, que ya cubría las CARPETAS de integración; el hueco era el de fuera. Esta línea decía *«falta, no se ha hecho»* y llevaba horas desfasada.
+
+**Verificación independiente (06/08, otra sesión).** El guardarraíl detecta **solo el import del driver** (`pg`/`postgres`) y no las fábricas (`getAdminDb`, `pgConfig`, `helpers/db`). Eso parece un hueco y **no lo es**, pero la ficha no lo demostraba, así que se comprobó desde cero: una detección más ancha marca **23 suites** de las 1.065 de `test:unit`, y al correr esas 23 con `DATABASE_URL` apuntando a un puerto muerto **pasan las 45 suites y sus 427 tests**. O sea que **ninguna conecta**: las 23 serían falsos positivos, y un trinquete con 23 falsos se apaga en una semana. El criterio estrecho es el bueno.
+
+> **Y esto vale para la próxima:** la verdad de referencia aquí no es «qué importa el fichero» sino «qué falla sin BD», y se mide en diez segundos apuntando `DATABASE_URL` a un puerto cerrado. No hace falta un rol restringido ni un worktree de la flota para reproducirlo.
+
+- **Lo que NO se añadió, y por qué.** Se evaluó extender el trinquete a la familia *«lanza un proceso externo»* (`execFileSync`/`execSync`), que es la otra forma de no ser unitario — el caso de `__tests__/deploy/candado.test.js`, que el 06/08 tumbó el `pre-commit` de todas las sesiones mientras había un deploy en curso. Son **9 suites** y casi todas son legítimas (guardarraíles que llaman a `git` o parsean scripts), así que una regla general daría ruido. Aquel caso se arregló donde tocaba, en el propio test (`2fa0b9935`).
+- **Esfuerzo: rato.**
+
 ### [T-604] ✅ [HECHA 06/08] DUPLICADA de [T-397] — el detector de «oposición elegida sin ni un tema» ya existía
 
 **Se cierra por duplicada el mismo día que se abrió.** El problema es real, pero ya estaba fichado,
