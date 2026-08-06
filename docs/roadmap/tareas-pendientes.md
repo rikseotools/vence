@@ -1007,6 +1007,67 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
   para cazar.
 
 Contexto: es un proceso de 196 plazas (98 libre + 98 promoción interna), grupo E2, del Parque Móvil.
+### [T-617] 🔴 [ABIERTO 06/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
+
+**Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
+estaban rotos: los cuatro servicios `vence-flota@w*` activos, tmux en pie, `NRestarts=0`. Los
+últimos encargos se escribieron a las **10:45–11:17**. Simplemente **nadie repartía**.
+
+**Por qué.** El turno de un trabajador es un `claude -p` que muere al terminar; quien lanza el
+siguiente es el supervisor. Y el supervisor era un proceso **en primer plano en el portátil de
+Manuel** que alguien tenía que arrancar a mano y mantener vivo. No hay unidad systemd, ni timer, ni
+cron, ni script npm, ni una línea de documentación de cómo mantenerlo vivo — comprobado en el VPS
+(`systemctl list-timers`: ningún timer de flota) y en el portátil (ningún proceso, ninguna unidad).
+
+**Y había DOS programadores, no uno:**
+- `vigilar` (05/08 16:22) — bucle propio, con su copia de la regla de reparto por capacidad.
+- `bucle` (06/08 11:35) — el bueno: no reimplementa la criba, lanza `flota.cjs repartir` como hijo,
+  aísla el fallo de una pasada y detecta turnos atascados.
+
+Dos repartidores con criterios propios entregan cosas distintas según quién corra — el olor de los
+cinco escritores de `seguimiento_url` [T-130], dentro del propio supervisor. **Y el bueno era
+invisible**: la línea de ayuda ofrecía `vigilar` y no mencionaba `bucle` en ningún sitio. La flota
+se quedó parada teniendo el arreglo escrito **18 minutos antes** de que se escribiera el último
+encargo.
+
+#### Lo que se hizo
+
+1. **`local` deja de ser una constante y pasa a ser una pregunta** (`lib/flota/maquinas.cjs`:
+   `esLocal`, `inalcanzable`; resuelto dentro de `maquinaDe`, en UN sitio, para que los once puntos
+   que leen `m.local` no se enteren). Lo declara quien arranca el proceso —`VENCE_FLOTA_AQUI`—,
+   igual que `VENCE_SESSION_ROLE`/`HOME` [T-539]. **Sin declarar, el comportamiento es idéntico al
+   de antes.** Se probó por `hostname` y NO sirve: en un contenedor devuelve un id efímero
+   (`32351262e6ed`), así que el portátil se habría declarado remoto a sí mismo.
+2. **Unidad de systemd** (`scripts/flota/vence-flota-supervisor.service`) para que el supervisor
+   viva **en el VPS**, no en el portátil: un supervisor que solo existe mientras Manuel tiene la
+   tapa abierta reproduce exactamente el fallo que viene a arreglar.
+3. **Un solo programador.** `vigilar` pasa a ser alias de `bucle` y su implementación (113 líneas)
+   se borra. La ayuda nombra `bucle` el primero.
+4. **⚠️ Y al fusionarlos se perdía una capacidad, en silencio: `repartir` NO relanzaba los turnos
+   muertos** — eso vivía SOLO en `vigilar`. Un turno que muere con la tarea cogida la deja
+   bloqueada para todos (el claim la protege) y el sistema entero se para por un trabajador. **Lo
+   cazaron sus propios tests de paridad**, que es justo para lo que estaban. Se llevó a `repartir`,
+   que es donde debe vivir ahora: así el comportamiento es el mismo se llegue por el bucle o por un
+   `repartir` a mano. Se le devuelve SU tarea, nunca otra [T-577].
+
+#### Hallazgo aparte: una cicatriz de merge en `main`
+
+El bloque anti-duplicados de `repartir` (`repartidasHacePoco`) había quedado **fuera de todo
+`if (cmd === …)`**, en el cuerpo principal del `try`, con el comentario de «LANZAR UN TRABAJADOR»
+huérfano encima. Seguía funcionando para el reparto —quedaba en ámbito— pero **lanzaba su consulta
+a `observable_events` en CADA invocación de `flota.cjs`** (`estado`, `lanzar`, `parar`…). Es
+sintácticamente válido, así que `node --check`, el typecheck y los 23.888 tests pasaban: una
+cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
+
+**Capas:** `__tests__/flota/maquinaLocal.test.ts` (nuevo, 20 tests) + los de paridad de
+`encargo.test.ts` actualizados a una sola puerta. **278 en verde** en `__tests__/flota/`.
+
+**Verificado en vivo, no declarado:** `node scripts/flota/flota.cjs repartir` tras el cambio →
+**4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
+clones desfasados (w4 iba 11 commits por detrás).
+
+**Pendiente:** instalar la unidad en el VPS (`supervisor.env` con `DATABASE_URL` de coordinación +
+`VENCE_FLOTA_AQUI=flota-1`) y comprobar una pasada del bucle ya como servicio.
 
 ### [T-597] 🟠 [ABIERTO 05/08] Una oposición personalizada no puede servir NINGUNA pregunta oficial (`exam_positions` vacío)
 

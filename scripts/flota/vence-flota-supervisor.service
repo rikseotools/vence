@@ -1,0 +1,59 @@
+# scripts/flota/vence-flota-supervisor.service — el supervisor continuo, como servicio. (T-617)
+#
+# ── POR QUÉ EXISTE ──────────────────────────────────────────────────────────────────────────
+# El programador (`flota.cjs bucle`) estaba escrito y NO CORRÍA EN NINGÚN SITIO: era un proceso
+# en primer plano que alguien tenía que lanzar a mano en el portátil de Manuel y mantener vivo.
+# Consecuencia medida el 06/08: los cuatro trabajadores del VPS ociosos SIETE HORAS, con los
+# últimos encargos escritos a las 11:17 — y el commit que traía el bucle es de las 11:35. Se
+# construyó el motor y no se arrancó.
+#
+# ── POR QUÉ EN EL VPS Y NO EN EL PORTÁTIL ───────────────────────────────────────────────────
+# Porque el portátil se cierra. Un supervisor que solo vive mientras Manuel tiene la tapa abierta
+# reproduce exactamente el fallo que viene a arreglar: la flota trabaja mientras alguien mira.
+# El VPS ya está encendido siempre — es donde viven los trabajadores.
+#
+# ── QUÉ NO HACE, Y ES A PROPÓSITO ───────────────────────────────────────────────────────────
+# No responde preguntas del embudo, no aprueba borradores, no envía nada a ninguna persona y no
+# toca las sesiones de Manuel. Reparte trabajo y relanza turnos muertos. Todo lo que sale hacia
+# una persona sigue pasando por él (`lib/sessions/aprobacion.cjs`).
+#
+# ── INSTALAR ────────────────────────────────────────────────────────────────────────────────
+#   scp scripts/flota/vence-flota-supervisor.service root@<vps>:/etc/systemd/system/
+#   ssh root@<vps> 'systemctl daemon-reload && systemctl enable --now vence-flota-supervisor'
+#   ssh root@<vps> 'journalctl -u vence-flota-supervisor -f'     # ver las pasadas
+#
+# Necesita `/etc/vence-flota/supervisor.env` con DATABASE_URL (la credencial de coordinación) y
+# VENCE_FLOTA_AQUI=flota-1 — esa variable es la que le dice que los trabajadores w1-w4 son SUYOS
+# y sus comandos van sin SSH (`lib/flota/maquinas.cjs`, `esLocal`). Sin ella se declararía remoto
+# a sí mismo e intentaría entrar por SSH en su propia máquina.
+
+[Unit]
+Description=Supervisor continuo de la flota de Vence (reparte trabajo y relanza turnos muertos)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=flota
+Group=flota
+EnvironmentFile=/etc/vence-flota/supervisor.env
+WorkingDirectory=/home/flota/vence
+ExecStart=/usr/bin/node /home/flota/vence/scripts/flota/flota.cjs bucle --cada 300
+
+# El bucle ya aísla el fallo de UNA pasada (no se muere por un SSH caído), así que un reinicio
+# aquí solo ocurre si se cae el proceso entero. 30 s para no entrar en bucle de reinicios contra
+# una BD caída.
+Restart=always
+RestartSec=30
+
+# Salida limpia: el propio bucle atiende SIGTERM para no dejar un `repartir` huérfano lanzando
+# encargos que nadie vigila. Se le da margen para terminar la pasada en curso.
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+# Un supervisor no necesita escribir en ningún sitio del sistema salvo su propio HOME.
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
