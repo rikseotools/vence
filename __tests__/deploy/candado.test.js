@@ -107,11 +107,32 @@ describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
   const os = require('os')
   const ENT = require(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))
 
-  it('el checkout principal se localiza por --git-common-dir, no por la ruta propia', () => {
+  // ⚠️ ESTOS DOS CASOS DEPENDEN DEL MONTAJE, y por eso llevan guarda (06/08/2026).
+  //
+  // Sin ella rompían `main` en el CI de GitHub y **bloqueaban el deploy de todo el mundo**,
+  // incluido el de la propia tarea que los estrenó. Y no cazaban ninguna regresión al hacerlo:
+  // el runner es un checkout suelto, sin worktrees y sin `.env.local`, así que lo que fallaba
+  // era la PREMISA del caso, no lo que el caso afirma. Un rojo que no se puede poner verde
+  // arreglando el código no es una capa de seguridad, es un peaje.
+  //
+  // Se conserva la afirmación universal (el principal es quien tiene las dependencias) y se
+  // condiciona solo la que exige un montaje concreto — mismo patrón `hay ? it : it.skip` que
+  // ya usa el caso del árbol de deploy, aquí abajo. Donde de verdad importa (esta máquina,
+  // el pre-commit y el propio árbol de deploy) siguen ejecutándose enteros.
+  const esWorktree = (() => {
+    try { return fs.statSync(path.join(REPO, '.git')).isFile() } catch { return false }
+  })()
+
+  it('el checkout principal es el que TIENE las dependencias', () => {
     const principal = ENT.repoPrincipal(REPO)
     expect(fs.existsSync(path.join(principal, 'node_modules'))).toBe(true)
-    // Apuntar al árbol propio fue el error de la primera versión (y el de T-404 bis antes).
-    expect(principal).not.toBe(REPO)
+  })
+
+  // Apuntar al árbol propio fue el error de la primera versión (y el de T-404 bis antes).
+  // Solo se puede comprobar desde un worktree: en un checkout suelto `--git-common-dir`
+  // devuelve el propio directorio, y con razón.
+  ;(esWorktree ? it : it.skip)('desde un worktree, el principal NO es el árbol propio', () => {
+    expect(ENT.repoPrincipal(REPO)).not.toBe(REPO)
   })
 
   // En proceso HIJO con entorno controlado: mutar `process.env` en el propio test se filtraba a
@@ -121,7 +142,14 @@ describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
     `console.log(JSON.stringify(E.urlBd(${JSON.stringify(dir)})))`],
     { encoding: 'utf8', env: { ...process.env, ...env } }).trim()
 
-  it('sin DATABASE_URL, encuentra el .env.local del checkout principal', () => {
+  // Igual que arriba: si no hay ningún `.env.local` que encontrar (el runner de CI no lo tiene
+  // ni puede tenerlo, es un secreto), este caso no puede decir nada. Se comprueba que exista
+  // ANTES de exigir que lo encuentre.
+  const hayEnvLocal = (() => {
+    try { return fs.existsSync(path.join(ENT.repoPrincipal(REPO), '.env.local')) } catch { return false }
+  })()
+
+  ;(hayEnvLocal ? it : it.skip)('sin DATABASE_URL, encuentra el .env.local del checkout principal', () => {
     expect(JSON.parse(enHijo(REPO, { DATABASE_URL: '' }))).toEqual(expect.any(String))
   })
 
