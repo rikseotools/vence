@@ -1465,6 +1465,12 @@ async function detectarTodo(c, add, marcar, now) {
         `${yux.yuxtaposicion} pregunta(s) visibles cuya explicación reproduce una opción FALSA casi literal con la palabra corregida pegada, sin decir en ningún momento que es incorrecta (${yux.oficiales} de examen oficial, ${yux.vistas} ya vistas)`,
         { yuxtaposicion: yux.yuxtaposicion, oficiales: yux.oficiales, vistas: yux.vistas, sample: yux.sample });
     }
+    // El latido de lo EVALUADO (T-529): va DENTRO del try y DESPUÉS del add, porque lo que
+    // certifica es que este detector llegó a mirar. Si el subproceso revienta, el catch de abajo
+    // deja el kind SIN marcar — que es exactamente lo que hay que poder distinguir de un cero.
+    // (Este marcar faltaba: T-525 escribió el detector antes de que T-529 aterrizara el latido,
+    // así que cada rama estaba verde por su lado y solo el merge lo destapó.)
+    marcar('explicacion_yuxtaposicion', yux.yuxtaposicion || 0);
   } catch (e) { console.warn('⚠️ barrido de yuxtaposición no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── scope_cross_tema_dup: misma ley REAL escopada ENTERA (o solape grande) en ≥2 temas ──
