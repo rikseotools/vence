@@ -1301,6 +1301,7 @@ lo que no se puede satisfacer), [T-486] (el ciclo de revisión que hace esto rut
   para cazar.
 
 Contexto: es un proceso de 196 plazas (98 libre + 98 promoción interna), grupo E2, del Parque Móvil.
+
 ### [T-617] 🔴 [ABIERTO 06/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
 
 **Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
