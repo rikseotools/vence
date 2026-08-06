@@ -1023,6 +1023,25 @@ programa, así que el tema no se queda seco — el recorte no tenía coste.
 4. Comprobado después: el gate devuelve `tema_no_localizado` para esa pregunta — **ningún tema suyo
    la sirve ya**.
 
+#### ✅ PASO 1 CERRADO ENTERO la misma noche (06/08) — 21 de 21 temas
+
+No se quedó en el tema de la queja: se clonaron **los 18 epígrafes restantes** del Anexo II del
+BOE-A-2026-4150, verbatim (con sus erratas: «Titulo»/«Capitulo» sin tilde, «Título IV.:» con punto,
+«Le Ley» en el punto 8), con `--fuente-manual` porque el boletín no parsea, y con `source_url` +
+nota de sourcing en cada uno. Estado: **`verified_literal` 3 → 21**, `Paso 1 pendiente: 0`.
+Recache de la MV, 18 rutas purgadas y `revalidate-temario` ✅.
+
+**⚠️ EL AVISO QUE MERECE LA PENA, porque casi escribe 18 epígrafes CORRUPTOS firmados como
+«literal del BOE»:** el primer extractor troceaba el Anexo por «número + punto», y el punto 19 dice
+*«Sistema operativo Windows **10.**»*. Eso se leyó como el punto 10 del programa: **el punto 10 real
+desapareció** (R.D. 99/2011, doctorado) y el 19 quedó truncado en *«…Sistema operativo Windows»*.
+Un sello de «verificado contra el boletín» sobre un texto inventado es peor que no tener sello.
+**No se vio leyendo: lo cazó el dry-run del `apply`**, que imprime el antes/después campo a campo.
+Arreglado buscando los puntos **en orden ascendente** (cada uno a partir de donde acabó el
+anterior), así un «10.» que aparece antes de que toque el 10 no puede confundirse. Vale para
+cualquier boletín que no parsee: los temarios están llenos de «Windows 10», «Office 2021»,
+«R.D. 822/2021».
+
 #### Lo que queda, y por qué es una ficha y no un apartado del cierre
 
 **18 de los 21 temas de esta oposición siguen en `never_sourced`.** O sea: lo arreglado es el tema
