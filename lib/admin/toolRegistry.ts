@@ -568,6 +568,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'decir en mitad de la compra. Sirve para dimensionarlo y para comprobar tras el despliegue ' +
       'que baja a cero. El criterio del arreglo vive en `lib/stripe/falloPagoReal.ts`.',
   },
+  avisar_usuario: {
+    titulo: 'Escribirle a UNA persona por algo que hemos detectado NOSOTROS (T-601)',
+    ruta: 'scripts/soporte/avisar-usuario.cjs',
+    estado: 'vivo',
+    notas:
+      'node scripts/soporte/avisar-usuario.cjs --a <email> --asunto "…" --texto <fichero.md> ' +
+      '--motivo "…" [--preview <email>] [--enviar]. SIMULA por defecto (enseña el correo entero ' +
+      'sin tocar nada). Cubre el hueco entre las otras cuatro vías de envío, que todas RESPONDEN a ' +
+      'algo que la persona escribió antes (impugnación, feedback, newsletter): ésta es para quien ' +
+      'NO ha reclamado. Lleva la puerta `exigirPersona(\'aviso\')` — un trabajador de la flota no ' +
+      'puede usarla — y registra en `email_events` con `email_type=aviso_soporte` (tipo propio, no ' +
+      '`soporte_respuesta`: mezclarlos haría que ese cubo signifique lo que contestamos Y lo que ' +
+      'iniciamos). El MOTIVO es obligatorio y queda escrito: es lo que explica dentro de seis meses ' +
+      'por qué le escribimos a alguien que no había pedido nada. ⚠️ NO es para campañas (eso es ' +
+      '`scripts/newsletters/`): una persona y un motivo concreto.',
+  },
   compras_atascadas: {
     titulo: 'Encontrar a quien lleva días intentando pagarnos y no puede (T-601)',
     ruta: 'scripts/stripe/compras-atascadas.cjs',
