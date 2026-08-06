@@ -1,0 +1,83 @@
+# T-356 — priorización + primera pregunta nueva (06/08/2026, w2)
+
+Contribución PARCIAL a T-356 (204 artículos cuyo único duplicado exacto es lo único que los
+mantiene con ≥4 preguntas activas). Escribir contenido verificado para 204 artículos de 84
+leyes es un trabajo de varias sesiones — aquí van dos piezas completas y honestas: la
+**priorización** (para que quien siga no tenga que rederivarla) y **una pregunta nueva**
+para el artículo de mayor impacto, verificada de extremo a extremo.
+
+## 1. Priorización (`articulos-protegidos-priorizados.json`, 200 artículos)
+
+`npm run huerfanos:plan` (la herramienta que la propia ficha recomienda) usa `DATABASE_URL`
+de escritura para cruzar con `user_profiles.target_oposicion` — permiso que este worker no
+tiene (`vence_coordinacion`, solo las 4 tablas de coordinación). Reproducido el mismo
+espíritu con lo que SÍ es legible por `VENCE_LECTOR_URL`: en vez de "usuarios reales" se
+usa **nº de `topic_scope` que referencian el artículo** como proxy de alcance (a cuántos
+temas de cuántas oposiciones les importa). No es lo mismo que la cifra de `huerfanos:plan`,
+pero ordena en la misma dirección — un artículo citado por 86 `topic_scope` pesa mucho más
+que uno citado por 1.
+
+**Reconté los 200/204 artículos protegidos hoy** (204 era la cifra del 31/07; ver nota en
+[T-321] sobre el drift normal a 200) y los ordené por ese proxy. Top 5:
+
+| ley | artículo | topic_scope que lo referencian |
+|---|---|---|
+| Ley 39/2015 (LPACAP) | 49 | 86 |
+| Ley 39/2015 (LPACAP) | 120 | 85 |
+| RDL 5/2015 (TREBEP) | 24 | 70 |
+| Ley 19/2013 (Transparencia) | 6 | 44 |
+| Excel 365 Escritorio | 30 | 22 |
+
+Los cuatro primeros son leyes troncales que escopa casi cualquier oposición de la
+Administración General — mucho más impacto que un convenio internacional citado 1 vez.
+
+## 2. Una pregunta nueva, completa y verificada: Ley 39/2015 art. 49
+
+Elegido por ser el nº1 del ranking. El artículo tiene DOS reglas distintas:
+
+> 1. La nulidad o anulabilidad de un acto no implicará la de los sucesivos en el
+> procedimiento que sean independientes del primero.
+> 2. La nulidad o anulabilidad en parte del acto administrativo no implicará la de las
+> partes del mismo independientes de aquélla, salvo que la parte viciada sea de tal
+> importancia que sin ella el acto administrativo no hubiera sido dictado.
+
+**Las 4 preguntas activas de este artículo (leídas antes de escribir nada, para no
+duplicar) se concentran casi todas en el apartado 1** (tres preguntas, cada una una
+reformulación de la misma regla general) y **solo una toca el apartado 2**, y ninguna de
+las 4 pregunta por la EXCEPCIÓN del apartado 2 (la parte viciada "de tal importancia que
+sin ella el acto no hubiera sido dictado") — es el hueco real, no un hueco inventado.
+
+`ley-39-2015-art49.json` es la pregunta nueva: pregunta por esa excepción, con explicación
+estructurada (`explanation_data` v1, formato canónico — el manual manda escribir directo en
+estructura, no narrar con letras) y cita literal del art. 49.2.
+
+**Validado con `validar.ts`** (los mismos gates reales de la campaña de calidad, importados
+sin reimplementar: `isStructuredExplanation`, `structuredNarrativeStaleLetters`,
+`explanationReferencesLetters`, `citaNoLiteral`) **+ una comprobación propia de este lote**:
+que el enunciado normalizado no coincide con NINGUNA de las 4 preguntas activas del
+artículo — el motivo mismo por el que existe T-356 es no añadir otra copia. Las 5
+comprobaciones en verde:
+
+```
+npx tsx --env-file=.env.local data/pilotos/t356-articulos-pobres-06ago/validar.ts
+✅ pregunta nueva válida (nOptions=4), gates en verde, no duplica ninguna de las 4 activas del artículo.
+```
+
+## No aplicado
+
+Como en las entregas anteriores de este worker: sin `DATABASE_URL` de escritura no hay
+INSERT posible. Falta que alguien con permiso:
+1. Inserte la pregunta de `ley-39-2015-art49.json` en `questions` (con su `explanation_data`).
+2. Verifique que el artículo pasa de 4 a 5 activas, y que la guarda de
+   `scripts/calidad/duplicados-exactos.cjs` deja de proteger su grupo duplicado si con eso
+   ya no baja de 4 al jubilar la copia — o vuelva a proteger igual (5-1=4, sigue justo en el
+   límite; haría falta una SEGUNDA pregunta nueva para dar margen real).
+3. Doble auditoría antes de activar, por el manual (`docs/maintenance/generar-preguntas-con-ia.md`).
+
+## Lo que NO se ha hecho (alcance real, sin adornar)
+
+**199 artículos más, cada uno necesitando el mismo tratamiento** (leer sus 1-3 preguntas
+existentes para no duplicar, leer el artículo, identificar el hueco real, escribir y
+verificar). A ese ritmo es trabajo genuino de varias sesiones — no un checklist rápido. El
+ranking de este lote es la parte reutilizable: empezar por Ley 39/2015 art. 120 (85
+topic_scope) y RDL 5/2015 art. 24 (70) es la continuación natural.

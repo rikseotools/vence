@@ -10401,6 +10401,21 @@ y eso solo ocurre donde las dos se sirven.
   3. **Solo entonces** volver a pasar `node scripts/calidad/duplicados-exactos.cjs --aplicar`: la guarda dejará caer solas las copias en cuanto su artículo supere el mínimo.
 - **Consulta para listarlos** (la del barrido, filtrando por los que la guarda aparta): agrupar `questions` activas por `primary_article_id` + enunciado normalizado + las 4 opciones ordenadas, y quedarse con los grupos cuyo artículo tenga menos de 4 activas.
 - **Relacionada:** [T-321] (el barrido que los destapó), `huerfanos:plan`, y el detector `article_no_coverage` — que **no los ve**, porque exige ≥4 artículos sin NINGUNA pregunta en un tema y estos tienen una.
+- **📦 PRIMERA PIEZA (06/08/2026, w2) — priorización + una pregunta nueva verificada, en `data/pilotos/t356-articulos-pobres-06ago/`.**
+  Sin `DATABASE_URL` de escritura no se pudo correr `huerfanos:plan` (permission denied);
+  reproducido su espíritu con `VENCE_LECTOR_URL` usando nº de `topic_scope` que referencian
+  cada artículo como proxy de alcance. **Reconté 200 artículos protegidos hoy** (204 el
+  31/07, drift normal — ver [T-321]). Top del ranking: **Ley 39/2015 art.49 (86 topic_scope)**,
+  **art.120 (85)**, **RDL 5/2015 art.24 (70)**, **Ley 19/2013 art.6 (44)**. Escrita y
+  verificada una pregunta NUEVA para el art. 49 (leídas antes las 4 activas para no duplicar:
+  3 tocan el apartado 1 y ninguna pregunta por la EXCEPCIÓN del apartado 2 — el hueco real).
+  Validada contra los 4 gates reales de la campaña de calidad (`isStructuredExplanation`,
+  `structuredNarrativeStaleLetters`, `explanationReferencesLetters`, `citaNoLiteral`) + una
+  comprobación de no-duplicado contra las 4 activas: las 5 en verde
+  (`data/pilotos/t356-articulos-pobres-06ago/validar.ts`). **No aplicado** (sin escritura en
+  BD de negocio). Quedan 199 artículos con el mismo tratamiento pendiente — no es un
+  checklist rápido, cada uno exige leer sus preguntas existentes + el artículo + escribir el
+  hueco real. Detalle en el README de esa carpeta.
 
 ## Hechas
 
