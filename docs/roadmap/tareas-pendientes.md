@@ -2806,6 +2806,39 @@ si el limpiador dispara, eso tiene que ser un evento.
   3. **NUNCA recortar el art. 19 TUE de los scopes** para resolverlo: ese artículo sí entra en los 37 programas. El defecto está en la pregunta, no en el temario.
   4. Purgar caché (`test-counts`, `temario`, `teoria`, `questions`) — es por instancia, repetir.
 - **Hermano de la familia que ya conoce el sistema:** es el mismo fenómeno que *«revisa los vínculos al artículo vecino»* y *«revisa las preguntas de planes y estrategias»*, pero entre **instrumentos distintos** (Tratado vs Protocolo anejo), que es lo que ninguno de los dos detectores mira.
+- **▸ SESIÓN w2 (06/08): leídas las 5 contra el texto REAL de `articles.content` (no contra la ficha) — el corte
+  «explicación cita el Estatuto» es un SUELO, y aquí se demuestra que también cuela falsos positivos: 3 de las 5
+  YA ESTÁN bien ancladas (la explicación cita el Estatuto de más, pero el dato que responde la pregunta SÍ está en
+  el TUE art. 19 tal y como lo tenemos en BD). Trabajador sin escritura en BD de negocio → nada de esto aplicado,
+  plan dry-run listo en `scripts/scope/plan-reanclaje-T561-tue19-w2.json` para quien tenga permiso.**
+  - **✅ NO RE-ANCLAR (el TUE art.19 en BD SÍ contiene la respuesta; la cita al Estatuto en la explicación es RUIDO,
+    no un ancla equivocada):**
+    - `bb382736` (mandato de los jueces): la clave es «seis años» y el art.19.2 en BD dice literalmente *"…serán
+      nombrados de común acuerdo por los Gobiernos de los Estados miembros para un período de seis años"*.
+    - `2aec5bd9` (mandato de jueces y abogados generales, renovable): mismo artículo, misma frase + *"…podrán ser
+      nombrados de nuevo"* (=renovable). Responde la pregunta entera.
+    - `c11ee0e9` (idéntica a `2aec5bd9`): el dato también está en el art.19, **pero su explicación NO lo cita** —
+      solo copia el art.48 del Estatuto (composición del Tribunal General, 40/47/2-por-Estado), que no tiene
+      relación con la duración del mandato. Es un defecto de EXPLICACIÓN (no explica lo que pregunta), no de ancla.
+      No re-anclar; sí merece revisión de contenido aparte (fuera del alcance de re-anclaje).
+  - **❌ SÍ RE-ANCLAR (verificado que el TUE art.19 en BD no contiene el dato que distingue la respuesta correcta):**
+    - `540c9861` → **Estatuto TJUE art. 9**: pide "renovación parcial cada 3 años, afectando a LA MITAD de los
+      jueces" — el art.19 solo da los 6 años, no la fracción. El art.9 del Estatuto sí: *"La renovación parcial de
+      los Jueces… afectará a la mitad de los Jueces."* Pérdida declarada: el Estatuto solo está escopado en 2 temas
+      (`tramitacion_procesal` T5 con arts 16-18 — el 9 NO está — y `policia_nacional` T4, ley entera), así que
+      re-anclar sirve la pregunta en 1 tema de los 37 donde hoy se sirve mal. Alternativa sin decidir aquí (es scope,
+      no ancla): ampliar `tramitacion_procesal` T5 con el art.9 — su epígrafe pide expresamente el TJUE entre las
+      instituciones de la UE.
+    - `6fcef119` → **TFUE art. 252**: pide el número de Abogados Generales (11); el art.19 solo dice "asistido por
+      abogados generales" sin cifra. El art.252 TFUE fija el mecanismo real: *"…asistido por ocho abogados
+      generales. Si el Tribunal de Justicia lo solicitare, el Consejo… podrá aumentar el número"* (la cifra 11 sale
+      de una Decisión del Consejo al amparo de este artículo, ya citada en la propia explicación). Pérdida
+      declarada: de los 37 temas con TUE art.19, solo 14 escopan también TFUE con el art.252 incluido (o ley
+      entera) — se deja de servir en los 23 restantes.
+  - **Plan dry-run VALIDADO** (guardarraíles de `reanclarGuardas.js` en verde, pérdidas declaradas aceptadas):
+    `DATABASE_URL=<con permiso de escritura> node scripts/reanclar-preguntas.cjs scripts/scope/plan-reanclaje-T561-tue19-w2.json --apply`
+    (repetir antes el dry-run sin `--apply` para confirmar contra el estado actual de BD, que puede haber cambiado).
+  - **Runner usado, requiere lector:** `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/reanclar-preguntas.cjs <plan.json>`.
 
 ### [T-557] 🟠 [ABIERTO 05/08] Explicaciones que no explican: repiten la opción correcta, y a veces con el texto falseado y el verdadero PEGADOS
 
