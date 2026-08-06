@@ -237,6 +237,18 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   }
   console.log(`   ${SES.lineaSesion({ continua: ses.continua, id: ses.id, tamanoBytes: peso })}`)
 
+  // ── EL LOG ES DE **ESTE** TURNO (T-486, 06/08) ────────────────────────────────────────
+  // Orden de Manuel: «borra los logs de los trabajadores de ayer para no liar». Se rota AQUÍ y
+  // no con un borrado a mano por una razón medida: al ir a hacerlo, los cuatro trabajadores
+  // estaban escribiendo (`tee -a` con el descriptor abierto), y truncar un fichero en ese estado
+  // lo deja corrupto — el arranque del turno es el único instante en que nadie escribe.
+  //
+  // El turno anterior no se destruye, se aparta a `.anterior`: sirve para comparar dos turnos
+  // seguidos cuando algo va mal. Y la memoria completa ya no vive aquí de todos modos — vive en
+  // el transcript de la conversación, que ahora persiste entre turnos.
+  const log = `~/flota-${trabajador}.log`
+  try { enMaquina(trabajador, `${como}sh -c 'mv -f ${log} ${log}.anterior 2>/dev/null || true'`) } catch {}
+
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
     `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
