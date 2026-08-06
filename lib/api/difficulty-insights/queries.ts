@@ -322,9 +322,11 @@ async function getProgressTrends(db: ReturnType<typeof getDb>, userId: string): 
 // limitación conocida de `withDbTimeout`: el statement_timeout de 30 s es quien la mata de
 // verdad), pero libera la respuesta al usuario.
 //
-// Leído del entorno EN CADA LLAMADA (no una constante de módulo): mismo patrón que
-// `waitMsFromEnv` de `renderSemaphore.ts` — permite bajarlo en tests sin esperar segundos reales
-// y ajustarlo en producción sin redeploy si la medición de T-319 pide otro valor.
+// Leído del entorno EN CADA LLAMADA (no una constante de módulo): permite bajarlo en tests sin
+// esperar segundos reales y ajustarlo en producción sin redeploy si la medición de T-319 pide otro
+// valor. (El comentario original citaba aquí `waitMsFromEnv` de `lib/temario/pdf/renderSemaphore.ts`
+// como precedente del patrón; ese fichero se borró en la Fase 2 de [T-159]/[T-270] —la ruta del PDF
+// ya no renderiza, así que su semáforo era código muerto— y las dos ramas se juntaron el 06/08.)
 export function recommendationsTimeoutMsFromEnv(env: NodeJS.ProcessEnv = process.env): number {
   const raw = Number(env.DIFFICULTY_INSIGHTS_RECS_TIMEOUT_MS)
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 6000
