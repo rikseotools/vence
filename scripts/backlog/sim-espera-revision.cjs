@@ -116,6 +116,74 @@ async function main() {
       await sql`UPDATE public.backlog_tasks SET review_requested_at = now() WHERE id = ${ID}`
     } catch { rechazado = true }
     afirmar('una petición de revisión SIN entregable la rechaza la BD', rechazado)
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+    // EL OTRO ESCALÓN: «entregada → REVISADA» (T-486, 06/08)
+    //
+    // Los tramos 1-6 prueban la entrega. Lo que sigue prueba el desenlace, que se estrenó el
+    // 06/08 y llegó con dos fallos que ningún unit podía ver porque viven en el SQL y en el
+    // proceso: `revisado` no soltaba el claim (T-244 y T-397 quedaron con lease vivo de un
+    // trabajador muerto: ni `reap` las siega ni `claim` las da), y la puerta atómica del claim
+    // seguía leyendo solo `review_requested_at`, así que una devuelta con problemas exigía
+    // `--force` para hacer justo lo que su veredicto pedía.
+    // ═══════════════════════════════════════════════════════════════════════════════════════
+
+    console.log('\n▸ 7. revisar: escribe el veredicto y TAMBIÉN suelta el claim')
+    cli(['claim', ID], SID_A)
+    cli(['revision', ID, '--entrega', ENTREGA], SID_A)
+    // EL REVISOR LA COGE ANTES DE MIRARLA, que es el camino real: una entregada bloquea el claim,
+    // así que quien la revisa entra con --force. Sin este paso el claim ya estaba suelto y la
+    // comprobación de «revisar la suelta» pasaba SIN EJERCITAR NADA — un verde por la razón
+    // equivocada, que es el modo de fallo contra el que avisa el tramo 3 de esta misma simulación.
+    // Se descubrió al reparar el residuo en producción: el UPDATE real chocó con el CHECK
+    // `backlog_claim_coherente` (el triplete claimed_by/claimed_at/lease_until va junto) y esta
+    // simulación no lo había visto porque nunca llegó a soltar un claim de verdad.
+    const cogeRevisor = cli(['claim', ID, '--force', '--motivo', 'la cojo para revisarla'], SID_B)
+    afirmar('el revisor la coge para mirarla (--force: una entregada no se entrega sola)',
+      cogeRevisor.code === 0, `exit=${cogeRevisor.code}`)
+    const propia = cli(['revisado', ID, '--veredicto', 'ok', '--hallazgos', 'leí el diff entero y reproduje la causa contra el BOE'], SID_A)
+    afirmar('nadie revisa lo suyo: quien la entregó no puede firmarla', propia.code === 3, `exit=${propia.code}`)
+    const corto = cli(['revisado', ID, '--veredicto', 'problemas', '--hallazgos', 'está mal'], SID_B)
+    afirmar('un veredicto sin hallazgos es un sello, no una revisión', corto.code === 2, `exit=${corto.code}`)
+    const rev = cli(['revisado', ID, '--veredicto', 'ok', '--hallazgos', 'leí el diff entero y reproduje la causa contra el BOE antes de firmarlo'], SID_B)
+    afirmar('con veredicto y hallazgos sale bien', rev.code === 0, `exit=${rev.code}`)
+    const r7 = await sql`
+      SELECT claimed_by, claimed_at, lease_until, review_verdict, reviewed_by,
+             (reviewed_at IS NOT NULL) AS mirada
+        FROM public.backlog_tasks WHERE id = ${ID}`
+    afirmar('queda el veredicto y quién lo firmó', r7[0].review_verdict === 'ok' && r7[0].reviewed_by === SID_B && r7[0].mirada)
+    // ÉSTE es el fallo medido el 06/08: sin esto la tarea queda inalcanzable para todos.
+    afirmar('y SUELTA el claim: revisar también es soltarla',
+      r7[0].claimed_by === null && r7[0].lease_until === null && r7[0].claimed_at === null,
+      `claimed_by=${r7[0].claimed_by} claimed_at=${r7[0].claimed_at}`)
+
+    console.log('\n▸ 8. revisada SIN problemas: no es más trabajo, es una decisión de una persona')
+    const trasOk = cli(['claim', ID], SID_A)
+    afirmar('no se entrega', trasOk.code !== 0, `exit=${trasOk.code}`)
+    afirmar('y el motivo es el REAL (falta mergear, no falta revisor)',
+      /mergee/i.test(trasOk.salida) && !/esperando revisi[óo]n humana/i.test(trasOk.salida))
+
+    console.log('\n▸ 9. revisada CON problemas: vuelve al pool y quien la coja recibe el veredicto')
+    cli(['wake', ID], SID_A)
+    cli(['claim', ID], SID_A)
+    cli(['revision', ID, '--entrega', ENTREGA], SID_A)
+    const HALL = 'la cifra «canarios 19/19» era un falso verde: RLS activo sin política devuelve 0 filas sin error'
+    const malo = cli(['revisado', ID, '--veredicto', 'problemas', '--hallazgos', HALL], SID_B)
+    afirmar('el veredicto negativo se escribe', malo.code === 0, `exit=${malo.code}`)
+    // La puerta ATÓMICA (SQL) tiene que estar de acuerdo con el núcleo puro: si solo se hubiera
+    // arreglado claimGate, esto seguiría fallando y el gate solo explicaría un fallo que ocurre.
+    const retoma = cli(['claim', ID], SID_A)
+    afirmar('se puede retomar SIN --force: su propio veredicto lo pide', retoma.code === 0, `exit=${retoma.code}`)
+    afirmar('y al cogerla se le enseña lo que encontraron', /falso verde/.test(retoma.salida))
+    const r9 = await sql`
+      SELECT (review_requested_at IS NOT NULL) AS pedida, (reviewed_at IS NOT NULL) AS mirada,
+             review_verdict, progress_note, claimed_by
+        FROM public.backlog_tasks WHERE id = ${ID}`
+    afirmar('sale del circuito de revisión: vuelve a estar en curso',
+      r9[0].pedida === false && r9[0].mirada === false && r9[0].review_verdict === null)
+    afirmar('pero el veredicto NO se tira: baja a progress_note', /falso verde/.test(r9[0].progress_note || ''))
+    afirmar('y la tarea es de quien la retomó', r9[0].claimed_by === SID_A)
+
   } catch (e) {
     console.error(`\n❌ la simulación no pudo completarse: ${String(e.message || e).slice(0, 200)}`)
     casos.push({ nombre: 'ejecución completa', ok: false })

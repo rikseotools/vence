@@ -56,7 +56,8 @@ async function main() {
         FROM public.session_questions WHERE status = 'open'`.catch(() => [])
     listas = await sql`
       SELECT id, title, resume_check, wake_on_deploy_sha, snooze_until,
-             review_requested_at, review_note, review_requested_by
+             review_requested_at, review_note, review_requested_by,
+             reviewed_at, reviewed_by, review_verdict
         FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
     friccion = await sql`
       SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid
@@ -65,7 +66,8 @@ async function main() {
     // Entregadas y esperando revisión (T-539). Consulta propia porque una entrega NO tiene por
     // qué haber pasado por `pause`, así que no aparece en `listas` (que exige resume_check).
     entregadas = await sql`
-      SELECT id, title, review_requested_at, review_note, review_requested_by
+      SELECT id, title, review_requested_at, review_note, review_requested_by,
+      reviewed_at, reviewed_by, review_verdict
         FROM public.backlog_tasks
        WHERE status <> 'done' AND review_requested_at IS NOT NULL
        ORDER BY review_requested_at`.catch(() => [])
@@ -106,9 +108,18 @@ async function main() {
 
   // Entregadas: van pegadas al embudo porque desde el punto de vista de Manuel son lo mismo
   // —trabajo parado esperando que él mire— con la diferencia de que aquí YA hay entregable.
-  if (entregadas && entregadas.length) {
-    console.log(`🙋 ${entregadas.length} ENTREGADA(S) — hechas y esperando que las revises:`)
-    for (const r of entregadas) console.log(REV.lineaRevision(r, ahora))
+  // Dos cajones, no uno (T-486): la que nadie ha mirado pide REVISOR; la que ya tiene veredicto
+  // pide DECISIÓN. Mezclarlas escondía el resultado de la revisión entre las que seguían en cola.
+  const conVeredicto = (entregadas || []).filter((r) => REV.esperaDecision(r))
+  const sinMirar = (entregadas || []).filter((r) => REV.esperaRevision(r))
+  if (conVeredicto.length) {
+    console.log(`⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto y falta tu decisión:`)
+    for (const r of conVeredicto) console.log(REV.lineaRevisada(r, ahora))
+    console.log('')
+  }
+  if (sinMirar.length) {
+    console.log(`🙋 ${sinMirar.length} ENTREGADA(S) — hechas y esperando que las revises:`)
+    for (const r of sinMirar) console.log(REV.lineaRevision(r, ahora))
     console.log('')
   }
 

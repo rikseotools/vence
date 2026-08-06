@@ -37,6 +37,9 @@ const RESC = require(path.join(REPO, 'lib', 'flota', 'rescate.cjs'))
 // El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
 const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
+// Quién espera revisor y quién espera decisión lo decide UN sitio (T-486): si el supervisor lo
+// dedujera por su cuenta de las columnas, `flota` y `backlog list` acabarían contando distinto.
+const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 
 const cmd = process.argv[2] || 'estado'
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
@@ -247,8 +250,14 @@ async function main() {
       const tareas = await sql`
         SELECT id, title, claimed_by FROM public.backlog_tasks
          WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
+      // Se traen las columnas del veredicto porque hay DOS estados distintos aquí (T-486): sin
+      // mirar todavía, y ya mirada con veredicto escrito. Colapsarlas anunciaba «19 esperando que
+      // las revises» cuando 4 ya estaban revisadas — y el resultado de esa revisión no lo veía
+      // nadie. El criterio no se re-escribe aquí: lo pone `lib/backlog/revision.cjs`.
       const entregas = await sql`
-        SELECT id, title, review_requested_by FROM public.backlog_tasks
+        SELECT id, title, review_requested_at, review_requested_by,
+               reviewed_at, reviewed_by, review_verdict, review_findings
+          FROM public.backlog_tasks
          WHERE review_requested_at IS NOT NULL AND status <> 'done'`
       const preguntas = await sql`
         SELECT id, sid, question, kind, draft_target FROM public.session_questions WHERE status = 'open'
@@ -330,9 +339,17 @@ async function main() {
 
       // Lo que espera a Manuel va SIEMPRE, aunque la flota esté perfecta: es lo único cuyo coste
       // corre mientras nadie lo lee.
-      if (entregas.length) {
-        console.log(`\n🙋 ${entregas.length} ENTREGADA(S) esperando que las revises:`)
-        for (const e of entregas) console.log(`   ${e.id}  ${String(e.title).slice(0, 62)}`)
+      const sinMirar = entregas.filter((e) => REV.esperaRevision(e))
+      const conVeredicto = entregas.filter((e) => REV.esperaDecision(e))
+      if (conVeredicto.length) {
+        const malas = conVeredicto.filter((e) => REV.devueltaConProblemas(e)).length
+        console.log(`\n⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto y falta tu decisión` +
+                    (malas ? ` (${malas} con problemas)` : ''))
+        for (const e of conVeredicto) console.log(REV.lineaRevisada(e))
+      }
+      if (sinMirar.length) {
+        console.log(`\n🙋 ${sinMirar.length} ENTREGADA(S) esperando que las revises:`)
+        for (const e of sinMirar) console.log(`   ${e.id}  ${String(e.title).slice(0, 62)}`)
       }
       // ── BORRADORES: lo PRIMERO, porque es lo único que va a salir hacia una persona ────
       // «Siempre tengo que aprobar lo que se envía» (Manuel). Van separados de las preguntas y
@@ -478,7 +495,8 @@ async function main() {
           FROM public.backlog_tasks
          WHERE closed_at > now() - (${dias} || ' days')::interval`
       const entregadas = await sql`
-        SELECT id, review_requested_at, review_requested_by
+        SELECT id, review_requested_at, review_requested_by,
+        reviewed_at, reviewed_by, review_verdict
           FROM public.backlog_tasks
          WHERE review_requested_at IS NOT NULL AND status <> 'done'`
       const m = PROD.medir({ cerradas, entregadas, ahora: new Date() })

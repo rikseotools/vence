@@ -149,3 +149,125 @@ describe('lo que se le enseña a quien revisa', () => {
     expect(REV.esperaRevision(null)).toBe(false)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// DOS ESTADOS, NO UNO (T-486, 06/08) — lo que el ciclo se dejó al estrenarse
+//
+// Al montar la revisión entre trabajadores se leyó solo `review_requested_at`, y eso metió en el
+// mismo cajón a la entrega que nadie ha mirado y a la que YA tiene veredicto. Se midió el mismo
+// día contra la BD real: de 19 entregas vivas, 4 estaban revisadas y las 19 se anunciaban como
+// «esperando que las revises». Consecuencias medidas:
+//   · el veredicto —el resultado del trabajo de otro trabajador— no aparecía en ninguna pantalla;
+//   · `claim` contestaba «esperando revisión humana» a una devuelta con `problemas`, o sea que
+//     retomar lo que el propio veredicto pedía retomar exigía `--force`;
+//   · y `revisado` no soltaba el claim, así que T-244 y T-397 quedaron `in_progress` con el lease
+//     vivo de un trabajador muerto: `reap` no las siega (respeta el lease) y `claim` no las da.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+const revisada = (over: Record<string, any> = {}) => entregada({
+  reviewed_at: haceH(1), reviewed_by: 'w3-vence-flota-w1-9f2a1c',
+  review_verdict: 'ok', review_findings: 'leí el diff entero y reproduje la causa contra el BOE',
+  ...over,
+})
+
+describe('«espera revisión» deja de ser cierto en cuanto alguien la revisa', () => {
+  it('sin mirar: espera revisor, no decisión', () => {
+    expect(REV.esperaRevision(entregada())).toBe(true)
+    expect(REV.esperaDecision(entregada())).toBe(false)
+    expect(REV.yaRevisada(entregada())).toBe(false)
+  })
+
+  it('ya revisada: espera DECISIÓN, y ya no cuenta como pendiente de revisar', () => {
+    expect(REV.esperaRevision(revisada())).toBe(false)
+    expect(REV.esperaDecision(revisada())).toBe(true)
+  })
+
+  it('las dos siguen estando «en el circuito»: es lo que distingue de una tarea normal', () => {
+    expect(REV.tieneEntrega(entregada())).toBe(true)
+    expect(REV.tieneEntrega(revisada())).toBe(true)
+    expect(REV.tieneEntrega({ id: 'T-1' })).toBe(false)
+  })
+
+  it('van a cajones distintos, que es todo el punto', () => {
+    expect(REV.clasificarEsperaTarea(entregada(), clasificarEspera)).toBe('revision')
+    expect(REV.clasificarEsperaTarea(revisada(), clasificarEspera)).toBe('decision')
+  })
+})
+
+describe('el veredicto decide si la tarea vuelve al trabajo o espera a una persona', () => {
+  it('«problemas» es trabajo pendiente otra vez, no una espera', () => {
+    expect(REV.devueltaConProblemas(revisada({ review_verdict: 'problemas' }))).toBe(true)
+    expect(REV.devueltaConProblemas(revisada({ review_verdict: 'ok' }))).toBe(false)
+  })
+
+  it('y por eso NO bloquea el claim: forzar lo que el sistema pide hacer no protege nada', () => {
+    const g = claimGate(revisada({ review_verdict: 'problemas' }), 'otra-sesion', AHORA)
+    expect(g.ok).toBe(true)
+  })
+
+  it('«ok» sí bloquea, pero diciendo su motivo REAL: falta mergear, no falta trabajo', () => {
+    const g = claimGate(revisada({ review_verdict: 'ok' }), 'otra-sesion', AHORA)
+    expect(g.ok).toBe(false)
+    expect(g.code).toBe('awaiting_decision')
+    expect(g.reason).toContain('mergee')
+    expect(g.forzable).toBe(true)
+  })
+
+  it('la que nadie ha mirado sigue bloqueando como antes (no se ha aflojado nada)', () => {
+    const g = claimGate(entregada(), 'otra-sesion', AHORA)
+    expect(g.ok).toBe(false)
+    expect(g.code).toBe('awaiting_review')
+  })
+})
+
+describe('al retomar una devuelta, el veredicto no se pierde', () => {
+  it('devuelve la nota que baja a progress_note, con quién la revisó y qué encontró', () => {
+    const r = REV.retomarTrasProblemas(revisada({
+      review_verdict: 'problemas',
+      review_findings: 'la cifra «canarios 19/19» era un falso verde: RLS sin política da 0 filas',
+    }))
+    expect(r).not.toBeNull()
+    expect(r.nota).toContain('DEVUELTA POR LA REVISIÓN')
+    expect(r.nota).toContain('w3-vence-flota')        // abreviado por segmento, no por longitud
+    expect(r.nota).toContain('falso verde')
+  })
+
+  it('y no dice nada de una que no es una devolución', () => {
+    expect(REV.retomarTrasProblemas(revisada({ review_verdict: 'ok' }))).toBeNull()
+    expect(REV.retomarTrasProblemas(entregada())).toBeNull()
+    expect(REV.retomarTrasProblemas(null)).toBeNull()
+  })
+})
+
+describe('la línea de la ya revisada enseña el VEREDICTO (antes no se enseñaba en ningún sitio)', () => {
+  it('un ok dice que la decisión es de quien lee', () => {
+    const l = REV.lineaRevisada(revisada(), AHORA)
+    expect(l).toContain('REVISADA sin problemas')
+    expect(l).toContain('decides tú')
+    expect(l).toContain('reproduje la causa contra el BOE')   // los hallazgos, no solo el sello
+  })
+
+  it('un problemas dice que vuelve, y lo canta distinto', () => {
+    const l = REV.lineaRevisada(revisada({ review_verdict: 'problemas' }), AHORA)
+    expect(l).toContain('CON PROBLEMAS')
+    expect(l).toContain('vuelve a quien la retome')
+  })
+
+  it('no la pinta si aún no hay veredicto — ese es el otro cajón', () => {
+    expect(REV.lineaRevisada(entregada(), AHORA)).toBeNull()
+  })
+
+  it('y la línea de «esperando revisión» deja de pintarse en cuanto hay veredicto', () => {
+    expect(REV.lineaRevision(revisada(), AHORA)).toBeNull()
+  })
+})
+
+describe('una entrega revisada tampoco es «lista para verificar»', () => {
+  it('ni con veredicto ok ni con problemas: la desbloquea una persona, no producción', () => {
+    const conPendiente = { resume_check: 'comprobar en producción', status: 'open' }
+    expect(isAwaitingVerification({ ...revisada(), ...conPendiente })).toBe(false)
+    expect(isAwaitingVerification({ ...revisada({ review_verdict: 'problemas' }), ...conPendiente })).toBe(false)
+    // contraste: la misma fila SIN entrega sí es de verificar
+    expect(isAwaitingVerification({ id: 'T-9', ...conPendiente })).toBe(true)
+  })
+})

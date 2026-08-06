@@ -357,7 +357,8 @@ async function sugerirSiguiente(s, id, sid) {
     const rows = await s`
       SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until,
              wake_on_deploy_sha, effort, resume_check,
-             review_requested_at, review_note, review_requested_by
+             review_requested_at, review_note, review_requested_by,
+             reviewed_at, reviewed_by, review_verdict, review_findings
         FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
     // MISMO criterio que `next`, no una copia (T-130): vive en lib/backlog/orden.cjs.
     const libre = ORDEN.candidatas(rows, {
@@ -552,7 +553,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         SELECT id, title, priority, status, claimed_by, claimed_at, lease_until, blocked_by,
                snooze_until, snooze_reason, snooze_count, resume_check, due_at, due_reason,
                wake_on_deploy_sha, wake_on_deploy_surface, effort,
-               review_requested_at, review_note, review_requested_by
+               review_requested_at, review_note, review_requested_by,
+             reviewed_at, reviewed_by, review_verdict, review_findings
           FROM public.backlog_tasks
          ${all ? s`` : s`WHERE status IN ('open','in_progress','blocked')`}
          ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 9 END,
@@ -588,6 +590,10 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // Se sacan de `rows` y no de `listas` porque `isAwaitingVerification` exige `resume_check`,
       // y una entrega no tiene por qué haber pasado por `pause`.
       const entregadas = rows.filter((r) => REV.esperaRevision(r));
+      // YA REVISADAS: tienen veredicto escrito y esperan que DECIDAS, que no es lo mismo que
+      // esperar revisor. Hasta el 06/08 caían en el mismo montón que las de arriba, así que el
+      // resultado de la revisión —lo que costó el trabajo de otro trabajador— no lo veía nadie.
+      const revisadas = rows.filter((r) => REV.esperaDecision(r));
       if (paraVerificar.length) {
         // NO decir «se cierran rápido» (lo decía hasta el 31/07): empuja justo a lo contrario de
         // lo que toca. Estas tareas están IMPLEMENTADAS y sin comprobar; lo que falta no es
@@ -639,6 +645,17 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.log(`   (al aprobarla: 'wake <id>' la devuelve al pool; nadie la coge sin --force)`);
       }
 
+      // ── YA REVISADAS: HAY VEREDICTO (T-486) ──────────────────────────────────────────
+      // Van DESPUÉS de las que nadie ha mirado y por separado, porque piden algo distinto: aquí
+      // no hace falta revisar nada, hace falta DECIDIR. Un `ok` se mergea; un `problemas` vuelve
+      // al pool en cuanto alguien la coja (`claim` le entrega el veredicto).
+      if (revisadas.length) {
+        const conProblemas = revisadas.filter((r) => REV.devueltaConProblemas(r)).length;
+        console.log(`\n⚖️  ${revisadas.length} YA REVISADA(S) — hay veredicto y falta tu decisión` +
+                    (conProblemas ? ` (${conProblemas} con problemas)` : ''));
+        for (const r of revisadas) console.log(REV.lineaRevisada(r));
+      }
+
       if (paraManuel.length) {
         // LEGACY (T-493): esto se DEDUCE de la prosa de `resume_check` con cinco expresiones
         // regulares, así que solo ve las tareas PAUSADAS y solo si alguien escribió la palabra
@@ -683,7 +700,8 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     else if (cmd === 'next') {
       const rows = await s`
         SELECT id, title, priority, status, claimed_by, lease_until, blocked_by, snooze_until, snooze_reason,
-               wake_on_deploy_sha, effort, review_requested_at, review_note, review_requested_by
+               wake_on_deploy_sha, effort, review_requested_at, review_note, review_requested_by,
+               reviewed_at, reviewed_by, review_verdict, review_findings
           FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
       const dormidas = rows.filter(enEsperaAlguna).length;
       // El criterio de «qué toca ahora» es COMPARTIDO con la sugerencia que imprime `done`
@@ -753,19 +771,27 @@ async function despertarPorDeploy(s, shas, opts = {}) {
               -- simulación destapó que con la comprobación únicamente en claimGate la tarea se
               -- entregaba igual, y el gate solo servía para explicar un fallo que no ocurría.
               -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
-              AND (${force} OR review_requested_at IS NULL)
+              --
+              -- EXCEPCIÓN (T-486): la devuelta con veredicto 'problemas' SÍ se entrega. Su propio
+              -- veredicto pide que alguien la retome, así que bloquearla obligaba a --force para
+              -- hacer lo que el sistema acababa de pedir. Espejo exacto de esperaRevision() +
+              -- esperaDecision() de lib/backlog/revision.cjs; si se toca uno, se tocan los dos.
+              AND (${force} OR review_requested_at IS NULL
+                   OR (reviewed_at IS NOT NULL AND review_verdict = 'problemas'))
               -- dependencia: bloqueada por otra tarea NUESTRA aún viva (salvo --force)
               AND (${force} OR NOT EXISTS (
                     SELECT 1 FROM public.backlog_tasks d
                      WHERE d.id = ANY(COALESCE(backlog_tasks.blocked_by, '{}'))
                        AND d.status IN ('open','in_progress','blocked')))
             FOR UPDATE SKIP LOCKED LIMIT 1)
-        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason, snooze_count, due_at, due_reason`;
+        RETURNING id, title, priority, blocked_by, snooze_until, snooze_reason, snooze_count, due_at, due_reason,
+                  review_requested_at, reviewed_at, reviewed_by, review_verdict, review_findings`;
       if (!row) {
         const [cur] = await s`
           SELECT id, title, status, claimed_by, lease_until, snooze_until, snooze_reason, blocked_by,
                  wake_on_deploy_sha, wake_on_deploy_surface,
-                 review_requested_at, review_note, review_requested_by
+                 review_requested_at, review_note, review_requested_by,
+             reviewed_at, reviewed_by, review_verdict, review_findings
             FROM public.backlog_tasks WHERE id = ${id}`;
         if (!cur) { console.error(`❌ ${id} no existe (¿has corrido 'sync'?)`); process.exit(1); }
         const abiertas = await s`SELECT id FROM public.backlog_tasks WHERE status IN ('open','in_progress','blocked')`;
@@ -784,6 +810,24 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         process.exit(1);
       }
       console.log(`✅ CLAIM ${row.id} — ${row.title}`);
+      // ── DEVUELTA POR LA REVISIÓN (T-486) ──────────────────────────────────────────────────
+      // Retomarla la saca del circuito de revisión: vuelve a estar «en curso», así que no puede
+      // seguir contando como entregada. Pero el veredicto NO se tira — baja a `progress_note`,
+      // que es lo que `claim` imprime al retomar. Va en un segundo UPDATE y no en el atómico a
+      // propósito: el criterio vive en el núcleo puro (testeable sin BD) y aquí ya tenemos el
+      // lease, así que nadie puede colarse en medio.
+      const devuelta = REV.retomarTrasProblemas(row);
+      if (devuelta) {
+        await s`
+          UPDATE public.backlog_tasks
+             SET review_requested_at = NULL, review_note = NULL, review_requested_by = NULL,
+                 reviewed_at = NULL, reviewed_by = NULL, review_verdict = NULL, review_findings = NULL,
+                 progress_note = concat_ws(E'\n', ${devuelta.nota}::text, progress_note),
+                 updated_at = now()
+           WHERE id = ${row.id}`;
+        console.log(`   ↩️  LA DEVOLVIÓ LA REVISIÓN — esto es lo que encontraron:`);
+        console.log(`      ${String(row.review_findings || '').slice(0, 500)}`);
+      }
       if (force) console.log(`   ⚠️ COGIDA A LA FUERZA (queda registrado): ${forceMotivo}`);
       if ((row.blocked_by || []).length) console.log(`   ⚠️ declarada bloqueada por: ${row.blocked_by.join(', ')}`);
       if (isChronicSnooze(row)) console.log(`   🔁 aplazada ${row.snooze_count} veces ya — si no toca, quizá no es una tarea programada sino una decisión pendiente.`);
@@ -1544,14 +1588,27 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.error(`❌ ${id} la entregaste TÚ. Nadie revisa lo suyo — que la mire otro.`);
         process.exit(3);
       }
+      // ── REVISAR TAMBIÉN ES SOLTARLA (T-486, 06/08) ────────────────────────────────────────
+      // El revisor coge la tarea para mirarla, así que al terminar tiene que devolverla al pool:
+      // su trabajo sobre ella se acabó. Al estrenar el verbo no lo hacía, y lo pagó el mismo día:
+      // T-244 y T-397 quedaron `in_progress` con el lease VIVO de un trabajador cuyo turno había
+      // muerto — invisibles para `reap` (que respeta el lease) e inalcanzables para `claim`. El
+      // supervisor las pintaba «COGIDA Y SIN PROCESO» sin que nadie pudiera hacer nada.
+      // Es la misma regla que `revision` ya aplica al entregar: quien termina su parte, suelta.
       await s`
         UPDATE public.backlog_tasks
            SET reviewed_at = now(), reviewed_by = ${sid},
-               review_verdict = ${veredicto}, review_findings = ${hallazgos}, updated_at = now()
+               review_verdict = ${veredicto}, review_findings = ${hallazgos},
+               -- El TRIPLETE entero, no dos de tres: el CHECK backlog_claim_coherente exige que
+               -- claimed_by/claimed_at/lease_until estén los tres puestos o los tres a null.
+               -- Soltar solo dos hace que la BD rechace el UPDATE y el veredicto no se escriba.
+               -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
+               claimed_by = NULL, claimed_at = NULL, lease_until = NULL, updated_at = now()
          WHERE id = ${id}`;
       console.log(veredicto === 'ok'
         ? `✅ ${id} REVISADA y sin problemas — lista para que una persona la mergee.`
         : `⚠️  ${id} revisada CON PROBLEMAS — vuelve a quien la hizo, o a quien la retome.`);
+      console.log('   (claim soltado: tu parte terminó)');
       console.log(`   ${hallazgos.slice(0, 300)}`);
       console.log('   (no se ha mergeado ni cerrado: eso lo decide una persona)');
     }
