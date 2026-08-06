@@ -1074,6 +1074,34 @@ Reutiliza `recall()` y `esExaminable()` del detector hermano — **no se escribi
 exclusiones ya calibradas y sus primitivas reutilizadas aquí), [T-130] (no escribir la tercera copia
 de la misma medida).
 
+#### 06/08 — IMPLEMENTADO: la segunda fase, sin credenciales nuevas en el VPS
+
+**Decisión tomada (opción b):** no se mete una clave de git en la máquina. El rescate sigue
+corriendo allí —identifica el trabajo, commitea lo sucio, calcula el nombre de destino— y el
+**portátil remata**, que es el único sitio con las DOS mitades: SSH a la máquina y credenciales
+del repo. Es exactamente lo que se hizo a mano esta noche, ahora automático.
+
+- **El namer sigue siendo UNO.** La orden emite `ORIGEN=<rama>|<destino>` y el portátil empuja con
+  **ese** nombre. Recalcularlo en el portátil habría sido un segundo generador del mismo nombre, y
+  divergen ([T-130]). Por eso se añade el par en vez de exportar la fórmula.
+- **Aditivo, no rompe a nadie:** `RAMA=` y `SALVADO=` siguen igual, que es lo que ya parseaban
+  `flota.cjs` y la simulación. Verificado con `npm run sim:rescate-flota` — **0 fallos**, incluidos
+  los casos de rama divergida y de no pisar trabajo ajeno.
+- **Solo donde hace falta:** `necesitaSegundaFase` no dispara nunca sobre una máquina local (allí
+  el push del propio rescate es el bueno; repetirlo sería un segundo camino al mismo sitio) ni
+  cuando el rescate ya empujó (`SALVADO=0`). Si el rescate se cortó antes de contar, **sí** remata:
+  repetir un push idempotente cuesta cero y no hacerlo deja el trabajo en una sola máquina.
+- **El escape del push-guard va DENTRO, con motivo.** Esas ramas traen commits de tareas que quien
+  rescata no tiene reclamadas, así que el guard bloquea con razón. El motivo queda registrado en el
+  bus de fricción, que es donde se ve si un guardarraíl se está rodeando de más.
+- **Capas:** `__tests__/flota/rescateSegundaFase.test.ts` (12 casos: los pares, `SALVADO` sin
+  confirmar → `null` y no 0, local vs remota, y que el contrato viejo sigue intacto) + la simulación
+  e2e que ya existía. Registrado en `toolRegistry` como `flota_rescate`.
+- **⏭️ QUEDA la prueba en vivo, y NO se hizo a propósito:** los cuatro trabajadores estaban
+  ejecutando, y **el rescate commitea el árbol sucio** — se lo habría hecho a mitad de tarea.
+  Hay que correrlo con ellos parados: montar una rama de prueba con un commit en el VPS,
+  `npm run flota -- rescatar w1`, ver la segunda fase empujar, y borrar la rama de prueba.
+
 ### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
 
 - **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
