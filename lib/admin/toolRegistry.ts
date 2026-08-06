@@ -2179,6 +2179,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`CLAUDE_CODE_OAUTH_TOKEN`**, así que se arranca `claude` normal aunque bare sea lo que ' +
       'recomiendan para CI. La cuenta la decide `lib/flota/cuentas.cjs`.',
   },
+  credencial_lectura_negocio: {
+    titulo: '¿CON QUÉ credencial leo una tabla de negocio? (punto único, T-624)',
+    ruta: 'lib/db/negocioSoloLectura.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Responde CON QUÉ url; `lib/db/pgSsl.cjs` → `pgConfig(url)` responde CÓMO conectar con ella ' +
+      '(el gotcha del `sslmode` que pisa la opción `ssl`). Se COMPONEN: ' +
+      '`new Client(pgConfig(urlLecturaNegocio()))`. Preferencia de MENOR a mayor privilegio, ' +
+      'mirando entorno y `.env.local` para cada una: `VENCE_LECTOR_URL` (negocio, T-486) antes que ' +
+      '`DATABASE_URL` (coordinación, que desde T-539 solo alcanza las 4 tablas de la flota y da ' +
+      '«permission denied» contra negocio). Nace de medir CUATRO copias del mismo ' +
+      '`VENCE_LECTOR_URL || DATABASE_URL` el 06/08/2026, ninguna de las cuales —salvo una— miraba el ' +
+      'fichero, así que un trabajador con la credencial en `.env.local` se quedaba fuera. Núcleo ' +
+      'PURO e inyectable (`resolver(env, envFile)`): la primera versión se probaba contra el ' +
+      '`.env.local` REAL y su test pasaba en el portátil donde se escribió y fallaba en cualquier ' +
+      'otro worktree. Trinquete: `__tests__/guardrails/credencialLectura.guardrail.test.ts` rechaza ' +
+      'una quinta copia (prohíbe ELEGIR dos veces, no mencionar las variables: los avisos y ' +
+      'comentarios deben poder nombrarlas).',
+  },
+
   canary_rol_lector: {
     titulo: 'El rol de LECTURA de la flota: que lea lo que el trabajo necesita y NADA que identifique a una persona',
     ruta: 'scripts/canary-rol-lector.cjs',

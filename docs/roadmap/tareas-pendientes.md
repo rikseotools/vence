@@ -981,6 +981,41 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
+
+- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
+- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
+  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
+  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
+  enumerar las materias del tema y **no enumera ninguna**.
+- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
+  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
+  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
+  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
+  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
+  simplemente no tienen nada contra lo que comparar.
+- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
+  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
+  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
+  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
+  aislado aparecieron **14**.
+- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
+  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
+  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
+  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
+  continuación, no 14 descuidos independientes.
+- **QUÉ HACER:**
+  1. **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
+     kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro + kind propio en los dos
+     gemelos del sweep. **NO un silo nuevo.** Nace en 14, así que es un trinquete: cualquier subida
+     es una regresión demostrable.
+  2. **Completar los 14** con el texto LITERAL del programa oficial de cada oposición (el hub ya
+     tiene documento en muchas), y re-verificar el Paso 1. NUNCA inventar la continuación ni
+     «redondear» el epígrafe con lo que parezca: eso es exactamente lo que este defecto provoca.
+- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
+  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marcar solo el final, y medir antes
+  de ampliar el patrón.
+- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
 ### [T-623] 🔴 [ABIERTO 06/08] El configurador «por leyes» se queda colgado: la selección de artículos viaja en la URL y nginx la corta a 8 KB, devolviendo HTML que el cliente parsea como JSON
 
 **Lo reporta una usuaria, no una alerta.** Feedback `e790c7bf` (06/08 19:45, Lourdes):
@@ -3519,6 +3554,24 @@ explicaciones legales.
   | ✅ | `administrativo_cantabria` T37 | Ley 3/2002 Archivos Cantabria | verified_correct | titulo I, capitulo IV, titulo II |
   | ✅ | `administrativo_gva` T6 | Estatuto CV | verified_correct | titulo I, titulo II, titulo III, titulo IV |
   | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | Ley 8/2011 Igualdad Ext | stale | capitulo IV, titulo PRELIMINAR |
+
+   **✅ RECORTADO EL 06/08/2026 — 11 de 12.** Medido de nuevo antes de tocar nada: **12 temas activos**
+   escopaban algún artículo 25-31 con un epígrafe que no los pide, **62 preguntas fuera de programa en
+   cada uno** (20 en IIPP, que solo escopaba el art. 30) → **702 exposiciones**. Prueba que lo cierra:
+   **en NINGUNA de las 12 oposiciones hay un tema hermano cuyo epígrafe mencione la potestad
+   sancionadora**, así que no era un artículo en el tema equivocado sino materia fuera de programa.
+   Aplicado por el camino canónico y sin herramienta nueva: `scope-over-inclusion.cjs --record`
+   (11 adjudicaciones `over_inclusion` verificadas) → `verify:scope plan` → `apply --include-gate`
+   (la puerta de juicio saltó en 10 de 11, que es lo correcto: es una decisión, no un trámite).
+   **Verificado en BD, no declarado:** los temas con Cap. III fuera de su epígrafe pasan de **12 a 1**.
+   Las preguntas NO se borran: dejan de servirse en ese tema.
+
+   **El que queda, y por qué NO se tocó:** `auxiliar_administrativo_sermas` T9 tiene el epígrafe
+   **cortado en dos puntos** (*«La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector
+   Público:»* y ahí acaba). Contra un epígrafe truncado no se puede adjudicar nada — cualquier scope
+   le encaja porque no dice nada. Al mirar si era aislado salieron **14 temas activos así** → ficha
+   propia [T-625].
+
   | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | LO 3/2007 | stale | capitulo IV, titulo PRELIMINAR |
   | ✅ | `auxiliar_administrativo_cantabria` T5 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III, titulo I |
   | ✅ | `auxiliar_enfermeria_gva` T6 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III |
@@ -3686,7 +3739,7 @@ correct» no es un dato.
    T1/T3/T4 contra el programa oficial, que ya está localizado y descargado.
 4. **✅ HECHO (mismo merge).** `verify:scope apply` **no se identificaba** en `topic_scope_history` (`changed_by`/`change_reason`
    a NULL). Es una línea (`SET LOCAL app.actor`) y hoy el escritor canónico deja misterio.
-5. **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
+5. **✅ HECHO 06/08/2026 (queda 1 de 12).** **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
    nombra (medido el 04/08, al resolver la SEGUNDA impugnación del mismo usuario — `b439a3a7`, art.
    27, gemela de la `0b9d9f56` que abrió esta ficha).** El corte: de las **47** filas de
    `topic_scope` que escopan la Ley 40/2015 con alguno de los arts. **25-31**, **16** tienen un
@@ -6109,6 +6162,23 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-624] ✅ [HECHA 06/08] La credencial de lectura de negocio se resolvía por su cuenta en 4 scripts: unificada en un punto y cerrada la puerta a un quinto
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Rescatando `sesion/l1` apareció `lib/db/negocioSoloLectura.cjs`, un módulo que resuelve con qué credencial leer negocio. Antes de traerlo se hizo la comprobación de rigor (`tools:buscar` + grep) y salió lo de verdad interesante: **cuatro scripts ya lo resolvían cada uno por su cuenta** — `audit-temario-display-drift.cjs`, `health/kinds-evaluados.cjs`, `temario/revisar-oposicion.cjs` e `impugnaciones/revisar-impugnacion.cjs`. Traerlo suelto habría sido el **quinto**, que es literalmente el patrón de [T-130].
+- **POR QUÉ IMPORTA, y no es higiene.** Hay DOS roles para DOS cosas: `DATABASE_URL` es coordinación (desde [T-539] solo alcanza las 4 tablas de la flota y da `permission denied` contra negocio) y `VENCE_LECTOR_URL` es lectura de negocio ([T-486]). Tres de las cuatro copias miraban **solo `process.env`**, así que un trabajador cuya credencial vive en `.env.local` se quedaba sin poder leer nada aunque la tuviera. Y cuatro copias del criterio son cuatro sitios donde arreglarlo.
+- **LO QUE SE HIZO:**
+  - **Punto único** `lib/db/negocioSoloLectura.cjs`, con el orden declarado en una constante (`PREFERENCIA`, de MENOR a mayor privilegio) y mirando entorno **y** fichero para cada credencial. Es decir: el lector del `.env.local` gana al coordinador del entorno — el rol correcto para leer, no «el último que alguien exportó».
+  - **Se COMPONE con `pgConfig`, no lo duplica:** este dice CON QUÉ url, `lib/db/pgSsl.cjs` dice CÓMO conectar con ella (el gotcha del `sslmode`). `new Client(pgConfig(urlLecturaNegocio()))`.
+  - **Las cuatro copias delegan.** `audit-temario-display-drift` conserva su `pickDbUrl` como envoltura (su test la usa y el `|| null` es su contrato) pero por dentro llama al punto único. `revisar-impugnacion` necesita saber si hay lector **específicamente** —`null` significa «reusa la otra conexión»— así que pregunta por la FUENTE en vez de aceptar el fallback.
+  - **Registrado** en `lib/admin/toolRegistry.ts`.
+- **⚠️ EL TEST QUE VENÍA ERA FRÁGIL POR CONSTRUCCIÓN, y es lo más reutilizable de esta ficha.** El módulo original se probaba contra el **`.env.local` REAL de la máquina**: pasaba en el portátil donde se escribió y **falló nada más traerlo a este worktree**, porque los worktrees copian ese fichero y no todos llevan `VENCE_LECTOR_URL`. Un test que depende de un fichero ignorado por git no prueba el código, prueba la máquina. Reescrito con el núcleo **puro e inyectable** (`resolver(env, envFile)`): 10 casos deterministas en cualquier sitio.
+- **TRINQUETE:** `__tests__/guardrails/credencialLectura.guardrail.test.ts` rechaza una quinta copia. Prohíbe **ELEGIR** dos veces (`VENCE_LECTOR_URL` y `DATABASE_URL` unidos por `||` o un ternario), **no mencionar** las variables: los avisos y los comentarios tienen que poder nombrarlas.
+  - **Se cazó a sí mismo DOS veces al calibrarlo**, y las dos son la misma lección: (1) el comentario que EXPLICA el defecto prevenido casaba con el patrón → se ignoran comentarios antes de juzgar; (2) la entrada del `toolRegistry`, cuya prosa cita el patrón literal y en un `.ts` es una cadena, no un comentario → exenta, porque el registro es documentación y no abre ninguna conexión. Un detector que prohíbe describir el defecto que previene acaba borrando la explicación, que es peor que el defecto.
+- **VERIFICADO EJECUTANDO los cuatro**, no leyendo sus tests: `audit-temario-display-drift --selftest` 5/5 · `health/kinds-evaluados --dias 1` contra RDS (1 pasada, ningún kind sin evaluar) · `temario/revisar-oposicion auxiliar_administrativo_estado` (28 temas, 0 rotos) · `impugnaciones/revisar-impugnacion` con una impugnación pendiente real (dossier completo, leyendo `questions`/`articles`). 1.107 tests de `guardrails/`+`lib/db/` en verde.
+- **QUEDA:** `revisar-impugnacion.cjs` muere con una excepción sin capturar si le pasas un id corto en vez del uuid entero (`invalid input syntax for type uuid`). Es previo a esta ficha y no se tocó para no mezclar; se arregla con una validación de formato antes de la query.
+- **Relacionadas:** [T-130] (el registro de herramientas, que es este mismo fallo una capa arriba), [T-486] (el rol lector), [T-539] (el de coordinación restringido), [T-612] (credenciales en los worktrees de trabajador).
 
 ### [T-606] ✅ [HECHA 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
