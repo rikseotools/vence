@@ -163,6 +163,28 @@ function normalizarParaAncla(v: string | number | null | undefined): string {
 }
 
 /**
+ * Enlace "Elegir qué artículos entran en el test" del TEMARIO ([T-367]). A diferencia de
+ * `buildLawTestLink` (que arranca el test YA acotado al scope del tema, sin pantalla
+ * intermedia), este lleva a la página de la ley SIN `selected_articles` → NO dispara el
+ * auto-redirect de `LawTestConfigurator` y el usuario aterriza en el configurador visible,
+ * con el panel "📄 Filtrar por Artículos" abierto (`abrir_filtro=1`) para poder elegir un
+ * subconjunto propio ("llevo estudiados 50 de los 100 artículos").
+ *
+ * Antes de esto no había NINGÚN camino de vuelta desde el temario a esa pantalla: el único
+ * CTA de ley (`LawTestCTA`) siempre lleva `selected_articles` (el scope del tema) y por
+ * tanto siempre auto-arranca el test, saltándose el filtro. Ver ficha T-367.
+ *
+ * @param lawSlug slug de la ley (mismo en /teoria y /leyes)
+ * @param source origen del enlace, para observabilidad (default 'temario_filtro')
+ */
+export function buildLawFilterLink(
+  lawSlug: string,
+  source: string = 'temario_filtro'
+): string {
+  return `/leyes/${lawSlug}?abrir_filtro=1&source=${source}`
+}
+
+/**
  * Texto del botón "volver a la ley" que se ve ARRIBA del test mientras se responde
  * (`!isTestCompleted` en TestLayout — la ÚNICA puerta visible desde el primer segundo
  * para volver al filtro de artículos, no solo al terminar el test). [T-313]

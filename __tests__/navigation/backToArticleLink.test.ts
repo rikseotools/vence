@@ -5,6 +5,7 @@ import {
   buildBackToArticleLink,
   buildArticleTestLink,
   backToLawButtonLabel,
+  buildLawFilterLink,
 } from '@/lib/navigation/backToArticleLink'
 
 describe('buildBackToArticleLink', () => {
@@ -81,6 +82,21 @@ describe('backToLawButtonLabel — T-313, el botón "volver a la ley" visible DU
   it('un objeto con .text pero sin .label (la forma que el bug esperaba) cae al genérico', () => {
     const conSoloText = { text: '📚 Volver a LO 3/2007' } as unknown as { label?: string }
     expect(backToLawButtonLabel(conSoloText)).toBe('Volver a Tests')
+  })
+})
+
+describe('buildLawFilterLink — T-367, camino desde el temario hasta el filtro de artículos', () => {
+  it('NO lleva selected_articles (a propósito: no debe auto-arrancar el test)', () => {
+    const href = buildLawFilterLink('ce')
+    expect(href).not.toMatch(/selected_articles/)
+  })
+
+  it('lleva abrir_filtro=1 para que el panel no nazca plegado otra vez', () => {
+    expect(buildLawFilterLink('ce')).toBe('/leyes/ce?abrir_filtro=1&source=temario_filtro')
+  })
+
+  it('acepta un source propio para diferenciar el origen en observabilidad', () => {
+    expect(buildLawFilterLink('ce', 'otro_origen')).toBe('/leyes/ce?abrir_filtro=1&source=otro_origen')
   })
 })
 
