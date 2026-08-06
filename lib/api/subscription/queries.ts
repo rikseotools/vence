@@ -6,7 +6,12 @@ import { getStripeFor, resolveAccount, newSignupAccount } from '@/lib/stripe'
 import type Stripe from 'stripe'
 import { randomUUID } from 'crypto'
 import { emit } from '@/lib/observability/emit'
-import { esBloqueoPorCheckoutAbierto, sesionesAExpirar } from '@/lib/stripe/cancelCheckoutAbierto'
+import {
+  esBloqueoPorCheckoutAbierto,
+  sesionesAExpirar,
+  estaTerminada,
+  esYaNoExiste,
+} from '@/lib/stripe/cancelCheckoutAbierto'
 import type {
   GetSubscriptionRequest,
   GetSubscriptionResponse,
@@ -789,13 +794,33 @@ export async function cancelSubscription(
           { userId: params.userId, stripeCustomerId: profile.stripeCustomerId },
           sc,
         )
-        // Idempotency key DISTINTA: Stripe cachea la respuesta por key, así que reusar la
-        // anterior devolvería el error guardado en vez de reintentar de verdad.
-        await sc.subscriptions.cancel(
-          subscription.id,
-          undefined,
-          { idempotencyKey: `${idempotencyKeyBase}-immediate-tras-expirar` },
-        )
+        // Expirar el checkout mueve la suscripción a `incomplete_expired` EN EL ACTO (medido en
+        // vivo el 06/08). Si ya está terminada, el objetivo del usuario está cumplido y reintentar
+        // solo puede dar «No such subscription»: se comprueba ANTES de volver a llamar.
+        let terminada = false
+        try {
+          const tras = await sc.subscriptions.retrieve(subscription.id)
+          terminada = estaTerminada(tras.status)
+        } catch (errTras) {
+          // Si ni siquiera se puede recuperar, es que ya no existe: trabajo hecho.
+          terminada = esYaNoExiste(errTras as { message?: string })
+        }
+
+        if (!terminada) {
+          try {
+            // Idempotency key DISTINTA: Stripe cachea la respuesta por key, así que reusar la
+            // anterior devolvería el error guardado en vez de reintentar de verdad.
+            await sc.subscriptions.cancel(
+              subscription.id,
+              undefined,
+              { idempotencyKey: `${idempotencyKeyBase}-immediate-tras-expirar` },
+            )
+          } catch (errRetry) {
+            // Carrera: pasó a terminal entre el `retrieve` y el `cancel`. Salió como el usuario
+            // quería, así que no es un fallo que deba ver.
+            if (!esYaNoExiste(errRetry as { message?: string })) throw errRetry
+          }
+        }
       }
       const voidResult = await voidOpenInvoicesForSubscription(
         subscription.id,
