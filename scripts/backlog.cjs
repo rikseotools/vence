@@ -1488,6 +1488,40 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           } catch { return null; }
         })();
         if (!shaEsperado) { console.error('❌ no pude resolver el commit — pásalo: --tras-deploy <sha>'); process.exit(2); }
+
+        // ── ¿ese sha puede desplegarse ALGÚN día? (T-620) ────────────────────────────────────
+        // `deployed` despierta con `merge-base --is-ancestor`, así que un sha que no está en
+        // `origin/main` ni en tu rama no será ancestro de nada: la tarea se dormiría para
+        // siempre, sin error y sin rastro. Se comprueba AQUÍ, que es donde se sabe con certeza
+        // y donde hay alguien delante para corregirlo.
+        {
+          const { execFileSync } = require('child_process');
+          const gitOk = (args) => {
+            try { execFileSync('git', args, { cwd: REPO, stdio: 'ignore' }); return true } catch { return false }
+          };
+          let hechos = {};
+          try {
+            execFileSync('git', ['rev-parse', '--verify', `${shaEsperado}^{commit}`], { cwd: REPO, stdio: 'ignore' });
+            hechos = {
+              existe: true,
+              enOriginMain: gitOk(['merge-base', '--is-ancestor', shaEsperado, 'origin/main']),
+              enHead: gitOk(['merge-base', '--is-ancestor', shaEsperado, 'HEAD']),
+            };
+          } catch { hechos = { existe: false }; }
+
+          const { clasificarShaEspera } = require('../lib/backlog/esperaDeploy.cjs');
+          const v = clasificarShaEspera(hechos);
+          if (v.bloquea) {
+            console.error(`❌ ${shaEsperado.slice(0, 9)} — ${v.motivo}.`);
+            console.error('   Una espera que no se puede cumplir no es una pausa: es perder la tarea en silencio.');
+            console.error('   Suele pasar por dos motivos, los dos con el mismo arreglo — pasa el sha BUENO:');
+            console.error('     · el commit vive en otra rama y al traerlo a main cambió de sha (cherry-pick);');
+            console.error('     · lo reescribió un rebase posterior al pausar (mira `git log --all --oneline | grep "<tu mensaje>"`).');
+            console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy <sha-en-origin/main> --superficie ${superficie} …`);
+            process.exit(2);
+          }
+          if (v.estado === 'sin_pushear') console.log(`   ⚠️  ${v.motivo}`);
+        }
       } else {
         try { hasta = parseHasta(); } catch (e) { console.error(`❌ ${e.message}`); process.exit(2); }
         if (hasta.getTime() <= Date.now()) { console.error(`❌ ${hasta.toISOString()} ya pasó — una pausa al pasado no pausa nada`); process.exit(2); }
