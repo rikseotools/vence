@@ -44,13 +44,35 @@ async function estimar(opts: {
   positionType: string
   leyes: string[]
   acotar: boolean
+  /** La selección fina de artículos, que es la que engorda la petición (T-623). */
+  articulosPorLey?: Record<string, (string | number)[]>
 }): Promise<Estimacion> {
   const url = new URL('/api/v2/test-config/estimate', BASE)
   url.searchParams.set('selectedLaws', opts.leyes.join(','))
   url.searchParams.set('positionType', opts.positionType)
   url.searchParams.set('scopeToPosition', String(opts.acotar))
+  if (opts.articulosPorLey) {
+    url.searchParams.set('selectedArticlesByLaw', JSON.stringify(opts.articulosPorLey))
+  }
   const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
-  const body = (await res.json()) as { success?: boolean; count?: number; error?: string }
+
+  // ── SE LEE COMO TEXTO ANTES DE PARSEAR, Y ESO ES EL PUNTO (T-623) ──────────────────────
+  // Cuando la petición se pasa de tamaño, nginx contesta con una PÁGINA HTML de error (414 o
+  // 494). Un `await res.json()` directo revienta ahí con «Unexpected token '<'» — el mismo
+  // error críptico que ve el usuario y que no dice nada de la causa. Leyendo el texto primero,
+  // la simulación puede decir lo que de verdad pasó: el servidor no devolvió JSON, y con qué
+  // código. Es la diferencia entre «algo falló» y «la URL medía 8.914 bytes».
+  const texto = await res.text()
+  let body: { success?: boolean; count?: number; error?: string }
+  try {
+    body = JSON.parse(texto)
+  } catch {
+    const pista = /^\s*</.test(texto) ? 'el servidor devolvió HTML, no JSON' : 'respuesta ilegible'
+    throw new Error(
+      `HTTP ${res.status} — ${pista} (URL de ${url.toString().length} bytes). ` +
+      'Si es 414/494, es el techo de 8 KB de nginx: la selección viaja en la URL [T-623].',
+    )
+  }
   if (!res.ok || !body.success) {
     throw new Error(`HTTP ${res.status} — ${body.error ?? 'sin cuerpo'}`)
   }
@@ -112,6 +134,29 @@ async function main() {
      ORDER BY t.position_type, l.short_name
      LIMIT 1`
 
+  // ── Fixture del caso 3: la ley con MÁS artículos que de verdad se sirven (T-623) ──────
+  // Se descubre, no se clava: el tamaño de la petición depende de cuántos artículos tenga la
+  // ley más gorda del banco, y eso crece solo. Se piden los artículos REALES (no un relleno)
+  // para que el caso mida una selección que un usuario puede hacer de verdad con dos clics.
+  const [leyGorda] = await sql<{ position_type: string; ley: string; articulos: string[] }[]>`
+    WITH grande AS (
+      SELECT l.id, l.short_name AS ley, count(DISTINCT a.article_number)::int AS n
+        FROM laws l
+        JOIN articles a ON a.law_id = l.id AND a.is_active
+        JOIN questions q ON q.primary_article_id = a.id AND q.is_active
+       GROUP BY l.id, l.short_name
+       ORDER BY n DESC
+       LIMIT 1
+    )
+    SELECT min(t.position_type) AS position_type,
+           g.ley,
+           array_agg(DISTINCT a.article_number ORDER BY a.article_number) AS articulos
+      FROM grande g
+      JOIN articles a ON a.law_id = g.id AND a.is_active
+      LEFT JOIN topic_scope ts ON ts.law_id = g.id
+      LEFT JOIN topics t ON t.id = ts.topic_id AND t.is_active
+     GROUP BY g.ley`
+
   await sql.end()
 
   console.log(`\n🌐 base: ${BASE}\n`)
@@ -160,6 +205,44 @@ async function main() {
       console.log('   ❌ acotar dejó de acotar')
     } else {
       console.log('   ✅ acotar sigue recortando al temario')
+    }
+  }
+
+  // ── 3. SELECCIÓN GRANDE: que la petición quepa (T-623) ────────────────────────────────
+  //
+  // Los dos casos de arriba preguntan si el número es CORRECTO. Éste pregunta algo anterior:
+  // si la petición llega siquiera. En `/test/por-leyes` la selección de artículos viaja DENTRO
+  // DE LA URL como JSON (`TestConfigurator.tsx`, `selectedArticlesByLaw`), y al url-encodificar
+  // cada `"` pasa a `%22` y cada `,` a `%2C`: la cadena se triplica. A partir de ~8 KB nginx
+  // corta con 414 (o 494 si es enorme) y devuelve HTML, que el cliente parsea como JSON y
+  // revienta — la pantalla se queda igual y el usuario lo vive como que la app se ha colgado.
+  //
+  // Lo reportó una usuaria (feedback e790c7bf, 06/08): «se me queda colgada… cuando termino un
+  // test y quiero hacer otro». Medido: 87 respuestas 494 a 12 usuarios en 48 h.
+  //
+  // El fixture se DESCUBRE: la ley con más artículos que de verdad se sirven. Clavar un número
+  // de artículos a mano haría que el caso dejara de medir en cuanto crezca el banco.
+  if (!leyGorda) {
+    console.log('\n⚠️  no se encontró una ley con artículos suficientes — el caso de tamaño no mide nada')
+    fallos.push('sin ley grande no se puede afirmar que una selección real quepa en la petición')
+  } else {
+    const articulos = leyGorda.articulos
+    const seleccion = { [leyGorda.ley]: articulos }
+    const bytes = new URL('/api/v2/test-config/estimate', BASE).toString().length +
+      encodeURIComponent(JSON.stringify(seleccion)).length
+    console.log(`\n── SELECCIÓN GRANDE: ${leyGorda.ley} con ${articulos.length} artículos (~${bytes} bytes de petición)`)
+    try {
+      const r = await estimar({
+        positionType: leyGorda.position_type,
+        leyes: [leyGorda.ley],
+        acotar: false,
+        articulosPorLey: seleccion,
+      })
+      console.log(`   ✅ la petición llega y responde JSON: ${r.count} preguntas (sirve: ${r.servidoPor})`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      fallos.push(`selección de ${articulos.length} artículos de ${leyGorda.ley}: ${msg}`)
+      console.log(`   ❌ ${msg}`)
     }
   }
 
