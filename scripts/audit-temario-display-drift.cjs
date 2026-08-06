@@ -72,8 +72,15 @@ function selftest() {
 // negocio; DATABASE_URL de un trabajador (rol vence_coordinacion) no — permission
 // denied, que el pre-commit ya trata como "no se pudo comprobar" y no bloquea. Con
 // VENCE_LECTOR_URL disponible, la comprobación real SÍ se hace en vez de rendirse.
+// [T-624] El criterio ya no vive aquí: es `lib/db/negocioSoloLectura.cjs`, compartido con los
+// otros scripts que leen negocio. Se conserva la función como envoltura (los tests la usan y el
+// `|| null` es su contrato) pero delega, así que el orden se cambia en UN sitio. Además el punto
+// único mira también `.env.local`, que esta copia no hacía: un trabajador cuya credencial vive en
+// el fichero se quedaba sin poder comprobar nada.
 function pickDbUrl(env) {
-  return env.VENCE_LECTOR_URL || env.DATABASE_URL || null;
+  const { resolver } = require('../lib/db/negocioSoloLectura.cjs');
+  const r = resolver(env, '');
+  return r ? r.url : null;
 }
 
 // --- Main (BD) ---
