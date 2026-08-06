@@ -116,6 +116,27 @@ for v in $(seq 1 "$VUELTAS"); do
     git status --short --untracked-files=no | head -5
     exit 1
   fi
+  # Y el hermano que faltaba (T-443 punto 6): un árbol LIMPIO puede tener commits que aún no
+  # están en origin/main. `git status` sale impecable y el `reset --hard` de abajo se los lleva
+  # EN SILENCIO. Pasó dos veces el 05/08/2026 en el checkout compartido —la segunda con el
+  # lanzador de otra sesión, arrancado 97 s antes—: basta con commitear mientras alguien
+  # despliega. Criterio puro y testeado en lib/deploy/commitsSinEmpujar.cjs.
+  POR_DELANTE=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "")
+  RESUMEN=$(git log --oneline origin/main..HEAD 2>/dev/null | head -5)
+  VEREDICTO=$(POR_DELANTE="$POR_DELANTE" RESUMEN="$RESUMEN" node -e '
+    const { puedeResetear } = require("./lib/deploy/commitsSinEmpujar.cjs");
+    const n = process.env.POR_DELANTE === "" ? null : Number(process.env.POR_DELANTE);
+    const r = puedeResetear({
+      commitsPorDelante: n,
+      resumenCommits: (process.env.RESUMEN || "").split("\n").filter(Boolean),
+      escape: process.env.DEPLOY_RESET_OK || "",
+    });
+    process.stdout.write((r.permite ? "OK" : "STOP") + "\n" + r.mensaje);
+  ' 2>/dev/null) || VEREDICTO="OK"     # fail-open si node no arranca: no es este el guardián del deploy
+  [ -n "${VEREDICTO#OK}" ] && printf '%s\n' "${VEREDICTO#OK}" | sed '/^$/d'
+  case "$VEREDICTO" in
+    STOP*) exit 1 ;;
+  esac
   git reset --hard origin/main -q
   SHA=$(git rev-parse HEAD)
   echo "══ vuelta $v/$VUELTAS — siguiendo ${SHA:0:9}"
