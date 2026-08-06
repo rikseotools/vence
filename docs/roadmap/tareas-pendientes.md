@@ -11698,7 +11698,7 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Antes de arreglar, averiguar POR DÓNDE se cuelan:** ¿es el fetcher que arma el test, la MV de conteos, un `topic_scope` editado después de cachear, o preguntas multi-artículo cuyo `primary_article_id` no es el escopado? La cifra dice que pasa; no dice por dónde. **Sin eso, arreglar es adivinar.**
 - **Origen:** caracterizando el 77% de impugnaciones aceptadas que ningún detector vio venir ([T-207]). La familia «temario» era la mayor identificable (14%), y esta es la parte de ella que se puede comprobar a máquina.
 
-### [T-270] 🔴 [ABIERTO 29/07] La ruta PÚBLICA del PDF del temario renderiza en el contenedor que sirve y tumba el guardado de respuestas
+### [T-270] 🔴 [PARCIAL 06/08 — desplegado y verificado por telemetría real; falta UN caso concreto sin observar] La ruta PÚBLICA del PDF del temario renderiza en el contenedor que sirve y tumba el guardado de respuestas
 
 > **🖥️ Qué corre en producción, con el origen de cada pieza:** `docs/ARCHITECTURE_ROADMAP.md` §"QUÉ CORRE EN PRODUCCIÓN" — inventario verificado (2 servicios siempre encendidos + 3 tareas programadas). Enlaza de vuelta a esta ficha.
 - **Incidente completo (anatomía, minuto a minuto y lecciones):** `docs/ARCHITECTURE_ROADMAP.md` → *«Incidente 2026-07-29»*. Aquí va solo el plan.
@@ -11804,6 +11804,61 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 > producción — un trabajador de la flota no tiene acceso a deploy. Esta ficha se cierra cuando alguien
 > despliegue el frontend y confirme en vivo que un miss real encola + sirve 503, y que
 > `vence-temario-pdf-worker` recoge el job y puebla S3 para la siguiente visita.
+
+- **✅ DESPLEGADO Y VERIFICADO POR TELEMETRÍA REAL (06/08, w4) — falta UN caso concreto que no pude
+  observar, y por qué, con cifras.**
+  - **Deploy confirmado, no supuesto:** `curl https://www.vence.es/api/version` → `b200a38d`. Comprobado
+    con `git merge-base --is-ancestor` que `9c85535bf` (el commit de la Fase 2) **es ancestro** de
+    `b200a38d`: el fix está en producción, no solo en rama. Desplegado a las **19:42:32 UTC** (fecha del
+    commit `b200a38d`, backend en `c5b0ada7` vía `/health`).
+  - **(1) La regresión que este arreglo cierra —render en línea— NO ha vuelto a ocurrir, MEDIDO con datos
+    reales, no con una suposición.** El código viejo emitía `temario_pdf_served` con `served='generated'`
+    cada vez que renderizaba en línea; el código nuevo **no tiene esa rama** (la firma de `emitServed` en
+    `route.ts` solo admite `'s3'|'encolado'|'too_large'`). Contando eventos reales: **85 `generated` entre
+    las 06:00 y las 18:24 UTC de HOY** (antes del deploy, ritmo ~6/hora) y **CERO desde las 19:42** pese a
+    tráfico real continuando (un usuario premium real, `userId` `85ca257a…`, pidió el tema 16 de
+    `auxiliar-administrativo-madrid` a las 20:25:41 y se sirvió de S3 en <100 ms). Es un cambio de
+    comportamiento medido justo en el borde del deploy, no una suposición sobre lo que "debería" pasar.
+  - **(2) El mecanismo de cola+worker que la Fase 2 EXTIENDE a cualquier miss —antes solo lo usaban los
+    temas sobredimensionados— está PROBADO funcionando de extremo a extremo, con un caso real de hoy:**
+    tema 20 de `auxiliar-administrativo-diputacion-cuenca`, encolado por un usuario real a las 14:04:25
+    UTC (`temario_pdf_jobs`, `content_hash=ab77add5…`), **reclamado por el worker a las 14:21:13** (17 min
+    después, dentro de su cadencia de ~30 min) y marcado `status='done'` tres segundos después,
+    `attempts=1`, sin error, 2.040.204 bytes en 2,87 s de CPU **fuera** del contenedor que sirve. Revisé
+    13 jobs más de los últimos 5 días: los 13, `done`, `attempts=1`, sin error. La plomería que la Fase 2
+    ahora también usa para "cabe pero no está cacheado" es la MISMA que ya llevaba días funcionando para
+    "no cabe" — no es una pieza nueva sin probar, es una extensión de una que ya se ejercitaba a diario.
+  - **⚠️ Lo que NO pude observar, con la cifra exacta:** ni un solo evento `served='encolado'` (el camino
+    NUEVO de hoy: tema normal, cabe, pero aún no está cacheado → 503) ha ocurrido desde el deploy. Hice
+    guardia en primer plano ~12 minutos (dos tandas: 2 min + 8 min, sondeando cada 20-25 s contra
+    `observable_events`) y no apareció ninguno; a las ~20:39 UTC, 57 min después del deploy, seguía en
+    cero. **No tengo credenciales premium** (el entorno de un trabajador no lleva `SUPABASE_JWT_SECRET`
+    ni `AUTH_SECRET` — comprobado, cero variables así en mi `.env.local`) con las que provocar un miss de
+    verdad y cerrar el ciclo yo mismo; solo puedo leerlo si un usuario real lo produce. **SOSPECHO que es
+    cuestión de tráfico** (hora baja, ~22:40 CEST) **y no de que el camino esté roto** — el ritmo histórico
+    de misses (`generated` pre-deploy) era de ~6/hora, así que debería aparecer uno pronto — pero es una
+    sospecha, no algo medido, y lo digo así a propósito.
+  - **Para no dejar este hueco pendiente de una comprobación manual que nadie va a repetir: construí un
+    canario nuevo, `npm run canary:temario-pdf-no-render -- --horas N`** (núcleo puro
+    `lib/temario/pdf/canaryNoRender.cjs`, 17 tests; registrado en `toolRegistry.ts`). Vigila para
+    siempre, sin necesitar credenciales premium, las dos cosas de arriba: (1) que `served='generated'`
+    siga en cero (si reaparece, es una regresión real, exit 1) y (2) cuando SÍ haya un `encolado` real, lo
+    cruza contra `temario_pdf_jobs` y dice si el worker lo completó, se quedó atascado, o dio error. Cero
+    misses en la ventana no cuenta como fallo (falta de tráfico, no del código — mismo criterio que
+    `canary-served-rollup.cjs`). Corrido hoy con `--horas 1` (ventana acotada al deploy): verde, sin
+    misses que evaluar. Corrido con `--horas 15` (a propósito, para comprobar que SÍ sabe distinguir):
+    rojo, por los 85 `generated` de ANTES del deploy — confirma que el detector funciona, no que el
+    código esté roto ahora.
+  - **Guardarraíles corridos, no solo referidos:** `cpuBoundRoutes.guardrail.test.ts` (6/6, incluido el
+    test positivo nuevo que confirma que esta ruta ya no alcanza ningún motor CPU), `toolRegistry`
+    guardrail (16/16 con la entrada nueva), `robustez-push-guard.cjs` y `contexto-push-guard.cjs` en
+    verde. Petición sin autenticar a la ruta real: `403 premium_required` en 128 ms — responde rápido, no
+    cuelga.
+  - **Sigue sin poder cerrarse del todo por lo mismo que ya decía la nota de arriba** (yo no tengo forma
+    de forzar un miss real), pero el hueco que faltaba —"¿alguien lo comprueba alguna vez, sin depender de
+    que un humano tenga 10 minutos y recuerde el SQL exacto?"— ya no existe: el canario lo comprobará él
+    solo la próxima vez que alguien lo corra, y en cuanto la ventana se aleje unas horas del deploy volverá
+    a distinguir con precisión "sigue sin renderizar" de "no hay tráfico todavía".
 
 ### [T-238] 🟠 El auto-clonado del `apply` de señales OEP es inerte: pasa 1 de 125
 

@@ -2075,6 +2075,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'panel enseñaba 0, y 4 incidencias de 24 h invisibles (content-health-sweep en `failure` ' +
       'desde el 29/07, refresh-rankings con consulta rota).',
   },
+  temario_pdf_no_render: {
+    titulo: '¿La ruta pública del PDF del temario sigue SIN renderizar en línea? (T-159/T-270)',
+    ruta: 'scripts/canary-temario-pdf-no-render.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      '`npm run canary:temario-pdf-no-render -- --horas N`. Solo lee. Criterio puro en ' +
+      '`lib/temario/pdf/canaryNoRender.cjs` (17 tests). Nace de que la ficha [T-270] exige ' +
+      'verificar EN VIVO que el fix del incidente 2026-07-29 (render en línea en la ruta que ' +
+      'sirve, event-loop bloqueado 215s, answer-and-save caído 18 min) sigue vivo tras el deploy ' +
+      'de la Fase 2 (06/08, commit 9c85535bf) — pero un trabajador de la flota NO tiene ' +
+      'credenciales de usuario premium (sin SUPABASE_JWT_SECRET/AUTH_SECRET) con las que provocar ' +
+      'un miss real y comprobarlo a mano. Dos aserciones sobre lo que el TRÁFICO REAL ya deja en ' +
+      '`observable_events`/`temario_pdf_jobs`: (1) ningún evento `temario_pdf_served` con ' +
+      '`served=\'generated\'` — valor que SOLO el código viejo podía emitir al renderizar en línea, ' +
+      'y que el código actual no puede producir (la firma de `emitServed` en `route.ts` ya no ' +
+      'admite ese valor); un solo caso = regresión (rollback, fork de la ruta). (2) cada miss real ' +
+      '(`served=\'encolado\'`) se cruza con su fila en `temario_pdf_jobs` por `content_hash`: ' +
+      '¿el worker lo completó (`status=\'done\'`) dentro de su cadencia (30 min, 2 vueltas de ' +
+      'margen), o quedó atascado/en error/sin encolar de verdad? Cero misses en la ventana NO es ' +
+      'fallo (falta de tráfico, no del código — mismo principio que `canary-served-rollup.cjs`). ' +
+      'Verificado el 06/08/2026 con `--horas 1` (ventana acotada al deploy, 19:42 UTC): 0 ' +
+      'regresiones, 0 misses — sin evidencia del ciclo completo (ningún usuario premium tocó un ' +
+      'miss real en esa hora), pero confirmado por otra vía que SÍ funciona: el job encolado a ' +
+      'las 14:04 UTC (mismo `temario_pdf_jobs`, mismo worker, camino de temas sobredimensionados ' +
+      'que ya usa esta cola desde el 30/07) quedó `status=\'done\'` en 17 min, `attempts=1`, sin ' +
+      'error. Con `--horas 15` el canario SÍ marca rojo: son los 85 eventos `generated` DE ANTES ' +
+      'del deploy (06:00-18:24 UTC) — comportamiento correcto del canario, no un fallo: una ' +
+      'ventana ancha alrededor de un cambio de código captura también el «antes». Ejecutar con una ' +
+      'ventana corta cuando se compruebe justo tras un deploy.',
+  },
   trabajo_huerfano: {
     titulo: '¿Algún worktree abandonado guarda trabajo que no existe en ningún otro sitio?',
     ruta: 'scripts/sessions/huerfanos.cjs',
