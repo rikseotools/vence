@@ -325,6 +325,17 @@ if (require.main !== module) {
     // Check (a): formato de la explicación
     console.log(`(a) ¿la explicación tiene formato §5.1 (por opción)? → ${hasOptFormat(q.explanation) ? '🟢 sí' : '🔴 NO (apelotonada / sin análisis por opción) → mejorable'}`);
 
+    // ── EL AVISO LLEGA AQUÍ, NO EN UN MANUAL DE 2.157 LÍNEAS ─────────────────────────────
+    // El 06/08 tres trabajadores verificaron un atajo contra la página que el manual desaconseja
+    // — y el aviso llevaba dos días escrito en él. Lo tenían; lo que no tenían era el momento.
+    // Ver lib/impugnaciones/avisosPorMateria.cjs para el porqué de que esté aquí y no allí.
+    {
+      const AV = require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'avisosPorMateria.cjs'));
+      const avisos = AV.avisosPara(q.question_text, q.option_a, q.option_b, q.option_c, q.option_d,
+        d.appeal_text, d.dispute_type);
+      for (const l of AV.formatear(avisos)) console.log(l);
+    }
+
     console.log('\─── CHECKLIST OBLIGATORIA (marcar cada una antes de proponer) ───'.replace('\\─','─'));
     console.log('  [ ] 1. ¿La CLAVE es correcta? (verificar contra el artículo/ley)');
     console.log('  [ ] 2. (b) ¿El artículo vinculado responde LITERALMENTE? (no solo solape de palabras)');
