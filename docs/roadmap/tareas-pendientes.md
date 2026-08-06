@@ -9423,6 +9423,61 @@ y eso solo ocurre donde las dos se sirven.
 
 
 - **⚠️ REABIERTA el 30/07 tras una revisión independiente del backlog.** Se había dado por cerrada, pero su propio texto declaraba trabajo vivo: cerrarla la sacaba del pool **y** dejaba el trabajo sin hacer. Lo destapó la revisión de los 70 cierres al mover fichas a «## Hechas» — y lo confirmó un agente leyendo la ficha entera, no el detector automático.
+- **▸ SESIÓN w2 (06/08): arreglado un falso-positivo REPRODUCIBLE en `audit-normas-del-epigrafe.cjs` (el runner de
+  la campaña por oposición) + verificados a mano 6 de los 20 hallazgos que quedan. Trabajador sin acceso de escritura
+  a la BD de negocio (rol `vence_coordinacion`/lector, solo lectura) → nada de lo de abajo está aplicado en BD,
+  queda listo para que lo aplique una sesión con permiso.**
+  - **BUG reproducido y arreglado:** `mismaFamiliaYaServida` solo comparaba el candidato contra el `short_name` de
+    las leyes ya escopadas en la oposición. Cuando la ya-servida es una SIGLA (`LPRL`) y el duplicado candidato tiene
+    nombre descriptivo (`LEY PREVENCIÓN DE RIESGOS LABORALES ENF`), no comparten ninguna palabra por `short_name` —
+    aunque el `name` completo de `LPRL` («Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales») sí
+    las comparte. Esto acusaba en falso a **5 oposiciones que YA sirven LPRL** (guardia_civil,
+    auxiliar_administrativo_extremadura, administrativo_galicia, auxiliar_administrativo_sms, tcae_sermas_madrid) de
+    no servir su duplicado ENF (165 preg). Arreglo: la query ahora agrega también `l2.name` de las ya-servidas
+    (`array(SELECT DISTINCT unnest(ARRAY[l2.short_name, l2.name]) …)`), y se comprueba family-match tanto por
+    `short_name` como por `name` del candidato. Test que reproduce el bug y prueba el arreglo:
+    `__tests__/lib/health/normaDelEpigrafeSinEscopar.test.js` (2 casos nuevos). **MEDIDO:** con el runner apuntando a
+    `VENCE_LECTOR_URL` (con `DATABASE_URL` un trabajador no puede ni leer `laws`: "permission denied"), los
+    hallazgos totales del runner bajaron de 148 a 20 tras el arreglo — aviso: parte de esa bajada puede deberse a
+    escritura CONCURRENTE de otra sesión vista tocando ficheros de esta ficha (`colas`, señal a 10 min de mi claim),
+    así que **el número atribuible SOLO al fix es el caso LPRL/LPRL-ENF (5 oposiciones · 165 preg cada una)**, no
+    la diferencia completa.
+  - **De los 20 hallazgos que quedan tras el fix, verificados 6 a mano (contra el epígrafe, el contenido ya servido
+    en otras oposiciones y una muestra de preguntas reales) — 3 genuinos, 3 falsos positivos NUEVOS (no del bug de
+    arriba, de un patrón distinto: nombre de contenedor genérico que casa por texto con un epígrafe que habla de
+    otra cosa):**
+    - ✅ **GENUINOS (verificados, listos para `escopar-ley-entera.cjs --apply`):**
+      `tcae_murcia T27` ← `Nefrología y urología` (402 preg): el epígrafe pide EXACTAMENTE "diálisis peritoneal,
+      hemodiálisis… cistoscopias y pruebas de urodinamia", la ley ya sirve con ese contenido a 9 oposiciones de
+      enfermería hermanas y el scope actual del tema (`Eliminacion y sondajes`) es contenido básico distinto
+      (complementario, no duplicado).
+      `auxiliar_enfermeria_osakidetza T111` ← `Aparato digestivo` (390 preg): mismo patrón, epígrafe pide
+      anatomofisiología digestiva/ostomías palabra por palabra, servida en 7 oposiciones hermanas, scope actual del
+      tema (`Alimentacion y nutricion` + `Eliminacion y sondajes`) es procedimental básico, no se solapa.
+      `policia_municipal_madrid T9` ← `LO 4/2010` (154 preg): el epígrafe CITA la ley por su nombre y número
+      completo ("Ley Orgánica 4/2010, de 20 de mayo de régimen disciplinario del CNP"), ya servida en
+      `policia_nacional T8`.
+    - ❌ **FALSOS POSITIVOS nuevos, NO escopear (patrón: contenedor con nombre genérico que casa por texto con un
+      epígrafe de materia distinta — el `mismaFamiliaYaServida` no lo puede ver porque la oposición NO sirve nada
+      de esa familia, es un choque léxico sobre un nombre mal puesto):**
+      `auxiliar_administrativo_sms T8` ← `Gestión y planificación sanitaria` (487 preg): el epígrafe pide la Ley
+      4/1994 de Salud de Murcia (organización, órganos del SMS); el contenedor candidato es teoría de gestión
+      enfermera genérica (EFQM, SINAPS, "enfermera gestora de casos") ya servida en 6 oposiciones de ENFERMERÍA —
+      nada que ver con el epígrafe administrativo que lo reclama.
+      `Derechos y Deberes de los Ciudadanos ENF AND` (29 preg, aparece en 7 temas de 6 oposiciones distintas —
+      celador_sermas_madrid, auxiliar_administrativo_sermas ×2, enfermero_scs_canarias, subalterno_parlamento_andalucia,
+      tcae_aragon ×2): es un contenedor SIN teoría propia ("⏳ Teoría pendiente") con preguntas específicas de
+      Andalucía (Voluntades Vitales Anticipadas, reclamaciones al SAS) ya correctamente servido en
+      `enfermero_sas_andalucia T14`; casa por la frase genérica "derechos y deberes… de los ciudadanos" que aparece
+      en el boilerplate constitucional de casi cualquier Tema 1.
+  - **Quedan 14 hallazgos sin verificar** (lista completa con epígrafe y ley en el log de esta sesión, no volcada
+    aquí por espacio). Método para verificarlos, el mismo que arriba: leer el epígrafe completo del tema, mirar en
+    qué otra(s) oposición(es) se sirve ya la ley candidata y con qué epígrafe, y mirar una muestra de preguntas
+    reales — 10-15 min cada uno, tal como decía esta ficha antes de reabrirse esta sesión.
+  - **Runner actualizado:** `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/scope/audit-normas-del-epigrafe.cjs`
+    (un trabajador necesita forzar `VENCE_LECTOR_URL`; una persona con `DATABASE_URL` completo no).
+  - **Punto pendiente sin decidir de la pasada anterior, sigue igual:** Directiva de Eficiencia Energética (106 preg,
+    GC T16) — decisión de Manuel, ver arriba.
 
 ### [T-308] 🟠 [ABIERTO 30/07] Premium compartido: comprobar si el enforcement existe y está MUDO, igual que pasó con el límite por dispositivo
 - **Por qué se abre (encargo de Manuel, 30/07):** al cerrar [T-304] apareció un patrón que da miedo por lo repetible — **el enforcement por dispositivo llevaba tres meses construido, cableado y sin cortar ni una vez**, y nadie lo sabía porque un bloqueo que no ocurre no emite ninguna señal. La sospecha razonable es que **`premium_sharing` esté igual**: detectado por el barrido (`fraud_alerts`), quizá con código de bloqueo escrito… y sin cortar nada.
