@@ -11279,6 +11279,44 @@ y eso solo ocurre donde las dos se sirven.
 - **Impacto:** 🟠 riesgo de temario desalineado en 68 oposiciones, del mismo tipo que estuvo a punto de jubilar 5 temas en CARM. No es 🔴 porque el detector ya no está ciego y el triaje se puede hacer por lotes.
 - **Ya hecho:** patrón corregido en `scripts/temario/detect-temario-revision.cjs` y en el test de paridad, que vuelve a pasar (`temarioComunicadoParity`, 2/2). Ese test **llevaba un mes en rojo por timeout** y su rojo se leía como flaky: por eso nadie vio que la señal SQL no casaba nada. Timeout subido a 60 s con el motivo escrito.
 - **Relacionada:** [T-295], [T-297] (misma familia: vigilancias que existían y no vigilaban).
+- **🔬 PROGRESO 06/08 (parcial, MEDIDO — la ficha original estaba 8 días desactualizada):** reproducida
+  la query del detector hoy (sin el JOIN a `user_profiles`, PII, con `VENCE_LECTOR_URL`): **71 oposiciones
+  con temario sin verificar del todo, de las cuales 28 tienen `comunicados_temario > 0` — 40 documentos,
+  NO 68/99.** La cola bajó ~60% por el trabajo paralelo de T-295/T-297. **Corregir la cifra del título.**
+  De los 28: **12 tienen SOLO documentos cuya url coincide con `programa_url`** (ya incorporados, baja
+  prioridad) y **16/24 documentos tienen url DISTINTA** (cola real). De esos 16 se triaron **9** con
+  lectura de `extracted_text` contra los topics activos reales:
+  - **Sin gap (documento ya reflejado o solo cambia granularidad):** `enfermero-sas-andalucia`,
+    `auxiliar-administrativo-ayuntamiento-huesca`, `auxiliar-administrativo-diputacion-huesca`
+    (41 temas del doc = 23 topics porque agrupa varios en uno, verificado tema a tema),
+    `tcae-sas`, `auxiliar-administrativo-baleares` (ya triado por sesión previa, nota en el hub).
+  - **❌ Falsos positivos (documento de OTRA categoría, comparte convocatoria/boletín):**
+    `tcae-extremadura` (3 docs "lectura fácil" son de Pinche/Planchador/Celador, no TCAE),
+    `auxiliar-administrativo-diputacion-segovia` (el doc es de Enfermero/a, no Aux. Admvo.).
+  - **⚠️ Posible documento mal enlazado, necesita sesión con escritura:** `mecanico-conductor-estado`
+    (el único doc "distinto" no tiene NINGÚN contenido de conductor/tráfico/Parque Móvil — parece de
+    otro proceso compartiendo `convocatoria_id`).
+  - **🔧 Nota de curación ERRÓNEA encontrada en el hub:** el `titulo` del doc `3b98d6ea-d3db-4c81-9ca5-281acf021de2`
+    (tcae-sas) afirma "29 común + 26 específico = 55 temas" — falso, aislado el bloque real (ANEXO VIII)
+    y el específico va de Tema 11 a 29 DENTRO de la misma secuencia de 29, sin +26 aparte. Corregir esa
+    nota antes de que alguien la use para "rellenar" un hueco que no existe.
+  - **ℹ️ Corrobora un hallazgo YA CONOCIDO:** `etgoa-sanidad-consumo` — el doc BOE tiene una "Segunda
+    parte: Área de Consumo" (100 temas) que YA EXISTE en BD como topics 101-200 (`is_active=false`,
+    0 `topic_scope`) y casa título por título con el documento. Es exactamente [T-396], pendiente de
+    decisión de Manuel — mi verificación confirma que la estructura de 100 temas ya está bien
+    scaffoldeada si se decide construirla.
+  - **Quedan sin triar:** 7 de los 16 "distinto" (`administrativo-universidad-leon` — pinta a espejo
+    BOCYL/BOE de la misma convocatoria, mismo nº de referencia que `programa_url`, no confirmado del
+    todo; `auxiliar-administrativo-ayuntamiento-sevilla`, `auxiliar-administrativo-consell-formentera`,
+    `auxiliar-administrativo-diputacion-leon`, `celador-sas` — mismo patrón de PDF multi-anexo BOJA que
+    tcae-sas, probablemente sin gap pero no verificado línea a línea —, `enfermero-ics` —documento
+    gigante multi-categoría, 555K caracteres, requiere aislar el bloque "infermer/a" código 100-2025—,
+    `enfermero-sacyl`) y las 12 oposiciones del bucket "MISMO" (sin spot-check).
+  - **Método para quien continúe:** separar por `documento.url == oposicion.programa_url`, priorizar
+    "distinto"; contar `/Tema\s+([0-9]+)[\.\s]/gi` y comparar `max_tema` contra los topics activos;
+    ojo con los DOS falsos positivos recurrentes — documento de OTRA categoría compartiendo boletín, y
+    PDF multi-anexo donde la numeración de Tema se REINICIA por categoría (aislar el bloque del
+    "ANEXO <romano>"/nombre de categoría correcto antes de contar).
 
 ### [T-295] 🟠 [ABIERTO 30/07] Deducir el acceso premium de los hechos en vez de guardarlo en plan_type
 - **El caso que lo destapa (29/07):** un cliente canceló su suscripción **desde nuestra app** el 26/05 (`cancellation_feedback`: `self_service`), Stripe la terminó el 27/05 al acabar el mes pagado… y su fila se quedó en `active` con el perfil en `premium`. **Dos meses y 293 tests con premium regalado.** Encaja con el incidente del webhook roto del 26-27/05 (no demostrable ya: los eventos de Stripe caducan a los 30 días y la observabilidad no empieza hasta el 29/06). Corregido a mano el 29/07; el usuario vuelve a ser free.
