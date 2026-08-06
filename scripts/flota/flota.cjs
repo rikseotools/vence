@@ -43,6 +43,23 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 // Quién espera revisor y quién espera decisión lo decide UN sitio (T-486): si el supervisor lo
 // dedujera por su cuenta de las columnas, `flota` y `backlog list` acabarían contando distinto.
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
+const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
+
+/**
+ * Anota las filas del embudo con los casos que citan y ya están cerrados. (T-614)
+ *
+ * El criterio entero vive en `borradorAbierto.cjs` — aquí solo el viaje a la BD, igual que en
+ * `backlog.cjs`. **Fail-open**: si la consulta falla, se devuelven las filas tal cual; el panel de
+ * la flota tiene que salir aunque la anotación no se pueda calcular.
+ */
+async function marcarCasosCerradosEnEmbudo(sql, filas) {
+  try {
+    const claves = BORRAB.clavesDeCasos(filas)
+    if (!claves.length) return filas
+    const estados = await sql.unsafe(BORRAB.sqlEstadoDeCasos(), [claves])
+    return BORRAB.marcarCasosCerrados(filas, estados)
+  } catch { return filas }
+}
 
 const cmd = process.argv[2] || 'estado'
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
@@ -332,9 +349,14 @@ async function main() {
                reviewed_at, reviewed_by, review_verdict, review_findings
           FROM public.backlog_tasks
          WHERE review_requested_at IS NOT NULL AND status <> 'done'`
+      // `context` viaja SIEMPRE con `question` (T-614): es donde el trabajador pega su análisis y,
+      // por tanto, donde acaban los ids de las impugnaciones en las filas de prosa. Traer media
+      // fila no da error — simplemente hace que el aviso de «ese caso ya está cerrado» no salte,
+      // que es la forma silenciosa de fallar que ya costó T-486 con review_requested_at/reviewed_at.
       const preguntas = await sql`
-        SELECT id, sid, question, kind, draft_target FROM public.session_questions WHERE status = 'open'
+        SELECT id, sid, question, context, kind, draft_target FROM public.session_questions WHERE status = 'open'
          ORDER BY (kind = 'borrador') DESC, asked_at`.catch(() => [])
+      const preguntasMarcadas = await marcarCasosCerradosEnEmbudo(sql, preguntas)
 
       const filas = MAQ.comparar(sesiones)
       const porSid = new Map(sesiones.map((s) => [s.slug, s.sid]))
@@ -428,19 +450,33 @@ async function main() {
       // «Siempre tengo que aprobar lo que se envía» (Manuel). Van separados de las preguntas y
       // por delante: una pregunta espera una decisión, un borrador espera un permiso, y
       // confundirlos haría que lo segundo se leyera como lo primero.
-      const borradores = preguntas.filter((p) => p.kind === 'borrador')
-      const dudas = preguntas.filter((p) => p.kind !== 'borrador')
+      const borradores = preguntasMarcadas.filter((p) => p.kind === 'borrador')
+      const dudas = preguntasMarcadas.filter((p) => p.kind !== 'borrador')
       if (borradores.length) {
         console.log(`\n📝 ${borradores.length} BORRADOR(ES) esperando tu OK — nada de esto se ha enviado:`)
         for (const b of borradores) {
           console.log(`   #${b.id} → ${String(b.draft_target || '?').slice(0, 40)}  (${sidCorto(b.sid)})`)
           console.log(`        ${String(b.question).slice(0, 88)}`)
+          const aviso = BORRAB.avisoCasoCerrado(b.casosCerrados || [])
+          if (aviso) console.log(`        ${aviso}`)
         }
         console.log('   léelos enteros:  node scripts/backlog.cjs preguntas')
       }
       if (dudas.length) {
+        // Las que citan un caso YA cerrado van al final y marcadas: siguen ahí (citar no es
+        // trabajar, pueden estar vivas), pero no pueden encabezar la lista como si esperaran una
+        // decisión fresca. El 06/08 eran 10 de 16 y tapaban lo único urgente que había debajo.
+        const vivas = dudas.filter((p) => !(p.casosCerrados || []).length)
+        const conCasoCerrado = dudas.filter((p) => (p.casosCerrados || []).length)
         console.log(`\n❓ ${dudas.length} PREGUNTA(S):`)
-        for (const p of dudas) console.log(`   ${sidCorto(p.sid)}: ${String(p.question).slice(0, 90)}`)
+        for (const p of vivas) console.log(`   ${sidCorto(p.sid)}: ${String(p.question).slice(0, 90)}`)
+        if (conCasoCerrado.length) {
+          console.log(`   ── ${conCasoCerrado.length} citan un caso YA CERRADO (mira si siguen haciendo falta):`)
+          for (const p of conCasoCerrado) {
+            const claves = p.casosCerrados.map((c) => c.clave).join(', ')
+            console.log(`   ⚠️  ${sidCorto(p.sid)}: ${String(p.question).slice(0, 74)} [${claves}]`)
+          }
+        }
       }
       // ── ¿PUEDEN DE VERDAD TRABAJAR? (T-486) ────────────────────────────────────────
       // El latido dice que la máquina vive; no dice nada de Claude Code. Sin esta sonda, un

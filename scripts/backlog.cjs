@@ -394,6 +394,24 @@ const ESF = require(path.join(REPO, 'lib', 'backlog', 'esfuerzo.cjs'));
 // respuestas tiene que ver una sesión— vive en el núcleo puro, no aquí.
 const PREG = require(path.join(REPO, 'lib', 'backlog', 'preguntas.cjs'));
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'));
+const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'));
+
+/**
+ * Anota las filas del embudo con los casos que citan y YA están cerrados. (T-614)
+ *
+ * El criterio vive entero en `borradorAbierto.cjs`; aquí solo está el viaje a la BD. **Fail-open
+ * absoluto**: si la consulta falla se devuelven las filas tal cual. El embudo es la única forma
+ * que tiene un trabajador de llegar a Manuel — tumbarlo por no poder resolver una anotación sería
+ * cambiar un aviso que falta por un canal que no funciona.
+ */
+async function marcarEmbudo(filas) {
+  try {
+    const claves = BORRAB.clavesDeCasos(filas);
+    if (!claves.length) return filas;
+    const estados = await s.unsafe(BORRAB.sqlEstadoDeCasos(), [claves]);
+    return BORRAB.marcarCasosCerrados(filas, estados);
+  } catch { return filas; }
+}
 // El último escalón del ciclo: `done` ≠ archivada (T-392 F2/F3). Todo lo que toca las columnas
 // nuevas (`archived_at`/`requiere_archivo`/…) es fail-open si la migración aún no está aplicada
 // en esta base de datos: `esColumnaAusente` distingue "no existe la columna" de cualquier otro
@@ -2002,12 +2020,20 @@ async function despertarPorDeploy(s, shas, opts = {}) {
          ORDER BY q.asked_at DESC LIMIT 60`;
       if (!filas.length) { console.log('✅ no hay preguntas pendientes.'); }
       else if (!todas) {
-        for (const l of PREG.formatearEmbudo(filas)) console.log(l);
+        // ── ¿EL CASO QUE CITA SIGUE VIVO? (T-614) ───────────────────────────────────────
+        // Una fila del embudo es una PETICIÓN DE DECISIÓN, no el estado del mundo: cerrar la
+        // impugnación no la cierra. Medido el 06/08: de 16 abiertas, 10 apuntaban a casos ya
+        // resueltos y CONTESTADOS, y por poco se aprueba un segundo correo al mismo usuario.
+        // Se ANOTA, no se oculta: citar un caso no es estar trabajando en él (ver el módulo).
+        const marcadas = await marcarEmbudo(filas);
+        for (const l of PREG.formatearEmbudo(marcadas)) console.log(l);
         console.log('');
         // El detalle va DEBAJO del listado: lo que se contesta rápido primero, el contexto para
         // quien lo necesite. Sin el contexto, contestar obliga a abrir la sesión.
-        for (const p of PREG.ordenarEmbudo(filas)) {
+        for (const p of PREG.ordenarEmbudo(marcadas)) {
           console.log(`── #${p.id}${p.task_id ? ` · ${p.task_id} — ${String(p.tarea_titulo || '').slice(0, 60)}` : ''}${p.blocking ? ' · ⛔ PARADA' : ''}`);
+          const aviso = BORRAB.avisoCasoCerrado(p.casosCerrados || []);
+          if (aviso) console.log(`   ${aviso}`);
           console.log(`   ${p.question}`);
           if (p.context) console.log(`   contexto: ${p.context}`);
           console.log(`   sesión ${String(p.sid).slice(0, 12)}… · ${PREG.esperaHoras(p)}h esperando`);
