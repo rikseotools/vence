@@ -1016,6 +1016,23 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
   truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marcar solo el final, y medir antes
   de ampliar el patrón.
 - **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
+### [T-626] 🟠 [ABIERTO 06/08] El bucle supervisor de la flota lleva desde que nació sin registrar ni una pasada: su `INSERT` nombra una columna que no existe y el `catch` de telemetría se lo traga
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Manuel preguntó por qué los cuatro trabajadores del VPS llevaban ~3 h parados con el supervisor corriendo. Para contestarlo hubo que entrar por SSH, mirar procesos y leer código — y a media investigación él hizo la pregunta correcta: **«¿es que no hay observabilidad?»**. La hay escrita. Nunca ha funcionado.
+- **MEDIDO:** `SELECT count(*) FROM observable_events WHERE event_type='flota_bucle_pasada'` → **0**. En toda la historia.
+- **LA CAUSA, de una palabra.** El `INSERT` del bucle escribía en `event_data`; la columna se llama **`metadata`**. Y como toda la telemetría del proyecto va envuelta en `catch {}` por diseño —correcto: una avería del observador no puede parar al supervisor—, **fallaba en silencio en cada pasada**. Los otros **cuatro** `INSERT` del mismo fichero ya usaban la forma correcta (`source, severity, event_type, endpoint, error_message, metadata`): fue un outlier al escribirlo, no un cambio de esquema.
+- **LO QUE LO HACE CARO, y está escrito en el propio código:** tres líneas encima del `INSERT` roto hay un comentario que dice *«Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el síntoma de un supervisor muerto es justamente que NO PASA NADA»*. Exactamente lo que pasó. Con el rastro roto, un supervisor vivo que no reparte y uno muerto se ven **igual**: en los dos casos la flota está parada y no hay nada que mirar.
+- **ES EL MISMO MODO DE FALLO QUE [T-615]**, tercera vez en la misma jornada: el fail-open —bien puesto— acaba **ocultando que lo averiado es la propia observación**. Un `catch {}` obliga a comprobar ANTES de confiar, porque después ya no hay quien avise.
+- **ARREGLO:** el `INSERT` usa las mismas columnas que sus cuatro vecinos.
+- **CAPAS:**
+  - Guardarraíl `__tests__/guardrails/observableEventsColumnas.guardrail.test.ts`: ningún `INSERT INTO observable_events` de `scripts/`, `lib/`, `app/` ni `backend/src` puede nombrar una columna que no exista. Las columnas se leen de **`db/schema.ts`** (fuente de verdad), así que sigue solo al esquema si cambia.
+  - **Comprobado por MUTACIÓN, no por lectura:** con el `event_data` puesto de vuelta el guardarraíl se pone **rojo** y nombra fichero y columna (`scripts/flota/flota.cjs: «event_data»`); restaurado, verde. La primera mutación **no llegó a aplicarse** (el `replace` no casaba por indentación) y el test seguía verde: sin comprobar que la mutación entró, un guardarraíl verde no dice nada.
+  - **Verificado contra RDS:** el `INSERT` arreglado escribe y se lee (`count` 0 → 1), y se limpió la fila de prueba.
+- **⏭️ QUEDA — y sin esto el arreglo no sirve de nada:** el bucle corre desde el clon del VPS (`/home/flota/vence/scripts/flota/flota.cjs`, arrancado a las 18:43). Hay que **actualizar ese clon y reiniciar el bucle** para que empiece a dejar rastro. Mientras tanto sigue sin registrar nada.
+- **⏭️ Y LA PREGUNTA ORIGINAL SIGUE SIN RESPUESTA:** por qué w1-w4 llevan horas libres con **204 tareas** que cumplen la criba de `repartir`. El último reparto fue a las **20:26-20:27** (T-206, T-207, T-214, T-215), los cuatro turnos entregaron, y desde entonces nada. **No se puede saber por qué desde el bus** — que es precisamente lo que esta ficha arregla para la próxima vez.
+- **Relacionadas:** [T-617] (colapsó los dos programadores en `bucle`; este `INSERT` entró con él), [T-615] (fail-open del veredicto, mismo patrón), [T-486] (la flota), [T-130] (el outlier que se escribe distinto de sus vecinos).
+
 ### [T-623] 🔴 [ABIERTO 06/08] El configurador «por leyes» se queda colgado: la selección de artículos viaja en la URL y nginx la corta a 8 KB, devolviendo HTML que el cliente parsea como JSON
 
 **Lo reporta una usuaria, no una alerta.** Feedback `e790c7bf` (06/08 19:45, Lourdes):
