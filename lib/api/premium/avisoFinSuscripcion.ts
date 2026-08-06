@@ -180,6 +180,9 @@ export async function runCampanaFinSuscripcion(
         fechaFin: fechaLarga(c.finPeriodo),
         importe: formatearImporte(oferta.importeCentimos),
         periodicidad: ETIQUETA_INTERVALO[oferta.intervalo],
+        // El plazo sale de `fechaLimiteRetorno`, la MISMA función que usa el barrido que anula
+        // las ofertas. Calcularlo aparte aquí sería prometer un mes y quitar el precio otro día.
+        fechaLimite: fechaLarga(fechaLimiteRetorno(c.finPeriodo)),
         ctaUrl: CTA_URL,
       },
     })

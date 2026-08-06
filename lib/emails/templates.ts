@@ -993,7 +993,8 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
 
         <p style="font-size: 16px; line-height: 1.6; color: #374151;">
           Para mantenerlo tienes que renovar tú: pulsa el botón de abajo y vuelve a suscribirte
-          con esa misma tarifa. Si no lo haces, lo perderás.
+          con esa misma tarifa. Tienes de plazo hasta el <strong>${fechaLimite}</strong>; a partir
+          de esa fecha ese precio deja de estar disponible.
         </p>
 
         <div style="text-align:center;margin:32px 0;">
