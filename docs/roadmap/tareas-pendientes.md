@@ -2769,6 +2769,17 @@ T-574 para `question_disputes`, con núcleo puro en `lib/db/rlsSelectBlocked.cjs
   sin error"). El resto de las 85 son operativas o con PII (`user_profiles`,
   `fraud_confirmations`, `payment_settlements`…) y **bloquearlas es el comportamiento correcto**
   — no se han tocado.
+- **⚠️ AÑADIDO 06/08 (investigando [T-328]): otras 3 tablas del mismo bloqueo, NO en `DEBE_LEER`
+  hoy pero sin PII y con demanda real de lectura.** Midiendo cuánta gente ya usa "montar su propio
+  temario" (para la landing de oposición a medida), `custom_oposiciones`, `user_test_favorites` y
+  `user_oposicion_alerts` dieron **0 filas** vía `VENCE_LECTOR_URL` pese a tener datos reales
+  (Sergio tiene 3 configuraciones guardadas en `user_test_favorites`, citadas con nombre en
+  [T-327]). Confirmado el mismo mecanismo: `relrowsecurity=true`, cero filas en `pg_policies` para
+  las tres. Igual que `test_questions`/`tests`: solo `user_id` (uuid) + metadata de oposición/
+  leyes/artículos, sin identificador directo — mismo perfil que las dos ya arregladas. No se ha
+  tocado nada (mismo motivo: DDL en producción, decisión de Manuel); queda anotado para cuando se
+  aplique la migración de arriba, por si se quiere ampliar el alcance a estas tres antes de que
+  otra sesión repita la misma medición desde cero.
 - Columnas de ambas tablas revisadas una a una contra el catálogo (`pg_attribute`, sin depender
   de `information_schema` que ya estaba bloqueado para el rol de coordinación): ninguna es
   identificador directo (correo/nombre/teléfono/IP/pago). Solo `user_id` (uuid) + actividad de
@@ -10897,7 +10908,7 @@ y eso solo ocurre donde las dos se sirven.
 - **Cabo suelto de coordinación del 01/08, por si se repite:** T-327 se reclamó a las 11:22 desde el worktree `sesion-01ago-c`, esa sesión **se cayó a las 11:40 sin escribir código** (worktree limpio, 0 commits) y el lease venció solo. Al re-reclamarla a las 16:10 el propio `claim` fue quien avisó del commit de `esquina-inferior-izquierda`, así que **se soltó**: el lease había caducado pero la otra sesión estaba viva y con código encima — la señal de vida manda sobre el lease. Queda **libre y sin trabajo perdido**.
 - **Relacionada:** [T-326] (el filtro que pidió en su otro hilo), [T-328] (la landing), y el precedente de vender premium con temario incompleto.
 
-### [T-328] 🟠 [ABIERTO 30/07] Landing de «tu oposición a medida»: hay hueco de mercado y nadie lo ofrece
+### [T-328] ✅ [HECHA 06/08] Landing de «tu oposición a medida»: hay hueco de mercado y nadie lo ofrece
 - **La tesis (Manuel, 30/07):** montarte tu propio temario eligiendo leyes y artículos **no lo ofrece nadie** en el mercado de preparación de oposiciones, y **resuelve un dolor real**: el opositor de una oposición específica (A1/A2, o cualquiera fuera de las masivas) no encuentra plataforma con SU temario y acaba estudiando con material genérico o en PDF.
 - **La evidencia de que el dolor existe la tenemos dentro:** un premium ([T-327]) se lo está fabricando a mano con configuraciones de test guardadas porque su oposición no está montada. Eso no es una petición de función, es alguien pagando y buscándose la vida.
 - **Qué habría que hacer:** landing propia (no un apartado dentro de otra) que hable a ese opositor: *«¿tu oposición no está en ninguna plataforma? Móntate tu temario con las leyes y los artículos que entran»*. Con su SEO propio: la búsqueda de quien tiene esa necesidad no es «test auxiliar administrativo», es el nombre de su oposición rara + «temario» o «test».
@@ -10907,6 +10918,26 @@ y eso solo ocurre donde las dos se sirven.
 - **Dependencia:** la landing **no puede publicarse antes que [T-327]** — prometer en SEO algo que el producto todavía no hace es la forma más rápida de quemar la palabra. Primero la funcionalidad, luego la landing.
 - **Impacto:** 🟠 es crecimiento, no mantenimiento: ataca el cuello de botella del catálogo (cada oposición nueva hoy cuesta construir su temario a mano) por el otro lado, dejando que el usuario se lo monte.
 - **Relacionada:** [T-327] (la funcionalidad que sostiene la promesa), `docs/runbooks/seo-oportunidades.md` (cómo medir la demanda de búsqueda), `docs/runbooks/analizador-competidores.md` (para comprobar el hueco).
+
+- **✅ DEPENDENCIA COMPROBADA (06/08): [T-327] está en producción y verificada, no solo "hecha en la ficha".** Confirmado leyendo la propia ficha de T-327: circuito completo (crear → buscar por ley y por CONTENIDO del articulado → armar temas → guardar → hacerla objetivo → estudiar) verificado en producción el 01/08 con navegador real contra la oposición real de Manuel, rastreador de rutas 6/6 sin roturas. Libre de publicar. **Límite honesto que la landing respeta**: no existe test aleatorio/simulacro de TODA la oposición personalizada, solo test por tema — no lo prometo.
+
+- **🔬 HUECO DE MERCADO COMPROBADO (06/08), no por intuición.** Revisados los **67 competidores activos** en `competitor_courses`/`competitors` (notas curadas + grep de `raw_name` por "personaliz|a medida|elige tu|crea tu|arma tu|custom|tu propio" sobre TODA la tabla): ninguno ofrece "elige tus leyes y artículos y arma tu temario". El único resultado con "personalizado" es una academia (EHS) anunciando *"programa de estudio **personalizado**"* — ritmo/tutoría con un profesor, no selección de contenido. Confirma la tesis de Manuel con una comprobación real, no solo con su criterio.
+
+- **📊 DEMANDA MEDIDA — con las cifras que YA existían, citadas con su fuente y fecha (no re-derivadas a ciegas):**
+  - **303 usuarios** ya tenían una oposición personalizada como objetivo el 30/07 (`custom_oposiciones`, medido en la propia ficha de [T-327]) — **antes de que existiera esta landing o cualquier SEO**. 127 sin un solo test (mezcla de gente que no encontró el camino y de intentos abandonados, ej. caso Pedro/`pedro.delibros`, citado en T-327).
+  - **182 oposiciones del catálogo, 586 usuarios, 4 premium** eligieron una oposición sin ni un tema montado (medido 01/08, [T-397], `node scripts/health/oposicion-sin-temario.cjs`) — incluidos 2 premium en `agente_hacienda` (16 usuarios en total).
+  - **⚠️ Por qué estas cifras son CITADAS y no RE-MEDIDAS por mí:** intenté reproducirlas de forma independiente y **no pude** — `user_profiles.target_oposicion` está denegado a `vence_lector` (PII, correcto) y el propio comando de T-397 (`scripts/health/oposicion-sin-temario.cjs`) falla con `permission denied for table user_profiles` incluso con esa credencial. Uso las cifras ya publicadas por sesiones con acceso elevado, con su fecha, en vez de inventar un número que no puedo demostrar.
+  - **Hallazgo colateral, medido y anotado (no arreglado — fuera de alcance de esta tarea):** al intentar medir por otra vía (`custom_oposiciones`, `user_test_favorites`, `user_oposicion_alerts`), las tres tablas devuelven **0 filas** vía `VENCE_LECTOR_URL` pese a tener datos reales — mismo patrón `relrowsecurity=true` + 0 políticas ya diagnosticado en [T-574]/[T-573] para `test_questions`/`tests`. Añadido como addendum a [T-573] en vez de abrir ficha nueva (el guardarraíl de `reserve` señaló que era el mismo bloqueo); no se ha tocado nada — es DDL en producción, decisión de Manuel.
+
+- **🔧 CONSTRUIDO 06/08 — landing en `/tu-oposicion-a-medida`, rama `flota/T-328-landing-oposicion-a-medida`:**
+  - `app/tu-oposicion-a-medida/page.tsx` + `content.ts` (FAQ y CTA en un único array, consumido a la vez por el JSX visible y el JSON-LD `FAQPage` — no pueden desincronizarse porque es la MISMA fuente, no una copia que haya que mantener igual a mano).
+  - Contenido: hero con la frase de Manuel, "el problema" (por qué las oposiciones no masivas se quedan sin plataforma), 4 pasos que describen EXACTAMENTE lo que T-327 construyó (buscar por nombre o por contenido → añadir artículos a un tema → repetir → guardar), el ángulo de comunidad (pública, "by autor", solo el creador edita — tal cual lo decidió Manuel en T-327), y FAQ con 6 preguntas.
+  - **Honesta a propósito sobre los límites de T-327**, con test que lo hace cumplir: no promete test aleatorio ni simulacro de toda la oposición (no existen para personalizadas todavía — solo por tema) ni una opción de "hacerla privada" (hoy toda personalizada nace pública, sin toggle).
+  - CTA → `/oposicion-personalizada` (el creador real de T-327, que ya gestiona el login si hace falta).
+  - **Enlazada desde dos sitios** (nada de página huérfana sin quien la descubra): `/oposiciones` (bloque "¿tu oposición no está en esta lista?" al final del directorio) y `app/sitemap-static.xml`.
+  - **Arreglo pequeño de paso, mismo embudo:** el enlace "Iniciar sesión" que `CreadorTemarioCliente.tsx` muestra a un visitante anónimo no llevaba `return_to` — tras loguearse aterrizaba en la home, no en el creador. Un `?return_to=/oposicion-personalizada` en el enlace (el propio `/login` ya soporta ese parámetro) cierra el embudo landing → CTA → login → creador sin perder al usuario por el camino.
+  - **Capas:** `__tests__/app/tu-oposicion-a-medida/content.test.ts` (6 tests: CTA correcto, FAQ no vacía, sin duplicados, y dos guardarraíles de contenido — no promete lo que no existe, sí deja claro que hoy es "por tema"). `tsc --noEmit` limpio; `eslint` limpio en los 6 ficheros tocados; 80 tests de los guardarraíles/integración de oposición-personalizada existentes en verde (sin regresión, incluido `oposicionesIntegrity.test.ts` 348/348 — mi carpeta nueva no colisiona con el detector de "page.tsx huérfanos que parecen oposiciones").
+  - Cambio de **frontend puro** (Next.js/ECS): no se activa hasta el próximo `frontend-deploy`.
 ### [T-324] 🟡 [ABIERTO 30/07] Las razones de la explicación estructurada citan la opción por su letra: 761 preguntas que no se pueden barajar
 
 - **QUÉ ES, Y QUÉ NO ES.** 761 preguntas activas con explicación estructurada tienen alguna **razón** (o, en 10 casos, la narrativa) que menciona una opción **por su letra o su posición**: «el plazo que cita la opción D», «como se vio en la primera». **No hay nada roto a la vista del opositor** — el gate de serve (`isShuffleServeEligible`, en `lib/api/filtered-questions/queries.ts`) pasa las razones y la narrativa por `explanationReferencesLetters` **en caliente**, así que estas preguntas simplemente **no se barajan**. Es valor sin cobrar, no un incendio: se sirven siempre en el mismo orden y el opositor puede memorizar la posición.
