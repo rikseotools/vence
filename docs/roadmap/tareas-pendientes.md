@@ -1429,7 +1429,7 @@ a tener `~/vence-deploy` dedicado), [T-611] (una de las tareas atrapadas esperan
 - **Relacionadas:** [T-513] (el hueco del tag, que es la OTRA mitad de este caso y sigue esperando decisión), [T-507] y [T-566] (cerraron la brecha de oficiales en el CONTADOR; esta ficha es sobre el SERVE), [T-397].
 
 - **📌 Rescatada el 06/08 de un worktree abandonado.** La ficha se escribió el 05/08 a las 23:01 en `sesion/colas-feedback`, que murió esa noche sin que su rama llegara a `main`; lo medido arriba es de ese día. El claim quedó colgado 17 h con el lease vencido y se soltó con `reap`.
-### [T-614] 🔴 [ABIERTO 06/08] El embudo no sabe si su impugnación ya se cerró: 10 de 16 preguntas eran fantasmas y casi se envía un segundo correo al mismo usuario
+### [T-614] 🔴 [PARCIAL 06/08 — aviso arreglado y verificado contra BD real; queda decidir si se concede GRANT] El embudo no sabe si su impugnación ya se cerró: 10 de 16 preguntas eran fantasmas y casi se envía un segundo correo al mismo usuario
 
 **Lo que pasó (06/08, revisando la flota).** Le presenté a Manuel el borrador de la réplica de
 `f34b88ad` (Manolo, Dip. Córdoba) para que lo aprobara y lo enviáramos. La impugnación llevaba
@@ -1501,11 +1501,6 @@ caso pregunta de DOS formas (la estructurada y la de prosa) y solo la primera se
 verde), incluidos el fail-open y el que fija que `appealed` NO cuenta como cerrado (hay una réplica
 esperando). Suites relacionadas: 1.005 en verde.
 
-**Pendiente:** una simulación contra BD real (`sim:embudo-fantasma`) que recorra el ciclo entero
-—pregunta abierta → se cierra el caso por el camino normal → deja de encabezar el panel—. Un unit
-construye la fila a mano y da verde con el sistema roto; este defecto es un desajuste ENTRE DOS
-TABLAS (misma lección que `sim:espera-revision`, que cazó lo que 31 unit no cazaron).
-
 **Guardarraíl:** ninguna consulta que traiga `draft_target` puede decidir si algo está pendiente sin
 resolver su estado — el espejo de la regla que [T-486] puso para `review_requested_at`/`reviewed_at`.
 
@@ -1518,6 +1513,54 @@ resolver su estado — el espejo de la regla que [T-486] puso para `review_reque
 inflaba el recuento a 427). Solo una es accionable: `03298846` (Marta, hace 14 días) preguntando si
 Ctrl+Mayús+A varía según la versión de Word. Las otras dos son un agradecimiento (cierre silencioso)
 y una de hace 4 meses (no se reenvía).
+
+- **🔍 SESIÓN `w4` (06/08/2026) — el aviso recién nacido NUNCA se disparaba para la flota: un permiso
+  denegado tumbaba TODA la consulta, en silencio, y la simulación pendiente lo cazó.**
+  - **El defecto, reproducido con el `DATABASE_URL` REAL de un trabajador, no con un mock:**
+    `sqlEstadoDeCasos()` unía `question_disputes` + `psychometric_question_disputes` +
+    `user_feedback` en un solo `UNION ALL`. Bajo `vence_coordinacion` (el rol de la flota),
+    `user_feedback` está sin GRANT A PROPÓSITO (es tabla de negocio con PII, ver [T-581] — mismo
+    gotcha con `cola.cjs`, que ya lo resolvió con `tocaFeedback`). El resultado: `SELECT … FROM
+    user_feedback` lanza `permission denied for table user_feedback`, y como está dentro de un
+    `UNION ALL`, Postgres rechaza la consulta ENTERA — no solo la parte de `user_feedback`, también
+    la de `question_disputes`, que el rol SÍ puede leer. El `try/catch` fail-open de
+    `marcarEmbudo`/`marcarCasosCerradosEnEmbudo` (deliberado, para no tumbar el panel) se comía ese
+    error sin decir nada. **Efecto medido: el aviso que motivó esta ficha —evitar mandarle a un
+    usuario real el mismo correo dos veces— no se disparaba NUNCA para ningún trabajador de la
+    flota, para ningún caso, aunque estuviera cerrado desde hacía días en `question_disputes`.**
+    El código de los puntos 1-5 de arriba era correcto por diseño; el permiso con el que corre en
+    producción lo dejaba inerte.
+  - **Arreglo, sin necesitar ningún GRANT nuevo:** `sqlEstadoDeCasos()` → `sqlsEstadoDeCasos()`, una
+    consulta POR TABLA (no una combinada), resueltas en paralelo por la función nueva
+    `estadosDeCasos(sql, claves)` — cada una con su propio `.catch(() => [])`. Un permiso denegado
+    en `user_feedback` ya no impide leer las otras dos. Mismo principio que `tocaFeedback` en
+    `cola.cjs` ([T-581]): aislar el fallo por tabla, no envolver el conjunto. Los dos lectores
+    (`backlog.cjs`, `flota.cjs`) pasan a llamar a `estadosDeCasos` en vez de construir el `UNION`
+    ellos mismos — sigue habiendo UN solo sitio con la lista de tablas, ahora correcto.
+  - **Verificado contra BD real, no contra mocks — la simulación que la ficha dejó pendiente
+    (`npm run sim:embudo-fantasma`, nueva, 10/10 en verde):** corre con la conexión REAL de un
+    trabajador (para que el permiso denegado en `user_feedback` ocurra DE VERDAD, comprobado en el
+    primer paso de la propia simulación), toma prestados un caso real cerrado y uno real abierto de
+    `question_disputes` (nunca inventa filas ahí — el rol no tiene INSERT), inserta dos filas reales
+    en `session_questions` citándolos en la prosa, y confirma que el pipeline completo
+    (`clavesDeCasos` → `estadosDeCasos` → `marcarCasosCerrados` → `avisoCasoCerrado`) marca la que
+    cita el caso cerrado y NO la que cita el abierto — a pesar del permiso denegado real en
+    `user_feedback` de por medio. Limpieza: las filas desechables se marcan `withdrawn` al terminar
+    (el rol no tiene DELETE sobre `session_questions`, solo INSERT/UPDATE).
+  - **Tests ampliados** en `__tests__/impugnaciones/borradorAbierto.test.js` (31 → 35, en verde)
+    para `sqlsEstadoDeCasos`/`estadosDeCasos`, incluido un caso que reproduce con un `sql.unsafe`
+    simulado exactamente el `permission denied` de `user_feedback` y confirma que el resultado de
+    `question_disputes` sigue llegando. Robustez/contexto push-guard en verde; guardarraíl de
+    `toolRegistry` en verde (no hace falta registrar `sim-embudo-fantasma.cjs`: los scripts `sim:*`
+    no entran en ese registro, igual que `sim-espera-revision.cjs`).
+  - **Queda ABIERTO, y por eso NO se cierra del todo:** este arreglo repara el aislamiento entre
+    tablas, pero `user_feedback` sigue sin GRANT para la flota — así que el aviso NUNCA verá un caso
+    cerrado que solo viva en la cola de FEEDBACK (solo en `question_disputes`/
+    `psychometric_question_disputes`, que sí son legibles). Es el mismo hueco que [T-581] ya dejó
+    documentado para `cola.cjs`, ahora medido también aquí. Concederlo (columna `status` únicamente,
+    sin las columnas con el mensaje o el `user_id` — mismo criterio de `vence_lector` con las
+    tablas PII) es una decisión de GRANT, no de código: no lo puedo aplicar yo mismo (rol de solo
+    lectura/coordinación, sin permiso de `GRANT`).
 ### [T-611] 🟡 [ABIERTO 06/08] Los 131 `TopicContentView` son 131 copias del mismo componente: unificarlas y cerrar el bucle temario→test→artículo que reportó Ángela
 
 **De dónde sale.** Feedback `f57e3001` de **Ángela P.** (premium, `auxiliar_administrativo_valencia`,
