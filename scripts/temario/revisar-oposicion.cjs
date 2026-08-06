@@ -123,7 +123,13 @@ async function main() {
     console.error('uso: revisar-oposicion.cjs <position_type> [--pregunta <question_id>] [--json]')
     process.exit(2)
   }
-  const c = new Client(pgConfig())
+  // Solo lectura (SELECT sobre topics/topic_scope/questions/articles): un trabajador de la flota
+  // tiene esas tablas detrás de VENCE_LECTOR_URL (vence_lector), NO de DATABASE_URL
+  // (vence_coordinacion, solo 4 tablas de coordinación — T-539). Sin esto, la puerta que exige
+  // el manual (§ QUEJA DE TEMARIO) muere con "permission denied for table topics" antes de dar
+  // veredicto, mismo patrón que T-581 en revisar-impugnacion.cjs. Con `.env.local` completo
+  // (una persona) no cambia nada: VENCE_LECTOR_URL no existe ahí y se usa DATABASE_URL igual.
+  const c = new Client(pgConfig(process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL))
   await c.connect()
   try {
     const hechos = await reunirHechos(c, positionType, questionId)

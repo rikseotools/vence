@@ -25,6 +25,23 @@ function getUrl() {
   const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
   return env.match(/^DATABASE_URL=(.*)$/m)[1].trim();
 }
+// Un trabajador de la flota se conecta con `vence_coordinacion` (T-539): SOLO 4 tablas de
+// coordinación (backlog_tasks, worktree_sessions, session_questions, observable_events) + SELECT
+// de question_disputes/psychometric_question_disputes (T-574). NO puede leer `questions`,
+// `articles` ni `test_questions` — eso es negocio y vive detrás de `vence_lector` (T-486). Sin
+// esta segunda conexión el dossier moría en la primera lectura de `questions` con un
+// `PostgresError 42501` sin capturar (medido 05/08 con la impugnación 4683e35b-137f…, mismo
+// patrón de fondo que [T-581] pero un punto de fallo distinto: no falta un try/catch, falta usar
+// la credencial que SÍ puede leer la tabla — ver CLAUDE.md "PARA CONSULTAR DATOS").
+function getUrlLector() {
+  if (process.env.VENCE_LECTOR_URL) return process.env.VENCE_LECTOR_URL;
+  try {
+    const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
+    const m = env.match(/^VENCE_LECTOR_URL=(.*)$/m);
+    if (m) return m[1].trim();
+  } catch { /* sin .env.local (p.ej. worker sin ese fichero): se prueba con DATABASE_URL */ }
+  return null;
+}
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const words = (s) => new Set(norm(s).split(' ').filter((w) => w.length > 3));
 function recall(opt, art) { const O = words(opt), A = words(art); if (!O.size) return 0; let h = 0; O.forEach((w) => A.has(w) && h++); return h / O.size; }
@@ -70,6 +87,11 @@ if (require.main !== module) {
   const did = process.argv[2];
   if (!did) { console.error('Uso: revisar-impugnacion.cjs <dispute_id>'); process.exit(2); }
   const s = getPg()(getUrl(), { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 });
+  // Conexión de NEGOCIO (questions/articles/test_questions). Si no hay VENCE_LECTOR_URL en el
+  // entorno (p.ej. una persona con `.env.local` completo, que ya puede leerlo todo con `s`),
+  // se reusa `s` sin más — así el dossier funciona igual dentro y fuera de la flota.
+  const lectorUrl = getUrlLector();
+  const sLector = lectorUrl ? getPg()(lectorUrl, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 }) : s;
   try {
     let d, isPsy = false;
     [d] = await s`SELECT *, 'legislative' qtype FROM question_disputes WHERE id=${did}`;
@@ -155,11 +177,11 @@ if (require.main !== module) {
     // a mano). Se usa LA MISMA política que aplica el runtime, no una copia.
     let rewardWarn = '';
     try {
-      const [ya] = await s`
+      const [ya] = await sLector`
         SELECT count(*)::int n FROM reward_submissions
          WHERE user_id = ${d.user_id} AND type = 'impugnacion'
            AND created_at >= date_trunc('month', now())`;
-      const [pagada] = await s`
+      const [pagada] = await sLector`
         SELECT amount, status FROM reward_submissions
          WHERE dispute_id = ${did} AND type = 'impugnacion' LIMIT 1`;
       const esPremium = p?.plan_type === 'premium';
@@ -181,13 +203,18 @@ if (require.main !== module) {
       // Nunca romper el dossier por esto: sin la línea se sigue pudiendo resolver la impugnación.
       rewardWarn = `💶 Recompensa: no se pudo calcular (${e.message}).`;
     }
-    const scopeWarn = await scopeEnforcement(s, {
-      text: d.description, oposicion: p?.target_oposicion || null, force: d.dispute_type === 'tema_incorrecto',
-    });
+    let scopeWarn = '';
+    try {
+      scopeWarn = await scopeEnforcement(sLector, {
+        text: d.description, oposicion: p?.target_oposicion || null, force: d.dispute_type === 'tema_incorrecto',
+      });
+    } catch (e) {
+      scopeWarn = `\n(check scope/epígrafe no disponible: ${e.message.slice(0, 90)})`;
+    }
     const qtbl = isPsy ? 'psychometric_questions' : 'questions';
-    const [q] = await s.unsafe(`SELECT * FROM ${qtbl} WHERE id='${d.question_id}'`);
+    const [q] = await sLector.unsafe(`SELECT * FROM ${qtbl} WHERE id='${d.question_id}'`);
     let art = null;
-    if (!isPsy && q.primary_article_id) [art] = await s`SELECT a.article_number an, a.title, a.content, l.short_name ln FROM articles a JOIN laws l ON l.id=a.law_id WHERE a.id=${q.primary_article_id}`;
+    if (!isPsy && q.primary_article_id) [art] = await sLector`SELECT a.article_number an, a.title, a.content, l.short_name ln FROM articles a JOIN laws l ON l.id=a.law_id WHERE a.id=${q.primary_article_id}`;
 
     const co = q.correct_option;
     const opts = { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d };
@@ -224,7 +251,7 @@ if (require.main !== module) {
     // ¿Vio el usuario las opciones BARAJADAS? Se busca su exposición más cercana a la impugnación.
     if (!isPsy) {
       try {
-        const [exp] = await s`
+        const [exp] = await sLector`
           SELECT option_order, created_at FROM test_questions
            WHERE user_id = ${d.user_id} AND question_id = ${d.question_id}
              AND created_at <= ${d.created_at}::timestamptz + interval '1 hour'
@@ -267,7 +294,7 @@ if (require.main !== module) {
     // las TRAE. Ver una clave que no cuadra con las vecinas cuesta un vistazo; buscarlas a
     // mano, acordarse primero.
     if (!isPsy && q.primary_article_id) {
-      const hermanas = await s`
+      const hermanas = await sLector`
         SELECT id, question_text qt, correct_option co, option_a a, option_b b, option_c c, option_d d
           FROM questions
          WHERE primary_article_id = ${q.primary_article_id} AND is_active = true AND id <> ${q.id}
@@ -309,5 +336,5 @@ if (require.main !== module) {
     console.log('  [ ] 7. Antes de aplicar explicación nueva → pasar validar-explicacion.cjs');
     console.log('  [ ] 8. Borrador del mensaje (Hola <nombre real>, reconocer si tenía razón, Muchas gracias, Equipo de Vence) → ESPERAR OK');
     console.log('  [ ] 9. Cerrar vía /api/v2/dispute/resolve (nunca UPDATE directo del dispute)');
-  } finally { await s.end(); }
+  } finally { await s.end(); if (sLector !== s) await sLector.end(); }
 })();

@@ -965,6 +965,44 @@ sirve, entonces son 745 temas enseñando un hueco a usuarios de pago.
    subir el invariante a una capa que sí pare. Lo que no puede quedarse es en rojo mudo.
 4. Los 3 `bloque_number` sin asignar van en el mismo lote (mismo test, coste marginal).
 
+### [T-602] 🟡 [ABIERTO 06/08] `user_profiles.target_oposicion` con valores que no existen en `topics`: al menos 22 usuarios (entre quienes han impugnado), uno con 22+ impugnaciones repetidas de "no incluido en mi selección"
+
+**QUÉ PASA.** Trabajando el cluster de 4 impugnaciones nuevas del usuario `4ded0300-d1d1-45ab-b68f-9c0488a3195c` (todas "ARTÍCULO NO PERTENECIENTE/INCLUIDO EN MI SELECCIÓN", 05/08 19:36-19:40, sobre 4 artículos distintos de la Ley 9/2017 LCSP), `flota_dispute_contexto.reporter_oposicion` (= `user_profiles.target_oposicion`) devuelve **`administrativo_comunidad_autonoma`** — un valor que **no existe en `topics.position_type` ni en `oposiciones`** (ni por `slug` ni por `id`). No es "" (el caso ya cubierto en [T-569]): es un slug con pinta de válido que simplemente no corresponde a NINGUNA oposición real del catálogo.
+
+**Por qué importa esto en concreto (no es solo "un dato sucio").** El histórico de disputas RESUELTAS de este mismo usuario (12 disputas más, `status='resolved'`) deja clarísimo que es una usuaria (María) real y activa, con oposición **Auxiliar Administrativo de Cantabria** — los `admin_response` anteriores dicen literalmente *"tu tema de administración electrónica se basa en el Decreto 60/2018 de Cantabria"*, *"tu temario de Cantabria"*, *"tu Tema 1 [de la UE]... donde la UE es el Tema 1"* (frente al Tema 10 de Auxiliar del Estado). Dos de esas disputas anteriores son el MISMO síntoma (*"Articulo no incluido en mi selección [de artículos]"*, 09-10/07) y se cerraron con `admin_response: null` (cierre silencioso, sin explicarle nada) — es decir, **este exacto problema ya se le manifestó hace casi un mes, se cerró sin arreglarlo de raíz, y ha vuelto CUATRO veces más el 05/08.**
+
+**MEDIDO, no supuesto (06/08, contra RDS real vía `flota_dispute_contexto`, que cruza `question_disputes` con `user_profiles.target_oposicion`):**
+
+```
+válidos (topics.position_type distintos): 139
+filas de disputa con reporter_oposicion inválido (no existe en topics): 62 de 1999 (3,1%)
+usuarios DISTINTOS afectados (solo entre quienes han impugnado): 22
+```
+
+Los valores inválidos más repetidos:
+| valor de `target_oposicion` | nº disputas | nº usuarios |
+|---|---|---|
+| `administrativo_comunidad_autonoma` | 22 | **1** (María, `4ded0300…`) |
+| `auxiliar_administrativo_universidad_oviedo` | 6 | ? (no medido por usuario) |
+| `feb4d161-2cdb-485d-adb3-3d5c90917d44` (UUID crudo) | 4 | ? |
+| `auxiliar_ayuntamiento` | 5 | ? |
+| resto (15 valores) | 1-3 c/u | ? |
+
+Nota: el que MÁS pesa (`administrativo_comunidad_autonoma`, 22 filas) es **un solo usuario reincidiendo**, no 22 usuarios distintos — pero el recuento de usuarios ÚNICOS afectados por *algún* valor inválido sigue siendo 22, y varios valores (`feb4d161…`, un UUID crudo en vez de un slug; `82cb728b…`, `db8df325…`, `b68960fa…`, `ae61f37d…`) sugieren una causa de escritura que guarda un UUID donde debería ir el slug — vale la pena mirarlo aparte, puede ser un origen distinto al de María.
+
+**Relación con [T-569] (el que ya está fichado):** T-569 es la cadena vacía `''` que deja el limpiador de `/perfil` al guardar con un `target_oposicion` no reconocido — un mecanismo concreto, medido con 11 cuentas. **Esto es otra cosa**: valores NO vacíos, con pinta de slug válido (`administrativo_comunidad_autonoma`) o de UUID crudo, que tampoco resuelven a ninguna oposición real. Mismo síntoma final (selección/scope rota), causa de escritura probablemente distinta — no until investigado.
+
+**Efecto en el producto, verificado con el propio gate (`epigrafe:revision`):** con `target_oposicion` inválido, `topics WHERE position_type='administrativo_comunidad_autonoma'` da **0 filas**, así que no hay NINGÚN `topic_scope` contra el que decidir qué artículos "pertenecen a su selección". Cualquier lógica de filtrado por oposición (tests personalizados, exclusión de artículos, etc.) que dependa de `target_oposicion` para resolver el temario del usuario se queda sin nada que comparar — coherente con que la usuaria vea "artículo no incluido en mi selección" en preguntas de una ley (LCSP) que, aparentemente, sí formaba parte de lo que estaba estudiando.
+
+**No he podido determinar la causa de escritura exacta** (qué endpoint/flujo dejó `target_oposicion='administrativo_comunidad_autonoma'`): un trabajador de la flota no tiene acceso a `user_profiles` (bloqueo deliberado, PII) más allá de esta vista de solo-lectura, así que no puedo ver el histórico de cambios del perfil ni otros campos. Hace falta una persona (o una sesión con `.env.local` completo) para: (a) confirmar contra la usuaria/su perfil completo que la oposición correcta es `auxiliar_administrativo_cantabria`, (b) corregir el valor, (c) investigar los otros 21 usuarios / 20 valores inválidos restantes con el mismo método (cruzar con su histórico de disputas resueltas si lo tienen, o con `registration_source`/`target_oposicion_data`), y (d) considerar un CHECK constraint o validación en escritura (mismo patrón que propone T-569 para `''`) que impida guardar un `target_oposicion` que no exista en `topics`/`oposiciones`.
+
+**Impugnaciones bloqueadas por esto, dejadas con borrador (no cerradas — hace falta el fix primero):**
+`6c4e43a4-e0c7-4dcd-8e1d-c9888450d95e` (LCSP art.147), `5f2213d0-c347-4e93-995d-7bd8b9cc617b` (LCSP art.160), `7b3dd5e4-854f-4ea5-81b6-7569fea671be` (LCSP art.143), `17733d5e-03a0-4b8d-bfe9-71bfed9817b2` (LCSP art.138). Las 4 verificadas: el CONTENIDO de las 4 preguntas es correcto (clave, artículo, explicación — la 147 contrastada literal contra BOE), el problema no es de contenido.
+
+**Relacionadas:** [T-569] (mecanismo gemelo con `''`), [T-573]/[T-578] (por qué un trabajador no puede leer `user_profiles` directamente — es a propósito, PII).
+
+**Esfuerzo: rato** (para quien tenga acceso de escritura a `user_profiles`: confirmar+corregir el caso de María es rápido; investigar los otros 21 usuarios y decidir si hace falta un CHECK constraint es lo que lleva más tiempo).
+
 ### [T-599] 🟡 [ABIERTO 05/08] Una baja de cuenta nace SIN conversación, así que la regla de «pregunta antes de borrar» choca con un 409
 
 **La regla nueva y el camino para cumplirla se contradicen.** El 05/08 se fijó que una solicitud de
