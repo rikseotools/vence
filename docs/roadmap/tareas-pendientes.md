@@ -981,6 +981,51 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-621] 🟡 [ABIERTO 06/08] El push-guard no distingue un commit de MERGE: fusionar lo revisado de otro exige reclamar su tarea o saltarse el guard entero
+
+**Medido el 06/08.** Al fusionar a `main` las cinco ramas con veredicto `ok` de la flota (T-055,
+T-197, T-418, T-525, T-561), el `pre-push` bloqueó el push pidiendo el claim de **cinco tareas**:
+
+```
+· T-055: sin reclamar — hazlo antes de pushear: node scripts/backlog.cjs claim T-055
+· T-525: … · T-418: … · T-197: … · T-244: …
+```
+
+**Las tres salidas son malas, y son exactamente las que [T-375] y [T-403] ya identificaron:**
+
+1. **Reclamar las cinco** — le quita el reparto a quien las retome, y el propio guard advierte de
+   esto («reclamar una tarea que no vas a hacer se la quita a quien sí»). Además son tareas
+   TERMINADAS por otros: el claim no significaría nada.
+2. **Quitar el id del mensaje** — es lo que se hizo en [T-403] y el guard acababa empujando a
+   escribir peores commits. Un `merge(T-055): …` sin el id es ilegible.
+3. **`BACKLOG_GUARD_SKIP`** — apaga el guard ENTERO para ese push. Es lo que hubo que hacer, con
+   motivo escrito (queda registrado y contado en el bus de fricción).
+
+**Por qué es un hueco de verdad y no un caso raro.** Con la flota produciendo ramas revisadas a
+diario, **fusionar lo revisado de otro es una operación RUTINARIA** — es el sexto escalón del ciclo
+que [T-486] montó, y el único que sigue siendo humano a propósito. El guard nació cuando todo el
+trabajo era de la propia sesión; ahora hay un caso legítimo y frecuente en el que **el autor del
+push no es quien trabajó la tarea, y no debe reclamarla**.
+
+**La forma del arreglo (misma banda estrecha que [T-403], que ya resolvió el gemelo «citar ≠
+trabajar»):** un commit de **merge** —dos padres, y asunto `merge(T-nnn):`— que integra una rama
+cuya tarea está **`reviewed_at` con veredicto `ok`** no exige claim: avisa e imprime qué se está
+fusionando. **No se relaja más que eso**: un commit normal que declare la tarea sigue exigiendo
+claim, y un merge de una tarea SIN veredicto también — ahí sí hay que mirar qué se está metiendo.
+
+**Calibrar antes de escribirlo**, como se hizo en [T-403] (que midió 17,2 % vs 2,8 % sobre 6.070
+commits): contar cuántos commits del repo son merges con `merge(T-nnn)` en el asunto y qué
+fracción del bloqueo actual representan. Si sale ruido, la banda se estrecha; no se abre a ojo.
+
+**Capas:** núcleo puro en `lib/backlog/pushGuard.cjs` (donde ya vive la distinción de [T-403]) +
+`npm run sim:push-guard-menciones`, que es la simulación que ya calibra este guard — se le añade el
+caso del merge en vez de estrenar otra. El efecto se mide en el contador de fricción existente
+(`npm run sesiones:friccion`: menos `guard_escape` de `backlog-push`), **no con un evento nuevo**:
+dos emisores del mismo hecho no miden el doble, divergen [T-403].
+
+**Relacionadas:** [T-403] (citar ≠ trabajar, el gemelo exacto), [T-375] (el guard dejó de bloquear
+lo que no se puede satisfacer), [T-486] (el ciclo de revisión que hace esto rutinario).
+
 ### [T-610] 🟡 [ABIERTO 06/08] `convocatoria_documentos.tipo` sin registrar en `RECURSOS_SENSIBLES` — y el nombre de columna es demasiado genérico para registrarse tal cual
 - **Qué:** el registro de escritores sensibles (`lib/admin/toolWriters.ts`, T-130) evita que una sesión reconstruya de cero una clasificación que ya existe (pasó con `seguimiento_url`, 5 escritores distintos el mismo día). `convocatoria_documentos.tipo` tiene ya **4+ escritores** medidos al cerrar [T-147] y NINGUNO está en `RECURSOS_SENSIBLES`:
   - ⚠️ **CORRECCIÓN (06/08): `doc_key` NO viaja con `tipo` como se decía al reservar esta ficha — es una decisión INDEPENDIENTE, con su PROPIO guardarraíl ya existente.** Se calcula en `lib/convocatoria/canonicalizeBoletinUrl.cjs` (identidad estable del documento por URL, para el dedup del hub) y ya tiene su propio canario, `scripts/provenance/canary-doc-key-parity.cjs`. Alcance de esta ficha: SOLO `tipo`.
