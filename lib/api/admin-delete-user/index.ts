@@ -4,10 +4,12 @@ export {
   deleteUserRequestSchema,
   deleteUserResponseSchema,
   deleteUserErrorSchema,
+  deleteUserPendingSchema,
   archivedUserDataSchema,
   type DeleteUserRequest,
   type DeleteUserResponse,
   type DeleteUserError,
+  type DeleteUserPending,
   type DeletionResult,
   type ArchivedUserData
 } from './schemas'
@@ -15,6 +17,7 @@ export {
 export {
   deleteUserData,
   ensureDeletionLogRow,
+  markDeletionCompleted,
   buildDeletionReason,
   archiveUserLegalData,
   persistArchivedData,

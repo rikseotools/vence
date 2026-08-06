@@ -1,12 +1,13 @@
 // app/api/admin/delete-user/route.ts
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse, after, type NextRequest } from 'next/server'
 import { deleteUserRequestSchema } from '@/lib/api/admin-delete-user/schemas'
-import { deleteUserData, ensureDeletionLogRow, sendDeletionConfirmationEmail } from '@/lib/api/admin-delete-user'
+import { deleteUserData, ensureDeletionLogRow, sendDeletionConfirmationEmail, markDeletionCompleted } from '@/lib/api/admin-delete-user'
 import { authAdmin } from '@/lib/auth/server'
 import { requireAdmin } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { emit } from '@/lib/observability/emit'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 async function _DELETE(request: NextRequest) {
@@ -128,188 +129,85 @@ async function _DELETE(request: NextRequest) {
       console.log(`♻️ Perfil ausente pero deleted_users_log ya existe para ${userId} → reintento idempotente (se salta el borrado, ya hecho)`)
     }
 
-    // Eliminar datos (SSOT: user_profiles + cascada, RDS) — SALVO que sea un reintento de una
-    // cuenta ya borrada: delete_user_account() lanzaría `no_data_found` (exige user_profiles),
-    // así que en ese caso se salta (idempotencia real; el estado ya es "borrado").
-    // NOTA (follow-up, no bloqueante): en el caso raro de reintentar tras un 500 cuyo email SÍ
-    // se envió (p.ej. error del store de auth legacy), el email RGPD se reenvía → un duplicado.
-    // Un marcador durable `rgpd_email_sent_at` en deleted_users_log lo haría exactly-once (migración).
-    const deletionResults = alreadyDeleted
-      ? [{
-          table: '_delete_user_account',
-          status: 'skipped' as const,
-          reason: 'cuenta ya borrada (reintento idempotente); no se re-invoca delete_user_account',
-        }]
-      : await deleteUserData(userId)
-
-    // Revocar identidad en el store de auth LEGACY (Supabase GoTrue). Tras el flip
-    // a Auth.js (Fase B) el SSOT de la cuenta es user_profiles (RDS, por email) y
-    // los usuarios NUEVOS no tienen fila GoTrue → este paso es limpieza best-effort:
-    //   - 'not_present' (post-flip / ya ausente) = ESPERADO, no es fallo.
-    //   - 'error' (fallo real: red/permisos) = crítico, el registro legacy pervive.
-    // ANTES se gateaba el éxito y el email RGPD por el borrado en Supabase, así que
-    // todo usuario post-flip reportaba 500 y NUNCA recibía el email (bug 09/07/2026).
-    let authOutcome: 'deleted' | 'not_present' | 'error' | 'exception' = 'exception'
-    try {
-      const authRes = await authAdmin.deleteUser(userId)
-      authOutcome = authRes.outcome
-      if (authRes.outcome === 'deleted') {
-        console.log('✅ Identidad legacy (Supabase) eliminada')
-        deletionResults.push({ table: 'auth.users', status: 'deleted' })
-      } else if (authRes.outcome === 'not_present') {
-        console.log('ℹ️ Sin identidad en el store legacy (usuario post-flip / ya ausente) — nada que revocar')
-        deletionResults.push({
-          table: 'auth.users',
-          status: 'skipped',
-          reason: 'sin registro en el store de auth legacy (Supabase): usuario post-flip o ya ausente',
-        })
-      } else {
-        console.error('❌ Error REAL eliminando identidad legacy (Supabase):', authRes.error)
-        deletionResults.push({ table: 'auth.users', status: 'error', error: authRes.error?.message })
-      }
-    } catch (authErr) {
-      console.error('❌ Excepción eliminando identidad legacy:', authErr)
-      deletionResults.push({
-        table: 'auth.users',
-        status: 'exception',
-        error: authErr instanceof Error ? authErr.message : 'Unknown error'
-      })
-    }
-
-    // Verificación por SSOT: la cuenta está borrada cuando user_profiles ya no
-    // existe. Los triggers materializadores (`20260523_materialized_stats_triggers.sql`)
-    // pueden re-poblar stats durante la cascada → esta comprobación es la FUENTE DE
-    // VERDAD del éxito, no la ausencia de excepciones ni el store de auth legacy.
-    // Falla CERRADO: si la verificación NO se puede leer (blip de pool, timeout,
-    // failover), "desconocido" ≠ "borrado" → asumimos que el perfil PODRÍA seguir
-    // vivo (profileStillExists=true) para NO reportar éxito ni mandar el email RGPD
-    // sin haber confirmado el borrado. Es la fuente de verdad del éxito; no puede
-    // fallar abierto sobre el eje que precisamente vigila.
-    let profileStillExists = true
-    try {
-      const [profileAfter] = await getAdminDb()
-        .select({ id: userProfiles.id })
-        .from(userProfiles)
-        .where(eq(userProfiles.id, userId))
-        .limit(1)
-      profileStillExists = !!profileAfter
-    } catch (err) {
-      console.error('❌ Error verificando user_profiles post-delete (fail-closed → no éxito):', err)
-      // profileStillExists queda true → success=false, sin email prematuro.
-    }
-    const accountDeleted = !profileStillExists
-
-    // Email RGPD (Art. 12.3) — OBLIGATORIO. Se envía cuando la CUENTA está borrada
-    // (user_profiles ya no existe), con independencia del store de auth legacy.
+    // ── DESPACHO (T-215) ────────────────────────────────────────────────────────
     //
-    // DURABILIDAD (F3): el pre-read de user_profiles captura el email en el 1er
-    // intento, pero si el envío falla y el admin REINTENTA, user_profiles ya no
-    // existe → userEmail=null → el email legal se perdería para siempre. Como la
-    // fn SQL exige que `deleted_users_log` (con el email) exista ANTES de borrar,
-    // ese email es DURABLE → lo usamos de fuente cuando el pre-read viene vacío.
-    let recipientEmail = userEmail
-    let recipientName = userFullName
-    if (accountDeleted && !recipientEmail) {
+    // Un reintento de una cuenta YA borrada (alreadyDeleted) es rápido — no hay DELETE
+    // masivo, solo revocar auth legacy + reenviar el email si hace falta — así que sigue
+    // SÍNCRONO, con el MISMO contrato de siempre (200/500 con `details`).
+    //
+    // Un borrado REAL puede tardar hasta ~190 s con el usuario más activo medido — más de
+    // lo que aguanta cualquier ALB/CloudFront delante de la app — así que ya NO se espera
+    // dentro de la petición: se ejecuta en `after()` (Next.js, corre tras enviar la
+    // respuesta, en el MISMO proceso — no hace falta infraestructura de cola para una
+    // acción admin que se invoca unas pocas veces al mes) y la petición responde 202 al
+    // instante. El resultado deja de estar en la respuesta HTTP: la traza vive en
+    // `deleted_users_log.deletion_completed_at` (durable, ver `markDeletionCompleted`) y
+    // en el evento `admin_delete_user_background` de `observable_events` (alertable).
+    if (alreadyDeleted) {
+      const outcome = await completeDeletion(userId, true, { email: userEmail, fullName: userFullName })
+      return NextResponse.json(
+        {
+          success: outcome.success,
+          message: outcome.success
+            ? 'Usuario eliminado correctamente'
+            : 'Eliminación incompleta: revisa details y aplica fallback manual',
+          profileDeleted: outcome.accountDeleted,
+          authLegacy: outcome.authOutcome,
+          criticalErrors: outcome.criticalErrorsCount,
+          details: outcome.deletionResults,
+        },
+        { status: outcome.httpStatus }
+      )
+    }
+
+    const startedAt = Date.now()
+    after(async () => {
       try {
-        const res = await getAdminDb().execute(
-          sql`SELECT email, full_name FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
-        )
-        const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
-          | { email: string | null; full_name: string | null }
-          | undefined
-        if (row?.email) {
-          recipientEmail = row.email
-          recipientName = row.full_name ?? recipientName
-        }
+        const outcome = await completeDeletion(userId, false, { email: userEmail, fullName: userFullName })
+        await emit({
+          source: 'fargate',
+          severity: outcome.success ? 'info' : 'critical',
+          eventType: 'admin_delete_user_background',
+          endpoint: '/api/admin/delete-user',
+          userId,
+          durationMs: Date.now() - startedAt,
+          httpStatus: outcome.httpStatus,
+          errorMessage: outcome.success
+            ? null
+            : `accountDeleted=${outcome.accountDeleted} criticalErrors=${outcome.criticalErrorsCount} authLegacy=${outcome.authOutcome}`,
+          metadata: {
+            accountDeleted: outcome.accountDeleted,
+            authLegacy: outcome.authOutcome,
+            criticalErrors: outcome.criticalErrorsCount,
+          },
+        })
       } catch (err) {
-        console.error('❌ Error leyendo email durable de deleted_users_log:', err)
+        // Excepción NO controlada por completeDeletion (no debería pasar — tiene sus
+        // propios try/catch — pero si pasa, que quede rastro en vez de morir en silencio
+        // dentro de after(), donde nadie ve el log de una petición que ya respondió).
+        console.error(`❌ [delete-user background] excepción no controlada para ${userId}:`, err)
+        await emit({
+          source: 'fargate',
+          severity: 'critical',
+          eventType: 'admin_delete_user_background',
+          endpoint: '/api/admin/delete-user',
+          userId,
+          durationMs: Date.now() - startedAt,
+          errorMessage: err instanceof Error ? err.message : 'Unknown error',
+        })
       }
-    }
-
-    // Exactly-once (T-011): el email RGPD se manda UNA vez. La fila durable deleted_users_log
-    // lleva el sello `rgpd_email_sent_at`; se envía solo si sigue NULL y se sella tras el envío
-    // OK → evita el duplicado del reintento tras un 500 cuyo email ya salió. La LECTURA del sello
-    // falla ABIERTO (si no se puede leer, se intenta enviar): para el RGPD perder el correo legal
-    // es peor que un duplicado raro.
-    let rgpdAlreadySent = false
-    if (accountDeleted) {
-      try {
-        const res = await getAdminDb().execute(
-          sql`SELECT rgpd_email_sent_at FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
-        )
-        const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
-          | { rgpd_email_sent_at: string | null }
-          | undefined
-        rgpdAlreadySent = !!row?.rgpd_email_sent_at
-      } catch (err) {
-        console.error('❌ Error leyendo rgpd_email_sent_at (fail-open → se intentará enviar):', err)
-      }
-    }
-
-    if (accountDeleted && rgpdAlreadySent) {
-      console.log('✅ Email RGPD ya enviado en un intento anterior (rgpd_email_sent_at sellado) → no se reenvía (exactly-once)')
-      deletionResults.push({
-        table: '_deletion_email',
-        status: 'skipped',
-        reason: 'ya enviado en un intento previo (rgpd_email_sent_at)',
-      })
-    } else if (accountDeleted && recipientEmail) {
-      const emailResult = await sendDeletionConfirmationEmail({
-        email: recipientEmail,
-        fullName: recipientName,
-      })
-      deletionResults.push({
-        table: '_deletion_email',
-        status: emailResult.sent ? 'deleted' : 'error',
-        reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
-        error: emailResult.error,
-      })
-      if (emailResult.sent) {
-        // Sellar exactly-once (condicional por si un reintento concurrente ya selló).
-        try {
-          await getAdminDb().execute(
-            sql`UPDATE deleted_users_log SET rgpd_email_sent_at = now() WHERE original_user_id = ${userId}::uuid AND rgpd_email_sent_at IS NULL`,
-          )
-        } catch (err) {
-          console.error('⚠️ No se pudo sellar rgpd_email_sent_at (el email SÍ salió; posible re-envío en un reintento):', err)
-        }
-      }
-    } else if (accountDeleted && !recipientEmail) {
-      console.warn('⚠️ Cuenta eliminada pero sin email disponible (ni user_profiles ni deleted_users_log) para el RGPD')
-      deletionResults.push({
-        table: '_deletion_email',
-        status: 'error',
-        reason: 'email no disponible en user_profiles ni deleted_users_log',
-      })
-    }
-
-    // Éxito = la cuenta ya no existe en el SSOT + sin errores CRÍTICOS. Un fallo
-    // real del store legacy o de una tabla cuenta como crítico; 'skipped'/'deleted'
-    // no. Un email RGPD fallido (status 'error') también marca 500 → se reintenta.
-    const criticalErrors = deletionResults.filter(
-      r => r.status === 'error' || r.status === 'exception'
-    )
-    const success = accountDeleted && criticalErrors.length === 0
-    const httpStatus = success ? 200 : 500
-
-    console.log(
-      success
-        ? `🗑️ Eliminación completada para usuario: ${userId} (auth legacy: ${authOutcome})`
-        : `❌ Eliminación incompleta para ${userId} — profile=${profileStillExists ? 'EXISTE' : 'borrado'} errors=${criticalErrors.length} authLegacy=${authOutcome}`
-    )
+    })
 
     return NextResponse.json(
       {
-        success,
-        message: success
-          ? 'Usuario eliminado correctamente'
-          : 'Eliminación incompleta: revisa details y aplica fallback manual',
-        profileDeleted: accountDeleted,
-        authLegacy: authOutcome,
-        criticalErrors: criticalErrors.length,
-        details: deletionResults,
+        pending: true,
+        userId,
+        message:
+          'Borrado programado en segundo plano (puede tardar varios minutos). ' +
+          'NO reintentes a ciegas: verifica con SELECT count(*) FROM user_profiles WHERE id = … ' +
+          'o consultando deleted_users_log.deletion_completed_at antes de volver a llamar.',
       },
-      { status: httpStatus }
+      { status: 202 }
     )
 
   } catch (error) {
@@ -322,3 +220,219 @@ async function _DELETE(request: NextRequest) {
 }
 
 export const DELETE = withErrorLogging('/api/admin/delete-user', _DELETE)
+
+// ============================================
+// COMPLETAR EL BORRADO — compartido entre el reintento SÍNCRONO y el
+// borrado real en BACKGROUND (T-215)
+// ============================================
+
+interface CompleteDeletionOutcome {
+  success: boolean
+  httpStatus: 200 | 500
+  accountDeleted: boolean
+  authOutcome: 'deleted' | 'not_present' | 'error' | 'exception'
+  criticalErrorsCount: number
+  deletionResults: Array<{ table: string; status: string; reason?: string; error?: string }>
+}
+
+/**
+ * La parte PESADA del borrado: `delete_user_account()` (o se salta si `alreadyDeleted`),
+ * revocación de la identidad legacy, verificación por SSOT y el email RGPD exactly-once.
+ * Es EXACTAMENTE la misma lógica que había en línea aquí antes de T-215 — se extrae para
+ * poder llamarla tanto SÍNCRONA (reintento) como desde dentro de `after()` (borrado real).
+ */
+async function completeDeletion(
+  userId: string,
+  alreadyDeleted: boolean,
+  preRead: { email: string | null; fullName: string | null },
+): Promise<CompleteDeletionOutcome> {
+  // Eliminar datos (SSOT: user_profiles + cascada, RDS) — SALVO que sea un reintento de una
+  // cuenta ya borrada: delete_user_account() lanzaría `no_data_found` (exige user_profiles),
+  // así que en ese caso se salta (idempotencia real; el estado ya es "borrado").
+  // NOTA (follow-up, no bloqueante): en el caso raro de reintentar tras un 500 cuyo email SÍ
+  // se envió (p.ej. error del store de auth legacy), el email RGPD se reenvía → un duplicado.
+  // Un marcador durable `rgpd_email_sent_at` en deleted_users_log lo haría exactly-once (migración).
+  const deletionResults: Array<{ table: string; status: string; reason?: string; error?: string }> = alreadyDeleted
+    ? [{
+        table: '_delete_user_account',
+        status: 'skipped' as const,
+        reason: 'cuenta ya borrada (reintento idempotente); no se re-invoca delete_user_account',
+      }]
+    : await deleteUserData(userId)
+
+  // Revocar identidad en el store de auth LEGACY (Supabase GoTrue). Tras el flip
+  // a Auth.js (Fase B) el SSOT de la cuenta es user_profiles (RDS, por email) y
+  // los usuarios NUEVOS no tienen fila GoTrue → este paso es limpieza best-effort:
+  //   - 'not_present' (post-flip / ya ausente) = ESPERADO, no es fallo.
+  //   - 'error' (fallo real: red/permisos) = crítico, el registro legacy pervive.
+  // ANTES se gateaba el éxito y el email RGPD por el borrado en Supabase, así que
+  // todo usuario post-flip reportaba 500 y NUNCA recibía el email (bug 09/07/2026).
+  let authOutcome: 'deleted' | 'not_present' | 'error' | 'exception' = 'exception'
+  try {
+    const authRes = await authAdmin.deleteUser(userId)
+    authOutcome = authRes.outcome
+    if (authRes.outcome === 'deleted') {
+      console.log('✅ Identidad legacy (Supabase) eliminada')
+      deletionResults.push({ table: 'auth.users', status: 'deleted' })
+    } else if (authRes.outcome === 'not_present') {
+      console.log('ℹ️ Sin identidad en el store legacy (usuario post-flip / ya ausente) — nada que revocar')
+      deletionResults.push({
+        table: 'auth.users',
+        status: 'skipped',
+        reason: 'sin registro en el store de auth legacy (Supabase): usuario post-flip o ya ausente',
+      })
+    } else {
+      console.error('❌ Error REAL eliminando identidad legacy (Supabase):', authRes.error)
+      deletionResults.push({ table: 'auth.users', status: 'error', error: authRes.error?.message })
+    }
+  } catch (authErr) {
+    console.error('❌ Excepción eliminando identidad legacy:', authErr)
+    deletionResults.push({
+      table: 'auth.users',
+      status: 'exception',
+      error: authErr instanceof Error ? authErr.message : 'Unknown error'
+    })
+  }
+
+  // Verificación por SSOT: la cuenta está borrada cuando user_profiles ya no
+  // existe. Los triggers materializadores (`20260523_materialized_stats_triggers.sql`)
+  // pueden re-poblar stats durante la cascada → esta comprobación es la FUENTE DE
+  // VERDAD del éxito, no la ausencia de excepciones ni el store de auth legacy.
+  // Falla CERRADO: si la verificación NO se puede leer (blip de pool, timeout,
+  // failover), "desconocido" ≠ "borrado" → asumimos que el perfil PODRÍA seguir
+  // vivo (profileStillExists=true) para NO reportar éxito ni mandar el email RGPD
+  // sin haber confirmado el borrado. Es la fuente de verdad del éxito; no puede
+  // fallar abierto sobre el eje que precisamente vigila.
+  let profileStillExists = true
+  try {
+    const [profileAfter] = await getAdminDb()
+      .select({ id: userProfiles.id })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
+    profileStillExists = !!profileAfter
+  } catch (err) {
+    console.error('❌ Error verificando user_profiles post-delete (fail-closed → no éxito):', err)
+    // profileStillExists queda true → success=false, sin email prematuro.
+  }
+  const accountDeleted = !profileStillExists
+
+  // Email RGPD (Art. 12.3) — OBLIGATORIO. Se envía cuando la CUENTA está borrada
+  // (user_profiles ya no existe), con independencia del store de auth legacy.
+  //
+  // DURABILIDAD (F3): el pre-read de user_profiles captura el email en el 1er
+  // intento, pero si el envío falla y el admin REINTENTA, user_profiles ya no
+  // existe → userEmail=null → el email legal se perdería para siempre. Como la
+  // fn SQL exige que `deleted_users_log` (con el email) exista ANTES de borrar,
+  // ese email es DURABLE → lo usamos de fuente cuando el pre-read viene vacío.
+  let recipientEmail = preRead.email
+  let recipientName = preRead.fullName
+  if (accountDeleted && !recipientEmail) {
+    try {
+      const res = await getAdminDb().execute(
+        sql`SELECT email, full_name FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
+      )
+      const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
+        | { email: string | null; full_name: string | null }
+        | undefined
+      if (row?.email) {
+        recipientEmail = row.email
+        recipientName = row.full_name ?? recipientName
+      }
+    } catch (err) {
+      console.error('❌ Error leyendo email durable de deleted_users_log:', err)
+    }
+  }
+
+  // Exactly-once (T-011): el email RGPD se manda UNA vez. La fila durable deleted_users_log
+  // lleva el sello `rgpd_email_sent_at`; se envía solo si sigue NULL y se sella tras el envío
+  // OK → evita el duplicado del reintento tras un 500 cuyo email ya salió. La LECTURA del sello
+  // falla ABIERTO (si no se puede leer, se intenta enviar): para el RGPD perder el correo legal
+  // es peor que un duplicado raro.
+  let rgpdAlreadySent = false
+  if (accountDeleted) {
+    try {
+      const res = await getAdminDb().execute(
+        sql`SELECT rgpd_email_sent_at FROM deleted_users_log WHERE original_user_id = ${userId}::uuid ORDER BY deleted_at DESC LIMIT 1`,
+      )
+      const row = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || [])[0] as
+        | { rgpd_email_sent_at: string | null }
+        | undefined
+      rgpdAlreadySent = !!row?.rgpd_email_sent_at
+    } catch (err) {
+      console.error('❌ Error leyendo rgpd_email_sent_at (fail-open → se intentará enviar):', err)
+    }
+  }
+
+  if (accountDeleted && rgpdAlreadySent) {
+    console.log('✅ Email RGPD ya enviado en un intento anterior (rgpd_email_sent_at sellado) → no se reenvía (exactly-once)')
+    deletionResults.push({
+      table: '_deletion_email',
+      status: 'skipped',
+      reason: 'ya enviado en un intento previo (rgpd_email_sent_at)',
+    })
+  } else if (accountDeleted && recipientEmail) {
+    const emailResult = await sendDeletionConfirmationEmail({
+      email: recipientEmail,
+      fullName: recipientName,
+    })
+    deletionResults.push({
+      table: '_deletion_email',
+      status: emailResult.sent ? 'deleted' : 'error',
+      reason: emailResult.sent ? `emailId: ${emailResult.emailId}` : undefined,
+      error: emailResult.error,
+    })
+    if (emailResult.sent) {
+      // Sellar exactly-once (condicional por si un reintento concurrente ya selló).
+      try {
+        await getAdminDb().execute(
+          sql`UPDATE deleted_users_log SET rgpd_email_sent_at = now() WHERE original_user_id = ${userId}::uuid AND rgpd_email_sent_at IS NULL`,
+        )
+      } catch (err) {
+        console.error('⚠️ No se pudo sellar rgpd_email_sent_at (el email SÍ salió; posible re-envío en un reintento):', err)
+      }
+    }
+  } else if (accountDeleted && !recipientEmail) {
+    console.warn('⚠️ Cuenta eliminada pero sin email disponible (ni user_profiles ni deleted_users_log) para el RGPD')
+    deletionResults.push({
+      table: '_deletion_email',
+      status: 'error',
+      reason: 'email no disponible en user_profiles ni deleted_users_log',
+    })
+  }
+
+  // Éxito = la cuenta ya no existe en el SSOT + sin errores CRÍTICOS. Un fallo
+  // real del store legacy o de una tabla cuenta como crítico; 'skipped'/'deleted'
+  // no. Un email RGPD fallido (status 'error') también marca 500 → se reintenta.
+  const criticalErrors = deletionResults.filter(
+    r => r.status === 'error' || r.status === 'exception'
+  )
+  const success = accountDeleted && criticalErrors.length === 0
+  const httpStatus = success ? 200 : 500
+
+  console.log(
+    success
+      ? `🗑️ Eliminación completada para usuario: ${userId} (auth legacy: ${authOutcome})`
+      : `❌ Eliminación incompleta para ${userId} — profile=${profileStillExists ? 'EXISTE' : 'borrado'} errors=${criticalErrors.length} authLegacy=${authOutcome}`
+  )
+
+  // Traza durable (T-215): best-effort a propósito — el borrado YA terminó de verdad en
+  // este punto; si esto falla, lo que queda a medias es la TRAZA, no el borrado. El caller
+  // no debe convertirlo en un fallo (por eso no está en el `success` de arriba).
+  if (success) {
+    try {
+      await markDeletionCompleted(userId)
+    } catch (err) {
+      console.error(`⚠️ No se pudo marcar deletion_completed_at para ${userId} (el borrado SÍ terminó):`, err)
+    }
+  }
+
+  return {
+    success,
+    httpStatus,
+    accountDeleted,
+    authOutcome,
+    criticalErrorsCount: criticalErrors.length,
+    deletionResults,
+  }
+}

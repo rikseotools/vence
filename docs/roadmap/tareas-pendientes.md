@@ -10497,7 +10497,7 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
   - **⏭️ Lo que queda NO es "falta un parser":** **DOE y BOPV** publican en su sumario una URL que no es el documento (el DOE sirve una página de título+analítica sin la disposición; el BOPV mete el texto en un `iframe`). Hay que resolver su URL de contenido real ANTES de darles doc_key: reconocerlas ahora sería provenance apuntando a un caparazón.
   - **NO tocado (sigue abierto):** el **backfill de las ~104 históricas** (decisión de Manuel el 28/07: primero la causa raíz, que la deuda deje de crecer) y el **cabo 2** (PDF del BOCM con el CMap roto).
 
-### [T-215] 🟠 [ABIERTO 28/07 · el borrado YA CABE en la BD; queda que la RESPUESTA HTTP no se pierda] El borrado RGPD expiraba con los usuarios ACTIVOS
+### [T-215] ✅ [HECHA 06/08] El borrado RGPD expiraba con los usuarios ACTIVOS
 > **⚠️ El diagnóstico con el que se abrió esta ficha era FALSO, y por eso las tres vías que barajaba
 > apuntaban al sitio equivocado.** Medido el 28/07 con `pg_stat_user_functions` (`track_functions=pl`)
 > y con la atribución por trigger de `EXPLAIN (ANALYZE)`, no por intuición:
@@ -10538,6 +10538,39 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 > resultado; toca el contrato del endpoint y sus 4 ficheros de test, así que va aparte.
 > Fuera de eso, lo que de verdad bajaría los 186 s es reducir índices/volumen (`test_questions` tiene
 > **18 índices, 3,2 GB sobre 2,3 GB de datos**), que es otra conversación.
+>
+> **✅ HECHO el 06/08 (sesión `w4`): responde 202 y ejecuta el borrado en `after()`.** Un borrado
+> REAL (perfil presente) YA NO se resuelve dentro de la petición — se agenda con `after()` (Next.js,
+> corre tras enviar la respuesta, en el MISMO proceso; no hace falta infraestructura de cola para una
+> acción admin que se invoca unas pocas veces al mes) y la petición responde `202 {pending:true,
+> userId, message}` al instante. El reintento de una cuenta YA borrada sigue SÍNCRONO (200/500, mismo
+> contrato de siempre) porque no hay `DELETE` masivo que esperar.
+> - **Traza durable, para que la respuesta HTTP deje de ser la única fuente de verdad:** columna nueva
+>   `deleted_users_log.deletion_completed_at` (migración `20260806_deleted_users_log_completion.sql`),
+>   puesta por la app tras confirmar `accountDeleted && sin errores críticos` — NO por
+>   `delete_user_account()`. Distinta de `deleted_at` (esa se fija al INSERTAR la fila de auditoría,
+>   ANTES de borrar: confundirlas daría por completado un borrado que solo se ha solicitado).
+> - **Evento `admin_delete_user_background`** en `observable_events` (`severity:'critical'` si falla,
+>   `'info'` si no) con `userId`, `durationMs`, `httpStatus` equivalente — alertable por el catch-all
+>   `senal_error_sin_vigilancia` sin registro adicional (severidad `critical` ya cubierta).
+> - **Refactor sin duplicar lógica:** la parte pesada (delete_user_account + auth legacy + verificación
+>   SSOT + email RGPD exactly-once) se extrajo a `completeDeletion()`, compartida entre el camino
+>   síncrono (reintento) y el de `after()` (borrado real) — es literalmente el mismo código que había
+>   en línea antes de T-215, movido, no reescrito.
+> - **Capas:** los 4 ficheros de test que la ficha anticipaba (`deleteUserAuthOutcome.test.ts`,
+>   `deleteUserRgpdExactlyOnce.test.ts` actualizados para capturar el callback de `after()` en vez de
+>   leer `res.status` directamente en el camino real; `deleteUserAuthGuard.test.ts` sin cambios;
+>   `delete-user.test.ts` con test nuevo de `markDeletionCompleted`) + un fichero nuevo
+>   (`deleteUserBackgroundDispatch.test.ts`, 5 tests) que fija el CONTRATO de despacho en sí: el 202
+>   no espera a `deleteUserData`, el reintento no agenda `after()`, y una excepción no controlada
+>   dentro del background deja rastro en vez de morir en silencio. 48 tests en verde, `tsc --noEmit`
+>   limpio (con heap ampliado — el proyecto entero satura el heap por defecto en esta máquina,
+>   independiente de este cambio).
+> - **Runbook actualizado** (`docs/maintenance/eliminacion-cuentas.md` §5-6): cómo verificar un 202,
+>   qué hacer si `deletion_completed_at` sigue NULL, y corregida la sección de fallos comunes que
+>   seguía citando el diagnóstico de los triggers materializadores ya descartado el 28/07.
+> - **Deliberadamente NO tocado:** reducir índices/volumen de `test_questions` (18 índices, 3,2 GB) —
+>   sigue siendo "otra conversación", el borrado ya no depende de que eso baje.
 - **Qué:** `/api/admin/delete-user` devuelve `success:false` y **no borra la cuenta** cuando el usuario tiene actividad real. El pool corta a los 20 s (`statement_timeout`, `backend/src/db/database.module.ts`) y `delete_user_account()` no llega.
 - **Estado tras el arreglo parcial del 28/07** (índice `idx_observable_events_user_id`, migración `20260728_observable_events_user_id_idx.sql`), medido con simulaciones `ROLLBACK` sobre usuarios REALES:
   | usuario | actividad | antes | ahora |

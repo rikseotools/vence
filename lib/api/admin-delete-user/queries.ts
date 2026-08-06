@@ -69,11 +69,13 @@ const TABLES_WITH_LEGAL_RETENTION: Array<{ table: string; column: string }> = [
  * 15 min es holgado a propósito (8× el peor caso medido) para que crezca la base sin volver a
  * romperse, y sigue siendo un techo: si algo se cuelga de verdad, cae.
  *
- * ⚠️ LO QUE ESTO NO ARREGLA: la petición HTTP puede morir antes (ALB/CloudFront cortan mucho antes
- * de 186 s) y el admin verá un 504 — pero la transacción de la BD **sigue y commitea**. O sea, la
- * cuenta SÍ queda borrada aunque la respuesta se pierda. Verificarlo en BD antes de reintentar
- * (`select count(*) from user_profiles where id = …`), nunca dar por fallido lo que solo perdió la
- * respuesta. El arreglo bueno —responder 202 y ejecutar el borrado en segundo plano— está en T-215.
+ * ⚠️ LO QUE ESTO NO ARREGLA POR SÍ SOLO: la petición HTTP puede morir antes (ALB/CloudFront cortan
+ * mucho antes de 186 s) aunque la transacción de la BD **siga y commitee**. Por eso (T-215,
+ * 06/08/2026) el endpoint YA NO espera a esta función dentro de la petición: la ejecuta en
+ * `after()` tras responder 202, y deja traza durable en `deleted_users_log.deletion_completed_at`
+ * (ver `markDeletionCompleted`) + un evento `admin_delete_user_background` en `observable_events`.
+ * Este `BORRADO_TIMEOUT_MS` sigue siendo necesario: `after()` corre en el MISMO proceso Node, así
+ * que sin el `SET LOCAL` la conexión seguiría heredando el `statement_timeout` de 30 s del pool.
  */
 const BORRADO_TIMEOUT_MS = 15 * 60 * 1000
 
@@ -95,6 +97,21 @@ export async function deleteUserData(userId: string): Promise<DeletionResult[]> 
     console.error(`❌ delete_user_account falló para ${userId} tras ${((Date.now() - t0) / 1000).toFixed(1)} s:`, msg)
     return [{ table: '_delete_user_account', status: 'error', error: msg }]
   }
+}
+
+/**
+ * Marca el borrado en segundo plano (T-215) como TERMINADO CON ÉXITO — la traza
+ * durable que sustituye a la respuesta HTTP, que ya no es fiable como fuente de la
+ * verdad (el endpoint responde 202 antes de que esto se sepa). Idempotente (el
+ * `WHERE ... IS NULL` evita pisar la marca en un reintento) y best-effort a
+ * propósito: si esto falla, el borrado YA terminó de verdad — el caller no debe
+ * convertirlo en un fallo del borrado, solo avisar de que la traza quedó a medias.
+ */
+export async function markDeletionCompleted(userId: string): Promise<void> {
+  const db = getAdminDb()
+  await db.execute(
+    sql`UPDATE deleted_users_log SET deletion_completed_at = now() WHERE original_user_id = ${userId}::uuid AND deletion_completed_at IS NULL`,
+  )
 }
 
 // ============================================

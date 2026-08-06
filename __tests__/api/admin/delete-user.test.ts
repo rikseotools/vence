@@ -10,6 +10,7 @@ import {
   deleteUserRequestSchema,
   deleteUserResponseSchema,
   deleteUserErrorSchema,
+  deleteUserPendingSchema,
 } from '@/lib/api/admin-delete-user/schemas'
 
 // ============================================
@@ -82,6 +83,36 @@ describe('Admin Delete User - Schemas', () => {
         error: 'userId es requerido'
       })
       expect(result.success).toBe(true)
+    })
+  })
+
+  // [T-215] Respuesta 202 de un borrado real que se ejecuta en segundo plano.
+  describe('deleteUserPendingSchema', () => {
+    it('should accept a valid pending response', () => {
+      const result = deleteUserPendingSchema.safeParse({
+        pending: true,
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        message: 'Borrado programado en segundo plano.',
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('should reject pending:false (this schema is ONLY for the async-pending shape)', () => {
+      const result = deleteUserPendingSchema.safeParse({
+        pending: false,
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        message: 'x',
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('should reject a non-UUID userId', () => {
+      const result = deleteUserPendingSchema.safeParse({
+        pending: true,
+        userId: 'not-a-uuid',
+        message: 'x',
+      })
+      expect(result.success).toBe(false)
     })
   })
 })
@@ -164,6 +195,21 @@ describe('Admin Delete User - Queries', () => {
 
     const sqlArg = JSON.stringify(executeMock.mock.calls[0][0])
     expect(sqlArg).toContain('archived_data IS NULL')
+  })
+
+  // [T-215] Traza durable del borrado en segundo plano: sustituye a la respuesta HTTP
+  // (que ya no espera al resultado) como fuente de verdad consultable.
+  it('markDeletionCompleted UPDATEa deletion_completed_at solo si sigue NULL — idempotente', async () => {
+    const executeMock = jest.fn().mockResolvedValue(undefined)
+    mockAdminDb(executeMock)
+
+    const { markDeletionCompleted } = require('@/lib/api/admin-delete-user/queries')
+    await markDeletionCompleted('550e8400-e29b-41d4-a716-446655440000')
+
+    const sqlArg = JSON.stringify(executeMock.mock.calls[0][0])
+    expect(sqlArg).toContain('deletion_completed_at')
+    expect(sqlArg).toContain('IS NULL')
+    expect(executeMock).toHaveBeenCalledTimes(1)
   })
 })
 

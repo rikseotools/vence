@@ -2499,6 +2499,14 @@ export const deletedUsersLog = pgTable("deleted_users_log", {
 	// archivados como dump JSONB sin referencias FK vivas a las tablas operacionales.
 	archivedData: jsonb("archived_data"),
 	rgpdEmailSentAt: timestamp("rgpd_email_sent_at", { withTimezone: true, mode: 'string' }),
+	/**
+	 * Borrado RGPD asíncrono (T-215). Cuándo terminó CON ÉXITO el borrado en segundo plano
+	 * (después de responder 202: `after()` de Next). NULL = sigue en curso o falló antes de
+	 * poder marcarlo. Distinto de `deletedAt`, que se fija al INSERTAR esta fila, ANTES del
+	 * borrado — no confundir "se pidió" con "terminó". Migración
+	 * `20260806_deleted_users_log_completion.sql`.
+	 */
+	deletionCompletedAt: timestamp("deletion_completed_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
 	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),

@@ -374,6 +374,34 @@ const result = await response.json()
 
 **Antes de llamar a la API, primero hay que insertar la fila en `deleted_users_log`** con el `deletion_reason` investigado. La API asume que la fila ya existe para hacer el `UPDATE` del `archived_data`.
 
+> ⏳ **DESDE T-215 (06/08/2026) UN BORRADO REAL RESPONDE `202`, NO `200`.** El borrado completo
+> puede tardar hasta ~190s (usuario más activo medido) — más de lo que aguanta cualquier
+> ALB/CloudFront delante de la app — así que la petición ya NO espera: se ejecuta en segundo
+> plano y la respuesta llega al instante:
+> ```json
+> { "pending": true, "userId": "...", "message": "Borrado programado en segundo plano…" }
+> ```
+> **El `result.success` de arriba deja de existir en este caso** (ni `true` ni `false` describen
+> "todavía no lo sé"). Para saber si terminó, consulta a los pocos minutos:
+> ```sql
+> -- NULL = sigue en curso (o falló antes de poder marcarlo, ver más abajo)
+> -- con fecha = terminó CON ÉXITO
+> SELECT deletion_completed_at FROM deleted_users_log WHERE original_user_id = '<uuid>';
+> -- la fuente de verdad más simple: ¿queda algo que borrar?
+> SELECT count(*) FROM user_profiles WHERE id = '<uuid>';
+> ```
+> Si `deletion_completed_at` sigue NULL varios minutos después y `user_profiles` YA no tiene la
+> fila, el borrado terminó pero algo falló al escribir la traza (raro, best-effort) — no es un
+> fallo del borrado. Si `user_profiles` SIGUE teniendo la fila, busca el evento
+> `admin_delete_user_background` en `observable_events` (`severity='critical'` si falló) para ver
+> el motivo antes de reintentar — **NO reintentes a ciegas**: `ensureDeletionLogRow` es
+> idempotente y no hay riesgo de duplicar el archivo legal, pero sí de mandar dos correos RGPD si
+> el primero SÍ llegó a salir y solo falló un paso posterior (el sello `rgpd_email_sent_at`
+> lo evita — ver T-011 — pero solo si la fila de auditoría sigue localizable).
+>
+> **Solo el REINTENTO de una cuenta YA borrada sigue síncrono** (200/500 con `details`, igual que
+> siempre): no hay `DELETE` masivo que esperar, así que cabe de sobra en cualquier timeout.
+
 ### Vía Node script (para desarrollo/casos puntuales)
 
 Si el deploy de la API no está listo, puedes replicar el flujo con un script Node que use `pg` directamente. El script debe seguir el orden exacto:
@@ -417,12 +445,29 @@ console.assert(log?.deletion_reason?.length > 500, '❌ deletion_reason demasiad
 
 ## 6. Fallos comunes y su diagnóstico
 
-### ⏱️ `success:false` + `criticalErrors:1` en `_delete_user_account` = TIMEOUT, no corrupción
+### ⏱️ Historial resuelto — el borrado expiraba con los usuarios ACTIVOS (T-215, CERRADA 06/08/2026)
 
-Si la API responde `Failed query: SELECT public.delete_user_account($1::uuid)` sin más detalle, casi
-siempre es que la función **no cupo en el `statement_timeout` de 20 s** del pool. Comprobación en 30 s:
+Este síntoma **ya no debería verse**; se deja el diagnóstico por si algo regresa.
+
+Hasta el 28/07 el borrado corría dentro del `statement_timeout` de 20-30 s del pool de admin y
+abortaba a medias en usuarios con actividad real (Art. 17 RGPD incumplido justo con la gente con
+más derecho a que funcione: veteranos y premium). El diagnóstico inicial culpaba a 15 triggers
+materializadores de `test_questions` — **era falso**: medido con `pg_stat_user_functions` +
+`EXPLAIN (ANALYZE)`, 22 de 26 triggers estaban ya desactivados y el único con coste real era
+`tg_test_questions_emit_outbox` (una fila de outbox por `test_question`, duplicada, que la propia
+transacción borraba después). El 28/07 se: (1) silenció ese trigger durante el borrado
+(`app.deleting_user`, migración `20260728_borrado_rgpd_sin_outbox.sql`) y (2) se subió el
+presupuesto a `SET LOCAL statement_timeout = 15 min` DENTRO de una transacción explícita — el
+borrado completo tarda **186,5 s** con el usuario más activo medido (repartidos entre 89 tablas,
+~400.000 filas; no hay un culpable que optimizar, es mantenimiento de índices distribuido).
+
+Con eso la transacción de BD ya no abortaba — pero **186 s no caben en ninguna petición HTTP**:
+ALB/CloudFront cortan mucho antes, así que el admin veía un 504 aunque el borrado terminase y
+comiteara. El 06/08 (T-215) se cerró del todo: la ruta responde `202` al instante para un borrado
+real y lo ejecuta en `after()` — ver §5 arriba para cómo verificar el resultado ahora.
 
 ```sql
+-- simulación de coste, sigue siendo útil para medir el peor caso sin escribir nada:
 -- desde una conexión SIN timeout (psql/pg directo), con ROLLBACK: mide, no borra
 BEGIN;
 INSERT INTO deleted_users_log (original_user_id, email, plan_type, registered_at, deleted_at, deletion_reason, requested_via)
@@ -431,16 +476,6 @@ INSERT INTO deleted_users_log (original_user_id, email, plan_type, registered_at
 SELECT public.delete_user_account('<uuid>'::uuid);
 ROLLBACK;
 ```
-
-**Cómo completar la baja mientras tanto** (probado el 28/07): ejecutar `delete_user_account()` desde una
-conexión sin `statement_timeout` y **volver a llamar a la API** — es idempotente, detecta que la cuenta
-ya no existe, se salta la función y **envía igualmente el email legal** sellando `rgpd_email_sent_at`.
-No te saltes ese segundo paso: el email es obligación legal, no cortesía.
-
-**Estado del rendimiento (28/07/2026):** `observable_events` ya tiene índice por `user_id` (antes: 31 s
-de seq scan por baja). El cuello que queda es `test_questions` con sus 15 triggers materializadores:
-**53 s para 33.396 filas**, y el usuario más activo tarda **133 s**. El mediano cabe con 15 s de 20 —
-poco margen. Ficha **T-215**.
 
 ### "violates foreign key constraint"
 

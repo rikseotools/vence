@@ -48,6 +48,25 @@ export const deleteUserResponseSchema = z.object({
 export type DeleteUserResponse = z.infer<typeof deleteUserResponseSchema>
 
 // ============================================
+// RESPONSE: BORRADO EN CURSO (202, T-215)
+// ============================================
+//
+// El borrado real (no un reintento de una cuenta ya borrada) puede tardar hasta ~190s —
+// más de lo que aguanta cualquier ALB/CloudFront delante de la app — así que el endpoint
+// ya no espera: responde 202 y lo ejecuta en `after()`. Sin `success` a propósito (ni true
+// ni false describen "todavía no lo sé"): el resultado real se consulta después, vía
+// `deleted_users_log.deletion_completed_at` o el evento `admin_delete_user_background` en
+// `observable_events` — ver docs/maintenance/eliminacion-cuentas.md §5.
+
+export const deleteUserPendingSchema = z.object({
+  pending: z.literal(true),
+  userId: z.string().uuid(),
+  message: z.string(),
+})
+
+export type DeleteUserPending = z.infer<typeof deleteUserPendingSchema>
+
+// ============================================
 // RESPONSE: ERROR
 // ============================================
 
