@@ -981,6 +981,48 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-633] 🔴 [ABIERTO 06/08] `auth_perfil_recuperado`/`auth_alta_sin_perfil` (T-434) llevan 5 días mudos mientras el síntoma que curaban sigue activo — HAY DINERO EN JUEGO, mismo patrón que motivó T-434
+
+- **Encontrado investigando [T-271]** (el `console_error` `UserAvatar: v2 stats error: Usuario no existe`, la MISMA firma que originó T-434). Al comprobar si T-434 (✅ HECHA 05/08) seguía curando, salió esto.
+
+**MEDIDO hoy (06/08), no supuesto:**
+- El código de T-434 (`decidirReintentoPerfil` + reintento en cada rotación de sesión) **SÍ está desplegado en producción ahora mismo**: verificado por ancestría de git, `git merge-base --is-ancestor e6b117b3e 51f96259` → true, y `51f96259` es el deploy de frontend más reciente (`deploy_runs`, terminado hoy 06/08 21:09 UTC).
+- **`auth_perfil_recuperado`** (la métrica de "usuario curado" que T-434 dejó como termómetro del drenaje): **0 eventos desde el 01/08**. Solo hubo 13 el propio día del deploy.
+- **`auth_alta_sin_perfil`** (se emite en CUALQUIER alta/reintento que no consigue perfil): **0 eventos en los últimos 8 días completos**, contando el propio 01/08.
+- Y mientras tanto, el síntoma de cliente que motivó todo esto (`console_error` `UserAvatar: v2 stats error: Usuario no existe`) **sigue activo, sin bajar**: 30-45 usuarios/día y 39-107 eventos/día del 28/07 al 05/08 (10 días de datos consultados con `SELECT date_trunc('day',ts), count(distinct user_id), count(*) FROM observable_events WHERE event_type='console_error' AND severity='error' AND error_message ILIKE '%UserAvatar%Usuario no existe%' GROUP BY 1`), sin ninguna caída visible tras el deploy del 01/08.
+
+**Por qué esto NO es lo mismo que "el reintento falla" (que era el criterio de reapertura que dejó T-434):**
+T-434 dijo explícitamente "reábrela si `auth_alta_sin_perfil` con `enReintento=true` deja de estar a 0 de forma sostenida — es decir, si aparecen usuarios a los que el reintento TAMPOCO cura". Eso describiría intentos que fallan (`alta_sin_perfil` subiendo). Lo que mido es distinto y más raro: **ni `alta_sin_perfil` ni `perfil_recuperado` se mueven — los dos están en silencio absoluto**, como si el camino de reintento no se estuviera ni siquiera intentando para estos usuarios, mientras el síntoma de cliente demuestra que SIGUEN rotos.
+
+**SOSPECHO, sin confirmarlo — tres hipótesis, no descartadas entre sí:**
+1. Los usuarios detrás de `UserAvatar: Usuario no existe` en este momento **no son el mismo tipo de roto que arregló T-434** (perfil nunca resuelto). Podrían ser genuinamente `user_id` **eliminados** (borrado real, el caso que el propio comentario de `/api/v2/user-stats` asume — T-434 midió "0 de 29 en `deleted_users_log`" para SU cohorte del 31/07, pero eso no dice nada de la cohorte de HOY, que no he cruzado contra `deleted_users_log`).
+2. El camino de reintento (`decidirReintentoPerfil` en el callback `jwt`) **no se está ejecutando** para estos usuarios por alguna condición previa (p.ej. si no rotan sesión con la frecuencia esperada, o si algo corta antes de llegar a ese bloque).
+3. La propia emisión (`emitFireAndForget`) de los dos eventos está fallando en silencio — mismo tipo de fallo que otros hallazgos de esta sesión (RLS bloqueando lectura sin error; aquí sería escritura, no confirmado).
+
+**Ninguna de las tres está demostrada.** Confirmar la (1) es lo más barato: cruzar los `user_id` de hoy con `UserAvatar: Usuario no existe` contra `deleted_users_log` — si SON eliminados, esto no es una regresión de T-434 en absoluto, es un caso nuevo y distinto (usuarios borrados de verdad, sesión zombie legítima) que collide con el mismo mensaje de error por coincidencia de texto.
+
+**Por qué es 🔴 y no un hallazgo cualquiera:** T-434 abrió con *"HAY DINERO EN JUEGO AHORA MISMO"* — 85 checkouts rechazados en 7 días de 12 personas. Si el mecanismo que se construyó para pararlo se ha quedado mudo, ese riesgo puede seguir vivo sin que nadie lo vea (exactamente el "falso verde" que T-434 diagnosticó la PRIMERA vez con `auth_sub_reconciliado`/T-245 — la vigilancia decía "drenado" y no lo estaba).
+
+**Cómo seguir (primer paso, barato):**
+```sql
+-- 1. ¿Los rotos de HOY son perfiles borrados de verdad? (user_id no lo tengo por PII — hace
+--    falta cruzar con deleted_users_log usando una sesión con más acceso, o mirar server-side
+--    'auth' warn events del endpoint que sí trae user_id)
+SELECT date_trunc('day', ts)::date d, count(distinct user_id), count(*)
+  FROM observable_events
+ WHERE event_type='auth' AND severity='warn' AND endpoint='/api/v2/user-stats'
+   AND ts > now() - interval '8 days' GROUP BY 1 ORDER BY 1 DESC;
+
+-- 2. ¿Checkouts rechazados por 404/User not found ahora mismo, no solo a finales de julio?
+SELECT date_trunc('day', ts)::date d, count(*)
+  FROM observable_events
+ WHERE endpoint='/api/stripe/create-checkout' AND (error_message ILIKE '%not found%' OR http_status=404)
+   AND ts > now() - interval '8 days' GROUP BY 1 ORDER BY 1 DESC;
+```
+Si (2) sigue habiendo rechazos de pago con esta firma, es urgente de verdad. Si son 0, el riesgo económico concreto que motivó T-434 puede estar contenido aunque la telemetría de reintento esté muda — hay que medirlo, no darlo por hecho en ninguna dirección.
+
+- **Relacionadas:** [T-434] (el fix cuyo termómetro se ha callado), [T-245] (el primer episodio de este mismo patrón, con el mismo "falso verde" de vigilancia), [T-271] (donde se encontró esto, investigando el mismo `console_error`).
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
@@ -6025,6 +6067,60 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   - **El dato nuevo que más ordena el ataque: `Sin token` es sobre todo ANÓNIMO** (618 de 642) y con «0 pendientes», es decir, **la cola arranca y reintenta sin sesión y sin nada que guardar**. Eso cambia el diagnóstico de la ficha: no es (solo) «la respuesta del usuario está en el aire», es **un bucle que se ejecuta donde no debería**. Los 24 restantes, con usuario, sí son el caso preocupante — y hay que separarlos antes de tocar nada, porque el arreglo de cada mitad es distinto.
   - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
   - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
+
+- **▸ SESIÓN w1 (06/08): las dos primeras prioridades de la ficha, arregladas y verificadas — y de
+  paso una regresión seria en T-434 que no es de esta ficha, con [T-633] abierta para ella.**
+  1. **`UserAvatar: Usuario no existe` — comprobado el primer paso pedido, y NO era lo que
+     parecía.** [T-245] SÍ está desplegada (`auth_sub_reconciliado` sigue activo hoy, aunque a
+     bajo volumen — el atasco original ya drenó). Pero medido fresco (06/08, `SELECT
+     date_trunc('day',ts), count(distinct user_id), count(*) FROM observable_events WHERE
+     event_type='console_error' AND severity='error' AND error_message ILIKE '%UserAvatar%Usuario
+     no existe%' GROUP BY 1`, 10 días): **30-45 usuarios/día, 39-107 eventos/día, SIN bajar**
+     desde el 28/07 hasta el 05/08. [T-245] cura una vía de identidad (`/api/auth/token`); esta
+     firma pasa por OTRA vía (`/api/v2/user-stats`, que su propio código ya reconoce como "sesión
+     zombie" con `sessionInvalid:true` en el 401 — no es un bug del servidor, está gestionado ahí).
+     **El bug real era del CLIENTE:** `components/UserAvatar.tsx` ignoraba ese flag y hacía
+     `console.error` igual que un fallo genuino, inflando `console_error`/`severity:'error'` con
+     un caso ya reconocido. Arreglado: si `sessionInvalid`, `console.warn` (el pipeline de
+     `lib/observability/client.ts` ya clasifica por nivel de consola: `error`→`severity:'error'`,
+     `warn`→`severity:'warn'` — sin mecanismo nuevo). Un error SIN el flag sigue siendo
+     `console.error`, no se silencia de más. 2 tests nuevos en
+     `__tests__/components/UserAvatar.test.tsx`, mutation-testeados (revertido el fix, el test
+     de `sessionInvalid→warn` cae; restaurado, verde). **No cura la causa de fondo de por qué el
+     perfil no resuelve — solo deja de clasificarla como error crónico cuando el servidor ya la
+     tiene identificada y controlada.**
+  2. **`[answerSaveQueue] Sin token` — la causa que la ficha del 31/07 ya había separado (618/642
+     anónimos, 0 pendientes) estaba en `utils/answerSaveQueue.ts:flush()`: pedía el token SIEMPRE,
+     antes de comprobar si había algo que sincronizar.** `flush()` se dispara en `online`/
+     `visibilitychange` — eventos globales para cualquier visitante, con sesión o sin ella. Con
+     la cola vacía no hay nada en juego y no hace falta ni pedir el token ni loguear su ausencia.
+     Arreglado: `if (getPendingCount() === 0) return` al principio de `flush()`, antes de
+     `getAccessToken()`. Los 24 casos CON usuario (los preocupantes de verdad, per ficha del
+     31/07) siguen intactos: con `pending>0` el flujo no cambia. 2 tests nuevos en
+     `__tests__/utils/answerSaveQueuePurge.test.ts` (con el harness de puerto de auth, no un
+     proveedor concreto), mutation-testeados igual. Con la proporción medida el 31/07 (618/642 =
+     96%), el volumen de esta firma debería caer en ese orden — **queda por remedir tras
+     desplegar**, no lo afirmo sin la cifra de después.
+  3. **NO tocado, y a propósito:** el 403 del cupo gratuito (→ [T-418], ya tiene ficha propia) y
+     `Error cargando notificaciones` (→ [T-419], ya tiene ficha propia). `[CALLBACK] No se
+     estableció sesión` (login que no cuaja, 125/11) tampoco se ha investigado en esta sesión —
+     queda para quien retome esto; primer sitio donde mirar: `app/auth/callback/page.tsx:69-73`,
+     `completeOAuthCallback()` es UN intento sin reintento tras el redirect OAuth.
+  4. **🚨 HALLAZGO SERIO, con ficha propia [T-633] (🔴): la propia telemetría de éxito de [T-434]
+     (`auth_perfil_recuperado`/`auth_alta_sin_perfil`) lleva 5 DÍAS MUDA** mientras el síntoma
+     que debía curar (esta misma firma de `UserAvatar`) sigue activo sin bajar. Verificado que el
+     fix de T-434 SÍ está desplegado (`git merge-base --is-ancestor e6b117b3e 51f96259` → true,
+     deploy de hoy 21:09 UTC) — no es que falte desplegar, es que su propio termómetro no se
+     mueve. SOSPECHO (sin confirmar) que la cohorte actual puede ser distinta de la que T-434
+     arregló (usuarios genuinamente eliminados vs. perfil nunca resuelto) — detalle completo,
+     con los SQL de siguiente paso, en [T-633]. Pregunta #93 dejada en el embudo dado que T-434
+     se abrió con *"hay dinero en juego ahora mismo"*.
+  - **Tests corridos en el área:** `UserAvatar.test.tsx` + `userAvatarStats.test.ts` +
+    `answerSaveQueuePurge.test.ts` + `__tests__/auth/` + `answerValidationRobustness.test.ts` →
+    164/164 verdes. `tsc --noEmit` y `eslint` limpios en los ficheros tocados.
+  - **Relacionadas:** [T-245] (identidad, vía distinta), [T-434]/[T-633] (identidad, regresión
+    encontrada de paso), [T-418] (403 cupo, ficha propia), [T-419] (401 notificaciones, ficha
+    propia).
 
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
