@@ -103,7 +103,7 @@ describe('trinquetes del cableado', () => {
 // Ningún test que corra en el repo principal puede verlo: aquí los módulos SÍ están. Por eso este
 // bloque ejecuta el CLI **desde otro árbol**, que es donde el fallo vive.
 describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
-  const { execFileSync } = require('child_process')
+  const { execFileSync, spawnSync } = require('child_process')
   const os = require('os')
   const ENT = require(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))
 
@@ -161,11 +161,23 @@ describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
   const hay = fs.existsSync(CLI_DEPLOY)
     && !fs.existsSync(path.join(ARBOL_DEPLOY, 'node_modules'))
     && /cargarPg\(REPO\)/.test(fs.readFileSync(CLI_DEPLOY, 'utf8'))
+  // ⚠️ El código de salida NO se juzga, y no es un descuido: `candado estado` sale con != 0
+  // cuando el candado está OCUPADO, que es una respuesta correcta suya, no un fallo. La primera
+  // versión usaba `execFileSync` a secas —que LANZA con exit != 0—, así que este test se ponía
+  // rojo para TODAS las sesiones mientras hubiera un deploy en curso: el 06/08 bloqueó un commit
+  // de documentación que no tenía nada que ver, y la única salida a mano era PRECOMMIT_TESTS_SKIP=1,
+  // o sea apagar 23.512 tests para esquivar uno. Un test del pre-commit no puede depender de un
+  // estado global que cambia solo.
+  // Lo que este test comprueba —y lo dice su nombre— es que el CLI ARRANCA: que resuelve `postgres`
+  // desde el checkout principal en vez de reventar con «Cannot find module».
   ;(hay ? it : it.skip)('el candado ARRANCA desde el árbol de deploy (no revienta al cargar postgres)', () => {
-    const r = execFileSync('node', [CLI_DEPLOY, 'estado'],
+    const r = spawnSync('node', [CLI_DEPLOY, 'estado'],
       { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    expect(r).toMatch(/candado (LIBRE|)/)
-    expect(r).not.toMatch(/Cannot find module/)
+    const salida = `${r.stdout || ''}${r.stderr || ''}`
+    expect(r.error).toBeUndefined()
+    expect(salida).not.toMatch(/Cannot find module/)
+    // Arrancar = haber llegado a decir algo del candado, LIBRE u OCUPADO. Las dos valen.
+    expect(salida).toMatch(/candado LIBRE|DEPLOY EN CURSO|deploy\(s\) EN CURSO/)
   })
 
   it('el candado NO vuelve a requerir postgres por ruta fija (el error original)', () => {
