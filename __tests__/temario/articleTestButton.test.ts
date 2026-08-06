@@ -177,10 +177,15 @@ describe('TopicContentView files consistency', () => {
   const path = require('path')
   const glob = require('glob')
 
-  const topicContentFiles = glob.sync('app/**/temario/*/TopicContentView.tsx')
+  // [T-611] Ya no son 131 copias: la vista es UNA (más las que conservan diseño propio).
+  // La lista la da el helper compartido para que este guardarraíl no se quede mirando el
+  // residuo cuando se migre la última.
+  const { vistasDeTemario, VISTA_COMPARTIDA } = require('../helpers/vistasDeTemario')
+  const topicContentFiles: string[] = vistasDeTemario()
 
   it('should find all TopicContentView files', () => {
-    expect(topicContentFiles.length).toBeGreaterThanOrEqual(28)
+    expect(topicContentFiles).toContain(VISTA_COMPARTIDA)
+    expect(topicContentFiles.length).toBeGreaterThan(0)
   })
 
   it.each(topicContentFiles)('%s should check article.questionCount before showing test button', (filePath: string) => {

@@ -131,18 +131,18 @@ describe('lib/tts/engine — robustez heredada', () => {
 // 3. INTEGRACIÓN: todos los temarios tienen TTS
 // ============================================
 describe('ArticleTTS — integración con temarios', () => {
-  const glob = require('glob')
-  const topicViews: string[] = glob.sync(
-    'app/**/temario/*/TopicContentView.tsx',
-    { cwd: ROOT },
-  )
+  // [T-611] Eran ~131 copias y ahora es la vista compartida (+ las de diseño propio). El
+  // umbral «al menos 20» ya no puede medir cobertura: lo que se exige es que TODAS la monten.
+  const { vistasDeTemario } = require('../helpers/vistasDeTemario')
+  const topicViews: string[] = vistasDeTemario()
 
-  it('hay al menos 20 TopicContentView con TTS', () => {
-    const withTTS = topicViews.filter((f) => {
+  it('TODAS las vistas de temario montan el TTS', () => {
+    const sinTTS = topicViews.filter((f) => {
       const content = fs.readFileSync(path.join(ROOT, f), 'utf-8')
-      return content.includes('ArticleTTS')
+      return !content.includes('ArticleTTS')
     })
-    expect(withTTS.length).toBeGreaterThanOrEqual(20)
+    expect(topicViews.length).toBeGreaterThan(0)
+    expect(sinTTS).toEqual([])
   })
 
   it('todos los TopicContentView importan ArticleTTS', () => {

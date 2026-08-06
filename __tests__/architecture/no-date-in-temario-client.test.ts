@@ -64,8 +64,16 @@ function findNonDeterministicCalls(file: string): Violation[] {
 
 describe('arquitectura: TopicContentView client components son deterministas', () => {
   it('ningún TopicContentView.tsx invoca new Date / Date.now / Math.random / performance.now', () => {
-    const files = glob.sync('app/**/temario/[[]slug[]]/TopicContentView.tsx', { cwd: ROOT })
-    expect(files.length).toBeGreaterThan(10) // sanity: debe haber muchos
+    // [T-611] El temario dejó de ser 131 copias: ahora es UN componente compartido más la
+    // oposición que conserva diseño propio. El glob mira LOS DOS sitios — si solo mirara
+    // `app/**`, unificar habría bajado esta protección de 131 ficheros a 1 sin que nadie
+    // lo notara (y el fichero que de verdad sirve a 130 oposiciones se quedaría fuera).
+    const files = [
+      ...glob.sync('components/temario/TopicContentView.tsx', { cwd: ROOT }),
+      ...glob.sync('app/**/temario/[[]slug[]]/TopicContentView.tsx', { cwd: ROOT }),
+    ]
+    expect(files).toContain('components/temario/TopicContentView.tsx')
+    expect(files.length).toBeGreaterThan(1) // sanity: el compartido + el/los de diseño propio
 
     const allViolations: Violation[] = []
     for (const f of files) {

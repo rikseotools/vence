@@ -212,6 +212,50 @@ function buildConfigEntry(spec) {
  * cualquier literal de la plantilla (evita los stragglers de SEO que aparecían con el sed manual).
  * Devuelve { files, warnings }. `templateSlug` por defecto una oposición reciente estable.
  */
+/**
+ * Los tramos de bloque de una oposición, derivados del spec. Es lo que antes se escribía como
+ * `getBlockInfo` dentro del componente de su ruta ([T-611]) y ahora es una fila de dato.
+ */
+function tramosDesdeSpec(spec) {
+  const byBloque = {};
+  for (const t of spec.temario) { (byBloque[t.bloque] = byBloque[t.bloque] || []).push(t); }
+  return spec.bloques.map((b) => {
+    const ts = byBloque[b.numero] || []; if (!ts.length) return null;
+    const nums = ts.map(t => t.topic_number);
+    const offset = ts[0].topic_number - (ts[0].numero ?? ts[0].topic_number);
+    return { desde: Math.min(...nums), hasta: Math.max(...nums), offset, bloque: b.titulo };
+  }).filter(Boolean);
+}
+
+/**
+ * Da de alta la oposición en `lib/temario/bloquesPorOposicion.ts`. IDEMPOTENTE: si el slug ya
+ * está, no toca nada.
+ *
+ * Sin esto, la oposición nueva serviría su temario SIN etiqueta de bloque y con el número de
+ * tema crudo (201 en vez de «Tema 1 · Bloque II»), y además la dejaría fuera del test de
+ * cobertura de `bloquesPorOposicion` → CI en rojo. Antes esto no hacía falta porque la ruta se
+ * copiaba entera con su propio `getBlockInfo`: exactamente la fábrica de copias que [T-611]
+ * cierra.
+ */
+function registrarBloques(slug, shortName, tramos) {
+  const F = 'lib/temario/bloquesPorOposicion.ts';
+  if (!fs.existsSync(F)) throw new Error(`FASE 5: no encuentro ${F} (dato de bloques del temario)`);
+  let s = fs.readFileSync(F, 'utf8');
+  if (new RegExp(`^\\s*'${slug}':`, 'm').test(s)) return false;
+  if (!tramos.length) return false;
+  const esc = (x) => String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const filas = tramos
+    .map(t => `    { desde: ${t.desde}, hasta: ${t.hasta}, offset: ${t.offset}, bloque: "${esc(t.bloque)}" },`)
+    .join('\n');
+  const bloque = `  // ${shortName}\n  '${slug}': [\n${filas}\n  ],\n`;
+  const ancla = 'export const BLOQUES_POR_OPOSICION: Record<string, TramoBloque[]> = {\n';
+  const i = s.indexOf(ancla);
+  if (i < 0) throw new Error(`FASE 5: ${F} no tiene el ancla BLOQUES_POR_OPOSICION`);
+  s = s.slice(0, i + ancla.length) + bloque + s.slice(i + ancla.length);
+  fs.writeFileSync(F, s);
+  return true;
+}
+
 function scaffoldRoutes(spec, opts = {}) {
   const TPL = opts.templateSlug || 'administrativo-universidad-leon';
   const TPL_PT = TPL.replace(/-/g, '_');
@@ -221,18 +265,10 @@ function scaffoldRoutes(spec, opts = {}) {
   if (fs.existsSync(dst)) return { files: [], warnings: [`${dst} ya existe (no sobreescribo)`] };
   fs.cpSync(srcDir, dst, { recursive: true });
 
-  // getBlockInfo desde los bloques del spec (rango de topic_number y offset por bloque)
-  const byBloque = {};
-  for (const t of spec.temario) { (byBloque[t.bloque] = byBloque[t.bloque] || []).push(t); }
-  const branches = spec.bloques.map((b, i) => {
-    const ts = byBloque[b.numero] || []; if (!ts.length) return '';
-    const nums = ts.map(t => t.topic_number); const lo = Math.min(...nums), hi = Math.max(...nums);
-    const offset = ts[0].topic_number - (ts[0].numero ?? ts[0].topic_number);
-    const disp = offset ? `topicNumber - ${offset}` : 'topicNumber';
-    const cond = `topicNumber >= ${lo} && topicNumber <= ${hi}`;
-    return `${i === 0 ? '  if' : '  } else if'} (${cond}) {\n    return { block: '${b.titulo.replace(/'/g, "\\'")}', displayNum: ${disp} }`;
-  }).filter(Boolean).join('\n');
-  const getBlockInfo = `function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {\n${branches}\n  }\n  return { block: '', displayNum: topicNumber }`;
+  // Los bloques del temario son DATO, no código ([T-611]): van a
+  // `lib/temario/bloquesPorOposicion.ts`, no a un `getBlockInfo` copiado en un componente
+  // por oposición. Se calculan igual que antes (rango de topic_number y offset por bloque).
+  const tramos = tramosDesdeSpec(spec);
 
   // sustituciones (orden: más específico primero). Literales de la plantilla → valores del spec.
   const boletin = (spec.convocatoria && spec.convocatoria.diario_oficial) || 'BOE';
@@ -265,13 +301,11 @@ function scaffoldRoutes(spec, opts = {}) {
     const aliasArr = (id.aliases || []).map(a => `'${String(a).replace(/'/g, "\\'")}'`).join(', ');
     if (aliasArr) s = s.replace(/keywords:\s*\[[^\]]*\]/g, `keywords: [${aliasArr}]`);
     for (const [from, to] of subs) s = s.split(from).join(to);
-    // getBlockInfo: reemplazar la función entera (si el fichero la tiene)
-    if (/function getBlockInfo\(topicNumber: number\)/.test(s)) {
-      s = s.replace(/\/\/[^\n]*\nfunction getBlockInfo\(topicNumber: number\)[\s\S]*?\n  return \{ block: '', displayNum: topicNumber \}/m,
-        `// Bloques de ${id.short_name} (generado por el scaffolder desde el spec)\n${getBlockInfo}`);
-    }
     fs.writeFileSync(f, s);
   }
+
+  // El dato de bloques (antes: un `getBlockInfo` copiado dentro del componente de la ruta).
+  registrarBloques(slug, id.short_name, tramos);
   // STRAGGLER CHECK: ningún literal de la plantilla debe sobrevivir
   // Los literales de TEXTO sí son residuo siempre. Los NÚMEROS no: la plantilla (León) tiene 25 temas,
   // así que "25 temas" en la lista fija convierte el guardarraíl en un FALSO POSITIVO para cualquier
@@ -648,4 +682,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, scaffoldRegistrations, buildInsert, hayRecuentoAjeno, STRAGGLER_TEXTO };
+module.exports = { validateSpec, validateScope, buildConfigEntry, scaffoldRoutes, scaffoldRegistrations, buildInsert, hayRecuentoAjeno, STRAGGLER_TEXTO, tramosDesdeSpec, registrarBloques };

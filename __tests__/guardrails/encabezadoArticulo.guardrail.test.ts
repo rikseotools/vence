@@ -13,30 +13,21 @@
  * Con 131 copias divergentes, la regresión no es hipotética: basta con que alguien cree la oposición
  * 132 copiando una vista vieja. Este test mira TODAS las copias, así que la nueva nace vigilada.
  */
-import { readFileSync, existsSync, readdirSync } from 'fs'
+import { readFileSync } from 'fs'
 import { join } from 'path'
+// [T-611] La lista va en UN sitio: eran 131 y ahora es el componente compartido (+ las que
+// conservan diseño propio). Con el glob de antes, este guardarraíl habría seguido en verde
+// mirando un solo fichero residual.
+import { vistasDeTemario, VISTA_COMPARTIDA } from '../helpers/vistasDeTemario'
 
 const RAIZ = process.cwd()
 
-function vistasDeTemario(): string[] {
-  const appDir = join(RAIZ, 'app')
-  const out: string[] = []
-  for (const op of readdirSync(appDir)) {
-    const dir = join(appDir, op, 'temario')
-    if (!existsSync(dir)) continue
-    for (const slug of readdirSync(dir)) {
-      const f = join(dir, slug, 'TopicContentView.tsx')
-      if (existsSync(f)) out.push(f)
-    }
-  }
-  return out
-}
-
 describe('TopicContentView — el encabezado del artículo no depende de `title`', () => {
-  const vistas = vistasDeTemario()
+  const vistas = vistasDeTemario().map((v) => join(RAIZ, v))
 
   it('hay vistas que revisar (si esto falla, el propio guardarraíl se ha quedado ciego)', () => {
-    expect(vistas.length).toBeGreaterThan(100)
+    expect(vistas.length).toBeGreaterThan(0)
+    expect(vistas).toContain(join(RAIZ, VISTA_COMPARTIDA))
   })
 
   it.each(vistas.map((v) => [v.replace(`${RAIZ}/`, ''), v]))(

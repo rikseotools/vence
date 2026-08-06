@@ -2,7 +2,7 @@
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { getTopicContent } from '@/lib/api/temario/queries'
-import TopicContentView from './TopicContentView'
+import TopicContentView from '@/components/temario/TopicContentView'
 import { formatUpdatedAt } from '@/lib/temario/updatedAt'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 

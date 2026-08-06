@@ -1,4 +1,23 @@
-// app/policia-nacional/temario/[slug]/TopicContentView.tsx
+// components/temario/TopicContentView.tsx
+//
+// [T-611] La página de un TEMA del temario, UNA sola vez.
+//
+// Hasta el 06/08/2026 este componente vivía copiado en `app/<oposicion>/temario/[slug]/
+// TopicContentView.tsx`, una vez por oposición. Al medirlo, lo único que cambiaba de verdad
+// entre copias era:
+//   · `getBlockInfo` → ya es dato (`lib/temario/bloquesPorOposicion.ts`, [T-611] fase 1)
+//   · el color del acento «ha caído en examen» → ahora dato (`lib/temario/acentoPorOposicion.ts`)
+//   · si montaban o no `<TopicVideoCourses>` (faltaba en 54 → se les daba por olvido, no por
+//     decisión: el componente se auto-oculta cuando no hay cursos)
+//   · el `loginHref` del botón de imprimir, escrito a mano en 119 copias con exactamente la
+//     misma fórmula que las otras 12 derivaban
+// Todo lo demás eran 122 cuerpos distintos por deriva de copia-pega, con consecuencias
+// medidas: `expandAll` declarado en 78 copias y conectado a un botón en CERO.
+//
+// ⚠️ NO vuelvas a copiar este fichero bajo `app/`. Una oposición nueva se da de alta con una
+// FILA en `lib/temario/bloquesPorOposicion.ts` (y, si quiere acento propio, otra en
+// `acentoPorOposicion.ts`). Lo hace cumplir el guardarraíl
+// `__tests__/guardrails/testsDeOposicionPersonalizada.guardrail.test.ts`.
 'use client'
 
 import { useState } from 'react'
@@ -9,31 +28,56 @@ import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/s
 import { useAuth } from '@/contexts/AuthContext'
 import TopicPrintButton from '@/components/TopicPrintButton'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
+import TopicVideoCourses from '@/components/TopicVideoCourses'
 import TopicNavFooter from '@/components/TopicNavFooter'
 import MarkdownContent from '@/components/MarkdownContent'
 import { encabezadoArticulo } from '@/lib/teoria/encabezadoArticulo'
+import { resolverBloque } from '@/lib/temario/bloquesTemario'
+import { BLOQUES_POR_OPOSICION } from '@/lib/temario/bloquesPorOposicion'
+import { acentoDe, clasesAcento, type AcentoTemario, type ClasesAcento } from '@/lib/temario/acentoPorOposicion'
 
 interface TopicContentViewProps {
   content: TopicContent
+  /** Slug de la oposición. Resuelve bloques y acento; también el `loginHref` de imprimir. */
   oposicion?: string
+  /**
+   * Prefijo del que cuelgan los enlaces de esta pantalla (miga «Temario», tema anterior/
+   * siguiente y «Practicar este tema»). Por defecto se deriva de `oposicion`.
+   *
+   * Existe porque una oposición PERSONALIZADA no tiene slug: vive en `/oposicion-personalizada/
+   * <id>`, y su página reutiliza este componente. Sin poder decirlo, heredaba el valor por
+   * defecto de `oposicion` —un slug REAL— y mandaba al usuario al temario de otra oposición sin
+   * fallar por ningún lado ([T-541]). Se pasa explícito y no se adivina del perfil: se puede
+   * estar leyendo una personalizada que no es tu objetivo, porque son públicas.
+   */
+  basePath?: string
+  /** Números de tema que existen en esta oposición; sin esto el pie navega a ciegas. [T-541] */
+  temasExistentes?: number[]
   updatedAt: string
+  /** Acento del «ha caído en examen». Por defecto, el declarado para esa oposición. */
+  acento?: AcentoTemario
 }
 
-// Determinar el bloque según el número de tema (Policía Nacional - 3 bloques, 45 temas)
-function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
-  if (topicNumber <= 26) return { block: 'Bloque A: Ciencias Jurídicas', displayNum: topicNumber }
-  if (topicNumber <= 37) return { block: 'Bloque B: Ciencias Sociales', displayNum: topicNumber }
-  return { block: 'Bloque C: Ciencias Técnico-Científicas', displayNum: topicNumber }
-}
-
-export default function TopicContentView({ content, oposicion = 'policia-nacional', updatedAt }: TopicContentViewProps) {
-  const { getSlug } = useLawSlugs()
-  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
-    new Set()
-  )
+export default function TopicContentView({
+  content,
+  oposicion,
+  basePath: basePathProp,
+  temasExistentes,
+  updatedAt,
+  acento: acentoProp,
+}: TopicContentViewProps) {
+  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
   const { user, userProfile } = useAuth() as { user: any; userProfile: any }
 
-  const blockInfo = getBlockInfo(content.topicNumber)
+  // El prefijo lo manda quien renderiza; `oposicion` solo es el atajo de las páginas del
+  // catálogo, donde slug y raíz coinciden. Ver `basePath` en las props ([T-541]).
+  const basePath = basePathProp ?? (oposicion ? `/${oposicion}` : '')
+
+  const tramos = oposicion ? BLOQUES_POR_OPOSICION[oposicion] : undefined
+  const bloqueDe = (topicNumber: number) => resolverBloque(tramos, topicNumber)
+  const blockInfo = bloqueDe(content.topicNumber)
+
+  const acento = clasesAcento(acentoProp ?? acentoDe(oposicion))
 
   const toggleLaw = (lawId: string) => {
     setExpandedLaws((prev) => {
@@ -47,20 +91,18 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
     })
   }
 
-  const expandAll = () => {
-    setExpandedLaws(new Set(content.laws.map((l) => l.law.id)))
-  }
-
-  const collapseAll = () => {
-    setExpandedLaws(new Set())
-  }
-
   // Contar artículos con preguntas oficiales
   const articlesWithOfficialQuestions = content.laws.reduce((acc, law) => {
-    return acc + law.articles.filter(a => a.officialQuestionCount > 0).length
+    return acc + law.articles.filter((a) => a.officialQuestionCount > 0).length
   }, 0)
 
-  const basePath = `/${oposicion}`
+  // Lo escribían a mano 119 copias con esta misma fórmula; las otras 12 ya lo derivaban así.
+  // Sin slug (oposición PERSONALIZADA) no se inventa uno: antes heredaba el de
+  // `administrativo-estado` por el valor por defecto del componente, que es el mismo modo de
+  // fallo de [T-541] un enlace más abajo.
+  const loginHref = oposicion
+    ? `/login?oposicion=${oposicion.replace(/-/g, '_')}&return_to=${basePath}/temario`
+    : `/login?return_to=${basePath}/temario`
 
   return (
     <>
@@ -111,10 +153,7 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
             <span>Volver al índice</span>
           </Link>
 
-          <TopicPrintButton
-            loginHref="/login?oposicion=policia_nacional&return_to=/policia-nacional/temario"
-            topicNumber={content.topicNumber}
-          />
+          <TopicPrintButton loginHref={loginHref} topicNumber={content.topicNumber} />
         </div>
       </div>
 
@@ -132,9 +171,7 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
           </h1>
 
           {content.description && (
-            <p className="text-gray-600 dark:text-gray-400 text-lg mb-4">
-              {content.description}
-            </p>
+            <p className="text-gray-600 dark:text-gray-400 text-lg mb-4">{content.description}</p>
           )}
 
           {/* Stats */}
@@ -152,7 +189,7 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
               {content.totalArticles} artículos
             </span>
             {articlesWithOfficialQuestions > 0 && (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-full">
+              <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${acento.pildora}`}>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
                 </svg>
@@ -196,10 +233,7 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Actualizado a{' '}
-              <span className="font-semibold text-gray-800 dark:text-gray-200">
-                {updatedAt}
-              </span>
-              .{' '}
+              <span className="font-semibold text-gray-800 dark:text-gray-200">{updatedAt}</span>.{' '}
               <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                 Regístrate
               </Link>
@@ -208,16 +242,20 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
           </div>
         </header>
 
+        {/* Video course banner — se auto-oculta si esta oposición no tiene cursos */}
+        <TopicVideoCourses courses={content.videoCourses} />
+
         {/* Laws and articles */}
         <div className="space-y-6">
           {content.laws.map((lawData, index) => (
             <LawSection
-                key={lawData.law.id}
-                lawData={lawData}
-                isExpanded={expandedLaws.has(lawData.law.id)}
-                onToggle={() => toggleLaw(lawData.law.id)}
-                isFirst={index === 0}
-              />
+              key={lawData.law.id}
+              lawData={lawData}
+              isExpanded={expandedLaws.has(lawData.law.id)}
+              onToggle={() => toggleLaw(lawData.law.id)}
+              isFirst={index === 0}
+              acento={acento}
+            />
           ))}
         </div>
 
@@ -237,9 +275,10 @@ export default function TopicContentView({ content, oposicion = 'policia-naciona
         )}
 
         <TopicNavFooter
+          temasExistentes={temasExistentes}
           topicNumber={content.topicNumber}
           basePath={basePath}
-          getDisplayNum={(n) => getBlockInfo(n).displayNum}
+          getDisplayNum={(n) => bloqueDe(n).displayNum}
         />
       </main>
     </>
@@ -252,11 +291,12 @@ interface LawSectionProps {
   isExpanded: boolean
   onToggle: () => void
   isFirst: boolean
+  acento: ClasesAcento
 }
 
-function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps) {
+function LawSection({ lawData, isExpanded, onToggle, isFirst, acento }: LawSectionProps) {
   const { law, articles } = lawData
-  const officialCount = articles.filter(a => a.officialQuestionCount > 0).length
+  const officialCount = articles.filter((a) => a.officialQuestionCount > 0).length
 
   return (
     <section className={`law-section ${!isFirst ? 'print-break-before' : ''}`}>
@@ -279,7 +319,7 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
               {articles.length} artículos
             </span>
             {officialCount > 0 && (
-              <span className="block text-xs text-amber-600 dark:text-amber-400">
+              <span className={`block text-xs ${acento.contadorLey}`}>
                 {officialCount} con examen
               </span>
             )}
@@ -312,44 +352,47 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
       </div>
 
       {/* Articles list */}
-      {(isExpanded || true) && (
-        <div className={`mt-2 space-y-4 ${!isExpanded ? 'hidden print:block' : ''}`}>
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} lawShortName={law.shortName} />
-          ))}
-        </div>
-      )}
+      <div className={`mt-2 space-y-4 ${!isExpanded ? 'hidden print:block' : ''}`}>
+        {articles.map((article) => (
+          <ArticleCard
+            key={article.id}
+            article={article}
+            lawShortName={law.shortName}
+            acento={acento}
+          />
+        ))}
+      </div>
     </section>
   )
 }
 
 // Article card component
-function ArticleCard({ article, lawShortName }: { article: Article; lawShortName: string }) {
+function ArticleCard({
+  article,
+  lawShortName,
+  acento,
+}: {
+  article: Article
+  lawShortName: string
+  acento: ClasesAcento
+}) {
   const { getSlug } = useLawSlugs()
   const hasOfficialQuestions = article.officialQuestionCount > 0
 
-  const formatContent = (content: string | null) => {
-    if (!content) return null
-    const lines = content.split(/\n/).filter(line => line.trim())
-    return lines.map((line, index) => (
-      <p key={index} className="mb-2 last:mb-0">
-        {line.trim()}
-      </p>
-    ))
-  }
-
   return (
-    <article className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
-      hasOfficialQuestions
-        ? 'border-amber-300 dark:border-amber-600 ring-1 ring-amber-200 dark:ring-amber-700'
-        : 'border-gray-200 dark:border-gray-700'
-    }`}>
+    <article
+      className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
+        hasOfficialQuestions ? acento.bordeArticulo : 'border-gray-200 dark:border-gray-700'
+      }`}
+    >
       {/* Article header */}
-      <div className={`px-4 py-3 border-b ${
-        hasOfficialQuestions
-          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
-          : 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
-      }`}>
+      <div
+        className={`px-4 py-3 border-b ${
+          hasOfficialQuestions
+            ? acento.fondoCabecera
+            : 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
+        }`}
+      >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-1 min-w-0">
             <span className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
@@ -366,7 +409,7 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
           </div>
           {/* Badge de pregunta de examen */}
           {hasOfficialQuestions && (
-            <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">
+            <div className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${acento.badge}`}>
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
               </svg>
@@ -385,34 +428,31 @@ function ArticleCard({ article, lawShortName }: { article: Article; lawShortName
         )}
       </div>
 
-
       {/* Article content */}
       <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed">
         {article.content ? (
           <MarkdownContent content={article.content} />
         ) : (
-          <p className="text-gray-400 dark:text-gray-500 italic">
-            Contenido no disponible
-          </p>
+          <p className="text-gray-400 dark:text-gray-500 italic">Contenido no disponible</p>
         )}
       </div>
 
       {/* Test button for this article - only show if article has questions */}
       {article.questionCount > 0 && (
-      <div className="no-print px-4 pb-4 flex justify-end">
-        <Link
-          href={`/leyes/${getSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
-          onClick={() => {
-            // Store current URL for "Volver a mi temario" button
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem('temario_return_url', window.location.href)
-            }
-          }}
-          className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
-        >
-          Hacer test Art. {article.articleNumber}
-        </Link>
-      </div>
+        <div className="no-print px-4 pb-4 flex justify-end">
+          <Link
+            href={`/leyes/${getSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
+            onClick={() => {
+              // Store current URL for "Volver a mi temario" button
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('temario_return_url', window.location.href)
+              }
+            }}
+            className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+          >
+            Hacer test Art. {article.articleNumber}
+          </Link>
+        </div>
       )}
     </article>
   )

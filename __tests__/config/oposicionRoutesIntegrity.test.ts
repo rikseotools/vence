@@ -39,18 +39,29 @@ describe('Integridad de rutas de oposiciones (anti copia-a-medias)', () => {
     expect(rotos).toEqual([])
   })
 
-  it('cada temario/ propio está COMPLETO (page + [slug]/page + TopicContentView)', () => {
+  it('cada temario/ propio está COMPLETO (page + [slug]/page)', () => {
+    // [T-611] Antes se exigía además un `TopicContentView.tsx` propio: era la fábrica de
+    // copias hecha guardarraíl. Ahora el componente es UNO (`components/temario/`), así que
+    // lo que se comprueba es que la ruta exista entera y MONTE el compartido.
     const incompletos = OPOSICIONES
       .filter((o) => has(`${o.slug}/temario`))
-      .filter(
-        (o) =>
-          !(
-            hasPage(`${o.slug}/temario`) &&
-            hasPage(`${o.slug}/temario/[slug]`) &&
-            has(`${o.slug}/temario/[slug]/TopicContentView.tsx`)
-          )
-      )
+      .filter((o) => !(hasPage(`${o.slug}/temario`) && hasPage(`${o.slug}/temario/[slug]`)))
       .map((o) => o.slug)
     expect(incompletos).toEqual([])
+  })
+
+  it('la página del tema monta el componente compartido, no un árbol propio', () => {
+    // Excepción declarada y con trinquete en
+    // `__tests__/guardrails/testsDeOposicionPersonalizada.guardrail.test.ts`.
+    const CON_DISENO_PROPIO = ['auxiliar-administrativo-estado']
+    const sinCompartido = OPOSICIONES
+      .filter((o) => hasPage(`${o.slug}/temario/[slug]`))
+      .filter((o) => !CON_DISENO_PROPIO.includes(o.slug))
+      .filter((o) => {
+        const p = path.join(APP, o.slug, 'temario', '[slug]', 'page.tsx')
+        return !fs.readFileSync(p, 'utf8').includes("@/components/temario/TopicContentView")
+      })
+      .map((o) => o.slug)
+    expect(sinCompartido).toEqual([])
   })
 })

@@ -1,27 +1,20 @@
-import { readdirSync, readFileSync, statSync } from 'fs'
+import { readFileSync } from 'fs'
 import { join } from 'path'
+import { vistasDeTemario, VISTA_COMPARTIDA } from '../helpers/vistasDeTemario'
 
 // Guardarraíl: el botón "Imprimir PDF" del temario vive SOLO en <TopicPrintButton>.
 // Antes estaba copy-pasteado en 111 TopicContentView.tsx (dos variantes, una con
 // typos), y window.print() era un no-op silencioso en navegadores in-app. Este test
 // impide que alguien vuelva a reimplementar el print a mano en un TopicContentView.
 
-function findTopicViews(dir: string, acc: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name)
-    if (name === 'node_modules' || name === '.next' || name === '.open-next') continue
-    const st = statSync(full)
-    if (st.isDirectory()) findTopicViews(full, acc)
-    else if (name === 'TopicContentView.tsx') acc.push(full)
-  }
-  return acc
-}
-
 describe('Guardarraíl: impresión del temario centralizada en <TopicPrintButton>', () => {
-  const files = findTopicViews(join(process.cwd(), 'app'))
+  // [T-611] La vista del temario es UNA (+ las que conservan diseño propio): la lista la da
+  // el helper compartido, no un recorrido de `app/` que ya solo vería el residuo.
+  const files = vistasDeTemario().map((f) => join(process.cwd(), f))
 
   test('hay ficheros TopicContentView que auditar', () => {
-    expect(files.length).toBeGreaterThan(50)
+    expect(files.length).toBeGreaterThan(0)
+    expect(files).toContain(join(process.cwd(), VISTA_COMPARTIDA))
   })
 
   test.each(files.map((f) => [f.replace(process.cwd() + '/', ''), f]))(
