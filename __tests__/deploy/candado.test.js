@@ -162,10 +162,20 @@ describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
     && !fs.existsSync(path.join(ARBOL_DEPLOY, 'node_modules'))
     && /cargarPg\(REPO\)/.test(fs.readFileSync(CLI_DEPLOY, 'utf8'))
   ;(hay ? it : it.skip)('el candado ARRANCA desde el árbol de deploy (no revienta al cargar postgres)', () => {
-    const r = execFileSync('node', [CLI_DEPLOY, 'estado'],
-      { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    expect(r).toMatch(/candado (LIBRE|)/)
-    expect(r).not.toMatch(/Cannot find module/)
+    // `estado` sale con 3 cuando el candado está OCUPADO, que es correcto y pasa de verdad
+    // (un deploy real lo tenía tomado la primera vez que este test corrió). Lo que se comprueba
+    // aquí es que ARRANQUE —que cargue `postgres` desde un árbol sin `node_modules`—, no que
+    // esté libre: exigir 0 lo ataba al azar de si alguien estaba desplegando.
+    let salida = ''
+    try {
+      salida = execFileSync('node', [CLI_DEPLOY, 'estado'],
+        { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch (e) {
+      expect(e.status).not.toBe(4)   // 4 = no pudo comprobar: eso SÍ sería el fallo original
+      salida = String(e.stdout || '') + String(e.stderr || '')
+    }
+    expect(salida).toMatch(/candado (LIBRE|)|DEPLOY EN CURSO/)
+    expect(salida).not.toMatch(/Cannot find module/)
   })
 
   it('el candado NO vuelve a requerir postgres por ruta fija (el error original)', () => {

@@ -1510,6 +1510,52 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`   y no se despierta sola: la despierta una persona ('wake ${row.id}').`);
     }
 
+    // ── EL ESCALÓN «ENTREGADA → REVISADA» (T-486, 06/08/2026) ─────────────────────────────
+    // Lo mueve OTRO trabajador, no una persona. Medido antes de montarlo: 23 entregas paradas,
+    // 15 h de media, la más vieja 41 h — cinco de los seis escalones del ciclo avanzaban solos y
+    // éste no tenía mecanismo ninguno.
+    //
+    // Lo que este verbo NO hace: mergear ni cerrar. El revisor deja el veredicto; meterlo en
+    // `main` sigue siendo de una persona, porque al juntar ramas aparecen choques que ninguna ve
+    // por separado. Con el veredicto puesto, esa decisión es barata.
+    else if (cmd === 'revisado') {
+      const id = (process.argv[3] || '').toUpperCase();
+      const veredicto = arg('--veredicto');
+      const hallazgos = (arg('--hallazgos') || '').trim();
+      if (!id || !['ok', 'problemas'].includes(veredicto)) {
+        console.error('uso: node scripts/backlog.cjs revisado T-nnn --veredicto ok|problemas --hallazgos "…"');
+        console.error('   El veredicto es cerrado a propósito: la única pregunta que importa es');
+        console.error('   «¿se puede mergear?», y un «ok pero…» no la contesta.');
+        process.exit(1);
+      }
+      const minimo = veredicto === 'ok' ? 30 : 60;
+      if (hallazgos.length < minimo) {
+        console.error(`❌ --hallazgos necesita al menos ${minimo} caracteres para un «${veredicto}».`);
+        console.error('   Un veredicto sin hallazgos no es una revisión, es un sello: quien lo lea');
+        console.error('   después no sabrá si miraste el diff o el título. Di QUÉ comprobaste y CÓMO.');
+        process.exit(2);
+      }
+      const [t] = await s`SELECT id, title, review_requested_by, review_requested_at, reviewed_at FROM public.backlog_tasks WHERE id = ${id}`;
+      if (!t) { console.error(`❌ ${id} no existe`); process.exit(1); }
+      if (!t.review_requested_at) { console.error(`❌ ${id} no está entregada: no hay nada que revisar.`); process.exit(1); }
+      // Nadie revisa lo suyo: quien lo escribió ya se convenció una vez, y volver a mirarlo no
+      // añade información. Lo hace cumplir además un CHECK en la tabla, no solo esto.
+      if (t.review_requested_by && t.review_requested_by === sid) {
+        console.error(`❌ ${id} la entregaste TÚ. Nadie revisa lo suyo — que la mire otro.`);
+        process.exit(3);
+      }
+      await s`
+        UPDATE public.backlog_tasks
+           SET reviewed_at = now(), reviewed_by = ${sid},
+               review_verdict = ${veredicto}, review_findings = ${hallazgos}, updated_at = now()
+         WHERE id = ${id}`;
+      console.log(veredicto === 'ok'
+        ? `✅ ${id} REVISADA y sin problemas — lista para que una persona la mergee.`
+        : `⚠️  ${id} revisada CON PROBLEMAS — vuelve a quien la hizo, o a quien la retome.`);
+      console.log(`   ${hallazgos.slice(0, 300)}`);
+      console.log('   (no se ha mergeado ni cerrado: eso lo decide una persona)');
+    }
+
     else if (cmd === 'verificado') {
       // GEMELO DE `pause` (T-449). `pause` dice «aún no se puede comprobar»; esto dice «ya lo
       // comprobé, y la tarea sigue viva». Sin este verbo no había forma de decirlo: `done` la

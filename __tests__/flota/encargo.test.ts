@@ -665,3 +665,53 @@ describe('el encargo exige demostrar lo que se afirma', () => {
     expect(t).toMatch(/PEOR que no haber mirado/)
   })
 })
+
+// ── EL ESCALÓN QUE NO TENÍA MOTOR ───────────────────────────────────────────────────────────
+// Cinco de los seis escalones del ciclo de una tarea avanzan solos; `entregada → revisada`
+// esperaba a que alguien decidiera mirar. Medido el 06/08: 23 entregas paradas, 15 h de media,
+// la más vieja 41 h. No era una cola lenta: era una cola sin salida.
+describe('el encargo de REVISIÓN', () => {
+  const ENC = require(require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'))
+  const t = ENC.encargoRevision({
+    trabajador: 'w3', tarea: { id: 'T-148', title: 'Guardia Civil' },
+    entrega: 'arreglado X', autor: 'w4',
+  })
+
+  it('dice explícitamente que NO la rehaga: es el fallo caro de reofrecer una tarea hecha', () => {
+    expect(t).toMatch(/NO LA REHAGAS/)
+    expect(t).toMatch(/REVISAR lo que ya entregó otro/)
+  })
+
+  it('pide comprobar la AFIRMACIÓN contra la realidad, no solo leer el código', () => {
+    expect(t).toMatch(/CONTRA LA REALIDAD/)
+    expect(t).toMatch(/afirma una causa sin demostrarla/)
+  })
+
+  it('exige veredicto cerrado y hallazgos con el CÓMO', () => {
+    expect(t).toMatch(/--veredicto ok/)
+    expect(t).toMatch(/--veredicto problemas/)
+    expect(t.replace(/\s+/g, ' ')).toMatch(/no es un veredicto, es un sello/)
+  })
+
+  it('NO delega el merge: eso sigue siendo de una persona', () => {
+    expect(t).toMatch(/NO la mergees a `main`/)
+  })
+
+  it('le dice cómo cogerla, porque `claim` la va a rechazar (y eso es lo esperado)', () => {
+    expect(t).toMatch(/claim T-148 --force --motivo/)
+  })
+})
+
+describe('el supervisor reparte revisiones ANTES que tareas nuevas', () => {
+  const fuente = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('busca entregas sin revisar antes de elegir tarea', () => {
+    const rep = fuente.slice(fuente.indexOf("cmd === 'repartir'"))
+    expect(rep.indexOf('porRevisar')).toBeLessThan(rep.indexOf('ENC.elegir(candidatas'))
+  })
+
+  it('y nunca le da a nadie SU propia entrega', () => {
+    expect(fuente).toMatch(/review_requested_by IS DISTINCT FROM/)
+  })
+})

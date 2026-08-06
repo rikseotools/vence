@@ -794,6 +794,29 @@ async function main() {
           } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
           continue
         }
+        // ── PRIMERO REVISAR, LUEGO HACER (T-486, 06/08) ──────────────────────────────────
+        // Las revisiones van ANTES que las tareas nuevas porque son el escalón que se atasca: dar
+        // otra tarea a quien podría desatascar una entrega hace crecer la cola por los dos lados.
+        // Nunca la SUYA (no se revisa lo propio) ni una ya revisada.
+        const porRevisar = (await sql`
+          SELECT id, title, review_note, review_requested_by
+            FROM public.backlog_tasks
+           WHERE review_requested_at IS NOT NULL AND reviewed_at IS NULL
+             AND review_requested_by IS DISTINCT FROM ${porSlug.get(f.trabajador) || ''}
+           ORDER BY review_requested_at
+           LIMIT 5`).filter((t) => !dadas.has(t.id))[0]
+        if (porRevisar) {
+          dadas.add(porRevisar.id)
+          try {
+            const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
+            const r = mandarEncargo(f.trabajador,
+              ENC.encargoRevision({ trabajador: f.trabajador, tarea: porRevisar,
+                entrega: porRevisar.review_note, autor: porRevisar.review_requested_by }),
+              { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tarea: porRevisar.id, tipo: 'revision' }) })
+            if (r.ok) { console.log(`   🔍 ${f.trabajador.padEnd(4)} → REVISAR ${porRevisar.id}`); n++; continue }
+            dadas.delete(porRevisar.id)
+          } catch (e) { dadas.delete(porRevisar.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
+        }
         const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)), { puedeDesplegar: true })
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
