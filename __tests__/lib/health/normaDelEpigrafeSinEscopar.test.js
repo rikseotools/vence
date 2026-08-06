@@ -55,6 +55,22 @@ describe('mismaFamiliaYaServida — el falso positivo que casi se cuela al badge
   it('no calla cuando de verdad no hay nada de esa familia', () => {
     expect(mismaFamiliaYaServida('Carta Social Europea', ['Estatuto de Roma', 'LO 18/2003 Corte Penal'])).toBe(false)
   })
+
+  // Caso real medido en T-055 (06/08): 5 oposiciones (guardia_civil, auxiliar_administrativo_extremadura,
+  // administrativo_galicia, auxiliar_administrativo_sms, tcae_sermas_madrid) salían acusadas de no servir
+  // «LEY PREVENCIÓN DE RIESGOS LABORALES ENF» (165 preg) teniendo YA escopada «LPRL» (1.096 preg) — la
+  // MISMA ley. El detector solo comparaba contra el short_name de las ya-servidas ('LPRL', una sigla sin
+  // palabras en común con el duplicado descriptivo); el `name` completo de LPRL sí las comparte.
+  it('una sigla ya-servida ("LPRL") no comparte palabras con su duplicado descriptivo por short_name solo', () => {
+    expect(mismaFamiliaYaServida('LEY PREVENCIÓN DE RIESGOS LABORALES ENF', ['LPRL'])).toBe(false)
+  })
+
+  it('pero SÍ se ve si el llamante incluye también el name completo de la ya-servida — por eso el auditor pasa ambos', () => {
+    expect(mismaFamiliaYaServida(
+      'LEY PREVENCIÓN DE RIESGOS LABORALES ENF',
+      ['LPRL', 'Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales'],
+    )).toBeTruthy()
+  })
 })
 
 describe('clasificar — severidad', () => {

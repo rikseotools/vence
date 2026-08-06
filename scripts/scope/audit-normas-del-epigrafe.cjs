@@ -50,7 +50,8 @@ console.log('   contenedores equivalentes con otro nombre y epígrafes con anexo
     SELECT t.id, t.position_type, t.topic_number, t.epigrafe,
            array(SELECT ts.law_id FROM topic_scope ts JOIN topics t2 ON t2.id=ts.topic_id
                   WHERE t2.position_type = t.position_type AND t2.is_active) escopadas,
-           array(SELECT DISTINCT l2.short_name FROM topic_scope ts JOIN topics t2 ON t2.id=ts.topic_id
+           array(SELECT DISTINCT unnest(ARRAY[l2.short_name, l2.name])
+                   FROM topic_scope ts JOIN topics t2 ON t2.id=ts.topic_id
                    JOIN laws l2 ON l2.id = ts.law_id
                   WHERE t2.position_type = t.position_type AND t2.is_active) nombres_escopados
       FROM topics t
@@ -64,7 +65,12 @@ console.log('   contenedores equivalentes con otro nombre y epígrafes con anexo
       if (yaTiene.has(String(l.id))) continue
       const m = epigrafeNombraLey(t.epigrafe, l.short_name, l.name, { minPalabras: MINP })
       if (!m.nombra) continue
-      if (mismaFamiliaYaServida(l.short_name, t.nombres_escopados)) continue
+      // Se prueba también por el NOMBRE completo del candidato: un contenedor duplicado con nombre
+      // descriptivo («LEY PREVENCIÓN DE RIESGOS LABORALES ENF») no comparte ninguna palabra con el
+      // short_name-sigla ya servido («LPRL»), pero SÍ con su name completo — que ahora también viaja
+      // en `nombres_escopados` (medido: sin esto, 5 oposiciones que YA sirven LPRL salían acusadas
+      // de no servirla, por su duplicado ENF).
+      if (mismaFamiliaYaServida(l.short_name, t.nombres_escopados) || mismaFamiliaYaServida(l.name, t.nombres_escopados)) continue
       const sev = clasificar({ preguntasActivas: l.preguntas, servidaEnOtraOposicion: l.servida })
       if (sev) hall.push({ pt: t.position_type, tema: t.topic_number, ley: l.short_name, preguntas: l.preguntas, sev, por: m.por })
     }
