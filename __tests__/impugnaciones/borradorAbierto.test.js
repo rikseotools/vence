@@ -74,7 +74,7 @@ describe('lineasBorradorAbierto', () => {
 // ══════════════════════════════════════════════════════════════════════════════════════════
 describe('[T-614] casos citados por una fila del embudo', () => {
   const {
-    casosCitadosEn, clavesDeCasos, marcarCasosCerrados, sqlEstadoDeCasos, avisoCasoCerrado, CERRADOS,
+    casosCitadosEn, clavesDeCasos, marcarCasosCerrados, sqlsEstadoDeCasos, estadosDeCasos, avisoCasoCerrado, CERRADOS,
   } = require('../../lib/impugnaciones/borradorAbierto.cjs')
 
   // La fila REAL que provocó el fallo: kind='pregunta', draft_target NULL, id solo en la prosa —
@@ -198,16 +198,64 @@ describe('[T-614] casos citados por una fila del embudo', () => {
     })
   })
 
-  describe('sqlEstadoDeCasos — las tres colas, en un solo sitio', () => {
-    it('cubre las MISMAS tres tablas que reparte cola.cjs', () => {
-      const sql = sqlEstadoDeCasos()
-      expect(sql).toContain('question_disputes')
-      expect(sql).toContain('psychometric_question_disputes')
-      expect(sql).toContain('user_feedback')
+  describe('sqlsEstadoDeCasos — las tres colas, CADA UNA EN SU PROPIA CONSULTA', () => {
+    it('cubre las MISMAS tres tablas que reparte cola.cjs, una consulta por tabla', () => {
+      const qs = sqlsEstadoDeCasos()
+      expect(qs.map((q) => q.tbl).sort()).toEqual(
+        ['psychometric_question_disputes', 'question_disputes', 'user_feedback'].sort(),
+      )
     })
 
     it('compara por el prefijo de 8, la misma clave que el núcleo', () => {
-      expect(sqlEstadoDeCasos()).toContain('left(id::text, 8)')
+      sqlsEstadoDeCasos().forEach((q) => expect(q.sql).toContain('left(id::text, 8)'))
+    })
+
+    it('NINGUNA consulta mezcla dos tablas — así un permiso denegado en una no calla a las otras', () => {
+      const tablas = ['question_disputes', 'psychometric_question_disputes', 'user_feedback']
+      sqlsEstadoDeCasos().forEach((q) => {
+        // `question_disputes` es substring de `psychometric_question_disputes`: se cuenta por
+        // el "FROM public.<tabla>" exacto, no por inclusión de texto.
+        const cuantas = tablas.filter((t) => q.sql.includes(`FROM public.${t} `)).length
+        expect(cuantas).toBe(1)
+      })
+    })
+  })
+
+  describe('estadosDeCasos — un permiso denegado en UNA tabla no calla a las otras (T-614, 06/08)', () => {
+    // Reproduce, sin BD real, el defecto medido con el DATABASE_URL de un trabajador: bajo
+    // `vence_coordinacion`, `user_feedback` no tiene GRANT (T-581) y su consulta lanza
+    // `permission denied for table user_feedback`. Con el `UNION ALL` original eso tumbaba TODO
+    // el resultado — el aviso de T-614 nunca se disparaba para ningún caso, ni siquiera los que
+    // sí viven en `question_disputes`.
+    function sqlQueFallaEnUserFeedback() {
+      return {
+        unsafe: (q) => {
+          if (q.includes('user_feedback')) {
+            return Promise.reject(Object.assign(new Error('permission denied for table user_feedback'), { code: '42501' }))
+          }
+          if (q.includes('question_disputes') && !q.includes('psychometric')) {
+            return Promise.resolve([{ clave: 'f34b88ad', status: 'resolved' }])
+          }
+          return Promise.resolve([])
+        },
+      }
+    }
+
+    it('devuelve lo que SÍ pudo leer, aunque user_feedback falle', async () => {
+      const estados = await estadosDeCasos(sqlQueFallaEnUserFeedback(), ['f34b88ad'])
+      expect(estados).toEqual([{ clave: 'f34b88ad', status: 'resolved' }])
+    })
+
+    it('sin claves, ni siquiera consulta', async () => {
+      let llamadas = 0
+      const sql = { unsafe: () => { llamadas++; return Promise.resolve([]) } }
+      await estadosDeCasos(sql, [])
+      expect(llamadas).toBe(0)
+    })
+
+    it('si las tres tablas fallan, no revienta: devuelve vacío', async () => {
+      const sql = { unsafe: () => Promise.reject(new Error('lo que sea')) }
+      await expect(estadosDeCasos(sql, ['f34b88ad'])).resolves.toEqual([])
     })
   })
 

@@ -408,7 +408,7 @@ async function marcarEmbudo(filas) {
   try {
     const claves = BORRAB.clavesDeCasos(filas);
     if (!claves.length) return filas;
-    const estados = await s.unsafe(BORRAB.sqlEstadoDeCasos(), [claves]);
+    const estados = await BORRAB.estadosDeCasos(s, claves);
     return BORRAB.marcarCasosCerrados(filas, estados);
   } catch { return filas; }
 }
