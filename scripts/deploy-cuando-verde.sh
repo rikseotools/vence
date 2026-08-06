@@ -37,8 +37,14 @@ VUELTAS="${2:-12}"
 # cerrando a la vez y pushes cada 2 min, 21 commits seguidos se quedaron sin veredicto.
 #
 # El bucle PARA en el primer verde, así que en un día normal esto es UNA consulta a la API: la
-# ventana grande solo se paga cuando hace falta.
-VENTANA_VERDE="${VENTANA_VERDE:-40}"
+# ventana grande solo se paga cuando hace falta, y encima los veredictos terminales se cachean.
+#
+# ⚠️ SEGUNDA CALIBRACIÓN EN EL MISMO DÍA, y la lección es que un número fijo aquí no vale: puse 15
+# «de sobra», el simulador dio ESPERAR con el verde a 21; lo subí a 40 y una hora después el mismo
+# verde estaba a 52 (el lanzador del backend se quedó en «esperar» teniendo commit desplegable).
+# El ritmo de push varía por franja horaria, así que la ventana se pone GENEROSA a propósito: lo
+# que la acota de verdad es que el bucle para en el primer verde, no el número.
+VENTANA_VERDE="${VENTANA_VERDE:-150}"
 
 # ── DÓNDE se lanza esto IMPORTA (T-364, 31/07/2026) ───────────────────────────────────────
 # Este script hace `git reset --hard origin/main` en el árbol desde el que se ejecuta, y lo hace
@@ -81,8 +87,22 @@ avisar_no_desplegado() {  # $1=motivo corto  $2=detalle
   node scripts/lib/avisar-deploy-no-salido.cjs "$QUE" "${1:-}" "${2:-}" 2>/dev/null || true
 }
 
+# CACHÉ de veredictos TERMINALES ([T-619]). Al buscar el último verde se recorren muchos commits, y
+# el bucle interno repite el barrido cada 30 s: sin memoria serían cientos de llamadas a la API por
+# vuelta, casi todas para volver a preguntar por commits cuyo CI YA terminó.
+#
+# Solo se cachea lo que no puede cambiar: `verde` y `rojo`. Un `faltan`/`curso`/`cancelado` es
+# provisional por definición y se vuelve a preguntar — cachearlo sería congelar el «todavía no» y
+# no enterarse nunca de que ya hay veredicto.
+CACHE_VER="$(mktemp -t veredictos-XXXXXX)"
+trap 'rm -f "$CACHE_VER"' EXIT
+
 veredicto() {  # $1=sha -> imprime "estado|motivo"
-  curl -sS -H "Authorization: Bearer $PAT" -H "Accept: application/vnd.github+json" \
+  local cacheado
+  cacheado=$(grep -m1 "^$1 " "$CACHE_VER" 2>/dev/null | cut -d' ' -f2-)
+  if [ -n "$cacheado" ]; then printf '%s\n' "$cacheado"; return 0; fi
+  local out
+  out=$(curl -sS -H "Authorization: Bearer $PAT" -H "Accept: application/vnd.github+json" \
        "https://api.github.com/repos/$REPO/commits/$1/check-runs?per_page=100" 2>/dev/null \
   | node -e '
 const { clasificarCiCodigo } = require("./lib/deploy/ciGate.js");
@@ -90,7 +110,11 @@ let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
   let runs=[]; try{ runs=(JSON.parse(s).check_runs)||[] }catch(e){}
   const r=clasificarCiCodigo(runs);
   console.log(r.estado+"|"+r.motivo);
-});'
+});')
+  case "$out" in
+    verde\|*|rojo\|*) printf '%s %s\n' "$1" "$out" >> "$CACHE_VER" ;;
+  esac
+  printf '%s\n' "$out"
 }
 
 # ── ¿YA ESTÁ VIVO LO QUE PERSIGO? (T-386) ───────────────────────────────────────────────────
