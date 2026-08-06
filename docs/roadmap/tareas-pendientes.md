@@ -2470,6 +2470,21 @@ SELECT t.position_type, t.topic_number, t.epigrafe, ts.article_numbers
 --   responsabilidad patrimonial|cap[ií]tulos? III|t[ií]tulo preliminar/i  → quedan 16
 ```
 
+**06/08 — esta deuda ya PARÓ una respuesta a un usuario, no es solo higiene.** Al contestar las
+cuatro impugnaciones de temario de un premium (`066a3d65`/`ea65996b`/`4ac133b7`/`21be6a56`, arts.
+108/110/112/114 CE, Aux. Diputación de Córdoba), `epigrafe:revision` **bloqueó** con
+`[verde_sin_pipeline]` sobre el Tema 2: sellado el 21/07 por `multi_agent` con `agent_run_id='--run'`
+— el mismo lote que describe esta ficha. En esa oposición son **19 de 20 temas** así.
+
+Se resolvió por otra vía y sin re-sellar: el **epígrafe** (Paso 1) está `verified_literal` y nombra
+la materia **literalmente** («Relaciones entre el Gobierno y las Cortes Generales» = rúbrica del
+Título V CE, arts. 108-116), así que la inclusión no dependía del sello del Paso 2. Se cerraron con
+`--temario-igualmente` y el motivo declarado, que queda contado en el bus de fricción.
+
+**Lo que esto aporta a la ficha:** el coste ya no es hipotético — son cuatro escapes de guardarraíl
+en una sola cola, y el siguiente que llegue a un tema de éstos volverá a elegir entre re-sellar una
+oposición entera o rodear la puerta. Es el argumento para priorizarla por encima de la higiene.
+
 ### [T-511] 🟡 [ABIERTO 03/08] Ujieres de las Cortes Generales: convocatoria ABIERTA con 0/17 epígrafes verificados y 11/17 scopes sin verificar
 
 **De dónde sale:** una opositora premium (alta hace 15 h, feedback `9a70f674` del 02/08) preguntó lo
