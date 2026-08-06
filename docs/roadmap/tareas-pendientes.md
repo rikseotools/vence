@@ -981,6 +981,30 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-634] 🟡 [ABIERTO 06/08] Tema 20 de `auxiliar_administrativo_universidad_leon` enseña Office 365 donde el BOE (Paso 1 verified_literal) pide Office 2021
+
+- **De dónde sale.** Investigando T-631 (scope de la ULE), al excluir los temas de informática/ofimática del pipeline `verify-scope-oposicion` (regla de la casa: son leyes editoriales, no BOE — no se verifican con el mismo criterio) leí su contenido directamente en vez de descartarlos sin mirar, y apareció esto.
+- **MEDIDO, no sospechado.** El epígrafe del Tema 20 está `verified_literal` (Paso 1 ya cerrado contra `BOE-A-2026-4150`, verbatim): *«Aplicaciones de Office 2021 Pro Plus: procesador de textos Word, hoja de cálculo Excel.»* — dice **2021** explícitamente, no es ambigüedad de versión (el caso `needs_human` que contempla el runbook para "variante no especificada" no aplica aquí: la fuente SÍ especifica versión).
+- **El `topic_scope` del tema apunta a leyes de Office 365, no 2021.** `SELECT` directo contra RDS (`VENCE_LECTOR_URL`):
+
+  | ley (short_name) | artículos activos | preguntas activas |
+  |---|---|---|
+  | Excel 2021 | **0** | **0** |
+  | Word 2021 | **0** | **0** |
+  | Excel 365 | 21 | 700 |
+  | Excel 365 Escritorio | 4 | 47 |
+  | Word 365 | 6 | 950 |
+  | Word 365 Escritorio | 6 | 208 |
+
+  El Tema 20 sirve sus preguntas desde las cuatro filas de la derecha (1.905 preguntas reales), y las leyes `Excel 2021`/`Word 2021` — que SÍ existen como fila en `laws`, con el nombre correcto — están completamente vacías.
+- **Por qué esto NO es lo mismo que T-556/T-101 (aunque compartan oposición):** aquellas fichas son sobre el Paso 2 (¿el `topic_scope` corresponde a lo que pide el epígrafe DENTRO de la misma ley?) selladas sin pasar por el pipeline real. Aquí el epígrafe está bien verificado y el scope apunta a una **ley equivocada por completo** — ni siquiera es una cuestión de qué artículos, es qué PRODUCTO se enseña. 365 y 2021 no son intercambiables: 365 es suscripción con actualizaciones continuas y funciones que 2021 (licencia perpetua) no tiene — coautoría en tiempo real, cinta distinta en detalles, atajos que cambian. Un opositor que estudia con el banco de 365 puede llevarse a examen respuestas que no valen para 2021.
+- **Por qué no lo cazó nada existente:** `audit-temario-display-drift.cjs` compara título↔campos de display de la MISMA fila de `topics` (p.ej. `descripcion_corta` vs `title`), no epígrafe↔contenido de la ley escopada. `verify-scope-oposicion` excluye a propósito lo editorial (regla correcta para SU pregunta: "¿el scope corresponde a lo que el epígrafe de una ley del BOE pide?" — Office no es una ley del BOE). Ninguno de los dos hace la pregunta "¿la VERSIÓN del producto que nombra el epígrafe es la versión del banco que servimos?".
+- **No lo arreglo yo en esta ficha:** el fix NO es un `quitar`/`añadir` de artículos (no hay pipeline `verify:scope` para esto) — son dos caminos reales, y elegir es criterio de producto:
+  1. **Generar contenido real para `Excel 2021`/`Word 2021`** (0 preguntas hoy) — coste alto, doble auditoría ciega como cualquier generación, pero es lo que el BOE pide literalmente.
+  2. **Decidir que 365 es un sustituto aceptable** (la interfaz general es muy similar y en la práctica muchas oposiciones ya usan bancos "365" con Escritorio/Web para epígrafes que no especifican versión) — pero aquí el epígrafe SÍ especifica versión, así que esto necesitaría una decisión consciente y quizás una nota al usuario, no un silencio.
+- **Alcance:** 1 tema, sirviendo desde 1.905 preguntas del banco equivocado (en términos de versión de producto). No medido cuántos usuarios activos tiene específicamente este tema (la oposición entera tiene 13 usuarios, per T-631).
+- **Relacionadas:** [T-631] (de donde sale la investigación), [T-556]/[T-101] (mismo temario, defecto distinto — Paso 2, no versión de producto).
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
