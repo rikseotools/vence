@@ -47,7 +47,15 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
   await c.connect()
   const { rows } = await c.query(`
     WITH resp AS (
-      SELECT tq.user_id, tq.created_at::date AS d, count(*) AS respuestas
+      -- Bucket por día en EUROPE/MADRID, no en el día de sesión del cliente pg (UTC por
+      -- defecto). increment_daily_questions fija su usage_date con
+      -- (NOW() AT TIME ZONE 'Europe/Madrid')::DATE (a propósito: el reset del cupo es a
+      -- medianoche PENINSULAR, no UTC) — comparar contra un created_at::date en UTC
+      -- desalinea las dos ventanas 1-2h cada noche (CEST = UTC+2) y hace pasar por «fuga»
+      -- respuestas que el servidor cobró correctamente, solo que al día de MAÑANA en
+      -- Madrid. Medido el 06/08: sin este ajuste el canario reubica 1-2 usuarios/día por
+      -- este solo efecto, cerca del límite de ruido (TECHO). T-450.
+      SELECT tq.user_id, (tq.created_at AT TIME ZONE 'Europe/Madrid')::date AS d, count(*) AS respuestas
         FROM test_questions tq
         JOIN user_profiles up ON up.id = tq.user_id
        WHERE up.plan_type = 'free'
@@ -67,8 +75,9 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
               -- arreglar. Lo que decide es si el PERIODO cubre el día de la respuesta.
               -- Caso que lo destapó: un usuario con premium mensual del 25/06 al 25/07 y
               -- 300 respuestas diarias sin cobrar, que es lo correcto: era premium.
-              AND tq.created_at::date BETWEEN us.current_period_start::date
-                                          AND COALESCE(us.current_period_end::date, CURRENT_DATE))
+              AND (tq.created_at AT TIME ZONE 'Europe/Madrid')::date
+                    BETWEEN us.current_period_start::date
+                        AND COALESCE(us.current_period_end::date, CURRENT_DATE))
          -- ── EL TEST RECUPERADO NO ES UNA FUGA (05/08/2026) ───────────────────────────────
          -- Quien prueba la app SIN cuenta y luego se registra recibe su test anónimo adjuntado
          -- a la cuenta nueva. Esas respuestas se persisten TODAS de golpe, ya contestadas, y
@@ -120,9 +129,13 @@ const TECHO = Number(arg('--techo', 3))   // usuarios-día con fuga que se consi
   console.log(`\n   peor día: ${peor} usuario(s) · techo ${TECHO}`)
   if (peor > TECHO) {
     console.error('\n❌ HAY UN CAMINO DE RESPUESTA QUE NO COBRA CUPO.')
-    console.error('   Busca por qué tipo de test entran esas respuestas:')
+    console.error('   Busca por qué tipo de test entran esas respuestas — OJO: filtra por RESPUESTA')
+    console.error('   REAL (user_answer<>\'\'), no por fila: el examen/simulacro PRE-CREA sus filas')
+    console.error('   en blanco al abrirse, y contarlas todas simuló una fuga que no existía (T-450,')
+    console.error('   05/08). Y usa el día en Europe/Madrid, no el de sesión del cliente (::date):')
     console.error("     SELECT t.test_type, count(*) FROM test_questions tq JOIN tests t ON t.id=tq.test_id")
-    console.error("      WHERE tq.user_id='<uuid>' AND tq.created_at::date='<dia>' GROUP BY 1;")
+    console.error("      WHERE tq.user_id='<uuid>' AND tq.user_answer IS NOT NULL AND tq.user_answer<>''")
+    console.error("        AND (tq.created_at AT TIME ZONE 'Europe/Madrid')::date='<dia>' GROUP BY 1;")
     console.error('   Ficha: [T-450] · guardarraíl de código: __tests__/guardrails/dailyQuotaServerSide.test.ts')
     process.exit(2)
   }

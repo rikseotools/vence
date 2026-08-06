@@ -842,6 +842,88 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-595] 🟡 [ABIERTO 05/08] Selección manual de artículos: "Deseleccionar todos" deja un Set vacío que el backend (y el propio fetcher) tratan como "sin filtro" → sirve la ley COMPLETA en vez de excluirla
+
+**De dónde sale.** Analizando el cluster de 4 impugnaciones `otro` de un mismo usuario
+(`17733d5e`, `6c4e43a4`, `5f2213d0`, `7b3dd5e4`, todas del 05/08 entre 19:36-19:40 UTC,
+descripción "ARTICULO NO INCLUIDO EN MI SELECCION" / "ARTÍCULO NO PERTENENCIENTE A MI
+SELECCIÓN", las 4 sobre la Ley 9/2017 de Contratos del Sector Público, arts. 138/143/147/160).
+Las 4 preguntas están verificadas correctas contra el BOE (recall 100%, contenido literal) —
+el defecto NO es de contenido, es de que la pregunta no debería haber salido en absoluto.
+
+**MEDIDO, no aislado — mismo usuario, mismo fallo, sin arreglar durante UN MES:**
+- El mismo usuario ya había impugnado exactamente esto el 09-10/07/2026 (`01fe4928`,
+  `83ed898a`, `c83e5a2b`, todas con la misma descripción literal "Articulo no incluido en mi
+  selección…"). `83ed898a` y `c83e5a2b` se cerraron `resolved` el 11/07 **con
+  `admin_response=null` y `admin_user_id=null`** (mismo `resolved_at` exacto para las dos) —
+  cerradas sin mensaje, probablemente un cierre en lote, así que el usuario nunca recibió
+  explicación ni el problema de fondo se tocó.
+- Otro usuario distinto (Alfonso, `f098155c`, 25/07) reportó la misma familia de síntoma
+  ("No podéis meter preguntas que no haya seleccionado") — ese caso es el que aparece
+  documentado en el código como "incidente Alfonso" y motivó la DEGRADACIÓN que ya existe
+  (oposición sin `topic_scope` → servir selección/ley completa en vez de 0 preguntas). Esa
+  degradación es un mecanismo DISTINTO y correcto; el bug de este ticket es otro, sin tocar.
+- Conclusión: **2 usuarios, 6 impugnaciones con la misma descripción textual, repartidas en
+  un mes**, con dos de ellas cerradas sin arreglo ni explicación real.
+
+**El bug (verificado leyendo el código, no solo el síntoma).** El modal "Filtrar Artículos"
+del configurador (`components/TestConfigurator.tsx`) tiene un botón **"❌ Deseleccionar
+todos"** (`deselectAllArticlesForLaw`, línea ~1119) que deja la ley en
+`selectedArticlesByLaw` con un **`Set` VACÍO** — no la quita del mapa. El usuario que hace
+esto está diciendo "cero artículos de esta ley", pero en TRES sitios el código no distinguía
+"la clave existe y está vacía" de "la clave no existe (el usuario nunca tocó esta ley)":
+
+| Capa | Fichero | Antes | Consecuencia |
+|---|---|---|---|
+| Fetcher → API | `lib/testFetchers.ts` (`fetchQuestionsByTopicScope`, `fetchQuestionsViaAPI`) | `if (arts.length > 0)` descartaba la ley del payload | El backend ni siquiera veía que el usuario había tocado esa ley |
+| Test real (modo tema + modo ley-only) | `lib/api/filtered-questions/queries.ts` | `if (selectedArticles && selectedArticles.length > 0)` — con `[]` caía al `return mapping` sin filtrar | Servía el scope/ley **COMPLETA** |
+| Contador (modo tema + modo ley-only) | `lib/api/test-config/queries.ts` (`estimateAvailableQuestions`/`estimateByLaws`) | mismo patrón | El número que ve el usuario ANTES de arrancar el test **tampoco** delataba el problema (mostraba el conteo de la ley completa, no 0) |
+
+Y en `components/TestConfigurator.tsx` (`buildEstimateParams`), el payload de la
+ESTIMACIÓN ni siquiera incluía la ley con Set vacío (`if (articlesSet.size > 0)`), así que
+aunque el backend se arreglara, el contador seguía mintiendo si no se tocaba también el
+cliente.
+
+**Arreglo aplicado (los 4 puntos, para que el criterio no diverja entre ellos — la lección
+de [T-130]/[T-551]):** clave AUSENTE del objeto = sin filtro (ley completa, comportamiento
+sin cambios); clave PRESENTE con array vacío = selección explícita de CERO artículos → esa
+ley no aporta preguntas.
+- `lib/testFetchers.ts`: ya no se descarta la ley con colección vacía al construir el
+  payload (2 sitios).
+- `lib/api/filtered-questions/queries.ts`: `Array.isArray(selectedArticles)` en vez de
+  `.length > 0` (modo tema, 2 ocurrencias — incluye `countFilteredQuestions`); en modo
+  ley-only, nueva variable `hasExplicitArticleSelection` que decide la rama en vez de
+  `specificArticles.length > 0`.
+- `lib/api/test-config/queries.ts`: `estimateAvailableQuestions` (modo tema) con el mismo
+  `Array.isArray`; `estimateByLaws` (modo ley-only) con un corte temprano (`continue`) que
+  pone `byLaw[ley] = 0` **sin consultar la BD** para esa ley — es una respuesta que ya se
+  conoce de antemano.
+- `components/TestConfigurator.tsx` (`buildEstimateParams`): ya no se omiten las leyes con
+  Set vacío del payload de estimación.
+
+**Capas.** 9 tests nuevos, dos niveles:
+- `__tests__/api/test-config/queries.test.ts` — 2 tests contra las funciones REALES
+  (`estimateAvailableQuestions`/`estimateByLaws`) con DB mockeada; **confirmado que fallan
+  sin el fix** (revertido temporalmente `lib/api/test-config/queries.ts` y re-corridos).
+- `__tests__/api/filtered-questions/emptyArticleSelectionExcludesLaw.test.ts` — 7 tests de
+  réplica-pura (mismo patrón que `lawOnlyModeNoScope.test.ts`) cubriendo los 4 puntos:
+  modo tema, modo ley-only, y las dos versiones del fetcher.
+- Suites completas re-corridas sin regresiones: `filtered-questions` + `test-config` +
+  `testFetchers` + `estimateByLawsParidad` → **535 tests, 0 fallos**.
+- `npx tsc --noEmit` completo en verde (con `NODE_OPTIONS=--max-old-space-size=6144`; sin
+  eso el proceso hace OOM en esta máquina — no es un problema de mi cambio).
+
+**Estado:** código completo, testeado y commiteado en mi rama, empujado a `main`.
+**Pendiente:** verificar en producción tras el próximo deploy de frontend — probar en
+`/leyes/[law]` o `/test/tema/[n]` con selección multi-ley, deseleccionar todos los
+artículos de una ley y comprobar que el contador Y el test resultante dan 0 preguntas de
+esa ley (no la ley completa).
+
+**Sobre las 4 impugnaciones de origen:** contenido de las 4 preguntas verificado correcto
+(recall 100% contra el artículo del BOE — no hay nada que corregir en las preguntas). El
+borrador de respuesta para cada una queda en el embudo; no se envía nada hasta que el fix
+esté desplegado y verificado (§ "no prometer en absoluto" del manual de impugnaciones).
+
 ### [T-581] 🟡 [ABIERTO 05/08] Herramientas de impugnaciones/feedback revientan con el rol de lectura de la flota (permission denied sin capturar)
 
 **QUÉ PASA.** `scripts/impugnaciones/revisar-impugnacion.cjs`, `scripts/impugnaciones/cola.cjs`
@@ -4607,6 +4689,22 @@ incluida).
 - **El 05/08 sale a cero, pero NO es prueba de nada todavía:** a las 08:44 UTC solo **un** usuario free superaba las 25 respuestas en todo el día. Un cero sobre un usuario no distingue «arreglado» de «aún no ha pasado nada». Hay 1.043 respuestas de 62 usuarios free hoy, así que el tráfico existe; lo que falta es que alguien llegue al tope.
 - **⚠️ Dos criterios que NO coinciden, y hay que decidir cuál manda antes de volver a medir:** `canary:cupo-vs-respuestas` marca el 04/08 con **2 usuarios / 106 respuestas**, y el corte directo («≥25 respuestas y contador <25») da **6 usuarios**. Los dos no pueden ser la verdad. Mientras no se sepa cuál mide lo que importa, el canario puede estar **dando por buena** una fuga que existe — que es peor que no tenerlo. Reconciliar los dos criterios es el paso 0 del próximo intento.
 - **Siguiente paso, en este orden:** (1) reconciliar canario vs corte directo; (2) coger `9f9d60c1` (148 respuestas, contador 4, 18:10 UTC) y seguir sus llamadas a `answer-and-save` como se hizo con `2a905207` — es el caso más limpio y es de **examen**, no de práctica, así que el quinto camino no es el 403 de dispositivos que se sospechaba; (3) solo entonces decidir el umbral de la regla de `cupo_safety_net`.
+- **✅ RECONCILIADO EL 06/08 (sesión flota w1) — Y LAS «CUATRO FUGAS POSTERIORES» DEL 05/08 ERAN LA MISMA TRAMPA QUE ESTA FICHA YA HABÍA DESCRITO PARA `c07c2079` EL 02/08, REPETIDA.** Paso 0 primero: el canario y el «corte directo» divergen por **dos motivos**, ninguno es un sexto camino:
+  1. **Gotcha de zona horaria en la MEDICIÓN, no en el cobro.** `increment_daily_questions` fija `usage_date` con `(NOW() AT TIME ZONE 'Europe/Madrid')::DATE` (a propósito — el reset del cupo es a medianoche peninsular). El canario comparaba contra `tq.created_at::date`, que en la sesión del cliente `pg` es UTC. Con Madrid en CEST (UTC+2) en agosto, toda respuesta entre las 22:00 y las 23:59 UTC se cobra al día de MAÑANA en Madrid y el canario la seguía contando en el día de HOY — reubica 1-2 usuarios/día cerca del TECHO. **Arreglado en el propio canario** (`scripts/canary-cupo-vs-respuestas.cjs`, bucket ahora en `AT TIME ZONE 'Europe/Madrid'`, igual que la exclusión de suscripción).
+  2. **El resto de la diferencia es la HOLGURA, y es a propósito.** El «corte directo» (`>=25 respuestas` y `contador<25`, sin margen) también marca al usuario que perdió 1-4 respuestas por el fail-silent de `incrementDailyCount` (documentado arriba: mejor regalar la pregunta que bloquear). Eso no es un camino sin cobrar, es el goteo que la propia ficha ya decidió tolerar. **El canario manda** para juzgar «¿hay un camino estructural sin cobrar?»: es exactamente para lo que se calibró su margen.
+  - **Y la lista de «cuatro fugas posteriores al 04/08 09:39 UTC» era un FALSO POSITIVO de medición, no una fuga real.** La consulta que las generó contó FILAS de `test_questions` (o no filtró bien por `user_answer<>''`), y el examen **pre-crea sus filas en blanco al abrirse** — exactamente el error que esta misma ficha ya había cazado y escrito el 02/08 para el caso `c07c2079` (*«contar FILAS de test_questions engaña… hay que contar las que tienen user_answer de verdad»*). Se repitió tres días después con los cuatro casos de examen. Re-medido el 06/08 contando solo `user_answer IS NOT NULL AND <> ''`:
+    | usuario | filas totales (lo que se contó el 05/08) | respuestas REALES | contador | veredicto |
+    |---|---|---|---|---|
+    | `9f9d60c1` | 148 (3 exámenes abiertos: 48+35+65 filas) | **4** | 4 | **cuadra exacto — no hay fuga** |
+    | `36473806` | 64 | **13** | 13 | **cuadra exacto — no hay fuga** |
+    | `0f7a5b23` | 82 | **3** (1+2 en dos exámenes) | 1 | gap de 2 — dentro de la HOLGURA, no es fuga |
+    | `03f4e640` | 55 (4 exámenes SIN NINGUNA respuesta real ese día) | **0** | 0 (sin fila, correcto: nada que cobrar) | **no hay fuga** — al día siguiente (25 reales) el contador da 25 exacto |
+  - `d30088c6` (50, contador 0, practice, 17:18 UTC) SÍ es el caso ya diagnosticado el 05/08: cuenta creada a las 17:18:03, test anónimo de 50 preguntas adjuntado 7 s después. No es nuevo.
+  - **Re-barrido completo con la metodología correcta** (respuestas reales · día en Europe/Madrid · excluidas suscripción-en-la-fecha y test-recuperado), estrictamente `created_at > '2026-08-04 09:39:00+00'` (el instante del deploy del cuarto camino): **CERO usuarios free con un hueco real entre lo que respondió y lo que se le cobró.** Los únicos `respuestas > 25` que quedan tienen el contador en **25 exacto** — el usuario siguió respondiendo tras el tope y el cobro SATURÓ correctamente, que es el comportamiento diseñado, no una fuga.
+  - **`npm run canary:cupo-vs-respuestas` confirma, ya con el fix de TZ:** `--dias 2` → `ningún usuario-día con fuga` (verde); `--dias 3` (incluye el 04/08, día del deploy) → 1 usuario, y es `2a905207` (56 respuestas, 04:23 UTC), **ANTERIOR** al deploy de las 09:39 UTC y ya diagnosticado.
+  - **CONCLUSIÓN: el arreglo del 04/08 (los cuatro caminos) SÍ cerró la fuga. No hay un quinto camino que arreglar.** La sospecha del 05/08 nació de no aplicar la corrección metodológica que esta misma ficha ya había escrito 3 días antes — la lección no es nueva, es que hay que RELEERSE antes de medir, no solo escribir la lección.
+  - **`cupo_safety_net` (T-450, camino 4 del 04/08) — el umbral SIGUE sin poder fijarse, y sigue siendo correcto no inventarlo:** desde que existe el evento solo hay **9 disparos en 2 días** (04-05/08; 5 y 4 respectivamente, `gapFilled` medio ~9, máximo 35). Es demasiado poco para calibrar contra ruido real (todas las reglas con umbral propio de este repo se calibran contra una distribución medida, no a ojo). Mientras tanto NO está callado: al ser `warn` entra en la tarjeta «Todas las señales (24h)» del panel de salud. Revisar de nuevo con ~2 semanas de datos (¿es exclusivamente el goteo esperado de colas que no drenan, o hay un patrón por endpoint/dispositivo que merezca regla propia?).
+  - **Capas de esta vuelta:** fix del gotcha de TZ en el canario mismo (con comentario explicando el porqué, igual que sus hermanos) + la query de ayuda que imprime al fallar corregida para no volver a inducir el mismo error de conteo. No hizo falta tocar código de producción: el cobro de los cuatro caminos ya estaba bien.
 ### [T-448] 🟠 [ABIERTO 01/08] Las 184 suscripciones que se están apagando solas no reciben NINGÚN aviso: se quedan en free sin enterarse
 
 - **ORIGEN.** Manuel (01/08): *«habría que crearles un email personalizado 3 días antes… diciendo que va a terminar su suscripción, que para mantener el mismo precio debe entrar y resuscribirse»*. Salió mientras se verificaba [T-363], repasando el camino entero de «recuperar mi precio».
