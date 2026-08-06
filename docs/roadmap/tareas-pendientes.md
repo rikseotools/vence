@@ -1081,6 +1081,87 @@ sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
 - **EL ARREGLO DE RAÍZ:** una **clave de despliegue de solo escritura** para el repo en el VPS, para que `flota -- rescatar` se baste solo. Mientras no la tenga, esto se repite cada día — hoy 11 ramas, y crece con cada trabajador que se añada. Es exactamente el argumento por el que **no** conviene añadir más trabajadores todavía: multiplicarían el lado que ya va sobrado y alimentarían más rápido una cola que sigue drenando a mano.
 - **Alternativa si no se quiere una clave en la máquina:** que el rescate lo dispare el portátil (que ya tiene las dos mitades) desde el propio `flota.cjs`, en vez de intentarlo desde el VPS. Es menos automático pero no mete credenciales nuevas donde hoy no las hay — decisión de Manuel.
 - **Relacionadas:** [T-486] (la flota, donde está anotado el hueco), [T-577] (trabajo destruido entre sesiones: mismo terreno), [T-612] (credenciales en los worktrees de trabajador), [T-626] (el bucle sin rastro, encontrado en la misma investigación).
+### [T-630] 🟡 [ABIERTO 06/08] El enunciado cita un apartado concreto y la clave responde a OTRO del mismo artículo: 25 sospechosas medidas, sin calibrar
+
+**De dónde sale.** La impugnación `f42b1b25` de **maria jose Martinez Lopez**, que tenía razón:
+*«el artículo 6 habla de que los apoderamientos se pueden hacer presencial o electrónicamente, pero
+no es en el punto 7 donde lo indica, sino en el 1»*. Verificado literal contra el BOE: el art. 6.7 de
+la Ley 39/2015 dice que las solicitudes **«podrán dirigirse a cualquier registro»**, y de presentación
+electrónica no dice nada. Ninguna de las cuatro opciones respondía al apartado citado → la pregunta
+salió de circulación (`needs_human`, `admin_marked_problem`).
+
+**Al medir el patrón apareció un SEGUNDO caso el mismo artículo**, `f1a38645`: enunciado *«¿Qué
+establece el artículo 6.2…?»* con la clave *«cada Administración creará y mantendrá su propio
+registro»*, que es lo que dice el **6.1** (el 6.2 va de interoperabilidad). Ese ya está **corregido**
+(`corregir-enunciado.cjs`, 6.2 → 6.1, sin tocar la clave, con evento).
+
+**Por qué es una familia y no dos casos sueltos:** es el hermano SUB-ARTÍCULO de
+[`vinculoArticuloVecino`](../../lib/health/vinculoArticuloVecino.cjs) — allí la pregunta cuelga del
+artículo equivocado teniendo un vecino que sí responde; aquí el artículo es el CORRECTO y lo que no
+casa es el **apartado que el enunciado cita**. El vínculo está bien, así que ningún detector actual
+puede verlo.
+
+#### MEDIDO el 06/08 (muestra de 4.000 preguntas activas que citan «artículo N.M»)
+
+```
+preguntas que citan apartado:                                     4.000
+  descartadas (meta-opción / negación / apartado inexistente):    1.306
+  MEDIBLES:                                                       2.694
+  🔴 clave fuera del apartado citado pero dentro del artículo:        25   (0,9 %)
+```
+
+Reutiliza `recall()` y `esExaminable()` del detector hermano — **no se escribió un tercer recall**
+(regla de [T-130]). Medición desechable en `scratchpad/medir-apartado-citado.cjs`; los 25 casos, en
+`scratchpad/apartado-citado.json`.
+
+> ⚠️ **EL 0,9 % ES UN SUELO RUIDOSO, NO UN VEREDICTO — y por eso esto es una ficha y no un detector.**
+> En la propia muestra ya se ve una clase de falso positivo: los artículos con **listas numeradas**
+> (el Reglamento del Congreso enumera comisiones «5.», «6.»…) engañan al troceador, que las confunde
+> con apartados. Tres de los 25 son de ese artículo. Es el mismo modo de fallo que el `\s+` que
+> llegaba a Postgres como `s+`: la medida sale de la herramienta, no del banco.
+
+#### Lo que falta
+
+1. **Calibrar leyendo**, no ajustando el umbral: abrir los 25 a mano y separar defecto real de
+   artefacto del troceador. Sin eso no se sabe si el detector valdría.
+2. **Arreglar el troceo de apartados** para que distinga un apartado («2. Los registros…») de un
+   ítem de lista dentro de un apartado. Ahí está la mitad del ruido.
+3. **Decidir la puerta:** si tras calibrar la precisión es baja, va **bajo demanda** como sus dos
+   hermanos (`audit:vinculo-vecino`, `audit:instrumento-derivado`), **no al badge** — meter una
+   familia imprecisa en el badge es como se mata un badge.
+4. Solo entonces, núcleo puro + tests + registro en `toolRegistry`.
+
+**Relacionadas:** [T-458]/`instrumentoDerivado` y `vinculoArticuloVecino` (los dos hermanos, con sus
+exclusiones ya calibradas y sus primitivas reutilizadas aquí), [T-130] (no escribir la tercera copia
+de la misma medida).
+
+#### 06/08 — IMPLEMENTADO: la segunda fase, sin credenciales nuevas en el VPS
+
+**Decisión tomada (opción b):** no se mete una clave de git en la máquina. El rescate sigue
+corriendo allí —identifica el trabajo, commitea lo sucio, calcula el nombre de destino— y el
+**portátil remata**, que es el único sitio con las DOS mitades: SSH a la máquina y credenciales
+del repo. Es exactamente lo que se hizo a mano esta noche, ahora automático.
+
+- **El namer sigue siendo UNO.** La orden emite `ORIGEN=<rama>|<destino>` y el portátil empuja con
+  **ese** nombre. Recalcularlo en el portátil habría sido un segundo generador del mismo nombre, y
+  divergen ([T-130]). Por eso se añade el par en vez de exportar la fórmula.
+- **Aditivo, no rompe a nadie:** `RAMA=` y `SALVADO=` siguen igual, que es lo que ya parseaban
+  `flota.cjs` y la simulación. Verificado con `npm run sim:rescate-flota` — **0 fallos**, incluidos
+  los casos de rama divergida y de no pisar trabajo ajeno.
+- **Solo donde hace falta:** `necesitaSegundaFase` no dispara nunca sobre una máquina local (allí
+  el push del propio rescate es el bueno; repetirlo sería un segundo camino al mismo sitio) ni
+  cuando el rescate ya empujó (`SALVADO=0`). Si el rescate se cortó antes de contar, **sí** remata:
+  repetir un push idempotente cuesta cero y no hacerlo deja el trabajo en una sola máquina.
+- **El escape del push-guard va DENTRO, con motivo.** Esas ramas traen commits de tareas que quien
+  rescata no tiene reclamadas, así que el guard bloquea con razón. El motivo queda registrado en el
+  bus de fricción, que es donde se ve si un guardarraíl se está rodeando de más.
+- **Capas:** `__tests__/flota/rescateSegundaFase.test.ts` (12 casos: los pares, `SALVADO` sin
+  confirmar → `null` y no 0, local vs remota, y que el contrato viejo sigue intacto) + la simulación
+  e2e que ya existía. Registrado en `toolRegistry` como `flota_rescate`.
+- **⏭️ QUEDA la prueba en vivo, y NO se hizo a propósito:** los cuatro trabajadores estaban
+  ejecutando, y **el rescate commitea el árbol sucio** — se lo habría hecho a mitad de tarea.
+  Hay que correrlo con ellos parados: montar una rama de prueba con un commit en el VPS,
+  `npm run flota -- rescatar w1`, ver la segunda fase empujar, y borrar la rama de prueba.
 
 ### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
 
@@ -6362,6 +6443,33 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
   ninguno, porque el panel dice que estás protegido.
 
 ## Hechas
+
+### [T-629] ✅ [HECHA 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
+
+- **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
+- **ORIGEN.** Manuel preguntó cuál es el cuello de botella y si el sistema se puede mejorar. Medido por etapas el 06/08:
+
+  | etapa | nº | horas medias |
+  |---|---|---|
+  | 1 · sin coger (pool) | 203 | 166 h |
+  | 2 · en curso | 9 | 7 h |
+  | **3 · entregada, sin revisar** | **0** | — |
+  | 4 · revisada, sin mergear | 27 | 9 h |
+  | 5 · en `main`, esperando deploy | 10 | **69 h** |
+  | 6 · cerrada sin archivar | 3 | 111 h |
+
+  **La etapa 3 a cero es la prueba de que esto se arregla:** ayer era EL cuello (23 paradas, 15 h de media, la más vieja 41 h) y [T-486] la vació poniendo a los trabajadores a revisarse entre ellos.
+- **EL PROBLEMA, y no es cosmético.** La etapa 4 se presenta entera como «esperando tu decisión», y **no lo está**. Medido el mismo día: de 24, **6 no esperaban ninguna decisión** — su nota decía *«CÓDIGO COMPLETO… PERO NO SE HA PODIDO PUSHEAR»* ([T-628]). El panel pedía criterio sobre un fallo de infraestructura. Es el MISMO patrón que T-486 arregló un escalón más abajo: **una cola que parece esperar a una persona y en realidad espera a una máquina**. Mientras estén mezcladas, la cola no se puede vaciar por partes y se mira entera o no se mira.
+- **⚠️ EL CRITERIO OBVIO ES FALSO, y está medido antes de escribir nada.** Clasificar leyendo `review_note` (buscar «rama», «commit», «pusheada»…) sobre las 27 da **5 problemas · 7 falta mergear · 0 ya en main · 15 SIN CLASIFICAR**. Quince de veintisiete es no tener criterio. Es la lección que este repo ya aprendió tres veces —`snooze_until`, `due_at`, `review_requested_at`—: **una condición en prosa no es una condición**.
+- **EL DISEÑO QUE SÍ, derivando de HECHOS y no de texto** (mismo principio que la puerta del `done` de [T-392], que deriva «superficie servida» de los imports y no de un comentario):
+  - **`solo_mergear`** — existe en `origin` una rama que declara esa tarea con contenido no fusionado (`git cherry origin/main <rama>`). Es comprobable, no opinable.
+  - **`solo_cerrar`** — sus commits ya están en `main` por contenido y solo falta `done`. Ojo con la trampa medida hoy: **`git cherry` compara PARCHES**, así que una rama reescrita sigue marcando «único» aunque su contenido esté dentro (pasó tres veces en el rescate de `flota/w3`). El criterio tiene que ser el contenido, no el sha.
+  - **`criterio`** — `review_verdict='problemas'`, o toca superficie servida, o no hay rama que mirar. Aquí sí decide una persona.
+- **DÓNDE ENGANCHA (nada nuevo):** el mismo sitio que ya imprime «⚖️ N YA REVISADA(S)» en `npm run flota` y en `backlog.cjs list`. Núcleo puro compartido por los dos, como `lib/backlog/revision.cjs` — que es donde vive `esperaRevision`/`esperaDecision` y donde debe vivir esto, no en un módulo aparte.
+- **EL VALOR ES QUE SE PUEDA VACIAR POR PARTES:** «solo mergear» lo puede hacer una sesión seguida, sin pensar en cada una; «criterio» son las que de verdad hay que leer. Hoy son 27 indistinguibles y por eso llevan 9 h paradas.
+- **CAPAS al implementarlo:** núcleo puro con los tres cubos + los casos que hoy fallan clavados (las 6 de [T-628] tienen que salir `solo_mergear`, no `criterio`); y **medir la clasificación contra las 27 reales antes de darla por buena** — si vuelve a dejar un tercio sin clasificar, el criterio no vale, igual que el de prosa.
+- **NO automatizar el merge.** Juntar ramas saca choques que ninguna rama ve por separado — medido tres veces el 06/08 (un guardarraíl de paridad roto, una colisión de migraciones, un puntero a un fichero borrado). Esto solo separa la cola; mergear sigue siendo de una persona.
+- **Relacionadas:** [T-486] (vació la etapa 3 con este mismo patrón), [T-628] (las 6 que destaparon la mezcla), [T-619] (la etapa 5, el otro cuello y el más viejo), [T-392] (derivar de hechos y no de prosa).
 
 ### [T-624] ✅ [HECHA 06/08] La credencial de lectura de negocio se resolvía por su cuenta en 4 scripts: unificada en un punto y cerrada la puerta a un quinto
 

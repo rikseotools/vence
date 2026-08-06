@@ -448,10 +448,29 @@ async function main() {
       const sinMirar = entregas.filter((e) => REV.esperaRevision(e))
       const conVeredicto = entregas.filter((e) => REV.esperaDecision(e))
       if (conVeredicto.length) {
+        // ── SEPARADAS POR CLASE DE ESPERA (T-629) ───────────────────────────────────────────
+        // Esta cola se presentaba entera como «falta tu decisión» y NO lo estaba: medido el
+        // 06/08, 6 de 24 solo esperaban una tubería de git ([T-628]). Mezcladas, la cola se lee
+        // entera o no se lee; separadas, la parte mecánica se vacía de una sentada.
+        const RAMAS = require(path.join(REPO, 'lib', 'backlog', 'ramasDeTarea.cjs'))
+        const idx = RAMAS.indiceDeRamas()
+        const porClase = { criterio: [], solo_mergear: [], solo_cerrar: [] }
+        for (const e of conVeredicto) {
+          porClase[REV.claseDeEspera(e, RAMAS.hechosDeGit(e.id, idx)).clase].push(e)
+        }
         const malas = conVeredicto.filter((e) => REV.devueltaConProblemas(e)).length
-        console.log(`\n⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto y falta tu decisión` +
-                    (malas ? ` (${malas} con problemas)` : ''))
-        for (const e of conVeredicto) console.log(REV.lineaRevisada(e))
+        console.log(`\n⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto${malas ? ` (${malas} con problemas)` : ''}`)
+        if (!idx) console.log('   ⚠️  sin git a mano: no se han podido separar, van todas como «criterio»')
+        const titulos = {
+          criterio: '🧠 PIDEN CRITERIO (léelas)',
+          solo_mergear: '🔀 SOLO FALTA MERGEAR (mecánico: hay rama sin fusionar que las declara)',
+          solo_cerrar: '✅ SOLO FALTA CERRAR (ninguna rama sin fusionar las declara)',
+        }
+        for (const clase of ['criterio', 'solo_mergear', 'solo_cerrar']) {
+          if (!porClase[clase].length) continue
+          console.log(`\n   ${titulos[clase]} — ${porClase[clase].length}`)
+          for (const e of porClase[clase]) console.log(REV.lineaRevisada(e))
+        }
       }
       if (sinMirar.length) {
         console.log(`\n🙋 ${sinMirar.length} ENTREGADA(S) esperando que las revises:`)
@@ -737,7 +756,35 @@ async function main() {
           console.log(`   ⏳ ${w}: está commiteando ahora mismo — no se le toca`); continue
         }
         if (/NADA/.test(salida)) { console.log(`   ✅ ${w}: nada que salvar`); continue }
-        const ok = /SALVADO=0/.test(salida)
+        let ok = /SALVADO=0/.test(salida)
+        // ── SEGUNDA FASE: rematar desde el PORTÁTIL lo que la máquina no pudo empujar (T-628) ──
+        // En el VPS el push del rescate falla SIEMPRE —los trabajadores no tienen credenciales de
+        // git— así que hasta hoy el rescate identificaba el trabajo y lo dejaba donde estaba.
+        // Medido el 06/08: 11 ramas atrapadas, una con un bug de producción, y 6 tareas que el
+        // panel presentaba como «esperando tu decisión» cuando solo esperaban esto.
+        // El portátil es el único sitio con las DOS mitades (SSH a la máquina + credenciales del
+        // repo). Se trae las refs por SSH y las empuja CON EL NOMBRE QUE YA CALCULÓ EL RESCATE:
+        // recalcularlo aquí sería un segundo generador del mismo nombre, y divergen (T-130).
+        const parsed = RESC.parsearRescate(salida)
+        const segunda = RESC.necesitaSegundaFase(MAQ.maquinaDe(w), parsed)
+        if (segunda.hace_falta) {
+          console.log(`   🚚 ${w}: la máquina no pudo empujar (${segunda.motivo}) — se remata desde aquí`)
+          const m2 = MAQ.maquinaDe(w)
+          const remoto = `ssh://${m2.usuario}@${m2.host}${String(arbol).replace(/^~flota/, '/home/flota')}`
+          const refspecs = parsed.pares.map((p) => `${p.origen}:refs/heads/${p.destino}`)
+          try {
+            // Se traen a un espacio propio y se empujan. `--no-verify` NO: el push-guard tiene
+            // que poder opinar, y su escape se declara con motivo (queda contado en la fricción).
+            const aqui = (orden) => execFileSync('bash', ['-c', orden], { cwd: REPO, encoding: 'utf8', timeout: 300000 })
+            aqui(`git fetch ${citar(remoto)} ${parsed.pares.map((p) => citar(`${p.origen}:refs/remotes/rescate-vps/${p.destino}`)).join(' ')}`)
+            const motivo = `rescate de ${w} (T-628): trabajo commiteado en una máquina sin credenciales de git; va a rescate/*, no a main`
+            aqui(`BACKLOG_GUARD_SKIP=${citar(motivo)} git push origin ${refspecs.map((r) => citar(r)).join(' ')}`)
+            ok = true
+            console.log(`   ✅ ${w}: ${parsed.pares.length} rama(s) empujada(s) desde el portátil`)
+          } catch (e) {
+            console.log(`   ❌ ${w}: la segunda fase falló — ${String((e && e.message) || e).slice(0, 120)}`)
+          }
+        }
         // Un trabajador puede tener trabajo atrapado en VARIAS ramas a la vez (una por tarea
         // entregada), así que se listan todas: quedarse con la primera escondía las demás.
         const ramas = [...salida.matchAll(/^RAMA=(.+)$/gm)].map((m) => m[1].trim())
