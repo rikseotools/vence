@@ -91,7 +91,17 @@ function main() {
   for (const p of aCorrer) {
     console.log(`🔎 typecheck [${p.nombre}] (${p.motivo})… ${p.coste}.`)
     const t0 = Date.now()
-    const r = spawnSync('npm', ['run', 'typecheck'], { cwd: p.cwd, stdio: 'inherit' })
+    // El heap por defecto de V8 (~2GB) no basta para `tsc --noEmit` sobre este repo (185 tablas
+    // de schema, cientos de `TopicContentView.tsx` casi duplicados por oposición) y revienta con
+    // "JavaScript heap out of memory" — verificado el 06/08 corriendo el MISMO `tsc --noEmit` a
+    // mano con más heap: 0 errores de tipos, el fallo era solo memoria. Sin este flag el guard
+    // bloqueaba TODO push que tocara "código" (T-486, cualquier trabajador de la flota en una
+    // máquina de 7-8GB compartida), aunque el código en sí compilase limpio.
+    const r = spawnSync('npm', ['run', 'typecheck'], {
+      cwd: p.cwd,
+      stdio: 'inherit',
+      env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim() },
+    })
     const seg = ((Date.now() - t0) / 1000).toFixed(0)
 
     if (r.error) {
