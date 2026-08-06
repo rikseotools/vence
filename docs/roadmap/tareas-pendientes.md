@@ -958,6 +958,43 @@ resolver su estado — el espejo de la regla que [T-486] puso para `review_reque
 inflaba el recuento a 427). Solo una es accionable: `03298846` (Marta, hace 14 días) preguntando si
 Ctrl+Mayús+A varía según la versión de Word. Las otras dos son un agradecimiento (cierre silencioso)
 y una de hace 4 meses (no se reenvía).
+### [T-616] 🟡 [ABIERTO 06/08/2026] El fallback por CCAA de `assign-seguimiento-urls` no casaba nunca: las etiquetas traen el sufijo del boletín
+
+**Qué pasaba.** Tras catalogar descubrimientos del radar, la norma es que ninguna fila salga sin
+`seguimiento_url` (o el radar no la vigila). El script tenía dos estrategias: **donante** por
+organismo y **fallback por CCAA**. La segunda se consultaba con `CCAA_FALLBACK[t.ccaa]`, con
+`t.ccaa` tomado **crudo** de la señal que descubrió la fila — pero `regional_scan` emite la CCAA
+**con el boletín pegado**: `'Castilla y León (BOCYL)'`, `'C. Valenciana (DOGV)'`, `'Canarias (BOC)'`,
+`'Navarra (BON)'`. Las claves del mapa estaban desnudas, así que **no casaba ni una**.
+
+**Medido el 06/08/2026** sobre las catalogadas sin fuente: `asignadas por donante: 0 | por CCAA: 0 |
+sin match: 377`. El fallback llevaba mudo desde que los boletines autonómicos empezaron a emitir
+convocatorias (16/07/2026), que es de donde viene hoy **la mayoría** de lo que se cataloga: el
+propio éxito del sensor apagó su paso siguiente. Tras el arreglo: **17 asignadas por CCAA**.
+
+**Arreglo.** Núcleo puro `lib/convocatoria/ccaaFallback.cjs` (`normalizeCcaaKey`,
+`urlFallbackPorCcaa`), consumido por el script — el mapa deja de ser un objeto suelto cuyo acierto
+depende de que dos sistemas escriban la etiqueta igual. Normaliza el sufijo de boletín, acentos y
+puntuación, y acepta los **sinónimos** con que cada capa nombra la misma comunidad (`Comunitat
+Valenciana`, `Euskadi`, `Principado de Asturias`…). Conserva el **segundo espacio de claves** del
+PAG, que identifica Ceuta y Melilla por código numérico (`'51'`/`'52'`) y no por nombre.
+17 tests en `__tests__/lib/convocatoria/ccaaFallback.test.js`.
+
+**Lo que NO se hizo, a propósito.** Se probaron seis portales nuevos y solo **uno** sirve contenido
+con las cabeceras del cron (País Vasco). `gencat.cat/ocupacio-publica`, `empleopublico.carm.es` y
+`asturias.es/empleo-publico` devuelven `fetch_error`; Baleares y Extremadura ni se midieron. **No se
+apuntan**: el guardarraíl de vigilabilidad ya las rechazaría, pero un mapa se lee como *«esta CCAA
+está cubierta»* y una fuente que el fetcher no sabe leer es un hueco con nombre. Hay un test que
+exige que sigan devolviendo `null`.
+
+**Falta (cola real, no bloqueo).** Cataluña, Murcia y Asturias siguen sin portal utilizable → sus
+catalogadas salen en «sin match», que es el estado honesto. Para darles uno hay que encontrar una
+URL servida en HTML y comprobarla con `scripts/seguimiento/repuntar-url.cjs`, nunca elegirla a ojo.
+Quedan **360 catalogadas sin fuente**, la mayoría sin señal enlazada (filas viejas sin CCAA que
+deducir): eso es otro frente, no éste.
+
+Salió triando las señales OEP del 06/08/2026 (41 señales), al correr el paso obligatorio de
+asignación de fuentes que el manual manda tras cada tanda de catalogación.
 
 ### [T-611] 🟡 [ABIERTO 06/08] Los 131 `TopicContentView` son 131 copias del mismo componente: unificarlas y cerrar el bucle temario→test→artículo que reportó Ángela
 
