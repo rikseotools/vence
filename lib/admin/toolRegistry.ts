@@ -2265,6 +2265,30 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'usuarios) — aunque lo que de verdad protege es la credencial, no el texto. **Antes de cada ' +
       'encargo pone su clon al día y comprueba que no esté ya trabajando** (ver `flota_clon_al_dia`).',
   },
+  flota_rescate: {
+    titulo: 'Sacar de la máquina de un trabajador el trabajo que solo existe ahí (y empujarlo aunque él no pueda)',
+    ruta: 'lib/flota/rescate.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run flota -- rescatar [w]`. La orden es puramente ADITIVA (nunca `reset`, `clean`, ' +
+      '`stash` ni push forzado) y mira TODAS las ramas, no `HEAD`: un trabajador entrega en una ' +
+      'rama por tarea y luego vuelve a `main`, así que lo entregado nunca es `HEAD` — mirar ahí ' +
+      'daba «nada que salvar» con 22 commits atrapados (05/08). La ref de destino lleva el sha ' +
+      'dentro, así que rescatar dos veces escribe la MISMA ref: idempotente sin comprobar nada. ' +
+      '**SEGUNDA FASE (T-628):** en el VPS el push del propio rescate falla SIEMPRE —los ' +
+      'trabajadores no tienen credenciales de git— así que el trabajo quedaba identificado y ' +
+      'quieto (medido el 06/08: 11 ramas atrapadas, una con un bug de producción, y 6 tareas que ' +
+      'el panel presentaba como «esperando tu decisión» cuando solo esperaban esto). Ahora el ' +
+      'rescate emite `ORIGEN=<rama>|<destino>` y el PORTÁTIL —único sitio con SSH a la máquina Y ' +
+      'credenciales del repo— se trae las refs y las empuja **con el nombre que ya calculó el ' +
+      'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
+      '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
+      'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
+      '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión.',
+  },
+
   flota_clon_al_dia: {
     titulo: 'El clon de un trabajador, al día ANTES de cada encargo — si no se puede, no se le da trabajo',
     ruta: 'lib/flota/actualizacion.cjs',
