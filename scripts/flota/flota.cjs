@@ -213,7 +213,7 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
 
   const m = MAQ.maquinaDe(trabajador)
   const env = ficheroEntorno(trabajador)
-  const enc = env.replace(/\.env$/, '.encargo')
+  const enc = ficheroEncargo(trabajador)
   const como = m.local ? '' : 'sudo -u flota '
   const dueno = m.local ? '' : `&& chown flota ${enc} `
 
@@ -255,6 +255,19 @@ function ficheroEntorno(trabajador) {
   return m && m.local
     ? `${process.env.HOME}/.vence-flota/${trabajador}.env`
     : `/etc/vence-flota/${trabajador}.env`
+}
+
+/**
+ * El fichero con el ENCARGO vivo de un trabajador. Su fecha de modificación es cuándo empezó el
+ * turno actual — que es lo único con lo que el bucle puede saber si alguien lleva demasiado
+ * tiempo atascado, porque el turno corre en otra máquina y no deja fila en ninguna tabla.
+ *
+ * Existe como helper porque se calculaba en dos sitios y el segundo (el vigilante del bucle) lo
+ * llamó como función sin que la función existiera: el bucle habría reventado en su primera
+ * pasada. Se encontró al ir a arrancarlo, no leyendo el código.
+ */
+function ficheroEncargo(trabajador) {
+  return ficheroEntorno(trabajador).replace(/\.env$/, '.encargo')
 }
 
 async function main() {
