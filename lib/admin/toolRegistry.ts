@@ -568,6 +568,23 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'decir en mitad de la compra. Sirve para dimensionarlo y para comprobar tras el despliegue ' +
       'que baja a cero. El criterio del arreglo vive en `lib/stripe/falloPagoReal.ts`.',
   },
+  compras_atascadas: {
+    titulo: 'Encontrar a quien lleva días intentando pagarnos y no puede (T-601)',
+    ruta: 'scripts/stripe/compras-atascadas.cjs',
+    estado: 'vivo',
+    notas:
+      'npm run stripe:compras-atascadas [-- --dias 60]. Solo LEE (escribe únicamente con ' +
+      '--rescatar <cus_id>, que expira sus checkouts abiertos). Recorre TODAS las cuentas de ' +
+      'Stripe y busca clientes con suscripciones `incomplete`, cargos FALLIDOS y ningún cobro: ' +
+      'ingreso que no entra y que no vigilaba nada. ⚠️ NO confundir con ' +
+      '`stripe:pago-fallido-falsos` (T-594), que es lo contrario (el pago va bien y el defecto es ' +
+      'nuestro correo). **El corte descarta el abandono**: medido el 06/08/2026 sobre 60 días, 8 ' +
+      'clientes nunca pagaron pero 6 no tenían ni un cargo (abrieron el checkout y se fueron, ' +
+      'embudo normal); exigir ≥1 cargo fallido deja **2**, que son los reales — los dos muriendo ' +
+      'en `link`. Complementa a la alerta `compra_atascada_checkout_expirado`, que solo ve a quien ' +
+      'INTENTA cancelar; esto ve a quien ya está atrapado y calla. Criterio compartido con ' +
+      '`lib/stripe/cancelCheckoutAbierto.ts`.',
+  },
   sim_identidad_pago: {
     titulo: 'Comprobar que en los endpoints de pago la identidad sale del token y no del cliente',
     ruta: 'scripts/sim/sim-identidad-pago.ts',

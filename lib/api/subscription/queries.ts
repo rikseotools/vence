@@ -6,6 +6,7 @@ import { getStripeFor, resolveAccount, newSignupAccount } from '@/lib/stripe'
 import type Stripe from 'stripe'
 import { randomUUID } from 'crypto'
 import { emit } from '@/lib/observability/emit'
+import { esBloqueoPorCheckoutAbierto, sesionesAExpirar } from '@/lib/stripe/cancelCheckoutAbierto'
 import type {
   GetSubscriptionRequest,
   GetSubscriptionResponse,
@@ -356,6 +357,61 @@ function extractCurrentPeriodEnd(subscription: any): Date | null {
     subscription.cancel_at ??
     null
   return ts ? new Date(ts * 1000) : null
+}
+
+/**
+ * Expira las sesiones de checkout ABIERTAS de una suscripción.
+ *
+ * Stripe se niega a cancelar una suscripción `incomplete` mientras tenga un checkout abierto y
+ * pide expresamente que se expire la sesión primero. Sin esto, `cancelSubscription` devolvía el
+ * error crudo de Stripe y la persona quedaba atrapada: ni podía completar la compra (su pago
+ * fallaba) ni deshacerla (T-601 — 16 intentos de cancelar en un minuto).
+ *
+ * Best-effort y **nunca tumba la cancelación**: si expirar falla, se sigue adelante y el `cancel`
+ * dirá lo que tenga que decir. Emite siempre para poder medir cuántas cancelaciones necesitaban
+ * este rescate — que es el indicador de cuánta gente se está quedando atascada comprando.
+ */
+async function expireOpenCheckoutSessions(
+  subscriptionId: string,
+  context: { userId: string; stripeCustomerId: string },
+  sc: Stripe,
+): Promise<{ expiradas: number; fallidas: number }> {
+  let expiradas = 0
+  let fallidas = 0
+  try {
+    const sesiones = await sc.checkout.sessions.list({ subscription: subscriptionId, limit: 20 })
+    const aExpirar = sesionesAExpirar(sesiones.data)
+    for (const id of aExpirar) {
+      try {
+        await sc.checkout.sessions.expire(id)
+        expiradas++
+      } catch (err) {
+        fallidas++
+        console.error(`⚠️ [Cancel] No se pudo expirar el checkout ${id}:`, err)
+      }
+    }
+    if (expiradas > 0 || fallidas > 0) {
+      await emit({
+        source: 'fargate',
+        // `warn`: no es un error nuestro, pero cada emisión es una persona que estaba
+        // atascada entre una compra que no cuaja y una cancelación que no la deja salir.
+        severity: fallidas > 0 ? 'error' : 'warn',
+        eventType: 'subscription_checkout_expirado_para_cancelar',
+        endpoint: '/api/stripe/cancel',
+        userId: context.userId,
+        metadata: {
+          stripeCustomerId: context.stripeCustomerId,
+          subscriptionId,
+          expiradas,
+          fallidas,
+        },
+      })
+    }
+  } catch (err) {
+    // Listar puede fallar (API degradada). No es motivo para no intentar cancelar.
+    console.error(`⚠️ [Cancel] No se pudieron listar los checkouts de ${subscriptionId}:`, err)
+  }
+  return { expiradas, fallidas }
 }
 
 /**
@@ -715,11 +771,32 @@ export async function cancelSubscription(
       //     qué void invoices: si las dejamos abiertas, Stripe sigue
       //     reintentando charge_automatically en background (caso Mariangeles
       //     21/05/2026, ver project_pending_stripe_cancel_bug.md).
-      await sc.subscriptions.cancel(
-        subscription.id,
-        undefined,
-        { idempotencyKey: `${idempotencyKeyBase}-immediate` },
-      )
+      // T-601: una suscripción `incomplete` con checkout ABIERTO no se puede cancelar — Stripe
+      // pide expirar la sesión primero. Se intenta cancelar y, SOLO si Stripe se queja de eso, se
+      // expira y se reintenta UNA vez. Reactivo y no preventivo a propósito: el criterio es la
+      // propia respuesta de Stripe, así que no podemos equivocarnos sobre cuándo aplica, y en el
+      // caso normal (sin checkout abierto) no se hace ni una llamada de más.
+      try {
+        await sc.subscriptions.cancel(
+          subscription.id,
+          undefined,
+          { idempotencyKey: `${idempotencyKeyBase}-immediate` },
+        )
+      } catch (err) {
+        if (!esBloqueoPorCheckoutAbierto(err as { message?: string })) throw err
+        await expireOpenCheckoutSessions(
+          subscription.id,
+          { userId: params.userId, stripeCustomerId: profile.stripeCustomerId },
+          sc,
+        )
+        // Idempotency key DISTINTA: Stripe cachea la respuesta por key, así que reusar la
+        // anterior devolvería el error guardado en vez de reintentar de verdad.
+        await sc.subscriptions.cancel(
+          subscription.id,
+          undefined,
+          { idempotencyKey: `${idempotencyKeyBase}-immediate-tras-expirar` },
+        )
+      }
       const voidResult = await voidOpenInvoicesForSubscription(
         subscription.id,
         idempotencyKeyBase,
