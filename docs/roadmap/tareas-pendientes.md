@@ -11134,6 +11134,18 @@ y eso solo ocurre donde las dos se sirven.
 
 ### [T-291] 🟠 [ABIERTO 30/07] Reparar preguntas a escala: tres escalones (deterministas → modelos baratos → cuota de agentes)
 
+> **🔍 REVISADA el 06/08/2026 (w2) — la campaña sigue avanzando (otra sesión activa), pero la cola por
+> exposición de esta ficha (`ORDER BY servidas DESC` contra `test_questions`) hoy es INSERVIBLE para
+> quien tenga solo `vence_lector`: `test_questions` da 0 filas SIEMPRE por el mismo bloqueo RLS de
+> [T-573]/[T-038] (migraciones ya en `main`, sin aplicar en RDS — confirmado de nuevo hoy, ya
+> triado ahí como "no urge, decisión de Manuel"; no se duplica ficha). Medido con `explanation_data
+> IS NOT NULL AND is_active`: **7.863** (vs. la foto de esta ficha del 30/07, 7.207/7.073) — la campaña
+> avanza, solo que sin registrarlo aquí. La cola de `data/pilotos/t291-escalon2-30jul/triaje-sin-cita.json`
+> (50 ids) está **YA HECHA** (las 50 tienen `explanation_data`, comprobado una a una) — no reusar como
+> pendiente. No se ha tocado contenido esta sesión: sin acceso a `test_questions` no hay forma honesta
+> de elegir candidatos por exposición real, y trabajar "a mano" sin esa cola es justo el modo que la
+> propia ficha desaconseja como estrategia principal. Se suelta para quien la retome CON el rol
+> desbloqueado o con acceso directo a la cola compartida.**
 - **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
 - **🎯 Pero NO hay que reparar 133.000, y este es el dato que decide la estrategia.** **82.591 de ellas no las ha visto NADIE** (cero apariciones), y la exposición está muy concentrada:
 
