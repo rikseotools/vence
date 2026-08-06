@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { CacheService } from '../cache/cache.service';
 import { CacheVersioningService } from '../cache/cache-versioning.service';
@@ -136,8 +136,26 @@ export class TestConfigController {
   }
 
   // ────────────────────────────────────────────
-  // GET /estimate
+  // GET /estimate  ·  POST /estimate
   // ────────────────────────────────────────────
+  //
+  // ── POR QUÉ HAY DOS VERBOS PARA LA MISMA CUENTA (T-623, 06/08/2026) ────────────────────
+  // La selección de artículos viaja como JSON, y en GET eso va DENTRO DE LA URL. Al
+  // url-encodificar, cada `"` pasa a `%22` y cada `,` a `%2C`: la cadena se triplica. Medido
+  // contra producción con curl: 7.514 bytes → 200, 8.914 → **414**, 41.114 → **494**. El corte
+  // son los 8 KB del `large_client_header_buffers` por defecto de nginx, y nginx contesta con
+  // una PÁGINA HTML — que el cliente parsea como JSON y revienta con «Unexpected token '<'».
+  // La pantalla se queda igual y el usuario lo vive como que la app se ha colgado. Lo reportó
+  // una usuaria, no una alerta (87 respuestas 494 a 12 usuarios en 48 h).
+  //
+  // El POST quita el techo: el cuerpo no tiene ese límite. El GET **se conserva** porque hay
+  // clientes desplegados que lo usan y porque para una selección pequeña es perfectamente
+  // válido y cacheable igual.
+  //
+  // ⚠️ LOS DOS PASAN POR `estimarCon`, Y ESO ES EL PUNTO. Duplicar el parseo y la clave de
+  // caché haría que una selección grande se contara con un código distinto del que cuenta las
+  // pequeñas — dos fuentes de verdad para el mismo número, que es exactamente el modo de fallo
+  // que esta familia ya sufrió tres veces (T-326, T-551 y el re-arreglo de T-551).
   @Get('estimate')
   async estimate(
     @Query() query: Record<string, string | undefined>,
@@ -170,17 +188,60 @@ export class TestConfigController {
     const selectedLawsRaw = query.selectedLaws ?? '';
     const selectedLaws = selectedLawsRaw ? selectedLawsRaw.split(',') : [];
 
-    const params: EstimateQuestionsRequest = {
-      topicNumber: query.topicNumber ? Number(query.topicNumber) : null,
-      positionType,
-      selectedLaws,
-      selectedArticlesByLaw,
-      selectedSectionFilters,
-      onlyOfficialQuestions: query.onlyOfficialQuestions === 'true',
-      difficultyMode: (query.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
-      focusEssentialArticles: query.focusEssentialArticles === 'true',
-      scopeToPosition: query.scopeToPosition === 'true',
-    };
+    return this.estimarCon(
+      {
+        topicNumber: query.topicNumber ? Number(query.topicNumber) : null,
+        positionType,
+        selectedLaws,
+        selectedArticlesByLaw,
+        selectedSectionFilters,
+        onlyOfficialQuestions: query.onlyOfficialQuestions === 'true',
+        difficultyMode: (query.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
+        focusEssentialArticles: query.focusEssentialArticles === 'true',
+        scopeToPosition: query.scopeToPosition === 'true',
+      },
+      res,
+    );
+  }
+
+  /**
+   * Gemelo del GET para selecciones que no caben en una URL (T-623).
+   *
+   * El cuerpo llega ya como JSON, así que no hay que parsear cadenas: los mismos campos, sin
+   * el doble encoding. De ahí en adelante, EL MISMO camino que el GET.
+   */
+  @Post('estimate')
+  async estimatePost(
+    @Body() body: Partial<EstimateQuestionsRequest> | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<unknown> {
+    const positionType = body?.positionType;
+    if (!positionType) {
+      res.status(400);
+      return { success: false, error: 'positionType required' };
+    }
+    return this.estimarCon(
+      {
+        topicNumber: body?.topicNumber ?? null,
+        positionType,
+        selectedLaws: body?.selectedLaws ?? [],
+        selectedArticlesByLaw: body?.selectedArticlesByLaw ?? {},
+        selectedSectionFilters: body?.selectedSectionFilters ?? [],
+        onlyOfficialQuestions: body?.onlyOfficialQuestions === true,
+        difficultyMode: (body?.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
+        focusEssentialArticles: body?.focusEssentialArticles === true,
+        scopeToPosition: body?.scopeToPosition === true,
+      },
+      res,
+    );
+  }
+
+  /** La cuenta y su clave de caché, en UN solo sitio para los dos verbos (T-623). */
+  private async estimarCon(
+    params: EstimateQuestionsRequest,
+    res: Response,
+  ): Promise<unknown> {
+    const { selectedLaws, selectedArticlesByLaw, selectedSectionFilters } = params;
 
     // Cache key normalizado: ordenar arrays para que ?l=A,B&l=B,A → mismo hit.
     const lawsKey = [...selectedLaws].sort().join(',');
