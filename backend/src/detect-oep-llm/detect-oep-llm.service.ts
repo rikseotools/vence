@@ -15,6 +15,8 @@ export interface DetectOepLlmStats {
   withExtraction: number;
   signals: number;
   errors: number;
+  /** Embudo determinista (T-166): llamadas al LLM ahorradas por hash idéntico. */
+  skippedByGate: number;
 }
 
 /**
@@ -47,6 +49,7 @@ export class DetectOepLlmService {
     let withExtraction = 0;
     let signals = 0;
     let errors = 0;
+    let skippedByGate = 0;
 
     for (const opo of oposiciones) {
       const label = opo.shortName ?? opo.nombre;
@@ -64,6 +67,23 @@ export class DetectOepLlmService {
       if (!fetchResult.html) {
         this.logger.warn(`Fetch error ${label}: ${fetchResult.error}`);
         errors++;
+        continue;
+      }
+
+      // 1.bis. Embudo determinista (T-166): ¿el texto que le llegaría al modelo
+      // es BYTE A BYTE el mismo que la última vez? Si lo es, la llamada no puede
+      // aportar nada nuevo. El hash se persiste SIEMPRE (llame o no), para que la
+      // SIGUIENTE pasada tenga con qué comparar. Ante cualquier duda (sin hash
+      // previo, o hash distinto) se llama — la asimetría manda: una llamada de
+      // más cuesta céntimos, una convocatoria perdida no.
+      const inputHash = this.llm.computeLlmInputHash(fetchResult.html);
+      const gate = necesitaLlm(inputHash, opo.oepLlmInputHash);
+      await this.queries.updateOepLlmInputHash(opo.id, inputHash);
+      if (!gate.necesita) {
+        this.logger.debug(
+          `${label}: sin cambios en el input del modelo (${gate.motivo}), se salta la llamada`,
+        );
+        skippedByGate++;
         continue;
       }
 
@@ -206,7 +226,14 @@ export class DetectOepLlmService {
     }
 
     const duration = `${((Date.now() - startTime) / 1000).toFixed(1)}s`;
-    const stats = { total: oposiciones.length, scanned, withExtraction, signals, errors };
+    const stats = {
+      total: oposiciones.length,
+      scanned,
+      withExtraction,
+      signals,
+      errors,
+      skippedByGate,
+    };
     this.logger.log(`Completado en ${duration}: ${JSON.stringify(stats)}`);
 
     return stats;
@@ -229,6 +256,31 @@ function buildKnownContext(opo: OposicionToScan): string {
     parts.push(`Plazas discap BD: ${opo.plazasDiscapacidad}`);
   if (opo.estadoProceso) parts.push(`Estado BD: ${opo.estadoProceso}`);
   return parts.join(' | ');
+}
+
+/**
+ * Embudo determinista (T-166): ¿hace falta llamar al LLM?
+ *
+ * Solo se salta la llamada con IGUALDAD EXACTA del hash del input. Sin hash
+ * previo (primera vez que se mira esta oposición) o con hash distinto, SIEMPRE
+ * se llama — nunca se descarta a ciegas. La asimetría manda: un falso "cambió"
+ * cuesta una llamada de céntimos; un falso "no cambió" es una convocatoria que
+ * no detectamos.
+ *
+ * Réplica del núcleo puro `lib/oep/llmInputHash.cjs` (`necesitaLlm`), que el
+ * backend NO puede importar (proyecto NestJS aparte, build separado) — de ahí
+ * que el hash en sí lo calcule `OepSignalsLlmService.computeLlmInputHash()`
+ * reutilizando su PROPIA `cleanHtml` privada (la misma que ve el modelo, sin
+ * copia que desincronizar) y esta función solo decida sobre dos hashes ya
+ * calculados, sin lógica de limpieza de HTML que replicar.
+ */
+export function necesitaLlm(
+  hashActual: string,
+  hashPrevio: string | null,
+): { necesita: boolean; motivo: 'sin_hash_previo' | 'cambio' | 'sin_cambios' } {
+  if (!hashPrevio) return { necesita: true, motivo: 'sin_hash_previo' };
+  if (hashActual !== hashPrevio) return { necesita: true, motivo: 'cambio' };
+  return { necesita: false, motivo: 'sin_cambios' };
 }
 
 function computeNovelty(

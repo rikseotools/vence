@@ -236,11 +236,20 @@ td.containerDefinitions[0].image=process.env.IMG_DIGEST;
 // senales aplicadas frente a 43 de las activas: descubrir convocatorias nuevas ES el trabajo
 // del radar), sino re-extraer paginas que no han cambiado — el servicio ya tiene
 // computeContentHash() y el sensor no lo llama.
-// PONER A 'true' EN CUANTO ESTE LA PUERTA DE HASH: esto es una pausa, no una retirada.
+// REACTIVADO 06/08/2026 (T-166): la puerta de hash ya esta construida y cableada en
+// DetectOepLlmService.run() (OepSignalsLlmService.computeLlmInputHash + necesitaLlm()).
+// Piloto 27-31/07: hash estable al 94-97 porciento sobre datos reales -> ahorro esperado
+// 75-90 porciento de las llamadas. Antes de este deploy, comprobar con node -e requiere
+// postgres el stat skippedByGate en los logs de la primera pasada para confirmar el ahorro
+// real (no solo el piloto offline).
+// PENDIENTE A PROPOSITO (no bloquea la reactivacion): archivar en convocatoria_documentos
+// lo que sobreviva el filtro, con su tipo real. Hoy el sensor sigue escribiendo unicamente
+// en oep_detection_signals, que es el mismo triaje que ya usa Manuel a diario — no se crea
+// un cubo nuevo sin vaciar.
 { const c=td.containerDefinitions[0];
   c.environment = c.environment || [];
   const g=c.environment.find(x=>x.name==='DETECT_OEP_LLM_ENABLED');
-  if (g) g.value='false'; else c.environment.push({name:'DETECT_OEP_LLM_ENABLED', value:'false'});
+  if (g) g.value='true'; else c.environment.push({name:'DETECT_OEP_LLM_ENABLED', value:'true'});
 }
 // Guardarrail anti-colision env/secret (incidente 11/07): ECS rechaza un name que
 // este a la vez en environment y secrets. Detectarlo aqui con mensaje claro.

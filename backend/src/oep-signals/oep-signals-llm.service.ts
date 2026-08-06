@@ -349,6 +349,26 @@ export class OepSignalsLlmService {
   }
 
   // ============================================
+  // LLM INPUT HASH — embudo determinista de detect-oep-llm (T-166)
+  // ============================================
+
+  /**
+   * Hash de EXACTAMENTE el texto (20.000 chars) que `extractOepFromHtml` le
+   * manda al modelo. A propósito NO es `computeContentHash()` (100.000 chars):
+   * un cambio más allá del carácter 20.000 movería ESE hash sin poder alterar
+   * una coma de lo que Haiku ve, así que gatear con él seguiría pagando
+   * llamadas inútiles — el gotcha medido que motivó T-166. Al reutilizar la
+   * MISMA `cleanHtml` privada que usa `extractOepFromHtml`, este hash no puede
+   * desalinearse del input real: no hay una segunda copia que mantener en sync.
+   */
+  computeLlmInputHash(html: string): string {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const crypto = require('crypto') as typeof import('crypto');
+    const clean = this.cleanHtml(html, 20000);
+    return crypto.createHash('sha256').update(clean).digest('hex');
+  }
+
+  // ============================================
   // HELPERS PRIVADOS
   // ============================================
 

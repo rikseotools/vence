@@ -2580,6 +2580,14 @@ export const oposiciones = pgTable("oposiciones", {
 	seguimientoChangeDetectedAt: timestamp("seguimiento_change_detected_at", { withTimezone: true, mode: 'string' }),
 	seguimientoLastHash: text("seguimiento_last_hash"),
 	seguimientoLastChecked: timestamp("seguimiento_last_checked", { withTimezone: true, mode: 'string' }),
+	/**
+	 * Embudo determinista de `detect-oep-llm` (T-166). SHA-256 de los 20.000 chars que se le
+	 * mandan al modelo (NO los 100.000 de `seguimiento_last_hash`, que es OTRO cron con OTRO
+	 * algoritmo). Si no cambia entre pasadas, se salta la llamada al LLM. Migración
+	 * `20260806_oep_llm_input_hash.sql`.
+	 */
+	oepLlmInputHash: text("oep_llm_input_hash"),
+	oepLlmInputHashCheckedAt: timestamp("oep_llm_input_hash_checked_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	check("oposiciones_tipo_acceso_check", sql`tipo_acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'discapacidad'::text])`),
 	check("oposiciones_estado_proceso_check", sql`estado_proceso = ANY (ARRAY['sin_oep'::text, 'oep_aprobada'::text, 'convocada'::text, 'inscripcion_abierta'::text, 'inscripcion_cerrada'::text, 'lista_admitidos'::text, 'pendiente_examen'::text, 'examen_realizado'::text, 'resultados'::text, 'nombramientos'::text])`),

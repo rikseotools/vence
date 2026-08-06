@@ -1679,6 +1679,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'un fetcher nuevo. GOTCHA: el headless NO cura un bloqueo por WAF/IP (un 403 seguirá siendo 403).',
   },
 
+  // ── oep_llm_input_hash ────────────────────────────────────────────────────────────────────
+  embudo_hash_detect_oep_llm: {
+    titulo: 'Embudo determinista de detect-oep-llm: saltar la llamada al LLM si el input no cambió',
+    ruta: 'backend/src/detect-oep-llm/detect-oep-llm.service.ts',
+    estado: 'vivo',
+    escribe: ['oep_llm_input_hash'],
+    runbook: 'docs/runbooks/salud-radar.md',
+    notas:
+      'T-166, 06/08/2026. `detect-oep-llm` mandaba a Haiku el HTML de ~1.700 páginas/día ' +
+      'laborable (~8 USD/día) para re-extraer páginas que en su mayoría NO habían cambiado ' +
+      '→ pausado el 27/07 (`DETECT_OEP_LLM_ENABLED=false`). El embudo hashea EXACTAMENTE los ' +
+      '20.000 chars que ve el modelo (`OepSignalsLlmService.computeLlmInputHash`, misma ' +
+      '`cleanHtml` privada que `extractOepFromHtml` — no hay copia que desincronizar) y solo ' +
+      'se salta la llamada con igualdad EXACTA (`necesitaLlm()`, exportado y testeado en ' +
+      '`necesita-llm.spec.ts`). Persistido en `oposiciones.oep_llm_input_hash` — NO confundir ' +
+      'con `seguimiento_last_hash`, que escribe OTRO cron (`check-seguimiento`) con OTRO ' +
+      'algoritmo (`extractRelevantText().slice(0,2000)`) para OTRO propósito (badge de ' +
+      '`/admin/seguimiento-convocatorias`). Piloto real (27-31/07, `pilot-hash-gate.cjs`): ' +
+      '94-97% de las páginas estables → ahorro esperado 75-90% de las llamadas. Reactivado en ' +
+      '`scripts/deploy-backend.sh` (`DETECT_OEP_LLM_ENABLED=true`) el 06/08; pendiente a ' +
+      'propósito (no bloquea la reactivación): archivar en `convocatoria_documentos` lo que ' +
+      'sobreviva el filtro — hoy el sensor sigue escribiendo solo en `oep_detection_signals`, ' +
+      'el mismo triaje que ya existía.',
+  },
+
   // ── diagnóstico / auditoría (no escriben) ─────────────────────────────────────────────────
   simular_fuentes_ciegas: {
     titulo: '¿Qué seguimiento_url responden 200 pero no sirven nada? (simulación, no escribe)',

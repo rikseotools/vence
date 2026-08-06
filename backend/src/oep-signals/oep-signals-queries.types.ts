@@ -19,6 +19,9 @@ export interface OposicionToScan {
   // - 'http' (default): fetch nativo Node, rápido (~200ms).
   // - 'headless': Lambda Playwright + Chromium para JS-rendered (~3-10s).
   fetcherType: 'http' | 'headless' | 'pdf' | 'rss' | 'boe_api';
+  // Embudo determinista (T-166): hash de la última pasada, o null si nunca se ha
+  // mirado esta oposición. `null` fuerza SIEMPRE la llamada (ver `necesitaLlm`).
+  oepLlmInputHash: string | null;
 }
 
 export interface TimelineSilenceCandidate {

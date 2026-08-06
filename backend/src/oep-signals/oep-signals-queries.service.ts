@@ -48,6 +48,8 @@ export class OepSignalsQueriesService {
         examDate: oposiciones.examDate,
         // Sprint 2: dispatch a Lambda Playwright si fetcher_type='headless'
         fetcherType: oposiciones.fetcherType,
+        // Embudo determinista (T-166)
+        oepLlmInputHash: oposiciones.oepLlmInputHash,
       })
       .from(oposiciones)
       // Monitoreo on-demand-friendly (01/06/2026): vigilar CUALQUIER oposición con
@@ -60,6 +62,24 @@ export class OepSignalsQueriesService {
       .orderBy(oposiciones.nombre);
 
     return rows.filter((r) => r.seguimientoUrl !== null) as OposicionToScan[];
+  }
+
+  /**
+   * Persiste el hash del input del LLM (T-166), SIEMPRE — llame o no llame al
+   * modelo esta pasada. Es lo que permite a la SIGUIENTE pasada decidir si hace
+   * falta llamar: sin esto, `necesitaLlm()` no tendría con qué comparar.
+   */
+  async updateOepLlmInputHash(
+    oposicionId: string,
+    hash: string,
+  ): Promise<void> {
+    await this.db
+      .update(oposiciones)
+      .set({
+        oepLlmInputHash: hash,
+        oepLlmInputHashCheckedAt: sql`NOW()`,
+      })
+      .where(eq(oposiciones.id, oposicionId));
   }
 
   // ============================================

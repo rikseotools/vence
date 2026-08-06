@@ -41,6 +41,10 @@ export const oposiciones = pgTable('oposiciones', {
   // Sprint 2 backend integration: dispatch sensor LLM a Lambda Playwright.
   // Default 'http' (fetch nativo). 'headless' invoca Lambda con Chromium.
   fetcherType: text('fetcher_type').notNull().default('http'),
+  // Embudo determinista (T-166): hash de los 20.000 chars que ve el LLM. NO es
+  // `seguimiento_last_hash` (otro cron, otro algoritmo, otra columna).
+  oepLlmInputHash: text('oep_llm_input_hash'),
+  oepLlmInputHashCheckedAt: timestamp('oep_llm_input_hash_checked_at', { withTimezone: true, mode: 'string' }),
 });
 
 /** Tabla `convocatoria_hitos` — para detección de silencio en timeline. */
