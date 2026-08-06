@@ -1,0 +1,13 @@
+{
+  "cita": {
+    "ref": "Art. 9.3 CE",
+    "texto": "La Constitución garantiza el principio de legalidad, la jerarquía normativa, la publicidad de las normas, la irretroactividad de las disposiciones sancionadoras no favorables o restrictivas de derechos individuales, la seguridad jurídica, la responsabilidad y la interdicción de la arbitrariedad de los poderes públicos."
+  },
+  "options": {
+    "0": "El art. 9.3 CE garantiza precisamente la INTERDICCIÓN (la prohibición) de la arbitrariedad de los poderes públicos, no la arbitrariedad en sí.",
+    "1": "El acceso a la cultura es un principio rector reconocido en el art. 44 CE, distinto de las garantías jurídicas que enumera el art. 9.3 CE.",
+    "2": "El art. 9.3 CE garantiza la irretroactividad de las disposiciones sancionadoras NO favorables, no de las favorables: esta opción invierte el sentido del precepto.",
+    "3": "Reproduce literalmente una de las garantías del art. 9.3 CE: la irretroactividad de las disposiciones sancionadoras no favorables o restrictivas de derechos individuales."
+  },
+  "estilo": "impugnacion"
+}

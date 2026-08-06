@@ -1,0 +1,13 @@
+{
+  "cita": {
+    "ref": "Art. 9.2 CE",
+    "texto": "Corresponde a los poderes públicos promover las condiciones para que la libertad y la igualdad del individuo y de los grupos en que se integra sean reales y efectivas; remover los obstáculos que impidan o dificulten su plenitud y facilitar la participación de todos los ciudadanos en la vida política, económica, cultural y social."
+  },
+  "options": {
+    "0": "Reproduce fielmente el art. 9.2 CE, que encomienda a los poderes públicos esta función promocional de la libertad y la igualdad materiales.",
+    "1": "Garantizar la soberanía e independencia de España, y defender su integridad territorial, es la misión que el art. 8.1 CE atribuye a las Fuerzas Armadas, no una función genérica de los poderes públicos.",
+    "2": "El art. 9.3 CE garantiza el principio de legalidad, la jerarquía normativa y la publicidad de las normas, entre otras garantías, pero no incluye ninguna mención a la \"transparencia judicial\", que no figura en ese precepto.",
+    "3": "Defender los intereses económicos y sociales que le son propios es la función que el art. 7 CE atribuye a los sindicatos de trabajadores y a las asociaciones empresariales, no a los poderes públicos."
+  },
+  "estilo": "impugnacion"
+}
