@@ -129,5 +129,31 @@
       "title": "Protocolos de emergencia de la Unidad de Conserjerías",
       "epigrafe": "Unidad de Conserjerías de la Universidad de Jaén: Protocolos de emergencia (https://www.ujaen.es/)."
     }
-  ]
+  ],
+  "scope": {
+    "103": [
+      { "law": "LOSU", "wholeLaw": true }
+    ],
+    "104": [
+      {
+        "law": "RDL 5/2015",
+        "_recorte": "Título I (1-7) + Título II Cap.I (8-12) + Título III Cap.II SOLO arts.19,20 + Cap.IV SOLO art.32 + Título IV (55-68) + Título VII (93-98). Límites verificados: Título IV=55-68 y Título VII=93-98 confirmados por el CONTENIDO real de los artículos ya importados en BD (título de cada artículo leído uno a uno, no de memoria) -- una fuente externa (WebFetch) primero dio Título VI=85-92/Título VII=93-98(régimen de incompatibilidades), que es FALSO: los arts 93-98 son inequívocamente régimen disciplinario (responsabilidad disciplinaria, potestad disciplinaria, faltas, sanciones, procedimiento disciplinario) por su propio contenido, y coincide con la búsqueda que sí acertó a la primera. Título II Cap.I=8-12 (art.13 'Personal directivo profesional' es Cap.II, verificado aparte, EXCLUIDO por no estar en el epígrafe).",
+        "articles": [1,2,3,4,5,6,7,8,9,10,11,12,19,20,32,55,56,57,58,59,60,61,62,63,64,65,66,67,68,93,94,95,96,97,98]
+      }
+    ],
+    "105": [
+      {
+        "law": "LPRL",
+        "_recorte": "Capítulos III (14-29), IV (30-32) y V (33-40). Verificado: Cap.III coincide EXACTO con un topic_scope YA VIVO en producción (otra oposición, mismos 14-29) -- confirmación cruzada, no solo inferencia de títulos de artículo. Cap.IV y V confirmados por búsqueda (art.30 Protección y prevención de riesgos profesionales / 31 Servicios de Prevención / 32 Mutuas -- Cap.IV; 33 Consulta de los trabajadores ... 40 Colaboración con la Inspección -- Cap.V; art.41 ya es Cap.VI, EXCLUIDO).",
+        "articles": [14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40]
+      }
+    ],
+    "106": [
+      {
+        "law": "LO 3/2007",
+        "_recorte": "Título V completo, SOLO Capítulos I, II y III (51-64). Verificado: Cap.I=51 únicamente, Cap.II=52-54, Cap.III=55-64 -- confirmado por fuente externa Y por el contenido real de los artículos (55 informe impacto género pruebas acceso ... 63 evaluación igualdad empleo público, 64 Plan de Igualdad AGE). Los arts.65-68 NO son continuación del Cap.III: son Cap.IV (Fuerzas Armadas, 65-66) y Cap.V (Fuerzas y Cuerpos de Seguridad, 67-68) -- capítulos aparte que el epígrafe del spec NO pide, EXCLUIDOS a propósito.",
+        "articles": [51,52,53,54,55,56,57,58,59,60,61,62,63,64]
+      }
+    ]
+  }
 }
