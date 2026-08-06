@@ -18,6 +18,15 @@ const { Client } = require('pg')
 const fs = require('fs')
 const path = require('path')
 const { classifyChange, temaVerdict, DEFAULT_IMPACT_THRESHOLD } = require('./lib/scope-classifier.cjs')
+const { sid, sidCorto } = require('../lib/sessions/sid.cjs')
+
+/** Puro: qué se escribe en `app.actor`/`app.change_reason` para un `apply` (T-518). */
+function describeApplyActor(sidValue, cambios, includeGate) {
+  return {
+    actor: `verify-topic-scope.cjs apply:${sidCorto(sidValue)}`,
+    reason: `verify:scope apply — ${cambios} cambio(s)${includeGate ? ' (incluye puerta de juicio)' : ' (auto_safe)'}`,
+  }
+}
 const { classifyScope } = require('./scope-over-inclusion.cjs') // pre-filtro determinista de sobre-inclusión
 
 // ── Subsecciones del artículo (para el dump) ──────────────────────────────────
@@ -486,6 +495,14 @@ async function cmdApply(pt, jsonPath, opts) {
   const c = db(); await c.connect()
   try {
     await c.query('BEGIN')
+    // `topic_scope_history` (T-222) audita CUALQUIER escritor por trigger, pero `changed_by`/
+    // `change_reason` son opt-in — sin esto, este pipeline queda indistinguible de los otros 30
+    // escritores de `article_numbers` en su propio historial (T-518, medido 04/08: 0 filas
+    // identificadas). `set_config(..., true)` = alcance de LA TRANSACCIÓN (como SET LOCAL), no
+    // de la conexión — no se filtra a queries posteriores del mismo Client.
+    const { actor, reason } = describeApplyActor(sid(), toApply.length, opts.includeGate)
+    await c.query(`SELECT set_config('app.actor', $1, true)`, [actor])
+    await c.query(`SELECT set_config('app.change_reason', $1, true)`, [reason])
     for (const ch of toApply) {
       if (ch.scope_id) {
         await c.query('UPDATE topic_scope SET article_numbers=$1 WHERE id=$2', [compute(ch), ch.scope_id])
@@ -554,7 +571,7 @@ async function main() {
 
 // Requerido como módulo (tests) → exporta los helpers puros y NO ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { subsecciones, MAX_ARTS_DUMP, MAX_SUBSECCIONES }
+  module.exports = { subsecciones, MAX_ARTS_DUMP, MAX_SUBSECCIONES, describeApplyActor }
 } else {
   main()
 }
