@@ -94,3 +94,55 @@ describe('trinquetes del cableado', () => {
     }
   })
 })
+
+// ── EL FALLO QUE SOLO EXISTE EN EL ÁRBOL DE DEPLOY ──────────────────────────────────────────
+// El árbol dedicado (`/home/manuel/vence-deploy`) no tiene `node_modules` ni `.env.local`: el
+// build va por Docker y nadie los echa en falta. El primer deploy real por el camino nuevo tumbó
+// el candado por eso, y el fail-closed —haciendo bien su trabajo— abortó el deploy.
+//
+// Ningún test que corra en el repo principal puede verlo: aquí los módulos SÍ están. Por eso este
+// bloque ejecuta el CLI **desde otro árbol**, que es donde el fallo vive.
+describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
+  const { execFileSync } = require('child_process')
+  const os = require('os')
+  const ENT = require(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))
+
+  it('el checkout principal se localiza por --git-common-dir, no por la ruta propia', () => {
+    const principal = ENT.repoPrincipal(REPO)
+    expect(fs.existsSync(path.join(principal, 'node_modules'))).toBe(true)
+    // Apuntar al árbol propio fue el error de la primera versión (y el de T-404 bis antes).
+    expect(principal).not.toBe(REPO)
+  })
+
+  // En proceso HIJO con entorno controlado: mutar `process.env` en el propio test se filtraba a
+  // las demás suites y la hacía fallar solo al correr todas juntas (visto en el pre-commit).
+  const enHijo = (dir, env) => execFileSync('node', ['-e',
+    `const E=require(${JSON.stringify(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))});` +
+    `console.log(JSON.stringify(E.urlBd(${JSON.stringify(dir)})))`],
+    { encoding: 'utf8', env: { ...process.env, ...env } }).trim()
+
+  it('sin DATABASE_URL, encuentra el .env.local del checkout principal', () => {
+    expect(JSON.parse(enHijo(REPO, { DATABASE_URL: '' }))).toEqual(expect.any(String))
+  })
+
+  // La prueba de fuego: el CLI, ejecutado desde el árbol de deploy real si existe.
+  // Solo juzga si ese árbol YA trae este arreglo: hasta que `main` lo tenga y el propio deploy
+  // resincronice, ahí vive la versión anterior y el fallo sería el de ayer, no uno nuevo.
+  const ARBOL_DEPLOY = '/home/manuel/vence-deploy'
+  const CLI_DEPLOY = path.join(ARBOL_DEPLOY, 'scripts', 'deploy', 'candado.cjs')
+  const hay = fs.existsSync(CLI_DEPLOY)
+    && !fs.existsSync(path.join(ARBOL_DEPLOY, 'node_modules'))
+    && /cargarPg\(REPO\)/.test(fs.readFileSync(CLI_DEPLOY, 'utf8'))
+  ;(hay ? it : it.skip)('el candado ARRANCA desde el árbol de deploy (no revienta al cargar postgres)', () => {
+    const r = execFileSync('node', [CLI_DEPLOY, 'estado'],
+      { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    expect(r).toMatch(/candado (LIBRE|)/)
+    expect(r).not.toMatch(/Cannot find module/)
+  })
+
+  it('el candado NO vuelve a requerir postgres por ruta fija (el error original)', () => {
+    const cli = fs.readFileSync(path.join(REPO, 'scripts', 'deploy', 'candado.cjs'), 'utf8')
+    expect(cli).not.toMatch(/require\(path\.join\(REPO, 'node_modules', 'postgres'\)\)/)
+    expect(cli).toMatch(/cargarPg\(REPO\)/)
+  })
+})

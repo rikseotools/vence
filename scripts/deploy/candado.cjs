@@ -23,13 +23,12 @@ const { TTL_MINUTOS, puedeAdquirir, sqlCandadoLibre, mensajeOcupado } = require(
 
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
 
-function url() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL
-  const fs = require('fs')
-  const env = fs.readFileSync(path.join(REPO, '.env.local'), 'utf8')
-  const m = env.match(/^DATABASE_URL=(.*)$/m)
-  return m ? m[1].trim() : null
-}
+// El árbol de deploy no tiene `node_modules` ni `.env.local`: los dos se resuelven con fallback al
+// checkout principal. Vive en `lib/deploy/entorno.cjs` porque `deploy-marcar.cjs` ya lo había
+// resuelto y copiarlo habría sido la segunda copia — de hecho el primer intento de este candado
+// cometió justo el error del que aquel comentario avisaba, y lo cazó el primer deploy real.
+const { cargarPg, urlBd } = require(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))
+const url = () => urlBd(REPO)
 
 function sid() {
   try { return require(path.join(REPO, 'lib', 'sessions', 'sid.cjs')).resolverSid({ repo: REPO }).sid }
@@ -46,7 +45,7 @@ async function main() {
     console.error('   No se despliega a ciegas: dos update-service solapados es el incidente del 24/07 (T-075).')
     process.exit(4)
   }
-  const pg = require(path.join(REPO, 'node_modules', 'postgres'))
+  const pg = cargarPg(REPO)
   const s = pg(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 10 })
   try {
     if (cmd === 'adquirir') {
