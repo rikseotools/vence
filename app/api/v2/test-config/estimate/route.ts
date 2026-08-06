@@ -127,6 +127,24 @@ async function _POST(request: NextRequest) {
             body: JSON.stringify(body),
           })
           clearTimeout(timer)
+          // ── SI EL BACKEND NO CONOCE EL VERBO, SE CUENTA AQUÍ ────────────────────────
+          // Frontend y backend se despliegan por separado, así que SIEMPRE hay una ventana en
+          // la que uno tiene el POST y el otro no. Medido en vivo el 06/08: con el frontend ya
+          // desplegado y el backend aún en cola, este proxy devolvía el **404 del backend tal
+          // cual** — y entonces el configurador dejaba de contar para TODAS las selecciones, no
+          // solo las grandes. O sea: el arreglo, a medio desplegar, era peor que el defecto.
+          //
+          // El `catch` de abajo no cubría esto porque un 404 NO lanza: es una respuesta válida.
+          // Aquí se trata como lo que es —«este backend todavía no sabe hacer esto»— y se cae al
+          // camino local, que sabe. Solo para 404/405: un 500 del backend SÍ debe verse, porque
+          // significa que sabe hacerlo y le ha salido mal, y taparlo escondería una avería real.
+          if (backendRes.status === 404 || backendRes.status === 405) {
+            console.warn(
+              `⚠️ [test-config/estimate POST] el backend no conoce el verbo (${backendRes.status}) — ` +
+              'se cuenta en local. Normal durante el despliegue de las dos superficies [T-623].',
+            )
+            return responder(body)
+          }
           const texto = await backendRes.text()
           return new NextResponse(texto, {
             status: backendRes.status,
