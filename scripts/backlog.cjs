@@ -2093,6 +2093,42 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`✅ #${r.id} respondida. La sesión ${String(r.sid).slice(0, 12)}… la verá en su próximo comando del backlog.`);
     }
 
+    // ── LIMPIAR EL EMBUDO DE PREGUNTAS YA DECIDIDAS (T-606) ────────────────────────────────
+    // `retirar` solo quita las TUYAS, y las que sobran las escribieron sesiones muertas. Aquí
+    // se barren las que preguntan por un caso ya cerrado, que es cuando ya no hay decisión que
+    // tomar y por tanto nada que proteger. Dry-run por defecto: escribir se pide.
+    else if (cmd === 'limpiar-embudo') {
+      const aplicar = process.argv.includes('--apply');
+      const { casoCerradoQueCita } = require('../lib/sessions/embudoObsoleto.cjs');
+      const abiertas = await s`
+        SELECT id, sid, kind, question, context, draft_target, asked_at,
+               round(EXTRACT(EPOCH FROM (now() - asked_at)) / 3600) AS horas
+          FROM public.session_questions WHERE status = 'open' ORDER BY id`;
+      const disputes = await s`SELECT id::text AS id, status FROM public.question_disputes`;
+      const obsoletas = [];
+      for (const q of abiertas) {
+        const caso = casoCerradoQueCita(q, disputes);
+        if (caso) obsoletas.push({ q, caso });
+      }
+      if (!obsoletas.length) {
+        console.log(`✅ ${abiertas.length} pregunta(s) abierta(s) y ninguna pregunta por un caso ya cerrado.`);
+        return;
+      }
+      console.log(`${aplicar ? '🧹' : '👁  SIMULACIÓN —'} ${obsoletas.length} de ${abiertas.length} preguntan por un caso YA CERRADO:`);
+      for (const { q, caso } of obsoletas) {
+        console.log(`   #${q.id} (${q.sid || '?'}, ${q.horas}h) → ${String(caso.id).slice(0, 8)} está ${caso.status}`);
+        console.log(`      ${String(q.question || '').replace(/\s+/g, ' ').slice(0, 110)}`);
+        if (!aplicar) continue;
+        const motivo = `caso ${String(caso.id).slice(0, 8)} ya ${caso.status}: la decisión que pedía ya está tomada (barrido T-606)`;
+        await s`UPDATE public.session_questions
+                   SET status = 'withdrawn', withdrawn_reason = ${motivo}, answered_at = now()
+                 WHERE id = ${q.id} AND status = 'open'`;
+      }
+      console.log(aplicar
+        ? `\n✅ ${obsoletas.length} retirada(s). Quedan ${abiertas.length - obsoletas.length} que SÍ esperan decisión.`
+        : `\n   Nada escrito. Para retirarlas:  node scripts/backlog.cjs limpiar-embudo --apply`);
+    }
+
     else if (cmd === 'retirar') {
       const id = process.argv[3];
       const motivo = arg('--motivo');
