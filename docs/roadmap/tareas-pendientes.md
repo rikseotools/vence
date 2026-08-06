@@ -996,66 +996,6 @@ Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanza
 - **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
 
 **Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
-### [T-604] 🔴 [ABIERTO 06/08] 936 usuarios (8%) están en una oposición SIN temario construido y la app no se lo dice: 248 altas nuevas al mes caen ahí
-
-**Lo destapa una impugnación que parecía otra cosa.** María Becerril (premium desde abril, Torrelavega)
-mandó cuatro impugnaciones seguidas —`17733d5e`/`7b3dd5e4`/`5f2213d0`/`6c4e43a4`, Ley 9/2017 arts.
-138/143/147/160— diciendo *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»*. Parecía sobre-inclusión de
-`topic_scope`. No lo era: su `target_oposicion` es **`administrativo_comunidad_autonoma`**, que tiene
-**0 temas y 0 filas de `topic_scope`**. No hay selección que violar porque no hay temario.
-
-**Lo que le pasa a quien está así.** No tiene temas, ni tests por tema, ni forma de practicar lo que le
-entra — y **la app no se lo dice**: simplemente no hay nada. María lleva **desde el 27/04 pagando**, y lo
-único que puede hacer es ir **ley por ley**, acotando artículos a mano.
-
-> ⚠️ **La causa inmediata de SUS cuatro impugnaciones es [T-603], no esta ficha** (corregido el 06/08
-> tras encontrarla otra sesión). Ella **sí acotó** los artículos con las casillas y el repaso de fallos
-> **descartó su selección en silencio**, devolviéndole los 138/143/147/160 con las casillas todavía
-> marcadas en pantalla. O sea que su *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»* era literal y exacto.
-> Lo que aporta esta ficha es **por qué estaba ahí**: sin temario construido, filtrar una ley a mano era
-> su única forma de estudiar, así que el bug de T-603 le pegaba de lleno y a diario. Las dos cosas se
-> arreglan por separado.
-
-**Medido el 06/08 (`scratchpad/sin-temario.cjs`):**
-
-| | |
-|---|---|
-| usuarios con oposición fijada | **11.729** |
-| …de ellos SIN temario construido | **936 (8%)** |
-| …premium (pagando) | **4** |
-| altas de los últimos 30 días que caen ahí | **248** |
-
-**No es deuda vieja: sigue entrando gente.** Los valores más poblados —`enfermero` (61),
-`auxiliar_ayuntamiento` (37), `auxiliar_enfermeria` (29), `policia_local` (25),
-`subalterno_ordenanza_conserje_administracion_local` (24), `bombero` (17)— tienen altas de esta misma
-semana, y **la mayoría figuran en el catálogo**, o sea que se pueden elegir en la app.
-
-**Esto NO es «hay que construir 900 temarios».** La casa cataloga ancho y construye estrecho a propósito
-(D/C1/C2), y eso está bien. El defecto es que **elegir una no construida no se distingue de elegir una
-construida**: mismo flujo, misma pantalla, y luego el vacío. La etiqueta «🔜 En elaboración» YA existe
-—una usuaria la vio ayer al buscar Bibliotecario (feedback `5818ca05`, se dio de baja cinco minutos
-después)— pero estos 936 no la están recibiendo.
-
-**Arreglo propuesto** (elegir, no hacer las tres):
-1. **En el punto de elección:** si la oposición no tiene temario, decirlo antes de fijarla y ofrecer la
-   más cercana que sí lo tenga. Es el arreglo de fondo.
-2. **Para los 936 que ya están dentro:** un aviso en su pantalla con la alternativa, no un `UPDATE`
-   silencioso — **la oposición que uno prepara es decisión suya**, y cambiársela sin preguntar es
-   decidir por ella qué estudia. En el caso de María, la suya es casi seguro `administrativo_cantabria`
-   (existe, 40 temas; ella ya practica la Ley 5/2018 de Cantabria y su Estatuto), pero eso lo confirma
-   ella con un clic.
-3. **Detector**, que es lo que faltaba: nadie vio esto en cuatro meses y ha llegado por una impugnación
-   disfrazada. Una consulta —`target_oposicion` sin filas en `topics`, agregado por valor, con el conteo
-   de premium— enganchada al barrido de salud que ya existe (`health-sweep.cjs` + su gemelo `@Cron`),
-   con su frase-gatillo en `runbookRegistry`. **No hace falta sistema nuevo.**
-
-**Por qué es 🔴 y no higiene:** son 4 personas pagando por algo que no pueden usar y 248 altas al mes que
-aterrizan en el vacío justo en el momento de mayor intención. Y el coste ya se ha visto dos veces esta
-semana: María impugnando cuatro veces sin saber por qué, y la usuaria de Bibliotecario dándose de baja.
-
-**Relacionado:** [T-596] (el temario servía artículos sin texto) y [T-599] — misma familia: cosas que el
-usuario ve rotas y ningún barrido nuestro miraba.
-
 ---
 
 #### ✅ HECHO 06/08/2026 — implementado, con capas y medido
@@ -3971,6 +3911,39 @@ sus dos lecturas separadas por 45 minutos.
 indistinguible salvo que alguien mire por casualidad, como pasó aquí. Un evento en el punto de
 escritura del objetivo cerraría la pregunta en un día de datos.
 
+---
+
+#### 06/08 — UNO de los 3 premium, con nombre, y por dónde le duele (venía de [T-604], cerrada como duplicada)
+
+**Quién es.** `administrativo_comunidad_autonoma` (9 usuarios, 1 premium) es **María Becerril**,
+premium desde el **27/04**, de **Torrelavega**. Lleva **tres meses pagando sin temario**.
+
+**Su comunidad es Cantabria y el temario que le falta YA EXISTE.** `administrativo_cantabria` está
+construida, con **40 temas**. Ella misma ya practica la **Ley 5/2018 de Cantabria** y el **Estatuto de
+Autonomía de Cantabria**, así que la asignación no es una conjetura. **No se le cambia por nuestra
+cuenta**: la oposición que uno prepara es decisión suya; se le ofrece y la confirma ella.
+
+**Cómo se manifiesta el daño, que es lo que esta ficha no tenía.** Sin temario, lo único que puede
+hacer es ir **ley por ley acotando artículos a mano**… que es exactamente donde vive el bug de
+**[T-603]** (el repaso de fallos descarta la selección de artículos en silencio, con las casillas aún
+marcadas). Resultado: mandó **cuatro impugnaciones seguidas** (`17733d5e`/`7b3dd5e4`/`5f2213d0`/
+`6c4e43a4`, Ley 9/2017 arts. 138/143/147/160) diciendo *«artículo no incluido en mi selección»*, y
+**tenía razón literal**. O sea: no tener temario no es solo «le falta contenido» — **la empuja al
+camino peor mantenido de la app**, y ahí se lleva los bugs de lleno y a diario.
+
+**Detalle que confirma el encaje:** en `administrativo_cantabria` la Ley 9/2017 es el **Tema 15**,
+escopado a los **arts. 1-60**. Los suyos (138-160) caen fuera, así que con su oposición bien asignada
+esas preguntas no le habrían salido nunca.
+
+> ⚠️ **Y una advertencia para quien vuelva a medir esto (06/08).** Una sesión rehízo el recuento a mano
+> y publicó **936 usuarios / 4 premium** en vez de 587/3: contó las personalizadas del formato VIEJO
+> (UUID pelado), que es **el mismo error que esta ficha ya advierte** en el comentario de
+> `esOposicionPersonalizada`. **No rehagas la consulta: corre
+> `node scripts/health/oposicion-sin-temario.cjs`**, que es de donde salen las cifras buenas. Esa misma
+> sesión estuvo a punto de enchufar el detector al barrido nocturno como `error`, sin ver que el runner
+> declara a propósito que NO pinga badge (una alerta sin remediación construida enseña a ignorar el
+> buzón entero).
+
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
 - **Qué hay, medido el 31/07:** `auxiliar_archivos_bibliotecas_museos_madrid` tiene **50 temas activos, los 50 con epígrafe**, y **0 filas de `topic_scope`**. Como la pregunta llega al tema por el scope, esos 50 temas sirven **cero preguntas**. La oposición está en `oposiciones` con `is_active=false` (o sea, no la preparamos) y **sin entrada en `lib/config/oposiciones.ts`**, así que la app ni siquiera sabe enrutarla.
@@ -5278,6 +5251,34 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+### [T-604] ✅ [HECHA 06/08] DUPLICADA de [T-397] — el detector de «oposición elegida sin ni un tema» ya existía
+
+**Se cierra por duplicada el mismo día que se abrió.** El problema es real, pero ya estaba fichado,
+medido y con herramienta desde el **31/07** en **[T-397]** (refinada por [T-508]): núcleo
+`lib/health/oposicionSinTemario.cjs`, runner `scripts/health/oposicion-sin-temario.cjs`, tests y
+entrada en `toolRegistry`.
+
+**Qué salió mal al abrirla, que es lo único que aporta.** La sesión corrió `tools:buscar`, obtuvo 120
+resultados y **leyó solo los primeros**; luego escribió un núcleo nuevo **con el mismo nombre de
+fichero**, sobrescribiendo el que ya existía (restaurado desde git, sin pérdida). Dos consecuencias
+más, las dos previstas por escrito en el fichero que había borrado:
+
+1. **Cifra inflada:** publicó **936 usuarios / 4 premium** contando las personalizadas del formato
+   viejo (UUID pelado), cuyos temas cuelgan de otro `position_type` y por eso siempre dan cero. Las
+   reales son **587 / 3**. El comentario de `esOposicionPersonalizada` avisa de que ese error «ya hizo
+   publicar una cifra equivocada» — y se repitió.
+2. **Iba a enchufarlo al barrido nocturno como `error`**, sin ver que el runner declara a propósito
+   que NO pinga badge: las tres salidas son decisiones de producto que nadie ha tomado, y una alerta
+   sin remediación construida enseña a ignorar el buzón entero.
+
+**Lo aprovechable se movió a [T-397]**: quién es el premium de `administrativo_comunidad_autonoma`
+(María Becerril, Cantabria, `administrativo_cantabria` ya existe con 40 temas) y por qué no tener
+temario **la empuja al camino peor mantenido de la app**, donde se lleva de lleno el bug de [T-603].
+
+**Regla práctica que deja:** buscar por el NOMBRE DEL FICHERO que vas a crear, no solo por conceptos —
+`ls lib/health/` habría bastado.
+
+
 
 ### [T-593] ✅ [HECHA 06/08] Las preguntas llevan tags de OTRA oposición («Tema 1», «Galicia»), el usuario los lee y concluye que la pregunta no entra en su temario: 4 impugnaciones en 2 minutos por eso
 
