@@ -19,6 +19,23 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { emit } from './emit'
 import { INSTANCE_ID } from './instanceId'
+import { shouldSkipObservabilityPersistence } from './runtimeGate'
+
+// T-206 (06/08): mismo hueco que T-572 ya cerró en withErrorLogging.ts y
+// validation-error-log/queries.ts — el .env.local de este repo apunta `next
+// dev` a la RDS de PRODUCCIÓN, y este sampler arranca sin condición desde
+// `register()` (instrumentation.ts) en CUALQUIER proceso Node, portátil
+// incluido. MEDIDO contra observable_events (28/07-06/08, 9 días): el 77%
+// (17/22) de los eventos `critical` de event_loop_lag venían de instancias
+// con INSTANCE_ID prefijado por HOSTNAME (`fedora:…`, el portátil de Manuel
+// corriendo `next dev` en local) — un proceso de desarrollo sin el
+// aislamiento de recursos de un contenedor Fargate, así que sus stalls no
+// dicen nada de la salud del servicio en producción, y de paso ensuciaban
+// la investigación de T-206 (¿los picos de CPU son de una sola tarea, o
+// reales?). A diferencia del `request_completed` de T-572 (se dispara solo
+// si alguien pega al endpoint), este sampler es un DAEMON que corre solo
+// cada 60s sin que nadie lo invoque — la contaminación es pasiva y constante.
+const SKIP_EVENT_LOOP_LAG_EMIT = shouldSkipObservabilityPersistence()
 
 /**
  * Umbrales de lag (ms).
@@ -130,6 +147,7 @@ export function startEventLoopLagSampler(
       histogram.reset() // ventana deslizante: cada tick mide su propio minuto
       const { emit: shouldEmit, severity } = classifyEventLoopLag(stats)
       if (!shouldEmit || !severity) return
+      if (SKIP_EVENT_LOOP_LAG_EMIT) return
       await emit({
         source: 'vercel',
         severity,
