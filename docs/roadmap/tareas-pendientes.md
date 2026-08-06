@@ -893,6 +893,139 @@
   - **Instrucción explícita: NO tocar el fichero de ningún worktree vivo** (cortaría el turno de quien esté trabajando) **y NO repetir la medición** (ya está hecha y confirmada dos veces).
   - **Lo que SÍ queda por hacer, sin asignar a propósito:** arreglar `crear-worktree.sh` para que nunca copie el `.env.local` completo cuando el worktree es de un TRABAJADOR (no de una persona) — necesita primero trazar cuándo se invoca cada script en el ciclo de vida real (¿`crear-worktree.sh` corre DESPUÉS de `arrancar-trabajador.sh` en algún camino de rescate/resync y le pisa el acotado?), que es justo lo que "cuál gana no está establecido" señala sin responder. No intentado en este turno por prudencia: es un script que toca la credencial de negocio y la traza de cuándo se re-invoca no estaba clara con el tiempo que quedaba.
 
+### [T-611] 🟡 [ABIERTO 06/08] Los 131 `TopicContentView` son 131 copias del mismo componente: unificarlas y cerrar el bucle temario→test→artículo que reportó Ángela
+
+**De dónde sale.** Feedback `f57e3001` de **Ángela P.** (premium, `auxiliar_administrativo_valencia`,
+120 días de antigüedad, 7 feedbacks previos resueltos y 5 impugnaciones — acierta casi siempre). Pide
+dos cosas: (1) un **marcapáginas** en la ley que está estudiando, y (2) que al volver de un test de un
+artículo la app **la devuelva donde estaba** — hoy tiene que volver al temario, desplegar otra vez la
+ley y buscar el artículo. **Las dos son la misma cosa: «devuélveme donde estaba leyendo».**
+
+**Su punto 2 NO es una sugerencia, es un defecto de clase.** Medido en el código, no deducido:
+
+| | |
+|---|---|
+| Copias de `TopicContentView.tsx` bajo `app/` | **131** |
+| Abren con las leyes **plegadas** (`useState(new Set())`) | **131 / 131** |
+| Guardan `sessionStorage['temario_return_url']` | **131 / 131** |
+| Artículos con **ancla** (`<article id=…>`) a la que volver | **0 / 131** |
+
+El botón «📖 Volver a mi temario» (`components/LawTestPageWrapper.tsx:543`) existe y guarda
+`window.location.href`… **sin ancla**, así que devuelve **arriba del tema con las leyes otra vez
+plegadas**. La otra salida, «Volver al artículo N» (`lib/navigation/backToArticleLink.ts`), lleva a
+`/teoria/<ley>/articulo-N`, que es **otro lector con otro formato** — su *«y mismo formato»*.
+
+**Tráfico real (30 días, `user_interactions`):** salen del temario a hacer test **8.385 clics**
+(«Hacer test Art. N» 5.549 · 663 usuarios; «Hacer test de \<ley\>» 2.836 · 471 usuarios) y vuelven
+por los enlaces de retorno **2.719 clics** (≲190 usuarios). No prueba que los demás se pierdan
+—se puede encadenar tests a propósito— pero el código sí prueba que **quien quiere volver no puede
+volver a su sitio**.
+
+**Por qué NO se arregla con un codemod (decisión de Manuel, 06/08).** Lo único que cambia de verdad
+por oposición es `getBlockInfo`: **una tabla de rangos**, no código. Todo lo demás debería ser el
+mismo componente y no lo es —**122 cuerpos distintos**— con dos consecuencias medidas:
+
+- **`expandAll` es CÓDIGO MUERTO en las 78 copias que lo declaran: 0 lo conectan a un botón.**
+  Alguien escribió la función 78 veces y nunca puso el botón. (Ojo: en la primera lectura creí que
+  era drift de función —«Andalucía sí, Valencia no»— y **es falso: no lo tiene nadie**.)
+- **`TopicVideoCourses` falta en 54 copias.** El componente **se auto-oculta** si no hay cursos
+  (`return null`), así que dárselo a las 131 es seguro y **recupera cursos que hoy no se enseñan**.
+  Es exactamente el fallo que su propia cabecera dice haber venido a arreglar («Valencia se quedó
+  sin cursos, Madrid mostraba versión equivocada»).
+
+Y la fábrica sigue abierta: **`docs/maintenance/crear-nueva-oposicion.md` manda copiar el fichero**
+(*«adaptar `getBlockInfo()` en `temario/[slug]/TopicContentView.tsx`»*), o sea que la próxima
+oposición nace como copia 132.
+
+---
+
+#### ✅ HECHO Y EN `main` — la base (commit `e31ecf278`)
+
+Lo que ya está, que es la parte donde equivocarse se paga caro:
+
+- **`lib/temario/bloquesTemario.ts`** — núcleo puro `resolverBloque(tramos, n)`, con el MISMO
+  contrato que las 131 originales **incluido su caso por defecto** (tema fuera de todo tramo →
+  `{ block: '', displayNum: n }`; hay temarios planos, no es un error).
+- **`lib/temario/bloquesPorOposicion.ts`** — el dato de las 131, **generado**.
+- **`scripts/temario/generar-bloques-por-oposicion.cjs`** — el generador. Registrado en
+  `toolRegistry` como **`historico`**: es de un solo uso y se conserva como prueba de cómo se derivó.
+- **`__tests__/temario/fixtures/bloques-originales.json`** — el comportamiento de las 131 originales
+  **congelado antes de tocarlas** (34 KB, comprimido en tramos; el test lo expande).
+- **`__tests__/temario/bloquesTemario.test.ts`** — **142 tests**: núcleo puro · EQUIVALENCIA tema a
+  tema contra el fixture · COBERTURA (una ruta de temario sin entrada en el dato **falla el CI**).
+
+**Medida final: 131/131 convertidas · 130.869 comprobaciones · 0 divergencias.** Derivado del
+COMPORTAMIENTO (se transpila cada `getBlockInfo` y se ejecuta), no del texto → equivalente por
+construcción.
+
+> ⚠️ **GOTCHA que casi se cuela y explica la doble comprobación.** La primera versión muestreó hasta
+> el tema **120** y perdió los **Bloques II a VI de `administrativo-estado`** —que numera 201..608—
+> **dando «0 divergencias»**, porque la comprobación medía sobre el **mismo rango truncado** que la
+> generación: el punto ciego era idéntico en las dos. Lo cazó una segunda comprobación **por otro
+> camino**: los literales numéricos del código original tienen que caber bajo el techo (ignorando
+> comentarios y textos, o el «BOP Salamanca nº 93/2024» da falso positivo). Máximo real en BD:
+> `select max(topic_number) from topics` → **608**. Validado además **por MUTACIÓN**: quitando el
+> Bloque VI del dato → 2 tests en rojo; cambiando un offset → mensaje exacto («tema 17: antes …/1,
+> ahora …/2»); restaurado → 142 verdes.
+
+---
+
+#### ⏳ LO QUE FALTA (en este orden)
+
+1. **El componente único** `components/temario/TopicContentView.tsx`. **La base a copiar es
+   `app/administrativo-estado/temario/[slug]/TopicContentView.tsx`**, porque es la que ya soporta
+   `basePath` y `temasExistentes` — los props del arreglo de [T-541] — y la usan las **oposiciones
+   personalizadas**. Tiene que aceptar:
+   - `oposicion` (slug) → resuelve bloques con `resolverBloque(BLOQUES_POR_OPOSICION[slug], n)`;
+   - `basePath` y `temasExistentes` (personalizadas, [T-541] — **no romper esto**);
+   - **artículos débiles** (`useTopicUnlock`) como capacidad **opcional apagada por defecto**: hoy
+     solo la tiene `auxiliar-administrativo-estado`, y encenderla para todos sería un cambio de
+     comportamiento (y de carga) que no toca decidir aquí;
+   - `TopicVideoCourses` **para todas** (se auto-oculta; recupera los cursos de las 54);
+   - el `loginHref` del `TopicPrintButton`, que hoy va **hardcodeado por oposición** — derivarlo.
+2. **Migrar las 131 rutas.** Es un cambio de UNA línea por fichero: en cada
+   `app/<opo>/temario/[slug]/page.tsx`, `import TopicContentView from './TopicContentView'` →
+   `from '@/components/temario/TopicContentView'`, y **borrar** el fichero local. Comprobado que es
+   seguro: **130/131 páginas ya pasan `oposicion=`**; las dos excepciones son
+   `auxiliar-administrativo-estado` (no lo pasa: su componente lleva el positionType dentro) y
+   `app/oposicion-personalizada/[id]/temario/[slug]/page.tsx` (importa el de `administrativo-estado`
+   y pasa `basePath`/`temasExistentes`).
+3. **El arreglo de Ángela**, que una vez unificado son ~15 líneas en UN fichero:
+   - `<article id={anclaArticulo(ley, art)}>` en la tarjeta;
+   - el `onClick` que guarda `temario_return_url` guarda **la URL con `#ancla`**;
+   - al montar, si hay `hash`, **desplegar esa ley** y hacer scroll.
+   El ancla se construye en el núcleo puro que ya existe (`lib/navigation/backToArticleLink.ts`),
+   **no en el componente** — ahí están ya `buildLawTestLink` / `buildBackToArticleLink` y su
+   guardarraíl `lawTestCtaNoBareLink.test.ts`.
+4. **Guardarraíl anti-copia-132:** que no pueda existir ningún `TopicContentView.tsx` bajo `app/`.
+   Va como eslabón del guardarraíl que ya vigila esta familia
+   (`testsDeOposicionPersonalizada.guardrail.test.ts`, que ya tiene la regla *«ninguna página puede
+   montar el TopicContentView de otra oposición sin pasarle basePath»*), **no en un fichero nuevo**.
+5. **Cerrar la fábrica:** `scripts/create-oposicion.cjs` + `docs/maintenance/crear-nueva-oposicion.md`
+   dejan de copiar el componente y pasan a **añadir la fila en `bloquesPorOposicion.ts`** (el test de
+   cobertura ya obliga).
+6. **Observabilidad:** evento al usar la vuelta con ancla, para medir si el retorno pasa de ≲190
+   usuarios a acercarse a los 663 que salen. Sin esto no se sabe si el arreglo sirvió.
+7. **vence-sim (Playwright):** el viaje entero temario → «Hacer test Art. N» → terminar → volver **al
+   mismo artículo con la ley desplegada**. Es lo único que prueba que el bucle se cierra de verdad;
+   los unit no pueden verlo.
+
+#### 🙋 Pendiente con Ángela (feedback `f57e3001`, reservado por `colas-06ago`)
+
+- **No se le ha contestado todavía, y es a propósito:** el manual manda responder a una sugerencia
+  que hay que construir **con la cosa ya viva** (`gestionar-feedback-bug.md`, orden de la cola §4).
+- Cuando se le escriba: es **premium** y el aviso es **certero**, así que entra en **recompensa de
+  bug (3 €)** — pero **exige orden explícita de Manuel** y **NUNCA se menciona en el mensaje**.
+- **Antes de responder**, el dossier marca que su oposición tiene **6 temas con el Paso 2 sin cerrar**
+  (`verified_correct=18, stale=6`) → pasar `npm run epigrafe:revision -- auxiliar_administrativo_valencia`.
+- Su punto 1 (**marcapáginas explícito**) queda **sin decidir**: el arreglo 3 le da la mayor parte sin
+  que ella tenga que marcar nada. Si se hace, el gemelo natural es `user_question_favorites`.
+
+**Relacionadas:** [T-541] (`basePath`: el default de este mismo componente teletransportaba al usuario),
+[T-596] (el codemod sobre las 131 copias — el precedente que esta ficha existe para no repetir),
+[T-073] (el CTA de test del temario servía la ley entera; se arregló centralizando en `LawTestCTA`,
+mismo patrón un escalón más abajo), [T-130] (registro de herramientas: comprobar antes de construir).
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
