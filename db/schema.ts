@@ -4405,6 +4405,25 @@ export const backlogTasks = pgTable("backlog_tasks", {
 	dueReason: text("due_reason"),
 	forceClaimedAt: timestamp("force_claimed_at", { withTimezone: true, mode: 'string' }),
 	forceClaimReason: text("force_claim_reason"),
+	// Esfuerzo declarado + tiempo REALMENTE trabajado (T-414): la estimación va en cajones
+	// (`minutos|rato|larga|sesion_propia`) y el tiempo se acumula solo, para poder contrastar
+	// lo declarado con lo medido al cerrar.
+	effort: text(),
+	firstClaimedAt: timestamp("first_claimed_at", { withTimezone: true, mode: 'string' }),
+	lastClaimedBy: text("last_claimed_by"),
+	workedSeconds: integer("worked_seconds"),
+	// La QUINTA espera (T-539): «hecho, esperando que lo mires». La entrega es obligatoria por
+	// CHECK en la tabla, no solo en el CLI — quien revisa no puede adivinar qué se espera de él.
+	reviewNote: text("review_note"),
+	reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true, mode: 'string' }),
+	reviewRequestedBy: text("review_requested_by"),
+	// El escalón DESPUÉS de `done` (T-392): `done` = el deploy incluye el commit; `archived_at` =
+	// alguien MIRÓ producción y funciona. `requiere_archivo` NULL no afirma nada (fail-open o
+	// anterior a la migración), no equivale a false.
+	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
+	archiveEvidence: text("archive_evidence"),
+	archivedBy: text("archived_by"),
+	requiereArchivo: boolean("requiere_archivo"),
 }, (table) => [
 	index("backlog_tasks_abiertas_idx").using("btree", table.priority.asc().nullsLast().op("text_ops"), table.id.asc().nullsLast().op("text_ops")).where(sql`(status = ANY (ARRAY['open'::text, 'in_progress'::text, 'blocked'::text]))`),
 	check("backlog_cierre_coherente", sql`(status = ANY (ARRAY['done'::text, 'dropped'::text])) = (closed_at IS NOT NULL)`),
