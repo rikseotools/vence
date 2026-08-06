@@ -942,6 +942,26 @@ semana: María impugnando cuatro veces sin saber por qué, y la usuaria de Bibli
 **Relacionado:** [T-596] (el temario servía artículos sin texto) y [T-599] — misma familia: cosas que el
 usuario ve rotas y ningún barrido nuestro miraba.
 
+---
+
+#### ✅ HECHO 06/08/2026 — implementado, con capas y medido
+
+**El arreglo, en los cuatro puntos donde se perdía:**
+- `lib/test-url/lawRepasoFallosUrl.ts` — `selectedArticles` es ahora **OBLIGATORIO en el tipo**, no opcional. Eso es lo que impide que vuelva a pasar: un test se puede borrar, esto **no compila**. Serializa con el helper nuevo `serializeSelectedArticles` (dedupe + `encodeURIComponent` por token, coma literal), en el **mismo formato y con el mismo nombre de parámetro (`selected_articles`) que `/avanzado`** — nada de vocabulario propio.
+- `app/leyes/[law]/LawTestConfigurator.tsx` — pasa `config.selectedArticlesByLaw?.[lawShortName] ?? []`.
+- `app/test/repaso-fallos-v2/page.tsx` — lee el parámetro con **`parseSelectedArticlesScope`**, el parser canónico que YA existía (no se escribió otro), y que a propósito no hace `parseInt`.
+- `lib/api/tests/schemas.ts` + `queries.ts` — la variante `law` acepta `articleNumbers?: string[]` (**strings**, que la columna es texto) y el SQL añade `inArray(articles.articleNumber, …)`. Se extendió el scope `law` en vez de crear una quinta variante: los artículos pertenecen a una ley. El pre-corte a `numQuestions` ya estaba protegido por `hasScope`, así que se hereda gratis.
+
+**Capas (todas ejecutan, ninguna es de leer el código):**
+- **Unitarios** — `__tests__/api/tests/failedQuestionsLawScope.test.ts`, +17 casos (51 en total). El que importa hace la **ida y vuelta contra el parser de producción** y comprueba que `DA1` y `55 ter` sobreviven. **Validado por mutación:** devolviendo la URL sin los artículos, **5 tests se ponen en rojo**.
+- **Integración contra RDS** — NIVEL A-bis en `__tests__/integration/failedQuestionsLawScope.integration.test.ts`: **ejecuta `getFailedQuestionsForUser` de verdad** (los NIVEL C de esa suite solo leen el fuente, y este bug convivía tan ricamente con un fuente que «contenía scope law»). Descubre solo un usuario con fallos en ≥3 artículos — cayó en la propia Ley 9/2017 — y exige: acotado a 1 artículo → nada de los demás; acotado a 2 → exactamente esos dos; **sin acotar → sigue llegando la ley entera** (contraste imprescindible: sin él, un filtro que devolviera siempre vacío pasaría el primero). 14/14.
+- **Simulación con navegador** — `npm run sim:repaso-articulos` (`scripts/sim/sim-repaso-articulos.ts`, registrada en `toolRegistry`). Es la capa que **habría cazado esto**, porque el defecto vivía ENTRE dos pantallas. **Contraste medido el 06/08: contra PRODUCCIÓN sirve 47 de 50 preguntas fuera del artículo pedido; con el arreglo, 0 de 2** (50 → 2 al acotar). Sirve además de **canario post-deploy**: se lanza contra `https://www.vence.es` sin argumentos.
+- Typecheck completo limpio.
+
+**Pendiente: DESPLEGAR y volver a pasar la simulación contra producción.** Hasta entonces está arreglado pero no verificado en vivo.
+
+**Gotchas del camino, para la siguiente sesión que monte un dev local en un worktree:** hicieron falta las **dos** notas de memoria — `cp -al` del `node_modules` real (Turbopack no traga el symlink) **y** las 3 claves RS256 además de `AUTH_SECRET` en `.env.local`, o `/api/auth/token` da 401 y la simulación se queda esperando una respuesta que no llega.
+
 ### [T-601] 🔴 [ABIERTO 05/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
 
 - **Esfuerzo: rato** para el caso concreto y el arreglo del endpoint. Medir la CLASE puede ser más.

@@ -142,8 +142,9 @@ export type FailedQuestionsOrder = z.infer<typeof failedQuestionsOrderSchema>
 // 'topic': el cliente pasa los topic_numbers directamente.
 // 'position': filtra a TODA la oposición (todos los bloques). Usado por la card
 //             "Debilidades" del hub de tests para repasar fallos cross-tema.
-// 'law': filtra a UNA ley concreta. Usado por el repaso de fallos desde /leyes/[law].
-//        No necesita positionType: getAllowedLawIds ya acota a la oposición del user.
+// 'law': filtra a UNA ley concreta, y opcionalmente a unos ARTÍCULOS suyos.
+//        Usado por el repaso de fallos desde /leyes/[law]. No necesita
+//        positionType: getAllowedLawIds ya acota a la oposición del user.
 // En block/topic/position positionType acota a UNA oposición (anti cross-oposición).
 export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
   z.object({
@@ -163,6 +164,13 @@ export const failedQuestionsScopeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('law'),
     lawShortName: z.string().min(1),
+    // Acotación por artículos DENTRO de esa ley (T-603). Opcional y ausente =
+    // ley entera (comportamiento histórico, no rompe a los llamadores viejos).
+    // Son STRINGS y no números a propósito: `article_number` es texto y admite
+    // 'DA1', '55 ter', '32 bis'. Tipar esto como number descartaría las
+    // disposiciones y truncaría los sufijos, que es la misma trampa que
+    // documenta parseSelectedArticlesScope (lib/navigation/backToArticleLink).
+    articleNumbers: z.array(z.string().min(1)).min(1).optional(),
   }),
 ])
 

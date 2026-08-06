@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import TestLayout from '@/components/TestLayout'
+import { parseSelectedArticlesScope } from '@/lib/navigation/backToArticleLink'
 import type { TestLayoutQuestion } from '@/lib/api/tests'
 
 interface CreateTestResponse {
@@ -72,13 +73,18 @@ function RepasoFallosV2Content() {
         // Filtro opcional por ley: repaso de fallos desde /leyes/[law].
         // /test/repaso-fallos-v2?law=Ley 9/2017
         const lawParam = searchParams.get('law')
+        // …y, dentro de esa ley, los artículos que el usuario acotó con las
+        // casillas (T-603). Mismo nombre de parámetro y mismo parser que usa
+        // /leyes/[law]/avanzado: parseSelectedArticlesScope NO hace parseInt,
+        // así que 'DA1' y '55 ter' llegan enteros hasta el serving.
+        const selectedArticles = parseSelectedArticlesScope(searchParams.get('selected_articles'))
 
         // Construir body del request
         type Scope =
           | { type: 'block'; bloqueNumber: number; positionType: string }
           | { type: 'topic'; topicNumbers: number[]; positionType: string }
           | { type: 'position'; positionType: string }
-          | { type: 'law'; lawShortName: string }
+          | { type: 'law'; lawShortName: string; articleNumbers?: string[] }
         const requestBody: {
           numQuestions: number
           orderBy: string
@@ -97,7 +103,11 @@ function RepasoFallosV2Content() {
         }
 
         if (lawParam) {
-          requestBody.scope = { type: 'law', lawShortName: lawParam }
+          requestBody.scope = {
+            type: 'law',
+            lawShortName: lawParam,
+            ...(selectedArticles.length > 0 && { articleNumbers: selectedArticles }),
+          }
         } else if (bloqueParam && positionTypeParam) {
           const bloqueNumber = parseInt(bloqueParam, 10)
           if (Number.isInteger(bloqueNumber) && bloqueNumber > 0) {

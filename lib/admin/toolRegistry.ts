@@ -515,6 +515,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Contraste que demuestra que tiene colmillo: el mismo GET contra producción (código anterior) ' +
       'devuelve 200 con las 25 preguntas del examen y las respuestas de esa persona.',
   },
+  // ── el repaso de fallos respeta los artículos que el usuario acotó ────────────────────────
+  sim_repaso_articulos: {
+    titulo: 'Comprobar que el repaso de fallos NO sirve artículos fuera de la selección (T-603)',
+    ruta: 'scripts/sim/sim-repaso-articulos.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:repaso-articulos` (o `SIM_BASE=http://localhost:3477 …`; necesita AUTH_SECRET de ' +
+      'SSM /vence-frontend/AUTH_SECRET). SOLO LEE. Navegador real + BD real: descubre solo un usuario ' +
+      'con fallos en ≥3 artículos de una misma ley, acuña su sesión y mira los artículos que el ' +
+      'ENDPOINT sirve. Tres casos: acotado a un artículo no aparece ningún otro · SIN acotar sigue ' +
+      'llegando la ley entera (contraste, sin el cual un filtro que devolviera SIEMPRE vacío pasaría ' +
+      'el primero) · acotar recorta de verdad. ' +
+      '⚠️ HACE FALTA NAVEGADOR: el defecto vivía ENTRE dos pantallas (el configurador construía bien ' +
+      'la selección y el salto a /test/repaso-fallos-v2 la tiraba por el camino), así que ninguna de ' +
+      'las dos piezas estaba «mal» por separado y ningún test las cazó en dos meses y medio. ' +
+      'Contraste medido el 06/08: contra PRODUCCIÓN (código anterior) sirve 47 de 50 preguntas fuera ' +
+      'del artículo pedido; con el arreglo, 0 de 2. ' +
+      'Complementa —no sustituye— a `__tests__/api/tests/failedQuestionsLawScope.test.ts` (el salto ' +
+      'configurador→URL, con ida y vuelta contra el parser de producción) y al NIVEL A-bis de ' +
+      '`__tests__/integration/failedQuestionsLawScope.integration.test.ts` (la query real contra RDS).',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',

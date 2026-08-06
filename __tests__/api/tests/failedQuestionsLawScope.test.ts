@@ -24,7 +24,9 @@ import {
   mapModalOrderToEndpoint,
   mapFailedPeriodToDays,
   buildLawRepasoFallosUrl,
+  serializeSelectedArticles,
 } from '@/lib/test-url/lawRepasoFallosUrl'
+import { parseSelectedArticlesScope } from '@/lib/navigation/backToArticleLink'
 
 const VALID_UUID = '4ded0300-d1d1-45ab-b68f-9c0488a3195c'
 
@@ -181,7 +183,7 @@ describe('SIM mapFailedPeriodToDays', () => {
 // ============================================================
 describe('SIM buildLawRepasoFallosUrl', () => {
   it('apunta a /test/repaso-fallos-v2 (NO al test normal de la ley)', () => {
-    const url = buildLawRepasoFallosUrl({ lawShortName: 'Ley 9/2017', numQuestions: 10 })
+    const url = buildLawRepasoFallosUrl({ lawShortName: 'Ley 9/2017', numQuestions: 10, selectedArticles: [] })
     expect(url.startsWith('/test/repaso-fallos-v2?')).toBe(true)
     expect(url).not.toContain('/avanzado')
   })
@@ -192,6 +194,7 @@ describe('SIM buildLawRepasoFallosUrl', () => {
       numQuestions: 49,
       failedQuestionsOrder: 'most_failed',
       failedPeriod: 'all',
+      selectedArticles: [],
     })
     const qs = new URLSearchParams(url.split('?')[1])
     expect(qs.get('law')).toBe('Ley 9/2017')
@@ -202,14 +205,14 @@ describe('SIM buildLawRepasoFallosUrl', () => {
 
   it('NO incluye listas de IDs (failed_ids) — el servidor recalcula', () => {
     const url = buildLawRepasoFallosUrl({
-      lawShortName: 'Ley 9/2017', numQuestions: 49, failedQuestionsOrder: 'most_failed',
+      lawShortName: 'Ley 9/2017', numQuestions: 49, failedQuestionsOrder: 'most_failed', selectedArticles: [],
     })
     expect(url).not.toContain('failed_ids')
     expect(url).not.toContain('failed_id=')
   })
 
   it('codifica correctamente leyes con barra y espacios', () => {
-    const url = buildLawRepasoFallosUrl({ lawShortName: 'Ley 9/2017', numQuestions: 10 })
+    const url = buildLawRepasoFallosUrl({ lawShortName: 'Ley 9/2017', numQuestions: 10, selectedArticles: [] })
     // la barra y el espacio deben ir escapados en la query string...
     expect(url).toContain('law=Ley')
     expect(url).not.toContain('law=Ley 9/2017') // sin escapar sería inválido
@@ -224,6 +227,7 @@ describe('SIM buildLawRepasoFallosUrl', () => {
       numQuestions: 25,
       failedQuestionsOrder: 'oldest_failed',
       failedPeriod: '30d',
+      selectedArticles: [],
     })
     const qs = new URLSearchParams(url.split('?')[1])
     expect(qs.get('order')).toBe('oldest')
@@ -235,8 +239,138 @@ describe('SIM buildLawRepasoFallosUrl', () => {
     // Con scope server-side la longitud es constante, no depende del nº de falladas.
     const url = buildLawRepasoFallosUrl({
       lawShortName: 'Ley 9/2017', numQuestions: 300, failedQuestionsOrder: 'most_failed', failedPeriod: 'all',
+      selectedArticles: [],
     })
     expect(url.length).toBeLessThan(120)
+  })
+})
+
+// ============================================================
+// T-603 — La SELECCIÓN DE ARTÍCULOS tiene que sobrevivir al salto
+//
+// Bug: al marcar «solo preguntas falladas», el salto a /test/repaso-fallos-v2
+// tiraba `selectedArticlesByLaw` en silencio y el test servía la ley entera,
+// con las casillas del usuario todavía marcadas en pantalla. Medido en la
+// cuenta de María el 05/08: hasta 6 de 20 preguntas fuera de su selección por
+// este camino, y 0 de 25 por /avanzado (los dos caminos discrepaban).
+// ============================================================
+describe('T-603 serializeSelectedArticles', () => {
+  it('devuelve cadena vacía sin artículos (→ el llamador omite el parámetro)', () => {
+    expect(serializeSelectedArticles([])).toBe('')
+    expect(serializeSelectedArticles(null)).toBe('')
+    expect(serializeSelectedArticles(undefined)).toBe('')
+  })
+
+  it('acepta números y strings mezclados (el configurador manda ambos)', () => {
+    expect(serializeSelectedArticles([1, '2', 3])).toBe('1,2,3')
+  })
+
+  it('deduplica conservando el orden y descarta vacíos', () => {
+    expect(serializeSelectedArticles(['5', '5', '', '  ', '6'])).toBe('5,6')
+  })
+
+  it('codifica los identificadores con espacio, que si no rompen la query string', () => {
+    // '55 ter' sin codificar cortaría la URL por el espacio.
+    expect(serializeSelectedArticles(['55 ter'])).toBe('55%20ter')
+  })
+})
+
+describe('T-603 buildLawRepasoFallosUrl — la selección viaja', () => {
+  it('incluye selected_articles cuando el usuario acotó', () => {
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 9/2017', numQuestions: 20, selectedArticles: ['1', '2', '3'],
+    })
+    const qs = new URLSearchParams(url.split('?')[1])
+    expect(qs.get('selected_articles')).toBe('1,2,3')
+  })
+
+  it('NO incluye el parámetro cuando no acotó (ley entera, como siempre)', () => {
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 9/2017', numQuestions: 20, selectedArticles: [],
+    })
+    expect(url).not.toContain('selected_articles')
+  })
+
+  it('usa el MISMO nombre de parámetro que /leyes/[law]/avanzado', () => {
+    // Si divergiera, cada camino tendría su vocabulario y el parser canónico
+    // dejaría de valer para los dos: es como nacen los silos.
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 9/2017', numQuestions: 20, selectedArticles: ['7'],
+    })
+    expect(url).toContain('selected_articles=')
+  })
+
+  it('REGRESIÓN T-603: ida y vuelta con el parser de producción, sin perder nada', () => {
+    // Este es el test que habría cazado el bug: construir la URL y leerla con
+    // el MISMO parser que usa la página de destino.
+    const seleccion = ['1', '55 ter', 'DA1', '32 bis', '112']
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 9/2017', numQuestions: 20, selectedArticles: seleccion,
+    })
+    const qs = new URLSearchParams(url.split('?')[1])
+    expect(parseSelectedArticlesScope(qs.get('selected_articles'))).toEqual(seleccion)
+  })
+
+  it('los identificadores NO numéricos sobreviven enteros (nada de parseInt)', () => {
+    // 'DA1'→NaN y '55 ter'→55 son la forma de sub-servir en silencio.
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 39/2015', numQuestions: 10, selectedArticles: ['DA1', '55 ter'],
+    })
+    const qs = new URLSearchParams(url.split('?')[1])
+    const leidos = parseSelectedArticlesScope(qs.get('selected_articles'))
+    expect(leidos).toContain('DA1')
+    expect(leidos).toContain('55 ter')
+    expect(leidos.some(a => a === '55')).toBe(false)
+  })
+
+  it('la selección real de María (95 artículos) cabe de sobra en la URL', () => {
+    // La razón por la que en su día no se pasaron listas era el tamaño (HTTP 431
+    // con listas de IDs de PREGUNTAS). Los ARTÍCULOS son otro orden de magnitud,
+    // y /avanzado ya los pasa así en producción desde hace meses.
+    const noventaYCinco = Array.from({ length: 95 }, (_, i) => String(i + 1))
+    const url = buildLawRepasoFallosUrl({
+      lawShortName: 'Ley 9/2017', numQuestions: 20, selectedArticles: noventaYCinco,
+    })
+    expect(url.length).toBeLessThan(600)
+    const qs = new URLSearchParams(url.split('?')[1])
+    expect(parseSelectedArticlesScope(qs.get('selected_articles'))).toHaveLength(95)
+  })
+})
+
+describe('T-603 failedQuestionsScopeSchema — articleNumbers', () => {
+  it('acepta scope law con articleNumbers', () => {
+    const r = failedQuestionsScopeSchema.safeParse({
+      type: 'law', lawShortName: 'Ley 9/2017', articleNumbers: ['1', 'DA1', '55 ter'],
+    })
+    expect(r.success).toBe(true)
+  })
+
+  it('sigue aceptando scope law SIN articleNumbers (retrocompatible)', () => {
+    expect(failedQuestionsScopeSchema.safeParse({
+      type: 'law', lawShortName: 'Ley 9/2017',
+    }).success).toBe(true)
+  })
+
+  it('rechaza articleNumbers vacío: "acoté a nada" no es una petición válida', () => {
+    // Si colara, el filtro no se aplicaría y volveríamos a servir la ley entera
+    // creyendo que hemos acotado — justo el fallo que se está arreglando.
+    expect(failedQuestionsScopeSchema.safeParse({
+      type: 'law', lawShortName: 'Ley 9/2017', articleNumbers: [],
+    }).success).toBe(false)
+  })
+
+  it('rechaza articleNumbers numéricos: la columna es TEXTO', () => {
+    expect(failedQuestionsScopeSchema.safeParse({
+      type: 'law', lawShortName: 'Ley 9/2017', articleNumbers: [1, 2],
+    }).success).toBe(false)
+  })
+
+  it('la petición completa admite el scope con artículos', () => {
+    expect(safeParseCreateFailedQuestionsTest({
+      userId: VALID_UUID,
+      numQuestions: 20,
+      scope: { type: 'law', lawShortName: 'Ley 9/2017', articleNumbers: ['138', '143'] },
+    }).success).toBe(true)
   })
 })
 

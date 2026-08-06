@@ -190,12 +190,16 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
             // por preguntas falladas; mezclarlo ahí devolvía la ley entera
             // (bug María 21/05/2026). /test/repaso-fallos-v2 calcula las
             // falladas en el servidor (scope=law) sin pasar listas de IDs.
+            // Los ARTÍCULOS acotados sí se propagan (T-603): son la selección
+            // que el usuario acaba de hacer con las casillas y hasta el 06/08
+            // se perdían justo aquí, sin que la interfaz lo dijera.
             if (config.onlyFailedQuestions) {
               const failedUrl = buildLawRepasoFallosUrl({
                 lawShortName,
                 numQuestions: config.numQuestions,
                 failedQuestionsOrder: config.failedQuestionsOrder,
                 failedPeriod: config.failedPeriod,
+                selectedArticles: config.selectedArticlesByLaw?.[lawShortName] ?? [],
               })
               console.log('🎯 Navegando a repaso de falladas:', failedUrl)
               window.location.href = failedUrl

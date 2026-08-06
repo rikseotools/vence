@@ -151,6 +151,108 @@ describe('INTEGRACIÓN — repaso de fallos scope=law (BD real)', () => {
 })
 
 // ---------------------------------------------------------
+// NIVEL A-bis (T-603) — EJECUTA la query real acotando por artículos
+//
+// Los NIVEL C de abajo leen el código fuente, y eso no demuestra que el filtro
+// funcione: el bug de T-603 convivía tan ricamente con un código fuente que
+// «contenía scope law». Aquí se llama a getFailedQuestionsForUser de verdad,
+// contra RDS, y se comprueba lo único que le importa al usuario — que NO le
+// sirvan un artículo que no eligió.
+// ---------------------------------------------------------
+describe('NIVEL A-bis (T-603) — el repaso respeta la selección de artículos (RDS)', () => {
+  if (!hasDb) {
+    test.skip('Skipped: falta DATABASE_URL en el entorno', () => {})
+    return
+  }
+
+  let client: Client
+  // Caso descubierto dinámicamente: un usuario con falladas en ≥2 artículos
+  // distintos de una misma ley. Buscarlo en vez de fijarlo mantiene el test
+  // vivo cuando cambien los datos (mismo criterio que el beforeAll de arriba).
+  let caso: { userId: string; lawShortName: string; articulos: string[] } | null = null
+
+  beforeAll(async () => {
+    client = new Client(testDbConfig())
+    await client.connect()
+    const r = await client.query<{ user_id: string; short_name: string; arts: string[] }>(`
+      WITH heavy AS (
+        SELECT user_id FROM user_stats_summary ORDER BY total_questions DESC LIMIT 20
+      )
+      SELECT tq.user_id::text, l.short_name,
+             array_agg(DISTINCT a.article_number) AS arts
+        FROM test_questions tq
+        JOIN heavy h ON h.user_id = tq.user_id
+        JOIN questions q ON q.id = tq.question_id AND q.is_active = true
+        JOIN articles a ON a.id = q.primary_article_id
+        JOIN laws l ON l.id = a.law_id
+       WHERE tq.is_correct = false
+         AND tq.created_at > now() - interval '3650 days'
+       GROUP BY tq.user_id, l.short_name
+      HAVING count(DISTINCT a.article_number) >= 3
+       ORDER BY count(DISTINCT a.article_number) DESC
+       LIMIT 1
+    `)
+    if (r.rows.length) {
+      caso = {
+        userId: r.rows[0].user_id,
+        lawShortName: r.rows[0].short_name,
+        articulos: r.rows[0].arts,
+      }
+    }
+  }, 90000)
+
+  afterAll(async () => { await client?.end() })
+
+  test('acotar a UN artículo no devuelve NADA de los demás', async () => {
+    if (!caso) { console.warn('sin datos: no hay usuario con falladas en ≥3 artículos'); return }
+    const { getFailedQuestionsForUser } = await import('@/lib/api/tests')
+
+    const elegido = caso.articulos[0]
+    const res = await getFailedQuestionsForUser({
+      userId: caso.userId,
+      numQuestions: 100,
+      orderBy: 'recent',
+      days: 36500,
+      scope: { type: 'law', lawShortName: caso.lawShortName, articleNumbers: [elegido] },
+    })
+
+    expect(res.success).toBe(true)
+    const fuera = (res.questions ?? []).filter((q) => String(q.article_number) !== String(elegido))
+    // El corazón del bug: antes salían artículos de toda la ley.
+    expect(fuera.map((q) => q.article_number)).toEqual([])
+  }, 90000)
+
+  test('SIN acotar sigue devolviendo la ley entera (no hemos roto lo de antes)', async () => {
+    if (!caso) return
+    const { getFailedQuestionsForUser } = await import('@/lib/api/tests')
+
+    const sinAcotar = await getFailedQuestionsForUser({
+      userId: caso.userId, numQuestions: 100, orderBy: 'recent', days: 36500,
+      scope: { type: 'law', lawShortName: caso.lawShortName },
+    })
+    const distintos = new Set((sinAcotar.questions ?? []).map((q) => String(q.article_number)))
+    // Con ≥3 artículos fallados, sin acotar tienen que venir de más de uno:
+    // si esto bajara a 1, el filtro se estaría aplicando cuando nadie lo pidió.
+    expect(distintos.size).toBeGreaterThan(1)
+  }, 90000)
+
+  test('acotar a DOS artículos devuelve exactamente esos dos, y de ambos hay algo', async () => {
+    if (!caso) return
+    const { getFailedQuestionsForUser } = await import('@/lib/api/tests')
+
+    const dos = caso.articulos.slice(0, 2)
+    const res = await getFailedQuestionsForUser({
+      userId: caso.userId, numQuestions: 100, orderBy: 'recent', days: 36500,
+      scope: { type: 'law', lawShortName: caso.lawShortName, articleNumbers: dos },
+    })
+    const servidos = new Set((res.questions ?? []).map((q) => String(q.article_number)))
+    for (const s of servidos) expect(dos.map(String)).toContain(s)
+    // …y que no se haya quedado en uno por accidente (un AND de más).
+    expect(servidos.size).toBe(2)
+  }, 90000)
+})
+
+// ---------------------------------------------------------
 // NIVEL C — Anti-regresión estático (siempre corre)
 // ---------------------------------------------------------
 describe('NIVEL C — garantías en el código fuente', () => {

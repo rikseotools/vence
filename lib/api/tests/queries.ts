@@ -383,7 +383,20 @@ export async function getFailedQuestionsForUser(
         // positionType — getAllowedLawIds (scopeFilter) ya acota a la oposición
         // del usuario; aquí solo restringimos a la ley elegida.
         blockFilter = sql`${laws.shortName} = ${params.scope.lawShortName}`
-        console.log(`🎯 [DRIZZLE] scope=law lawShortName=${params.scope.lawShortName}`)
+
+        // …y, si el usuario acotó con las casillas, a esos artículos (T-603).
+        // Comparación por TEXTO contra la columna `article_number`, que es text:
+        // así 'DA1' y '55 ter' sobreviven. Convertir a número aquí sub-serviría
+        // en silencio (mismo defecto que documenta parseSelectedArticlesScope).
+        const articleNumbers = params.scope.articleNumbers
+        if (articleNumbers && articleNumbers.length > 0) {
+          blockFilter = sql`${blockFilter} AND ${inArray(articles.articleNumber, articleNumbers)}`
+        }
+
+        console.log(
+          `🎯 [DRIZZLE] scope=law lawShortName=${params.scope.lawShortName}` +
+          ` articulos=${articleNumbers?.length ?? 'todos'}`
+        )
       } else if (params.scope.type === 'position') {
         const positionType = params.scope.positionType
         // Toda la oposición: cualquier pregunta cuyo artículo esté en algún
