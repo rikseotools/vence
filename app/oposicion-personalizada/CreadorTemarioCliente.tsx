@@ -29,7 +29,7 @@ export default function CreadorTemarioCliente() {
           Necesitas iniciar sesión para armar tu propio temario y poder guardarlo.
         </p>
         <Link
-          href="/login"
+          href="/login?return_to=/oposicion-personalizada"
           className="inline-block mt-6 px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
         >
           Iniciar sesión
