@@ -13,7 +13,7 @@
  * «ajenas» de 39 a 25.
  */
 import path from 'path'
-const { refDeclaradaDistinta } = require(
+const { refDeclaradaDistinta, leyesDeclaradasParaCita } = require(
   path.join(process.cwd(), 'scripts/impugnaciones/barrido-citas.cjs')
 )
 
@@ -208,5 +208,43 @@ describe('rúbrica de división ≠ cita del articulado', () => {
   it('una cita normal NO se confunde con una rúbrica por nombrar un capítulo dentro del texto', () => {
     const DENTRO = '> Art. 12: "Las transferencias reguladas en el Capítulo V se someterán a las condiciones previstas en el presente Reglamento y en su normativa de desarrollo."'
     expect(citasAtribuidas(DENTRO)[0].rubrica).toBe(false)
+  })
+})
+
+// ── La atribución declara además una LEY DISTINTA de la del artículo vinculado ──────────────────
+//
+// Hasta el 06/08 `refDeclaradaDistinta` resolvía la cita de apoyo SOLO dentro de la ley del
+// artículo vinculado — si la atribución nombraba una ley distinta («Art. 4.2.a RP» en una
+// pregunta de LOGP), la comprobación buscaba "LOGP art. 4" (que no existe con ese contenido) en
+// vez de "RP art. 4" (que sí lo tiene, literal), y una pregunta correcta se acusaba de cita ajena.
+// Dos casos reales (T-207, 06/08), los dos verificados a mano contra `articles.content`:
+//  · `273b6309` cita LOGP art.3 (vinculado) + RP art.4.2.a (declarado, con SIGLA sola).
+//  · `b72000de` cita TREBEP art.53.5 (RDL 5/2015) para una pregunta vinculada a la Ley 5/2023 de
+//    Andalucía, que solo REMITE a esos principios — aquí la atribución trae DOS candidatos (la
+//    sigla común "TREBEP" y el short_name real "RDL 5/2015" entre paréntesis).
+describe('leyesDeclaradasParaCita — la atribución puede nombrar una ley DISTINTA, no solo otro artículo', () => {
+  it('CASO REAL 273b6309: «(Art. 4.2.a RP)» declara la ley por su sigla sola', () => {
+    const EXPL = '> «Cuatro. La Administración penitenciaria velará por la vida, integridad y salud de los internos.» (Art. 3.Cuatro LOGP)\n> «a) Derecho a que la Administración penitenciaria vele por sus vidas.» (Art. 4.2.a RP)'
+    const citaRP = 'a) Derecho a que la Administración penitenciaria vele por sus vidas.'
+    expect(leyesDeclaradasParaCita(EXPL, citaRP)).toContain('RP')
+  })
+
+  it('CASO REAL b72000de: «TREBEP (RDL 5/2015)» da DOS candidatos — la sigla y el short_name real', () => {
+    const EXPL = '> Artículo 53.5 del **TREBEP (RDL 5/2015)** – **Principios éticos**: «Se abstendrán en aquellos asuntos.»'
+    const cita = 'Se abstendrán en aquellos asuntos.'
+    const candidatos = leyesDeclaradasParaCita(EXPL, cita)
+    expect(candidatos).toContain('TREBEP')
+    expect(candidatos).toContain('RDL 5/2015')
+  })
+
+  it('sin ley declarada, no hay candidatos (comportamiento de siempre: se verifica contra la vinculada)', () => {
+    expect(leyesDeclaradasParaCita('> Art. 65: "El Rey recibe de los Presupuestos del Estado…"', undefined)).toEqual([])
+  })
+
+  it('un candidato que no exista como ley en la BD simplemente no resuelve nada (fail-safe): esto solo prueba la EXTRACCIÓN, no la resolución', () => {
+    // "CORRECTA" no es una sigla de ley real; la función pura la puede extraer igual — la
+    // seguridad la da quien la resuelve contra `laws.short_name` (el CLI), no este extractor.
+    const EXPL = '> Art. 9: "Texto cualquiera." CORRECTA por el motivo X'
+    expect(Array.isArray(leyesDeclaradasParaCita(EXPL, 'Texto cualquiera.'))).toBe(true)
   })
 })
