@@ -63,7 +63,8 @@ describe('withErrorLogging — filtro 401 solo anónimo (source)', () => {
     // El 401 del token (polling constante) inflaba observable_events a ~525k/día.
     // forceEmit debe excluir los expectedStatuses → se muestrean como los 2xx (10%).
     expect(content).toMatch(/const forceEmit = isError && !isExpectedStatus\(response\.status\)/)
-    expect(content).toMatch(/shouldEmitTiming = forceEmit \|\| Math\.random\(\) < SUCCESS_TIMING_SAMPLE_RATE/)
+    // T-572: shouldEmitTiming además respeta SKIP_REQUEST_COMPLETED_EMIT (runtime no-productivo).
+    expect(content).toMatch(/shouldEmitTiming = !SKIP_REQUEST_COMPLETED_EMIT[\s\S]{0,40}\(forceEmit \|\| Math\.random\(\) < SUCCESS_TIMING_SAMPLE_RATE\)/)
   })
 })
 
