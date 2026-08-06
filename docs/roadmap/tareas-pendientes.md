@@ -981,6 +981,42 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
+
+- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
+- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
+  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
+  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
+  enumerar las materias del tema y **no enumera ninguna**.
+- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
+  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
+  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
+  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
+  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
+  simplemente no tienen nada contra lo que comparar.
+- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
+  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
+  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
+  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
+  aislado aparecieron **14**.
+- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
+  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
+  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
+  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
+  continuación, no 14 descuidos independientes.
+- **QUÉ HACER:**
+  1. **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
+     kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro + kind propio en los dos
+     gemelos del sweep. **NO un silo nuevo.** Nace en 14, así que es un trinquete: cualquier subida
+     es una regresión demostrable.
+  2. **Completar los 14** con el texto LITERAL del programa oficial de cada oposición (el hub ya
+     tiene documento en muchas), y re-verificar el Paso 1. NUNCA inventar la continuación ni
+     «redondear» el epígrafe con lo que parezca: eso es exactamente lo que este defecto provoca.
+- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
+  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marcar solo el final, y medir antes
+  de ampliar el patrón.
+- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
+
 ### [T-621] 🟡 [ABIERTO 06/08] El push-guard no distingue un commit de MERGE: fusionar lo revisado de otro exige reclamar su tarea o saltarse el guard entero
 
 **Medido el 06/08.** Al fusionar a `main` las cinco ramas con veredicto `ok` de la flota (T-055,
@@ -3455,6 +3491,24 @@ explicaciones legales.
   | ✅ | `administrativo_cantabria` T37 | Ley 3/2002 Archivos Cantabria | verified_correct | titulo I, capitulo IV, titulo II |
   | ✅ | `administrativo_gva` T6 | Estatuto CV | verified_correct | titulo I, titulo II, titulo III, titulo IV |
   | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | Ley 8/2011 Igualdad Ext | stale | capitulo IV, titulo PRELIMINAR |
+
+   **✅ RECORTADO EL 06/08/2026 — 11 de 12.** Medido de nuevo antes de tocar nada: **12 temas activos**
+   escopaban algún artículo 25-31 con un epígrafe que no los pide, **62 preguntas fuera de programa en
+   cada uno** (20 en IIPP, que solo escopaba el art. 30) → **702 exposiciones**. Prueba que lo cierra:
+   **en NINGUNA de las 12 oposiciones hay un tema hermano cuyo epígrafe mencione la potestad
+   sancionadora**, así que no era un artículo en el tema equivocado sino materia fuera de programa.
+   Aplicado por el camino canónico y sin herramienta nueva: `scope-over-inclusion.cjs --record`
+   (11 adjudicaciones `over_inclusion` verificadas) → `verify:scope plan` → `apply --include-gate`
+   (la puerta de juicio saltó en 10 de 11, que es lo correcto: es una decisión, no un trámite).
+   **Verificado en BD, no declarado:** los temas con Cap. III fuera de su epígrafe pasan de **12 a 1**.
+   Las preguntas NO se borran: dejan de servirse en ese tema.
+
+   **El que queda, y por qué NO se tocó:** `auxiliar_administrativo_sermas` T9 tiene el epígrafe
+   **cortado en dos puntos** (*«La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector
+   Público:»* y ahí acaba). Contra un epígrafe truncado no se puede adjudicar nada — cualquier scope
+   le encaja porque no dice nada. Al mirar si era aislado salieron **14 temas activos así** → ficha
+   propia [T-625].
+
   | ❓ | `auxiliar_administrativo_ayuntamiento_badajoz` T3 | LO 3/2007 | stale | capitulo IV, titulo PRELIMINAR |
   | ✅ | `auxiliar_administrativo_cantabria` T5 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III, titulo I |
   | ✅ | `auxiliar_enfermeria_gva` T6 | Ley 39/2015 | verified_correct | titulo PRELIMINAR, titulo I, titulo II, titulo III |
@@ -3622,7 +3676,7 @@ correct» no es un dato.
    T1/T3/T4 contra el programa oficial, que ya está localizado y descargado.
 4. **✅ HECHO (mismo merge).** `verify:scope apply` **no se identificaba** en `topic_scope_history` (`changed_by`/`change_reason`
    a NULL). Es una línea (`SET LOCAL app.actor`) y hoy el escritor canónico deja misterio.
-5. **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
+5. **✅ HECHO 06/08/2026 (queda 1 de 12).** **El Capítulo III de la Ley 40/2015 está escopado en otras 14 oposiciones cuyo epígrafe no lo
    nombra (medido el 04/08, al resolver la SEGUNDA impugnación del mismo usuario — `b439a3a7`, art.
    27, gemela de la `0b9d9f56` que abrió esta ficha).** El corte: de las **47** filas de
    `topic_scope` que escopan la Ley 40/2015 con alguno de los arts. **25-31**, **16** tienen un
