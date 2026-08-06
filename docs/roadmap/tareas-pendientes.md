@@ -14348,7 +14348,7 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   3. Que una oposición con examen próximo y sin notas escaneadas **se note** (badge o hallazgo de salud), en vez de parecer que está vigilada.
 - **Relacionadas:** [T-063] (las dos convocatorias de Madrid), memoria `project-version-software-oposiciones-metodo`, `docs/maintenance/oeps-convocatorias-seguimiento.md`.
 
-### [T-321] 🟠 [ABIERTO 30/07] 3.535 preguntas duplicadas EXACTAS en el banco activo
+### [T-321] ✅ [HECHA 06/08] 3.535 preguntas duplicadas EXACTAS en el banco activo
 
 - **ORIGEN.** Marta (premium) mandó tres impugnaciones de `pregunta_repetida` el mismo día. Al resolver la primera se midió el artículo: había **cuatro versiones** de la misma pregunta sobre los capítulos del Título I. Aplicando la regla de «mira si es sistémico antes de cerrar», el barrido salió mucho peor de lo esperado.
 - **MEDIDO (30/07), con criterio ESTRICTO** — mismo `primary_article_id` + **enunciado normalizado idéntico** + **misma respuesta correcta**, excluyendo supuestos prácticos (`exam_case_id`):
@@ -14376,6 +14376,17 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   - **El patrón cambió según el lote:** el 21/03 son copias de preguntas viejas (la copia entra meses después); el 27/04 es una importación que se duplicó **a sí misma**, con las copias casi sin servir (0-1 veces).
 - **HUECO DEL DETECTOR DE HERRAMIENTAS, arreglado de paso (31/07):** `escribeRecurso` reconocía `UPDATE`/`INSERT`/Drizzle pero **no la llamada a `transition_question_state`**, que es la ÚNICA vía legítima de tocar `lifecycle_state`. Consecuencia: una herramienta que hacía lo correcto figuraba como «dice escribir y no lo hace», empujando justo a escribir a pelo. Ahora un recurso puede declarar su `funcionPuerta`. Al verla, los escritores de `lifecycle_state` pasaron de 19 a **42**: no son nuevos, es que **los que usaban la vía correcta eran invisibles** y el trinquete se había calibrado contando solo a los que la esquivaban.
 - **Regla que nace de aquí (ya en el manual de impugnaciones):** cuando una impugnación puede ser sistémica, **medir en la BD antes de cerrar** — la persona solo ha visto la punta.
+- **✅ CERRADA (06/08/2026, w2) — verificado con datos de HOY, no de memoria de la ficha.** Reproducida a mano
+  la query `SQL_GRUPOS` de `scripts/calidad/duplicados-exactos.cjs` contra `VENCE_LECTOR_URL` (el script en
+  sí no lo pude correr: mi `DATABASE_URL` es `vence_coordinacion`, sin permiso sobre `questions` —
+  `permission denied for table questions`, confirmado antes de rodear nada). **Resultado: 215 grupos, 216
+  preguntas sobrantes** (baja de los 220 que dejó la sesión del 31/07 — diferencia compatible con drift
+  normal, no con una regresión). Y lo que importa de verdad: **repetí también la guarda del mínimo (4
+  preguntas activas por artículo) sobre esos 216, y las 216 caen dentro de ella — 0 accionables hoy.**
+  O sea: el barrido de poda sigue en el mismo sitio donde el 31/07 lo dejaron cerrado — nada nuevo que
+  jubilar, y lo que queda es exactamente la población que ya vive en [T-356] (contenido, no limpieza). No
+  he tocado la BD (no hacía falta: no hay nada accionable). Se cierra esta ficha; el trabajo que sigue vivo
+  es [T-356].
 
 ### [T-322] 🟡 [ABIERTO 30/07] Oposiciones que nos piden los usuarios y no tenemos montadas
 
