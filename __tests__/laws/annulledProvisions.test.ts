@@ -9,6 +9,7 @@ import {
   articleCarriesVigenciaNote,
   assessLawAnnulments,
   boeBlockRetainsAnnulment,
+  annulmentAppliesToOriginalWordingOnly,
 } from '@/lib/laws/annulledProvisions'
 
 // texto REAL de la referencia posterior #73 del análisis BOE de la LBRL (BOE-A-1985-5392)
@@ -16,6 +17,12 @@ const TEXTO_126 =
   'en el Recurso 1523/2004, la constitucionalidad del art. 130.1.B) y la inconstitucionalidad y ' +
   'nulidad del inciso indicado del art. 126.2, interpretado segun el FJ 5.j), en la redacción dada ' +
   'por la Ley 57/2003, de 16 de diciembre,  por Sentencia 103/2013, de 25 de abril'
+
+// texto REAL de la API BOE datosabiertos para el CP (BOE-A-1995-25444), verificado el
+// 06/08/2026 — el FP conocido de T-208.
+const TEXTO_335_CP =
+  ', en la Cuestión 4246/2001, inconstitucional y nulo, en la redacción original, el art. 335, ' +
+  'por Sentencia 101/2012, de 8 de mayo'
 
 describe('parseAnnulledArticles', () => {
   it('extrae el art ANULADO (126) y NO el mantenido (130)', () => {
@@ -115,6 +122,28 @@ describe('assessLawAnnulments', () => {
   })
   it('NO flagea si no servimos ese artículo', () => {
     expect(assessLawAnnulments(annul, new Map())).toEqual([])
+  })
+
+  // T-208: FP real — art. 335 CP / STC 101/2012, anulación de la "redacción original".
+  // Servimos la redacción de la LO 1/2015 (posterior), así que flagearlo era falso positivo.
+  it('NO flagea cuando el BOE dice que la anulación fue de la "redacción original" (T-208)', () => {
+    const annulRedaccionOriginal = [
+      { idNorma: 'BOE-A-2012-7511', sentencia: 'STC 101/2012', articles: ['335'], texto: TEXTO_335_CP },
+    ]
+    const arts = new Map([['335', 'Será castigado con la pena de multa de ocho a doce meses...']])
+    expect(assessLawAnnulments(annulRedaccionOriginal, arts)).toEqual([])
+  })
+})
+
+describe('annulmentAppliesToOriginalWordingOnly — T-208', () => {
+  it('detecta el marcador real del art. 335 CP (STC 101/2012)', () => {
+    expect(annulmentAppliesToOriginalWordingOnly(TEXTO_335_CP)).toBe(true)
+  })
+  it('NO lo detecta en el caso 126.2 LBRL ("redacción DADA POR", no "original")', () => {
+    expect(annulmentAppliesToOriginalWordingOnly(TEXTO_126)).toBe(false)
+  })
+  it('no revienta con texto vacío', () => {
+    expect(annulmentAppliesToOriginalWordingOnly('')).toBe(false)
   })
 })
 
