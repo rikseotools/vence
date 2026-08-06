@@ -59,6 +59,19 @@ fi
 # peor que no tener registro.
 git fetch origin main --quiet 2>/dev/null || true
 FULL_SHA=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+# ── DEPLOY_SHA: desplegar un ANCESTRO de origin/main, no la punta ([T-619]) ───
+# Mismo criterio y mismas guardas que el frontend (ver el comentario largo allí): la punta casi
+# nunca tiene el CI terminado, el deploy es cumulativo, y el sha que llegue tiene que ser ancestro
+# de origin/main. El gate de CI de ESE sha se sigue comprobando igual.
+if [ -n "${DEPLOY_SHA:-}" ]; then
+  CANDIDATO=$(git rev-parse "${DEPLOY_SHA}^{commit}" 2>/dev/null) || {
+    echo "❌ DEPLOY_SHA=${DEPLOY_SHA} no es un commit de este repo"; exit 1; }
+  git merge-base --is-ancestor "$CANDIDATO" "$(git rev-parse origin/main)" 2>/dev/null || {
+    echo "❌ DEPLOY_SHA=${DEPLOY_SHA:0:9} NO es ancestro de origin/main — no se despliega"; exit 1; }
+  DETRAS=$(git rev-list --count "${CANDIDATO}..origin/main" 2>/dev/null || echo 0)
+  FULL_SHA="$CANDIDATO"
+  echo "→ DEPLOY_SHA: se despliega ${FULL_SHA:0:9} (último verde), ${DETRAS} commit(s) de main se quedan para el siguiente deploy"
+fi
 SHA=$(printf '%s' "$FULL_SHA" | cut -c1-8)   # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07: 'b201d798a' 9c vs 'b201d798' 8c)
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"

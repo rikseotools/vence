@@ -4417,6 +4417,14 @@ export const backlogTasks = pgTable("backlog_tasks", {
 	reviewNote: text("review_note"),
 	reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true, mode: 'string' }),
 	reviewRequestedBy: text("review_requested_by"),
+	// El VEREDICTO de quien la revisó (T-486, 06/08). `reviewed_at` dice que alguien la miró;
+	// estas dos dicen QUÉ decidió y por qué — sin ellas, «entregada» y «revisada con problemas»
+	// son indistinguibles para cualquier lector de Drizzle. Existían en RDS desde el mismo día y
+	// faltaban aquí: el flujo de revisión escribía dos columnas que el esquema tipado no veía.
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewedBy: text("reviewed_by"),
+	reviewVerdict: text("review_verdict"),
+	reviewFindings: text("review_findings"),
 	// El escalón DESPUÉS de `done` (T-392): `done` = el deploy incluye el commit; `archived_at` =
 	// alguien MIRÓ producción y funciona. `requiere_archivo` NULL no afirma nada (fail-open o
 	// anterior a la migración), no equivale a false.
