@@ -842,6 +842,88 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-601] 🔴 [ABIERTO 05/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
+
+- **Esfuerzo: rato** para el caso concreto y el arreglo del endpoint. Medir la CLASE puede ser más.
+
+**Cómo se encuentra (05/08/2026).** Revisando salud saltó `subscription_cancel_error_burst`: *«8 errores
+en /api/stripe/cancel en 15 min»*, con el mensaje de Stripe *«You cannot cancel a subscription with an
+active checkout session. Expire the checkout session instead.»*. Parecía un fallo de cancelación. **No lo
+es**: al abrir Stripe (cuenta **Nila**, cliente `cus_UuROFDD3yalf26`, alta 18/07) el estado real es
+
+| | |
+|---|---|
+| Suscripciones | **5**, todas `incomplete` / `incomplete_expired` — **ninguna llegó a activarse** |
+| Checkout sessions | **5**, todas `unpaid` (1 `open`, 4 `expired`) |
+| Estado en nuestra BD | `free` (coherente: el cobro nunca cuajó) |
+
+O sea: **`cnicolau2024@gmail.com` lleva desde el 18 de julio intentando comprar y no lo consigue.** Los
+16 errores de «cancelar» (todos en el MISMO minuto, 20:31) son la consecuencia, no la causa: Stripe se
+niega a cancelar mientras haya un checkout abierto.
+
+**Por qué la alerta engañaba.** `subscription_cancel_error_burst` mira el endpoint de CANCELAR, así que
+nombra el síntoma y esconde el problema: dinero que no entra y una persona atascada 18 días. Nadie
+vigila «usuarios con suscripciones `incomplete` acumuladas» — y ese es el hueco de verdad.
+
+**Sospecha de familia con [T-594]** (el correo «problema con el pago» se manda al 69% de quien paga bien,
+mientras está en la pantalla del 3D Secure). `incomplete` es justo el estado de una suscripción cuyo pago
+pide acción y nunca se completa. **Sin verificar**: hay que mirar si estos 5 intentos murieron en 3DS.
+
+**Qué hacer (en este orden):**
+1. **La persona primero.** Expirar el checkout `open` (`cs_live_b1Y4RF…`) para desatascarle, y decidir si
+   se le escribe. Lleva 18 días queriendo pagarnos.
+2. **El endpoint:** `/api/stripe/cancel` debe contemplar el checkout abierto (expirarlo y reintentar, o
+   explicar al usuario qué pasa) en vez de devolver el error crudo de Stripe.
+3. **Medir la CLASE, que es lo que no sabemos:** ¿cuántos clientes tienen suscripciones `incomplete`
+   acumuladas y ningún cobro? Eso es ingreso perdido invisible. Si sale más de un puñado, detector propio
+   con su frase-gatillo (hoy NO lo vigila nada).
+4. Cruzarlo con [T-594] antes de tocar el flujo de pago: pueden ser la misma causa.
+
+**GOTCHA de la investigación:** la búsqueda por email en la API de Stripe (`/v1/customers?email=…`) da el
+cliente sin pasar por la BD — útil cuando RDS va lento, que es como se sacó esto tras dos timeouts.
+
+### [T-600] 🟠 [ABIERTO 05/08] 868 temas activos sin `description`, 745 SERVIDOS, y lo único que lo vigila es un test de integración en rojo que nadie mira
+
+- **Esfuerzo: sesion_propia.** El trabajo no es el arreglo técnico (no hay bug de código): es escribir
+  868 descripciones contra el temario oficial de 26 oposiciones, o decidir que no hacen falta.
+
+**Cómo aparece (05/08/2026).** Desplegando [T-596], el gate del deploy marcó `integration=failure —
+informativo`. Al mirar qué fallaba, `__tests__/integration/temarioEpigrafeIntegrity.test.ts` llevaba en
+rojo comprobando exactamente esto:
+
+| Hueco en `topics` activos | Filas |
+|---|---|
+| `description` vacía | **868** (de ellas **745 con `disponible=true`**, o sea SERVIDAS) |
+| `bloque_number` sin asignar | 3 |
+| `title` / `descripcion_corta` vacíos | 0 |
+
+Reparto: 26 oposiciones. Las peores — `ayudantes_ejecucion_penal_pais_vasco` 53 ·
+`auxiliar_archivos_bibliotecas_museos_madrid` 50 · `ayudante_instituciones_penitenciarias` 50 ·
+`enfermero_scs_canarias` 50 · `auxiliar_biblioteca_estado` 48 · `auxiliar_archivos_estado` 48.
+
+**Lo grave no es el hueco, es cómo se vigila.** Hay una comprobación —el test— y está en ROJO, pero:
+1. Vive en la suite de INTEGRACIÓN, que el gate del deploy trata como **informativa**. Un rojo que no
+   para nada acaba siendo ruido de fondo, y este lleva ahí el tiempo suficiente para que nadie sepa
+   cuánto.
+2. **Ningún kind del barrido de salud lo mira** (comprobado: cero coincidencias en `health-sweep.cjs`),
+   así que no pinga badge, no sale en `/admin/contenido` y no tiene frase-gatillo. Es invisible por
+   los dos caminos por los que miramos las cosas.
+Mismo patrón que [T-455] (un gate que comprobaba diez fases y moría en la terminal de quien lo
+ejecutaba) y que [T-596] (nadie miraba si lo servido se puede LEER).
+
+**Antes de escribir 868 descripciones, decidir para qué sirve el campo.** Hay que medir DÓNDE se pinta
+`topics.description` y qué ve el usuario cuando está vacío — puede que en unas superficies sea un hueco
+visible y en otras no se use. **No dar por hecho que hay que rellenarlas todas:** si el campo no se
+sirve en ningún sitio, lo correcto es quitar la comprobación, no inventarse 868 textos. Y si sí se
+sirve, entonces son 745 temas enseñando un hueco a usuarios de pago.
+
+**Pendiente de decidir (en este orden):**
+1. Medir el render: ¿dónde se lee `description` y qué pasa con `''`?
+2. Según eso: rellenar contra el temario oficial (nunca a ojo) **o** retirar el invariante.
+3. Que la señal deje de depender de un test informativo: kind en el barrido con su frase-gatillo, o
+   subir el invariante a una capa que sí pare. Lo que no puede quedarse es en rojo mudo.
+4. Los 3 `bloque_number` sin asignar van en el mismo lote (mismo test, coste marginal).
+
 ### [T-599] 🟡 [ABIERTO 05/08] Una baja de cuenta nace SIN conversación, así que la regla de «pregunta antes de borrar» choca con un 409
 
 **La regla nueva y el camino para cumplirla se contradicen.** El 05/08 se fijó que una solicitud de
