@@ -175,6 +175,26 @@ describe('[T-617] un solo programador, y anunciado', () => {
     expect(i).toBeGreaterThan(-1)
     expect(j).toBeGreaterThan(i)   // la cicatriz de merge lo dejaba ANTES del comando
   })
+
+  // ── LO QUE FALLÓ AL ARRANCARLO DE VERDAD, Y NO SE VE LEYENDO ────────────────────────────
+  // Instalado como servicio, cada pasada moría con «permission denied for table
+  // observable_events»: el rol de coordinación no tenía el GRANT. El supervisor corría y la flota
+  // seguía parada. Los EMISORES del bus ya fallaban abiertos; esta LECTURA no.
+  it('la memoria de lo repartido falla ABIERTA: la telemetría no puede parar el reparto', () => {
+    const i = fuente.indexOf('repartidasHacePoco = new Set((await sql')
+    const antes = fuente.slice(Math.max(0, i - 400), i)
+    expect(antes).toMatch(/try\s*\{/)
+  })
+
+  // `systemctl restart` esperó los 120 s de TimeoutStopSec y acabó en SIGKILL: la bandera `parar`
+  // no se mira hasta que termina la espera, y el bucle duerme 8-15 min entre pasadas. Matarlo a
+  // media pasada deja un `repartir` huérfano — justo lo que la salida limpia evitaba.
+  it('una señal DESPIERTA al bucle, no solo le deja una nota', () => {
+    const bloque = fuente.slice(fuente.indexOf("cmd === 'bucle'"))
+    expect(bloque).toMatch(/despertar\s*\(\)/)
+    expect(bloque).toMatch(/clearTimeout/)
+    expect(bloque).not.toMatch(/setTimeout\(r,\s*pausa/)   // la espera vieja, no cancelable
+  })
 })
 
 describe('[T-617] la unidad de systemd del supervisor', () => {

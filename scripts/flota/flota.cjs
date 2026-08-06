@@ -807,13 +807,26 @@ async function main() {
       // (`estado`, `lanzar`, `parar`…) y dejaba huérfano el comentario del comando de al lado. Es
       // sintácticamente válido, así que `node --check` y los tests pasaban: una cicatriz de merge
       // solo se ve leyendo.
-      const repartidasHacePoco = new Set((await sql`
-        SELECT metadata->>'tarea' AS tarea
-          FROM public.observable_events
-         WHERE event_type = 'flota_turno'
-           AND created_at > now() - interval '25 minutes'
-           AND metadata->>'fase' = 'encargado'
-           AND metadata->>'tarea' IS NOT NULL`).map((r) => r.tarea))
+      //
+      // ── Y FALLA ABIERTO, COMO TODA LA TELEMETRÍA (§9) ───────────────────────────────────
+      // Los EMISORES del bus ya llevaban su `.catch(() => {})`; esta LECTURA no, y eso tumbaba el
+      // reparto entero. Medido al estrenar el supervisor como servicio (T-617): el rol
+      // `vence_coordinacion` no tenía permiso sobre `observable_events`, así que cada pasada moría
+      // con «permission denied» y la flota seguía parada — con el supervisor corriendo. Una avería
+      // de la telemetría no puede impedir GOBERNAR la flota; como mucho, repetir una tarea.
+      let repartidasHacePoco = new Set()
+      try {
+        repartidasHacePoco = new Set((await sql`
+          SELECT metadata->>'tarea' AS tarea
+            FROM public.observable_events
+           WHERE event_type = 'flota_turno'
+             AND created_at > now() - interval '25 minutes'
+             AND metadata->>'fase' = 'encargado'
+             AND metadata->>'tarea' IS NOT NULL`).map((r) => r.tarea))
+      } catch (e) {
+        console.log(`   ⚠️  sin memoria de lo repartido (${String(e.message || e).slice(0, 60)}): se reparte igual, `
+          + 'con riesgo de repetir una tarea.')
+      }
       if (repartidasHacePoco.size) {
         console.log(`   (${repartidasHacePoco.size} tarea(s) repartida(s) hace <25 min: no se repiten)`)
       }
@@ -1006,7 +1019,22 @@ async function main() {
       let parar = false
       // Salida limpia: systemd manda SIGTERM al reiniciar, y matar el bucle en mitad de una
       // pasada dejaría un `repartir` huérfano lanzando encargos que nadie va a vigilar.
-      for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { parar = true })
+      // ── Y LA SEÑAL TIENE QUE PODER DESPERTARLO, NO SOLO MARCARLO (T-617) ────────────────
+      // Poner `parar = true` no basta: el bucle pasa casi todo su tiempo DORMIDO (hasta 8-15 min
+      // entre pasadas), así que la bandera no se mira hasta que se cumple la espera. Medido al
+      // instalarlo como servicio: `systemctl restart` esperó los 120 s de `TimeoutStopSec` y
+      // acabó mandando SIGKILL — que es justo lo que la salida limpia existía para evitar, porque
+      // matar a media pasada deja un `repartir` huérfano repartiendo encargos que ya no vigila
+      // nadie. La espera se guarda para poder cancelarla desde el manejador.
+      let despertar = null
+      for (const sig of ['SIGTERM', 'SIGINT']) {
+        process.on(sig, () => { parar = true; if (despertar) despertar() })
+      }
+      /** Duerme `s` segundos, o menos si llega una señal. */
+      const dormir = (s) => new Promise((resolve) => {
+        const t = setTimeout(resolve, s * 1000)
+        despertar = () => { clearTimeout(t); resolve() }
+      })
 
       console.log(`🔁 supervisor continuo — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
       while (!parar) {
@@ -1050,7 +1078,7 @@ async function main() {
                             ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
-        await new Promise((r) => setTimeout(r, pausa * 1000))
+        await dormir(pausa)
       }
       console.log('🛑 supervisor continuo detenido')
       return 0
