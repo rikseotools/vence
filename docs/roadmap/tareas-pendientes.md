@@ -882,6 +882,65 @@ Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanza
 - **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
 
 **Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
+### [T-604] 🔴 [ABIERTO 06/08] 936 usuarios (8%) están en una oposición SIN temario construido y la app no se lo dice: 248 altas nuevas al mes caen ahí
+
+**Lo destapa una impugnación que parecía otra cosa.** María Becerril (premium desde abril, Torrelavega)
+mandó cuatro impugnaciones seguidas —`17733d5e`/`7b3dd5e4`/`5f2213d0`/`6c4e43a4`, Ley 9/2017 arts.
+138/143/147/160— diciendo *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»*. Parecía sobre-inclusión de
+`topic_scope`. No lo era: su `target_oposicion` es **`administrativo_comunidad_autonoma`**, que tiene
+**0 temas y 0 filas de `topic_scope`**. No hay selección que violar porque no hay temario.
+
+**Lo que le pasa a quien está así.** No tiene temas, ni tests por tema, ni forma de practicar lo que le
+entra — y **la app no se lo dice**: simplemente no hay nada. María lleva **desde el 27/04 pagando**, y lo
+único que puede hacer es ir **ley por ley**, acotando artículos a mano.
+
+> ⚠️ **La causa inmediata de SUS cuatro impugnaciones es [T-603], no esta ficha** (corregido el 06/08
+> tras encontrarla otra sesión). Ella **sí acotó** los artículos con las casillas y el repaso de fallos
+> **descartó su selección en silencio**, devolviéndole los 138/143/147/160 con las casillas todavía
+> marcadas en pantalla. O sea que su *«ARTÍCULO NO INCLUIDO EN MI SELECCIÓN»* era literal y exacto.
+> Lo que aporta esta ficha es **por qué estaba ahí**: sin temario construido, filtrar una ley a mano era
+> su única forma de estudiar, así que el bug de T-603 le pegaba de lleno y a diario. Las dos cosas se
+> arreglan por separado.
+
+**Medido el 06/08 (`scratchpad/sin-temario.cjs`):**
+
+| | |
+|---|---|
+| usuarios con oposición fijada | **11.729** |
+| …de ellos SIN temario construido | **936 (8%)** |
+| …premium (pagando) | **4** |
+| altas de los últimos 30 días que caen ahí | **248** |
+
+**No es deuda vieja: sigue entrando gente.** Los valores más poblados —`enfermero` (61),
+`auxiliar_ayuntamiento` (37), `auxiliar_enfermeria` (29), `policia_local` (25),
+`subalterno_ordenanza_conserje_administracion_local` (24), `bombero` (17)— tienen altas de esta misma
+semana, y **la mayoría figuran en el catálogo**, o sea que se pueden elegir en la app.
+
+**Esto NO es «hay que construir 900 temarios».** La casa cataloga ancho y construye estrecho a propósito
+(D/C1/C2), y eso está bien. El defecto es que **elegir una no construida no se distingue de elegir una
+construida**: mismo flujo, misma pantalla, y luego el vacío. La etiqueta «🔜 En elaboración» YA existe
+—una usuaria la vio ayer al buscar Bibliotecario (feedback `5818ca05`, se dio de baja cinco minutos
+después)— pero estos 936 no la están recibiendo.
+
+**Arreglo propuesto** (elegir, no hacer las tres):
+1. **En el punto de elección:** si la oposición no tiene temario, decirlo antes de fijarla y ofrecer la
+   más cercana que sí lo tenga. Es el arreglo de fondo.
+2. **Para los 936 que ya están dentro:** un aviso en su pantalla con la alternativa, no un `UPDATE`
+   silencioso — **la oposición que uno prepara es decisión suya**, y cambiársela sin preguntar es
+   decidir por ella qué estudia. En el caso de María, la suya es casi seguro `administrativo_cantabria`
+   (existe, 40 temas; ella ya practica la Ley 5/2018 de Cantabria y su Estatuto), pero eso lo confirma
+   ella con un clic.
+3. **Detector**, que es lo que faltaba: nadie vio esto en cuatro meses y ha llegado por una impugnación
+   disfrazada. Una consulta —`target_oposicion` sin filas en `topics`, agregado por valor, con el conteo
+   de premium— enganchada al barrido de salud que ya existe (`health-sweep.cjs` + su gemelo `@Cron`),
+   con su frase-gatillo en `runbookRegistry`. **No hace falta sistema nuevo.**
+
+**Por qué es 🔴 y no higiene:** son 4 personas pagando por algo que no pueden usar y 248 altas al mes que
+aterrizan en el vacío justo en el momento de mayor intención. Y el coste ya se ha visto dos veces esta
+semana: María impugnando cuatro veces sin saber por qué, y la usuaria de Bibliotecario dándose de baja.
+
+**Relacionado:** [T-596] (el temario servía artículos sin texto) y [T-599] — misma familia: cosas que el
+usuario ve rotas y ningún barrido nuestro miraba.
 
 ### [T-601] 🔴 [ABIERTO 05/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
 
