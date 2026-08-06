@@ -1033,6 +1033,76 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 - **⏭️ QUEDA — y sin esto el arreglo no sirve de nada:** el bucle corre desde el clon del VPS (`/home/flota/vence/scripts/flota/flota.cjs`, arrancado a las 18:43). Hay que **actualizar ese clon y reiniciar el bucle** para que empiece a dejar rastro. Mientras tanto sigue sin registrar nada.
 - **⏭️ Y LA PREGUNTA ORIGINAL SIGUE SIN RESPUESTA:** por qué w1-w4 llevan horas libres con **204 tareas** que cumplen la criba de `repartir`. El último reparto fue a las **20:26-20:27** (T-206, T-207, T-214, T-215), los cuatro turnos entregaron, y desde entonces nada. **No se puede saber por qué desde el bus** — que es precisamente lo que esta ficha arregla para la próxima vez.
 - **Relacionadas:** [T-617] (colapsó los dos programadores en `bucle`; este `INSERT` entró con él), [T-615] (fail-open del veredicto, mismo patrón), [T-486] (la flota), [T-130] (el outlier que se escribe distinto de sus vecinos).
+### [T-627] 🔴 [ABIERTO 06/08] El Tema 4 de Auxiliar Sevilla tiene el scope INVERTIDO: sirve 92 artículos fuera de programa y CERO de los que su epígrafe pide
+
+**Lo destapó una usuaria premium**, Lourdes García, con **cuatro impugnaciones seguidas** el mismo día
+(`15db0cb8`, `134b565e`, `9cf8da61`, `99b06c98`), todas *«este artículo no entra en el temario del
+Ayuntamiento de Sevilla»*, sobre los artículos **30, 48, 55 y 60** del Estatuto de Autonomía. Las
+cuatro **tenían razón** y ya están cerradas y contestadas (una recompensa, no cuatro: es un solo
+hallazgo).
+
+**MEDIDO, verificado contra el BOE (`BOE-A-2007-5825`), no deducido:**
+
+| Título del Estatuto | Artículos | ¿lo pide el epígrafe de T4? | ¿lo escopa T4 hoy? |
+|---|---|---|---|
+| Preliminar | 1-11 | ❌ | ✅ |
+| I (derechos sociales) | 12-41 | ❌ | ✅ |
+| II (**competencias**) | 42-88 | ❌ | ✅ |
+| **III (organización territorial)** | **89-98** | ✅ | ❌ |
+| **IV (organización institucional)** | **99-139** | ✅ (caps I, III, IV, VI y VII) | ❌ |
+| X (reforma) | 248-250 | ❌ | ✅ |
+
+`topic_scope` de T4 = `preámbulo, 1-88, 248-250` (**92 entradas**). No es que sobre materia: es que
+**no hay intersección** entre lo que sirve y lo que el programa pide. Los cuatro artículos que
+impugnó la usuaria caen los cuatro en Títulos I y II.
+
+**Impacto medido:**
+
+```
+preguntas ACTIVAS del Estatuto en arts 1-88   (fuera de programa, hoy servidas): 29
+preguntas ACTIVAS del Estatuto en arts 89-139 (el programa de T4, hoy no servidas): 0
+```
+
+O sea: **recortar el scope sin más deja el Tema 4 con cero preguntas**. Por eso esto no es «aplicar
+un recorte» — el manual ya lo dice (*«generar si el epígrafe lo pide y hay 0 preguntas»*), y por eso
+va con esfuerzo `sesion_propia` y no como higiene.
+
+---
+
+#### ✅ HECHO en esta sesión (06/08)
+
+- **Paso 1 de T4 cerrado**: epígrafe reescrito al LITERAL oficial con `verify:epigrafe apply` (nunca a
+  mano), estado `verified_literal`, procedencia registrada → **BOP Sevilla nº 256 de 06/11/2023, CVE
+  BOP-SE-2023-256022**, leído del **hub** (`convocatoria_documentos`, `tipo=bases`, 32.392 chars),
+  **cero re-descarga**. El drift era real: nuestra paráfrasis se comía *«del Estatuto de Autonomía»* y
+  *«de la Comunidad Autónoma»*.
+- **La puerta del cierre pasó a verde** (`npm run epigrafe:revision -- … --pregunta …`), que es lo que
+  permitió contestar a la usuaria sin usar el escape `--temario-igualmente`.
+- **Las 4 preguntas quedan BARAJABLES**: se les escribió explicación estructurada (una razón por
+  opción + cita literal del BOE). No era trámite del gate: dos de ellas se resuelven por un matiz que
+  la explicación vieja no explicaba (art. 30, *«promover la convocatoria»* ≠ *«convocar»*; art. 48,
+  *«aguas interiores»* frente a exteriores).
+
+#### ⏳ LO QUE FALTA
+
+1. **El Paso 2 (recorte) por el PIPELINE, no a mano.** `verify:scope dump` → los 2 agentes + juez →
+   `plan` → `apply`. Es de **impacto alto** (92 artículos fuera, ~51 dentro, 29 preguntas dejan de
+   servirse ahí), así que el clasificador lo mandará a **puerta de juicio** y necesita OK explícito.
+   ⚠️ **Nada se borra:** las 29 preguntas siguen en el banco, solo dejan de servirse en ESE tema.
+2. **Generar las preguntas de los arts. 89-139**, que es lo que el programa pide y hoy tiene **0**.
+   Ojo al mapeo fino: el epígrafe no pide el Título IV entero sino **los capítulos I, III, IV, VI y
+   VII**, así que hay que bajar la estructura por capítulos del BOE antes de escopar (regla del manual:
+   casar por RÚBRICA, no por el número a ojo).
+3. **Los otros 25 temas de la oposición siguen en `never_sourced`** (Paso 1 sin hacer). No bloquea las
+   respuestas ya dadas, pero la próxima queja de temario de Sevilla volverá a parar en la puerta.
+   El literal de los 26 temas está **entero en el mismo documento del hub** — es clonar, no investigar.
+4. **Mirar si el vuelco se repite en `oficial_de_gestion_parlamento_de_andalucia`**, la otra oposición
+   que escopa este Estatuto (1 tema). No comprobado.
+
+**Relacionadas:** [T-556] (Universidad de León: mismo Paso 1 sin hacer, pero allí el scope está
+*incompleto*, no invertido), [T-528] (el 59 % de scopes verdes sobre epígrafe sin contrastar),
+[T-518] (sellos de Paso 2 sin pipeline), [T-602] (otra usuaria, mismo síntoma «no es de mi
+selección», causa distinta).
 
 ### [T-623] 🔴 [ABIERTO 06/08] El configurador «por leyes» se queda colgado: la selección de artículos viaja en la URL y nginx la corta a 8 KB, devolviendo HTML que el cliente parsea como JSON
 
@@ -6212,6 +6282,23 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **VERIFICADO EJECUTANDO los cuatro**, no leyendo sus tests: `audit-temario-display-drift --selftest` 5/5 · `health/kinds-evaluados --dias 1` contra RDS (1 pasada, ningún kind sin evaluar) · `temario/revisar-oposicion auxiliar_administrativo_estado` (28 temas, 0 rotos) · `impugnaciones/revisar-impugnacion` con una impugnación pendiente real (dossier completo, leyendo `questions`/`articles`). 1.107 tests de `guardrails/`+`lib/db/` en verde.
 - **QUEDA:** `revisar-impugnacion.cjs` muere con una excepción sin capturar si le pasas un id corto en vez del uuid entero (`invalid input syntax for type uuid`). Es previo a esta ficha y no se tocó para no mezclar; se arregla con una validación de formato antes de la query.
 - **Relacionadas:** [T-130] (el registro de herramientas, que es este mismo fallo una capa arriba), [T-486] (el rol lector), [T-539] (el de coordinación restringido), [T-612] (credenciales en los worktrees de trabajador).
+### [T-485] ✅ [HECHA 06/08] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
+
+- **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
+- **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
+- **EL HUECO REAL:** la exclusión mutua de verdad no la da la tabla, la da **`flock` sobre `/tmp/vence-deploy.lock`** (`scripts/deploy-frontend.sh:47`, `deploy-backend.sh`). Un fichero en `/tmp` es **per-máquina**. Dos deploys lanzados desde máquinas distintas **no se ven**, y el propio código lo dice sin saberlo: *«el `flock` sigue siendo quien impide de verdad el solape»* (comentario en `lib/deploy/estado.cjs`). Hoy no ha pasado porque solo se despliega desde un sitio.
+- **Qué se rompería:** dos `update-service` de ECS solapados sobre el mismo servicio, que es literalmente el incidente del 24/07 ([T-075]) — allí lo causó soltar el `flock` antes de la convergencia, y se arregló manteniéndolo. Un lock que no cruza máquinas reintroduce ese fallo por otra puerta.
+- **Cómo atacarlo:** el candado se muda a `deploy_runs` con **lease renovable**, el mismo patrón ya probado en `backlog_tasks` (arriendo + latido + `reap`), no un lock eterno: si el deploy muere, la fila tiene que caducar sola. El `flock` se queda como segunda puerta **local** (defensa en profundidad, y sigue siendo el más barato para el caso normal). Cuidado con el criterio único: `estado.cjs` ya sabe clasificar runs abiertos — el lease tiene que apoyarse en él, no ser una tercera opinión (lección de [T-130]).
+- **NO bloquea el piloto** [T-486]: allí los trabajadores tienen prohibido desplegar, precisamente por esto. Se vuelve obligatoria el día que un trabajador remoto pueda desplegar.
+- **HALLAZGO AL LEER EL CÓDIGO (06/08): la detección entre máquinas YA EXISTE, lo que falta es que BLOQUEE.** `veredicto()` de `lib/deploy/estado.cjs` clasifica un run de OTRO host como `en_curso` (si es reciente) o `sospechoso` (pasados `MINUTOS_SOSPECHOSO`), porque `procesoVivo` devuelve `null` cuando `host !== hostActual`. O sea que el sistema **ya sabe** que hay un deploy ajeno en marcha — y su propio comentario dice que da igual: *«un `dudoso` no bloquea a nadie: solo evita que dos sesiones se pisen sin saberlo»*. El trabajo NO es escribir un detector nuevo: es **convertir ese veredicto en puerta**, que es exactamente lo que pide el punto de «apoyarse en `estado.cjs`, no ser una tercera opinión».
+- **Diseño concreto derivado de eso:**
+  1. `deploy_runs` gana `lease_until timestamptz`. Adquirir = INSERT atómico condicionado a que `veredicto(runs abiertos con lease vivo).estado === 'libre'`, en el MISMO statement (como el claim de `backlog_tasks`), no leer-y-luego-escribir.
+  2. **Renovación en primer plano durante el deploy**: un build de frontend pasa de 30 min (medido el 28/07, por eso `DEPLOY_LOCK_WAIT` son 45), así que el lease tiene que renovarse o caducará a mitad. Sin renovación no es un lease, es un temporizador.
+  3. **El `flock` se QUEDA**: sigue siendo la puerta local y la más barata para el caso normal. Defensa en profundidad, no sustitución.
+  4. Soltar en `trap EXIT`, y que la caducidad sola cubra el caso de que el proceso muera sin trap.
+- **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
+- **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
+
 
 ### [T-606] ✅ [HECHA 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
