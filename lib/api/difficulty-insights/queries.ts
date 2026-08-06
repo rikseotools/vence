@@ -19,6 +19,7 @@ import {
 import { evaluarFasesNombradas, UMBRAL_LENTA_MS } from '@/lib/observability/fasesLentas'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { INSTANCE_ID } from '@/lib/observability/instanceId'
+import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 
 /**
  * Cronómetro por consulta (T-319).
@@ -312,11 +313,32 @@ async function getProgressTrends(db: ReturnType<typeof getDb>, userId: string): 
   }
 }
 
+// Techo interno SOLO para esta consulta (T-319 paso 1 del diseño decidido: "degradar la
+// respuesta"). Es la ÚNICA de las 6 que no se migró a user_question_history_v2 y la que en frío
+// llega a tardar 9-19 s en usuarios pesados — con el timeout de 12 s aplicado al conjunto entero
+// (`withDbTimeout` en la ruta), esos 9-19 s se llevaban por delante las otras 5 consultas, que
+// resuelven en milisegundos. Cortarla aquí, por separado, deja que el resto de la pantalla
+// responda igual y solo esta pestaña se sirva vacía. No cancela la query en Postgres (misma
+// limitación conocida de `withDbTimeout`: el statement_timeout de 30 s es quien la mata de
+// verdad), pero libera la respuesta al usuario.
+//
+// Leído del entorno EN CADA LLAMADA (no una constante de módulo): permite bajarlo en tests sin
+// esperar segundos reales y ajustarlo en producción sin redeploy si la medición de T-319 pide otro
+// valor. (El comentario original citaba aquí `waitMsFromEnv` de `lib/temario/pdf/renderSemaphore.ts`
+// como precedente del patrón; ese fichero se borró en la Fase 2 de [T-159]/[T-270] —la ruta del PDF
+// ya no renderiza, así que su semáforo era código muerto— y las dos ramas se juntaron el 06/08.)
+export function recommendationsTimeoutMsFromEnv(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = Number(env.DIFFICULTY_INSIGHTS_RECS_TIMEOUT_MS)
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 6000
+}
+
 // Recomendaciones personalizadas
 async function getRecommendations(db: ReturnType<typeof getDb>, userId: string): Promise<Recommendation[]> {
+  const timeoutMs = recommendationsTimeoutMsFromEnv()
   try {
-    const result = await db.execute(
-      sql`SELECT * FROM get_personalized_recommendations(${userId}::uuid)`
+    const result = await withDbTimeout(
+      () => db.execute(sql`SELECT * FROM get_personalized_recommendations(${userId}::uuid)`),
+      timeoutMs,
     )
     return (result as Record<string, unknown>[]).map(row => ({
       priority: parsePriority(row.priority as string),
@@ -324,7 +346,20 @@ async function getRecommendations(db: ReturnType<typeof getDb>, userId: string):
       description: String(row.description || '').trim(),
       actionType: String(row.action_type || ''),
     }))
-  } catch {
+  } catch (error) {
+    // Degradado silencioso a propósito (mismo contrato de antes: la pestaña de recomendaciones
+    // se sirve vacía en vez de tumbar las otras 5). Lo nuevo es DISTINGUIR el motivo: un timeout
+    // aquí es la fuga que esta ficha persigue, y sin marcarlo aparte quedaba mezclado con
+    // cualquier otro fallo de RPC en el mismo catch-all silencioso.
+    if (isDbTimeoutError(error)) {
+      try {
+        emitFireAndForget({
+          source: 'vercel', severity: 'warn', eventType: 'difficulty_insights_recomendaciones_degradadas',
+          endpoint: '/api/v2/difficulty-insights',
+          metadata: { userId, timeoutMs, instanceId: INSTANCE_ID },
+        })
+      } catch { /* la observabilidad nunca rompe el camino crítico */ }
+    }
     return []
   }
 }
