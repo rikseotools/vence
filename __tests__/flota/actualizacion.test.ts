@@ -183,9 +183,9 @@ describe('las órdenes que se ejecutan en la máquina', () => {
     expect(ACT.SONDA_GIT('~flota/vence')).toContain('git fetch')
   })
 
-  // El árbol NO es el mismo en todas las máquinas —worktree por trabajador en el portátil, clon
-  // compartido en el VPS—, así que sale del registro. Cablearlo aquí obligaría a tocar este
-  // fichero al añadir una máquina, que es justo lo que el registro evita.
+  // La RUTA del árbol no es la misma en todas las máquinas —bajo `$HOME` en el portátil, bajo
+  // `~flota` en el VPS—, así que sale del registro. Cablearlo aquí obligaría a tocar este fichero
+  // al añadir una máquina, que es justo lo que el registro evita.
   it('el árbol se lo dice el registro de máquinas, no está cableado', () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const MAQ = require('@/lib/flota/maquinas.cjs')
@@ -195,6 +195,23 @@ describe('las órdenes que se ejecutan en la máquina', () => {
     for (const w of ['w1', 'l1']) {
       expect(ACT.SONDA_GIT(MAQ.arbolDe(w))).toContain(`cd ${MAQ.arbolDe(w)}`)
     }
+  })
+
+  // ── T-592: en el VPS TAMBIÉN es un árbol por trabajador, nunca el clon base compartido ──────
+  // La regresión real: `arbol` devolvía `~flota/vence` (la base, sin dueño) para TODOS los
+  // trabajadores del VPS. La sonda contra ese árbol reporta SIEMPRE "al día" y SIEMPRE "limpio"
+  // —ahí nadie escribe—, así que ni la puerta del clon ni el rescate llegaban NUNCA al worktree
+  // real de ningún trabajador. w2 acabó 127 commits por detrás sin que nada lo notara. La prueba
+  // de arriba solo comprobaba `l1` (portátil) por su propio slug; esta comprueba lo mismo en el
+  // VPS y que máquinas DISTINTAS de la misma flota no comparten árbol entre sí.
+  it('en el VPS cada trabajador tiene su PROPIO árbol, no el clon base compartido', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const MAQ = require('@/lib/flota/maquinas.cjs')
+    for (const w of ['w1', 'w2', 'w3', 'w4']) {
+      expect(MAQ.arbolDe(w)).toContain(w)               // lleva su propio nombre, no es genérico
+    }
+    const arboles = ['w1', 'w2', 'w3', 'w4'].map((w) => MAQ.arbolDe(w))
+    expect(new Set(arboles).size).toBe(arboles.length)  // ninguno coincide con otro
   })
 
   // Bajo `sudo -u <otro>` sin `-H`, HOME sigue siendo el de root: el `cd` cae fuera del repo y la

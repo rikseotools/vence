@@ -723,6 +723,21 @@ perder algo.
 > clon» sobre una máquina perfectamente sana. Lo fija `npm run sim:clon-al-dia`, que monta repos git
 > reales y comprueba los dos citados.
 
+> **GOTCHA que la dejó ciega del todo (T-592, 06/08):** en el VPS, `MAQ.arbolDe(w)` devolvía
+> `~flota/vence` — la base compartida, sin dueño — para **los cuatro** trabajadores (`w1`-`w4`), en
+> vez del worktree propio de cada uno (`~flota/vence-sessions/<w>`, el mismo que crea
+> `arrancar-trabajador.sh`). El comentario que lo justificaba («en el VPS hay UN clon y los
+> trabajadores comparten máquina») confundía «comparten el `.git`» con «comparten árbol de trabajo»:
+> lo primero es cierto (de ahí sale `npm ci`), lo segundo no — cada worker tiene su propio checkout.
+> Consecuencia medida: la base compartida nunca tiene cambios sin commitear (nadie escribe ahí
+> directamente) y siempre está en `main`, así que la sonda reportaba SIEMPRE `al_dia` — ni la puerta
+> del clon ni `flota -- rescatar` llegaban NUNCA al árbol real de ningún trabajador. `w2` acabó
+> **127 commits por detrás** sin que nada lo notara ni lo avisara, y un turno que terminó con el
+> árbol a medias se quedó así indefinidamente porque el supervisor miraba un árbol que no era el
+> suyo. La prueba que faltaba: `el árbol se lo dice el registro…` solo comprobaba el slug de `l1`
+> (portátil); nada comprobaba que los cuatro trabajadores del VPS tuvieran árboles DISTINTOS entre
+> sí. Guardarraíl añadido en `__tests__/flota/actualizacion.test.ts`.
+
 **2. ¿Está libre AHORA?** «Libre» se decidía solo por el claim, y **entre mandar el encargo y que el
 trabajador reclame la tarea pasan minutos**: en esa ventana es invisible para el reparto y se le
 manda otro. Pasó el 05/08 con `w1`, que recibió dos encargos seguidos — el segundo se tecleó dentro
