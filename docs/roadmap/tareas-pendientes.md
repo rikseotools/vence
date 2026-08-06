@@ -1224,73 +1224,6 @@ va con esfuerzo `sesion_propia` y no como higiene.
 [T-518] (sellos de Paso 2 sin pipeline), [T-602] (otra usuaria, mismo síntoma «no es de mi
 selección», causa distinta).
 
-### [T-623] 🔴 [ABIERTO 06/08] El configurador «por leyes» se queda colgado: la selección de artículos viaja en la URL y nginx la corta a 8 KB, devolviendo HTML que el cliente parsea como JSON
-
-**Lo reporta una usuaria, no una alerta.** Feedback `e790c7bf` (06/08 19:45, Lourdes):
-*«la plataforma se me queda colgada con mucha frecuencia, tengo que salirme y volver a entrar…
-me ocurre cuando termino un test y quiero hacer otro. Es entonces cuando se queda bloqueada.»*
-
-#### La cadena entera, medida (no deducida)
-
-1. En `/test/por-leyes`, `components/TestConfigurator.tsx:462` mete la selección de artículos
-   **en la URL**, serializada como JSON:
-   `params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj))`.
-2. Al URL-encodificar, cada `"` pasa a `%22` y cada `,` a `%2C`: **la cadena se triplica**. Unas
-   pocas leyes con sus artículos superan los 8 KB sin esfuerzo.
-3. **Umbral medido contra producción** (`GET /api/v2/test-config/estimate`, curl real):
-
-   | Longitud de la URL | Respuesta |
-   |---|---|
-   | 7.514 bytes | **200 OK** |
-   | 8.914 bytes | **414** URI Too Long |
-   | 41.114 bytes | **494** Request Header Too Large |
-
-   El corte está en **8 KB** — el `large_client_header_buffers 4 8k` por defecto de nginx.
-4. nginx contesta con una **página HTML de error**, no con JSON.
-5. El cliente hace `res.json()` sobre ese HTML → `SyntaxError: Unexpected token '<', "<!DOCTYPE"…`
-   — **literalmente el error registrado en el navegador de Lourdes a las 19:55**
-   (`observable_events`, `console_error` en `/test/por-leyes`).
-6. El `catch` no repinta nada: la pantalla se queda **exactamente igual**. Para ella, colgada. Y
-   como el estado del componente ya no avanza, sale y vuelve a entrar.
-
-**Encaja con su frase «cuando termino un test y quiero hacer otro»:** al volver al configurador
-conserva la selección anterior, así que cuantos más artículos acumulados, más larga la URL.
-
-**Alcance:** **87 respuestas 494 a 12 usuarios en 48 h**, todas en ese único endpoint (las 414 no
-están contadas todavía — hay que medirlas, probablemente son más).
-
-#### El arreglo (y por qué NO es subir el buffer)
-
-Convertir la llamada a **POST con el cuerpo en JSON**. Subir `large_client_header_buffers` mueve el
-techo pero no lo quita: la selección puede crecer sin límite y el fallo vuelve con una oposición de
-más artículos. Es el mismo criterio que en el resto de la casa: arreglar la causa, no callar la señal.
-
-**Toca DOS superficies y por eso no se hizo en caliente:**
-- `components/TestConfigurator.tsx` — dos puntos de llamada (líneas 492 y 541).
-- `app/api/v2/test-config/estimate/route.ts` — hoy solo exporta `GET`, y cuando
-  `shouldRouteToBackend('test-config')` es cierto **reenvía el search string tal cual** al backend.
-- El backend NestJS tiene que aceptar POST para el camino canary → **deploy de backend + frontend**.
-
-**Cuidado con el atajo:** hacer que el POST caiga siempre en la implementación LOCAL (la del
-fallback) evitaría tocar el backend, pero entonces las peticiones grandes se servirían con un
-código distinto del que sirve a las pequeñas — dos fuentes de verdad para la misma cuenta. No.
-
-#### Capas al implementarlo
-
-- **Unit** sobre el constructor de parámetros: una selección grande no puede producir una URL (ni un
-  cuerpo) que dependa de la longitud.
-- **La que de verdad lo fija:** un test que **reproduzca el umbral** — hoy no hay ninguno que mire
-  el tamaño de lo que se manda, que es por lo que esto llegó a producción y lo encontró una usuaria.
-- **Y que un fallo deje de ser un cuelgue:** si la respuesta no es JSON, el configurador tiene que
-  DECIRLO. Un `catch` que no repinta es indistinguible de una app congelada — ése es el motivo real
-  de que Lourdes escribiera «se queda colgada» en vez de «me da un error».
-
-#### Hallazgo aparte, SIN confirmar, encontrado al medir esto
-
-El reto anti-scraping se ha mostrado **663 veces a 7 usuarios en 48 h, y los 7 son premium**,
-sostenido en ~250/día durante 10 días. Puede ser detección legítima (`harvest_*`), pero un usuario
-que paga y recibe un captcha se va. Merece su propia medición antes de tocar nada.
-
 ### [T-621] 🟡 [ABIERTO 06/08] El push-guard no distingue un commit de MERGE: fusionar lo revisado de otro exige reclamar su tarea o saltarse el guard entero
 
 **Medido el 06/08.** Al fusionar a `main` las cinco ramas con veredicto `ok` de la flota (T-055,
@@ -6382,6 +6315,116 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
   ninguno, porque el panel dice que estás protegido.
 
 ## Hechas
+
+### [T-623] ✅ [HECHA 06/08] El configurador «por leyes» se queda colgado: la selección de artículos viaja en la URL y nginx la corta a 8 KB, devolviendo HTML que el cliente parsea como JSON
+
+**Lo reporta una usuaria, no una alerta.** Feedback `e790c7bf` (06/08 19:45, Lourdes):
+*«la plataforma se me queda colgada con mucha frecuencia, tengo que salirme y volver a entrar…
+me ocurre cuando termino un test y quiero hacer otro. Es entonces cuando se queda bloqueada.»*
+
+#### La cadena entera, medida (no deducida)
+
+1. En `/test/por-leyes`, `components/TestConfigurator.tsx:462` mete la selección de artículos
+   **en la URL**, serializada como JSON:
+   `params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj))`.
+2. Al URL-encodificar, cada `"` pasa a `%22` y cada `,` a `%2C`: **la cadena se triplica**. Unas
+   pocas leyes con sus artículos superan los 8 KB sin esfuerzo.
+3. **Umbral medido contra producción** (`GET /api/v2/test-config/estimate`, curl real):
+
+   | Longitud de la URL | Respuesta |
+   |---|---|
+   | 7.514 bytes | **200 OK** |
+   | 8.914 bytes | **414** URI Too Long |
+   | 41.114 bytes | **494** Request Header Too Large |
+
+   El corte está en **8 KB** — el `large_client_header_buffers 4 8k` por defecto de nginx.
+4. nginx contesta con una **página HTML de error**, no con JSON.
+5. El cliente hace `res.json()` sobre ese HTML → `SyntaxError: Unexpected token '<', "<!DOCTYPE"…`
+   — **literalmente el error registrado en el navegador de Lourdes a las 19:55**
+   (`observable_events`, `console_error` en `/test/por-leyes`).
+6. El `catch` no repinta nada: la pantalla se queda **exactamente igual**. Para ella, colgada. Y
+   como el estado del componente ya no avanza, sale y vuelve a entrar.
+
+**Encaja con su frase «cuando termino un test y quiero hacer otro»:** al volver al configurador
+conserva la selección anterior, así que cuantos más artículos acumulados, más larga la URL.
+
+**Alcance:** **87 respuestas 494 a 12 usuarios en 48 h**, todas en ese único endpoint (las 414 no
+están contadas todavía — hay que medirlas, probablemente son más).
+
+#### El arreglo (y por qué NO es subir el buffer)
+
+Convertir la llamada a **POST con el cuerpo en JSON**. Subir `large_client_header_buffers` mueve el
+techo pero no lo quita: la selección puede crecer sin límite y el fallo vuelve con una oposición de
+más artículos. Es el mismo criterio que en el resto de la casa: arreglar la causa, no callar la señal.
+
+**Toca DOS superficies y por eso no se hizo en caliente:**
+- `components/TestConfigurator.tsx` — dos puntos de llamada (líneas 492 y 541).
+- `app/api/v2/test-config/estimate/route.ts` — hoy solo exporta `GET`, y cuando
+  `shouldRouteToBackend('test-config')` es cierto **reenvía el search string tal cual** al backend.
+- El backend NestJS tiene que aceptar POST para el camino canary → **deploy de backend + frontend**.
+
+**Cuidado con el atajo:** hacer que el POST caiga siempre en la implementación LOCAL (la del
+fallback) evitaría tocar el backend, pero entonces las peticiones grandes se servirían con un
+código distinto del que sirve a las pequeñas — dos fuentes de verdad para la misma cuenta. No.
+
+#### Capas al implementarlo
+
+- **Unit** sobre el constructor de parámetros: una selección grande no puede producir una URL (ni un
+  cuerpo) que dependa de la longitud.
+- **La que de verdad lo fija:** un test que **reproduzca el umbral** — hoy no hay ninguno que mire
+  el tamaño de lo que se manda, que es por lo que esto llegó a producción y lo encontró una usuaria.
+- **Y que un fallo deje de ser un cuelgue:** si la respuesta no es JSON, el configurador tiene que
+  DECIRLO. Un `catch` que no repinta es indistinguible de una app congelada — ése es el motivo real
+  de que Lourdes escribiera «se queda colgada» en vez de «me da un error».
+
+#### Hallazgo aparte, SIN confirmar, encontrado al medir esto
+
+El reto anti-scraping se ha mostrado **663 veces a 7 usuarios en 48 h, y los 7 son premium**,
+sostenido en ~250/día durante 10 días. Puede ser detección legítima (`harvest_*`), pero un usuario
+que paga y recibe un captcha se va. Merece su propia medición antes de tocar nada.
+
+- **✅ VERIFICADO EN PRODUCCIÓN por reproducción directa (06/08, w4) — no leyendo código ni
+  confiando en el sim que ya existía (no lo pude correr: pide `user_profiles`, tabla vetada al rol
+  lector por PII, aunque la consulta en sí no toque columnas personales — el veto es de TABLA
+  completa, no de columna).**
+  - **Deploy confirmado en las DOS superficies:** `/api/version` → `51f96259`; `/health` del
+    backend → `deploy:"51f96259"`. Es el mismo commit que la ficha ya daba por desplegado.
+  - **Reproducido el defecto ORIGINAL a propósito, con datos reales (no un ejemplo inventado):**
+    construí la selección completa de LECrim (995 artículos con pregunta activa — la MISMA cifra
+    que ya citaba esta ficha) y armé la URL que el código VIEJO habría generado. `GET
+    /api/v2/test-config/estimate?selectedArticlesByLaw=...` (12.410 bytes) contra
+    `www.vence.es` real → **`414`, `content-type: text/html`**, página de error de CloudFront —
+    el defecto sigue vivo a nivel de infraestructura (nginx/CloudFront no ha cambiado ni tenía
+    que cambiar), confirmando que lo que lo evita es no usar ya ese camino.
+  - **Con el MISMO payload por `POST` (cuerpo JSON, 6.366 bytes) → `201`, JSON válido,
+    `x-served-by: vence-backend`.** El cuerpo entero llegó intacto de un salto a otro (frontend →
+    backend), no solo al primero — confirma que el canary del backend también acepta el verbo.
+  - **GET legacy (selección pequeña, sin body) sigue respondiendo `200` con JSON** — quien no haya
+    recargado la pestaña no se rompe.
+  - **Hallazgo aparte, NO confirmado del todo — lo dejo como sospecha con la cifra, no como
+    hecho:** 5 eventos `http_4xx` con `status:405, method:POST` sobre `/test/por-leyes` entre las
+    20:08:44 y las 20:11:40 UTC (4 de ellos ahí, 1 en otra página) — **todos ANTES** de las
+    20:27:18 UTC (el commit del deploy final). SOSPECHO que es una ventana transitoria de
+    despliegue en rodaja (ECS corriendo instancias viejas y nuevas del frontend a la vez: una
+    instancia vieja del propio `route.ts`, sin el `export const POST`, devuelve 405 nativo de
+    Next.js a un navegador que YA tenía el JS nuevo intentando el POST) — sería un TERCER hueco de
+    "dos superficies se despliegan por separado", distinto del que ya arregló 4b72d19ad (aquel era
+    frontend→backend; este sería frontend-instancia-vieja→frontend-instancia-nueva). NO lo
+    reproduje ni lo medí más allá de contar los 5 eventos y su ventana horaria — no hay ninguno
+    posterior a las 20:11 (45 min de calma al momento de escribir esto), consistente con que fue
+    transitorio y ya se resolvió solo al completarse el rollout. No abro ficha nueva por esto: 5
+    eventos en una ventana de 3 minutos que no ha vuelto a repetirse no justifica una, y la causa
+    sigue siendo una sospecha, no una medición.
+  - **Aparte, ni bueno ni malo para esta ficha, solo anotado:** `console_error` en `/test/por-leyes`
+    NO guarda el texto del error (`jsonb_object_keys` da solo `url`+`userAgent`), así que no pude
+    contrastar directamente si el patrón exacto `SyntaxError: Unexpected token '<'` ha desaparecido
+    — por eso la verificación de arriba se apoya en la reproducción directa, que es más fuerte que
+    ese conteo de todos modos. La falta de `message` en ese evento es un hueco de observabilidad
+    aparte, no de esta tarea.
+  - **El seguimiento a Lourdes (feedback `e790c7bf`) ya tiene borrador `#90` en el embudo,
+    APROBADO por Manuel y con la reserva de envío en `colas-06ago-b`** — no me corresponde tocarlo.
+  - **Guardarraíles corridos:** `robustez-push-guard.cjs` y `contexto-push-guard.cjs` en verde (sin
+    cambios de código en esta pasada, solo ficha).
 
 ### [T-624] ✅ [HECHA 06/08] La credencial de lectura de negocio se resolvía por su cuenta en 4 scripts: unificada en un punto y cerrada la puerta a un quinto
 
