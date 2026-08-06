@@ -981,6 +981,67 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
+
+**Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
+*«El Título III no entra en el temario.»* Tenía razón exacta.
+
+**Verificado contra la fuente oficial** — Anexo II «Programa», punto 3, de la Resolución de
+16/02/2026 de la Universidad de León (**BOE-A-2026-4150**), copiado verbatim:
+
+> *«Ley Orgánica 3/2007…: Título I: Principios de igualdad y la tutela contra la discriminación.
+> Título II: Políticas públicas para la igualdad. Título IV.: Derecho al trabajo en igualdad de
+> oportunidades. Título V: Principio de igualdad en el empleo público (capítulos I, II y III).
+> Título VIII: Disposiciones organizativas.»*
+
+El programa pide **cinco títulos**. El `topic_scope` del Tema 3 del Bloque I tenía la **ley entera,
+78 artículos**. La pregunta impugnada cuelga del **art. 40**, que es Título III.
+
+#### Alcance, medido (no estimado)
+
+| Fuera del programa oficial | Preguntas activas |
+|---|---|
+| Título III, arts 36-41 (Igualdad y medios de comunicación) | **44** |
+| Título V caps IV-V, arts 65-68 (FFAA y Fuerzas y Cuerpos de Seguridad) | 13 |
+| Título VI, arts 69-72 (acceso a bienes y servicios) | 14 |
+| Título VII, arts 73-75 (responsabilidad social de las empresas) | 10 |
+| **TOTAL** | **81** |
+
+**13 usuarios** tienen esta oposición elegida. Tras el recorte quedan **705 preguntas dentro** de
+programa, así que el tema no se queda seco — el recorte no tenía coste.
+
+#### Hecho ya (06/08, al resolver la impugnación)
+
+1. **Paso 1 del Tema 3**: su epígrafe estaba **parafraseado** («Títulos I, II, IV, V y VIII»).
+   Sustituido por el **literal del BOE** con `source_url` y nota de sourcing → `verified_literal`.
+   El boletín no parsea (`fetch=html`, `temario_parseado=0/21`), así que la literalidad se acredita
+   a mano con `--fuente-manual`, que queda anotado.
+2. **Scope recortado 78 → 61 artículos** (los 17 de la tabla). El **Título Preliminar (1-2) se
+   CONSERVA**: los temarios lo incluyen como base sin nombrarlo y el runbook lo marca como falso
+   positivo conocido.
+3. Caché `temario` + `test-counts` invalidada (paso aparte que §7.2 marca como obligatorio).
+4. Comprobado después: el gate devuelve `tema_no_localizado` para esa pregunta — **ningún tema suyo
+   la sirve ya**.
+
+#### Lo que queda, y por qué es una ficha y no un apartado del cierre
+
+**18 de los 21 temas de esta oposición siguen en `never_sourced`.** O sea: lo arreglado es el tema
+por el que alguien se quejó, y los otros 18 están exactamente igual de sin contrastar que estaba
+éste. Con un scope «ley entera» como el que había, cada uno es un candidato a servir materia fuera
+de programa — y solo nos enteramos cuando un usuario lo nota.
+
+**Esto ya pasó aquí:** [T-556] (05/08, HECHA) arregló el defecto CONTRARIO en esta MISMA oposición
+— allí FALTABAN los arts. 2-4 de la Ley 19/2013 (15 preguntas sin servir) — y su propia ficha dejó
+escrito que 24 de 25 temas seguían `never_sourced`. Se cerró el tema de la queja y los demás
+quedaron igual. **Dos usuarios distintos, dos quejas opuestas, la misma causa raíz sin cerrar.**
+
+**El trabajo:** Paso 1 de los 18 temas restantes contra `BOE-A-2026-4150` (el documento ya está
+identificado y es uno solo para toda la oposición), y después Paso 2 del scope tema a tema. No es
+automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia a mano del Anexo II.
+
+**Relacionadas:** [T-556] (misma oposición, defecto contrario, misma causa raíz), [T-518] (el Paso 2
+sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
+
 ### [T-629] 🟠 [ABIERTO 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
 
 - **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
