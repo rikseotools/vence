@@ -1,0 +1,21 @@
+{
+  "motivo": "T-561 — 2 de las 5 preguntas restantes del art. 19 TUE piden un dato que el art. 19 no contiene (verificado contra el texto de articles.content en BD, no contra la ficha)",
+  "movimientos": [
+    {
+      "preguntas": ["540c9861-ec13-4b2b-afbc-6cc98279bfe9"],
+      "origenArticuloId": "370eaa17-b8f3-4524-96c4-c6cf16ec5d00",
+      "destinoArticuloId": "32f07406-2e1b-4459-98c4-12a79fe23cdb",
+      "porQue": "Pregunta 540c9861: distingue la opción correcta (A, renovación parcial cada 3 años afectando a LA MITAD de los jueces) de las incorrectas por ese detalle exacto. El TUE art.19 solo dice 'nombrados... para un período de seis años' — no menciona renovación parcial ni la fracción de jueces afectada. El Estatuto TJUE art.9 SÍ: 'La renovación parcial de los Jueces, que tendrá lugar cada tres años, afectará a la mitad de los Jueces.' (verificado contra articles.content).",
+      "permitirPerdidaTemas": true,
+      "motivoPerdida": "El Estatuto TJUE solo está escopado en 2 temas (tramitacion_procesal T5 con arts 16-18, que NO incluye el 9; y policia_nacional T4, ley entera). TUE art.19 está escopado en 37. Mover el ancla sirve la pregunta correctamente en 1 tema (policia_nacional T4) y dejar de servirla en los otros 36 donde hoy se sirve con un ancla que no sostiene su respuesta — mismo criterio que 4438d206 (fix anterior de esta ficha, declaró pérdida de 35 temas). Alternativa NO aplicada aquí por ser decisión de scope, no de ancla: ampliar topic_scope de tramitacion_procesal T5 con el art.9 (su epígrafe SÍ pide expresamente 'el Tribunal de Justicia de la Unión Europea' entre las instituciones) — lo dejo para quien aplique, con --include-gate si procede."
+    },
+    {
+      "preguntas": ["6fcef119-7aa5-4c37-8a99-4ff01011b1d6"],
+      "origenArticuloId": "370eaa17-b8f3-4524-96c4-c6cf16ec5d00",
+      "destinoArticuloId": "066e32e6-ab11-4000-ab3c-685bc75254fb",
+      "porQue": "Pregunta 6fcef119: la clave (B, 'un juez por Estado miembro, y 11 Abogados Generales') necesita el número de Abogados Generales, y el TUE art.19 solo dice 'asistido por abogados generales' sin cifra. El TFUE art.252 SÍ fija el mecanismo: 'El Tribunal de Justicia estará asistido por ocho abogados generales. Si el Tribunal de Justicia lo solicitare, el Consejo, por unanimidad, podrá aumentar el número' — la cifra 11 viene de una Decisión del Consejo al amparo de este artículo (citada en la propia explicación). Verificado contra articles.content.",
+      "permitirPerdidaTemas": true,
+      "motivoPerdida": "De los 37 temas que hoy escopan TUE art.19, solo 14 escopan también el TFUE con el art.252 incluido (o la ley entera). Se pierde servir la pregunta en los 23 restantes, donde hoy se sirve con un ancla que no sostiene la cifra de 11 Abogados Generales."
+    }
+  ]
+}
