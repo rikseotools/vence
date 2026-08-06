@@ -50,6 +50,37 @@ export function esBloqueoPorCheckoutAbierto(err: ErrorStripeMinimo | null | unde
   return niegaCancelar && señalaCheckout
 }
 
+/**
+ * ¿La suscripción ya está en un estado FINAL, o sea que no hay nada que cancelar?
+ *
+ * **Esto no se dedujo leyendo la API, se descubrió ejecutándolo** (06/08/2026). Al expirar la
+ * sesión de checkout, Stripe mueve la suscripción `incomplete` a `incomplete_expired` **en el
+ * acto**: el reintento del `cancel` que viene justo después ya no encuentra nada y revienta con
+ * `No such subscription`. Es decir, el arreglo a medias cambiaba un error por otro y la persona
+ * seguía viendo un fallo — que es exactamente lo que veníamos a quitar.
+ *
+ * Que la suscripción esté en un estado terminal ES el objetivo del usuario cumplido: quería que
+ * dejara de estar viva. Se trata como éxito, igual que la idempotencia de `canceled` que ya
+ * existía en `cancelSubscription`.
+ */
+const TERMINALES = new Set(['incomplete_expired', 'canceled'])
+
+export function estaTerminada(estado: string | null | undefined): boolean {
+  return TERMINALES.has(estado ?? '')
+}
+
+/**
+ * ¿El error del reintento significa «ya no existe», o sea que el trabajo está hecho?
+ *
+ * Stripe responde `No such subscription: 'sub_…'` cuando la suscripción pasó a terminal entre
+ * nuestro `expire` y nuestro `cancel`. Tratarlo como fallo dejaría al usuario con un error por una
+ * carrera que ya salió como él quería.
+ */
+export function esYaNoExiste(err: ErrorStripeMinimo | null | undefined): boolean {
+  const msg = (err?.message ?? '').toLowerCase()
+  return msg.includes('no such subscription')
+}
+
 /** Estados de una sesión de checkout que se pueden expirar. Los demás ya están cerrados. */
 const EXPIRABLES = new Set(['open'])
 

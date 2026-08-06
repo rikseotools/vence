@@ -842,77 +842,80 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-607] 🟡 [ABIERTO 06/08] El test personalizado de TU oposición te ofrece artículos fuera de tu temario: cae en el modo ley-only, que se salta el scope a propósito
+### [T-607] 🟡 [ABIERTO 06/08] No se puede afirmar que haya fuga de scope: medir servidas del pasado contra el scope de HOY no distingue una fuga de un re-vínculo posterior
 
-**Es el diagnóstico de [T-583]**, cuya ficha planteaba tres hipótesis. **Las tres eran las equivocadas**,
-así que esto no la continúa: la corrige. (T-583 vive commiteada en `sesion/l5` sin fusionar; no se
-reescribe desde aquí para no perder su contenido — [T-428].)
+**Qué es esto.** El intento de diagnosticar [T-583] (*«Test Rápido sirve preguntas fuera de
+`topic_scope`»*). El resultado es que **el diagnóstico no se puede cerrar con los datos que hay**, y
+esta ficha existe para que la siguiente sesión no repita las dos horas que cuesta descubrirlo.
 
-**Lo que NO es, comprobado uno por uno el 06/08/2026:**
+**Lo que SÍ queda establecido (comprobado, no supuesto):**
 
-| Hipótesis de T-583 | Veredicto |
+| Afirmación | Cómo se comprobó |
 |---|---|
-| El fix de `articleInPositionScopeExists` no está desplegado | ❌ **Sí lo está.** El commit `5d338e2d8` (16/06) es ancestro del sha vivo `b06868c2` |
-| Casts/tipos en el `EXISTS` | ❌ **Funciona.** Evaluado a mano contra RDS para `auxiliar_administrativo_universidad_carlos_iii`: art. 28 → `false`, arts. 7 y 45 → `true` |
-| Un segundo camino de servido que no pasa por `isGlobalMode` | ✅ **Esto sí**, pero no es un camino olvidado: es una rama **deliberada** |
+| El fix de `articleInPositionScopeExists` **está desplegado** | `5d338e2d8` (16/06) es ancestro del sha vivo `b06868c2` |
+| El `EXISTS` **evalúa bien** | A mano contra RDS para `auxiliar_administrativo_universidad_carlos_iii`: art. 28 → `false`, arts. 7 y 45 → `true` |
+| El **modo global** filtra bien | Replicada su query entera contra RDS: preguntas del RD 534/2024 Cap. III+V que la pasan hoy = **0** |
+| El **modo tema** filtra bien | `queryQuestionsForMappingsLightweight` fija la ley (`eq(laws.id, mapping.lawId)`); una pregunta de otra ley no puede salir por ahí |
+| El test personalizado de una oposición **no pasa por ley-only** | Usa `fetchRandomQuestions`, que manda `selectedLaws: []`; y los 12 `tests` de ese usuario tienen `tema_number = 0` → modo global |
 
-**La causa.** `lib/api/filtered-questions/queries.ts` tiene tres modos: tema, **ley-only** y global. Los
-modos tema y global aplican el scope por artículo; **el ley-only NO, y a propósito**, con la razón
-escrita en el código desde el 16/04/2026 (caso «M», `daluamva`):
+O sea: **las tres hipótesis de T-583 están descartadas, y la cuarta (que era la de la primera versión
+de esta ficha, el modo ley-only) también.** Ninguna de las cuatro explica nada.
 
-> *«en modo ley-only NO aplicamos scope-check de leyes. El usuario ha entrado a `/leyes/[slug]`
-> explícitamente — sabe lo que quiere. Coherente con la promesa de /premium»*
+**La medición de T-583 estaba inflada.** Contaba «73 servidas a 6 usuarios» tomando como fuga todo lo
+que caía fuera del scope **de Carlos III**. Pero **46 de esas 73 eran legítimas**: `administrativa_
+universidad_de_murcia`, `auxiliar_administrativo_universidad_almeria` y `escala_administrativa_
+universidad_de_granada` escopan ese mismo RD con `article_numbers = NULL`, que por convención es **la
+ley entera**. Servirles el Cap. V es correcto.
 
-Esa decisión es correcta **para `/leyes/[slug]`**. El problema es quién más acaba en esa rama:
-`/[oposicion]/test/test-personalizado` monta el `TestConfigurator` **sin pasar `scopeToPosition`**
-(su default es `false`, `TestConfigurator.tsx` L74), así que en cuanto el usuario elige una ley el
-request lleva `selectedLaws` y **cae en ley-only** → ley entera, sin acotar a su temario.
+**Y el método tampoco vale, que es el hallazgo de verdad.** Re-medido bien sobre todo el banco (14
+días, 68.971 servidas de 1.243 usuarios, cruzando cada una con el scope de la oposición **del
+usuario**) quedan **33 servidas en la ruta de su propia oposición**. Pero esas 33 **no demuestran una
+fuga viva**, porque la consulta compara servidas **del pasado** contra el scope y el vínculo **de hoy**:
+si a una pregunta le cambian el `primary_article_id`, o alguien recorta un `topic_scope`, la servida
+de la semana pasada aparece «fuera de scope» sin haberlo estado nunca.
 
-**Y no se cuelan solas: se las ofrecemos.** El selector de artículos llama a
-`/api/v2/test-config/articles` con `positionType` pero **sin `topicNumber`** (en esa página `tema=0`) y
-**sin `scopeToPosition`**, así que lista los artículos de **toda la ley**. El usuario ve artículos que no
-son de su temario, los marca, y el test se los sirve. El defecto está en la puerta, no en el sótano.
+**La prueba de que eso es lo que pasa:** la pregunta `50ae66af`, del **art. 9 de la Ley 7/2023 de
+Galicia**, figura servida en `guardia_civil`, `celador_sescam_clm`, `administrativa_universidad_de_
+murcia` y `ujieres_cortes_generales` — cuatro oposiciones sin relación con Galicia, y las cuatro por
+`/test/tema/N/test-personalizado`. Por el modo tema **eso es imposible** (la ley va fijada en el
+`WHERE`). Lo único que encaja es que cuando se sirvió colgaba de otro artículo. Guardia Civil T2, de
+hecho, escopa la **LO 3/2007 arts. 0-13**: mismo número de artículo, otra ley.
 
-**Medición — la de T-583 estaba inflada y así se corrige.** T-583 contaba «73 servidas a 6 usuarios»
-tomando como fuga todo lo que caía fuera del scope **de Carlos III**. Pero **46 de esas 73 eran
-legítimas**: `administrativa_universidad_de_murcia`, `auxiliar_administrativo_universidad_almeria` y
-`escala_administrativa_universidad_de_granada` escopan ese mismo RD con `article_numbers = NULL`, que
-por convención es **la ley entera**. Servirles el Cap. V es correcto.
+**Qué hay que hacer: medir HACIA DELANTE, no hacia atrás.**
 
-Re-medido sobre **todo el banco**, 14 días, cruzando cada servida con el `topic_scope` de la oposición
-**del usuario** (68.971 servidas medibles de 1.243 usuarios):
+La única medida que distingue una fuga real de un re-vínculo posterior es la que se toma **en el
+momento de servir**, cuando el scope y el vínculo son los que son.
 
-| Vía | Servidas | Usuarios | ¿Defecto? |
-|---|---|---|---|
-| Ruta de **su propia** oposición | **33** | **12** | ✅ **Sí — esta ficha** |
-| Ruta de **otra** oposición (la abrió él) | 2.330 | 115 | No: eligió mirar otro temario |
-| `/leyes/*`, `/test/por-leyes`, `/test/multi-ley` | 2.174 | 136 | No: es el diseño de [T-073]/premium |
+- **Dónde va, sin inventar nada:** `lib/api/filtered-questions/queries.ts` **ya emite** telemetría de
+  scope por `logValidationError` — `global_scope_empty` (L1233) y `failed_ids_out_of_scope` (L1112),
+  con espejo a `observable_events`. Esto es **una emisión más en el mismo sitio y por el mismo canal**,
+  no una herramienta nueva: al terminar de resolver las preguntas de una petición, comprobar cuántas
+  caen fuera del `topic_scope` del `positionType` que se acaba de usar y emitir solo si es > 0.
+- **Por qué al servir y no en un barrido nocturno:** un barrido vuelve a mirar el pasado y tropieza con
+  lo mismo. Además el dato ya está en memoria en ese punto (el `EXISTS` acaba de correr), así que no
+  cuesta una query extra.
+- **Nace vigilado o no nace:** un `eventType` nuevo sin regla lo bloquea el `robustez-push-guard`, y
+  con razón. Regla fina propia o declararlo benigno a propósito en `lib/observability/benignSignals.ts`
+  (con su copia paritaria en el backend).
+- **Capas que pide esto en concreto:** unitaria del predicado puro (¿cuántas de estas filas están fuera
+  de este scope?), integración contra RDS con una oposición de scope PARCIAL exigiendo 0 fuera, y el
+  guardarraíl de la regla de alerta. **No hace falta `vence-sim`**: no se toca la UI, y una simulación
+  con navegador aquí solo añadiría tiempo sin mirar nada que los otros dos no vean.
 
-**33 y no 4.625: separar las tres vías es lo que hace la cifra utilizable.** El número crudo «fuera de
-scope» mete en el mismo saco al que estudia otra oposición a propósito.
+**Lo que NO hay que hacer:**
+- **Tocar el `topic_scope` de la UC3M**: está bien y coincide con su epígrafe oficial (verificado en
+  T-583 contra el índice del BOE).
+- **Volver a contar servidas viejas contra el scope actual** y llamarlo fuga. Es lo que hizo T-583, lo
+  que hizo la primera versión de esta ficha, y lo que va a hacer la siguiente sesión si esto no queda
+  escrito.
 
-**Qué hacer (no está decidido, hay dos caminos legítimos):**
-1. **Que la página lo pida:** `/[oposicion]/test/test-personalizado` pasa `scopeToPosition` al
-   `TestConfigurator`. Es una línea y arregla las dos mitades a la vez (el selector deja de ofrecer lo
-   que no toca y el servido deja de darlo).
-2. **O invertir el default:** que ley-only acote **salvo** que se pida lo contrario, y que sea
-   `/leyes/[slug]` quien declare `scopeToPosition: false`. Más correcto de fondo (el default seguro es
-   el acotado) y más arriesgado: hay que revisar todos los call-sites de ley-only antes.
+**Las impugnaciones que lo destaparon** (`dba485dc` y `410025b4`, UC3M, arts. 28 y 28.4 del RD
+534/2024) **siguen sin poder contestarse con «no debería volver a salirte»**: hoy no se puede afirmar
+ni que la fuga siga viva ni que esté cerrada. Con la sonda puesta, la respuesta llega sola en días.
 
-**NO tocar el `topic_scope` de la UC3M** — está bien y coincide con su epígrafe oficial (verificado en
-T-583 contra el índice del BOE).
-
-**Capas al arreglarlo:** un test de integración que pida un test personalizado de una oposición con
-scope PARCIAL de una ley y exija 0 preguntas fuera; y mirar si `vence-sim` cubre ya el configurador.
-
-**Impugnaciones que lo destaparon:** `dba485dc` y `410025b4` (UC3M, arts. 28 y 28.4 del RD 534/2024).
-**PROCEDEN** — el usuario tenía razón — pero **no se le puede responder «no debería volver a salirte»
-hasta que esto esté desplegado**, porque hoy le volvería a salir.
-
-**Relacionadas:** [T-583] (el síntoma y la medición inicial), [T-073] (**hecha**: la misma clase de
-defecto en otra puerta, el CTA «Hacer test de {ley}» del temario), [T-533] (scope mal escrito — aquí el
-scope está BIEN), y el caso Laura CARM del 16/06 (`e7f0b57c`), que es el que cerró esta fuga en el modo
-global.
+**Relacionadas:** [T-583] (el síntoma y la medición inicial), [T-073] (**hecha**: misma familia por
+otra puerta, el CTA «Hacer test de {ley}» del temario), el caso Laura CARM del 16/06 (`e7f0b57c`), que
+es el que cerró esta clase de fuga en el modo global.
 
 ### [T-606] 🟡 [ABIERTO 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
@@ -1032,66 +1035,6 @@ hueco: 12 resultados y ni uno que escriba).
 
 **Relacionadas:** [T-410] (duplicados psicotécnicos), [T-130] (registro de herramientas: aquí falta la
 herramienta, no sobra).
-
-### [T-603] 🔴 [ABIERTO 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
-
-**Qué ve el usuario.** En `/leyes/<ley>` acota los artículos con las casillas (p. ej. la LCSP de la 1 a la 112), marca **«solo preguntas falladas»** y le salen preguntas de artículos que **no ha elegido**. No hay aviso: las casillas que acaba de marcar **siguen marcadas** mientras el filtro se tira a la basura.
-
-**Dónde se pierde exactamente** (no es el filtro de artículos, que funciona):
-- `components/TestConfigurator.tsx:966-977` construye bien el config: `onlyFailedQuestions:true` **+ `selectedArticlesByLaw` + `failedQuestionIds`**.
-- `app/leyes/[law]/LawTestConfigurator.tsx:193-203` intercepta `onlyFailedQuestions` y redirige con `buildLawRepasoFallosUrl(...)`.
-- `lib/test-url/lawRepasoFallosUrl.ts:55-60` construye la URL **solo** con `law`, `order`, `n`, `days` → **`selectedArticlesByLaw` y `failedQuestionIds` se caen ahí**, sin señal ninguna.
-- Y aunque llegaran, el destino no sabría leerlos: `lib/api/tests/schemas.ts:148-179` (`failedQuestionsScopeSchema`) es una unión de 4 variantes (`block`/`topic`/`position`/`law`) **sin variante de artículo**, y el SQL de `lib/api/tests/queries.ts:385` filtra como mucho por ley entera (`laws.short_name = …`).
-
-**Es una decisión deliberada que envejeció mal**, no un olvido: los comentarios de `LawTestConfigurator.tsx:188-192` y `lawRepasoFallosUrl.ts:6-9` explican que se evitó pasar listas de ids por la URL. El problema no es la decisión, es que **el usuario no se entera**: `/avanzado` sabe filtrar artículos pero ignora «falladas», y `repaso-fallos-v2` sabe filtrar falladas pero su scope mínimo es la ley.
-
-**Lo lleva pidiendo la misma persona desde mayo, y se lo prometimos.** María Becerril (`mbecbet@gmail.com`, premium):
-- **21/05/2026**, feedback `a14a71de`, con el caso exacto: *«en el caso de la ley de contratos, aunque he acotado los artículos, me incluye preguntas fuera de mi selección»*. Le respondimos *«vamos a comprobar el filtrado para ver dónde está el escape… te decimos algo en cuanto tengamos diagnóstico y arreglo»*. **No se hizo.**
-- **10/07/2026**, dos impugnaciones (`83ed898a`, `c83e5a2b`) con la misma queja sobre el TUE: cerradas `resolved` **con `admin_response` a NULL** — o sea, cerradas sin contestarle.
-- **05/08/2026**, **cuatro** impugnaciones más en cuatro minutos (`6c4e43a4` art. 147, `5f2213d0` art. 160, `7b3dd5e4` art. 143, `17733d5e` art. 138), todas LCSP.
-
-**Medido (05/08, contra RDS).** Su selección guardada «CONTRATOS» (`user_test_favorites`) son 95 artículos, del 1 al 112. Contrastando cada test suyo de ese día contra esa lista:
-
-| Test | Camino | Artículos LCSP servidos | **Fuera de su selección** |
-|---|---|---|---|
-| 18:44 | `/leyes/ley-9-2017/avanzado` | 25 | 1 → art. 306 |
-| 19:18 | `/test/repaso-fallos-v2` | 20 | **6** → 147, 160, 143, 135, 306, 138 |
-| 19:25 | `/test/repaso-fallos-v2` | 20 | **4** → 147, 160, 143, 138 |
-| 19:25 | `/leyes/ley-9-2017/avanzado` | 25 | **0** |
-
-Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanzado` respeta la selección** (0 de 25 en la última pasada) y **el repaso no** (hasta 6 de 20). El art. **306** colado por `/avanzado` es un caso aparte y más pequeño, **sin diagnosticar todavía** — no confundirlo con esto.
-
-**Qué habría que hacer** (el subagente lo dejó trazado, tres puntos):
-1. Añadir una variante de scope con `articleNumbers` a `failedQuestionsScopeSchema` (`lib/api/tests/schemas.ts:148`).
-2. Propagarla en `buildLawRepasoFallosUrl` (`lib/test-url/lawRepasoFallosUrl.ts`) y en la lectura de `searchParams` de `app/test/repaso-fallos-v2/page.tsx:63-117`.
-3. Añadir el predicado sobre `articles.article_number` junto al `blockFilter` de `lib/api/tests/queries.ts:385`, **reutilizando la comparación por `String()`** de `lib/api/filtered-questions/queries.ts:1454` — si se compara como número, los artículos no numéricos (`DA1`, `55 ter`) se truncan y desaparecen del repaso.
-
-**Capas antes de pushear** (el arreglo toca lo que se le sirve a la gente):
-- Unitarios del núcleo de URL: que `buildLawRepasoFallosUrl` **conserve** los artículos y que un `DA1` sobreviva al viaje de ida y vuelta.
-- Integración contra RDS: repaso de fallos acotado a N artículos → **cero** preguntas fuera de esa lista.
-- Simulación con navegador (`vence-sim`/Playwright): marcar casillas + «solo falladas» y comprobar sobre la página servida que no aparece ningún artículo fuera — es un defecto de **camino entre pantallas**, y eso un test de texto no lo ve.
-- **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
-
-**Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
----
-
-#### ✅ HECHO 06/08/2026 — implementado, con capas y medido
-
-**El arreglo, en los cuatro puntos donde se perdía:**
-- `lib/test-url/lawRepasoFallosUrl.ts` — `selectedArticles` es ahora **OBLIGATORIO en el tipo**, no opcional. Eso es lo que impide que vuelva a pasar: un test se puede borrar, esto **no compila**. Serializa con el helper nuevo `serializeSelectedArticles` (dedupe + `encodeURIComponent` por token, coma literal), en el **mismo formato y con el mismo nombre de parámetro (`selected_articles`) que `/avanzado`** — nada de vocabulario propio.
-- `app/leyes/[law]/LawTestConfigurator.tsx` — pasa `config.selectedArticlesByLaw?.[lawShortName] ?? []`.
-- `app/test/repaso-fallos-v2/page.tsx` — lee el parámetro con **`parseSelectedArticlesScope`**, el parser canónico que YA existía (no se escribió otro), y que a propósito no hace `parseInt`.
-- `lib/api/tests/schemas.ts` + `queries.ts` — la variante `law` acepta `articleNumbers?: string[]` (**strings**, que la columna es texto) y el SQL añade `inArray(articles.articleNumber, …)`. Se extendió el scope `law` en vez de crear una quinta variante: los artículos pertenecen a una ley. El pre-corte a `numQuestions` ya estaba protegido por `hasScope`, así que se hereda gratis.
-
-**Capas (todas ejecutan, ninguna es de leer el código):**
-- **Unitarios** — `__tests__/api/tests/failedQuestionsLawScope.test.ts`, +17 casos (51 en total). El que importa hace la **ida y vuelta contra el parser de producción** y comprueba que `DA1` y `55 ter` sobreviven. **Validado por mutación:** devolviendo la URL sin los artículos, **5 tests se ponen en rojo**.
-- **Integración contra RDS** — NIVEL A-bis en `__tests__/integration/failedQuestionsLawScope.integration.test.ts`: **ejecuta `getFailedQuestionsForUser` de verdad** (los NIVEL C de esa suite solo leen el fuente, y este bug convivía tan ricamente con un fuente que «contenía scope law»). Descubre solo un usuario con fallos en ≥3 artículos — cayó en la propia Ley 9/2017 — y exige: acotado a 1 artículo → nada de los demás; acotado a 2 → exactamente esos dos; **sin acotar → sigue llegando la ley entera** (contraste imprescindible: sin él, un filtro que devolviera siempre vacío pasaría el primero). 14/14.
-- **Simulación con navegador** — `npm run sim:repaso-articulos` (`scripts/sim/sim-repaso-articulos.ts`, registrada en `toolRegistry`). Es la capa que **habría cazado esto**, porque el defecto vivía ENTRE dos pantallas. **Contraste medido el 06/08: contra PRODUCCIÓN sirve 47 de 50 preguntas fuera del artículo pedido; con el arreglo, 0 de 2** (50 → 2 al acotar). Sirve además de **canario post-deploy**: se lanza contra `https://www.vence.es` sin argumentos.
-- Typecheck completo limpio.
-
-**Pendiente: DESPLEGAR y volver a pasar la simulación contra producción.** Hasta entonces está arreglado pero no verificado en vivo.
-
-**Gotchas del camino, para la siguiente sesión que monte un dev local en un worktree:** hicieron falta las **dos** notas de memoria — `cp -al` del `node_modules` real (Turbopack no traga el symlink) **y** las 3 claves RS256 además de `AUTH_SECRET` en `.env.local`, o `/api/auth/token` da 401 y la simulación se queda esperando una respuesta que no llega.
 
 ### [T-601] 🔴 [ABIERTO 05/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
 
@@ -5380,6 +5323,68 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-603] ✅ [HECHA 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
+
+**Qué ve el usuario.** En `/leyes/<ley>` acota los artículos con las casillas (p. ej. la LCSP de la 1 a la 112), marca **«solo preguntas falladas»** y le salen preguntas de artículos que **no ha elegido**. No hay aviso: las casillas que acaba de marcar **siguen marcadas** mientras el filtro se tira a la basura.
+
+**Dónde se pierde exactamente** (no es el filtro de artículos, que funciona):
+- `components/TestConfigurator.tsx:966-977` construye bien el config: `onlyFailedQuestions:true` **+ `selectedArticlesByLaw` + `failedQuestionIds`**.
+- `app/leyes/[law]/LawTestConfigurator.tsx:193-203` intercepta `onlyFailedQuestions` y redirige con `buildLawRepasoFallosUrl(...)`.
+- `lib/test-url/lawRepasoFallosUrl.ts:55-60` construye la URL **solo** con `law`, `order`, `n`, `days` → **`selectedArticlesByLaw` y `failedQuestionIds` se caen ahí**, sin señal ninguna.
+- Y aunque llegaran, el destino no sabría leerlos: `lib/api/tests/schemas.ts:148-179` (`failedQuestionsScopeSchema`) es una unión de 4 variantes (`block`/`topic`/`position`/`law`) **sin variante de artículo**, y el SQL de `lib/api/tests/queries.ts:385` filtra como mucho por ley entera (`laws.short_name = …`).
+
+**Es una decisión deliberada que envejeció mal**, no un olvido: los comentarios de `LawTestConfigurator.tsx:188-192` y `lawRepasoFallosUrl.ts:6-9` explican que se evitó pasar listas de ids por la URL. El problema no es la decisión, es que **el usuario no se entera**: `/avanzado` sabe filtrar artículos pero ignora «falladas», y `repaso-fallos-v2` sabe filtrar falladas pero su scope mínimo es la ley.
+
+**Lo lleva pidiendo la misma persona desde mayo, y se lo prometimos.** María Becerril (`mbecbet@gmail.com`, premium):
+- **21/05/2026**, feedback `a14a71de`, con el caso exacto: *«en el caso de la ley de contratos, aunque he acotado los artículos, me incluye preguntas fuera de mi selección»*. Le respondimos *«vamos a comprobar el filtrado para ver dónde está el escape… te decimos algo en cuanto tengamos diagnóstico y arreglo»*. **No se hizo.**
+- **10/07/2026**, dos impugnaciones (`83ed898a`, `c83e5a2b`) con la misma queja sobre el TUE: cerradas `resolved` **con `admin_response` a NULL** — o sea, cerradas sin contestarle.
+- **05/08/2026**, **cuatro** impugnaciones más en cuatro minutos (`6c4e43a4` art. 147, `5f2213d0` art. 160, `7b3dd5e4` art. 143, `17733d5e` art. 138), todas LCSP.
+
+**Medido (05/08, contra RDS).** Su selección guardada «CONTRATOS» (`user_test_favorites`) son 95 artículos, del 1 al 112. Contrastando cada test suyo de ese día contra esa lista:
+
+| Test | Camino | Artículos LCSP servidos | **Fuera de su selección** |
+|---|---|---|---|
+| 18:44 | `/leyes/ley-9-2017/avanzado` | 25 | 1 → art. 306 |
+| 19:18 | `/test/repaso-fallos-v2` | 20 | **6** → 147, 160, 143, 135, 306, 138 |
+| 19:25 | `/test/repaso-fallos-v2` | 20 | **4** → 147, 160, 143, 138 |
+| 19:25 | `/leyes/ley-9-2017/avanzado` | 25 | **0** |
+
+Los dos caminos se comportan distinto y eso es justo el diagnóstico: **`/avanzado` respeta la selección** (0 de 25 en la última pasada) y **el repaso no** (hasta 6 de 20).
+
+**El art. 306 colado por `/avanzado` es un caso aparte y NO está explicado.** Se descartaron las dos hipótesis baratas: la pregunta (`b10993fd`) **no tiene artículos adicionales** en `question_articles`, y **no hay `short_name` duplicado** para la Ley 9/2017 (una sola fila), así que no es el patrón de [T-073] ni el del selector en gris. Lo más probable es que a las 18:44 su selección todavía no fuera la que guardó un minuto antes (a las 18:43:51 había lanzado un test de UNA pregunta, claramente una prueba), pero **la selección de cada test no se persiste**, así que no se puede confirmar. Un solo caso, y la pasada de las 19:25 por ese mismo camino salió limpia (0 de 25): **no se afirma que haya fuga en `/avanzado`.** Si reaparece, empezar por persistir la selección en el test.
+
+**Qué habría que hacer** (el subagente lo dejó trazado, tres puntos):
+1. Añadir una variante de scope con `articleNumbers` a `failedQuestionsScopeSchema` (`lib/api/tests/schemas.ts:148`).
+2. Propagarla en `buildLawRepasoFallosUrl` (`lib/test-url/lawRepasoFallosUrl.ts`) y en la lectura de `searchParams` de `app/test/repaso-fallos-v2/page.tsx:63-117`.
+3. Añadir el predicado sobre `articles.article_number` junto al `blockFilter` de `lib/api/tests/queries.ts:385`, **reutilizando la comparación por `String()`** de `lib/api/filtered-questions/queries.ts:1454` — si se compara como número, los artículos no numéricos (`DA1`, `55 ter`) se truncan y desaparecen del repaso.
+
+**Capas antes de pushear** (el arreglo toca lo que se le sirve a la gente):
+- Unitarios del núcleo de URL: que `buildLawRepasoFallosUrl` **conserve** los artículos y que un `DA1` sobreviva al viaje de ida y vuelta.
+- Integración contra RDS: repaso de fallos acotado a N artículos → **cero** preguntas fuera de esa lista.
+- Simulación con navegador (`vence-sim`/Playwright): marcar casillas + «solo falladas» y comprobar sobre la página servida que no aparece ningún artículo fuera — es un defecto de **camino entre pantallas**, y eso un test de texto no lo ve.
+- **Si se decide NO soportarlo**, entonces el arreglo es el aviso: el modal no puede dejar las casillas marcadas mientras ignora el filtro. Callar es lo que ha traído tres reportes.
+
+**Relacionadas.** El mismo feedback de mayo traía un segundo síntoma sin resolver: *«tests de preguntas falladas que incluyen preguntas que no he fallado (pone nivel de acierto 100%)»*. Mismo endpoint, mirar de paso.
+---
+
+#### ✅ HECHO 06/08/2026 — implementado, con capas y medido
+
+**El arreglo, en los cuatro puntos donde se perdía:**
+- `lib/test-url/lawRepasoFallosUrl.ts` — `selectedArticles` es ahora **OBLIGATORIO en el tipo**, no opcional. Eso es lo que impide que vuelva a pasar: un test se puede borrar, esto **no compila**. Serializa con el helper nuevo `serializeSelectedArticles` (dedupe + `encodeURIComponent` por token, coma literal), en el **mismo formato y con el mismo nombre de parámetro (`selected_articles`) que `/avanzado`** — nada de vocabulario propio.
+- `app/leyes/[law]/LawTestConfigurator.tsx` — pasa `config.selectedArticlesByLaw?.[lawShortName] ?? []`.
+- `app/test/repaso-fallos-v2/page.tsx` — lee el parámetro con **`parseSelectedArticlesScope`**, el parser canónico que YA existía (no se escribió otro), y que a propósito no hace `parseInt`.
+- `lib/api/tests/schemas.ts` + `queries.ts` — la variante `law` acepta `articleNumbers?: string[]` (**strings**, que la columna es texto) y el SQL añade `inArray(articles.articleNumber, …)`. Se extendió el scope `law` en vez de crear una quinta variante: los artículos pertenecen a una ley. El pre-corte a `numQuestions` ya estaba protegido por `hasScope`, así que se hereda gratis.
+
+**Capas (todas ejecutan, ninguna es de leer el código):**
+- **Unitarios** — `__tests__/api/tests/failedQuestionsLawScope.test.ts`, +17 casos (51 en total). El que importa hace la **ida y vuelta contra el parser de producción** y comprueba que `DA1` y `55 ter` sobreviven. **Validado por mutación:** devolviendo la URL sin los artículos, **5 tests se ponen en rojo**.
+- **Integración contra RDS** — NIVEL A-bis en `__tests__/integration/failedQuestionsLawScope.integration.test.ts`: **ejecuta `getFailedQuestionsForUser` de verdad** (los NIVEL C de esa suite solo leen el fuente, y este bug convivía tan ricamente con un fuente que «contenía scope law»). Descubre solo un usuario con fallos en ≥3 artículos — cayó en la propia Ley 9/2017 — y exige: acotado a 1 artículo → nada de los demás; acotado a 2 → exactamente esos dos; **sin acotar → sigue llegando la ley entera** (contraste imprescindible: sin él, un filtro que devolviera siempre vacío pasaría el primero). 14/14.
+- **Simulación con navegador** — `npm run sim:repaso-articulos` (`scripts/sim/sim-repaso-articulos.ts`, registrada en `toolRegistry`). Es la capa que **habría cazado esto**, porque el defecto vivía ENTRE dos pantallas. **Contraste medido el 06/08: contra PRODUCCIÓN sirve 47 de 50 preguntas fuera del artículo pedido; con el arreglo, 0 de 2** (50 → 2 al acotar). Sirve además de **canario post-deploy**: se lanza contra `https://www.vence.es` sin argumentos.
+- Typecheck completo limpio.
+
+**Pendiente: DESPLEGAR y volver a pasar la simulación contra producción.** Hasta entonces está arreglado pero no verificado en vivo.
+
+**Gotchas del camino, para la siguiente sesión que monte un dev local en un worktree:** hicieron falta las **dos** notas de memoria — `cp -al` del `node_modules` real (Turbopack no traga el symlink) **y** las 3 claves RS256 además de `AUTH_SECRET` en `.env.local`, o `/api/auth/token` da 401 y la simulación se queda esperando una respuesta que no llega.
 ### [T-604] ✅ [HECHA 06/08] DUPLICADA de [T-397] — el detector de «oposición elegida sin ni un tema» ya existía
 
 **Se cierra por duplicada el mismo día que se abrió.** El problema es real, pero ya estaba fichado,

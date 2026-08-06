@@ -45,9 +45,19 @@ describe('paridad del rescate de compra atascada (T-601)', () => {
     // `lastIndexOf`: la primera aparición es el `import` de arriba, no el punto de uso.
     const i = usos.lastIndexOf('esBloqueoPorCheckoutAbierto')
     expect(i).toBeGreaterThan(-1)
-    const bloque = usos.slice(i, i + 1200)
+    const bloque = usos.slice(i, i + 2200)
     expect(bloque).toContain('expireOpenCheckoutSessions')
     expect(bloque).toMatch(/subscriptions\.cancel/)
+  })
+
+  it('NO se reintenta a ciegas: se comprueba antes si ya quedó terminada', () => {
+    // Medido en vivo el 06/08: expirar el checkout mueve la suscripción a `incomplete_expired`
+    // en el acto, y el reintento moría con «No such subscription». Sin esta comprobación el
+    // arreglo cambia un error por otro y la persona sigue viendo un fallo.
+    const i = usos.lastIndexOf('esBloqueoPorCheckoutAbierto')
+    const bloque = usos.slice(i, i + 2200)
+    expect(bloque).toContain('estaTerminada')
+    expect(bloque).toContain('esYaNoExiste')
   })
 
   it('el reintento usa una idempotency key DISTINTA', () => {
@@ -55,7 +65,7 @@ describe('paridad del rescate de compra atascada (T-601)', () => {
     // guardado y el reintento sería una ilusión — verde en el código, usuario igual de atascado.
     // `lastIndexOf`: la primera aparición es el `import` de arriba, no el punto de uso.
     const i = usos.lastIndexOf('esBloqueoPorCheckoutAbierto')
-    const bloque = usos.slice(i, i + 1200)
+    const bloque = usos.slice(i, i + 2200)
     expect(bloque).toContain('-immediate-tras-expirar')
   })
 
@@ -85,6 +95,18 @@ describe('paridad del rescate de compra atascada (T-601)', () => {
     // Un rescate que se dispare solo al listar tocaría la compra de gente que no lo ha pedido.
     expect(rescate).toMatch(/if \(RESCATAR\) return rescatar\(\)/)
     expect(rescate).toMatch(/sessions\.expire/)
+  })
+
+  it('las DOS alertas apuntan al runbook, y ese apartado existe', () => {
+    // Una alerta sin procedimiento es cómo se leyó mal la primera vez. Y un runbook citado que
+    // no existe es peor que ninguno: manda a alguien a buscar humo en mitad de un incidente.
+    const runbook = readFileSync(join(raiz, 'docs/runbooks/health-check.md'), 'utf8')
+    expect(runbook).toContain('### 0.quater')
+    expect(runbook).toContain('stripe:compras-atascadas')
+    for (const nombre of ['RULE_COMPRA_ATASCADA_CHECKOUT', 'RULE_SUBSCRIPTION_CANCEL_ERROR_BURST']) {
+      const i = reglas.indexOf(nombre)
+      expect(reglas.slice(i, i + 3500)).toContain('health-check.md §0.quater')
+    }
   })
 
   it('la alerta que ENGAÑABA sigue mandando contar usuarios distintos', () => {

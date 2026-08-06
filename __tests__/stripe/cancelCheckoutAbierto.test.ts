@@ -9,6 +9,8 @@
 import {
   esBloqueoPorCheckoutAbierto,
   sesionesAExpirar,
+  estaTerminada,
+  esYaNoExiste,
 } from '@/lib/stripe/cancelCheckoutAbierto'
 
 /** Literal, tal y como lo devolvió Stripe. Si esto cambia, el arreglo deja de actuar. */
@@ -71,6 +73,55 @@ describe('esBloqueoPorCheckoutAbierto — NO actuar por parecido', () => {
     expect(
       esBloqueoPorCheckoutAbierto({ message: 'Subscription has a pending payment session.' }),
     ).toBe(false)
+  })
+})
+
+/**
+ * Lo que NO se veía leyendo la documentación y sí ejecutándolo (06/08/2026).
+ *
+ * Al expirar la sesión de checkout, Stripe mueve la suscripción `incomplete` a
+ * `incomplete_expired` EN EL ACTO. El reintento del `cancel` que venía justo después moría con
+ * `No such subscription: 'sub_1U1BPB…'`, así que el arreglo cambiaba un error por otro y la
+ * persona seguía viendo un fallo. Los tests del núcleo estaban todos en verde cuando eso pasaba:
+ * la única forma de verlo fue hacerlo contra Stripe de verdad.
+ */
+describe('el estado terminal ES el objetivo cumplido, no un fallo', () => {
+  it('`incomplete_expired` cuenta como terminada — es a lo que Stripe la mueve al expirar', () => {
+    expect(estaTerminada('incomplete_expired')).toBe(true)
+  })
+
+  it('`canceled` también', () => {
+    expect(estaTerminada('canceled')).toBe(true)
+  })
+
+  it('`incomplete` NO: esa todavía hay que cancelarla', () => {
+    expect(estaTerminada('incomplete')).toBe(false)
+    expect(estaTerminada('active')).toBe(false)
+    expect(estaTerminada('past_due')).toBe(false)
+  })
+
+  it('sin estado no se supone nada', () => {
+    expect(estaTerminada(null)).toBe(false)
+    expect(estaTerminada(undefined)).toBe(false)
+    expect(estaTerminada('')).toBe(false)
+  })
+
+  it('reconoce el «No such subscription» REAL que devolvió Stripe', () => {
+    // Literal de la ejecución del 06/08 tras expirar el checkout de cnicolau2024.
+    expect(
+      esYaNoExiste({ message: "No such subscription: 'sub_1U1BPB0lMFwxldqjqNwO1Uto'" }),
+    ).toBe(true)
+  })
+
+  it('no confunde otros «no such» de Stripe', () => {
+    // Que falte un cupón o un precio no significa que el trabajo esté hecho.
+    expect(esYaNoExiste({ message: "No such coupon: 'loyalty_10'" })).toBe(false)
+    expect(esYaNoExiste({ message: "No such customer: 'cus_x'" })).toBe(false)
+  })
+
+  it('tolera nulos', () => {
+    expect(esYaNoExiste(null)).toBe(false)
+    expect(esYaNoExiste({})).toBe(false)
   })
 })
 

@@ -1947,7 +1947,7 @@ export const RULE_SUBSCRIPTION_CANCEL_ERROR_BURST: AlertRule<{
     const r = rows[0];
     return {
       title: `${r.n} errores en /api/stripe/cancel en 15 min`,
-      body: `Excepciones no controladas en cancelSubscription. Probable: API Stripe degradada o regresión del código.\n\nÚltimo mensaje: ${r.lastMsg ?? '(n/a)'}\n\n⚠️ OJO — esta alerta nombra el ENDPOINT, no la causa. El 05/08/2026 saltó por 16 intentos de cancelar de UNA sola persona que llevaba 18 días sin poder pagar (T-601): el fallo de cancelar era la consecuencia, no el problema. Antes de dar por hecho que es Stripe o una regresión, MIRA SI ES UN SOLO USUARIO ATASCADO.\n\nInvestigar:\n  - ¿cuántos usuarios distintos? (si es 1, no es sistémico: es alguien atrapado comprando)\n    SELECT user_id, COUNT(*) FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    GROUP BY user_id ORDER BY 2 DESC;\n  - status.stripe.com\n  - SELECT user_id, error_message, metadata, ts FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    ORDER BY ts DESC;`,
+      body: `Excepciones no controladas en cancelSubscription. Probable: API Stripe degradada o regresión del código.\n\nÚltimo mensaje: ${r.lastMsg ?? '(n/a)'}\n\n📖 Procedimiento: docs/runbooks/health-check.md §0.quater\n\n⚠️ OJO — esta alerta nombra el ENDPOINT, no la causa. El 05/08/2026 saltó por 16 intentos de cancelar de UNA sola persona que llevaba 18 días sin poder pagar (T-601): el fallo de cancelar era la consecuencia, no el problema. Antes de dar por hecho que es Stripe o una regresión, MIRA SI ES UN SOLO USUARIO ATASCADO.\n\nInvestigar:\n  - ¿cuántos usuarios distintos? (si es 1, no es sistémico: es alguien atrapado comprando)\n    SELECT user_id, COUNT(*) FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    GROUP BY user_id ORDER BY 2 DESC;\n  - status.stripe.com\n  - SELECT user_id, error_message, metadata, ts FROM observable_events\n    WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'\n    ORDER BY ts DESC;`,
       metadata: { count: r.n, lastMsg: r.lastMsg },
     };
   },
@@ -2005,7 +2005,10 @@ export const RULE_COMPRA_ATASCADA_CHECKOUT: AlertRule<{
         `  2) Si se repite con varias personas a la vez, sospechar del método de pago, no del usuario.\n` +
         `  3) SELECT user_id, metadata, ts FROM observable_events\n` +
         `     WHERE event_type='subscription_checkout_expirado_para_cancelar'\n` +
-        `     AND ts > NOW() - INTERVAL '7 days' ORDER BY ts DESC;`,
+        `     AND ts > NOW() - INTERVAL '7 days' ORDER BY ts DESC;\n\n` +
+        `Procedimiento completo: docs/runbooks/health-check.md §0.quater\n` +
+        `Ver quién más está atascado (la alerta solo ve a quien INTENTA cancelar):\n` +
+        `  npm run stripe:compras-atascadas`,
       metadata: { count: r.n, usuarios: r.usuarios, ultimoUsuario: r.ultimoUsuario },
     };
   },
