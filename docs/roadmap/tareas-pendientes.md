@@ -1944,6 +1944,69 @@ siempre). **Se borra.**
 `batches` > 2, y el conteo de filas fuera de retención tiene que BAJAR. Las dos tablas tardan varias
 noches en drenar del todo, que es el diseño.
 
+---
+
+#### ✅ HECHO, DESPLEGADO — verificación EN CURSO (sesión w2, 06/08 tarde)
+
+**Código en `main` (`9ac140319`) y en producción:** el backend live sirve `deploy=51f96259`, y
+`9ac140319` es su ancestro (`git merge-base --is-ancestor` — confirmado, no supuesto). Commit
+hecho a las 11:13 UTC; el despliegue quedó vivo en algún punto entre las 16:20 y las 20:4x UTC de
+hoy (ver más abajo el porqué de esa horquilla).
+
+**La causa la reproduje independientemente, no la leí de la prosa.** `node_modules/postgres/cjs/src/result.js`:
+la clase `Result` **extiende `Array`** y define `count` como propiedad propia — **no existe
+`rowCount` en ningún sitio del paquete**. Y en `connection.js:572-573`, `result.count` se rellena
+parseando el *command tag* de Postgres (`"DELETE 1000"` → `count = 1000`). O sea: el mecanismo
+exacto que describe la ficha está en el código fuente de la librería, no es una hipótesis.
+
+**El correo diario de `cron_sin_exito` por `observability-cleanup`: mecanismo de apagado
+verificado, no solo esperado.** `findCronsSinExito` (pre-existente de [T-307], no de esta tarea)
+excluye cualquier endpoint que no aparezca en `ctx.cronSchedule.listCronJobs()` — que lee
+`SchedulerRegistry.getCronJobs()`, la lista VIVA de `@Cron` registrados en el proceso. Como
+`ObservabilityCleanupCron` ya no es un provider del módulo, deja de registrarse en cuanto el
+backend arranca con el código nuevo — no hace falta esperar a que caduque nada. Consistente con lo
+observado: la última alerta de `cron_sin_exito` para `observability-cleanup` fue a las **16:20:24
+UTC** de hoy (`observable_events`, `alert_fired`); si el próximo ciclo (~22:20 UTC, cooldown 360
+min) no lo incluye, confirma que el deploy ya estaba vivo a las 16:20 y el apagado funciona. No lo
+esperé en el turno (son ~1-2 h y no cambia la conclusión de causa, ya verificada por código).
+
+**⚠️ Hallazgo NUEVO durante la verificación, con su propio arreglo (rama aparte
+`flota/T-613-rls-user-interactions-w2`, `ffe5c9755`):** `user_interactions` y
+`user_interactions_archive` tienen `relrowsecurity=true` y CERO políticas — el mismo mecanismo de
+falso-cero ya diagnosticado 3 veces esta sesión (T-486/T-038/T-573/T-220), y esta vez bloqueaba
+justo lo que este ticket pide comprobar mañana: `SELECT count(*) FROM user_interactions WHERE
+created_at < …` con el rol `vence_lector` da **0 siempre**, indistinguible de "ya no queda atraso".
+Medido: `pg_stat_user_tables` (catálogo, no sujeto a RLS) muestra `user_interactions` con
+**12.019.252** tuplas vivas / 10 GB en el mismo instante en que el `SELECT` directo daba 0. Escrita
+la migración + guardarraíl + registro en el canario — **NO aplicada**: un trabajador no tiene
+permiso de escritura de esquema. Necesita una sesión/persona con `DATABASE_URL` de escritura.
+
+**Corrección al propio SQL de "CÓMO SE VERIFICA" de arriba:** `endpoint` es **columna propia** de
+`observable_events` (no va dentro de `metadata`) — un primer intento con
+`metadata->>'endpoint'` da 0 filas por error de sintaxis, no por falta de datos. La consulta
+correcta, ya usada hoy contra RDS:
+```sql
+SELECT ts, endpoint, duration_ms, metadata FROM observable_events
+WHERE event_type='cron_run' AND endpoint IN ('telemetry-retention','archive-interactions')
+ORDER BY ts DESC LIMIT 6;
+```
+
+**Baseline medido HOY (06/08, ~20:50 UTC) para comparar mañana — la bajada es lo que se juzga, no el cero:**
+
+| Qué | Valor hoy | Fuente |
+|---|---|---|
+| `observable_events` filas > 30d | **3.494.166** | `SELECT count(*)` directo (sin RLS en esta tabla) |
+| `observable_events` tamaño / tuplas vivas | 6.907 MB / 11.101.699 | `pg_stat_user_tables` |
+| `user_interactions` tamaño / tuplas vivas | 10 GB / 12.019.252 | `pg_stat_user_tables` (el conteo por fecha sigue bloqueado por RLS hasta aplicar la migración de arriba) |
+| Último `cron_run` `telemetry-retention` (PRE-fix) | 06/08 04:10 UTC, `batches:2, observableEventsDeleted:0` | — |
+| Último `cron_run` `archive-interactions` (PRE-fix) | 06/08 03:30 UTC, `batches:1, deleted:0, archived:0` | — |
+
+**⏳ LO QUE DE VERDAD FALTA — y no se puede acelerar, es el reloj:** los próximos `cron_run` de
+`telemetry-retention` (04:10 UTC) y `archive-interactions` (03:30 UTC) son la noche del 06→07/08,
+dentro de varias horas. Hasta que corran no hay forma honesta de confirmar `observableEventsDeleted`
+en millones ni que el atraso baje — leer el código ya no aporta más (ver arriba). Tarea puesta a
+esperar el reloj (`pause --hasta` ~06:00 UTC 07/08, con margen sobre las 04:10).
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
