@@ -311,3 +311,81 @@ describe('epigrafeTitles — enumeraciones reales de epígrafes autonómicos', (
     expect(epigrafeTitles('Ley 7/1985. Títulos VII, VIII, X y XI.')).toEqual([7, 8, 10, 11])
   })
 })
+
+// ── T-223 (06/08/2026): el epígrafe nombra CAPÍTULOS por su RÚBRICA, sin decir "Capítulo N" ──
+// Caso raíz REAL (feedback de Luisa, `auxiliar_administrativo_sms` T9): el epígrafe del Decreto
+// 53/1989 EAP Murcia dice "funciones y organización del Equipo de Atención Primaria" — nombra
+// los Cap. II y III por MATERIA, sin un solo "Capítulo N" en el texto. `epigrafeTitles` daba
+// CERO títulos y el detector entero se callaba (`applicable:false`): nadie lo marcó, y al
+// resolver el aviso se razonó sobre la prosa en vez de la estructura → se le dijo que no a
+// quien tenía razón exacta. Estructura verificada contra el BORM (7 capítulos, `law_sections`
+// ya poblado).
+describe('classifyTitleBoundary — T-223: capítulos nombrados SOLO por rúbrica (sin "Capítulo N")', () => {
+  // Formato REAL de `law_sections.title` (incluye el prefijo "Capítulo N." — lo limpia
+  // `limpiaRubrica`, no lo asume ya quitado).
+  const SECS_MURCIA = [
+    { num: 'I', from: 1, to: 4, rubrica: 'Capítulo I. Disposiciones generales' },
+    { num: 'II', from: 5, to: 8, rubrica: 'Capítulo II. Funciones del Equipo de Atención Primaria' },
+    { num: 'III', from: 9, to: 25, rubrica: 'Capítulo III. Organización' },
+    { num: 'IV', from: 26, to: 27, rubrica: 'Capítulo IV. Reglamento de Régimen Interior' },
+    { num: 'V', from: 28, to: 28, rubrica: 'Capítulo V. Régimen de Personal' },
+    { num: 'VI', from: 29, to: 31, rubrica: 'Capítulo VI. Régimen de Usuarios' },
+    { num: 'VII', from: 32, to: 32, rubrica: 'Capítulo VII. Órganos de participación' },
+  ]
+  const EPI_MURCIA =
+    'El Decreto 53/1989, de 1 de junio, por el que se aprueba el Reglamento General de ' +
+    'funcionamiento de los Equipos de Atención Primaria de la Comunidad Autónoma de Murcia: ' +
+    'funciones y organización del Equipo de Atención Primaria.'
+
+  it('ANTES del fix: sin "Capítulo N" en el epígrafe, el detector no opinaba en absoluto', () => {
+    // epigrafeTitles no reconoce nada (no hay "Título"/"Capítulo N" literal) → allowedTitles
+    // vacío → el gate viejo (`!allowedTitles.length`) cortaba aquí, sin mirar rúbricas.
+    const { epigrafeTitles } = require('@/lib/laws/scopeTitleBoundary')
+    expect(epigrafeTitles(EPI_MURCIA)).toEqual([])
+  })
+
+  it('AHORA: aplica porque el Cap. II casa por rúbrica, y marca el Cap. I (no nombrado) como overflow', () => {
+    const r = classifyTitleBoundary(EPI_MURCIA, SECS_MURCIA, ['1', '2', '3', '4', '5', '6', '7', '8', '9', '25'])
+    expect(r.applicable).toBe(true)
+    expect(r.overflow).toEqual([
+      { article: 1, titulo: 'I' },
+      { article: 2, titulo: 'I' },
+      { article: 3, titulo: 'I' },
+      { article: 4, titulo: 'I' },
+    ])
+  })
+
+  it('el caso raíz completo (scope = los 32 artículos): overflow en Cap. I, IV, V, VI, VII — solo II y III están nombrados', () => {
+    const todos = Array.from({ length: 32 }, (_, i) => String(i + 1))
+    const r = classifyTitleBoundary(EPI_MURCIA, SECS_MURCIA, todos)
+    expect(r.overflow.map((o) => o.titulo)).toEqual(['I', 'I', 'I', 'I', 'IV', 'IV', 'V', 'VI', 'VI', 'VI', 'VII'])
+  })
+
+  it('rúbrica de una sola palabra ("Organización") exime aunque solo tenga un token — antes NUNCA podía (rt.length<2)', () => {
+    const { epigrafeNamesRubrica } = require('@/lib/laws/scopeTitleBoundary')
+    expect(epigrafeNamesRubrica(EPI_MURCIA, 'Capítulo III. Organización')).toBe(true)
+  })
+
+  it('el prefijo "Capítulo N." se limpia: con o sin él, el resultado es el mismo', () => {
+    const { epigrafeNamesRubrica } = require('@/lib/laws/scopeTitleBoundary')
+    expect(epigrafeNamesRubrica(EPI_MURCIA, 'Capítulo III. Organización'))
+      .toBe(epigrafeNamesRubrica(EPI_MURCIA, 'Organización'))
+  })
+
+  it('una palabra sola CORTA (<8) no exime aunque aparezca — MIN_TOKEN_SOLO evita falsos positivos baratos', () => {
+    const { epigrafeNamesRubrica } = require('@/lib/laws/scopeTitleBoundary')
+    // "Estado" (6 letras) es justo el ejemplo que el propio módulo cita como demasiado genérico.
+    expect(epigrafeNamesRubrica('El Estado y sus instituciones', 'Capítulo I. Estado')).toBe(false)
+  })
+
+  it('una palabra sola que NO aparece en el epígrafe no exime (no basta con ser rara)', () => {
+    const { epigrafeNamesRubrica } = require('@/lib/laws/scopeTitleBoundary')
+    expect(epigrafeNamesRubrica(EPI_MURCIA, 'Capítulo IX. Financiación')).toBe(false)
+  })
+
+  it('epígrafe sin NINGUNA rúbrica casada sigue sin aplicar (no se activa por defecto)', () => {
+    const secs = [{ num: 'I', from: 1, to: 4, rubrica: 'Capítulo I. Régimen sancionador' }]
+    const r = classifyTitleBoundary('Materia totalmente distinta y sin relación.', secs, ['1'])
+    expect(r.applicable).toBe(false)
+  })
+})
