@@ -28,6 +28,52 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas
 
+### [T-443] ✅ [HECHA 06/08/2026] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
+
+- **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.
+- **ORIGEN.** Petición de Manuel (31/07) al terminar [T-427] y [T-435]: documentar los fallos de coordinación que fueron apareciendo, para ver si el sistema de sesiones se puede mejorar. **Todos ocurrieron en una sola sesión de trabajo, y en todos el claim funcionó perfectamente.**
+- **⚠️ NO confundir con [T-400]**, que ya está hecha: aquella AVISA de que dos sesiones tocan los mismos ficheros. Aquí el trabajo **ya se destruyó** y nada lo cazó. Son problemas distintos: prevención de solape vs. supervivencia de lo escrito.
+
+**1. Un commit rancio dejó un arreglo VIVO pero INERTE (el peor de los cinco).**
+- `6f3e26261` ([T-441], otra sesión) subió una copia vieja de `scripts/backlog.cjs` y borró **todo el cableado de [T-427]** — 123 líneas, casi todo supresiones. `lib/backlog/gitFichas.cjs` y sus 13 tests **seguían en `main`**, así que el CI no protestaba por ellos… pero ya no los llamaba nadie.
+- **Por qué es lo más grave:** el arreglo parecía desplegado y no hacía nada. El único motivo por el que se descubrió es que el guardarraíl de fuente (`fichaHuerfanaMiraOrigin.guardrail.test.ts`) exige la llamada — o sea, se cazó **por casualidad, al reejecutarlo desde la misma sesión que lo escribió**. Si esa sesión hubiera cerrado, nadie se entera.
+- **[T-428] no cubre esto:** protege el CUERPO DE LAS FICHAS en el markdown. El mismo fallo sobre CÓDIGO no lo mira nadie.
+- **Pista de arreglo:** el `pre-push` ya compara versiones del markdown; la misma idea sobre ficheros de código —«este push SUPRIME más de N líneas de un fichero que no has tocado en tus commits»— es barata. Y el trinquete de guardarraíles que exigen una llamada debería correr en CI, no solo en local.
+
+**2. Una ficha se perdió ANTES de llegar a ningún commit.**
+- La de [T-435]: se escribió, `sync` la reconcilió con la tabla… y `git log -S'### [T-435]'` **no la encuentra en ninguna revisión**. No se ha podido determinar el punto exacto en que se perdió, y no se inventa una causa.
+- El aviso la clasificó `sin_pushear`, que era **CORRECTO** (en el historial no estuvo nunca) y justo por eso sonó inofensivo. **Ni [T-427] ni [T-428] cubren este caso: los dos protegen contra BORRAR una ficha que ya existió, no contra que nunca llegue a existir.**
+- **Ya mitigado en esta sesión** con el motivo `mia_sin_escribir` (si el claim es MÍO, «otra sesión no la ha pusheado» es imposible), pero eso es un aviso al correr `sync`. **Queda decidir si el `pre-push` debe bloquear un push de una tarea reclamada por ti cuya ficha no está en el fichero.**
+
+**3. Un test de integración commiteó sus fixtures SOBRE la rama real.**
+- El test de [T-427] monta repositorios de mentira y hace `commit` en ellos. La suite unit la lanza el hook `pre-commit`… y **git exporta `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` a sus hooks**. Esas variables **ganan al `cwd`**, así que cuatro commits de fixture se escribieron sobre la rama del worktree, dejándola apuntando al árbol del fixture (recuperado con `reset --mixed`, sin pérdida).
+- **Arreglado en el módulo y en el test**, con trinquete que comprueba que el `HEAD` real no se mueve. **Lo que queda es lo general:** ningún test del repo debería poder tocar el repositorio desde el que se ejecuta, y hoy eso depende de que cada autor se acuerde. Barrido hecho: los otros dos tests que usan git solo LEEN (`ls-files`, `ls-tree`), así que hoy no hay más casos — pero el siguiente que escriba uno repetirá el fallo.
+
+**4. La regla «conservar SIEMPRE los dos lados» del runbook NO es universal.**
+- Al rebasar, `docs/roadmap/tareas-pendientes.md` dio conflicto **2 de 3 veces**. En uno de ellos, conservar los dos lados habría **DUPLICADO** un bloque de otra sesión que ellos habían MOVIDO a otro sitio del fichero (el lado de `HEAD` estaba vacío a propósito).
+- O sea: la regla protege contra el fallo común, pero aplicada a ciegas crea el fallo contrario. **El gesto correcto es comprobar antes si el bloque ya existe en otra parte de la versión de `origin/main`** — una línea de `grep`. Hay que escribirlo en el runbook, y probablemente automatizarlo.
+
+**5. La ventana entre `rebase` y `push` es más corta que los hooks.**
+- Dos pushes rechazados por `non-fast-forward` con **8 sesiones vivas**: entre que el `pre-push` termina (typecheck de raíz + backend, ~1 min) y el push llega, otra sesión ya ha empujado. Se resuelve rebasando y repitiendo, pero cada vuelta cuesta otro minuto de hooks.
+- **A investigar:** reintento automático con rebase en el propio hook, o mover el typecheck del backend a CI cuando el push no toca `backend/`.
+
+**Dato transversal:** los cinco se descubrieron **por casualidad**, ninguno por una alerta. Encaja con lo que mide `npm run sesiones:friccion` ([T-423]): lo que hay que vigilar no es cuántas veces salta un guardarraíl, sino cuántas veces el trabajo se pierde sin que salte ninguno.
+
+**6. ✅ (AÑADIDO 05/08/2026, CERRADO 06/08/2026) El LANZADOR DE DEPLOY borra el commit de quien esté trabajando en el mismo checkout — y es el más reproducible de los seis.**
+- **Qué pasó, dos veces seguidas.** Con `scripts/deploy-cuando-verde.sh frontend` corriendo en segundo plano, un commit ya hecho y con el árbol limpio desapareció de la rama. En el reflog: `HEAD@{0}: reset: moving to origin/main`. La segunda vez fue el lanzador de **otra sesión**, arrancado 97 s antes.
+- **Causa, y no es un despiste:** el lanzador hace **`git reset --hard origin/main` en CADA vuelta** (lo dice su propio `guardia-worktree.sh`). Es correcto para él —quiere desplegar exactamente `origin/main`— pero lo ejecuta sobre el **árbol compartido**, así que se lleva por delante cualquier commit local que aún no esté en `origin`.
+- **Por qué es peor que los otros cinco:** no hace falta que dos sesiones toquen el mismo fichero, ni que nadie resuelva mal un conflicto. Basta con **commitear mientras alguien despliega**, que es la situación normal con 2-10 sesiones. Y no avisa: el commit desaparece en silencio y `git status` queda limpio.
+- **Lo que NO protege:** `guardia-worktree.sh` avisa a **quien lanza** el deploy, no a quien está commiteando en paralelo. [T-415] (una sesión por directorio) tampoco lo cubre: el `pre-commit` mira sesiones vivas con `.session-id`, y el lanzador no es una sesión.
+- **Se recupera** (`git reflog` → `git cherry-pick <sha>`), pero solo si alguien se da cuenta. Si la sesión cierra sin volver a mirar la rama, el trabajo se pierde y **el CI queda verde**, porque lo que falta nunca llegó a `origin`.
+- **Cómo se salió del atolladero (patrón útil):** pelearse a `cherry-pick` + `push` en el checkout compartido es una carrera que se pierde —el lanzador resetea otra vez—. Lo que funcionó fue **llevarse el commit a un worktree** (`git worktree add`), rebasar y empujar desde allí, que es inmune a sus `reset`. Ojo: el worktree no hereda `node_modules`, así que el guard de typecheck del `pre-push` no puede correr; enlazarlos (`ln -s`) en vez de usar `TYPECHECK_GUARD_SKIP`, para que el guard se ejecute de verdad.
+- **Pistas de arreglo (ninguna decidida):** que el lanzador **construya desde un worktree propio** en vez de resetear el árbol compartido (el backend ya lo hace desde [T-385] fase 1 — «ya no toca el árbol desde el que lo lanzas»; el frontend no); o que se **niegue a resetear** si hay commits locales por delante de `origin/main`; o que al menos lo emita a `observable_events`, que hoy es lo que mide [T-423].
+
+- **✅ CERRADO 06/08/2026.** `deploy-frontend.sh` y `deploy-backend.sh` ya no resetean nada (construyen desde su propio worktree, el precedente de [T-385]), pero **`deploy-cuando-verde.sh` seguía haciendo `git reset --hard origin/main` en el árbol desde el que se lanza, en cada vuelta**. Sus dos protecciones no cubrían el incidente: `guardia_worktree` avisa a QUIEN LANZA, y la guarda de árbol sucio solo mira ficheros sin commitear. **El caso que destruía trabajo es un árbol LIMPIO con commits que aún no están en `origin/main`**: `git status` sale impecable y el reset se los lleva en silencio.
+- **Arreglo:** núcleo puro `lib/deploy/commitsSinEmpujar.cjs` (`puedeResetear`, 24 tests) cableado justo al lado de la guarda de árbol sucio. **BLOQUEA** —no avisa— porque aquí se cumplen las tres condiciones de [T-415]: la situación es rara, el daño es destrucción de trabajo ajeno, y se sale con UN comando (`git push`) o cambiando de árbol. Enseña QUÉ commits están en peligro para poder decidir si son tuyos. Escape `DEPLOY_RESET_OK="motivo"`, con MOTIVO obligatorio ([T-496]/[T-497]: un `=1` se vuelve un prefijo que se copia y deja de ser una decisión). Fail-open si no se puede medir: es un `git rev-list` local, y bloquear ahí pararía deploys por una avería ajena.
+- **Comprobado EJECUTÁNDOLO, no leyéndolo:** `npm run sim:reset-commits` monta repos de git reales y verifica los 6 casos, incluido el que importa (`git status` limpio **y** el guardarraíl parando igual).
+- **Relacionadas:** [T-427] (de donde salen 1, 2 y 3), [T-428] (protege el markdown, no el código), [T-400] (avisa del solape, no de la destrucción), [T-423] (medir la fricción), [T-415] (una sesión por directorio), [T-385] (el backend ya despliega desde worktree propio: el precedente del arreglo del punto 6).
+
+
 ### [T-489] ✅ [HECHA 06/08/2026] Construir Auxiliar de Clínica de la Diputación de Sevilla (12 plazas)
 
 - **Esfuerzo: sesion_propia.**
@@ -4238,51 +4284,6 @@ pero eso hay que comprobarlo, no suponerlo.
 - **HECHO al contestarle (01/08):** feedback del Art. 0 respondido; impugnación `6f900d84` contestada y las otras CUATRO cerradas EN SILENCIO avisándole en ese mensaje de que quedan atendidas (misma causa) — **un solo email, no cinco**. Recompensa de bug de 3 € creada por orden de Manuel.
   - **Capacidad nueva: `cerrar.ts --silencioso --nota "<por qué>"`.** Su gemelo `cerrar-feedback.ts` ya lo tenía y este no, así que la única vía era colar un fichero vacío. El `--nota` es OBLIGATORIO y va a `observable_events` (`dispute_cerrada_en_silencio`): sin traza, «cerrada sin escribirle» es indistinguible de «se nos olvidó contestar», porque no queda email, ni campana, ni `admin_response`.
 - **Relacionadas:** [T-394] (la puerta de corrección que destapó el hueco), [T-130] (registro de herramientas).
-
-### [T-443] 🔴 [ABIERTO 31/07] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
-
-- **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.
-- **ORIGEN.** Petición de Manuel (31/07) al terminar [T-427] y [T-435]: documentar los fallos de coordinación que fueron apareciendo, para ver si el sistema de sesiones se puede mejorar. **Todos ocurrieron en una sola sesión de trabajo, y en todos el claim funcionó perfectamente.**
-- **⚠️ NO confundir con [T-400]**, que ya está hecha: aquella AVISA de que dos sesiones tocan los mismos ficheros. Aquí el trabajo **ya se destruyó** y nada lo cazó. Son problemas distintos: prevención de solape vs. supervivencia de lo escrito.
-
-**1. Un commit rancio dejó un arreglo VIVO pero INERTE (el peor de los cinco).**
-- `6f3e26261` ([T-441], otra sesión) subió una copia vieja de `scripts/backlog.cjs` y borró **todo el cableado de [T-427]** — 123 líneas, casi todo supresiones. `lib/backlog/gitFichas.cjs` y sus 13 tests **seguían en `main`**, así que el CI no protestaba por ellos… pero ya no los llamaba nadie.
-- **Por qué es lo más grave:** el arreglo parecía desplegado y no hacía nada. El único motivo por el que se descubrió es que el guardarraíl de fuente (`fichaHuerfanaMiraOrigin.guardrail.test.ts`) exige la llamada — o sea, se cazó **por casualidad, al reejecutarlo desde la misma sesión que lo escribió**. Si esa sesión hubiera cerrado, nadie se entera.
-- **[T-428] no cubre esto:** protege el CUERPO DE LAS FICHAS en el markdown. El mismo fallo sobre CÓDIGO no lo mira nadie.
-- **Pista de arreglo:** el `pre-push` ya compara versiones del markdown; la misma idea sobre ficheros de código —«este push SUPRIME más de N líneas de un fichero que no has tocado en tus commits»— es barata. Y el trinquete de guardarraíles que exigen una llamada debería correr en CI, no solo en local.
-
-**2. Una ficha se perdió ANTES de llegar a ningún commit.**
-- La de [T-435]: se escribió, `sync` la reconcilió con la tabla… y `git log -S'### [T-435]'` **no la encuentra en ninguna revisión**. No se ha podido determinar el punto exacto en que se perdió, y no se inventa una causa.
-- El aviso la clasificó `sin_pushear`, que era **CORRECTO** (en el historial no estuvo nunca) y justo por eso sonó inofensivo. **Ni [T-427] ni [T-428] cubren este caso: los dos protegen contra BORRAR una ficha que ya existió, no contra que nunca llegue a existir.**
-- **Ya mitigado en esta sesión** con el motivo `mia_sin_escribir` (si el claim es MÍO, «otra sesión no la ha pusheado» es imposible), pero eso es un aviso al correr `sync`. **Queda decidir si el `pre-push` debe bloquear un push de una tarea reclamada por ti cuya ficha no está en el fichero.**
-
-**3. Un test de integración commiteó sus fixtures SOBRE la rama real.**
-- El test de [T-427] monta repositorios de mentira y hace `commit` en ellos. La suite unit la lanza el hook `pre-commit`… y **git exporta `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` a sus hooks**. Esas variables **ganan al `cwd`**, así que cuatro commits de fixture se escribieron sobre la rama del worktree, dejándola apuntando al árbol del fixture (recuperado con `reset --mixed`, sin pérdida).
-- **Arreglado en el módulo y en el test**, con trinquete que comprueba que el `HEAD` real no se mueve. **Lo que queda es lo general:** ningún test del repo debería poder tocar el repositorio desde el que se ejecuta, y hoy eso depende de que cada autor se acuerde. Barrido hecho: los otros dos tests que usan git solo LEEN (`ls-files`, `ls-tree`), así que hoy no hay más casos — pero el siguiente que escriba uno repetirá el fallo.
-
-**4. La regla «conservar SIEMPRE los dos lados» del runbook NO es universal.**
-- Al rebasar, `docs/roadmap/tareas-pendientes.md` dio conflicto **2 de 3 veces**. En uno de ellos, conservar los dos lados habría **DUPLICADO** un bloque de otra sesión que ellos habían MOVIDO a otro sitio del fichero (el lado de `HEAD` estaba vacío a propósito).
-- O sea: la regla protege contra el fallo común, pero aplicada a ciegas crea el fallo contrario. **El gesto correcto es comprobar antes si el bloque ya existe en otra parte de la versión de `origin/main`** — una línea de `grep`. Hay que escribirlo en el runbook, y probablemente automatizarlo.
-
-**5. La ventana entre `rebase` y `push` es más corta que los hooks.**
-- Dos pushes rechazados por `non-fast-forward` con **8 sesiones vivas**: entre que el `pre-push` termina (typecheck de raíz + backend, ~1 min) y el push llega, otra sesión ya ha empujado. Se resuelve rebasando y repitiendo, pero cada vuelta cuesta otro minuto de hooks.
-- **A investigar:** reintento automático con rebase en el propio hook, o mover el typecheck del backend a CI cuando el push no toca `backend/`.
-
-**Dato transversal:** los cinco se descubrieron **por casualidad**, ninguno por una alerta. Encaja con lo que mide `npm run sesiones:friccion` ([T-423]): lo que hay que vigilar no es cuántas veces salta un guardarraíl, sino cuántas veces el trabajo se pierde sin que salte ninguno.
-
-**6. ✅ (AÑADIDO 05/08/2026, CERRADO 06/08/2026) El LANZADOR DE DEPLOY borra el commit de quien esté trabajando en el mismo checkout — y es el más reproducible de los seis.**
-- **Qué pasó, dos veces seguidas.** Con `scripts/deploy-cuando-verde.sh frontend` corriendo en segundo plano, un commit ya hecho y con el árbol limpio desapareció de la rama. En el reflog: `HEAD@{0}: reset: moving to origin/main`. La segunda vez fue el lanzador de **otra sesión**, arrancado 97 s antes.
-- **Causa, y no es un despiste:** el lanzador hace **`git reset --hard origin/main` en CADA vuelta** (lo dice su propio `guardia-worktree.sh`). Es correcto para él —quiere desplegar exactamente `origin/main`— pero lo ejecuta sobre el **árbol compartido**, así que se lleva por delante cualquier commit local que aún no esté en `origin`.
-- **Por qué es peor que los otros cinco:** no hace falta que dos sesiones toquen el mismo fichero, ni que nadie resuelva mal un conflicto. Basta con **commitear mientras alguien despliega**, que es la situación normal con 2-10 sesiones. Y no avisa: el commit desaparece en silencio y `git status` queda limpio.
-- **Lo que NO protege:** `guardia-worktree.sh` avisa a **quien lanza** el deploy, no a quien está commiteando en paralelo. [T-415] (una sesión por directorio) tampoco lo cubre: el `pre-commit` mira sesiones vivas con `.session-id`, y el lanzador no es una sesión.
-- **Se recupera** (`git reflog` → `git cherry-pick <sha>`), pero solo si alguien se da cuenta. Si la sesión cierra sin volver a mirar la rama, el trabajo se pierde y **el CI queda verde**, porque lo que falta nunca llegó a `origin`.
-- **Cómo se salió del atolladero (patrón útil):** pelearse a `cherry-pick` + `push` en el checkout compartido es una carrera que se pierde —el lanzador resetea otra vez—. Lo que funcionó fue **llevarse el commit a un worktree** (`git worktree add`), rebasar y empujar desde allí, que es inmune a sus `reset`. Ojo: el worktree no hereda `node_modules`, así que el guard de typecheck del `pre-push` no puede correr; enlazarlos (`ln -s`) en vez de usar `TYPECHECK_GUARD_SKIP`, para que el guard se ejecute de verdad.
-- **Pistas de arreglo (ninguna decidida):** que el lanzador **construya desde un worktree propio** en vez de resetear el árbol compartido (el backend ya lo hace desde [T-385] fase 1 — «ya no toca el árbol desde el que lo lanzas»; el frontend no); o que se **niegue a resetear** si hay commits locales por delante de `origin/main`; o que al menos lo emita a `observable_events`, que hoy es lo que mide [T-423].
-
-- **✅ CERRADO 06/08/2026.** `deploy-frontend.sh` y `deploy-backend.sh` ya no resetean nada (construyen desde su propio worktree, el precedente de [T-385]), pero **`deploy-cuando-verde.sh` seguía haciendo `git reset --hard origin/main` en el árbol desde el que se lanza, en cada vuelta**. Sus dos protecciones no cubrían el incidente: `guardia_worktree` avisa a QUIEN LANZA, y la guarda de árbol sucio solo mira ficheros sin commitear. **El caso que destruía trabajo es un árbol LIMPIO con commits que aún no están en `origin/main`**: `git status` sale impecable y el reset se los lleva en silencio.
-- **Arreglo:** núcleo puro `lib/deploy/commitsSinEmpujar.cjs` (`puedeResetear`, 24 tests) cableado justo al lado de la guarda de árbol sucio. **BLOQUEA** —no avisa— porque aquí se cumplen las tres condiciones de [T-415]: la situación es rara, el daño es destrucción de trabajo ajeno, y se sale con UN comando (`git push`) o cambiando de árbol. Enseña QUÉ commits están en peligro para poder decidir si son tuyos. Escape `DEPLOY_RESET_OK="motivo"`, con MOTIVO obligatorio ([T-496]/[T-497]: un `=1` se vuelve un prefijo que se copia y deja de ser una decisión). Fail-open si no se puede medir: es un `git rev-list` local, y bloquear ahí pararía deploys por una avería ajena.
-- **Comprobado EJECUTÁNDOLO, no leyéndolo:** `npm run sim:reset-commits` monta repos de git reales y verifica los 6 casos, incluido el que importa (`git status` limpio **y** el guardarraíl parando igual).
-- **Relacionadas:** [T-427] (de donde salen 1, 2 y 3), [T-428] (protege el markdown, no el código), [T-400] (avisa del solape, no de la destrucción), [T-423] (medir la fricción), [T-415] (una sesión por directorio), [T-385] (el backend ya despliega desde worktree propio: el precedente del arreglo del punto 6).
 
 ### [T-435] 🟠 [ABIERTO 31/07] Notas internas de auditoría publicadas en la landing: el campo de referencia usado como bloc de notas, y la vista SSOT lo sirve
 
