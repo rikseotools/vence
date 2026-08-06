@@ -93,6 +93,28 @@ async function main() {
   if (!out?.success) process.exitCode = 1
   else if (a.silencioso) console.log('\n✅ cerrado en silencio (sin email ni campana, a propósito)')
   else console.log(out.emailSent ? '\n✅ respondido y email enviado' : `\n⚠️ respondido pero SIN email: ${out.emailError || out.emailSkipReason || '?'}`)
+  // Cerrar RETIRA el borrador del embudo (T-486). Mismo criterio que el gemelo de impugnaciones,
+  // importado y no copiado: si se copia, el día que cambie uno se queda atrás y vuelve la señal
+  // fantasma que el 06/08 tuvo a Manuel con 15 borradores de casos ya enviados.
+  if (out?.success) await retirarBorradorDelEmbudo(a.feedbackId, 'feedback contestado')
+}
+
+
+/** Gemelo del de `cerrar.ts`: el criterio vive en lib/sessions/retirarBorrador.cjs, no aquí. */
+async function retirarBorradorDelEmbudo(casoId: string, motivo: string): Promise<void> {
+  const url = process.env.DATABASE_URL
+  if (!url) return
+  let sql: any = null
+  try {
+    const postgres = (await import('postgres')).default
+    sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 })
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { retirarBorradoresDe } = require('../../lib/sessions/retirarBorrador.cjs')
+    const n = await retirarBorradoresDe(sql, casoId, motivo)
+    if (n > 0) console.log(`   🧹 ${n} borrador(es) retirados del embudo: ya no hacen falta`)
+  } catch { /* el cierre ya está hecho: esto nunca puede tumbarlo */ } finally {
+    try { await sql?.end({ timeout: 5 }) } catch {}
+  }
 }
 
 if (process.argv[1]?.endsWith('cerrar-feedback.ts')) main().catch((e) => { console.error('❌', e.message); process.exit(1) })

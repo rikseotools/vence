@@ -334,8 +334,35 @@ async function main() {
     } else {
       console.log(out.emailSent ? '\n✅ cerrada y email enviado' : `\n⚠️ cerrada pero SIN email: ${out.emailError || out.emailSkipReason || '?'}`)
     }
+    // Cerrar el caso RETIRA su borrador del embudo (T-486). Si no, la fila se queda abierta y
+    // `npm run flota` sigue pidiendo que se apruebe algo YA ENVIADO: medido el 06/08, 15
+    // borradores abiertos cuyos 15 casos estaban resueltos. Una señal que no se apaga sola acaba
+    // mintiendo, y una lista que miente se deja de mirar. Fail-open: el cierre ya está hecho.
+    await retirarBorradorDelEmbudo(a.disputeId, `impugnación ${a.estado}`)
   } else {
     process.exitCode = 1
+  }
+}
+
+
+/**
+ * Retira del embudo el borrador de esta impugnación. El criterio vive en UN sitio
+ * (`lib/sessions/retirarBorrador.cjs`), compartido con el cierre de feedback: copiarlo aquí es
+ * como nacieron los cinco escritores de `seguimiento_url` [T-130].
+ */
+async function retirarBorradorDelEmbudo(casoId: string, motivo: string): Promise<void> {
+  const url = process.env.DATABASE_URL
+  if (!url) return
+  let sql: any = null
+  try {
+    const postgres = (await import('postgres')).default
+    sql = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 30 })
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { retirarBorradoresDe } = require('../../lib/sessions/retirarBorrador.cjs')
+    const n = await retirarBorradoresDe(sql, casoId, motivo)
+    if (n > 0) console.log(`   🧹 ${n} borrador(es) retirados del embudo: ya no hacen falta`)
+  } catch { /* el cierre ya está hecho: esto nunca puede tumbarlo */ } finally {
+    try { await sql?.end({ timeout: 5 }) } catch {}
   }
 }
 
