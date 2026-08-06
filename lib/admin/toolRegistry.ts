@@ -2449,7 +2449,16 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'puerta: `revisar-impugnacion.cjs` ya reserva al abrir el dossier. Escape declarado ' +
       '`--igualmente "<motivo>"`, contado como `guard_escape` del guard `cierre-cola` en el bus de ' +
       'fricción. FAIL-OPEN sin sid y sin BD. IO compartido por los dos cierres en ' +
-      'scripts/impugnaciones/lib/comprobar-reserva.ts. 12 tests + trinquete de criterio único.',
+      'scripts/impugnaciones/lib/comprobar-reserva.ts. ' +
+      '**⚠️ Desde T-609 (06/08) el escape NO cubre el caso «ajena» (claim VIVO de otra sesión).** ' +
+      'Hasta entonces `--igualmente` se comprobaba ANTES que nada, así que un motivo cualquiera ' +
+      'se saltaba TAMBIÉN el claim vivo — no solo «nadie la tiene». Medido: 4 cierres seguidos ' +
+      'usaron el escape contra una reserva viva y mandaron 3 correos con un texto ya vetado por ' +
+      'Manuel (ver embudo_puerta_veto, el mismo incidente). Ahora «ajena» se comprueba PRIMERO y no ' +
+      'admite escape — un claim vivo se resuelve hablando con la otra sesión, no saltándolo (mismo ' +
+      'criterio que el push-guard del backlog, T-375). El escape sigue vivo para «sin_reservar» ' +
+      '(nadie la tiene, o la tenía una sesión ya muerta), donde no hay nadie a quien pisar. ' +
+      '14 tests + trinquete de criterio único.',
   },
   deploy_estado: {
     titulo: '¿Hay alguien desplegando AHORA? (sin competir por el lock)',
@@ -2906,7 +2915,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rellena con «lo he mirado» y no se puede contar ni revisar. Escape contado: ' +
       '`--sistemico-omitido "<por qué no procede>"`. Núcleo puro `lib/impugnaciones/verdictoSistemico.cjs` ' +
       '(9 tests con los verdictos reales que lo motivaron). Se anuncia también en dry-run, para que ' +
-      'no sorprenda con el mensaje ya aprobado.',
+      'no sorprenda con el mensaje ya aprobado. ' +
+      '**Desde T-609 (06/08) EXIGE además mirar el EMBUDO** (ver embudo_puerta_veto): si hay una ' +
+      'respuesta de Manuel en `session_questions` que VETA este envío y nadie la ha consultado, ' +
+      'aborta con el texto delante en vez de mandar lo vetado. Escape propio `--embudo-igualmente ' +
+      '"<motivo>"` — separado de `--igualmente` y `--temario-igualmente` a propósito: compartir el ' +
+      'escape apagaría las tres puertas de una vez.',
+  },
+  embudo_puerta_veto: {
+    titulo: 'Que el cierre no mande un correo que Manuel ya vetó en el embudo',
+    ruta: 'scripts/impugnaciones/lib/puerta-embudo.ts',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'Incidente 06/08/2026: un trabajador dejó 4 preguntas en el embudo con el borrador de ' +
+      'rechazo de Manolo (arts. 108/110/112/114 CE); Manuel respondió «NO ENVIAR TAL CUAL» a las ' +
+      '06:16; a las 06:24-26 OTRA sesión cerró tres con `--igualmente` (ver además ' +
+      'cola_puerta_cierre, que ese mismo escape también se saltaba) y mandó el texto vetado — el ' +
+      'veredicto llevaba 8 min en la BD sin que nada lo consultara. MEDIDO contra la fila real: no ' +
+      'era `kind=\'borrador\'` con `draft_target` (lo que asumía la ficha al abrirse), sino ' +
+      '`kind=\'pregunta\'` con `draft_target IS NULL` y el id de la impugnación dentro de la PROSA ' +
+      'de `question` — un detector que solo mirara `draft_target` no habría visto nada de este ' +
+      'incidente. Núcleo puro `lib/impugnaciones/embudoVeto.cjs`: busca el id (uuid completo o ' +
+      'prefijo de 8, con frontera de palabra — mismo criterio que `borradorAbierto.cjs`/T-588) en ' +
+      '`question`+`context`+`draft_target` de CUALQUIER fila respondida, y reconoce un VETO por ' +
+      'marcador explícito («no enviar…», «no se manda…», «vetado») calcado del texto real del ' +
+      'incidente. Deliberadamente asimétrico: NO intenta reconocer una aprobación (bloquearía las ' +
+      'notas de cierre normales, que son la mayoría de las respuestas `answered`), solo el veto — ' +
+      'un falso negativo aquí es solo un `--embudo-igualmente` de más, un falso positivo dejaría ' +
+      'salir el correo vetado. Escape `--embudo-igualmente "<motivo>"`, contado como `guard_escape` ' +
+      'del guard `embudo`. FAIL-OPEN sin BD. 25 tests del núcleo (incluida la reproducción con el ' +
+      'texto VERBATIM de Manuel) + 6 de fricción.',
   },
   cerrar_feedback: {
     titulo: 'Responder o cerrar en silencio un feedback por el endpoint',

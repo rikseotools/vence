@@ -1015,6 +1015,49 @@ ruido — decidido el 06/08.
 guard), [T-423] (el contador de fricción, que ya tiene el dato), [T-606] (el embudo no sabe en qué
 estado está el caso del que habla), [T-596] (la causa real de las cuatro impugnaciones).
 
+**✅ PUNTOS 1 Y 2 HECHOS (06/08, w3) — verificados con el dato REAL del incidente, y la premisa del punto 1 estaba mal.**
+
+- **⚠️ Corrección de partida:** el punto 1 asumía filas `kind='borrador'` con `draft_target`. MEDIDO
+  contra `session_questions` id 34-37 (las cuatro preguntas reales de este incidente): son
+  `kind='pregunta'`, **`draft_target IS NULL`** — el id de la impugnación vivía dentro de la PROSA
+  de `question` (*«Borrador RECHAZO para 066a3d65 (Manolo…) — ¿lo apruebo?»*). Un detector que solo
+  mirara `draft_target` no habría visto NADA de este incidente.
+- **Punto 1 — `cerrar.ts` mira el embudo antes de enviar.** Núcleo puro `lib/impugnaciones/embudoVeto.cjs`
+  (`mencionaDispute` + `esVeto`) busca el id en `question`+`context`+`draft_target` de CUALQUIER fila
+  respondida y reconoce un VETO por marcador explícito («no enviar…», «no se manda…», «vetado») —
+  **deliberadamente asimétrico**: no intenta reconocer una aprobación (la mayoría de las respuestas
+  `answered` de este embudo son notas de cierre tipo «Resuelta y enviada.» y no tienen nada que ver
+  con un veto; intentar clasificarlas como «sí» habría sido el riesgo, no el beneficio). IO en
+  `scripts/impugnaciones/lib/puerta-embudo.ts` (mismo patrón que `puerta-temario.ts`), enganchado en
+  `cerrar.ts` como tercera puerta. Escape propio `--embudo-igualmente "<motivo>"`, contado como
+  `guard_escape`/`embudo`. **25 tests del núcleo — incluida la REPRODUCCIÓN con el texto VERBATIM
+  real de Manuel (id 34) — + 6 de fricción, todos verdes.**
+- **Punto 2 — el `--igualmente` de la puerta de RESERVA ya NO cubre un claim VIVO ajeno.** En
+  `lib/impugnaciones/puertaCierre.cjs`, el chequeo `ajena` se movió ANTES que el de `igualmente` (antes
+  era al revés). **Reproducido el bug contra el código viejo antes de arreglarlo:** con `git stash` del
+  fichero, los 2 tests nuevos que fijan el comportamiento correcto FALLABAN (`permitido` daba `true`
+  cuando debía dar `false`); con el fix, los 14 tests de la suite pasan. El test viejo que fijaba el
+  comportamiento buggy (`--igualmente` con motivo → pasa, marcado como escape, contra una sesión VIVA)
+  se sustituyó por dos que prueban lo mismo contra fila LIBRE y dueña MUERTA — donde el escape SÍ sigue
+  siendo correcto.
+- **Documentado en `lib/admin/toolRegistry.ts`** (entrada nueva `embudo_puerta_veto` + actualizada
+  `cola_puerta_cierre`/`cerrar_impugnacion`) y en el manual `docs/maintenance/impugnaciones-claude-code.md`
+  (bullet nuevo antes de «UNA POR UNA»).
+
+**⏳ Punto 3 (alerta por ráfaga de escapes) — NO implementado. Calibración medida, no a ojo, y da un
+resultado que cambia el diseño propuesto.** `observable_events` (vía `VENCE_LECTOR_URL`, `event_type='sesion_friccion'`,
+`metadata->>'clase'='guard_escape'`) agrupado por guard/hora en 14 días: `backlog-push` y
+`contexto-backlog` llegan a **12 escapes/hora** en tráfico NORMAL (muchas sesiones en paralelo,
+cada commit/push las dispara), mientras `cierre-cola`/`temario` rondan 2-7/hora solo en ráfagas
+puntuales como la de este incidente. **Un umbral único (p.ej. "4 escapes en 5 min") dispararía
+constantemente contra `backlog-push` en cualquier tarde con varias sesiones activas** — la misma
+lección de "hash_change"/bandeja ruidosa que este repo ya aprendió: una alerta que grita en tráfico
+normal se aprende a ignorar. Haría falta un umbral POR GUARD (o normalizado por su volumen base),
+que es más trabajo que "añadir una regla" y toca `backend/src/alerts/alert-rules.ts` (6.631 líneas,
+requiere deploy del backend para verificar). No lo he construido para no rematarlo a medias. Punto
+de partida para quien lo retome: `RULE_HTTP_5XX_SPIKE` (misma cabecera) es el patrón más cercano a
+copiar; la query de calibración de arriba ya está hecha.
+
 ### [T-607] 🟡 [ABIERTO 06/08] No se puede afirmar que haya fuga de scope: medir servidas del pasado contra el scope de HOY no distingue una fuga de un re-vínculo posterior
 
 **Qué es esto.** El intento de diagnosticar [T-583] (*«Test Rápido sirve preguntas fuera de

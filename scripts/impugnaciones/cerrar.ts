@@ -45,6 +45,7 @@ import { config } from 'dotenv'
 import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
 import { comprobarTemario, anunciarTemario } from './lib/puerta-temario'
+import { comprobarEmbudo, anunciarEmbudo } from './lib/puerta-embudo'
 
 config({ path: '.env.local' })
 
@@ -78,6 +79,9 @@ export function parsearArgs(argv: string[]) {
     // Escape de la puerta de TEMARIO (04/08/2026). Separado del de reserva a propósito: son dos
     // condiciones distintas y compartir el escape apagaría las dos de una vez.
     temarioIgualmente: valor('--temario-igualmente'),
+    // Escape de la puerta del EMBUDO (T-609, 06/08/2026). Propio y separado de los otros dos por
+    // el mismo motivo: compartir el escape apagaría las tres puertas a la vez.
+    embudoIgualmente: valor('--embudo-igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -284,7 +288,15 @@ async function main() {
   // `lib/puerta-temario.ts` para el porqué de bloquear aquí y no en el dossier.
   const vTemario = await comprobarTemario({ disputeId: a.disputeId, tabla, igualmente: a.temarioIgualmente })
   const sePuedeTemario = anunciarTemario(vTemario, { aplicar: a.aplicar })
-  const sePuede = sePuedeReserva && sePuedeTemario
+
+  // ── PUERTA DEL EMBUDO (T-609) ──────────────────────────────────────────────────────────────
+  // ¿Ya hay una respuesta de Manuel en `session_questions` que VETA este envío? Ver
+  // `lib/puerta-embudo.ts` para el incidente que la motiva. También en dry-run, por lo mismo que
+  // las otras dos: enterarte después de haber redactado no sirve de nada.
+  const vEmbudo = await comprobarEmbudo({ disputeId: a.disputeId, igualmente: a.embudoIgualmente })
+  const sePuedeEmbudo = anunciarEmbudo(vEmbudo, { aplicar: a.aplicar })
+
+  const sePuede = sePuedeReserva && sePuedeTemario && sePuedeEmbudo
 
   // ── PUERTA DEL VERDICTO SISTÉMICO (T-520) ──────────────────────────────────────────────────
   // «Después de cada impugnación deberías hacerte esa pregunta y que no se te olvide, porque si no

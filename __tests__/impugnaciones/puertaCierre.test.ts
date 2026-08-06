@@ -74,16 +74,48 @@ describe('cerrar SIN reservar también se bloquea, que es el fallo que se mide',
 
 describe('el escape existe, exige motivo y se distingue del resto', () => {
   // Principio 7: lo que hay que poder ver no es cuántas veces bloquea, sino cuántas se la rodea.
-  it('--igualmente con motivo → pasa, marcado como escape', () => {
-    const r = run({ claimedBy: OTRA, claimedAt: haceH(4), sesiones: viva, igualmente: 'la otra sesión murió, hablado con Manuel' })
+  it('--igualmente con motivo, fila LIBRE (nadie a quien pisar) → pasa, marcado como escape', () => {
+    const r = run({ claimedBy: null, igualmente: 'la cola la daba por libre y ya la había analizado' })
     expect(r.permitido).toBe(true)
     expect(r.clase).toBe('escape')
-    expect(r.motivo).toMatch(/hablado con Manuel/)
+    expect(r.motivo).toMatch(/ya la había analizado/)
+  })
+
+  it('--igualmente con motivo, dueña muerta → pasa, marcado como escape', () => {
+    const r = run({ claimedBy: OTRA, claimedAt: haceH(6), sesiones: muerta, igualmente: 'sesión muerta, confirmado con Manuel' })
+    expect(r.permitido).toBe(true)
+    expect(r.clase).toBe('escape')
   })
 
   it('--igualmente vacío o en blanco NO cuenta como escape', () => {
-    expect(run({ claimedBy: OTRA, claimedAt: haceH(4), sesiones: viva, igualmente: '   ' }).permitido).toBe(false)
-    expect(run({ claimedBy: OTRA, claimedAt: haceH(4), sesiones: viva, igualmente: '' }).permitido).toBe(false)
+    expect(run({ claimedBy: null, igualmente: '   ' }).permitido).toBe(false)
+    expect(run({ claimedBy: null, igualmente: '' }).permitido).toBe(false)
+  })
+})
+
+describe('T-609: el escape NO cubre el claim VIVO de otra sesión', () => {
+  // 06/08/2026: cuatro cierres seguidos usaron `--igualmente` contra una reserva VIVA y mandaron
+  // tres correos con un texto que Manuel había vetado ocho minutos antes. La reserva es la única
+  // puerta que protege el reparto: un escape con motivo la anulaba ENTERA. Un claim vivo se
+  // resuelve hablando con la otra sesión, no escapando — mismo criterio que [T-375] del backlog
+  // (el push-guard deja de bloquear lo que no se puede satisfacer, pero sigue bloqueando un lease
+  // vivo, porque eso sí tiene arreglo).
+  it('otra sesión VIVA la tiene → --igualmente NO la salta, sigue "ajena"', () => {
+    const r = run({ claimedBy: OTRA, claimedAt: haceH(4), sesiones: viva, igualmente: 'lo necesito ya' })
+    expect(r.permitido).toBe(false)
+    expect(r.clase).toBe('ajena')
+  })
+
+  it('reserva reciente de otra sesión (dentro del suelo) → --igualmente TAMPOCO la salta', () => {
+    const r = run({ claimedBy: OTRA, claimedAt: haceH(MIN_HORAS - 0.5), sesiones: [], igualmente: 'lo necesito ya' })
+    expect(r.permitido).toBe(false)
+    expect(r.clase).toBe('ajena')
+  })
+
+  it('en cambio, sin reservar por NADIE, --igualmente sigue funcionando (nada que pisar)', () => {
+    const r = run({ claimedBy: null, igualmente: 'motivo legítimo' })
+    expect(r.permitido).toBe(true)
+    expect(r.clase).toBe('escape')
   })
 })
 
