@@ -12337,6 +12337,17 @@ y eso solo ocurre donde las dos se sirven.
 - **Lo caro NO es el material, son las PREGUNTAS.** Los 10 temas nuevos parten de cero y cada uno necesita generación + doble auditoría ciega. Por eso [T-330] (la newsletter del último día) se cerró sin enviar: el plazo moría el 31/07 y una landing con 10 temas a cero es justo lo que el gate pre-envío prohíbe.
 
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
+
+- **🔁 RE-VERIFICADO EN VIVO HOY (06/08, w3) — cinco días después, sigue correcto, cero regresión.** No me fié de la ficha de 01/08 (podía haber cambiado el banco o haber vuelto una regresión); repetí las comprobaciones contra producción, con `VENCE_LECTOR_URL`/HTTP directo, no contra BD de coordinación:
+  - `GET /api/v2/test-config/estimate?positionType=auxiliar_administrativo_estado&selectedLaws=Ley 39/2015` → `{"success":true,"count":3087}` (antes 3042/3090 según el día — el total sube según se genera contenido, es el conteo general, no el que importa).
+  - Con `&onlyOfficialQuestions=true` → **16**, igual que el 01/08.
+  - Mismo caso pero `positionType=agente_hacienda` (la oposición de Sergio, el usuario que lo pidió) → **0**, confirma que su caso sigue sin oficiales propias (motivo por el que [T-411] existe aparte).
+  - `GET /api/v2/test-config/articles` para la misma ley: **157 sin `scopeToPosition`, 128 con él** — idéntico a lo medido el 01/08, el selector sigue respetando el temario.
+  - Las tres respuestas llevan `x-served-by: vence-backend`, confirmando que van por el camino que SÍ ejecuta producción (el bug del 01/08 — el arreglo vivía en el camino que el backend no usaba — sigue sin reaparecer).
+  - **Y comprobé la pieza que la ficha no había mirado hasta ahora: el CÓDIGO del frontend que enciende la casilla.** `components/TestConfigurator.tsx:1744` — `{!hideOfficialQuestions && officialCount > 0 && (` — es la condición de render, y `officialCount` (línea 607) resuelve a `officialCountForLaws` cuando `tema` es null (modo "por leyes"), que a su vez viene de un fetch al MISMO endpoint de estimación forzando `onlyOfficialQuestions:true` (líneas 565-604), reactivo a `selectedLaws`/artículos. `app/test/por-leyes/page.tsx:410` sigue pasando `hideOfficialQuestions={false}`. Con los números de arriba (16>0), la condición de render se cumple: la casilla SÍ debería pintarse hoy en `/test/por-leyes` para un usuario de `auxiliar_administrativo_estado` con Ley 39/2015 seleccionada.
+  - **Lo que NO pude comprobar, y por qué no lo intenté:** cómo se VE en pantalla — necesita una sesión de usuario autenticada (cookie de login) y esta sesión no tiene `AUTH_SECRET` ni credenciales para acuñar una (el rol de trabajador es deliberadamente de solo lectura, ver `lib/sessions/aprobacion.cjs`). No hay atajo honesto: o se mira con ojos humanos, o no se mira. Confirma lo que ya decía la ficha — esto no es «falta comprobar», es «falta que Manuel mire la pantalla».
+  - **Entregado vía `revision --entrega`** (verbo que no existía el 01/08 — nace de [T-539] el 04/08 — y es exactamente el hueco que las notas de esa fecha señalaban: «verificado por la máquina, pendiente del ojo humano», sin verbo para expresarlo entonces).
+
 - **✅ VERIFICADO EN PRODUCCIÓN (01/08, sesión `t115-huerfanos`) tras desplegar el backend (`eb6616d6`). Los tres puntos pasan. FALTA SOLO LA REVISIÓN VISUAL DE MANUEL.**
   | qué pedía la ficha | en producción |
   |---|---|
