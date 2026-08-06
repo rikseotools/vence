@@ -4,6 +4,7 @@
 import {
   buildBackToArticleLink,
   buildArticleTestLink,
+  backToLawButtonLabel,
 } from '@/lib/navigation/backToArticleLink'
 
 describe('buildBackToArticleLink', () => {
@@ -45,6 +46,41 @@ describe('buildBackToArticleLink', () => {
   it('mezcla de válido + basura → toma el único válido', () => {
     // "3,abc" → solo 3 es válido → sigue siendo un único artículo
     expect(buildBackToArticleLink('3,abc', 'ce')?.href).toBe('/teoria/ce/articulo-3')
+  })
+})
+
+describe('backToLawButtonLabel — T-313, el botón "volver a la ley" visible DURANTE el test', () => {
+  // Bug real: LawTestPageWrapper construye `{ href, label, isPrimary }` (el tipo NO
+  // declara `.text`), pero el botón de arriba del test leía `.text` → undefined →
+  // caía SIEMPRE al genérico. El usuario que llega desde el temario a un test de un
+  // único artículo (auto-arrancado, sin pasar por el configurador visible) nunca veía,
+  // en ningún momento del test, que ese botón lleva de vuelta al filtro de artículos.
+  it('con el objeto real que construye LawTestPageWrapper, muestra la ley (no el genérico)', () => {
+    const backToLaw = { href: '/leyes/lo-3-2007', label: '📚 Volver a LO 3/2007', isPrimary: true }
+    expect(backToLawButtonLabel(backToLaw)).toBe('📚 Volver a LO 3/2007')
+  })
+
+  it('sin backToLaw (test que no es de ley), cae al genérico', () => {
+    expect(backToLawButtonLabel(undefined)).toBe('Volver a Tests')
+    expect(backToLawButtonLabel(null)).toBe('Volver a Tests')
+  })
+
+  it('backToLaw presente pero sin label (dato roto), cae al genérico en vez de mostrar vacío', () => {
+    expect(backToLawButtonLabel({ label: '' })).toBe('Volver a Tests')
+    expect(backToLawButtonLabel({})).toBe('Volver a Tests')
+  })
+
+  it('acepta un fallback propio', () => {
+    expect(backToLawButtonLabel(undefined, 'Salir')).toBe('Salir')
+  })
+
+  // Regresión directa del bug: un objeto con SOLO `.text` (la forma que el código
+  // roto esperaba) no tiene `.label`, así que cae al genérico — demuestra que antes
+  // del fix el botón real, con el objeto real de LawTestPageWrapper, nunca podía
+  // mostrar el nombre de la ley.
+  it('un objeto con .text pero sin .label (la forma que el bug esperaba) cae al genérico', () => {
+    const conSoloText = { text: '📚 Volver a LO 3/2007' } as unknown as { label?: string }
+    expect(backToLawButtonLabel(conSoloText)).toBe('Volver a Tests')
   })
 })
 

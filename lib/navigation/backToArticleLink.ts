@@ -161,3 +161,26 @@ function normalizarParaAncla(v: string | number | null | undefined): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
+
+/**
+ * Texto del botón "volver a la ley" que se ve ARRIBA del test mientras se responde
+ * (`!isTestCompleted` en TestLayout — la ÚNICA puerta visible desde el primer segundo
+ * para volver al filtro de artículos, no solo al terminar el test). [T-313]
+ *
+ * Bug real que esto arregla: `customNavigationLinks.backToLaw` solo tiene `.label`
+ * (`LawTestPageWrapper` construye `{ href, label, isPrimary }` — el tipo ni siquiera
+ * declara `.text`), pero el botón de arriba leía `config.customNavigationLinks
+ * ?.backToLaw?.text`, que SIEMPRE es `undefined`, así que SIEMPRE caía al genérico
+ * "Volver a Tests" en vez de "📚 Volver a {ley}". La pantalla de resultados (fin del
+ * test) sí leía `.label` bien — la divergencia entre los dos puntos de lectura del
+ * MISMO objeto es la causa. Consecuencia práctica: alguien que llega desde el
+ * temario a un test de UN artículo (auto-arrancado, sin pasar por el configurador
+ * visible) nunca veía, en ningún momento del test, que "Volver a Tests" te lleva de
+ * vuelta a la pantalla donde se elige qué artículos entran — el título no lo decía.
+ */
+export function backToLawButtonLabel(
+  backToLaw: { label?: string } | null | undefined,
+  fallback: string = 'Volver a Tests',
+): string {
+  return backToLaw?.label || fallback
+}
