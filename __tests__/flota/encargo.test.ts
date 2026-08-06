@@ -638,3 +638,30 @@ describe('el encargo dice UNA sola cosa sobre empujar y cerrar', () => {
     }
   })
 })
+
+// ── UNA CAUSA AFIRMADA TIENE QUE ESTAR DEMOSTRADA ───────────────────────────────────────────
+// El encargo pedía verificar el CONTENIDO contra la fuente oficial, pero no decía nada sobre las
+// afirmaciones del propio trabajador. Y «causa raíz encontrada» es la frase que hace que quien
+// revisa se lo crea y mergee sin volver a mirarlo — el 06/08 se mergearon tres ramas así.
+// El primer trabajador que lo hizo bien (w2 en T-592, con la cifra «127 commits por detrás»)
+// lo hizo por oficio, no porque se lo pidieran: eso es suerte, no diseño.
+describe('el encargo exige demostrar lo que se afirma', () => {
+  const ENC = require(require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'))
+  const t = ENC.encargo({ trabajador: 'w1', tarea: { id: 'T-1', title: 'x' }, puedeDesplegar: false })
+
+  it('prohíbe afirmar una causa sin demostrarla', () => {
+    expect(t).toMatch(/NO AFIRMES UNA CAUSA QUE NO HAYAS DEMOSTRADO/)
+  })
+
+  it('y da las DOS formas válidas de demostrarla, no un «asegúrate» genérico', () => {
+    expect(t).toMatch(/REPRODUCIRLA/)
+    expect(t).toMatch(/MEDIRLA/)
+    expect(t).toMatch(/CIFRA/)
+  })
+
+  it('deja salida honesta: si no puede demostrarlo, que lo diga como sospecha', () => {
+    expect(t).toMatch(/SOSPECHO/)
+    // La salida tiene que existir: sin ella, la regla se rodea afirmando igual.
+    expect(t).toMatch(/PEOR que no haber mirado/)
+  })
+})
