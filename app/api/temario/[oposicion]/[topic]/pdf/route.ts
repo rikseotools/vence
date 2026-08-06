@@ -1,9 +1,9 @@
 // app/api/temario/[oposicion]/[topic]/pdf/route.ts
 //
-// Genera EN SERVIDOR el PDF de un tema del temario. Sustituye al window.print() del
-// botón, que en iOS y en navegadores in-app (app de Google, Instagram, Facebook…) no
-// descargaba nada: el botón decía "Imprimir PDF" y no producía ningún PDF. De ahí salieron
-// 3 tickets de soporte en un solo día (16/07: María, Sonia, Mónica).
+// Sirve el PDF de un tema del temario — SIEMPRE desde la caché S3 (content-addressed). Sustituye
+// al window.print() del botón, que en iOS y en navegadores in-app (app de Google, Instagram,
+// Facebook…) no descargaba nada: el botón decía "Imprimir PDF" y no producía ningún PDF. De ahí
+// salieron 3 tickets de soporte en un solo día (16/07: María, Sonia, Mónica).
 //
 // ACCESO: pública, igual que la página del tema (la teoría está indexada en SEO y el
 // "regístrate para imprimir" del botón es captación de leads, no un control de seguridad).
@@ -11,20 +11,37 @@
 // (La regla anti-scraping del proyecto protege `correct_option` de las PREGUNTAS, que aquí
 // no interviene: el PDF solo lleva articulado legal.)
 //
-// Motor: @react-pdf/renderer (JS puro), no Chromium headless — ver TopicPdfDocument.tsx.
+// ## Por qué esta ruta NO renderiza (T-159/T-270 Fase 2, decidido por Manuel el 06/08/2026)
+//
+// Hasta el 29/07 renderizaba EN LÍNEA con @react-pdf/renderer + pdf-lib, JS puro y CPU pura
+// dentro del proceso que sirve tráfico. El 29/07 eso tumbó el guardado de TODAS las respuestas de
+// TODOS los usuarios durante 18 minutos (event-loop bloqueado 215 s, `answer-and-save` a p95 25 s,
+// ver `docs/ARCHITECTURE_ROADMAP.md` → «Incidente 2026-07-29»). Node es monohilo: un tema de 760
+// páginas bloquea la task entera, y no hay forma de aislar ESE render dentro del MISMO contenedor
+// sin infraestructura de build nueva y sin precedente (`tsx`, con el que el worker aísla su
+// propio render en un proceso hijo, es una devDependency ausente del `runner` que sirve tráfico —
+// medido en T-159/T-270; ver el análisis del `worker_threads` descartado, que exigiría un paso de
+// bundling que Next.js no hace hoy y que no se puede verificar sin un `next build` + deploy real).
+//
+// La decisión: el render se hace ENTERO fuera de esta ruta — lo hace `vence-temario-pdf-worker`
+// (imagen propia, 2 vCPU, fuera del ALB — ver `scripts/pdf-worker.ts`). Esta ruta solo: (1) sirve
+// desde caché si ya existe, (2) si no, ENCOLA el tema para el worker y responde 503 al instante.
+// Mismo patrón que ya usaba (y sigue usando) el camino de los temas DEMASIADO GRANDES desde el
+// 30/07 — aquí se extiende a CUALQUIER miss de caché, no solo a los que no caben síncronos.
+// El cliente (`TopicPrintButton.tsx`) ya degrada un 503 a `window.print()`: cero cambios de cliente.
+//
+// Coste real, con nombre: el primer usuario que pide un tema recién tocado (o de los ~93% que
+// [T-159] pieza (c) todavía no siembra) recibe la impresión del navegador en su primer intento, no
+// el PDF con maquetación — el mismo trato que ya recibían los temas de ofimática desde el 30/07.
+// El PDF de verdad queda listo para la siguiente visita, en cuanto el worker lo procese.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
-import React from 'react'
-import { getTopicContent, getLawSectionNames } from '@/lib/api/temario/queries'
+import { getTopicContent } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
-import { buildTopicPdfModel, pdfFileName, countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS } from '@/lib/temario/pdf/topicPdfModel'
+import { pdfFileName, countContentChars, maxArticleChars, fitsSyncPdf, PDF_MAX_CHARS, PDF_MAX_ARTICLE_CHARS } from '@/lib/temario/pdf/topicPdfModel'
 import { topicPdfContentHash, topicPdfCacheKey, TOPIC_PDF_BUCKET } from '@/lib/temario/pdf/pdfCache'
-import { getRenderSemaphore, waitMsFromEnv } from '@/lib/temario/pdf/renderSemaphore'
 import { S3StorageAdapter } from '@/lib/storage/s3-adapter'
 import { emitFireAndForget } from '@/lib/observability/emit'
-import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
-import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
 import { INSTANCE_ID } from '@/lib/observability/instanceId'
 import { isPdfPartesEnabledFor } from '@/lib/temario/pdf/flagPartes'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -37,9 +54,10 @@ import { getUserPlanType } from '@/lib/referrals/queries'
 import { isPremiumPlan } from '@/lib/premium/isPremiumPlan'
 
 export const dynamic = 'force-dynamic'
-// Un tema es 21 páginas de mediana, pero la cola pesa (p95 = 178, máximo 760).
-// 60 s da margen al peor caso sin dejar la request colgada indefinidamente.
-export const maxDuration = 60
+// Ya no renderiza nada: lo único que puede tardar es la descarga de S3. El límite viejo (60 s,
+// dimensionado para el peor caso de render) era generoso para esto, pero se deja bajo a propósito
+// para que un S3 lento tampoco pueda colgar la request.
+export const maxDuration = 15
 
 /**
  * Encola un tema que no cabe entero, para que el worker lo deje troceado en S3 (T-273).
@@ -156,19 +174,7 @@ async function handler(
     : pdfFileName(oposicion, topicNumber)
   const storage = new S3StorageAdapter()
 
-  // Coste de CPU de ESTA petición. Se rellena solo en el camino que renderiza; en un acierto
-  // de caché queda a 0, que es justo la distinción que hay que poder medir.
-  //
-  // Por qué se instrumenta aquí y no basta con `request_completed` (T-270, 29/07): ese evento
-  // está MUESTREADO al 10% para 2xx (`SUCCESS_TIMING_SAMPLE_RATE`), así que de un incidente de
-  // 18 minutos solo sobreviven un puñado de duraciones — con eso no se puede calibrar cuánto
-  // bloquea realmente un render. `temario_pdf_served` NO se muestrea: se emite en cada petición.
-  // Y el `instanceId` dice en QUÉ task cayó, que es lo que decide si el daño se reparte o se
-  // concentra; sin él, 36 renders repartidos entre 12 tasks y 36 sobre la misma son el mismo
-  // número y no el mismo incidente.
-  const cpu = { renderMs: 0, stampMs: 0 }
-
-  const emitServed = (source: 's3' | 'generated' | 'too_large', bytes: number) =>
+  const emitServed = (source: 's3' | 'encolado' | 'too_large', bytes: number) =>
     emitFireAndForget({
       source: 'fargate', severity: 'info', eventType: 'temario_pdf_served',
       endpoint: '/api/temario/[oposicion]/[topic]/pdf',
@@ -181,14 +187,13 @@ async function handler(
         // —tiene puerta premium— y el cero era un artefacto: el emisor nunca ponía el campo.
         // Un evento sin actor obliga a adivinar quién, y adivinar sale caro.
         userId: userId ?? null,
-        renderMs: cpu.renderMs, stampMs: cpu.stampMs, cpuMs: cpu.renderMs + cpu.stampMs,
         instanceId: INSTANCE_ID,
         parte: parteInfo ? `${parteInfo.indice}/${parteInfo.total}` : null,
       },
     })
 
-  const pdfResponse = (bytes: Uint8Array, source: 's3' | 'generated') => {
-    emitServed(source, bytes.length)
+  const pdfResponse = (bytes: Uint8Array) => {
+    emitServed('s3', bytes.length)
     return new NextResponse(bytes, {
       status: 200,
       headers: {
@@ -197,25 +202,24 @@ async function handler(
         'Content-Disposition': `attachment; filename="${fileName}"`,
         'Content-Length': String(bytes.length),
         'Cache-Control': 'public, max-age=3600, s-maxage=3600',
-        'X-Pdf-Source': source, // observabilidad/debug: de dónde salió el PDF
+        'X-Pdf-Source': 's3', // observabilidad/debug: siempre S3 — la ruta ya no genera nada
       },
     })
   }
 
   // 1) CACHÉ S3 (content-addressed, ver pdfCache.ts): si existe el PDF pre-generado de ESTE
-  //    contenido exacto, servirlo → instantáneo y SIN el límite de 60s del ALB. Esto es lo
-  //    que hace descargables los temas GRANDES (Access/ofimática): se generan offline y se
-  //    sirven de aquí. Un fallo de S3 NO rompe nada: cae al camino síncrono de abajo.
+  //    contenido exacto, servirlo → instantáneo y SIN el límite de tiempo del ALB. Es la ÚNICA
+  //    forma en que esta ruta sirve un PDF de verdad — ver la cabecera del fichero.
   const cached = await storage.download({ bucket: TOPIC_PDF_BUCKET, path: cacheKey }).catch(() => null)
   if (cached && cached.success) {
-    return pdfResponse(new Uint8Array(cached.data), 's3')
+    return pdfResponse(new Uint8Array(cached.data))
   }
 
-  // 2) MISS de caché → guardarraíl de tamaño. Un tema que no cabe síncrono Y no está
-  //    pre-generado → 413 (el cliente cae a imprimir). DOS techos: total (PDF_MAX_CHARS) Y
-  //    por-artículo (PDF_MAX_ARTICLE_CHARS) — el total no basta (caso Julen, T19 = 334k total
-  //    pero un artículo-cajón de 89k que 504ea; el por-artículo lo reconvierte a 413 gracioso).
-  //    Los temas grandes SE ARREGLAN pre-generándolos offline (pueblan la caché de arriba).
+  // 2) MISS de caché → guardarraíl de tamaño. Un tema que no cabe en un PDF síncrono (el worker
+  //    SÍ lo genera, pero necesita saber cuándo ofrecer partes en su lugar) → 413. DOS techos:
+  //    total (PDF_MAX_CHARS) Y por-artículo (PDF_MAX_ARTICLE_CHARS) — el total no basta (caso
+  //    Julen, T19 = 334k total pero un artículo-cajón de 89k que 504ea; el por-artículo lo
+  //    reconvierte a 413 gracioso).
   if (!fitsSyncPdf(chars, maxArt)) {
     // AUTO-CURACIÓN (T-273/T-159): encolar el tema para que el worker lo prepare.
     //
@@ -267,72 +271,19 @@ async function handler(
     )
   }
 
-  // 2.bis) CONTENCIÓN (T-270 Fase 1): un render cuesta 7,2 s de CPU MEDIDOS y Node es monohilo,
-  //    así que dos a la vez no van en paralelo: se entrelazan y duplican el tiempo que TODOS los
-  //    demás usuarios esperan. El 29/07 llegaron 36 renders frescos en 18 min y el resultado fue
-  //    el bucle de eventos bloqueado 215 s, `answer-and-save` a p95 25 s y 59 respuestas de
-  //    usuarios sin guardar. Se espera un rato acotado a que la task se libere y, si no, se
-  //    SUELTA CARGA: mejor que este PDF pida reintento a que se caiga el guardado de respuestas
-  //    de todo el mundo. Desaparece con la Fase 2 (encolar + servir de S3).
-  const sem = getRenderSemaphore()
-  const tEspera = Date.now()
-  const slot = await sem.acquire(waitMsFromEnv())
-  const esperaMs = Date.now() - tEspera
-  if (!slot) {
-    emitFireAndForget({
-      source: 'fargate', severity: 'warn', eventType: 'temario_pdf_render_shed',
-      endpoint: '/api/temario/[oposicion]/[topic]/pdf',
-      metadata: {
-        oposicion, tema: topicNumber, chars, userId, instanceId: INSTANCE_ID,
-        enVuelo: sem.inFlight(), techo: sem.max(), esperaMs,
-      },
-    })
-    return NextResponse.json(
-      { error: 'pdf_en_preparacion', reintentarEnSegundos: 30 },
-      { status: 503, headers: { 'Retry-After': '30' } },
-    )
-  }
-
-  try {
-
-  // 3) Generar síncrono + POBLAR la caché S3 para la próxima (best-effort: si S3 falla, se
-  //    sirve igual el PDF recién hecho; nunca bloquea al usuario).
-  const lawIds = (content.laws || []).map(l => l.law.id).filter(Boolean)
-  const sectionNames = await getLawSectionNames(lawIds)
-  const model = buildTopicPdfModel(content, new Date(), sectionNames)
-  const doc = React.createElement(TopicPdfDocument, { model }) as React.ReactElement<DocumentProps>
-  const tRender = Date.now()
-  const rawBuffer = await renderToBuffer(doc)
-  cpu.renderMs = Date.now() - tRender
-
-  // Post-proceso: estampar nº de página + título del tema (pdf-lib). Mismo helper que el worker →
-  // resultado idéntico. DEGRADA: si falla, se sirve el PDF sin chrome y se registra un warn.
-  let buffer: Buffer = rawBuffer
-  try {
-    const tStamp = Date.now()
-    const stamped = await stampTopicPdfChrome(rawBuffer, { footer: model.footer, title: model.title })
-    cpu.stampMs = Date.now() - tStamp
-    buffer = Buffer.from(stamped.bytes)
-    // `pages` vive aquí y el coste de CPU también: juntos dan la relación páginas↔ms que hoy no
-    // existe y sin la cual el umbral de «esto se encola» sería un número elegido a ojo.
-    emitFireAndForget({ source: 'fargate', severity: 'info', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, pages: stamped.pageCount, chars, renderMs: cpu.renderMs, stampMs: cpu.stampMs, instanceId: INSTANCE_ID } })
-  } catch (e) {
-    emitFireAndForget({ source: 'fargate', severity: 'warn', eventType: 'temario_pdf_stamped', endpoint: '/api/temario/[oposicion]/[topic]/pdf', metadata: { oposicion, tema: topicNumber, outcome: 'stamp_failed', error: e instanceof Error ? e.message : 'desconocido' } })
-  }
-
-  void storage.upload({
-    bucket: TOPIC_PDF_BUCKET, path: cacheKey, data: buffer, contentType: 'application/pdf',
-    // Immutable: la clave es content-addressed, así que este objeto nunca cambia.
-    cacheControl: 'public, max-age=31536000, immutable',
-  }).catch(() => {})
-
-  return pdfResponse(new Uint8Array(buffer), 'generated')
-
-  } finally {
-    // El slot se devuelve SIEMPRE: un error a medio render que se quedara el slot dejaría la
-    // task sin poder generar ni un PDF más hasta el siguiente despliegue.
-    slot.release()
-  }
+  // 3) Cabe en un PDF, pero no está pre-generado: ENCOLAR para el worker y responder al instante.
+  //    Esta ruta ya no renderiza nada — ver la cabecera del fichero (T-159/T-270 Fase 2,
+  //    decidido por Manuel 06/08/2026). Mismo `encolarParaElWorker` que el camino de arriba;
+  //    dedup por `content_hash` así que pedir el mismo tema muchas veces no crea trabajo de más.
+  //    `Retry-After` en segundos REALES (la cadencia del worker es cada 30 min, no cada 30 s —
+  //    prometer un número falso sería peor que no prometer nada): el cliente hoy no lo lee y
+  //    degrada a `window.print()` de inmediato, pero un consumidor futuro sí podría fiarse de él.
+  encolarParaElWorker(oposicion, topicNumber, contentHash, chars, userId)
+  emitServed('encolado', 0)
+  return NextResponse.json(
+    { error: 'pdf_en_preparacion', reintentarEnSegundos: 1800 },
+    { status: 503, headers: { 'Retry-After': '1800' } },
+  )
 }
 
 export const GET = withErrorLogging('/api/temario/[oposicion]/[topic]/pdf', handler as never)

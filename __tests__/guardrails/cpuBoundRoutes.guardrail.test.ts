@@ -48,12 +48,6 @@ const MOTORES_CPU = ['@react-pdf/renderer', 'pdf-lib'] as const
  * parar la task que la sirve.
  */
 const EXCEPCIONES: Record<string, { ficha: string; motivo: string }> = {
-  'app/api/temario/[oposicion]/[topic]/pdf/route.ts': {
-    ficha: 'T-270',
-    motivo:
-      'Incidente 2026-07-29: renderiza el PDF en línea en el contenedor que sirve. Pendiente de ' +
-      'encolar al worker (que ya existe y está aislado) y servir desde la caché S3.',
-  },
   'app/api/admin/temario/pregenerate/route.ts': {
     ficha: 'T-270',
     motivo:
@@ -133,12 +127,22 @@ describe('Ninguna ruta servida renderiza CPU-bound en línea (incidente 2026-07-
     expect(infractoras).toEqual([])
   })
 
-  it('CAZA el caso real: la ruta del incidente sí alcanza el motor (vía lib, no directo)', () => {
-    // Si esta comprobación se pusiera verde, sería que el detector dejó de seguir los imports en
-    // profundidad — y entonces las dos de arriba pasarían por vacías, no por limpias.
-    const ruta = join(RAIZ, 'app/api/temario/[oposicion]/[topic]/pdf/route.ts')
+  it('CAZA el caso que queda: pregenerate sí alcanza el motor (vía lib, no directo)', () => {
+    // Si esta comprobación se pusiera verde (null), sería que el detector dejó de seguir los
+    // imports en profundidad — y entonces las dos de arriba pasarían por vacías, no por limpias.
+    const ruta = join(RAIZ, 'app/api/admin/temario/pregenerate/route.ts')
     expect(existsSync(ruta)).toBe(true)
     expect(alcanzaMotorCpu(ruta)).not.toBeNull()
+  })
+
+  it('T-159/T-270 Fase 2 (06/08): la ruta PÚBLICA del incidente ya NO alcanza ningún motor CPU', () => {
+    // Esta es la comprobación positiva de que el incidente se cerró de verdad: no "está en la
+    // lista de excepciones con buena prosa", sino que el propio detector —el mismo que lo cazó el
+    // 29/07— ya no encuentra nada que cazar aquí. Si algún día alguien reintroduce el render en
+    // línea, este test es el primero en ponerse rojo, antes incluso de tocar `EXCEPCIONES`.
+    const ruta = join(RAIZ, 'app/api/temario/[oposicion]/[topic]/pdf/route.ts')
+    expect(existsSync(ruta)).toBe(true)
+    expect(alcanzaMotorCpu(ruta)).toBeNull()
   })
 
   it('cada excepción declara ficha y motivo', () => {
