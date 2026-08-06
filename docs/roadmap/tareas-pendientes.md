@@ -1048,6 +1048,7 @@ resolver su estado — el espejo de la regla que [T-486] puso para `review_reque
 inflaba el recuento a 427). Solo una es accionable: `03298846` (Marta, hace 14 días) preguntando si
 Ctrl+Mayús+A varía según la versión de Word. Las otras dos son un agradecimiento (cierre silencioso)
 y una de hace 4 meses (no se reenvía).
+
 ### [T-611] 🟡 [ABIERTO 06/08] Los 131 `TopicContentView` son 131 copias del mismo componente: unificarlas y cerrar el bucle temario→test→artículo que reportó Ángela
 
 **De dónde sale.** Feedback `f57e3001` de **Ángela P.** (premium, `auxiliar_administrativo_valencia`,
