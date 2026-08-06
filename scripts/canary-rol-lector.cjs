@@ -60,6 +60,12 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-613] verificar que archive-interactions baja de verdad el atraso de filas fuera de
+  // retención: sin esto, `SELECT count(*) FROM user_interactions WHERE created_at < …` da 0
+  // SIEMPRE (RLS sin política), indistinguible de "ya no queda atraso". Ver
+  // 20260806_rls_user_interactions_lector.sql.
+  ['user_interactions', 'el atraso real del drenador archive-interactions'],
+  ['user_interactions_archive', 'lo ya archivado, para comprobar que el drenador mueve filas de verdad'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
