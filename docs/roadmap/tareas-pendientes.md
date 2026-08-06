@@ -1816,12 +1816,81 @@ anterior), así un «10.» que aparece antes de que toque el 10 no puede confund
 cualquier boletín que no parsee: los temarios están llenos de «Windows 10», «Office 2021»,
 «R.D. 822/2021».
 
+#### ✅ PASO 2 HECHO PARA 16 DE LOS 18 TEMAS RESTANTES (06/08, w3) — pipeline `verify:scope`, 2 agentes + juez, anclado a BOE
+
+**MEDIDO, no de la ficha: el estado real de Paso 2 antes de empezar** (`topic_scope_verification`,
+consultado contra RDS con `VENCE_LECTOR_URL`) NO era «18 sin Paso 1» — eso ya lo cerró la sesión
+de esta misma noche (bloque de arriba). Era: **T2 y T5 `verified_correct`** (pipeline real); **T1 y
+T3 `stale`** (el propio recorte del Tema 3 invalidó su verificación anterior por trigger); **T4
+`needs_human`**; y **T6-T21 (16 temas) `never_verified`**, degradados por [T-518] al descubrir que
+su sello `verified_correct` no venía del pipeline real (`verified_by='claude_direct'` o
+`agent_run_id` vacío/`--run'`) — es decir, un verde que no respaldaba nada.
+
+**Corrida la doble verificación (`verify-scope-oposicion`, analista+escéptico independientes +
+juez si discrepan, ambos anclados al BOE consolidado vía WebSearch/WebFetch) sobre los 16 temas
+verificables contra el BOE** (T19/T20/T21 quedan fuera a propósito: son leyes editoriales de
+informática, no del BOE — el pipeline las declara `na_editorial` por diseño, ver [T-634] para lo
+que SÍ encontré mirándolas). **33 agentes, 0 errores, ~385s.** Resultado: **10 de 16 ya estaban
+correctos** (T6, T7, T9, T10, T12, T13, T14, T15, T16, T17 — sin quitar ni añadir, algunos
+descartando explícitamente el pre-filtro de sobre-inclusión como falso positivo tras mapear el
+epígrafe a títulos con cifras exactas, p.ej. T17 con 4 fuentes independientes). **6 con cambios**,
+llevados por `verify:scope plan` (umbral impacto 150) a **6 auto_safe / 0 en puerta de juicio**:
+
+| Tema | Ley | Quitar | Añadir | Impacto (preg. que dejan de servirse) | Confianza |
+|---|---|---|---|---|---|
+| T1 | Ley 39/2015 | 127,128,129 (Título VI, potestad reglamentaria — el epígrafe solo pide Títulos I-V) | — | 47 | media |
+| T3 | LO 3/2007 | 1,2 (Título Preliminar — el epígrafe empieza literalmente en "Título I") | — | 23 | media |
+| T4 | LO 3/2018 | 1,2,3 (Título I — el epígrafe solo pide Título II y III) | — | 82 | alta |
+| T8 | LOSU | 29,30 (Título VII, internacionalización — el epígrafe pide Títulos V/VIII/IX) | — | 2 | alta |
+| T11 | Títulos Propios ULE | — | 6,7,8,14,15,16 (secciones que faltaban de la norma completa) | 0 (solo gana) | media* |
+| T18 | Presupuesto ULE | — | 1-74 completo (scope estaba en NULL="toda la ley" sin materializar) | 0 (solo gana) | media* |
+
+**\*T11 y T18 con caveat explícito, no lo escondo:** el PDF fuente primario de ambas (transparencia/
+normativa de la ULE) está bloqueado por un anti-bot (Anubis) — ni los 2 agentes ni yo pudimos leerlo
+directo. T11 se apoya en dos reproducciones íntegras coincidentes de CSIF (no es el BOCYL original,
+es una fuente sindical que lo reproduce). T18 tuvo DISCREPANCIA real entre los dos verificadores
+(uno decía cierre en el art. 74, otro en el 86) y el juez falló por el 74 con 2 fuentes secundarias
+independientes apuntando al mismo cierre — pero él mismo recomienda «verificar el índice exacto
+contra el PDF oficial antes de dar el scope por definitivamente cerrado». Mecánicamente son seguras
+de aplicar (`impacto=0`: al ser solo `añadir`, no le quitan nada a nadie que ya se sirva hoy), pero
+la lista exacta de qué se añade descansa en fuente secundaria — dejo la duda escrita, no vestida de
+certeza.
+- **⚠️ Y una comprobación de fondo que hice explícitamente por el gotcha ya documentado en este
+  mismo pipeline (comentario en `verify-topic-scope.cjs`, incidente real del 26/07 con 1.271
+  preguntas perdidas en 8 recortes que pasaron el gate como inocuos):** el scope de T18
+  (`Presupuesto ULE`) está en **`article_numbers=NULL`** (="toda la ley", NO vacío — la trampa
+  exacta que ese incidente destapó). El cálculo de `impacto` de `enrichChange` YA distingue esto
+  (`sirve(sRow.arts === null ? null : cur)`), así que el "0 preg" de la tabla de arriba es de
+  fiar: no hay ARTÍCULOS que la ley sirva hoy con preguntas reales fuera del 1-74 propuesto.
+- **Corroboración cruzada con una investigación previa E INDEPENDIENTE:** el veredicto de T1
+  (quitar 127-129) coincide EXACTO con un hallazgo ya registrado en `topic_scope_verification` del
+  04/08 (`impugnacion 0b9d9f56`, sesión distinta, mismo dato: `sobra_titulo_vi:["127","128","129"]`)
+  que nunca se había llegado a aplicar. Dos investigaciones separadas, mismo resultado.
+- **Artefactos guardados (no solo en la ficha):**
+  `scratchpad/verify-scope-auxiliar_administrativo_universidad_leon-propuestas-06ago.json`
+  (las 16 verificaciones completas con su razonamiento y cita BOE) y
+  `-plan-06ago.json` (el plan ya enriquecido con impacto/clasificación, listo para `apply`).
+- **⏭️ NO APLICADO — fuera de mi alcance como trabajador de la flota:** `verify:scope apply` escribe
+  en `topic_scope` (tabla de negocio); mi `DATABASE_URL` es de coordinación (4 tablas) y
+  `VENCE_LECTOR_URL` es solo lectura — permission denied garantizado, y aunque no lo fuera, la regla
+  de este turno es no escribir en negocio. **Para aplicar:**
+  ```
+  node scripts/verify-topic-scope.cjs apply auxiliar_administrativo_universidad_leon --dry-run
+  node scripts/verify-topic-scope.cjs apply auxiliar_administrativo_universidad_leon
+  ```
+  (usa el plan ya generado en `/tmp` o regenéralo con `plan` desde el propuestas.json de
+  `scratchpad/`; `apply` hace recache MV + purga rutas + `record_topic_verification` solo, todo en
+  una transacción). Antes de aplicar T11/T18 con `--include-gate` no hace falta — quedaron
+  `auto_safe`, no en la puerta — pero SÍ merece un vistazo humano a la fuente antes de darlos por
+  cerrados, por el caveat de arriba.
+
 #### Lo que queda, y por qué es una ficha y no un apartado del cierre
 
-**18 de los 21 temas de esta oposición siguen en `never_sourced`.** O sea: lo arreglado es el tema
-por el que alguien se quejó, y los otros 18 están exactamente igual de sin contrastar que estaba
-éste. Con un scope «ley entera» como el que había, cada uno es un candidato a servir materia fuera
-de programa — y solo nos enteramos cuando un usuario lo nota.
+**18 de los 21 temas de esta oposición seguían en `never_sourced` cuando se abrió esta ficha; 16
+ya tienen Paso 2 hecho (arriba). Quedan T19/T20/T21** (informática/ofimática, fuera del pipeline
+por diseño — T20 SÍ tiene un defecto real, pero de otra clase: ver [T-634]) **y aplicar el plan de
+arriba**, que no puedo hacer yo. Con eso, el ciclo completo de esta oposición (Paso 1 + Paso 2)
+queda cerrado.
 
 **Esto ya pasó aquí:** [T-556] (05/08, HECHA) arregló el defecto CONTRARIO en esta MISMA oposición
 — allí FALTABAN los arts. 2-4 de la Ley 19/2013 (15 preguntas sin servir) — y su propia ficha dejó
@@ -1833,7 +1902,8 @@ identificado y es uno solo para toda la oposición), y después Paso 2 del scope
 automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia a mano del Anexo II.
 
 **Relacionadas:** [T-556] (misma oposición, defecto contrario, misma causa raíz), [T-518] (el Paso 2
-sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
+sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente), [T-634] (defecto
+distinto encontrado de paso en el Tema 20 al hacer el Paso 2).
 
 ### [T-628] 🔴 [ABIERTO 06/08] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
 

@@ -1,0 +1,502 @@
+[
+ {
+  "tema": 1,
+  "title": "Ley 39/2015: el procedimiento administrativo común (Títulos I-V)",
+  "status": "consenso",
+  "confianza": "media",
+  "veredicto": [
+   {
+    "ley": "Ley 39/2015",
+    "quitar": [
+     127,
+     128,
+     129
+    ],
+    "anadir": [],
+    "razon": "Mapeo confirmado contra BOE consolidado (BOE-A-2015-10565): Título Preliminar arts.1-2; Título I (interesados) arts.3-12; Título II (actividad AAPP) arts.13-33; Título III (actos administrativos) arts.34-52; Título IV (disposiciones sobre procedimiento) arts.53-105; Título V (revisión en vía administrativa) arts.106-126; Título VI (iniciativa legislativa y potestad reglamentaria) arts.127-133. El epígrafe oficial enumera EXPLÍCITAMENTE solo Títulos I a V ('Título I: De los interesados... Título V: De la revisión de los actos en vía administrativa'), sin mencionar el Título VI. Los arts. 127, 128 y 129 del scope pertenecen al Título VI ('De la iniciativa legislativa y de la potestad para dictar reglamentos y otras disposiciones administrativas'), materia distinta (potestad normativa/reglamentaria) que no figura en el epígrafe → sobre-inclusión clara, se quitan. Los arts. 1-2 (Título Preliminar: objeto y ámbito subjetivo) tampoco aparecen nombrados literalmente en el epígrafe, pero son artículos fundacionales/definitorios muy breves y hay precedente en el propio backlog (docs/roadmap/tareas-pendientes.md) de que estos casos se tratan con cautela; ante la duda, conservador y NO se quitan, bajando la confianza a media."
+   }
+  ]
+ },
+ {
+  "tema": 3,
+  "title": "Igualdad efectiva de mujeres y hombres (LO 3/2007)",
+  "status": "consenso",
+  "confianza": "media",
+  "veredicto": [
+   {
+    "ley": "LO 3/2007",
+    "quitar": [
+     1,
+     2
+    ],
+    "anadir": [],
+    "razon": "Verificado contra BOE consolidado (boe.es/eli/es/lo/2007/03/22/3/con; confirmado además en Iberley y noticias.jurídicas): Título Preliminar = arts.1-2 (objeto y ámbito); Título I 'El principio de igualdad y la tutela contra la discriminación' = arts.3-13 (COMPLETO, coincide con scope 3-35 inicial); Título II 'Políticas públicas para la igualdad' = arts.14-35 (Cap.I 14-22, Cap.II 23-35, COMPLETO); Título III (medios comunicación, 36-41) correctamente ausente del scope; Título IV 'Derecho al trabajo en igualdad' = arts.42-50 (Cap.I 42-43, Cap.II 44, Cap.III 45-49, Cap.IV 50, COMPLETO, coincide con scope 42-50); Título V Cap.I-III 'Principio de igualdad en empleo público' = arts.51-64 (Cap.I 51, Cap.II 52-54, Cap.III 55-64, COMPLETO; Cap.IV 65-66 Fuerzas Armadas y Cap.V 67-68 Fuerzas y Cuerpos de Seguridad correctamente EXCLUIDOS por el epígrafe que solo pide caps I,II,III); Título VI (69-72, bienes y servicios) y Título VII (73-75, responsabilidad social empresarial) correctamente ausentes; Título VIII 'Disposiciones organizativas' = arts.76-78 (Comisión Interministerial, Unidades de Igualdad, Consejo de Participación de la Mujer), COMPLETO, coincide exactamente con el scope (76,77,78) — verificado además vía WebSearch que el art.75 (participación en consejos de administración) pertenece a Título VII, no VIII, así que NO falta nada ahí. Único desajuste: el scope incluye arts.1 y 2 (Título Preliminar: objeto/ámbito de la Ley) que el epígrafe NO enumera (empieza explícitamente en 'Título I'), a diferencia de Títulos III, VI y VII que sí están correctamente excluidos. Se marca 'quitar' con confianza media por ser el único punto interpretable (son artículos definitorios de objeto/ámbito, no artículo 0/preámbulo)."
+   }
+  ]
+ },
+ {
+  "tema": 4,
+  "title": "Protección de Datos: principios y derechos (LO 3/2018)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "LO 3/2018",
+    "quitar": [
+     1,
+     2,
+     3
+    ],
+    "anadir": [],
+    "razon": "BOE consolidado (BOE-A-2018-16673): Título I 'Disposiciones generales' = arts. 1-3 (Objeto, Ámbito de aplicación, Datos de personas fallecidas) — NO pedido por el epígrafe. Título II 'Principios de protección de datos' = arts. 4-10 (Exactitud, Confidencialidad, Consentimiento, Consentimiento de menores, Tratamiento por obligación legal/interés público, Categorías especiales, Datos de naturaleza penal). Título III 'Derechos de las personas' = arts. 11-18 (Cap. I Transparencia: art. 11; Cap. II Ejercicio de los derechos: arts. 12-18 acceso/rectificación/supresión/limitación/portabilidad/oposición). El epígrafe solo cita Título II y Título III, por lo que los arts. 1-3 (Título I) sobran; 4-18 quedan completos y correctos."
+   }
+  ]
+ },
+ {
+  "tema": 6,
+  "title": "Prevención de Riesgos Laborales: derechos y obligaciones (Ley 31/1995)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "LPRL",
+    "quitar": [],
+    "anadir": [],
+    "razon": "Epígrafe pide 'Capítulo III: Derechos y Obligaciones' de la Ley 31/1995. Según el índice consolidado del BOE (BOE-A-1995-24292), el Capítulo III comprende exactamente los artículos 14 a 29 (14 Derecho a la protección frente a riesgos laborales ... 29 Obligaciones de los trabajadores en materia de prevención de riesgos), y el Capítulo IV 'Servicios de prevención' empieza en el art. 30. El scope actual [14-29] coincide exactamente con el rango oficial; no sobra ni falta ningún artículo."
+   }
+  ]
+ },
+ {
+  "tema": 7,
+  "title": "LOSU (I): funciones, autonomía, estructura y enseñanzas",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "LOSU",
+    "quitar": [],
+    "anadir": [],
+    "razon": "Epígrafe pide Título preliminar + Títulos I-IV. Estructura oficial BOE-A-2023-7500 (consolidado): Tít. Preliminar=art.1; Tít. I (Funciones y autonomía)=arts.2-3; Tít. II (Creación/reconocimiento y calidad)=arts.4-5; Tít. III (Organización de enseñanzas)=arts.6-10; Tít. IV (Investigación y transferencia)=arts.11-13; Tít. V (Cooperación...) empieza en el art.14, fuera del epígrafe. Scope actual [1-13] coincide exactamente, sin sobrantes ni faltantes."
+   }
+  ]
+ },
+ {
+  "tema": 8,
+  "title": "LOSU (II): personal, régimen y garantías",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "LOSU",
+    "quitar": [
+     29,
+     30
+    ],
+    "anadir": [],
+    "razon": "Verificado contra BOE-A-2023-7500 (texto consolidado, PDF oficial). Título V (Cooperación, coordinación y participación) = arts 14-17 ✓ presentes. Título VIII (El estudiantado en el Sistema Universitario) = arts 31-37 ✓ presentes completos. Título IX (Régimen específico de las universidades públicas, Caps. I-V) = arts 38-94 ✓ presentes completos (Cap I 38-43, Cap II 44-52, Cap III 53-63, Cap IV 64-88 con Secc. 1ª-3ª, Cap V 89-94). Los arts 29 y 30 del scope pertenecen al Título VII (Internacionalización del sistema universitario, arts 23-30: art.29 'Centros en el extranjero', art.30 'Cooperación internacional universitaria para la solidaridad y el desarrollo'), que NO está nombrado en el epígrafe de este tema — deben quitarse. No falta ningún artículo por añadir."
+   }
+  ]
+ },
+ {
+  "tema": 9,
+  "title": "Organización de las enseñanzas universitarias (RD 822/2021)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "RD 822/2021",
+    "quitar": [],
+    "anadir": [],
+    "razon": "BOE-A-2021-15781 (RD 822/2021, texto consolidado). Verificado con dos fuentes independientes (índice BOE act.php e Iberley), que coinciden en los límites de capítulo: Cap. II 'Organización de las enseñanzas universitarias' = arts. 3-12; Cap. III 'Enseñanzas de Grado' = arts. 13-15; Cap. IV 'Enseñanzas de Máster' = arts. 16-18; Cap. V 'Enseñanzas de Doctorado' = arts. 19-20; Cap. VI 'Estructuras curriculares específicas...' = arts. 21-24; Cap. VII 'Procedimientos de aseguramiento de calidad' (arts. 25-35, NO pedido por el epígrafe, no está en scope, correcto); Cap. VIII 'Enseñanzas propias' = arts. 36-37. Unión de los capítulos pedidos (II+III+IV+V+VI+VIII) = {3-24, 36-37}, que coincide EXACTAMENTE con el scope actual (24 artículos). No sobra ni falta nada."
+   }
+  ]
+ },
+ {
+  "tema": 10,
+  "title": "Enseñanzas oficiales de doctorado (RD 99/2011)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "RD 99/2011 Doctorado",
+    "quitar": [],
+    "anadir": [],
+    "razon": "El epígrafe cita el RD 99/2011 completo, sin restringir a títulos/capítulos concretos ('por el que se regulan las enseñanzas oficiales de doctorado'), por lo que corresponde cargar todo su articulado. Según el índice consolidado BOE (BOE-A-2011-2541), el RD tiene los artículos 1 a 16 (más 14 bis y 15 bis, introducidos por RD 534/2013, no representables como enteros en este esquema). El scope actual [1..16] cubre exactamente el rango numérico principal del articulado, sin arts fuera de rango ni huecos numéricos. No se propone quitar ni añadir."
+   }
+  ]
+ },
+ {
+  "tema": 11,
+  "title": "Normativa de títulos propios de la Universidad de León",
+  "status": "consenso",
+  "confianza": "media",
+  "veredicto": [
+   {
+    "ley": "Títulos Propios ULE",
+    "quitar": [],
+    "anadir": [
+     6,
+     7,
+     8,
+     14,
+     15,
+     16
+    ],
+    "razon": "El epígrafe 'Normativa reguladora de las enseñanzas conducentes a la obtención de títulos propios de la ULE' coincide literalmente con el título de la norma completa (no restringe a una sección/capítulo concreto), por lo que debe cubrir TODA la normativa. Índice verificado por dos fuentes independientes (CSIF, reproduciendo el texto de las modificaciones BOCYL 08/06/2022 y 17/10/2024, ambas con la misma estructura de 18 artículos): Sección Primera 'Ámbito y definición de las enseñanzas propias' (Art.1 Ámbito de aplicación, Art.2 Enseñanza de formación permanente que requiere titulación previa, Art.3 que no requiere titulación previa, Art.4 Microcredenciales/micromódulos, Art.5 Procedimiento de implantación, Art.6 Renovación, Art.7 Extinción); Sección Segunda 'Régimen académico y administrativo' (Art.8 Gestión y organización, Art.9 Tasas, Art.10 Derechos de los estudiantes, Art.11 Profesorado, Art.12 Remuneración y reconocimiento de la docencia, Art.13 Memoria para la solicitud del título, Art.14 Informes de seguimiento de actividades, Art.15 Sistema de garantía de calidad, Art.16 Publicidad); Sección Tercera 'Expedición y registro' (Art.17 Expedición de los títulos, Art.18 Inscripción de los títulos); más disposiciones finales/adicional/transitoria/derogatoria (no articuladas) y Anexo I. El scope actual [1,2,3,4,5,9,10,11,12,13,17,18,preámbulo] cubre correctamente los que ya tiene y ninguno sobra, pero le faltan Art.6, 7 (Renovación/Extinción, Sección Primera), Art.8 (Gestión y Organización, Sección Segunda) y Art.14, 15, 16 (Informes de seguimiento, Sistema de garantía de calidad, Publicidad, Sección Segunda) — todos dentro del ámbito que el epígrafe (norma completa) exige. No se pudo acceder al PDF oficial directo de unileon.es (bloqueo TLS en WebFetch a fuentes .es con certificado no verificable), por lo que la verificación se apoya en dos reproducciones íntegras coincidentes de CSIF (fuente sindical que publica el texto literal de las resoluciones BOCYL) en vez del BOCYL/PDF original; de ahí confianza media."
+   }
+  ]
+ },
+ {
+  "tema": 12,
+  "title": "Expedición de títulos universitarios oficiales (RD 1002/2010)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "RD 1002/2010 Títulos",
+    "quitar": [],
+    "anadir": [],
+    "razon": "El epígrafe cita el título íntegro del RD 1002/2010 (\"sobre expedición de títulos universitarios oficiales de grado, máster y doctor\"), sin acotar a título/capítulo concreto, por lo que corresponde la norma completa. Verificado el índice consolidado en BOE (BOE-A-2010-12621): Cap. I Normas generales (arts 1-4), Cap. II Expedición títulos de Grado (arts 5-7), Cap. III Títulos de Máster (arts 8-10), Cap. IV Títulos de Doctor (arts 11-13), Cap. V Procedimiento de expedición (arts 14-20). Último artículo articulado = 20. El scope actual [1..20] coincide exactamente con el articulado íntegro de la norma; no procede quitar ni añadir."
+   }
+  ]
+ },
+ {
+  "tema": 13,
+  "title": "Homologación y equivalencia de títulos extranjeros (RD 889/2022)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "RD 889/2022 Homologación",
+    "quitar": [],
+    "anadir": [],
+    "razon": "El epígrafe reproduce literalmente el título completo del RD 889/2022 (no cita títulos/capítulos parciales, sino la norma entera), por lo que corresponde cargar todo su articulado. Verificado contra BOE-A-2022-17045 (boe.es): el RD tiene 4 Capítulos con Arts. 1-31 (Cap. I Disposiciones Generales 1-5, Cap. II Procedimientos de Homologación y Declaración de Equivalencia 6-21, Cap. III Convalidación de Estudios Universitarios Extranjeros 22-24, Cap. IV Correspondencia de Títulos al MECES 25-31), sin bis/ter. El scope actual (1-31) coincide exactamente con el articulado completo; las disposiciones adicionales/transitorias/derogatoria/finales no son artículos numerados y quedan fuera por diseño."
+   }
+  ]
+ },
+ {
+  "tema": 14,
+  "title": "Matrícula, régimen académico y permanencia en la Universidad de León",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "Permanencia/Matrícula ULE",
+    "quitar": [],
+    "anadir": [],
+    "razon": "La 'Normativa de Régimen Académico y Permanencia en las Titulaciones Oficiales de Grado y Máster de la ULE' (propuesta Consejo de Gobierno 29-04-2022, verificada en unileon.es/files/2022-05/permanencia_grado_y_master_modificacion20220519.pdf) es un texto SIN títulos ni capítulos, compuesto íntegramente por 8 artículos: Art.1 Ámbito de aplicación, Art.2 Modalidades de matrícula, Art.3 Criterios generales de permanencia, Art.4 Unidades de permanencia adicionales, Art.5 Permanencia de estudiantes que inician sus estudios, Art.6 Cómputo de unidades de permanencia con reconocimiento de créditos, Art.7 Efectos de la anulación de matrícula, Art.8 Límites y extinción de la permanencia; más preámbulo (exposición de motivos) y disposiciones adicionales/final (no articuladas, sin número de artículo). El epígrafe 'Normativa de la Universidad de León sobre matrícula y régimen académico y de permanencia' se corresponde exactamente con el TÍTULO de esta norma completa (que regula matrícula -art.2- y régimen académico/permanencia -resto-), por lo que el documento entero (arts. 1-8 + preámbulo) es lo que pide el epígrafe. El scope actual [1,2,3,4,5,6,7,8,preámbulo] coincide EXACTAMENTE con la totalidad del articulado disponible: no sobra ni falta nada."
+   }
+  ]
+ },
+ {
+  "tema": 15,
+  "title": "El Estatuto del Estudiante Universitario (RD 1791/2010)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "Estatuto Estudiante (RD 1791/2010)",
+    "quitar": [],
+    "anadir": [],
+    "razon": "El epígrafe cita el RD 1791/2010 completo ('por el que se aprueba el estatuto del estudiante universitario'), sin acotar a títulos/capítulos concretos. Verificado el índice consolidado en BOE (boe.es/buscar/act.php?id=BOE-A-2010-20147): el Estatuto anexo tiene 16 capítulos (I Disposiciones generales - XVI) con artículos 1 a 67 en total (Cap. I: art.1; Cap. II Derechos y deberes: 2-13; Cap. III Acceso y admisión: 14-15; Cap. IV Movilidad: 16-18; Cap. V Tutorías: 19-22; Cap. VI Programación docente y evaluación: 23-32; Cap. VII Enseñanzas no conducentes a título: 33; Cap. VIII Participación y representación: 34-39; Cap. IX Becas y ayudas: 40-43; Cap. X Convivencia: 44-46; Cap. XI Consejo de Estudiantes: 47-60; Cap. XII Actividad deportiva: 61-62; Cap. XIII Formación en valores: 63; Cap. XIV Participación social y cooperación: 64; Cap. XV-XVI: 65-67). El scope actual [1-67] coincide EXACTAMENTE con ese rango; no hay artículos fuera ni huecos. El propio RD (norma de aprobación) es solo un artículo único fuera del Estatuto y no forma parte del articulado numerado 1-67, por lo que no procede añadirlo."
+   }
+  ]
+ },
+ {
+  "tema": 16,
+  "title": "El Estatuto Básico del Empleado Público (EBEP)",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "RDL 5/2015 (TREBEP)",
+    "quitar": [],
+    "anadir": [],
+    "razon": "Verificado contra BOE consolidado (BOE-A-2015-11719): Título I 'Objeto y ámbito de aplicación' arts 1-7; Título II 'Personal al servicio de las AAPP' arts 8-13 (Cap I 8-12, Cap II 13); Título III 'Derechos y deberes. Código de conducta' arts 14-54 (Cap I 14-15, II 16-20, III 21-30, IV 31-46, V 47-51, VI 52-54); Título IV 'Adquisición y pérdida de la relación de servicio' arts 55-68; Título V 'Ordenación de la actividad profesional' arts 69-84; Título VI 'Situaciones administrativas' arts 85-92; Título VII 'Régimen disciplinario' arts 93-98. El epígrafe pide exactamente Títulos I-VII, que mapean a arts 1-98. El Título VIII 'Cooperación entre las Administraciones Públicas' (arts 99-100), NO nombrado por el epígrafe, ya está correctamente excluido del scope actual (que termina en 98). El scope [1..98] coincide EXACTAMENTE con lo que pide el epígrafe — no hay sobre-inclusión pese al aviso del pre-filtro (el 103 contado incluye numeración con bis/disposiciones fuera del rango articulado principal)."
+   }
+  ]
+ },
+ {
+  "tema": 17,
+  "title": "II Convenio Colectivo del PAS laboral de las Universidades Públicas de Castilla y León",
+  "status": "consenso",
+  "confianza": "alta",
+  "veredicto": [
+   {
+    "ley": "Convenio PAS Univ. CyL",
+    "quitar": [],
+    "anadir": [],
+    "razon": "Verificado contra el texto íntegro del II Convenio Colectivo del PAS Laboral de las Universidades Públicas de Castilla y León (PDF oficial publicado por la Secretaría General de la Universidad de Valladolid, texto BOCYL). Mapeo Título→artículos confirmado por lectura directa de las cabeceras de título y numeración de artículos: Título IV 'Organización del trabajo' = art. 10 (único, hasta que arranca el Título V con el art. 11); Título V 'Provisión de vacantes, contrataciones e ingresos' = arts. 11-24 (el Título VI arranca en el art. 25); Título VI 'Clasificación profesional' = arts. 25-27 (el Título VII arranca en el art. 28); Título XIII 'Retribuciones' = arts. 56-71 (arranca justo tras el Título XII -que acaba en el art. 55- y el Título XIV arranca en el art. 72). Unión exacta de los 4 títulos citados por el epígrafe = {10..27} ∪ {56..71}, que coincide artículo por artículo con el scope actual [10-27,56-71]. El pre-filtro determinista de sobre-inclusión es un FALSO POSITIVO: el scope NO cubre 'toda la ley' (la ley tiene más títulos, p.ej. I-III con arts. 1-9, VII-XII con arts. 28-55, XIV-XV con arts. 72+), sino exactamente los 4 títulos que pide el epígrafe. No hay artículos que sobren ni que falten."
+   }
+  ]
+ },
+ {
+  "tema": 18,
+  "title": "Normas de ejecución presupuestaria de la Universidad de León",
+  "status": "juez",
+  "confianza": "media",
+  "veredicto": [
+   {
+    "ley": "Presupuesto ULE",
+    "quitar": [],
+    "anadir": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40,
+     41,
+     42,
+     43,
+     44,
+     45,
+     46,
+     47,
+     48,
+     49,
+     50,
+     51,
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     58,
+     59,
+     60,
+     61,
+     62,
+     63,
+     64,
+     65,
+     66,
+     67,
+     68,
+     69,
+     70,
+     71,
+     72,
+     73,
+     74
+    ],
+    "razon": "El epígrafe 'Normas de ejecución presupuestaria del presupuesto de la Universidad de León' pide el documento completo (Normas de Ejecución Presupuestaria de la ULE, resolución de Rectorado/BOCyL), sin recorte por título/capítulo. Verificación: (1) la propia página ya publicada de vence.es para este tema (www.vence.es/auxiliar-administrativo-universidad-leon/temario/tema-18) describe la estructura íntegra del documento en 8 bloques temáticos que van del Art. 1 al Art. 74, cerrando con 'Bloque 8: Cierre y Prórroga (Arts. 73-74) — Aprobación de Cuenta de Liquidación / Prórroga del Presupuesto' (más el 18 bis, que no es representable como entero en este esquema); (2) una búsqueda independiente (WebSearch) confirma la existencia de un 'Artículo 74' sobre 'Prórroga del Presupuesto' en las normas de ejecución presupuestaria de la ULE, lo que casa exactamente con el cierre del documento tal y como lo describe la fuente anterior. El PDF fuente primario (transparencia.unileon.es/.../Normas-ejecucion-2013.pdf) está bloqueado por un anti-bot (Anubis) y no se pudo leer directamente ni por mí ni por ninguno de los dos verificadores. Por eso se prefiere el veredicto del VERIFICADOR A (1-74), respaldado por dos fuentes independientes que apuntan al mismo cierre en el art. 74, frente al VERIFICADOR B (1-86), que él mismo califica de confianza 'media', reconoce no haber podido verificar el índice exacto contra el documento oficial, y cuya única 'evidencia' de un art. 86 (sobre reintegro de subvenciones) contradice la fuente ya publicada, que sitúa 'Reintegros' dentro del bloque 61-72, no en el 86. El scope actual está vacío (0 artículos), así que no hay nada que quitar; se añade 1-74 completo por ser la versión mejor respaldada. Se recomienda, cuando el bloqueo anti-bot lo permita, verificar el índice exacto contra el PDF oficial (incluyendo el art. 18 bis y confirmando que no existe un 43 bis u otras disposiciones adicionales no numeradas como entero) antes de dar el scope por definitivamente cerrado."
+   }
+  ],
+  "discrepancia": {
+   "a": [
+    {
+     "ley": "Presupuesto ULE",
+     "quitar": [],
+     "anadir": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74
+     ],
+     "razon": "El epígrafe 'Normas de ejecución presupuestaria del presupuesto de la Universidad de León' se refiere al documento completo 'Normas de Ejecución Presupuestaria' que la ULE aprueba y publica anualmente en el BOCyL junto con su Presupuesto (verificado sobre el texto íntegro, ej. resolución BOCYL-D-24012024-18, y documento 'Normas de ejecución presupuestaria' de transparencia.unileon.es). Su estructura consolidada es: TÍTULO I Normas Generales/Cap.I Disposiciones Generales (Arts. 1-2) · TÍTULO II Los Créditos y sus Modificaciones/Cap.I Créditos iniciales y su financiación (Arts. 3-11) + Cap.II Modificaciones de créditos (Arts. 12-18, incluye 18 bis) · TÍTULO III Procedimiento General de Gestión Presupuestaria (Arts. 19-32) · TÍTULO IV Gastos e Ingresos (Arts. 33-67) · TÍTULO V Patrimonio (Arts. 68-69) · TÍTULO VI Las Sociedades y Fundaciones Universitarias (Arts. 70-71) · TÍTULO VII Cierre y Prórroga del Presupuesto (Arts. 72-74), seguido de Disposiciones Adicionales/Transitorias/Derogatoria/Final sin numeración de artículo (no se incluyen). El epígrafe no restringe a ningún título/capítulo concreto, sino que pide 'las normas de ejecución presupuestaria' en su totalidad, por lo que corresponden TODOS los artículos 1 a 74 (más el 18 bis, no representable como entero en este esquema). El scope actual está vacío (ningún artículo cargado), es decir, cobertura 0% de la ley que el propio epígrafe exige íntegra: hay que añadir la ley completa (1-74 + 18 bis)."
+    }
+   ],
+   "b": [
+    {
+     "ley": "Presupuesto ULE",
+     "quitar": [],
+     "anadir": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86
+     ],
+     "razon": "El epígrafe oficial ('Normas de ejecución presupuestaria del presupuesto de la Universidad de León') coincide literalmente con el TÍTULO ÍNTEGRO de un documento normativo propio de la ULE (Resolución del Rectorado ex art. 224 de los Estatutos, no es una ley del BOE), por lo que el epígrafe pide el documento COMPLETO, sin recorte por Títulos/Capítulos. El SCOPE ACTUAL está vacío ('Presupuesto ULE: []'), es decir, no hay ningún artículo cargado para este tema — falta TODO. No pude descargar el PDF fuente (transparencia.unileon.es/.../Normas-ejecucion-2013.pdf) por bloqueo anti-bot (Anubis), pero mediante WebSearch crucé dos fuentes independientes: (a) el propio temario ya publicado en vence.es describe la estructura en 86 artículos agrupados por materia (concepto y estructura presupuestaria 1-5, vinculación de créditos 6-9, modificaciones 12-18bis, fases de ejecución 19-30, personal 34-42, contratación 43-49, ingresos y patrimonio 59-71, cierre 72-74) citando normativa de referencia LOSU 2/2023, Ley 3/2003 CyL y Ley 2/2006 CyL; (b) un snippet de búsqueda independiente confirma que el 'Artículo 86' trata del 'reintegro de subvenciones concedidas por la Universidad', cuadrando con el cierre del documento. Con esos indicios propongo anadir el rango 1-86 completo (el esquema no admite notación 'bis', así que los artículos con sufijo bis, p.ej. 18 bis, no quedan representados como enteros y deben añadirse aparte al aplicar el cambio). Como no pude verificar el índice exacto contra el documento oficial primario (solo contra fuentes secundarias/nuestra propia web), la confianza es media y se recomienda re-verificar contra el PDF oficial (o una resolución de Rectorado más reciente que la de 2013, dado que el temario ya cita la LOSU 2023) antes de aplicar el cambio en producción."
+    }
+   ]
+  }
+ }
+]
