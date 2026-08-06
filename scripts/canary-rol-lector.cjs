@@ -60,6 +60,10 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-237] investigar los sensores del radar OEP (docs/runbooks/salud-radar.md): sin esto no se
+  // puede contrastar cuántas señales produjo un sensor en un periodo ni triar una concreta. Ver
+  // 20260806_rls_oep_detection_signals_lector.sql.
+  ['oep_detection_signals', 'el histórico de señales del radar OEP, para triar y contrastar sensores'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */

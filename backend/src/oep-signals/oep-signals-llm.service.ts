@@ -14,6 +14,19 @@ import {
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
+// T-237 (06/08/2026): las 4 llamadas de este fichero a `client.messages.create()` no pasaban
+// `timeout`, así que corrían con el default del SDK de Anthropic — **10 minutos, con reintento
+// automático** (`node_modules/@anthropic-ai/sdk/client.js`: `DEFAULT_TIMEOUT`). Medido contra
+// `observable_events` (30 días, feature='oep_signals', 3.050 llamadas reales): p50=2,3s ·
+// p90=3,3s · p99=7,2s · máximo observado=24,8s. Es decir, el default deja hasta ~24× de margen
+// respecto al peor caso real ANTES de siquiera considerarse "colgada" — una llamada atascada
+// podía consumir varios minutos sin que nada la cortara, y `detect-oep-llm` recorre ~2.200
+// oposiciones EN SECUENCIA: unas pocas llamadas así bastan para inflar la pasada entera. No es
+// la causa CONFIRMADA de las jornadas que murieron a media pasada el 21/22/27-07 (eso exigiría
+// logs de ECS/CloudWatch que un trabajador no tiene) — es un factor de riesgo real y medido que
+// se cierra aquí, con margen generoso sobre el máximo observado (60s ≈ 2,4× los 24,8s vistos).
+const LLM_CALL_TIMEOUT_MS = 60_000;
+
 /**
  * Servicio LLM para los tres sensores OEP que usan Claude Haiku.
  * Portado de `lib/api/oep-signals/llm-extractor.ts`,
@@ -85,11 +98,13 @@ export class OepSignalsLlmService {
     timeoutMs: number,
   ): Promise<{ html: string | null; status: number; error?: string }> {
     // Lazy import del SDK AWS para no penalizar arranque cuando no se usa.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
+
+    const { LambdaClient, InvokeCommand } =
+      await import('@aws-sdk/client-lambda');
     const region = process.env.AWS_REGION ?? 'eu-west-2';
     const functionName =
-      process.env.HEADLESS_FETCHER_FUNCTION_NAME ?? 'vence-backend-headless-fetcher';
+      process.env.HEADLESS_FETCHER_FUNCTION_NAME ??
+      'vence-backend-headless-fetcher';
     const client = new LambdaClient({ region });
 
     try {
@@ -104,7 +119,11 @@ export class OepSignalsLlmService {
       });
       const resp = await client.send(cmd);
       if (!resp.Payload) {
-        return { html: null, status: 0, error: 'Lambda devolvió payload vacío' };
+        return {
+          html: null,
+          status: 0,
+          error: 'Lambda devolvió payload vacío',
+        };
       }
       const decoded = Buffer.from(resp.Payload).toString('utf-8');
       const parsed = JSON.parse(decoded) as {
@@ -141,18 +160,21 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
-      enterLlmFeature('oep_signals')
-      const response = await client.messages.create({
-        model: HAIKU_MODEL,
-        max_tokens: 1024,
-        system: EXTRACTION_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: extractionUserPrompt(cleanText, knownContext),
-          },
-        ],
-      });
+      enterLlmFeature('oep_signals');
+      const response = await client.messages.create(
+        {
+          model: HAIKU_MODEL,
+          max_tokens: 1024,
+          system: EXTRACTION_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: extractionUserPrompt(cleanText, knownContext),
+            },
+          ],
+        },
+        { timeout: LLM_CALL_TIMEOUT_MS },
+      );
 
       const textBlock = response.content.find((b) => b.type === 'text');
       if (!textBlock || textBlock.type !== 'text') return null;
@@ -190,18 +212,21 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
-      enterLlmFeature('oep_signals')
-      const response = await client.messages.create({
-        model: HAIKU_MODEL,
-        max_tokens: 3000,
-        system: REGIONAL_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: regionalUserPrompt(cleanText, regionName),
-          },
-        ],
-      });
+      enterLlmFeature('oep_signals');
+      const response = await client.messages.create(
+        {
+          model: HAIKU_MODEL,
+          max_tokens: 3000,
+          system: REGIONAL_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: regionalUserPrompt(cleanText, regionName),
+            },
+          ],
+        },
+        { timeout: LLM_CALL_TIMEOUT_MS },
+      );
 
       const textBlock = response.content.find((b) => b.type === 'text');
       if (!textBlock || textBlock.type !== 'text') return null;
@@ -251,15 +276,18 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
-      enterLlmFeature('oep_signals')
-      const response = await client.messages.create({
-        model: HAIKU_MODEL,
-        max_tokens: 2000,
-        system: TEMARIO_SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: temarioUserPrompt(clean, regionName) },
-        ],
-      });
+      enterLlmFeature('oep_signals');
+      const response = await client.messages.create(
+        {
+          model: HAIKU_MODEL,
+          max_tokens: 2000,
+          system: TEMARIO_SYSTEM_PROMPT,
+          messages: [
+            { role: 'user', content: temarioUserPrompt(clean, regionName) },
+          ],
+        },
+        { timeout: LLM_CALL_TIMEOUT_MS },
+      );
 
       const textBlock = response.content.find((b) => b.type === 'text');
       if (!textBlock || textBlock.type !== 'text') return null;
@@ -301,18 +329,21 @@ export class OepSignalsLlmService {
 
     const client = await this.anthropic.getClient();
     try {
-      enterLlmFeature('oep_signals')
-      const response = await client.messages.create({
-        model: HAIKU_MODEL,
-        max_tokens: 2000,
-        system: GENERIC_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: genericUserPrompt(sourceName, lastCheckedAt, text),
-          },
-        ],
-      });
+      enterLlmFeature('oep_signals');
+      const response = await client.messages.create(
+        {
+          model: HAIKU_MODEL,
+          max_tokens: 2000,
+          system: GENERIC_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: genericUserPrompt(sourceName, lastCheckedAt, text),
+            },
+          ],
+        },
+        { timeout: LLM_CALL_TIMEOUT_MS },
+      );
 
       const raw =
         response.content[0]?.type === 'text' ? response.content[0].text : '';

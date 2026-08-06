@@ -6092,6 +6092,61 @@ alerta `arranques > cierres`.
 **Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
 incluida).
 
+- **▸ SESIÓN w1 (06/08): la ficha estaba desfasada en dos puntos — la alerta que decía "falta"
+  YA EXISTE, y el problema real hoy no es que el cron se cuelgue: es que lleva 10 días PARADO.**
+  - **La alerta `arranques > cierres` ya está construida, y no es de esta tarea.** `RULE_CRON_STARTED_NOT_FINISHED`
+    (`backend/src/alerts/alert-rules.ts:637`, commit `d61f26e86`, T-162, en `main` desde el
+    27/07) compara `cron_tick` vs `cron_run` de CUALQUIER cron con el par y con >= 3 `cron_run`
+    de referencia, dispara `error` con cooldown de 6h, y **respeta explícitamente el caso de un
+    cron en pausa** (des-registrado del `SchedulerRegistry` → desaparece de `listCronJobs()` →
+    la regla no opina). No hacía falta escribirla: ya cubre `detect-oep-llm` cuando esté activo.
+  - **MEDIDO, no de la ficha (`SELECT ts::date, count(*) FILTER (event_type='cron_tick'),
+    count(*) FILTER (event_type='cron_run') FROM observable_events WHERE endpoint='detect-oep-llm'
+    ... GROUP BY 1`, corrido hoy con `VENCE_LECTOR_URL`): el último `cron_tick` de `detect-oep-llm`
+    es del **27/07** — CERO arranques desde entonces, 10 días.** No es que siga muriendo a media
+    pasada: **no corre en absoluto.** Confirmado el porqué en el propio código: commit `75661c268`
+    (28/07, T-cost) añadió `DETECT_OEP_LLM_ENABLED` (default `true`, pero `scripts/deploy-backend.sh`
+    lo fija a `'false'` en el deploy real) — el cron se des-registra del `SchedulerRegistry` al
+    arrancar la app, precisamente para que `cron_overdue`/`cron_started_not_finished` NO disparen
+    por algo apagado a propósito (coste: ~$8/día laborable en Haiku, ~1.700 llamadas/día). **Esto
+    es un problema MÁS GRANDE que el de la ficha, que la ficha no menciona**: 2.206 URLs de
+    cobertura completamente a oscuras desde hace 10 días, no unos pocos días sueltos sin cerrar.
+    No es tarea de T-237 decidir si reactivarlo (haría falta primero el gate de hash que evite
+    re-extraer páginas sin cambios, mencionado en el propio comentario del cron y aún sin
+    implementar — `getOposicionesForLlmScan()` sigue trayendo TODAS las filas con
+    `seguimiento_url`, sin filtro de hash) — se deja anotado para quien decida sobre el coste.
+  - **SOSPECHO (no confirmado, y digo qué falta) sobre la causa de los cuelgues del 21/22/27-07:**
+    las 4 llamadas de `oep-signals-llm.service.ts` a `client.messages.create()` NO pasaban
+    `timeout` — corrían con el default del SDK de Anthropic, **10 minutos, con reintento
+    automático** (verificado leyendo `node_modules/@anthropic-ai/sdk/client.js`, no supuesto).
+    Medido contra `observable_events` (30d, `feature='oep_signals'`, 3.050 llamadas reales):
+    p50=2,3s · p90=3,3s · p99=7,2s · **máximo observado=24,8s** — el default dejaba ~24× de
+    margen antes de considerar una llamada "colgada", y el sensor recorre ~2.200 oposiciones EN
+    SECUENCIA. Es un mecanismo PLAUSIBLE y ahora cerrado, pero **no lo he demostrado**: confirmarlo
+    de verdad exige logs de ECS/CloudWatch de esos 3 días concretos, y un trabajador no tiene esa
+    credencial (mismo límite que T-206). No intenté correlacionar con deploys porque
+    `deploy_runs` (la tabla que lo permitiría) solo tiene datos desde el 31/07 — no existía aún
+    el 21-27/07.
+  - **✅ HECHO: timeout acotado (60s, con la medición arriba) en las 4 llamadas LLM de
+    `oep-signals-llm.service.ts`** (`extractOepFromHtml`, `extractRegionalOeps`,
+    `extractTemarioChanges`, `extractGenericSourceChanges` — comparten el mismo riesgo
+    estructural, las 4 en el mismo fichero). Guardarraíl nuevo
+    `backend/src/oep-signals/oep-signals-llm.timeout.spec.ts` (5 tests) — mutation-testeado:
+    revertido el fix a mano, las 4 llamadas fallan (`opts` sale `undefined`); restaurado, verdes.
+    `npx jest oep-signals detect-oep-llm` → 75/75 verdes, sin regresión.
+  - **🔧 HALLAZGO Y ARREGLO, de paso: `oep_detection_signals` tiene el MISMO bloqueo RLS que
+    `convocatoria_seguimiento_checks` (T-220) — un sexto caso del patrón T-573/T-574/T-038.**
+    `relrowsecurity=true`, cero políticas, `vence_lector` con el GRANT de tabla pero
+    `SELECT count(*)` → 0 siempre, sin error. Bloqueaba mi propia investigación de este sensor
+    (no podía contrastar el histórico real de señales `llm_semantic`). Migración
+    `supabase/migrations/20260806_rls_oep_detection_signals_lector.sql` (dry-run, no aplicada —
+    sin permiso de escritura como trabajador) + test de forma
+    `__tests__/db/rlsOepDetectionSignalsLectorMigration.test.js` (5/5) + añadida a `DEBE_LEER`
+    en `scripts/canary-rol-lector.cjs` (confirmado en rojo hoy, como se espera antes de aplicar).
+  - **Queda, y no es para un trabajador:** (1) aplicar la migración RLS de arriba; (2) decidir si
+    reactivar `detect-oep-llm` — con el timeout ya puesto, o esperar también al gate de hash de
+    coste; (3) si se reactiva, confirmar unos días que `cron_tick`/`cron_run` cierran en pareja.
+
 ### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
 
 - **Esfuerzo: rato** (el parser y el render ya existen; es soportar el segundo nivel).
