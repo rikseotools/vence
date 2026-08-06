@@ -894,6 +894,33 @@
   - **Instrucción explícita: NO tocar el fichero de ningún worktree vivo** (cortaría el turno de quien esté trabajando) **y NO repetir la medición** (ya está hecha y confirmada dos veces).
   - **Lo que SÍ queda por hacer, sin asignar a propósito:** arreglar `crear-worktree.sh` para que nunca copie el `.env.local` completo cuando el worktree es de un TRABAJADOR (no de una persona) — necesita primero trazar cuándo se invoca cada script en el ciclo de vida real (¿`crear-worktree.sh` corre DESPUÉS de `arrancar-trabajador.sh` en algún camino de rescate/resync y le pisa el acotado?), que es justo lo que "cuál gana no está establecido" señala sin responder. No intentado en este turno por prudencia: es un script que toca la credencial de negocio y la traza de cuándo se re-invoca no estaba clara con el tiempo que quedaba.
 
+### [T-597] 🟠 [ABIERTO 05/08] Una oposición personalizada no puede servir NINGUNA pregunta oficial (`exam_positions` vacío)
+
+- **Esfuerzo: rato** el cambio; la decisión es lo que hay que tomar primero.
+- **DE DÓNDE SALE:** del feedback `87e987d8` (Sergio, premium). Se atribuyó a [T-513] (el hueco del tag) y **la mayor parte no era el tag**. Al reproducir sus números apareció esto, que es una causa distinta y más grande para él.
+- **QUÉ PASA:** `getValidExamPositions('personalizada_…')` devuelve `[]` (una personalizada no está en `OPOSICIONES` ni en `EXAM_POSITION_MAP`), así que `buildOfficialExamFilter` cae en la rama de "sin mapeo" y devuelve `is_official_exam = false`. Resultado: **a una oposición personalizada no se le sirve jamás una pregunta de examen oficial.** `officialQuestionsCount` sale 0 en todos sus temas.
+- **EL PROPIO CÓDIGO YA LO DICE.** Ese camino no cae en las dos ramas silenciosas (`isExamPositionRegistered` → no-op; `ALL_POSITION_TYPES` → `recordNoExamPositionMapping`), sino en el `else` final, que hace `console.warn("positionType inesperado … Bug real: warn inmediato")`. Las personalizadas no están contempladas en ese filtro: entran por la puerta del «por si acaso», que está escrita para positionTypes corruptos.
+- **MEDIDO el 05/08** contra RDS, tema 1 de `personalizada_a92faefaf41b4d36b723c274f90a59f7` (CE, 5 artículos):
+
+  | dificultad | pegadas al artículo | anuncia hoy | sirve | se pierden por oficial | por tag `PN` |
+  |---|---|---|---|---|---|
+  | fáciles | 113 | 102 | **100** | 11 | 2 |
+  | medias | 63 | 54 | **26** | 9 | 28 |
+  | difíciles | 10 | 4 | **3** | 6 | 1 |
+
+  Los tres coinciden con lo que el usuario reportó por escrito («las fáciles sí pone 100», «solo me hace 26», «únicamente me hace 3»). Su «dice que el max son 10» era **anterior** al deploy de [T-566]: el bruto es 10 y hoy ya anuncia 4.
+- **LECTURA:** en difíciles, **6 de las 7 que se le retienen son oficiales y solo 1 es del tag**. O sea que para este usuario **esta ficha pesa más que [T-513]**, que es donde estaba anotado el caso. En medias manda el tag (28 de 37) y ahí sí es [T-513].
+- **ALCANCE:** 7 usuarios con personalizada, **4 de ellos premium**, 43 temas activos en 7 personalizadas.
+- **LA DECISIÓN (es lo caro, el cambio no):** ¿una oposición personalizada debe admitir preguntas oficiales?
+  - **El motivo por el que el filtro existe NO aplica aquí.** `buildOfficialExamFilter` nace del caso Laura (15/04/2026): sin él, las oficiales de otra oposición se cuelan en cualquier test que comparta ley (CE, 39/2015…). Pero en una personalizada **no hay oposición ajena de la que proteger al usuario**: él mismo eligió esos artículos a mano, y no existe un "examen propio" con el que contaminar. El bloqueo es un efecto colateral de no estar en el mapa, no una decisión.
+  - **Si se decide que sí:** a Sergio las difíciles del tema 1 le pasan de 3 a 9, **sin tocar [T-513] ni el tag**.
+  - **Si se decide que no:** entonces hay que dejar de anunciarlas (hoy tampoco se anuncian, [T-507] ya las descuenta) y **decirlo en la pantalla**, porque un premium que se monta su temario sobre la CE y no ve ni una pregunta de examen real no tiene forma de saber por qué.
+- **NO TOCAR A LO BRUTO.** El arreglo NO es quitar `buildOfficialExamFilter` ni hacer que devuelva `true` para cualquier positionType desconocido: eso reabre el caso Laura para los positionTypes corruptos, que es justo lo que esa rama vigila. Si se abre, se abre **solo** para el prefijo `personalizada_`, y con su test.
+- **CAPAS mínimas al implementar:** unit sobre `buildOfficialExamFilter` con un positionType `personalizada_*` (hoy no hay ninguno), y comprobar que el `console.warn` de "Bug real" deja de dispararse para ellas — si sigue saltando, es que se arregló por otro sitio.
+- **Relacionadas:** [T-513] (el hueco del tag, que es la OTRA mitad de este caso y sigue esperando decisión), [T-507] y [T-566] (cerraron la brecha de oficiales en el CONTADOR; esta ficha es sobre el SERVE), [T-397].
+
+- **📌 Rescatada el 06/08 de un worktree abandonado.** La ficha se escribió el 05/08 a las 23:01 en `sesion/colas-feedback`, que murió esa noche sin que su rama llegara a `main`; lo medido arriba es de ese día. El claim quedó colgado 17 h con el lease vencido y se soltó con `reap`.
+
 ### [T-611] 🟡 [ABIERTO 06/08] Los 131 `TopicContentView` son 131 copias del mismo componente: unificarlas y cerrar el bucle temario→test→artículo que reportó Ángela
 
 **De dónde sale.** Feedback `f57e3001` de **Ángela P.** (premium, `auxiliar_administrativo_valencia`,
@@ -5531,7 +5558,61 @@ incluida).
 - **Verificado que lo demás SÍ está bien** (no hace falta re-mirarlo): importe y periodicidad son correctos en los 4 envíos reales (`20 € al mes` ×3, `35 € cada 3 meses` ×1), y la etiqueta la deriva el código del intervalo real (`ETIQUETA_INTERVALO`), no se escribe a mano. El orden de los argumentos del despacho también es correcto.
 - **Relacionadas:** [T-448] (el correo), [T-456] (el carril de envío y el trinquete de tipos), [T-363] (el precio que se pierde si no vuelve a tiempo).
 
-### [T-392] 🔴 [ENTREGADA 05/08 — Fase 2+3 en `main`, fail-open; bloqueada solo en la migración SQL, que exige permiso de owner] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
+### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
+
+- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
+- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
+- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
+- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
+- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
+- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
+- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
+- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
+- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
+- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
+- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
+- **⚠️ REABIERTA EL MISMO DÍA, y el motivo importa más que la tarea.** La cerré con `done` teniendo el código **en `main` pero sin desplegar**, así que nadie iba a comprobar en producción que la primera factura sale en la fecha correcta. Lo cazó Manuel preguntando: *«las tareas que esperan el despliegue, ¿se supone que tienen puesto que cuando desplieguen las chequeen? ¿siempre se chequean los cambios y funcionalidades nuevas?»*. La respuesta medida era **no**: de las 5 tareas de hoy que tocan código servido, **ninguna** estaba puesta para verificarse tras el deploy. Ahora esta sí (`pause --tras-deploy`), con las tres comprobaciones concretas en `--falta`.
+- **Y deja una pregunta abierta para el sistema:** la puerta del `done` impide cerrar cuando el *texto* confiesa trabajo pendiente, pero no sabe que **el código toca una superficie servida y aún no está desplegado**. Eso es comprobable —hay `sha` desplegado y hay ficheros tocados— y sería el siguiente escalón del mismo guardarraíl. *(Construido después, es [T-392] F1.)*
+
+#### 🔭 AL IR A VERIFICARLA (01/08) — el código está vivo, pero NO HABÍA NADA QUE MIRAR
+
+Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no estaba en la ficha.
+
+- **El sha vivo ya la incluye** (`backlog:verificacion` da ✅: 3 ficheros servidos de frontend). O sea que la función lleva días operativa.
+- **Nadie ha canjeado desde entonces.** De **193 ofertas emitidas solo se ha canjeado UNA**, y fue el **30/07**, un día ANTES de que este código existiera. Las dos comprobaciones que pedía la ficha («un canje real crea la suscripción en `trialing`», «el primer cobro cae al terminar la cobertura») necesitan un canje, y no hay ninguno. No hay tampoco **ni una sola suscripción en `trialing`** en toda la BD.
+- **Pero la población es real y sigue ahí, medida hoy:** de las **190 ofertas vivas**, **181 tienen cobertura previa** y **178 aplazarían el cobro si canjearan hoy** (la primera se queda sin cobertura el 02/08; la última, el 06/01/2027). O sea: la función no está de adorno, es que aún no le ha tocado el turno.
+- **⚠️ Y AQUÍ EL HALLAZGO: cuando le toque, no nos íbamos a enterar.** El aplazamiento dejaba como única huella un `console.log` en los logs de ECS, que no mira nadie. Combinado con lo que la propia ficha ya decía —*«este fallo sería invisible: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario»*— el resultado es que el primer canje de esos 178 se habría procesado bien o mal **sin que ninguna consulta pudiera decir cuál de las dos**. La verificación no estaba pendiente de una fecha: **no era posible**.
+- **Arreglado, y es la parte que faltaba de la tarea:** el checkout con precio heredado emite ahora `checkout_precio_heredado` (`info`) en `observable_events`, con `aplaza`, `dias` y la **fecha del primer cobro** — que es el dato contrastable contra el `current_period_end` de su suscripción vieja. Núcleo puro `trazaCobertura()` en `cobertura.ts` con 4 tests.
+- **Distingue las DOS formas de no aplazar**, que no son la misma: `sin_cobertura_previa` (correcto, no hay nada que aplazar) y `menos_de_48h` (correcto también, pero es justo el borde donde se escondería un error de cálculo). Sin el motivo, un `aplaza:false` no se puede juzgar — y un rastro que no se puede juzgar no sirve de rastro.
+- **No pinga badge ni manda correo a propósito:** es `info`, no una avería. Es el rastro de que la función actuó.
+- **Verificación, ahora sí posible:** desplegar frontend y, en el primer canje real, `SELECT metadata FROM observable_events WHERE event_type='checkout_precio_heredado'` → `aplaza=true` y `primerCobro` igual al `current_period_end` de su suscripción anterior.
+
+### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
+
+- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
+- **Sigue reapareciendo, y su segunda alerta es de esta misma familia:** el 31/07 a las 08:05 disparó `pool_frontend_saturation_high` (**5 muestras con ≥13 conexiones activas, pico 82** contra un techo estimado de 16), quince minutos después del `5xx_spike` de las 07:50. **Es el mismo incidente visto desde el pool, no uno nuevo** — anotado al triar las alertas del día ([T-426]) para que nadie le abra ficha aparte ni lo investigue de cero.
+- **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
+  1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
+  2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
+  3. **NO es que el motor de alertas escanee el primario.** Backend y frontend tienen `USE_READ_REPLICA=true` en su task definition: producción computa en la réplica, como manda el runbook de contención.
+- **LO QUE SÍ SE ENCONTRÓ, y ya está arreglado (31/07):** el `.env.local` de las sesiones locales tenía `DATABASE_URL_REPLICA` apuntando a **`vence-prod`, el PRIMARIO**, y sin `USE_READ_REPLICA`. O sea que cada `npm run dev` con el panel de salud abierto le metía los escaneos de 6,9 GB **a la base de datos que atiende a los opositores**, justo lo que producción evita. Corregido en las 10 sesiones vivas y en el `.env.local` del repo principal (del que `crear-worktree.sh` copia, así que las nuevas nacen bien). Verificado: `pg_is_in_recovery = true`, retraso 0,55 s.
+- **LO MEDIDO, que sigue en pie:** 6,9 GB · 10.733.632 filas · ~4.500 eventos/hora (46% `request_completed`). La consulta de la regla de latencia agrega **todos** los `request_completed` de 45 min para un percentil — **un índice parcial NO sirve aquí**, no hay «unas pocas lentas» que indexar (eso descarta el índice que se propuso primero).
+- **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
+- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
+- **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
+
+### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
+
+- **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.
+- **POR QUÉ NO ES COPIAR-PEGAR EL ARREGLO:** [T-340] terminó demostrando que el contraste es un **detector, no un control**, y que cortar por él tiene coste real (17 intentos de compra bloqueados). Así que aquí la pregunta por endpoint no es «¿lo contrasto?» sino **«¿qué daño hace equivocarse de cuenta?»** — la misma política `alDiscrepar` de `requireUsuarioPropio`, elegida a conciencia y declarada por escrito.
+- **EMPEZAR POR MEDIR, no por parchear:** cuántos de esos 38 reciben hoy un id que **no coincide** con el del token en producción. La señal `auth_identidad_ajena_rechazada` ya existe; basta con instrumentarlos en modo «seguir-con-el-token» y mirar una semana. Si alguno tiene tráfico con id ajeno, ahí hay o un cliente roto ([T-352]) o algo peor.
+- **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
+- **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
+`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
+
+## Hechas
+
+### [T-392] ✅ [HECHA 05/08] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
 
 - **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
 - **EL DIAGNÓSTICO, y no es una intuición: pasó TRES veces el mismo día.**
@@ -5677,67 +5758,27 @@ existentes SIN re-verificar (con `requiere_archivo=NULL`, no `false`: no se afir
 superficie servida, solo que no entran retroactivamente en el cubo de "sin archivar") — script ya
 escrito y probado en dry-run, solo le falta la migración para poder correr.
 
+**✅ EL BLOQUEO DE ARRIBA YA ESTÁ RESUELTO — se deja escrito porque explica por qué la superficie
+nueva es fail-open, no porque siga vigente.** La migración se aplicó y el backfill corrió esa misma
+noche (05/08). Comprobado contra RDS el **06/08** al rescatar esta ficha de un worktree abandonado
+(la rama `sesion/colas-feedback` murió sin llegar a `main`, y por eso la cabecera se quedó en
+🔴 ENTREGADA un día de más):
+- las cuatro columnas existen en `backlog_tasks` (`archived_at`, `archive_evidence`, `archived_by`,
+  `requiere_archivo`), y las **11** que declara `db/schema.ts` coinciden con RDS en nombre **y tipo**;
+- **348** tareas `done`, **348** con `archived_at`, de las cuales **335** las puso el backfill
+  (`archived_by='migracion-t392'`) — que es exactamente la cifra que anunciaba la entrega;
+- la propia T-392 está en la tabla como `done` + cerrada + **archivada** + revisada.
+
 **Verificación hecha (lo que SÍ se pudo comprobar sin la migración):** 515 tests de
 `__tests__/backlog/` en verde, 23 nuevos de `archivo.cjs`, guardarraíl `toolRegistry` en verde,
 `tsc`/`eslint` limpios, y **comandos reales corridos contra la BD de coordinación de producción**
-(`list`, `archive T-999999 --evidencia …`) confirmando el fail-open. Lo que falta verificar —el
-comando `archive`/el cubo funcionando de verdad— solo se puede ver **después** de la migración.
+(`list`, `archive T-999999 --evidencia …`) confirmando el fail-open. Lo que faltaba verificar —el
+comando `archive`/el cubo funcionando de verdad— solo se podía ver **después** de la migración, y
+la migración ya está aplicada (bloque de arriba): `archived_by` muestra hoy seis firmantes
+distintos, entre ellos `auto-t392` (la exención automática de la Regla 1) y cuatro sesiones que ya
+han archivado a mano, así que el escalón está en uso y no solo instalado.
 
 - **Relacionadas:** [T-363] (el fallo que lo motivó), [T-296] (latido de sesiones), [T-365] (el deploy y sus árboles), [T-449] (duplicada y consolidada aquí), [T-385] y [T-326] (los tres casos medidos), y la puerta del `done` del 30/07.
-
-### [T-363] 🟠 [EN PAUSA 31/07 — implementada y en `main`; espera el deploy para VERIFICARSE en producción] Contratar el precio heredado sin pagar dos veces: el primer cobro se aplaza a lo que ya tenías pagado
-
-- **ORIGEN.** Idea de Manuel (31/07), al explicarle que a quien vuelve con su precio heredado se le avisaba del solape pero se le cobraba igual: *«¿no se puede… al ir a pagar, descontar los días que ya tiene pagados? una especie de upgrade como hace Anthropic u otros»*. Es mejor que lo que había ([T-355] solo AVISABA), y resultó que casi todo estaba listo.
-- **EL PROBLEMA.** Quien vuelve puede tener todavía **servicio pagado** en la cuenta antigua (pagó su trimestre por adelantado). Si contrata hoy en la cuenta nueva, empieza a pagar desde hoy y **paga dos veces el mismo periodo**.
-- **POR QUÉ NO SE PUEDE PRORRATEAR.** Las dos suscripciones viven en **cuentas de Stripe distintas**, sin clientes ni tarjetas compartidas: la nueva no tiene forma de saber qué pagó en la vieja ni de descontárselo. No es que no se quiera — no hay nada que restar entre ellas.
-- **LA SOLUCIÓN: no cobrar en vez de descontar.** La suscripción nueva se crea con **`trial_end`** en la fecha en que expira su cobertura anterior. Contrata hoy, con su precio de siempre, y **la primera factura sale el día que le tocaba**. Sin doble cobro, sin devoluciones y sin un día sin servicio.
-- **No hubo que tocar el acceso**, comprobado antes de prometerlo: el sistema ya cuenta `trialing` como premium — lo aceptan el webhook (`VALID_STATUSES`), el validador del checkout y la comprobación de acceso.
-- **Se calcula en el CLIC, no al crear la oferta.** El enlace de pago se guarda y se reutiliza: unos días calculados hace dos meses serían dos meses de regalo. El checkout se crea al pagar, así que ahí el número es el de ese día. **Guardarraíl que lo exige:** `ofertaHeredada.ts` no puede contener `trial_end` ni `trial_period_days`.
-- **Solo para el precio heredado.** A quien contrata a tarifa normal no se le regala nada; el guardarraíl también fija eso.
-- **MEDIDO con datos reales antes de darlo por bueno:** **180 personas** a las que hoy les evita pagar dos veces el mismo periodo. Y a quien se le acaba mañana sale «sin aplazar», que es lo correcto: **Stripe rechaza un `trial_end` a menos de 48 h**, así que por debajo de ese umbral no se aplaza en vez de mandarle algo que fallaría en la cara del usuario.
-- **El mensaje cambia de sentido, y de color:** ya no avisa de un peligro («se solaparán») sino de una buena noticia («no se te cobrará nada hasta el [fecha]»). `solapeAviso.ts` **se sustituye** por `cobertura.ts`: una sola fuente, para que la pantalla y el cobro no puedan decir cosas distintas.
-- **Capas:** 7 tests del núcleo (incluidos el umbral de 48 h y que nunca inventa un aplazamiento con una fecha ilegible) + 3 de guardarraíl sobre el checkout. Existen porque **este fallo sería invisible**: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario.
-- **Relacionadas:** [T-341] (el botón), [T-355] (el aviso al que sustituye), [T-343] (la población).
-- **⚠️ REABIERTA EL MISMO DÍA, y el motivo importa más que la tarea.** La cerré con `done` teniendo el código **en `main` pero sin desplegar**, así que nadie iba a comprobar en producción que la primera factura sale en la fecha correcta. Lo cazó Manuel preguntando: *«las tareas que esperan el despliegue, ¿se supone que tienen puesto que cuando desplieguen las chequeen? ¿siempre se chequean los cambios y funcionalidades nuevas?»*. La respuesta medida era **no**: de las 5 tareas de hoy que tocan código servido, **ninguna** estaba puesta para verificarse tras el deploy. Ahora esta sí (`pause --tras-deploy`), con las tres comprobaciones concretas en `--falta`.
-- **Y deja una pregunta abierta para el sistema:** la puerta del `done` impide cerrar cuando el *texto* confiesa trabajo pendiente, pero no sabe que **el código toca una superficie servida y aún no está desplegado**. Eso es comprobable —hay `sha` desplegado y hay ficheros tocados— y sería el siguiente escalón del mismo guardarraíl. *(Construido después, es [T-392] F1.)*
-
-#### 🔭 AL IR A VERIFICARLA (01/08) — el código está vivo, pero NO HABÍA NADA QUE MIRAR
-
-Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no estaba en la ficha.
-
-- **El sha vivo ya la incluye** (`backlog:verificacion` da ✅: 3 ficheros servidos de frontend). O sea que la función lleva días operativa.
-- **Nadie ha canjeado desde entonces.** De **193 ofertas emitidas solo se ha canjeado UNA**, y fue el **30/07**, un día ANTES de que este código existiera. Las dos comprobaciones que pedía la ficha («un canje real crea la suscripción en `trialing`», «el primer cobro cae al terminar la cobertura») necesitan un canje, y no hay ninguno. No hay tampoco **ni una sola suscripción en `trialing`** en toda la BD.
-- **Pero la población es real y sigue ahí, medida hoy:** de las **190 ofertas vivas**, **181 tienen cobertura previa** y **178 aplazarían el cobro si canjearan hoy** (la primera se queda sin cobertura el 02/08; la última, el 06/01/2027). O sea: la función no está de adorno, es que aún no le ha tocado el turno.
-- **⚠️ Y AQUÍ EL HALLAZGO: cuando le toque, no nos íbamos a enterar.** El aplazamiento dejaba como única huella un `console.log` en los logs de ECS, que no mira nadie. Combinado con lo que la propia ficha ya decía —*«este fallo sería invisible: la pantalla se vería igual de bien y el doble cargo aparecería en el banco del usuario»*— el resultado es que el primer canje de esos 178 se habría procesado bien o mal **sin que ninguna consulta pudiera decir cuál de las dos**. La verificación no estaba pendiente de una fecha: **no era posible**.
-- **Arreglado, y es la parte que faltaba de la tarea:** el checkout con precio heredado emite ahora `checkout_precio_heredado` (`info`) en `observable_events`, con `aplaza`, `dias` y la **fecha del primer cobro** — que es el dato contrastable contra el `current_period_end` de su suscripción vieja. Núcleo puro `trazaCobertura()` en `cobertura.ts` con 4 tests.
-- **Distingue las DOS formas de no aplazar**, que no son la misma: `sin_cobertura_previa` (correcto, no hay nada que aplazar) y `menos_de_48h` (correcto también, pero es justo el borde donde se escondería un error de cálculo). Sin el motivo, un `aplaza:false` no se puede juzgar — y un rastro que no se puede juzgar no sirve de rastro.
-- **No pinga badge ni manda correo a propósito:** es `info`, no una avería. Es el rastro de que la función actuó.
-- **Verificación, ahora sí posible:** desplegar frontend y, en el primer canje real, `SELECT metadata FROM observable_events WHERE event_type='checkout_precio_heredado'` → `aplaza=true` y `primerCobro` igual al `current_period_end` de su suscripción anterior.
-
-### [T-360] 🟠 [ABIERTO 31/07] `observable_events` (6,9 GB): particionarla, que la retención por DELETE ya no escala
-
-- **CÓMO SE VIO:** el panel de admin devolvió **503** (captura de Manuel, 09:42). Detrás, un minuto de saturación a las **07:49 UTC**: 23 timeouts, **10 respuestas de test que NO se guardaron en servidor** (`/api/v2/answer-and-save` → 503) y la ingesta tardando 35 s. La alerta `5xx_spike` disparó — la vigilancia funcionó.
-- **Sigue reapareciendo, y su segunda alerta es de esta misma familia:** el 31/07 a las 08:05 disparó `pool_frontend_saturation_high` (**5 muestras con ≥13 conexiones activas, pico 82** contra un techo estimado de 16), quince minutos después del `5xx_spike` de las 07:50. **Es el mismo incidente visto desde el pool, no uno nuevo** — anotado al triar las alertas del día ([T-426]) para que nadie le abra ficha aparte ni lo investigue de cero.
-- **⚠️ TRES HIPÓTESIS DESCARTADAS. No volver a seguirlas:**
-  1. **NO es `refresh-rankings`.** Pasó de 104 ms a 19,3 s esa mañana y parecía la causa; es la **víctima** más visible (corre cada 5 min y tiene reloj). 36 h planas en ~110 ms antes.
-  2. **NO es la retención.** `TelemetryRetentionModule` poda a 30 días cada noche y **funciona**: la fila más antigua es exactamente de 30 días. Reportaba `observableEventsDeleted: 0` seis noches seguidas, que parece un verde falso y no lo es — el histórico arranca el 01/07 04:10, así que hasta ese día no había nada que borrar.
-  3. **NO es que el motor de alertas escanee el primario.** Backend y frontend tienen `USE_READ_REPLICA=true` en su task definition: producción computa en la réplica, como manda el runbook de contención.
-- **LO QUE SÍ SE ENCONTRÓ, y ya está arreglado (31/07):** el `.env.local` de las sesiones locales tenía `DATABASE_URL_REPLICA` apuntando a **`vence-prod`, el PRIMARIO**, y sin `USE_READ_REPLICA`. O sea que cada `npm run dev` con el panel de salud abierto le metía los escaneos de 6,9 GB **a la base de datos que atiende a los opositores**, justo lo que producción evita. Corregido en las 10 sesiones vivas y en el `.env.local` del repo principal (del que `crear-worktree.sh` copia, así que las nuevas nacen bien). Verificado: `pg_is_in_recovery = true`, retraso 0,55 s.
-- **LO MEDIDO, que sigue en pie:** 6,9 GB · 10.733.632 filas · ~4.500 eventos/hora (46% `request_completed`). La consulta de la regla de latencia agrega **todos** los `request_completed` de 45 min para un percentil — **un índice parcial NO sirve aquí**, no hay «unas pocas lentas» que indexar (eso descarta el índice que se propuso primero).
-- **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
-- **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
-- **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
-
-### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
-
-- **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.
-- **POR QUÉ NO ES COPIAR-PEGAR EL ARREGLO:** [T-340] terminó demostrando que el contraste es un **detector, no un control**, y que cortar por él tiene coste real (17 intentos de compra bloqueados). Así que aquí la pregunta por endpoint no es «¿lo contrasto?» sino **«¿qué daño hace equivocarse de cuenta?»** — la misma política `alDiscrepar` de `requireUsuarioPropio`, elegida a conciencia y declarada por escrito.
-- **EMPEZAR POR MEDIR, no por parchear:** cuántos de esos 38 reciben hoy un id que **no coincide** con el del token en producción. La señal `auth_identidad_ajena_rechazada` ya existe; basta con instrumentarlos en modo «seguir-con-el-token» y mirar una semana. Si alguno tiene tráfico con id ajeno, ahí hay o un cliente roto ([T-352]) o algo peor.
-- **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
-- **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
-`** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
-
-## Hechas
 
 ### [T-601] ✅ [HECHA 06/08] Un usuario lleva desde el 18/07 sin poder pagar: 5 suscripciones `incomplete` y 5 checkouts `unpaid`, y el checkout abierto le bloquea hasta la cancelación
 
