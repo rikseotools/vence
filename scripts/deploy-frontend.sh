@@ -66,6 +66,22 @@ fi
 # nombren el commit que SE DESPLIEGA y no el HEAD de quien lanza.
 git fetch origin main --quiet 2>/dev/null || true
 FULL_SHA=$(git rev-parse origin/main 2>/dev/null || git rev-parse HEAD)
+# ── DEPLOY_SHA: desplegar un ANCESTRO de origin/main, no la punta ([T-619]) ───
+# Con 2-10 sesiones la punta casi nunca tiene el CI terminado (medido el 06/08: 40 commits/día,
+# hueco mediano de 2 min), así que el lanzador elige el último commit VERDE y lo pasa por aquí. El
+# deploy es cumulativo: desplegar ese ancestro sube igualmente todo lo anterior.
+# Dos guardas, porque este es el punto por el que se escribe qué se pone en producción:
+#   · tiene que ser ANCESTRO de origin/main → nunca se despliega algo que no está en main;
+#   · nada de saltarse el gate: el CI de ESE sha se sigue comprobando más abajo, igual que siempre.
+if [ -n "${DEPLOY_SHA:-}" ]; then
+  CANDIDATO=$(git rev-parse "${DEPLOY_SHA}^{commit}" 2>/dev/null) || {
+    echo "❌ DEPLOY_SHA=${DEPLOY_SHA} no es un commit de este repo"; exit 1; }
+  git merge-base --is-ancestor "$CANDIDATO" "$(git rev-parse origin/main)" 2>/dev/null || {
+    echo "❌ DEPLOY_SHA=${DEPLOY_SHA:0:9} NO es ancestro de origin/main — no se despliega"; exit 1; }
+  DETRAS=$(git rev-list --count "${CANDIDATO}..origin/main" 2>/dev/null || echo 0)
+  FULL_SHA="$CANDIDATO"
+  echo "→ DEPLOY_SHA: se despliega ${FULL_SHA:0:9} (último verde), ${DETRAS} commit(s) de main se quedan para el siguiente deploy"
+fi
 SHA=$(printf '%s' "$FULL_SHA" | cut -c1-8)   # 8 chars EXACTOS: debe casar con /health.deploy = GIT_COMMIT_SHA.slice(0,8). `--short` daba longitud AUTO (7-9+) → falso "clobber" cuando ≠ 8 (visto 22/07)
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
