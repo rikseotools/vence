@@ -5612,6 +5612,28 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 ## Hechas
 
+### [T-615] ✅ [HECHA 06/08] El barrido de worktrees huérfanos daba VERDE sin haber mirado: sin BD asumía vivas las 28 sesiones — y el guard del borrado se quedaba sin protección
+
+- **Esfuerzo: rato.** El arreglo es de una línea; lo caro fue darse cuenta de que el verde mentía.
+- **ORIGEN.** Manuel pidió *«revisa algún worktree que se quedara a medias»*. `npm run sesiones:huerfanos` contestó **`WORKTREES REVISADOS (28): 28 en uso` + `✅ ningún worktree guarda trabajo que solo exista ahí`**. Mirando a mano aparecieron tres worktrees muertos con trabajo fuera de `main`, uno de ellos ([T-392]) con un arreglo de `db/schema.ts` que llevaba 18 h sin llegar a la principal.
+- **LA CAUSA, de una línea.** Sin poder leer `worktree_sessions` se pasaba `minSinSenal = 0` a `clasificarWorktree` — o sea **«acaba de latir»**. Y como la señal de vida manda sobre todo lo demás (por diseño: una sesión viva puede pasar horas compilando), los 28 worktrees salían `en_uso` y **no se llegaba a evaluar el contenido de ninguno**. El comentario del código decía *«sin BD no se afirma que esté muerta»*; lo que hacía era afirmar que estaba VIVA, que es la afirmación fuerte.
+- **⚠️ Y el daño caro no era el informe, era el BORRADO.** `borrar-worktree.sh` consulta este mismo camino con `--slug` y borra cuando no hay hallazgo. Medido ejecutando la versión anterior con las dos URLs de BD inalcanzables:
+
+  | | `--slug l4` (worktree CON trabajo propio) | barrido completo |
+  |---|---|---|
+  | antes | `exit=0` → **dejaba borrarlo** | `31 en uso` · `✅ nada en peligro` |
+  | ahora | `exit=3` → bloquea | `no se ha podido comprobar` + 11 listados |
+
+  Ese borrado no se deshace. La protección estaba condicionada a que la BD respondiera, que es justo lo que no se puede dar por hecho.
+- **EL ARREGLO — dos mitades, y la segunda es la que importa:**
+  1. **Alcance:** `senales()` prueba `DATABASE_URL` y, si falla, `DATABASE_URL_REPLICA`. Es una lectura pura, así que la réplica vale igual. No es cosmético: el 06/08 el primario dio `CONNECT_TIMEOUT` varios minutos **mientras la réplica respondía a la primera**, y con una sola vía el barrido se quedaba ciego justo cuando hacía falta.
+  2. **Veredicto:** «no lo sé» deja de parecerse a «acaba de latir» (`minutosSinSenal()` devuelve `null`, y la vida la decide entonces `procesosDentro`, que es una señal LOCAL y real). Y si no se pudo mirar, **no se firma un `✅`**: se dice que no está verificado.
+- **NO se tocó `lib/sessions/trabajoHuerfano.cjs`** (el criterio compartido con `latidos.cjs` y con el guard del borrado). El criterio siempre fue correcto; lo que le llegaba era mentira. Tres puertas al mismo recurso tienen que opinar lo mismo.
+- **Efecto medido, con BD:** de `28 en uso · ✅ nada` a **`6 en uso · 15 sincronizados · 10 con trabajo que solo existe ahí`**, y entre los 10 están los tres que se encontraron a mano.
+- **Capas:** `__tests__/sessions/huerfanosSinBd.test.ts` (7 casos, incluido el contraste explícito de que la entrada vieja `minSinSenal=0` daba `en_uso`, para que no vuelva) + `npm run sim:huerfanos` **7/7 antes y después** (reconstruye los 5 casos reales sobre repos de verdad, así que fija que el arreglo no aumenta el ruido) + comprobación de los exit codes del guard con las dos BD caídas.
+- **LO QUE DEJA AL DESCUBIERTO y NO se ha tocado:** el barrido saca ahora 10 hallazgos y **7 son scratchpad sin commitear**. Son ciertos (se perderían), pero si eso se vuelve el caso normal el aviso muere por ruido — la lección que la propia ficha [T-431] tenía escrita. Antes de subir el umbral hay que medir, no ajustar a ojo.
+- **Relacionadas:** [T-431] (creó el barrido y el criterio), [T-392] (lo que se rescató al destaparlo), [T-486] (el rescate de la flota, que es una FOTO: corrió a las 23:01 y la sesión siguió commiteando hasta las 23:46).
+
 ### [T-392] ✅ [HECHA 05/08] Ciclo de vida completo de una tarea: `implementada` → `verificando` → `archivada`, liberándose sola por deploy o por reloj
 
 - **ORIGEN.** Encargo de Manuel (31/07), después de cazarme cerrando una tarea de cobros sin verificar: *«habría que siempre obligar a verificar el arreglo, porque estamos dando por hecho que todo va a estar bien y luego vuelven los fallos y no avanzamos. Una tarea debería pasar por diferentes fases, y una vez pusheada, desplegada, la última fase la verificación en producción (algunas se verifican rápido y otras hay que ponerles fecha o días u horas), y cuando está verificada y todo correcto ponerle estado archivado»*.
