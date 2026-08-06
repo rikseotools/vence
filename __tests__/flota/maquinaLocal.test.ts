@@ -81,6 +81,42 @@ describe('[T-617] maquinaDe resuelve `local` en UN solo sitio', () => {
   })
 })
 
+// ── EL FALLO QUE CASI SE COLÓ AL PERMITIR QUE EL SUPERVISOR CORRA EN EL VPS ─────────────────
+// `ficheroEntorno` deducía la ruta de `m.local`: en local `$HOME/.vence-flota`, si no `/etc`.
+// Era accidentalmente correcto mientras «local» solo podía ser el portátil. En cuanto el
+// supervisor corre en el VPS, esa deducción manda a buscar el entorno de w1-w4 al HOME de `flota`
+// cuando está en `/etc/vence-flota` — y el supervisor no encontraría el entorno de sus propios
+// trabajadores. La ruta es una convención DE LA MÁQUINA, no de dónde corre el proceso.
+describe('[T-617] dónde vive el entorno de cada trabajador', () => {
+  const original = process.env.VENCE_FLOTA_AQUI
+  afterEach(() => {
+    if (original === undefined) delete process.env.VENCE_FLOTA_AQUI
+    else process.env.VENCE_FLOTA_AQUI = original
+  })
+
+  it('el del VPS está en /etc, se mire desde donde se mire', () => {
+    delete process.env.VENCE_FLOTA_AQUI
+    expect(MAQ.maquinaDe('w1').dirEntorno).toBe('/etc/vence-flota')
+    process.env.VENCE_FLOTA_AQUI = 'flota-1'
+    expect(MAQ.maquinaDe('w1').dirEntorno).toBe('/etc/vence-flota')
+  })
+
+  it('el del portátil cuelga del HOME, y tampoco cambia con quién pregunte', () => {
+    delete process.env.VENCE_FLOTA_AQUI
+    const enCasa = MAQ.maquinaDe('l1').dirEntorno
+    expect(enCasa).toMatch(/\.vence-flota$/)
+    process.env.VENCE_FLOTA_AQUI = 'flota-1'
+    expect(MAQ.maquinaDe('l1').dirEntorno).toBe(enCasa)
+  })
+
+  it('todas las máquinas declaran dónde: sin esto se vuelve a deducir de `local`', () => {
+    for (const nombre of MAQ.NOMBRES) {
+      expect(typeof MAQ.MAQUINAS[nombre].dirEntorno).toBe('string')
+      expect(MAQ.MAQUINAS[nombre].dirEntorno.length).toBeGreaterThan(0)
+    }
+  })
+})
+
 describe('[T-617] inalcanzable — decirlo en vez de construir un ssh sin destino', () => {
   const original = process.env.VENCE_FLOTA_AQUI
   afterEach(() => {
