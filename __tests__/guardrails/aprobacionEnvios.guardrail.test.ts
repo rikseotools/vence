@@ -31,6 +31,10 @@ const SCRIPTS_QUE_ENVIAN = [
   ['scripts/impugnaciones/cerrar-feedback.ts', 'feedback'],
   ['scripts/newsletters/send-promo-cruzada.cjs', 'newsletter'],
   ['scripts/newsletters/send-promo-inscripcion.cjs', 'newsletter'],
+  // El quinto (T-601): escribirle a UNA persona por algo que hemos detectado nosotros. Es el
+  // único que NO responde a algo que ella escribió antes, así que es justo el que más falta le
+  // hace la puerta — nadie está esperando este correo.
+  ['scripts/soporte/avisar-usuario.cjs', 'aviso'],
 ]
 
 describe('el juicio: quién puede enviar', () => {
