@@ -35,6 +35,14 @@ const SCRIPTS_QUE_ENVIAN = [
   // único que NO responde a algo que ella escribió antes, así que es justo el que más falta le
   // hace la puerta — nadie está esperando este correo.
   ['scripts/soporte/avisar-usuario.cjs', 'aviso'],
+  // El sexto (T-232, 06/08): mismo tipo «aviso» pero en LOTE — un mensaje PERSONALIZADO (nombre,
+  // días activos, preguntas) a cada premium de una lista, insertado directo en la campana
+  // (notification_logs). Se encontró SIN la puerta al investigar por qué la tanda seguía sin
+  // enviarse: no había ninguna decisión pendiente de canal (el canal ya estaba construido y
+  // probado desde el 28/07), lo único que faltaba de verdad era esto — y sin el gate, un
+  // trabajador con la credencial de escritura equivocada podría haberlo disparado sin que Manuel
+  // lo viera nunca. Exactamente el escenario que este fichero existe para impedir.
+  ['scripts/campana-programa-recompensas.cjs', 'aviso'],
 ]
 
 describe('el juicio: quién puede enviar', () => {
