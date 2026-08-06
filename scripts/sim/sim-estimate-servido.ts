@@ -46,15 +46,43 @@ async function estimar(opts: {
   acotar: boolean
   /** La selección fina de artículos, que es la que engorda la petición (T-623). */
   articulosPorLey?: Record<string, (string | number)[]>
+  /**
+   * Cómo se pide. **Por defecto POST, porque es lo que hace el cliente desde [T-623]**, y esta
+   * simulación existe para medir «lo que ve el usuario»: si pregunta por un camino que la app
+   * ya no usa, vuelve a ser una capa que da su veredicto sobre la copia equivocada — el defecto
+   * que motivó este fichero (T-326/T-551).
+   *
+   * Se aprendió en caliente: la primera versión del caso grande añadía la selección a la URL y
+   * seguía dando 414 DESPUÉS de desplegar el arreglo. No fallaba el arreglo, fallaba la sonda.
+   * El GET se conserva como opción para comprobar que el camino legacy sigue contestando.
+   */
+  via?: 'GET' | 'POST'
 }): Promise<Estimacion> {
+  const via = opts.via ?? 'POST'
   const url = new URL('/api/v2/test-config/estimate', BASE)
-  url.searchParams.set('selectedLaws', opts.leyes.join(','))
-  url.searchParams.set('positionType', opts.positionType)
-  url.searchParams.set('scopeToPosition', String(opts.acotar))
-  if (opts.articulosPorLey) {
-    url.searchParams.set('selectedArticlesByLaw', JSON.stringify(opts.articulosPorLey))
+  let peticion: RequestInit
+  if (via === 'POST') {
+    peticion = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        selectedLaws: opts.leyes,
+        positionType: opts.positionType,
+        scopeToPosition: opts.acotar,
+        ...(opts.articulosPorLey ? { selectedArticlesByLaw: opts.articulosPorLey } : {}),
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }
+  } else {
+    url.searchParams.set('selectedLaws', opts.leyes.join(','))
+    url.searchParams.set('positionType', opts.positionType)
+    url.searchParams.set('scopeToPosition', String(opts.acotar))
+    if (opts.articulosPorLey) {
+      url.searchParams.set('selectedArticlesByLaw', JSON.stringify(opts.articulosPorLey))
+    }
+    peticion = { signal: AbortSignal.timeout(30_000) }
   }
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) })
+  const res = await fetch(url, peticion)
 
   // ── SE LEE COMO TEXTO ANTES DE PARSEAR, Y ESO ES EL PUNTO (T-623) ──────────────────────
   // Cuando la petición se pasa de tamaño, nginx contesta con una PÁGINA HTML de error (414 o
@@ -228,9 +256,9 @@ async function main() {
   } else {
     const articulos = leyGorda.articulos
     const seleccion = { [leyGorda.ley]: articulos }
-    const bytes = new URL('/api/v2/test-config/estimate', BASE).toString().length +
-      encodeURIComponent(JSON.stringify(seleccion)).length
-    console.log(`\n── SELECCIÓN GRANDE: ${leyGorda.ley} con ${articulos.length} artículos (~${bytes} bytes de petición)`)
+    const enUrl = encodeURIComponent(JSON.stringify(seleccion)).length
+    console.log(`\n── SELECCIÓN GRANDE: ${leyGorda.ley} con ${articulos.length} artículos`)
+    console.log(`   (en la URL ocuparía ${enUrl} bytes — por encima de los 8 KB de nginx)`)
     try {
       const r = await estimar({
         positionType: leyGorda.position_type,
@@ -243,6 +271,23 @@ async function main() {
       const msg = e instanceof Error ? e.message : String(e)
       fallos.push(`selección de ${articulos.length} artículos de ${leyGorda.ley}: ${msg}`)
       console.log(`   ❌ ${msg}`)
+    }
+
+    // ── Y que el camino LEGACY siga contestando ─────────────────────────────────────────
+    // El GET no se retira: hay clientes ya servidos que lo usan. Una selección PEQUEÑA tiene
+    // que seguir funcionando por ahí, o el arreglo habría roto a quien no haya recargado.
+    try {
+      const r = await estimar({
+        positionType: leyGorda.position_type,
+        leyes: [leyGorda.ley],
+        acotar: false,
+        via: 'GET',
+      })
+      console.log(`   ✅ el GET legacy sigue contestando para selecciones pequeñas: ${r.count}`)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      fallos.push(`el GET legacy dejó de contestar: ${msg} — romperías a quien no haya recargado`)
+      console.log(`   ❌ GET legacy: ${msg}`)
     }
   }
 
