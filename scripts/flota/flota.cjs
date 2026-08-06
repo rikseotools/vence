@@ -590,6 +590,10 @@ async function main() {
         let salida = ''
         try { salida = enMaquina(w, `${como}bash -lc ${citar(orden)}`) }
         catch (e) { salida = String((e && e.stdout) || e.message || '') }
+        if (/OCUPADO/.test(salida)) {
+          // No es un fallo: es un trabajador commiteando. Se recoge en el siguiente pase.
+          console.log(`   ⏳ ${w}: está commiteando ahora mismo — no se le toca`); continue
+        }
         if (/NADA/.test(salida)) { console.log(`   ✅ ${w}: nada que salvar`); continue }
         const ok = /SALVADO=0/.test(salida)
         // Un trabajador puede tener trabajo atrapado en VARIAS ramas a la vez (una por tarea
@@ -739,6 +743,22 @@ async function main() {
     // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
     // origin/main, credenciales RESTRINGIDAS (no tu .env.local, que abre usuarios y pagos) y el
     // preflight como puerta: si no puede latir, no arranca.
+      // ── LO REPARTIDO HACE POCO, SEGÚN LA BD ─────────────────────────────────────────────
+      // El `Set` de repartidas vive en RAM y muere con el proceso, así que dos invocaciones
+      // seguidas de `repartir` daban la MISMA tarea a dos trabajadores — pasó dos veces el 06/08
+      // (T-038 a w3 y w4; T-533 a w2 y w3). La memoria tiene que estar donde sobreviva, y ya
+      // existe: cada encargo emite un `flota_turno` con su tarea. Se lee de ahí.
+      const repartidasHacePoco = new Set((await sql`
+        SELECT metadata->>'tarea' AS tarea
+          FROM public.observable_events
+         WHERE event_type = 'flota_turno'
+           AND created_at > now() - interval '25 minutes'
+           AND metadata->>'fase' = 'encargado'
+           AND metadata->>'tarea' IS NOT NULL`).map((r) => r.tarea))
+      if (repartidasHacePoco.size) {
+        console.log(`   (${repartidasHacePoco.size} tarea(s) repartida(s) hace <25 min: no se repiten)`)
+      }
+
     // ── REPARTIR: dar trabajo a TODOS los que estén libres, de una vez ────────────────────
     // Es lo que cierra el bucle. Sin esto, «hablo solo con el supervisor» seguía significando
     // «pídele trabajo a w1, luego a w2, luego a l1»: el supervisor sabía quién estaba libre y aun
@@ -804,7 +824,7 @@ async function main() {
            WHERE review_requested_at IS NOT NULL AND reviewed_at IS NULL
              AND review_requested_by IS DISTINCT FROM ${porSlug.get(f.trabajador) || ''}
            ORDER BY review_requested_at
-           LIMIT 5`).filter((t) => !dadas.has(t.id))[0]
+           LIMIT 8`).filter((t) => !dadas.has(t.id) && !repartidasHacePoco.has(t.id))[0]
         if (porRevisar) {
           dadas.add(porRevisar.id)
           try {
@@ -817,7 +837,7 @@ async function main() {
             dadas.delete(porRevisar.id)
           } catch (e) { dadas.delete(porRevisar.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
         }
-        const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id)), { puedeDesplegar: true })
+        const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id) && !repartidasHacePoco.has(t.id)), { puedeDesplegar: true })
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {
           const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })

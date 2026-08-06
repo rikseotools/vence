@@ -715,3 +715,47 @@ describe('el supervisor reparte revisiones ANTES que tareas nuevas', () => {
     expect(fuente).toMatch(/review_requested_by IS DISTINCT FROM/)
   })
 })
+
+// ── LA MEMORIA DEL REPARTO NO PUEDE VIVIR SOLO EN RAM ───────────────────────────────────────
+// El `Set` de repartidas muere con el proceso, así que dos invocaciones seguidas de `repartir`
+// daban la MISMA tarea a dos trabajadores. Pasó dos veces el 06/08: T-038 a w3 y w4, y T-533 a
+// w2 y w3 — la segunda ya con encargos de REVISIÓN, que es peor: dos revisando lo mismo.
+describe('el reparto recuerda entre invocaciones', () => {
+  const fuente = require('fs').readFileSync(
+    require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+
+  it('la memoria sale de la BD, no de una variable del proceso', () => {
+    expect(fuente).toMatch(/repartidasHacePoco/)
+    expect(fuente).toMatch(/event_type = 'flota_turno'/)
+  })
+
+  it('y filtra TANTO las revisiones como las tareas nuevas', () => {
+    // Si solo filtrara una de las dos, el duplicado vuelve por la otra puerta.
+    expect((fuente.match(/!repartidasHacePoco\.has\(/g) || []).length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// ── UN `index.lock` NO ES BASURA POR DEFECTO ────────────────────────────────────────────────
+// El rescate hace `git add -A && git commit`, y el 06/08 reventó con «Unable to create
+// index.lock» mientras w1 tenía un `git commit` VIVO. Forzar ahí puede dejar a medias el índice
+// de quien sí estaba trabajando — lo contrario de lo que un rescate viene a hacer.
+describe('el rescate se aparta de un commit en curso', () => {
+  const R = require(require('path').join(process.cwd(), 'lib', 'flota', 'rescate.cjs'))
+  const orden = R.ordenRescate({ arbol: '/arbol', trabajador: 'w1' })
+
+  it('mira si hay un git vivo antes de tocar el índice', () => {
+    expect(orden).toMatch(/index\.lock/)
+    expect(orden).toMatch(/pgrep/)
+  })
+
+  it('y si lo hay, sale sin tocar nada (no borra el lock ni fuerza)', () => {
+    expect(orden).toMatch(/echo OCUPADO; exit 0/)
+    expect(orden).not.toMatch(/rm -f .*index\.lock/)
+  })
+
+  it('el supervisor lo cuenta como espera, no como fallo', () => {
+    const f = require('fs').readFileSync(
+      require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+    expect(f).toMatch(/está commiteando ahora mismo/)
+  })
+})
