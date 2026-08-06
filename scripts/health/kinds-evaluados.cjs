@@ -35,9 +35,13 @@ const DIAS = Math.max(1, parseInt(arg('dias', '14'), 10))
 const UMBRAL_DIAS = Math.max(0, parseInt(arg('umbral', '2'), 10))
 
 function conectar() {
-  const url = process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL
-  if (!url) {
-    console.error('❌ Ni VENCE_LECTOR_URL ni DATABASE_URL configurados.')
+  // [T-624] El orden de credenciales vive en `lib/db/negocioSoloLectura.cjs`, no aquí: eran
+  // cuatro copias del mismo `VENCE_LECTOR_URL || DATABASE_URL` y el punto único mira además
+  // `.env.local`, que ninguna de las copias hacía.
+  const { urlLecturaNegocio } = require('../../lib/db/negocioSoloLectura.cjs')
+  let url
+  try { url = urlLecturaNegocio() } catch (e) {
+    console.error(`❌ ${e.message}`)
     process.exit(2)
   }
   return postgres(url, { prepare: false, max: 2, ssl: { rejectUnauthorized: false }, onnotice: () => {} })
