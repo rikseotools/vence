@@ -2789,6 +2789,39 @@ si el limpiador dispara, eso tiene que ser un evento.
   3. **NUNCA recortar el art. 19 TUE de los scopes** para resolverlo: ese artículo sí entra en los 37 programas. El defecto está en la pregunta, no en el temario.
   4. Purgar caché (`test-counts`, `temario`, `teoria`, `questions`) — es por instancia, repetir.
 - **Hermano de la familia que ya conoce el sistema:** es el mismo fenómeno que *«revisa los vínculos al artículo vecino»* y *«revisa las preguntas de planes y estrategias»*, pero entre **instrumentos distintos** (Tratado vs Protocolo anejo), que es lo que ninguno de los dos detectores mira.
+- **▸ SESIÓN w2 (06/08): leídas las 5 contra el texto REAL de `articles.content` (no contra la ficha) — el corte
+  «explicación cita el Estatuto» es un SUELO, y aquí se demuestra que también cuela falsos positivos: 3 de las 5
+  YA ESTÁN bien ancladas (la explicación cita el Estatuto de más, pero el dato que responde la pregunta SÍ está en
+  el TUE art. 19 tal y como lo tenemos en BD). Trabajador sin escritura en BD de negocio → nada de esto aplicado,
+  plan dry-run listo en `scripts/scope/plan-reanclaje-T561-tue19-w2.json` para quien tenga permiso.**
+  - **✅ NO RE-ANCLAR (el TUE art.19 en BD SÍ contiene la respuesta; la cita al Estatuto en la explicación es RUIDO,
+    no un ancla equivocada):**
+    - `bb382736` (mandato de los jueces): la clave es «seis años» y el art.19.2 en BD dice literalmente *"…serán
+      nombrados de común acuerdo por los Gobiernos de los Estados miembros para un período de seis años"*.
+    - `2aec5bd9` (mandato de jueces y abogados generales, renovable): mismo artículo, misma frase + *"…podrán ser
+      nombrados de nuevo"* (=renovable). Responde la pregunta entera.
+    - `c11ee0e9` (idéntica a `2aec5bd9`): el dato también está en el art.19, **pero su explicación NO lo cita** —
+      solo copia el art.48 del Estatuto (composición del Tribunal General, 40/47/2-por-Estado), que no tiene
+      relación con la duración del mandato. Es un defecto de EXPLICACIÓN (no explica lo que pregunta), no de ancla.
+      No re-anclar; sí merece revisión de contenido aparte (fuera del alcance de re-anclaje).
+  - **❌ SÍ RE-ANCLAR (verificado que el TUE art.19 en BD no contiene el dato que distingue la respuesta correcta):**
+    - `540c9861` → **Estatuto TJUE art. 9**: pide "renovación parcial cada 3 años, afectando a LA MITAD de los
+      jueces" — el art.19 solo da los 6 años, no la fracción. El art.9 del Estatuto sí: *"La renovación parcial de
+      los Jueces… afectará a la mitad de los Jueces."* Pérdida declarada: el Estatuto solo está escopado en 2 temas
+      (`tramitacion_procesal` T5 con arts 16-18 — el 9 NO está — y `policia_nacional` T4, ley entera), así que
+      re-anclar sirve la pregunta en 1 tema de los 37 donde hoy se sirve mal. Alternativa sin decidir aquí (es scope,
+      no ancla): ampliar `tramitacion_procesal` T5 con el art.9 — su epígrafe pide expresamente el TJUE entre las
+      instituciones de la UE.
+    - `6fcef119` → **TFUE art. 252**: pide el número de Abogados Generales (11); el art.19 solo dice "asistido por
+      abogados generales" sin cifra. El art.252 TFUE fija el mecanismo real: *"…asistido por ocho abogados
+      generales. Si el Tribunal de Justicia lo solicitare, el Consejo… podrá aumentar el número"* (la cifra 11 sale
+      de una Decisión del Consejo al amparo de este artículo, ya citada en la propia explicación). Pérdida
+      declarada: de los 37 temas con TUE art.19, solo 14 escopan también TFUE con el art.252 incluido (o ley
+      entera) — se deja de servir en los 23 restantes.
+  - **Plan dry-run VALIDADO** (guardarraíles de `reanclarGuardas.js` en verde, pérdidas declaradas aceptadas):
+    `DATABASE_URL=<con permiso de escritura> node scripts/reanclar-preguntas.cjs scripts/scope/plan-reanclaje-T561-tue19-w2.json --apply`
+    (repetir antes el dry-run sin `--apply` para confirmar contra el estado actual de BD, que puede haber cambiado).
+  - **Runner usado, requiere lector:** `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/reanclar-preguntas.cjs <plan.json>`.
 
 ### [T-557] 🟠 [ABIERTO 05/08] Explicaciones que no explican: repiten la opción correcta, y a veces con el texto falseado y el verdadero PEGADOS
 
@@ -7147,6 +7180,31 @@ sesiones analicen la misma fila EN SECUENCIA sin saber que la otra ya terminó. 
 **Esfuerzo: rato.**
 
 
+### [T-568] ✅ 🔴 [HECHA 05/08] El pre-commit bloquea CUALQUIER commit de un trabajador de la flota: `check-schema-drift.ts` no fuerza SSL y muere bajo `sh -e`
+
+- **Cómo se descubrió:** trabajando [T-244] (worker `w1`), el primer `git commit` de este trabajador tras aplicarse hoy el rol `vence_coordinacion` (T-539, HECHA 05/08) murió en el paso `db:check` del pre-commit con:
+  `PostgresError: no pg_hba.conf entry for host "…", user "vence_coordinacion", database "app", no encryption`
+- **DOS bugs distintos, y hay que arreglar los dos:**
+  1. **`scripts/check-schema-drift.ts:90`** conecta con `postgres(DATABASE_URL!, { max: 1 })`, **sin `ssl: 'require'`**. Contra RDS (`pg_hba` exige TLS) eso intenta una conexión SIN cifrar y el motor la rechaza — no es un problema de permisos, es que ni siquiera negocia TLS. Verificado en caliente: la MISMA `DATABASE_URL` conecta bien (`current_user`, `current_database`) en cuanto se añade `ssl: 'require'`. El resto de scripts del repo que conectan con `postgres()` SÍ lo llevan (p.ej. `scripts/audit-temario-display-drift.cjs:76`, `ssl: 'require'`), así que esto es una inconsistencia puntual, no el patrón del repo.
+     - **Por qué nadie lo vio antes:** un `DATABASE_URL` de `.env.local` normal ya lleva `sslmode=require` en la propia cadena de conexión, y la librería `postgres` (porsager) lo respeta sin más — el mismo gotcha documentado en CLAUDE.md para `pg`/node-postgres, aquí aplicado a la ausencia total de `ssl`. Las credenciales de flota que salen de SSM para `DATABASE_URL`/`VENCE_LECTOR_URL` (T-539) **no llevan `sslmode` en la URL**, así que el hueco solo se manifiesta con ellas.
+  2. **`.husky/pre-commit` no es `-e`-safe.** El hook real que ejecuta `git commit` NO es `sh .husky/pre-commit`: `.husky/_/h` invoca `sh -e "$s"` (`set -e`). El paso de `db:check` está escrito como "solo warning, no bloquea":
+     ```sh
+     npm run db:check
+     SCHEMA_EXIT_CODE=$?
+     if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+       echo "⚠️  Schema desincronizado…"   # solo aviso, se supone
+     fi
+     ```
+     Pero bajo `set -e`, en cuanto `npm run db:check` devuelve un exit code distinto de 0, el shell mata el script AHÍ MISMO — la línea `SCHEMA_EXIT_CODE=$?` nunca llega a ejecutarse. El comentario "no bloquea el commit" es falso en la práctica: cualquier fallo de conexión (no solo el de arriba) bloquea igual, silenciosamente, sin el mensaje bonito. Confirmado corriendo `bash .husky/pre-commit` (sin `-e`, sigue) vs `sh -e .husky/pre-commit` (con `-e`, muere en seco) con la misma `DATABASE_URL` rota.
+- **Arreglo:**
+  1. Añadir `ssl: 'require'` a `postgres(DATABASE_URL!, { max: 1 })` en `check-schema-drift.ts` (una línea, mismo patrón que el resto del repo).
+  2. Blindar el paso de `db:check` en `.husky/pre-commit` contra `set -e` — `npm run db:check || true` antes de leer `$?`, o envolverlo en `if npm run db:check; then … else …; fi` (que ya neutraliza `-e` para ese comando). Sin esto, la próxima vez que `db:check` falle por CUALQUIER motivo (no solo SSL) el commit se bloquea igual pese al comentario.
+- **Impacto:** bloqueaba el 100% de los commits de cualquier trabajador de la flota desde que T-539 se aplicó hoy (probablemente el primer commit real de un `vence_coordinacion` contra este hook). Sin arreglar, el próximo trabajador que intente commitear algo se topa con la misma pared.
+- **Cómo NO se resolvió (a propósito):** no se usó `--no-verify` ni se creó un escape nuevo. Para el commit de [T-244] se ejecutó el hook con `DATABASE_URL=$VENCE_LECTOR_URL` (que sí puede leer `topics`, así que `audit:display-drift` corrió de verdad y dio 0 drift) + el escape YA EXISTENTE `PRECOMMIT_TESTS_SKIP=1` (38 tests de integración fallan por el mismo motivo — alcance de rol contra tablas de negocio — no por el cambio commiteado). Es un parche de UN commit, no el arreglo; esta ficha es el arreglo.
+- **Relacionadas:** [T-539] (el rol que destapó el hueco), [T-244] (la tarea durante la que se encontró).
+- **✅ RESUELTO (05/08):** los dos arreglos aplicados y commiteados en `sesion/w1` (`219e102fe`): `ssl: 'require'` en `check-schema-drift.ts` (verificado en caliente contra RDS: la misma `DATABASE_URL` conecta en cuanto se añade la opción) y el paso `db:check` envuelto en `if npm run db:check; then … else …; fi` para ser `-e`-safe. **Verificado con un commit real** que atravesó el hook completo tras el arreglo (el de [T-244], `fb49cd898`). **Queda fuera de este arreglo, a propósito:** `audit:display-drift` sigue necesitando `VENCE_LECTOR_URL` (no `vence_coordinacion`) para leer `topics` — es una decisión de a qué credencial debe hablar cada check, no un bug de sintaxis como los otros dos; mientras tanto, el workaround sancionado es `DATABASE_URL=$VENCE_LECTOR_URL` + `PRECOMMIT_TESTS_SKIP=1` para los tests que fallan por el mismo motivo de alcance.
+
+
 ### [T-544] ✅ 🟡 [HECHA 05/08] Baja de Sara Chamorro: confirmar o ejecutar el borrado antes de que venza el plazo RGPD
 
 **Qué hay que hacer.** El 04/08/2026 Sara Chamorro (`0a41f4e1-9593-427d-ad55-49aac2244af7`, free, Escala Administrativa UGR) pidió eliminar su cuenta (feedback `88cd06d3`). **No se ejecutó**, y por buen motivo: pidió la baja a las 07:56:02 y **siguió usando la plataforma 17 minutos más**, con un test completo de 25 preguntas a las 08:00 y otro a las 08:12. Borrar ahí habría destruido la cuenta de alguien que estaba estudiando.
@@ -10294,6 +10352,61 @@ y eso solo ocurre donde las dos se sirven.
 
 
 - **⚠️ REABIERTA el 30/07 tras una revisión independiente del backlog.** Se había dado por cerrada, pero su propio texto declaraba trabajo vivo: cerrarla la sacaba del pool **y** dejaba el trabajo sin hacer. Lo destapó la revisión de los 70 cierres al mover fichas a «## Hechas» — y lo confirmó un agente leyendo la ficha entera, no el detector automático.
+- **▸ SESIÓN w2 (06/08): arreglado un falso-positivo REPRODUCIBLE en `audit-normas-del-epigrafe.cjs` (el runner de
+  la campaña por oposición) + verificados a mano 6 de los 20 hallazgos que quedan. Trabajador sin acceso de escritura
+  a la BD de negocio (rol `vence_coordinacion`/lector, solo lectura) → nada de lo de abajo está aplicado en BD,
+  queda listo para que lo aplique una sesión con permiso.**
+  - **BUG reproducido y arreglado:** `mismaFamiliaYaServida` solo comparaba el candidato contra el `short_name` de
+    las leyes ya escopadas en la oposición. Cuando la ya-servida es una SIGLA (`LPRL`) y el duplicado candidato tiene
+    nombre descriptivo (`LEY PREVENCIÓN DE RIESGOS LABORALES ENF`), no comparten ninguna palabra por `short_name` —
+    aunque el `name` completo de `LPRL` («Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales») sí
+    las comparte. Esto acusaba en falso a **5 oposiciones que YA sirven LPRL** (guardia_civil,
+    auxiliar_administrativo_extremadura, administrativo_galicia, auxiliar_administrativo_sms, tcae_sermas_madrid) de
+    no servir su duplicado ENF (165 preg). Arreglo: la query ahora agrega también `l2.name` de las ya-servidas
+    (`array(SELECT DISTINCT unnest(ARRAY[l2.short_name, l2.name]) …)`), y se comprueba family-match tanto por
+    `short_name` como por `name` del candidato. Test que reproduce el bug y prueba el arreglo:
+    `__tests__/lib/health/normaDelEpigrafeSinEscopar.test.js` (2 casos nuevos). **MEDIDO:** con el runner apuntando a
+    `VENCE_LECTOR_URL` (con `DATABASE_URL` un trabajador no puede ni leer `laws`: "permission denied"), los
+    hallazgos totales del runner bajaron de 148 a 20 tras el arreglo — aviso: parte de esa bajada puede deberse a
+    escritura CONCURRENTE de otra sesión vista tocando ficheros de esta ficha (`colas`, señal a 10 min de mi claim),
+    así que **el número atribuible SOLO al fix es el caso LPRL/LPRL-ENF (5 oposiciones · 165 preg cada una)**, no
+    la diferencia completa.
+  - **De los 20 hallazgos que quedan tras el fix, verificados 6 a mano (contra el epígrafe, el contenido ya servido
+    en otras oposiciones y una muestra de preguntas reales) — 3 genuinos, 3 falsos positivos NUEVOS (no del bug de
+    arriba, de un patrón distinto: nombre de contenedor genérico que casa por texto con un epígrafe que habla de
+    otra cosa):**
+    - ✅ **GENUINOS (verificados, listos para `escopar-ley-entera.cjs --apply`):**
+      `tcae_murcia T27` ← `Nefrología y urología` (402 preg): el epígrafe pide EXACTAMENTE "diálisis peritoneal,
+      hemodiálisis… cistoscopias y pruebas de urodinamia", la ley ya sirve con ese contenido a 9 oposiciones de
+      enfermería hermanas y el scope actual del tema (`Eliminacion y sondajes`) es contenido básico distinto
+      (complementario, no duplicado).
+      `auxiliar_enfermeria_osakidetza T111` ← `Aparato digestivo` (390 preg): mismo patrón, epígrafe pide
+      anatomofisiología digestiva/ostomías palabra por palabra, servida en 7 oposiciones hermanas, scope actual del
+      tema (`Alimentacion y nutricion` + `Eliminacion y sondajes`) es procedimental básico, no se solapa.
+      `policia_municipal_madrid T9` ← `LO 4/2010` (154 preg): el epígrafe CITA la ley por su nombre y número
+      completo ("Ley Orgánica 4/2010, de 20 de mayo de régimen disciplinario del CNP"), ya servida en
+      `policia_nacional T8`.
+    - ❌ **FALSOS POSITIVOS nuevos, NO escopear (patrón: contenedor con nombre genérico que casa por texto con un
+      epígrafe de materia distinta — el `mismaFamiliaYaServida` no lo puede ver porque la oposición NO sirve nada
+      de esa familia, es un choque léxico sobre un nombre mal puesto):**
+      `auxiliar_administrativo_sms T8` ← `Gestión y planificación sanitaria` (487 preg): el epígrafe pide la Ley
+      4/1994 de Salud de Murcia (organización, órganos del SMS); el contenedor candidato es teoría de gestión
+      enfermera genérica (EFQM, SINAPS, "enfermera gestora de casos") ya servida en 6 oposiciones de ENFERMERÍA —
+      nada que ver con el epígrafe administrativo que lo reclama.
+      `Derechos y Deberes de los Ciudadanos ENF AND` (29 preg, aparece en 7 temas de 6 oposiciones distintas —
+      celador_sermas_madrid, auxiliar_administrativo_sermas ×2, enfermero_scs_canarias, subalterno_parlamento_andalucia,
+      tcae_aragon ×2): es un contenedor SIN teoría propia ("⏳ Teoría pendiente") con preguntas específicas de
+      Andalucía (Voluntades Vitales Anticipadas, reclamaciones al SAS) ya correctamente servido en
+      `enfermero_sas_andalucia T14`; casa por la frase genérica "derechos y deberes… de los ciudadanos" que aparece
+      en el boilerplate constitucional de casi cualquier Tema 1.
+  - **Quedan 14 hallazgos sin verificar** (lista completa con epígrafe y ley en el log de esta sesión, no volcada
+    aquí por espacio). Método para verificarlos, el mismo que arriba: leer el epígrafe completo del tema, mirar en
+    qué otra(s) oposición(es) se sirve ya la ley candidata y con qué epígrafe, y mirar una muestra de preguntas
+    reales — 10-15 min cada uno, tal como decía esta ficha antes de reabrirse esta sesión.
+  - **Runner actualizado:** `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/scope/audit-normas-del-epigrafe.cjs`
+    (un trabajador necesita forzar `VENCE_LECTOR_URL`; una persona con `DATABASE_URL` completo no).
+  - **Punto pendiente sin decidir de la pasada anterior, sigue igual:** Directiva de Eficiencia Energética (106 preg,
+    GC T16) — decisión de Manuel, ver arriba.
 
 ### [T-308] 🟠 [ABIERTO 30/07] Premium compartido: comprobar si el enforcement existe y está MUDO, igual que pasó con el límite por dispositivo
 - **Por qué se abre (encargo de Manuel, 30/07):** al cerrar [T-304] apareció un patrón que da miedo por lo repetible — **el enforcement por dispositivo llevaba tres meses construido, cableado y sin cortar ni una vez**, y nadie lo sabía porque un bloqueo que no ocurre no emite ninguna señal. La sospecha razonable es que **`premium_sharing` esté igual**: detectado por el barrido (`fraud_alerts`), quizá con código de bloqueo escrito… y sin cortar nada.
@@ -11359,6 +11472,43 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **Cómo:** lote por lote sobre las `unsafe` con más alcance (las que sirven a más oposiciones), reescribiendo con el formato de una razón por opción y **pasando por el mismo comparador de no-regresión** (`mismoContenidoExplicacion`) para no cambiar el sentido; después `backfill-explanation-data.ts --pregunta <id> --apply`. Ojo a las referencias POSICIONALES sin letra («como se ha visto en la primera opción»): sobreviven a la transcripción y siguen rompiendo el sentido al barajar — hay que reescribirlas también.
 - **Impacto:** 🟠 es lo que queda para poder encender el barajado con cobertura amplia. Hoy hay ~4.300 preguntas transcritas de las ~47.000 bloqueadas por citar letras.
 - **Relacionado:** [T-080] (Fase 2), `lib/shuffle/structuredExplanation.ts`, `docs/maintenance/impugnaciones-claude-code.md`. *(Nació como T-192; renumerada a T-197 porque otra sesión reclamó ese id a la vez.)*
+- **▸ SESIÓN w2 (06/08): primer lote real, 8 preguntas — verificado end-to-end, NO aplicado (trabajador
+  sin escritura en BD de negocio). Lote en `data/pilotos/t197-ce-art9-w2/` (README con el detalle).**
+  - **Cómo se priorizó (siguiendo la propia ficha, "las `unsafe` con más alcance"):** medido el 06/08,
+    hay **42.360** activas `unsafe`/`shuffle_mode='full'`/sin `explanation_data` (más que las ~47.000
+    "bloqueadas por citar letras" de la ficha original, incluye también `anchor_last`/`no_shuffle` con
+    otras 14.856). Ordenadas por nº de oposiciones que sirven su artículo (join `topic_scope`), el
+    artículo de MÁS alcance es **CE art. 9: 116 oposiciones, 20 preguntas** ahí colgadas. Se trabajaron
+    9 de esas 20; 8 se aplican, 1 se excluye (ver abajo). Quedan 12 del mismo artículo sin tocar —
+    mismo texto fuente ya verificado, coste marginal bajo para la siguiente sesión.
+  - **Verificado, no solo escrito:** las 8 explicaciones nuevas pasan `gate-citas.cjs --pre` (8/8
+    citas literales contra `articles.content`, 0 cortadas), `aplicar-explicacion.ts --lote` en dry-run
+    (8/8 validadas: estructura completa, sin referencias a letra/posición) y `validar-explicacion.cjs`
+    sobre el texto renderizado (7/8 limpias; la 8ª con un AVISO falso conocido del parser legacy en
+    preguntas `select_incorrect`, documentado en el propio script). Los seis artículos cruzados en las
+    razones (7, 8.1, 10, 14, 35.1, 44 CE) se leyeron de BD uno a uno antes de escribir la razón que
+    los cita — no se dio ninguno por sabido.
+  - **Excluida `fb2012e8-f247-4f50-bd1b-f4ee5bc60196`: su OPCIÓN D (no la explicación) dice
+    "las disposiciones indicadas en la opción ANTERIOR..."** — la referencia posicional que la propia
+    ficha avisaba que "sobrevive a la transcripción", pero está en el TEXTO DE LA OPCIÓN, no en la
+    explicación, así que un lote de explicaciones no la puede arreglar (toca `corregir-opcion.cjs`,
+    que aborta si el cambio de una opción supera 3 caracteres, y es decisión de producto). Queda para
+    quien reparta trabajo de OPCIONES.
+  - **🔧 GOTCHA DE CONECTIVIDAD, reproducido y medido — bloquea a CUALQUIER trabajador que use esta
+    familia de herramientas:** `aplicar-explicacion.ts`, `validar-explicacion.cjs` y en general todo
+    lo que use `getDb()` (`db/client.ts`, paquete `postgres`/porsager) **no conectan con
+    `VENCE_LECTOR_URL` tal cual se entrega a un trabajador** — la URL no lleva `?sslmode=require` y
+    `db/client.ts` no pasa ninguna opción `ssl` explícita, así que `postgres` intenta conectar en
+    plano y RDS lo rechaza (`no pg_hba.conf entry ... no encryption`). Medido: 5 scripts distintos
+    fallan igual con `DATABASE_URL="$VENCE_LECTOR_URL"` a secas; los 5 conectan añadiendo
+    `?sslmode=require` a la URL, sin tocar ni un fichero del repo. Es el mismo mecanismo que documenta
+    `lib/db/pgSsl.cjs` para `pg` pero en sentido CONTRARIO (`pg` necesita QUITAR `sslmode`; `postgres`
+    necesita AÑADIRLO cuando no está). Detalle completo en el README del lote.
+  - **Falta para cerrar el ciclo de ESTE lote:** una sesión con escritura corra
+    `npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts --lote data/pilotos/t197-ce-art9-w2/lote --apply`,
+    purgue caché, y haga el paso 7 del manual (re-verificación independiente sobre la fila viva) antes
+    de cerrarlo. Y para la CAMPAÑA completa: seguir con las 12 restantes de CE art. 9, luego el
+    siguiente artículo por alcance.
 
 ### [T-188] 🟡 [ABIERTO 27/07 · (b) resuelto en parte] Los 15 `programa_url` que la campaña de clonado NO pudo clonar, y por qué cada uno
 - **De dónde sale:** la campaña de [T-147] clonó 27 documentos oficiales al hub y dejó **15 sin clonar, ya triados** por causa (`node scripts/convocatoria/campana-clonar-programa.cjs` los vuelve a listar en 2 minutos, sin escribir nada). No es una lista de pendientes vaga: cada grupo tiene un arreglo distinto y ninguno es "clonar mejor".

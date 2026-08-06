@@ -1,0 +1,12 @@
+{
+  "cita": {
+    "ref": "Art. 9.1 CE",
+    "texto": "Los ciudadanos y los poderes públicos están sujetos a la Constitución y al resto del ordenamiento jurídico."
+  },
+  "options": {
+    "0": "El art. 9.1 CE no contempla ninguna excepción para el Tribunal Constitucional ni para ningún otro poder público: la sujeción a la Constitución alcanza a TODOS los poderes públicos sin salvedad alguna.",
+    "1": "Aunque es cierto que todos los poderes públicos están sujetos a la Constitución, esta opción omite que el art. 9.1 CE menciona EXPRESAMENTE también a los ciudadanos como sujetos al ordenamiento jurídico.",
+    "2": "Reproduce literalmente el art. 9.1 CE: somete a la Constitución y al resto del ordenamiento jurídico tanto a los ciudadanos como a todos los poderes públicos, sin excepción alguna."
+  },
+  "estilo": "impugnacion"
+}
