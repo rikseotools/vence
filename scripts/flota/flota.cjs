@@ -34,6 +34,9 @@ const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
 const RESC = require(path.join(REPO, 'lib', 'flota', 'rescate.cjs'))
+// La conversación de un trabajador sobrevive a su turno (T-486): --session-id / --resume.
+const SES = require(path.join(REPO, 'lib', 'flota', 'sesionClaude.cjs'))
+const crypto = require('crypto')
 // El cruce tarea↔señal ya lo resuelve el parte: se REUSA, no se copia (T-130).
 const PARTE = require(path.join(REPO, 'lib', 'sessions', 'parte.cjs'))
 const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
@@ -61,8 +64,31 @@ function enMaquina(trabajador, orden, { entrada = null } = {}) {
   if (!m) throw new Error(`el trabajador "${trabajador}" no está declarado en ninguna máquina (lib/flota/maquinas.cjs)`)
   const opciones = { encoding: 'utf8', input: entrada || undefined, timeout: 120_000 }
   if (m.local) return execFileSync('bash', ['-c', orden], opciones)
-  return execFileSync('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
-    '-i', m.llave, `${m.usuario}@${m.host}`, orden], opciones)
+  // ── REINTENTO ANTE UN CORTE TRANSITORIO (T-486, 06/08) ────────────────────────────────
+  // `sshd` cierra conexiones cuando le llegan en ráfaga (MaxStartups por defecto 10:30:100), y
+  // el supervisor abre varias seguidas: sondear el clon, leer la sesión, medir el transcript,
+  // escribir el encargo. Medido hoy: un encargo a w3 murió con «Connection closed by … port 22»
+  // teniendo el VPS ocioso, sin fail2ban y con 5,9 GB libres — no era la máquina, era el ritmo.
+  //
+  // Importa más de lo que parece porque el bucle continuo hará esto cada pasada por cada
+  // trabajador: sin reintento, un corte de un segundo se convierte en una pasada perdida, y una
+  // pasada perdida es media hora de flota parada. Espera creciente para no empeorar la ráfaga.
+  let ultimo = null
+  for (let intento = 0; intento < 3; intento++) {
+    if (intento > 0) execFileSync('sleep', [String(intento * 3)])
+    try {
+      return execFileSync('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
+        '-i', m.llave, `${m.usuario}@${m.host}`, orden], opciones)
+    } catch (e) {
+      ultimo = e
+      // Solo se reintenta lo TRANSITORIO. Un comando que falla de verdad (exit != 255) tiene que
+      // fallar a la primera: repetirlo tres veces lo ejecutaría tres veces, y aquí se escriben
+      // ficheros de encargo y se mandan turnos.
+      const transitorio = e.status === 255 || /Connection (closed|reset)|kex_exchange|Broken pipe/i.test(String(e.stderr || e.message || ''))
+      if (!transitorio) throw e
+    }
+  }
+  throw ultimo
 }
 
 /**
@@ -172,7 +198,7 @@ function ponerAlDia(trabajador, { emitir = null, reanuda = false } = {}) {
  * se niega a trabajar sin supervisión con privilegios de root (y hace bien). En el portátil ya
  * eres tú: ni sudo ni chown.
  */
-function mandarEncargo(trabajador, texto, { alDia = null, turno = null } = {}) {
+function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco = false } = {}) {
   // ¿Está libre AHORA? El claim tarda minutos en aparecer desde que se manda el encargo, y en esa
   // ventana el trabajador es invisible para el reparto. La verdad la tiene su panel.
   const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
@@ -190,10 +216,32 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null } = {}) {
   const enc = env.replace(/\.env$/, '.encargo')
   const como = m.local ? '' : 'sudo -u flota '
   const dueno = m.local ? '' : `&& chown flota ${enc} `
+
+  // ── LA CONVERSACIÓN SOBREVIVE AL TURNO (T-486, 06/08) ────────────────────────────────
+  // Antes cada encargo era un `claude -p` virgen: el trabajador volvía a orientarse en el repo
+  // y a reconstruir el contexto CADA VEZ, y ese arranque se pagaba entero. Con `--resume` se
+  // paga una vez. Verificado ejecutándolo en w3: turno 1 «recuerda 4417» → turno 2, proceso
+  // distinto, «4417». El modo de un solo tiro venía de que el TUI ignora el token OAuth —
+  // cierto, pero eso no obligaba a tirar también la conversación.
+  const fSesion = SES.ficheroSesion(env)
+  let previa = null
+  try { previa = enMaquina(trabajador, `cat ${fSesion} 2>/dev/null || true`).trim() || null } catch {}
+  const ses = SES.banderasSesion({ sesionPrevia: previa, fresco, nuevoId: crypto.randomUUID() })
+  let peso = null
+  if (ses.continua) {
+    try {
+      const t = enMaquina(trabajador,
+        `stat -c %s ${SES.rutaTranscript({ home: `/home/flota`, arbol: MAQ.arbolDe(trabajador).replace('~flota', '/home/flota'), id: ses.id })} 2>/dev/null || true`).trim()
+      peso = t ? Number(t) : null
+    } catch {}
+  }
+  console.log(`   ${SES.lineaSesion({ continua: ses.continua, id: ses.id, tamanoBytes: peso })}`)
+
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
+    `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
     `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
-    `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
+    `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
   // El rastro lo deja la PUERTA, no el llamador. Puesto en cada sitio que manda, se olvida en uno
   // — y de hecho se olvidó en `repartir` al primer intento, así que la serie nacía incompleta.
@@ -418,7 +466,7 @@ async function main() {
 
     if (cmd === 'encargar') {
       const w = process.argv[3]
-      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn | --impugnaciones]'); return 2 }
+      if (!w) { console.error('Uso: flota.cjs encargar <trabajador> [--tarea T-nnn | --impugnaciones] [--fresco]'); return 2 }
 
       // ── IMPUGNACIONES: analizar SÍ, enviar NO ───────────────────────────────────────────
       // No pasa por el backlog: la cola de impugnaciones tiene su propio claim atómico
@@ -472,7 +520,11 @@ async function main() {
       const reanuda = !!(ses && tarea.claimed_by === ses.sid)
       const alDia = ponerAlDia(w, { emitir: (v) => { emitirClon(w, v) }, reanuda })
       const r = mandarEncargo(w, ENC.encargo({ trabajador: w, tarea, puedeDesplegar: MAQ.puedeDesplegar(w).puede }),
-        { alDia, turno: () => emitirTurno(w, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
+        // `--fresco` empieza conversación NUEVA. Existe porque una conversación larga se vuelve
+        // cara y, si se tuerce, arrastra el error de turno en turno. No hay reinicio automático
+        // a propósito: no tenemos aún ni un umbral MEDIDO ni un caso real que lo pida.
+        { alDia, fresco: process.argv.includes('--fresco'),
+          turno: () => emitirTurno(w, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
       if (!r.ok) {
         console.error(r.ocupado
           ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
