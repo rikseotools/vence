@@ -68,10 +68,20 @@ describe('el entorno del trabajador se genera, no se copia', () => {
     expect(decidirVariable('AUTH_SECRET').viaja).toBe(false)
   })
 
-  it('pero SÍ viaja lo que necesita para trabajar: quitarlo lo limitaría', () => {
-    for (const v of ['DATABASE_URL', 'AWS_ACCESS_KEY_ID', 'ANTHROPIC_API_KEY',
-      'NEXT_PUBLIC_SITE_URL', 'CRON_SECRET']) {
+  // ⚠️ ESTE TEST FIJABA EL BUG (corregido el 06/08, T-612). Afirmaba que DATABASE_URL,
+  // AWS_ACCESS_KEY_ID, ANTHROPIC_API_KEY y CRON_SECRET «SÍ viajan» porque «quitarlo lo
+  // limitaría» — y eso es exactamente lo que dejó a los cinco worktrees del VPS con la
+  // credencial de escritura total sobre la BD de producción. Un test verde puede estar
+  // certificando el defecto: lo que fijaba no era una necesidad medida, era una suposición.
+  it('lo que necesita para trabajar viaja — pero eso NO incluye credenciales de admin', () => {
+    // Lo que de verdad necesita: lo público y sus roles ACOTADOS.
+    for (const v of ['NEXT_PUBLIC_SITE_URL', 'VENCE_LECTOR_URL', 'VENCE_COORDINACION_URL']) {
       expect(decidirVariable(v).viaja).toBe(true)
+    }
+    // Y lo que se creía necesario y no lo era: su DATABASE_URL lo escribe
+    // `arrancar-trabajador.sh` con el rol de coordinación, no se hereda del portátil.
+    for (const v of ['DATABASE_URL', 'AWS_ACCESS_KEY_ID', 'ANTHROPIC_API_KEY', 'CRON_SECRET']) {
+      expect(decidirVariable(v).viaja).toBe(false)
     }
   })
 
@@ -81,14 +91,85 @@ describe('el entorno del trabajador se genera, no se copia', () => {
   })
 
   it('comenta la línea con el motivo en vez de borrarla, para que se sepa QUÉ falta y por qué', () => {
-    const { texto, quitadas } = filtrarEntorno('DATABASE_URL=x\nSTRIPE_SECRET_KEY=sk_live_zzz\n')
-    expect(texto).toContain('DATABASE_URL=x')
-    expect(texto).not.toContain('sk_live_zzz')
+    const { texto, quitadas } = filtrarEntorno('NEXT_PUBLIC_SITE_URL=x\nSTRIPE_SECRET_KEY=sk_live_zzz\n')
+    expect(texto).toContain('NEXT_PUBLIC_SITE_URL=x')
+    expect(texto).not.toMatch(/^STRIPE_SECRET_KEY=/m)     // no queda como línea ACTIVA
     expect(texto).toMatch(/# \[flota\] STRIPE_SECRET_KEY no viaja/)
     expect(quitadas.map((q: any) => q.nombre)).toEqual(['STRIPE_SECRET_KEY'])
   })
 
-  it('cada familia excluida dice POR QUÉ (un motivo vacío se copia sin pensar)', () => {
+  it('cada familia excluida EXPRESAMENTE dice POR QUÉ (un motivo vacío se copia sin pensar)', () => {
     for (const r of NO_VIAJAN) expect(String(r.motivo).length).toBeGreaterThan(15)
+  })
+
+  it('y cada permitido declara su porqué: añadir uno tiene que costar una frase', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { VIAJAN } = require(path.join(RAIZ, 'lib', 'flota', 'entornoTrabajador.cjs'))
+    expect(VIAJAN.length).toBeLessThanOrEqual(6)   // trinquete: la lista de permitidos NO crece sola
+    for (const r of VIAJAN) expect(String(r.porque).length).toBeGreaterThan(10)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// LISTA DE LO PERMITIDO, NO DE LO PROHIBIDO (T-612, 06/08) — corrección de este mismo filtro
+//
+// La versión del 05/08 enumeraba lo peligroso y dejaba pasar TODO lo demás. Medido al día
+// siguiente: los cinco worktrees del VPS tenían un `.env.local` producido por este filtro —lleva
+// sus motivos literales dentro— con DATABASE_URL=venceadmin (escritura total en producción),
+// AWS_ACCESS_KEY_ID/SECRET, GITHUB_PAT, SUPABASE_SERVICE_ROLE_KEY y VERCEL_TOKEN.
+//
+// Ninguna estaba prohibida. No porque se decidiera que podían viajar, sino porque nadie las
+// escribió en la lista. Lo encontró un trabajador auditando, no una alerta nuestra.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe('lo que no está declarado NO viaja', () => {
+  it('una variable que nadie previó se bloquea SOLA — es el arreglo entero', () => {
+    const d = decidirVariable('UNA_CREDENCIAL_QUE_AUN_NO_EXISTE')
+    expect(d.viaja).toBe(false)
+    expect(d.motivo).toMatch(/no está declarada/)
+  })
+
+  it.each([
+    ['DATABASE_URL', /venceadmin|ESCRITURA TOTAL/],
+    ['AWS_ACCESS_KEY_ID', /despliega|SSM/],
+    ['AWS_SECRET_ACCESS_KEY', /despliega|SSM/],
+    ['GITHUB_PAT', /main|pre-push/],
+    ['SUPABASE_SERVICE_ROLE_KEY', /RLS/],
+    ['VERCEL_TOKEN', /despliega/],
+  ])('las CINCO que el filtro viejo dejó pasar: %s queda fuera y dice por qué', (v, motivo) => {
+    const d = decidirVariable(v)
+    expect(d.viaja).toBe(false)
+    expect(d.motivo).toMatch(motivo)
+  })
+
+  it('lo que SÍ necesita para trabajar sigue pasando (no se ha roto al trabajador)', () => {
+    for (const v of ['NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_URL',
+                     'VENCE_LECTOR_URL', 'VENCE_COORDINACION_URL', 'VENCE_SESSION_ROLE', 'NODE_ENV']) {
+      expect(decidirVariable(v).viaja).toBe(true)
+    }
+  })
+
+  it('el rechazo EXPRESO gana sobre el permitido, por si alguien nombra mal una variable', () => {
+    // Un `NEXT_PUBLIC_` no puede colar una clave secreta por casar con el prefijo permitido.
+    expect(decidirVariable('STRIPE_SECRET_KEY').viaja).toBe(false)
+  })
+
+  it('un .env real filtrado no conserva ninguna de las cinco', () => {
+    const entrada = [
+      'DATABASE_URL=postgres://venceadmin:x@host/db',
+      'AWS_ACCESS_KEY_ID=AKIAX',
+      'GITHUB_PAT=ghp_x',
+      'SUPABASE_SERVICE_ROLE_KEY=eyJx',
+      'VERCEL_TOKEN=vc_x',
+      'NEXT_PUBLIC_SUPABASE_URL=https://x.supabase.co',
+    ].join('\n')
+    const { texto, quitadas } = filtrarEntorno(entrada)
+    for (const v of ['venceadmin', 'AKIAX', 'ghp_x', 'eyJx', 'vc_x']) {
+      // El valor no puede sobrevivir como línea ACTIVA (comentado con su motivo sí, para que se
+      // entienda la ausencia — pero entonces `dotenv` ya no lo carga).
+      const activas = texto.split('\n').filter((l) => !l.trimStart().startsWith('#'))
+      expect(activas.join('\n')).not.toContain(v)
+    }
+    expect(texto).toContain('NEXT_PUBLIC_SUPABASE_URL')
+    expect(quitadas.length).toBe(5)
   })
 })
