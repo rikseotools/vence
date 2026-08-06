@@ -3122,6 +3122,24 @@ si el limpiador dispara, eso tiene que ser un evento.
 
 ### [T-560] 🟠 [ABIERTO 05/08] El panel de admin sigue con el `unnest` ciego a los scopes de «ley entera» que [T-451] arregló en el barrido
 
+> ⚠️ **06/08 (noche) — SU VEREDICTO DICE «ARREGLADO» Y EL ARREGLO NO EXISTE EN NINGÚN SITIO.**
+> Comprobado al estrenar la clasificación de [T-629]: la nota de revisión dice *«Arreglado: las
+> tres consultas de `lib/api/admin-contenido/queries.ts` … usaban `unnest(ts.article_numbers)` sin
+> guarda para NULL»*, pero en `origin/main` **las tres siguen exactamente igual** (líneas 159, 357
+> y 376: `JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true`, sin guarda). Y no hay
+> ninguna rama que lo traiga: `git branch -r | grep 560` no devuelve nada, y el único commit que
+> menciona la tarea es `7e44e2c8e docs(T-451, T-560)`, que precisamente dice que **el bug sigue**.
+>
+> **El trabajo no está perdido en una rama: no llegó a existir en ningún sitio alcanzable.** Por
+> eso la tarea NO se cierra pese a tener veredicto `ok` — cerrarla dejaría el panel de admin con
+> el mismo `unnest` ciego que la ficha describe, y con la ficha diciendo que se arregló.
+>
+> **Lo que esto enseña sobre [T-629], y hay que arreglarlo ahí:** el cajón «solo falta cerrar»
+> significa **«no hay rama que mergear»**, que NO es lo mismo que «está terminada». Aquí las dos
+> lecturas se separan: no hay nada que mergear *porque el arreglo no se hizo*. El nombre del cajón
+> induce a error y hay que afinarlo — o partirlo en «nada que mergear, y el código está» frente a
+> «nada que mergear, y tampoco está», que se distinguen comprobando el arreglo concreto.
+
 - **De dónde sale.** Verificando el cierre de [T-451] (que arregló `unnest(NULL)` en el barrido y hoy, ya desplegado, sube de 371 a **461 temas**), fui a mirar si el patrón sobrevivía en otro sitio. Sobrevive: **tres consultas** de `lib/api/admin-contenido/queries.ts` (líneas ~159, ~357 y ~376) hacen `JOIN LATERAL unnest(ts.article_numbers)` **sin la guarda**, así que un scope `NULL` —que en este proyecto significa LA LEY ENTERA— no produce ni una fila y desaparece del cálculo de cobertura por artículo.
 - **Lo que NO es un fallo, y por eso conviene decirlo:** el `unnest` de `health-sweep.cjs:1236` (artículos fantasma) lleva `WHERE ts.article_numbers IS NOT NULL` **a propósito y está bien**: un artículo fantasma es un número que figura en la lista, y un scope sin lista no puede tener ninguno. La regla no es «todo `unnest` está mal», es «¿qué significa aquí no tener lista?».
 - **LO MEDIDO (05/08):**
