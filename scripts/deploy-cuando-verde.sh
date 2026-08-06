@@ -28,6 +28,17 @@ cd "$(dirname "$0")/.." || exit 1
 
 QUE="${1:-backend}"
 VUELTAS="${2:-12}"
+# Cuántos commits hacia atrás se buscan en pos del último VERDE ([T-619]).
+#
+# CALIBRADO CON LA MEDIDA, no a ojo: el 06/08 a las 18:40 el último commit con veredicto estaba a
+# **21 de la punta** (una ventana de 15 daba «esperar» teniendo un verde perfectamente desplegable
+# detrás). El fenómeno es de RÁFAGA: por la mañana, con huecos de ~10 min entre pushes y runs de
+# 3-4 min, cada commit se juzgaba y la punta estaba verde; por la tarde, con varias sesiones
+# cerrando a la vez y pushes cada 2 min, 21 commits seguidos se quedaron sin veredicto.
+#
+# El bucle PARA en el primer verde, así que en un día normal esto es UNA consulta a la API: la
+# ventana grande solo se paga cuando hace falta.
+VENTANA_VERDE="${VENTANA_VERDE:-40}"
 
 # ── DÓNDE se lanza esto IMPORTA (T-364, 31/07/2026) ───────────────────────────────────────
 # Este script hace `git reset --hard origin/main` en el árbol desde el que se ejecuta, y lo hace
@@ -63,6 +74,12 @@ esac
 PAT=$(sed -n 's/^GITHUB_PAT=//p' .env.local 2>/dev/null | tr -d "\"'" | head -1)
 [ -n "$PAT" ] || { echo "sin GITHUB_PAT en .env.local — no puedo consultar el CI"; exit 2; }
 REPO="${DEPLOY_REPO:-rikseotools/vence}"
+
+# Un deploy que NO sale tiene que dejar rastro fuera de esta terminal ([T-619]). Fail-open: el
+# aviso nunca cambia el resultado del deploy.
+avisar_no_desplegado() {  # $1=motivo corto  $2=detalle
+  node scripts/lib/avisar-deploy-no-salido.cjs "$QUE" "${1:-}" "${2:-}" 2>/dev/null || true
+}
 
 veredicto() {  # $1=sha -> imprime "estado|motivo"
   curl -sS -H "Authorization: Bearer $PAT" -H "Accept: application/vnd.github+json" \
@@ -149,18 +166,44 @@ for v in $(seq 1 "$VUELTAS"); do
   fi
 
   for i in $(seq 1 20); do
-    OUT=$(veredicto "$SHA"); EST="${OUT%%|*}"; MOT="${OUT#*|}"
-    echo "   [$i] $EST — $MOT"
-    case "$EST" in
-      verde)
-        echo "→ desplegando $QUE"
-        if bash "$SCRIPT"; then echo "✅ DEPLOY $QUE OK (vuelta $v)"; exit 0; fi
+    # ── NO se persigue solo la PUNTA ([T-619]) ────────────────────────────────────────────────
+    # Con 2-10 sesiones la punta casi nunca tiene veredicto (medido 06/08: 40 commits/día, hueco
+    # mediano de 2 min, y GitHub cancelando los runs PENDIENTES). Se miran los últimos
+    # $VENTANA_VERDE commits y se despliega el más reciente que esté VERDE: el deploy es
+    # cumulativo, así que eso sube igualmente todo lo anterior. La decisión es pura y testeada
+    # (lib/deploy/ultimoVerde.js); aquí solo se recogen los veredictos.
+    CANDIDATOS=""
+    ELEGIDO=""
+    for s in $(git rev-list -n "${VENTANA_VERDE}" origin/main); do
+      OUT=$(veredicto "$s"); EST="${OUT%%|*}"
+      CANDIDATOS="${CANDIDATOS}${s} ${EST}\n"
+      [ "$EST" = "verde" ] && { ELEGIDO="$s"; break; }   # no gastamos API mirando más atrás
+    done
+    DECISION=$(printf "$CANDIDATOS" | node -e '
+      const { elegirCommitDesplegable } = require("./lib/deploy/ultimoVerde.js");
+      let s=""; process.stdin.on("data",d=>s+=d).on("end",()=>{
+        const candidatos = s.split("\n").filter(Boolean).map((l)=>{ const [sha,estado]=l.split(" "); return {sha,estado} });
+        const r = elegirCommitDesplegable({ candidatos });
+        console.log([r.accion, r.sha||"", r.dejaFuera.length, r.rotos.length, r.motivo].join("|"));
+      });')
+    ACC="${DECISION%%|*}"; RESTO="${DECISION#*|}"
+    SHA_VERDE="${RESTO%%|*}"; RESTO="${RESTO#*|}"
+    FUERA="${RESTO%%|*}"; RESTO="${RESTO#*|}"
+    ROTOS="${RESTO%%|*}"; MOT="${RESTO#*|}"
+    echo "   [$i] $ACC — $MOT"
+    [ "${ROTOS:-0}" != "0" ] && echo "   ⚠️  $ROTOS commit(s) de main con el CI en ROJO por delante del que se despliega — alguien tiene que mirarlo"
+    case "$ACC" in
+      desplegar)
+        echo "→ desplegando $QUE en ${SHA_VERDE:0:9} (deja fuera $FUERA commit(s) más nuevos, irán en el siguiente deploy)"
+        if DEPLOY_SHA="$SHA_VERDE" bash "$SCRIPT"; then echo "✅ DEPLOY $QUE OK (vuelta $v)"; exit 0; fi
         echo "   el deploy no completó; reevalúo en la siguiente vuelta"; break ;;
-      rojo)
-        echo "❌ CI en ROJO para ${SHA:0:9} — alguien rompió main. NO se despliega: arréglalo."; exit 1 ;;
-      cancelado)
-        echo "   ↻ resincronizo al HEAD nuevo"; break ;;
+      abortar)
+        echo "❌ CI en ROJO en toda la ventana — alguien rompió main y no hay nada verificado que desplegar."
+        avisar_no_desplegado "abortar" "$MOT"; exit 1 ;;
+      nada)
+        echo "✅ nada que hacer: $MOT"; exit 0 ;;
     esac
+    EST="$ACC"
     # si origin/main avanzó mientras esperábamos, no tiene sentido seguir mirando este SHA
     git fetch origin -q
     if [ "$(git rev-parse origin/main)" != "$SHA" ]; then echo "   ↻ origin/main avanzó → resincronizo"; break; fi
@@ -169,4 +212,5 @@ for v in $(seq 1 "$VUELTAS"); do
 done
 
 echo "❌ agotadas las $VUELTAS vueltas sin poder desplegar. Mira si main lleva mucho rato rojo o si hay un deploy largo acaparando el lock."
+avisar_no_desplegado "vueltas_agotadas" "agotadas las $VUELTAS vueltas sin desplegar $QUE"
 exit 1

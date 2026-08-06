@@ -270,6 +270,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'tcae_galicia 19/3, auxiliar_administrativo_clm 12/9 — cada issue con el bloque de materia ' +
       'escrito en `findings`, listo para la cola de generación sin re-investigar.',
   },
+  sim_ultimo_verde_deploy: {
+    titulo: '¿Qué commit desplegaría el lanzador AHORA? (último verde de main, sin desplegar nada)',
+    ruta: 'scripts/deploy/sim-ultimo-verde.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/pusheo-revision-despliegue.md',
+    notas:
+      'Simula la decisión de `deploy-cuando-verde.sh` contra el CI REAL sin desplegar ni escribir: ' +
+      'recorre los últimos N commits de origin/main, pide sus check-runs y aplica el MISMO núcleo ' +
+      'puro que el lanzador (`lib/deploy/ultimoVerde.js`). Sin esto, la única forma de saber si el ' +
+      'criterio funciona era lanzar un deploy y esperar quince minutos. Sirve también para calibrar ' +
+      'la ventana: imprime a cuántos commits de la punta está el último verde. GOTCHA medido el ' +
+      '06/08/2026 ([T-619]): el fenómeno es de RÁFAGA, no permanente — por la mañana, con huecos de ' +
+      '~10 min entre pushes y runs de 3-4 min, cada commit se juzgaba y la punta estaba verde; por ' +
+      'la tarde, con varias sesiones cerrando a la vez y pushes cada 2 min, 21 commits seguidos se ' +
+      'quedaron sin veredicto. O sea que el gate se rompe JUSTO cuando más trabajo hay esperando.',
+  },
   generar_bloques_por_oposicion: {
     titulo: 'Convertir a DATO las 131 getBlockInfo copiadas en los TopicContentView del temario',
     ruta: 'scripts/temario/generar-bloques-por-oposicion.cjs',
