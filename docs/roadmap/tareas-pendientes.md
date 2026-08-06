@@ -1197,14 +1197,28 @@ con 2-10 sesiones y la flota) y «el deploy solo sale con el CI en verde **en la
 | Huecos por debajo de 15 min | **35 de 39** |
 | SHAs recientes con checks completados | **0** (`cancelled, cancelled, cancelled, queued`) |
 
-**El mecanismo, que no es el que parece.** `test.yml` agrupa por rama
-(`concurrency.group: ${{ github.workflow }}-${{ github.ref }}`) con
-`cancel-in-progress: ${{ github.event_name == 'pull_request' }}` → en un push a `main` vale **false**,
-así que **NO es que un push cancele al que se está ejecutando**. Lo que pasa es lo otro: GitHub guarda
-**un solo run PENDIENTE por grupo**, y al llegar el tercero **cancela al que estaba esperando**. Con un
-push cada dos minutos y un CI de varios, la inmensa mayoría de los SHAs muere en la cola sin llegar a
-ejecutarse. Es un detalle de la plataforma, no del workflow: leer el `cancel-in-progress` y darlo por
-descartado es el error fácil aquí.
+> ⚠️ **CORRECCIÓN — la primera versión de esta ficha tenía MAL el mecanismo, y se deja escrito
+> porque el error es del tipo que se repite.** Decía que `test.yml` agrupa por rama y que GitHub
+> «cancela el run PENDIENTE al llegar el tercero», o sea que casi ningún commit se comprobaba
+> nunca. **La medición lo desmiente:** de los **100 últimos runs de push a `main`** (ventana
+> 05/08 15:26 → 06/08 18:19) salen **79 % success · 14 % failure · 7 % cancelled**. El arreglo del
+> 28/07 (no cancelar en `main`) **sí funcionó** — venían del 57 % de cancelados. Escribí una
+> explicación coherente leyendo el `concurrency` del workflow y NO la contrasté con el histórico;
+> la coherencia no es evidencia.
+
+**El mecanismo REAL: es un fenómeno de RÁFAGA, no un fallo permanente.** Medido el 06/08 sobre los
+runs de `main`:
+
+| Franja | Hueco entre pushes | Duración del run | Resultado |
+|---|---|---|---|
+| 09:00 → 11:20 | ~10 min | 3-4 min | **cada commit juzgado, todos verdes** |
+| 17:53 → 18:19 | ~2 min | 20-25 min | **21 commits seguidos sin veredicto** |
+
+Cuando el ritmo de push supera al del CI, los runs se solapan, los jobs de código salen
+`cancelled` y **la punta se queda sin veredicto durante horas**. Por eso el 79 % global se ve sano
+mientras **no sale ni un deploy en todo el día**: el gate se rompe **justo cuando más trabajo hay
+esperando** — que es cuando varias sesiones cierran a la vez. Un promedio no puede ver esto; hay
+que mirar la franja.
 
 **Y el lanzador persigue un blanco móvil.** `scripts/deploy-cuando-verde.sh` hace `fetch` +
 `reset --hard origin/main` **en cada vuelta** (hasta 12), a propósito, para desplegar exactamente el SHA
@@ -1219,32 +1233,52 @@ día con la SHA viva todavía por detrás horas después. O sea: **ya había pas
 
 ---
 
-#### El arreglo (propuesto, NO implementado)
+#### ✅ HECHO Y EN `main` (commit `481d60361`, 06/08)
 
-**No es tocar el CI ni pedir que nadie pushee.** Es que el lanzador deje de exigir *«la punta en
-verde»* y pase a desplegar **el ancestro más reciente de `main` que SÍ tenga un run verde completado**.
-Es justo lo que necesita un deploy **acumulativo**: no le importa la punta, le importa subir todo lo
-que está verificado. Hoy, exigir la punta convierte una propiedad deseable (muchas sesiones pusheando
-seguido) en un bloqueo total.
+**Desplegar el último verde NO es rebajar el listón**, es lo que hace cualquier entrega continua:
+se despliega el artefacto que pasó su pipeline, no «lo que hubiera en HEAD al mirar». Y aquí encaja
+especialmente porque el deploy es **CUMULATIVO** — ese commit sube igualmente todo lo anterior, así
+que exigir la punta no aporta ninguna garantía extra. Lo que sí sería un apaño es saltarse el gate,
+y eso no se ha tocado: el CI del sha elegido se sigue comprobando.
 
-Piezas:
+- **`lib/deploy/ultimoVerde.js`** — núcleo PURO (13 tests). Cuatro invariantes: **nunca hacia atrás**
+  (si el verde ya está vivo, no se despliega), **un ROJO no detiene la búsqueda pero se canta**
+  (si alguien rompió la punta, desplegar lo último verificado es correcto; callarlo no),
+  **lo que se queda fuera se NOMBRA**, y **«no lo sé» nunca es «adelante»** (sin veredicto se
+  espera; solo se aborta con constancia de rojo).
+- **`DEPLOY_SHA`** en `deploy-{frontend,backend}.sh`, con **guarda de ANCESTRO**: nunca se despliega
+  algo que no está en `main`. Encajó sin tocar nada más porque el build ya salía de un worktree
+  creado al sha ([T-385] fase 2).
+- **`deploy_no_salido`** (`severity: error`) al agotar las vueltas → lo recoge
+  `senal_error_sin_vigilancia`. Fail-open: la telemetría no cambia el resultado del deploy.
+- **`npm`-able y de EJECUCIÓN, no de texto: `node scripts/deploy/sim-ultimo-verde.cjs [ventana]`**
+  decide contra el CI REAL sin desplegar ni escribir. Registrada en `toolRegistry`.
 
-1. `deploy-cuando-verde.sh`: recorrer `git rev-list origin/main` hacia atrás (con un techo, p. ej. 20
-   commits) y quedarse con el **primero que tenga los checks de código en `success`**. Desplegar ESE.
-2. **Decirlo en voz alta:** imprimir cuántos commits se queda por detrás de la punta y cuáles. Un
-   deploy que sube «casi todo» sin nombrar lo que deja fuera es el mismo modo de fallo que el guard
-   silencioso.
-3. **Que el silencio se note:** si tras las 12 vueltas no hay ningún ancestro verde, eso hoy no deja
-   rastro en ningún sitio. Debería emitir señal (`observable_events`) — un deploy que no ocurre es
-   invisible por construcción, y ese es el fallo de fondo de esta ficha.
-4. Comprobar de paso por qué **`Integration / perf / security` sale en `failure`** también en commits
-   YA desplegados (15656eef6, de733a2d1, f45352ec2): si ese check lleva días rojo, cualquier criterio
-   de «verde» que lo incluya no puede pasar nunca, y hay que decidir si entra en el gate o no.
+> ⚠️ **La ventana la fijó la MEDIDA, no mi criterio — y me pilló en falso.** Puse 15 comits a ojo
+> («cubre de sobra un día malo»). El simulador, contra el CI real, dio **ESPERAR**: el último verde
+> estaba a **21 de la punta**. Ajustada a 40. Sin ese simulador, el ajuste se habría descubierto
+> desplegando, quince minutos por intento. El bucle **para en el primer verde**, así que en un día
+> normal sigue siendo UNA consulta a la API.
 
-**Cómo se reproduce sin esperar a que pase:** contar los huecos entre commits de `main` de un día
-(`git log origin/main --since=… --format=%cI`) y cruzarlos con la duración de los runs de `Tests` en la
-API de GitHub. Si la mediana del hueco es menor que la duración del run, el gate actual es
-inalcanzable por construcción.
+**Verificado de extremo a extremo:** encuentra `177713afc` y nombra los 21 commits que deja fuera.
+107 tests verdes en las suites de deploy y registro.
+
+#### ⏳ LO QUE FALTA
+
+1. **Verlo desplegar de verdad.** Está relanzado; falta ver el `→ desplegando … (deja fuera N)` y
+   que el `/health` cambie. Hasta entonces, «funciona» es una afirmación de laboratorio.
+2. **El `deploy_no_salido` NO se ha visto emitir todavía** (haría falta agotar las 12 vueltas).
+   Comprobarlo cuando pase, o forzarlo con `VUELTAS=1` en un momento sin verde.
+3. **Lo que este arreglo NO toca, a propósito: la causa de arriba.** Que un commit de `main` se
+   quede sin veredicto durante horas sigue siendo un problema por sí mismo, aunque el deploy ya
+   no dependa de ello: **no se puede saber qué commit rompió qué**. Si se quiere cerrar, la
+   palanca es que en `main` cada commit tenga su propio grupo de concurrencia (por SHA en vez de
+   por rama) → todos se juzgan, ninguno se cancela. **Coste: más runs**, aunque el propio
+   `test.yml` ya deja escrito que en repo público los minutos son gratis. Es decisión de Manuel y
+   **no se ha hecho**.
+4. **`Integration / perf / security` en `failure`** también en commits YA desplegados: no gatea
+   (correcto, pega a BD real), pero conviene decidir si se arregla o se declara informativo — hoy
+   es ruido permanente que enseña a ignorar el rojo.
 
 **Relacionadas:** [T-448] (su ficha ya llevaba el síntoma sin diagnosticar), [T-485] (el candado de
 deploy entre máquinas), [T-364]/[T-365] (dónde se lanza el deploy: las guardas de worktree que llevaron

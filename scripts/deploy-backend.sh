@@ -125,7 +125,8 @@ trap _al_salir EXIT
 # Y desaparecen de golpe los fallos que no eran de código: el `reset --hard` destructivo sobre un
 # árbol compartido, el aborto por «otra sesión pusheó mientras verificaba el CI» y el aborto por
 # árbol sucio de otro. Medido el 27-31/07: seis abortos de deploy y un push a siete intentos.
-echo "→ se desplegará origin/main = ${SHA} (el árbol de trabajo no se toca)"
+# El registro tiene que NOMBRAR lo que se despliega: con DEPLOY_SHA ya no es la punta ([T-619]).
+echo "→ se desplegará ${DEPLOY_SHA:+(ancestro elegido) }${DEPLOY_SHA:-origin/main} = ${SHA} (el árbol de trabajo no se toca)"
 
 # GATE CI (Fase 2, 08/07/2026): no desplegar código que no pasó CI. Mismo gate que
 # deploy-frontend.sh — check-runs de GHA para el SHA. Override: SKIP_CI_GATE=1.
