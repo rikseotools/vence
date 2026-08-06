@@ -61,23 +61,13 @@ async function esVigilable(url) {
   return r
 }
 
-// Portales de empleo público oficiales (server-rendered) por CCAA / ciudad autónoma.
-// Fuente: donantes reales del catálogo. Ampliar aquí si aparece una CCAA nueva.
-const CCAA_FALLBACK = {
-  'Madrid': 'https://www.comunidad.madrid/empleo',
-  'Cantabria': 'https://empleopublico.cantabria.es/funcionarios',
-  'Canarias': 'https://www.gobiernodecanarias.org/administracionespublicas/funcionpublica/acceso/convocatorias-en-curso/',
-  'Navarra': 'https://www.navarra.es/es/empleo-publico/convocatorias',
-  'La Rioja': 'https://www.larioja.org/empleo-publico/es/oposiciones',
-  'Galicia': 'https://www.xunta.gal/es/funcion-publica/procesos-selectivos/oferta-publica-de-emprego',
-  'Aragón': 'https://empleopublico.aragon.es/',
-  'Castilla y León': 'https://empleopublico.jcyl.es/',
-  'Castilla-La Mancha': 'https://empleopublico.castillalamancha.es/',
-  'Andalucía': 'https://www.juntadeandalucia.es/institutodeadministracionpublica/empleado',
-  'C. Valenciana': 'https://www.gva.es/es/inicio/atencion_ciudadano/buscadores/busc_empleo_publico',
-  '51': 'https://www.ceuta.es/ceuta/por-servicios/tablon',            // Ceuta
-  '52': 'https://sede.melilla.es/sta/CarpetaPublic/doEvent?APP_CODE=STA&PAGE_CODE=PTS2_TABLON_DESC', // Melilla
-}
+// Portales de empleo público oficiales por CCAA: núcleo puro + testeado en
+// `lib/convocatoria/ccaaFallback.cjs` (T-616). Vivía aquí como objeto suelto y
+// se indexaba con la etiqueta CRUDA de la señal, que trae el boletín pegado
+// («Castilla y León (BOCYL)») → no casaba NUNCA con las claves desnudas: medido
+// el 06/08/2026, "por CCAA: 0" sobre 377 catalogadas sin fuente.
+const { urlFallbackPorCcaa } = require('../lib/convocatoria/ccaaFallback.cjs')
+
 
 function normalizeAdmin(s) {
   return (s || '')
@@ -118,8 +108,9 @@ async function main() {
     const ciegas = []
     for (const t of targets) {
       const donor = donorMap[normalizeAdmin(t.administracion)]
-      const url = donor || CCAA_FALLBACK[t.ccaa] || null
-      const src = donor ? 'donante' : (CCAA_FALLBACK[t.ccaa] ? `ccaa:${t.ccaa}` : null)
+      const fallback = urlFallbackPorCcaa(t.ccaa)
+      const url = donor || fallback || null
+      const src = donor ? 'donante' : (fallback ? `ccaa:${t.ccaa}` : null)
       if (!url) { unmatched.push(`${t.nombre}  [ccaa=${t.ccaa}]`); continue }
       // GUARDARRAÍL: nunca asignar una URL que el radar no pueda leer. Mejor NULL explícito
       // (queda en "sin match" y se ve) que una URL que aparenta vigilancia y no vigila nada.
