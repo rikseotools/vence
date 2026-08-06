@@ -864,7 +864,7 @@
 - **Dejo la tarea SIN el registro añadido** (mejor sin cambio que un cambio a medio probar en infraestructura compartida). Quien la retome: empezar releyendo este bloque, NO repetir la medición de los 4 escritores ni la del choque de `tipo` — ya está hecha.
 - **Relacionadas:** [T-147] (de donde sale), [T-130] (el registro y su motivación original).
 
-### [T-612] 🔴 [ABIERTO 06/08] Los CINCO worktrees de trabajador de este host tienen un `.env.local` completo con secretos de producción, contra el diseño documentado
+### [T-612] 🟡 [ABIERTO 06/08 — decidido por Manuel: NO se rota; queda pendiente el arreglo de raíz] Los CINCO worktrees de trabajador de este host tienen un `.env.local` completo con secretos de producción, contra el diseño documentado
 
 - **MEDIDO, no supuesto — reproducible ahora mismo en este host (`vence-flota-w1`, usuario `flota`):**
   ```
@@ -884,6 +884,14 @@
   3. **Decidir si se borra de estas cinco máquinas** una vez evaluado el punto 1, y revisar si hay MÁS hosts de la flota en la misma situación (este es solo el que yo puedo ver desde aquí).
   4. **Opcional pero barato:** un guardarraíl en `sesion:preflight` (o en `arrancar-trabajador.sh`) que compruebe `[ ! -s .env.local ]` en el worktree del trabajador y falle fuerte si no — así el defecto se detecta al arrancar, no ocho tareas después por accidente.
 - **Relacionado:** `docs/runbooks/sistema-sesiones-paralelas.md` §6.quater (el diseño que esto contradice), [T-038]/[T-573] (la migración RLS pendiente que motivó mirar `auditar-batch-input.cjs` en primer lugar), [T-155] (la tarea desde la que se encontró esto).
+
+- **✅ DECISIÓN DE MANUEL (06/08) — NO se rota, y la causa raíz queda identificada (no arreglada).**
+  - **Verificó él mismo el hallazgo** (mismo md5 de 9.670 bytes en los cinco worktrees, con `DATABASE_URL=venceadmin`, `AWS_ACCESS_KEY_ID`/`SECRET`, `GITHUB_PAT`, `SUPABASE_SERVICE_ROLE_KEY`, `VERCEL_TOKEN`) y confirma que estaba bien medido.
+  - **El riesgo real es MENOR de lo que la pregunta original recogía:** «NO hay claves de dinero ni de correo. Ni `sk_live`, ni Resend/SendGrid/SMTP, ni `AUTH_SECRET`, ni Meta, ni Google Ads. De Stripe solo las públicas (publishable y price ids)». La superficie que de verdad importa —cobrar y escribir a personas— sigue cerrada por AUSENCIA de credencial, además de por las puertas de `aprobacion.cjs`/`dinero.cjs`.
+  - **Lo que SÍ queda abierto, en sus palabras:** *«la contención por 'rol acotado' NO se sostiene para ningún script que cargue `.env.local` directamente, que son casi todos. El acotado del entorno de shell está bien hecho, pero el fichero lo puentea»* — confirma el mecanismo medido en esta ficha (el shell SÍ está bien acotado; el fichero en disco lo esquiva).
+  - **CAUSA RAÍZ, con línea exacta:** dos escritores que no dicen lo mismo. `scripts/flota/arrancar-trabajador.sh` (línea ~156) escribe un `.env.local` ACOTADO (solo coordinación). `scripts/worktrees/crear-worktree.sh` (línea 66-68) **copia sin condición** el `.env.local` COMPLETO del repo principal — correcto para el worktree de una PERSONA, no para el de un trabajador. **Cuál de los dos gana no está establecido** (no es copia byte a byte del portátil: 9.360 vs 9.670 bytes, hash distinto — así que hay al menos una tercera fuente o una edición intermedia sin rastrear).
+  - **Instrucción explícita: NO tocar el fichero de ningún worktree vivo** (cortaría el turno de quien esté trabajando) **y NO repetir la medición** (ya está hecha y confirmada dos veces).
+  - **Lo que SÍ queda por hacer, sin asignar a propósito:** arreglar `crear-worktree.sh` para que nunca copie el `.env.local` completo cuando el worktree es de un TRABAJADOR (no de una persona) — necesita primero trazar cuándo se invoca cada script en el ciclo de vida real (¿`crear-worktree.sh` corre DESPUÉS de `arrancar-trabajador.sh` en algún camino de rescate/resync y le pisa el acotado?), que es justo lo que "cuál gana no está establecido" señala sin responder. No intentado en este turno por prudencia: es un script que toca la credencial de negocio y la traza de cuándo se re-invoca no estaba clara con el tiempo que quedaba.
 
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
