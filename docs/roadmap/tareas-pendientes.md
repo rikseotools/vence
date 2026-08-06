@@ -1133,6 +1133,58 @@ pide acción y nunca se completa. **Sin verificar**: hay que mirar si estos 5 in
 **GOTCHA de la investigación:** la búsqueda por email en la API de Stripe (`/v1/customers?email=…`) da el
 cliente sin pasar por la BD — útil cuando RDS va lento, que es como se sacó esto tras dos timeouts.
 
+---
+
+#### 06/08/2026 — arreglado el bloqueo, medida la clase, y el hallazgo NO era el que buscábamos
+
+**Punto 2 (el endpoint) HECHO y verificado ejecutándolo** — commit `d1a5f64de`. Ver el fallo en vivo sin
+escribir nada: se intenta el `cancel` como hacía el código viejo, Stripe lo rechaza con el mensaje exacto,
+y el núcleo nuevo lo reconoce y señala la sesión correcta. Las tres cosas comprobadas contra Stripe real.
+
+- `lib/stripe/cancelCheckoutAbierto.ts` (núcleo puro, 12 tests). Exige las **dos** ideas del mensaje
+  («no se puede cancelar» + «sesión de checkout»): expirar es una ESCRITURA sobre la compra de alguien, y
+  un `includes('checkout')` suelto se la cargaría a quien está pagando bien. **Falla hacia no actuar**.
+- El reintento lleva **idempotency key distinta**. Con la misma, Stripe devuelve la respuesta cacheada —
+  o sea el error de antes — y el reintento sería una ilusión: verde en el código, usuario igual de atascado.
+- Alerta **`compra_atascada_checkout_expirado`** (umbral **1**) + guardarraíl de paridad emisor↔regla↔script.
+  El modo de fallo que cierra: si alguien quita el rescate, la alerta se queda **verde para siempre**.
+- `subscription_cancel_error_burst` ahora manda **contar usuarios distintos** antes de culpar a Stripe.
+
+**Punto 3 (la CLASE) MEDIDO — y lo interesante es lo que NO es.** `npm run stripe:compras-atascadas`
+(nuevo, registrado, solo lee). Sobre 60 días y las dos cuentas:
+
+| | |
+|---|---|
+| Clientes con alguna suscripción `incomplete` | 26 |
+| …que nunca llegaron a pagar | **8** (359 € si se suman los precios) |
+| …de esos, **sin un solo cargo** | **6** — abrieron el checkout y se fueron: **embudo normal, no un fallo** |
+| **Atascados de verdad** (≥1 cargo FALLIDO y ningún cobro) | **2** |
+
+Contar los 8 como «359 € perdidos» habría sido engañarse. **Por eso NO se ha montado detector con badge:**
+2 casos en 60 días no sostienen un buzón, y una alerta sin remediación enseña a ignorar el buzón entero.
+La alerta cubre a quien intente cancelar; el comando cubre a quien ya está atrapado y calla.
+
+**⚠️ EL HALLAZGO DE VERDAD, y es de PRODUCTO, no de código: los DOS mueren en `link`.**
+`cnicolau2024@gmail.com` (6 de 6 intentos) y `aluva78@gmail.com` (4 de 6, el resto `amazon_pay`). Todos
+`payment_intent_authentication_failure` con `outcome.type=issuer_declined` — o sea **el banco rechaza la
+tarjeta que tienen guardada en el monedero de Stripe**, una y otra vez. El checkout ofrece
+`card, klarna, link, amazon_pay, satispay`; Link se autorrellena cuando reconoce el correo, así que la
+persona reintenta con la MISMA tarjeta mala sin darse cuenta de que puede meter otra. **No lo toco: es
+decisión de Manuel** (pregunta en el embudo).
+
+**Lo que QUEDA:**
+1. **Desplegar frontend** (el arreglo) y **backend** (la alerta). Hasta entonces nadie puede cancelar si
+   tiene un checkout abierto.
+2. **Punto 1, la persona: SIN HACER a propósito.** Expirar el checkout es una escritura sobre la compra de
+   alguien y escribirle necesita el OK de Manuel. Comando listo:
+   `node scripts/stripe/compras-atascadas.cjs --rescatar cus_UuROFDD3yalf26`.
+3. Decidir lo de Link.
+
+**Cabo suelto ajeno encontrado de paso (no es de esta ficha):** `__tests__/deploy/candado.test.js` da por
+hecho que el candado sale con código 0, pero sale ≠0 —correctamente— cuando **hay un deploy en curso en
+otra máquina**. O sea que ese test tumba el `pre-commit` de TODAS las sesiones mientras alguien despliega.
+Pasó hoy y obligó a `PRECOMMIT_TESTS_SKIP=1` con 1.065 suites en verde y esa sola en rojo.
+
 ### [T-600] 🟠 [ABIERTO 05/08] 868 temas activos sin `description`, 745 SERVIDOS, y lo único que lo vigila es un test de integración en rojo que nadie mira
 
 - **Esfuerzo: sesion_propia.** El trabajo no es el arreglo técnico (no hay bug de código): es escribir
