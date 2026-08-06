@@ -52,6 +52,10 @@ async function debeDenegar(nombre, fn) {
 const DEBE_LEER = [
   ['observable_events', 'las alertas de salud que tiene que triar'],
   ['test_questions', 'la actividad con la que se diagnostican los contadores'],
+  // [T-450] el cupo diario que el modo examen se salta: sin esto no se puede comparar cuántas
+  // respuestas se guardaron de verdad contra cuánto cobró el contador. Ver
+  // 20260806_rls_daily_question_usage_lector.sql — T-573 no la cubrió, se acotó a propósito.
+  ['daily_question_usage', 'el contador de cupo diario, para diagnosticar fugas de límite'],
   ['questions', 'el banco, para auditar contenido'],
   ['topic_scope', 'el temario, para las auditorías de scope'],
   ['articles', 'los artículos, para generar preguntas'],
