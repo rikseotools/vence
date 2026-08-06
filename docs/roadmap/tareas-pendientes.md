@@ -11163,6 +11163,25 @@ y eso solo ocurre donde las dos se sirven.
 > de elegir candidatos por exposición real, y trabajar "a mano" sin esa cola es justo el modo que la
 > propia ficha desaconseja como estrategia principal. Se suelta para quien la retome CON el rol
 > desbloqueado o con acceso directo a la cola compartida.**
+
+> **📦 SEGUNDA VUELTA (06/08/2026, w2) — se demuestra que SÍ se puede avanzar sin la cola, con
+> un proxy y lotes pequeños de escalón 2.** El bloqueo RLS de arriba **sigue exactamente igual**
+> (`test_questions`/`ai_verification_results` dan 0 filas, re-confirmado). Ante eso, en vez de
+> soltar otra vez, se usó un proxy verificable: `is_official_exam=true` (valor intrínseco, no
+> hace falta exposición para saber que importan) concentrado en **una sola ley** para amortizar
+> la lectura de artículos — **CE, la que más candidatas tiene (838 de 6.146 oficiales sin
+> estructurar)**. Lote de **12 preguntas** en `data/pilotos/t291-ce-06ago/`: cada una verificada
+> leyendo el artículo ENTERO vinculado en BD (una, `014e50cc`/art.124, necesitó además leer los
+> arts. 117/123/127 que sus opciones citan sin estar vinculada a ellos), escrita en
+> `explanation_data` estructurado, y **validada contra los 4 gates REALES de la campaña,
+> importados sin reimplementar** (`isStructuredExplanation`, `structuredNarrativeStaleLetters`,
+> `explanationReferencesLetters`, `citaNoLiteral`) con `data/pilotos/t291-ce-06ago/validar.ts`:
+> **12/12 en verde**. Comprobación extra hecha a mano: la opción que cada explicación marca como
+> correcta coincide EXACTAMENTE con `questions.correct_option` en las 12 — ninguna clave se tocó.
+> **No aplicado** (mismo motivo que siempre: sin `DATABASE_URL` de escritura). Detalle, y los dos
+> casos con matices (art. 124 multi-artículo; art. 107 Consejo de Estado con una función que la
+> CE no dice literalmente pero sí su ley orgánica) en el README de esa carpeta.
+
 - **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
 - **🎯 Pero NO hay que reparar 133.000, y este es el dato que decide la estrategia.** **82.591 de ellas no las ha visto NADIE** (cero apariciones), y la exposición está muy concentrada:
 

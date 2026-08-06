@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 124.4 CE",
+    "texto": "El Fiscal General del Estado será nombrado por el Rey, a propuesta del Gobierno, oído el Consejo General del Poder Judicial."
+  },
+  "options": {
+    "0": "Correcta como afirmación (art. 127.1 CE, no el 124): mientras estén en activo, los Jueces y Magistrados no pueden pertenecer a sindicatos.",
+    "1": "Correcta como afirmación (art. 123.2 CE, no el 124): el Presidente del Tribunal Supremo es nombrado por el Rey a propuesta del Consejo General del Poder Judicial.",
+    "2": "Correcta como afirmación (art. 117.6 CE, no el 124): la Constitución prohíbe los Tribunales de excepción.",
+    "3": "Es la INCORRECTA: el art. 124.4 CE establece que el Fiscal General del Estado es nombrado por el Rey a propuesta del Gobierno, oído el Consejo General del Poder Judicial — no oídos el Congreso y el Senado."
+  },
+  "frame": "select_incorrect",
+  "estilo": "boletin"
+}
