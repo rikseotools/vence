@@ -93,18 +93,32 @@ function loQueSePerderia(ruta) {
   return [...new Set([...commiteado.filter((f) => difiereHoy.has(f)), ...sinCommitear])]
 }
 
+/**
+ * Quién está vivo, según `worktree_sessions`. `null` = NO SE PUDO SABER (no «nadie vivo»).
+ *
+ * **Se intenta también la RÉPLICA, y no es un lujo:** esto es una lectura pura, así que la
+ * réplica sirve igual de bien, y el 06/08 el primario dio `CONNECT_TIMEOUT` durante minutos
+ * mientras la réplica respondía a la primera. Con una sola vía, ese rato el barrido se quedaba
+ * ciego — que es justo cuando más falta hace (una sesión que muere no avisa).
+ */
 async function senales() {
-  try {
-    const url = process.env.DATABASE_URL ||
-      fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
-    const s = require('postgres')(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8 })
+  const urls = []
+  for (const nombre of ['DATABASE_URL', 'DATABASE_URL_REPLICA']) {
     try {
-      const filas = await s`SELECT slug, worktree_path, last_signal_at FROM worktree_sessions`
-      return filas
-    } finally { try { await s.end({ timeout: 3 }) } catch {} }
-  } catch {
-    return null   // sin BD no se puede saber quién está vivo → se dice, no se supone
+      const u = process.env[nombre] ||
+        fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(new RegExp(`^${nombre}=(.*)$`, 'm'))[1].trim()
+      if (u) urls.push(u)
+    } catch { /* la que no esté, se salta */ }
   }
+  for (const url of urls) {
+    try {
+      const s = require('postgres')(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 8 })
+      try {
+        return await s`SELECT slug, worktree_path, last_signal_at FROM worktree_sessions`
+      } finally { try { await s.end({ timeout: 3 }) } catch {} }
+    } catch { /* se prueba la siguiente */ }
+  }
+  return null   // sin BD no se puede saber quién está vivo → se dice, no se supone
 }
 
 /** Procesos con el cwd dentro (señal local, sin BD). `null` si no es Linux: no miente. */
@@ -129,6 +143,27 @@ function emitirFriccion(n) {
   } catch { /* la telemetría nunca estorba */ }
 }
 
+/**
+ * Minutos desde el último latido de esa sesión, para `clasificarWorktree`. `null` = NO SE SABE,
+ * que es distinto de «lleva mucho sin latir» y **muy** distinto de «acaba de latir».
+ *
+ * Aquí vivía el fallo que motiva [T-615]. Sin BD se devolvía `0` —o sea, «señal recién vista»—,
+ * y como la señal de vida manda sobre todo lo demás, los 28 worktrees salían `en_uso`: el barrido
+ * no llegaba a mirar el contenido de ninguno y aun así firmaba «✅ nada en peligro». Dos daños,
+ * y el segundo es el caro:
+ *   · el informe daba un VERDE que no había evaluado nada (06/08: `sesion/colas-feedback` llevaba
+ *     18 h muerta con un arreglo de `db/schema.ts` que no estaba en `main`, y salía «en uso»);
+ *   · `borrar-worktree.sh` consulta esto con `--slug` y borra si no hay hallazgo, así que sin BD
+ *     el guard **dejaba borrar un worktree con trabajo dentro** — y ese borrado no se deshace.
+ * Devolviendo `null` la decisión recae en `procesosDentro`, que es una señal LOCAL y real.
+ */
+function minutosSinSenal(ses, ahora) {
+  if (!ses || !ses.last_signal_at) return null
+  const t = new Date(ses.last_signal_at).getTime()
+  if (!Number.isFinite(t)) return null
+  return Math.round((ahora - t) / 60000)
+}
+
 async function main() {
   const vivas = await senales()
   const porRuta = new Map((vivas || []).map((v) => [v.worktree_path, v]))
@@ -142,9 +177,7 @@ async function main() {
     // El árbol desde el que se ejecuta esto está, por definición, en uso.
     const esMio = path.resolve(wt.ruta) === path.resolve(propio)
     const ses = porRuta.get(wt.ruta)
-    const minSinSenal = ses && ses.last_signal_at
-      ? Math.round((ahora - new Date(ses.last_signal_at).getTime()) / 60000)
-      : (vivas === null ? 0 : null)   // sin BD no se afirma que esté muerta
+    const minSinSenal = minutosSinSenal(ses, ahora)
 
     clasificados.push(clasificarWorktree({
       slug: path.basename(wt.ruta),
@@ -167,9 +200,17 @@ async function main() {
   }
 
   console.log(`\nWORKTREES REVISADOS (${r.total}): ${r.en_uso} en uso · ${r.sin_trabajo} sincronizados · ${r.solo_desfasado} desfasados (borrables)`)
+  // Un veredicto se DA cuando se ha podido mirar. Sin `worktree_sessions` la vida solo se deduce
+  // de los procesos locales, así que el «en uso» de un worktree sin procesos dentro no está
+  // comprobado — y decir ✅ ahí es firmar lo que no se ha visto.
+  if (vivas === null) {
+    console.log('⚠️  NO SE HA PODIDO COMPROBAR quién está vivo: ni el primario ni la réplica respondieron.')
+    console.log('    La vida se ha deducido SOLO de los procesos locales; el resto no está verificado.')
+  }
   if (!r.hallazgo) {
-    console.log('✅ ningún worktree guarda trabajo que solo exista ahí.')
-    if (vivas === null) console.log('   (sin BD: no se ha podido saber quién está vivo — se ha mirado el contenido igual)')
+    console.log(vivas === null
+      ? '   sin hallazgos con lo que se ha podido mirar — esto NO es «nada en peligro».'
+      : '✅ ningún worktree guarda trabajo que solo exista ahí.')
     return r
   }
   console.log(`\n⚠️  ${r.huerfanos.length} WORKTREE(S) CON TRABAJO QUE SOLO EXISTE AHÍ:`)
@@ -189,4 +230,4 @@ if (require.main === module) {
     .catch((e) => { console.log(`⚠️  huerfanos: ${String(e.message || e).slice(0, 120)} (fail-open)`); process.exit(0) })
 }
 
-module.exports = { loQueSePerderia, datosDeWorktree, listarWorktrees }
+module.exports = { loQueSePerderia, datosDeWorktree, listarWorktrees, minutosSinSenal }

@@ -903,6 +903,44 @@ Tres cosas que hacen que esto no sea un informe más:
 > ejecuta los binarios de verdad y mira **códigos de salida**, que es lo que git obedece, y provoca
 > la ceguera con una URL inalcanzable en vez de escondiendo ficheros.
 
+### 6.ter.bis. Fail-open es para la OPERACIÓN, nunca para el VEREDICTO (T-615, 06/08)
+
+El matiz que le faltaba a §6.ter, y costó encontrarlo porque el fallo se presentaba como un acierto.
+
+`npm run sesiones:huerfanos` contestó **`28 en uso` + `✅ ningún worktree guarda trabajo que solo
+exista ahí`**. Era falso: había tres worktrees muertos con trabajo fuera de `main`, uno con un
+arreglo de `db/schema.ts` de 18 h antes. No se le había escapado nada — **no había mirado**. Sin
+poder leer `worktree_sessions` pasaba `minSinSenal = 0` al criterio, o sea *«acaba de latir»*, y
+como la señal de vida manda sobre todo lo demás, los 28 salían `en_uso` sin evaluar su contenido.
+
+**La distinción que hay que hacer, y que el fail-open por sí solo no hace:**
+
+| | qué es correcto |
+|---|---|
+| **la operación** (escribir el latido, emitir telemetría) | fail-open: si no se puede, se calla y no estorba |
+| **el veredicto** (¿hay trabajo en peligro? ¿se puede borrar esto?) | **NO existe el fail-open**: o se comprobó, o se dice que no se pudo |
+
+Un ✅ es una afirmación. Emitirlo sin haber podido mirar no es ser permisivo, es **mentir en la
+dirección tranquilizadora** — y un verde que no distingue «no encontré nada» de «no pude buscar»
+es peor que no tener detector, porque además apaga la sospecha.
+
+Dos consecuencias prácticas, las dos medidas:
+
+- **Un consumidor puede convertir el informe en una acción irreversible.** `borrar-worktree.sh`
+  consulta el mismo camino con `--slug` y borra cuando no hay hallazgo: con las dos BD caídas daba
+  `exit=0` sobre un worktree **con trabajo dentro**. La protección estaba condicionada, sin decirlo,
+  a que la BD respondiera. Al preguntarse *«¿qué hace el que me lee cuando digo que no pasa nada?»*
+  aparece el daño real, que casi nunca está en el informe.
+- **Antes de declararse ciego, agota las vías.** Aquí la vida es una lectura pura, así que la
+  **réplica** vale igual que el primario — y el día del fallo el primario daba `CONNECT_TIMEOUT`
+  durante minutos **mientras la réplica respondía a la primera**. Fallar abierto con una sola vía
+  cuando había dos no es prudencia, es no haberlo intentado.
+
+Y la regla que hizo el arreglo barato y seguro: **el criterio no se toca**. `clasificarWorktree`
+siempre estuvo bien; lo que le llegaba era mentira. Cuando tres puertas comparten criterio
+(`huerfanos`, `latidos`, el guard del borrado), el arreglo va en quien construye la ENTRADA, no en
+la regla — o las tres dejan de opinar lo mismo.
+
 ### 6.quater. Dar de alta un TRABAJADOR: el rol de coordinación (T-539, 04/08)
 
 Un trabajador necesita hablar con la BD para reclamar, latir y preguntar. **No se le da el
