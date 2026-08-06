@@ -10783,10 +10783,13 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 > YA estaba declarada como necesaria en el propio `20260805_rol_lector_flota.sql`, así que no es
 > alcance nuevo, es una promesa sin cumplir: migración gemela
 > `20260805_rls_test_questions_lector.sql`. **El canario `scripts/canary-rol-lector.cjs` daba FALSO
-> VERDE en los dos casos** porque comprobaba `SELECT 1 … LIMIT 1` sin excepción = OK; con RLS activo
-> y sin política el motor no lanza excepción, devuelve 0 filas — reforzado a `count(*) > 0`, lo cazó
-> al momento (`ai_verification_results`: 0 filas · `test_questions`: 0 filas, el resto de la lista
-> con datos reales). **Ninguna migración está aplicada a RDS** (un trabajador no tiene las
+> VERDE en los dos casos** (mismo fallo que [T-574] ya había diagnosticado y corregido en el propio
+> canario mientras esta sesión trabajaba en paralelo: `SELECT 1 … LIMIT 1` sin excepción no prueba
+> nada con RLS activo y sin política — hace falta cruzar `pg_class.relrowsecurity` + `pg_policies`,
+> ver `lib/db/rlsSelectBlocked.cjs`). Corrido tras rebasar sobre esa mejora: el canario confirma
+> `ai_verification_results` y `test_questions` bloqueadas (`RLS activo SIN política para este
+> rol`), el resto de `DEBE_LEER` con datos reales. **Ninguna migración está aplicada a RDS** (un
+> trabajador no tiene las
 > credenciales para correr `psql -f` contra producción — lo hace una persona, ver
 > `docs/runbooks/sistema-sesiones-paralelas.md:838`); quedan en el repo listas para revisar y
 > aplicar. **Hallazgo más grande, NO tocado (fuera de alcance de esta tarea, necesita criterio
