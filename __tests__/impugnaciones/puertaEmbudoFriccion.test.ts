@@ -71,12 +71,41 @@ describe('la puerta del embudo cuenta la fricción', () => {
     expect(emitirFriccion).not.toHaveBeenCalled()
   })
 
-  it('fail-open: sin BD la puerta deja pasar y NO lo cuenta como rodeo', () => {
-    // Igual que la puerta de temario: contar un `sin_bd` como escape haría subir el indicador de
-    // «guardarraíl muerto» cada vez que se cae la BD, justo lo contrario de lo que mide.
+  it('sin BD la puerta NO deja pasar: no puede afirmar que no haya veto', () => {
+    // Cambiado el 06/08 al rescatar T-609 a main, tras EJECUTAR la puerta y ver que con
+    // `DATABASE_URL` ausente devolvía «permitido». Aquí el fail-open del resto del andamiaje no
+    // vale: esto no observa, DECIDE si sale un correo hacia una persona — y `cerrar.ts` no manda
+    // por BD, manda por HTTP contra `/api/v2/dispute/resolve`, así que el envío seguía adelante y
+    // el hueco que esta ficha vino a cerrar quedaba abierto para cualquier sesión con la BD caída.
+    // La asimetría de `embudoVeto.cjs` decide el sentido: un falso «sí» manda un correo vetado
+    // (irreversible), un falso «no» cuesta un `--embudo-igualmente` que ya existe.
+    expect(anunciarEmbudo(SIN_BD, { aplicar: true })).toBe(false)
+  })
+
+  it('…y lo cuenta como BLOQUEO, no como escape', () => {
+    // Se conserva el razonamiento original: contar un `sin_bd` como `guard_escape` haría subir el
+    // indicador de «guardarraíl que se rodea» cada vez que se cae la BD, que es justo lo contrario
+    // de lo que ese indicador mide. Es un bloqueo, y como bloqueo se cuenta.
     anunciarEmbudo(SIN_BD, { aplicar: true })
 
+    expect(emitirFriccion).toHaveBeenCalledTimes(1)
+    expect(emitirFriccion.mock.calls[0][0]).toMatchObject({ clase: 'guard_bloqueo', guard: 'embudo' })
+  })
+
+  it('en dry-run no cuenta nada, tampoco el sin_bd', () => {
+    anunciarEmbudo(SIN_BD, { aplicar: false })
+
     expect(emitirFriccion).not.toHaveBeenCalled()
+  })
+
+  it('el sin_bd dice CÓMO arreglarlo, no solo que falló', () => {
+    // Un bloqueo que no dice cómo satisfacerse es el que enseña a usar el escape (T-375).
+    const logSpy = jest.spyOn(console, 'log')
+    anunciarEmbudo(SIN_BD, { aplicar: true })
+
+    const impreso = logSpy.mock.calls.map((c) => c.join(' ')).join('\n')
+    expect(impreso).toContain('--env-file=.env.local')
+    expect(impreso).toContain('--embudo-igualmente')
   })
 
   it('el veto BLOQUEADO imprime la respuesta completa (para leerla antes de decidir)', () => {

@@ -90,9 +90,29 @@ export async function comprobarEmbudo({
 export function anunciarEmbudo(v: VeredictoEmbudo, { aplicar }: { aplicar: boolean }): boolean {
   if (v.clase === 'sin_veto') return true
 
+  // ── SIN BD NO SE PASA, y aquí el fail-open habitual sería justo lo contrario de esta puerta ──
+  // El resto del andamiaje deja pasar cuando no alcanza la BD, y está bien razonado: la avería de
+  // un sistema de observación no puede parar a quien está delante. Pero esto NO observa, DECIDE si
+  // sale un correo hacia una persona — y `cerrar.ts` no manda por BD, manda por HTTP contra
+  // `/api/v2/dispute/resolve` con el token de admin. Verificado el 06/08 al rescatar esta ficha:
+  // con `DATABASE_URL` ausente la puerta devolvía `permitido` y el envío seguía su camino, o sea
+  // que el hueco que T-609 vino a cerrar seguía abierto para cualquier sesión con la BD caída.
+  //
+  // La asimetría que razona `embudoVeto.cjs` decide el sentido: un falso «sí» manda un correo
+  // vetado (irreversible); un falso «no» cuesta un `--embudo-igualmente` con motivo, que ya existe
+  // y queda contado. Mismo criterio que [T-615] (§6.ter.bis de `sistema-sesiones-paralelas.md`):
+  // fail-open es para la OPERACIÓN, nunca para el VEREDICTO.
   if (v.clase === 'sin_bd') {
-    console.log(`   ⚠️  embudo: ${v.motivo}`)
-    return true
+    console.log(`\n   🛑 PUERTA DEL EMBUDO — NO SE HA PODIDO COMPROBAR si hay un veto: ${v.motivo}`)
+    console.log('      No se pasa: esta puerta decide si sale un correo hacia una persona, y el')
+    console.log('      cierre no necesita la BD para enviarlo (va por HTTP). Arregla la conexión —')
+    console.log('      normalmente es lanzarlo con `npx tsx --env-file=.env.local …` — o, si de')
+    console.log('      verdad hay que enviar sin poder mirar: --embudo-igualmente "<por qué>"')
+    if (aplicar) {
+      emitirFriccion({ clase: 'guard_bloqueo', guard: 'embudo', detalle: `sin_bd: ${v.motivo || 'sin motivo legible'}` })
+    }
+    if (!aplicar) console.log('      (dry-run: con --aplicar esto habría abortado)')
+    return false
   }
 
   if (v.clase === 'escape') {
