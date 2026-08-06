@@ -23,15 +23,20 @@ const ROOT = path.join(__dirname, '..', '..')
 // Glob ./[slug]/ no funciona porque los corchetes son metacaracteres. Hacemos
 // el listado a mano: leemos app/ y filtramos cada subdir que contenga temario/[slug]/TopicContentView.tsx.
 const APP_DIR = path.join(ROOT, 'app')
-const TOPIC_VIEWS: string[] = []
+// [T-611] El componente compartido va SIEMPRE el primero: desde que las 131 copias son una
+// sola, es el fichero que sirve el temario de 130 oposiciones. Sin incluirlo aquí, el día que
+// se migró la lista habría pasado de 131 ficheros a 1 y estos tres invariantes habrían dejado
+// de mirar lo que de verdad se sirve.
+const TOPIC_VIEWS: string[] = [path.join('components', 'temario', 'TopicContentView.tsx')]
 for (const name of fs.readdirSync(APP_DIR)) {
   const candidate = path.join('app', name, 'temario', '[slug]', 'TopicContentView.tsx')
   if (fs.existsSync(path.join(ROOT, candidate))) TOPIC_VIEWS.push(candidate)
 }
 
 describe('TopicContentView — sin branching virtual', () => {
-  it('hay al menos 30 TopicContentView (sanity check del glob)', () => {
-    expect(TOPIC_VIEWS.length).toBeGreaterThanOrEqual(30)
+  it('el componente compartido está en la lista (sanity check)', () => {
+    expect(TOPIC_VIEWS).toContain(path.join('components', 'temario', 'TopicContentView.tsx'))
+    expect(fs.existsSync(path.join(ROOT, TOPIC_VIEWS[0]))).toBe(true)
   })
 
   describe.each(TOPIC_VIEWS)('%s', (rel) => {

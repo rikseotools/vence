@@ -9,16 +9,15 @@
 // Sin BD (lee ficheros) → corre en el CI de unit. Espejo de content-sweep-parity.
 import fs from 'fs'
 import path from 'path'
-import { execSync } from 'child_process'
+import { vistasDeTemario } from '../helpers/vistasDeTemario'
 
 const REPO = path.resolve(__dirname, '../..')
 
+// [T-611] Antes esta lista salía de `git ls-tree HEAD`, que es el árbol COMMITEADO: al
+// unificar las 131 copias seguía enumerando ficheros ya borrados y el guardarraíl reventaba
+// leyéndolos. Ahora sale del helper compartido, que mira el árbol de trabajo real.
 function topicContentViewFiles(): string[] {
-  const out = execSync('git ls-tree -r HEAD --name-only', { cwd: REPO, encoding: 'utf8' })
-  return out
-    .split('\n')
-    .filter((f) => /temario\/\[slug\]\/TopicContentView\.tsx$/.test(f))
-    .map((f) => path.join(REPO, f))
+  return vistasDeTemario().map((f) => path.join(REPO, f))
 }
 
 // Cualquier href INLINE a `/leyes/${…}` DENTRO de un TopicContentView debe llevar
@@ -32,7 +31,10 @@ describe('guardarraíl T-073 — el CTA de test de ley del temario está central
   const files = topicContentViewFiles()
 
   it('hay TopicContentView.tsx que auditar (sanity: la extracción funciona)', () => {
-    expect(files.length).toBeGreaterThanOrEqual(100)
+    // Ya no son ~125: es la vista compartida (+ las de diseño propio). Lo que importa es que
+    // la compartida ESTÉ — es la que sirve a casi todo el catálogo.
+    expect(files.length).toBeGreaterThan(0)
+    expect(files).toContain(path.join(REPO, 'components/temario/TopicContentView.tsx'))
   })
 
   it('NINGÚN href inline a /leyes/{…} va SIN selected_articles (enlace de ley pelado, regresión T-073)', () => {

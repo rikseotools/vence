@@ -25,6 +25,18 @@ describe('Temario — enlace de registro del modal "Descarga PDF"', () => {
     expect(temarioFiles.length).toBeGreaterThan(0)
   })
 
+  // [T-611] El componente ÚNICO ya no puede tener el enlace hardcodeado: lo deriva. Se
+  // comprueba aparte porque no vive bajo `app/<oposicion>/` y el glob de arriba no lo ve —
+  // sin esto, unificar las 131 copias habría dejado esta protección mirando UN fichero.
+  it('el componente único DERIVA el enlace (no lo escribe a mano para nadie)', () => {
+    const compartido = readFileSync(
+      join(process.cwd(), 'components', 'temario', 'TopicContentView.tsx'),
+      'utf8',
+    )
+    expect([...compartido.matchAll(/\/login\?oposicion=([a-z0-9_]+)/g)]).toHaveLength(0)
+    expect(compartido).toMatch(/\/login\?oposicion=\$\{oposicion\.replace\(\/-\/g, '_'\)\}/)
+  })
+
   it.each(temarioFiles)('%s: el enlace /login apunta a SU oposición, no a otra', (file) => {
     const content = readFileSync(file, 'utf8')
     // Oposición real del archivo = nombre de su carpeta (slug).

@@ -1210,15 +1210,16 @@ Labels, banderas, links y secciones se derivan dinámicamente. No hay código ha
 
 ```bash
 cp -r app/administrativo-universidad-leon app/<slug>
-# 1) sustituir slug, positionType y nombre en los 8 ficheros (sed)
-# 2) adaptar getBlockInfo() en temario/[slug]/TopicContentView.tsx a TUS bloques/displayNumber
+# 1) sustituir slug, positionType y nombre en los ficheros (sed)
+# 2) dar de alta TUS bloques como DATO en lib/temario/bloquesPorOposicion.ts  ([T-611])
+#    (el scaffolder lo hace solo; a mano es UNA fila con {desde,hasta,offset,bloque})
 ```
 
 Los 8 ficheros por-oposición (los únicos):
 ```
 app/<slug>/
   test/{layout.tsx, page.tsx, tema/[numero]/{page.tsx, test-examen/page.tsx}}
-  temario/{layout.js, page.tsx, [slug]/{page.tsx, TopicContentView.tsx}}
+  temario/{layout.js, page.tsx, [slug]/page.tsx}     ← monta @/components/temario/TopicContentView
 ```
 
 La landing NO lleva `page.tsx` (la genera `app/[oposicion]/page.tsx`). **`npm run audit:oposicion <slug>` verifica que las rutas existen — es la FUENTE DE VERDAD; no te fíes de este árbol si el código evoluciona.** Guardarraíl en CI: `__tests__/config/oposicionRoutesIntegrity.test.ts` (falla si una oposición queda con las rutas a medias).
@@ -1980,7 +1981,7 @@ Al incorporar una oposición nueva hay que incrementar los literales en **tres t
 |------|----------------|
 | `__tests__/config/oposicionesCentralConfig.test.ts` | `ALL_OPOSICION_SLUGS.length` y `ALL_POSITION_TYPES.length` |
 | `__tests__/api/theme-stats/themeStats.test.ts` | `VALID_OPOSICIONES.toHaveLength(N)` (×2) + lista de `toContain` |
-| `__tests__/temario/articleTestButton.test.ts` | Conteo de `TopicContentView.tsx` (uno por oposición con rutas propias) |
+| `__tests__/temario/bloquesPorOposicion.test.ts` | Cobertura: toda ruta de temario necesita su fila de bloques ([T-611]) |
 
 ### 4. `PositionType` Zod schema es derivado (NO editar a mano)
 
@@ -2007,7 +2008,7 @@ find . -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.js" \) \
 
 **Después, revisar a mano:**
 - `temario/[slug]/page.tsx` → `generateStaticParams` usa `length: N` (número de temas)
-- `temario/[slug]/TopicContentView.tsx` → función `getBlockInfo` tiene rangos de bloques cableados
+- `lib/temario/bloquesPorOposicion.ts` → añadir la fila de la oposición nueva (sus rangos de bloque). **NO se copia ningún `TopicContentView.tsx`**: el componente del temario es UNO (`components/temario/TopicContentView.tsx`) y un guardarraíl impide que vuelvan a existir copias ([T-611])
 - `temario/layout.js`, `test/page.tsx`, `test/layout.tsx` → keywords SEO con literales "N temas" y "M bloques" — hay que sustituirlos también
 
 ### 7. Reutilización máxima de leyes ya existentes

@@ -7,7 +7,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getTopicContent, getTemarioByPositionType } from '@/lib/api/temario/queries'
-import TopicContentView from '@/app/administrativo-estado/temario/[slug]/TopicContentView'
+import TopicContentView from '@/components/temario/TopicContentView'
 import { formatUpdatedAt } from '@/lib/temario/updatedAt'
 import { raizPersonalizada } from '@/lib/oposicion/objetivoPersonalizado'
 

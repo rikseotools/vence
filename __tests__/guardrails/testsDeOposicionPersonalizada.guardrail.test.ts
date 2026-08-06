@@ -165,7 +165,9 @@ describe('una personalizada vacía no es un 404', () => {
  */
 describe('el temario de un tema propio enlaza DENTRO de tu oposición', () => {
   const ruta = leer('app/oposicion-personalizada/[id]/temario/[slug]/page.tsx')
-  const componente = leer('app/administrativo-estado/temario/[slug]/TopicContentView.tsx')
+  // [T-611] Ya no hay un componente por oposición: es UNO. Antes esto leía la copia de
+  // `administrativo-estado`, que era la que reutilizaba la personalizada.
+  const componente = leer('components/temario/TopicContentView.tsx')
 
   it('la ruta pasa el basePath explícito', () => {
     expect(ruta).toMatch(/basePath=\{/)
@@ -180,7 +182,7 @@ describe('el temario de un tema propio enlaza DENTRO de tu oposición', () => {
 
   it('el componente SIGUE respetando el basePath (si se quita, vuelve el default mudo)', () => {
     expect(componente).toMatch(/basePath\?:\s*string/)
-    expect(componente).toMatch(/basePathProp\s*\?\?\s*`\/\$\{oposicion\}`/)
+    expect(componente).toMatch(/basePathProp\s*\?\?\s*\(oposicion/)
   })
 
   it('el default peligroso sigue siendo el ÚLTIMO recurso, no el primero', () => {
@@ -189,16 +191,22 @@ describe('el temario de un tema propio enlaza DENTRO de tu oposición', () => {
     expect(linea!.indexOf('basePathProp')).toBeLessThan(linea!.indexOf('${oposicion}'))
   })
 
-  it('ninguna otra página monta el TopicContentView de OTRA oposición a ciegas', () => {
-    // La regla de clase: reutilizar el componente de otra oposición es legítimo (lo hace esta
-    // página), pero entonces hay que decirle dónde está. Sin `basePath`, hereda un slug REAL y
-    // teletransporta al usuario.
+  it('sin slug NO se hereda el de otra oposición: ni en los enlaces ni en el login', () => {
+    // [T-611] Antes `oposicion` traía por defecto un slug REAL ('administrativo-estado'), así que
+    // una personalizada que solo pasaba `basePath` seguía yendo a ese login y resolvía SUS
+    // bloques. Es el mismo modo de fallo de [T-541] un enlace más abajo.
+    expect(componente).not.toMatch(/oposicion\s*=\s*['"][a-z0-9-]+['"]/)
+    expect(componente).toMatch(/oposicion\s*\?\s*`\/login\?oposicion=/)
+  })
+
+  it('ninguna página monta el temario de OTRA oposición a ciegas', () => {
+    // La regla de clase: montar el componente compartido fuera de la ruta de una oposición del
+    // catálogo es legítimo (lo hace esta página), pero entonces hay que decirle dónde está.
+    // Sin `basePath` los enlaces salen a la raíz equivocada.
     const cruzadas = ficherosTsx('app').filter((f) => {
-      const propia = f.match(/^app\/([a-z0-9-]+)\//)?.[1]
-      const importada = leer(f).match(
-        /@\/app\/([a-z0-9-]+)\/temario\/\[slug\]\/TopicContentView/,
-      )?.[1]
-      return propia && importada && propia !== importada
+      const enRutaDeCatalogo = /^app\/[a-z0-9-]+\/temario\//.test(f)
+      const monta = /@\/components\/temario\/TopicContentView/.test(leer(f))
+      return monta && !enRutaDeCatalogo
     })
     // La página personalizada es una de ellas: si esta lista se queda vacía es que el import
     // cambió de forma y el guardarraíl dejó de mirar nada.
@@ -237,5 +245,66 @@ describe('el pie del tema no ofrece temas que no existen', () => {
   it('la página personalizada se la pasa, sacada de su propio temario', () => {
     expect(ruta).toContain('getTemarioByPositionType')
     expect(ruta).toMatch(/temasExistentes=\{/)
+  })
+})
+
+/**
+ * SÉPTIMO ESLABÓN: que no nazca la copia 132. [T-611]
+ *
+ * La página de un tema del temario vivió COPIADA una vez por oposición: 131 ficheros
+ * `app/<opo>/temario/[slug]/TopicContentView.tsx`, 122 cuerpos distintos por deriva de
+ * copia-pega. Lo que de verdad cambiaba entre ellos era una tabla de rangos y un color, y las
+ * consecuencias fueron medibles: `expandAll` escrito en 78 copias y conectado a un botón en
+ * CERO, y `<TopicVideoCourses>` ausente en 54 (esas oposiciones tenían cursos y no se
+ * enseñaban).
+ *
+ * La fábrica estaba abierta en el manual de alta de oposiciones, así que esto no se arregla
+ * borrando: se arregla impidiendo que la siguiente oposición vuelva a nacer como copia. Y la
+ * regla NO puede ser «que no exista un fichero con ese nombre» (se rodea renombrando): lo que
+ * se prohíbe es que una ruta del temario vuelva a montar SU PROPIO árbol de leyes/artículos.
+ */
+describe('el temario es UN componente, no uno por oposición', () => {
+  /** El árbol del temario se reconoce por sus dos piezas internas, no por el nombre del fichero. */
+  const ES_UN_ARBOL_PROPIO = /function\s+(LawSection|ArticleCard)\b/
+
+  /**
+   * ÚNICA excepción viva, y es un DISEÑO distinto, no una copia: cabecera de ley en degradado
+   * índigo, badge «LEY» y la capa de «artículos a repasar» (`useTopicUnlock`). Absorberla en el
+   * componente único cambia el aspecto de la oposición insignia → es decisión de producto.
+   *
+   * TRINQUETE: esta lista solo puede MENGUAR. Añadir una entrada es reabrir la fábrica.
+   */
+  const EXCEPCIONES_CON_DISENO_PROPIO = ['auxiliar-administrativo-estado']
+
+  const conArbolPropio = ficherosTsx('app')
+    .filter((f) => f.includes('/temario/'))
+    .filter((f) => ES_UN_ARBOL_PROPIO.test(leer(f)))
+
+  it('ninguna ruta de temario monta su propio árbol de leyes y artículos', () => {
+    const inesperadas = conArbolPropio.filter(
+      (f) => !EXCEPCIONES_CON_DISENO_PROPIO.some((e) => f.startsWith(`app/${e}/`)),
+    )
+    expect(inesperadas).toEqual([])
+  })
+
+  it('la lista de excepciones no crece (trinquete)', () => {
+    expect(EXCEPCIONES_CON_DISENO_PROPIO.length).toBeLessThanOrEqual(1)
+  })
+
+  it('…y la excepción declarada sigue existiendo (si se migra, hay que quitarla de la lista)', () => {
+    for (const e of EXCEPCIONES_CON_DISENO_PROPIO) {
+      expect(conArbolPropio.some((f) => f.startsWith(`app/${e}/`))).toBe(true)
+    }
+  })
+
+  it('el componente único resuelve los bloques del DATO, no de una función copiada', () => {
+    const componente = leer('components/temario/TopicContentView.tsx')
+    expect(componente).toMatch(/from '@\/lib\/temario\/bloquesTemario'/)
+    expect(componente).toMatch(/from '@\/lib\/temario\/bloquesPorOposicion'/)
+    expect(componente).not.toMatch(/function\s+getBlockInfo/)
+  })
+
+  it('…y monta TopicVideoCourses para todas (se auto-oculta: faltaba en 54 por olvido)', () => {
+    expect(leer('components/temario/TopicContentView.tsx')).toContain('<TopicVideoCourses')
   })
 })
