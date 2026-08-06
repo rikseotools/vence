@@ -3886,23 +3886,6 @@ ponerse a verificar una por una.
 - **Al importar, NO improvisar:** seguir `docs/maintenance/importar-examen-oficial-completo.md` (incluida la defensa de supuestos prácticos huérfanos: una pregunta que cita «el supuesto» sin `exam_case_id` es irresoluble y el trigger de BD la bloquea al aprobar).
 - **Por qué merece la pena:** es contenido oficial de la oposición que la usuaria prepara, ya publicado por la propia Comunidad de Madrid, y lo pide quien lo está estudiando. **Ella ya está avisada** de que queda anotado, así que al cerrarla conviene volver a escribirle.
 
-### [T-485] 🟡 [ABIERTO 02/08] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
-
-- **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
-- **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
-- **EL HUECO REAL:** la exclusión mutua de verdad no la da la tabla, la da **`flock` sobre `/tmp/vence-deploy.lock`** (`scripts/deploy-frontend.sh:47`, `deploy-backend.sh`). Un fichero en `/tmp` es **per-máquina**. Dos deploys lanzados desde máquinas distintas **no se ven**, y el propio código lo dice sin saberlo: *«el `flock` sigue siendo quien impide de verdad el solape»* (comentario en `lib/deploy/estado.cjs`). Hoy no ha pasado porque solo se despliega desde un sitio.
-- **Qué se rompería:** dos `update-service` de ECS solapados sobre el mismo servicio, que es literalmente el incidente del 24/07 ([T-075]) — allí lo causó soltar el `flock` antes de la convergencia, y se arregló manteniéndolo. Un lock que no cruza máquinas reintroduce ese fallo por otra puerta.
-- **Cómo atacarlo:** el candado se muda a `deploy_runs` con **lease renovable**, el mismo patrón ya probado en `backlog_tasks` (arriendo + latido + `reap`), no un lock eterno: si el deploy muere, la fila tiene que caducar sola. El `flock` se queda como segunda puerta **local** (defensa en profundidad, y sigue siendo el más barato para el caso normal). Cuidado con el criterio único: `estado.cjs` ya sabe clasificar runs abiertos — el lease tiene que apoyarse en él, no ser una tercera opinión (lección de [T-130]).
-- **NO bloquea el piloto** [T-486]: allí los trabajadores tienen prohibido desplegar, precisamente por esto. Se vuelve obligatoria el día que un trabajador remoto pueda desplegar.
-- **HALLAZGO AL LEER EL CÓDIGO (06/08): la detección entre máquinas YA EXISTE, lo que falta es que BLOQUEE.** `veredicto()` de `lib/deploy/estado.cjs` clasifica un run de OTRO host como `en_curso` (si es reciente) o `sospechoso` (pasados `MINUTOS_SOSPECHOSO`), porque `procesoVivo` devuelve `null` cuando `host !== hostActual`. O sea que el sistema **ya sabe** que hay un deploy ajeno en marcha — y su propio comentario dice que da igual: *«un `dudoso` no bloquea a nadie: solo evita que dos sesiones se pisen sin saberlo»*. El trabajo NO es escribir un detector nuevo: es **convertir ese veredicto en puerta**, que es exactamente lo que pide el punto de «apoyarse en `estado.cjs`, no ser una tercera opinión».
-- **Diseño concreto derivado de eso:**
-  1. `deploy_runs` gana `lease_until timestamptz`. Adquirir = INSERT atómico condicionado a que `veredicto(runs abiertos con lease vivo).estado === 'libre'`, en el MISMO statement (como el claim de `backlog_tasks`), no leer-y-luego-escribir.
-  2. **Renovación en primer plano durante el deploy**: un build de frontend pasa de 30 min (medido el 28/07, por eso `DEPLOY_LOCK_WAIT` son 45), así que el lease tiene que renovarse o caducará a mitad. Sin renovación no es un lease, es un temporizador.
-  3. **El `flock` se QUEDA**: sigue siendo la puerta local y la más barata para el caso normal. Defensa en profundidad, no sustitución.
-  4. Soltar en `trap EXIT`, y que la caducidad sola cubra el caso de que el proceso muera sin trap.
-- **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
-- **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
-
 ### [T-486] 🟠 [ABIERTO 02/08] Piloto de flota remota en Koigrid: 2 trabajadores + supervisor de EVIDENCIA, con el mismo reparto que las sesiones locales
 - **✅ EL CICLO DE UNA TAREA YA GIRA SOLO (06/08, sesión larga).** Al empezar el día la flota entregaba trabajo que se quedaba en su disco; al terminarlo, reparte → trabaja → empuja → entrega → **revisa** → y el rescate recoge lo suelto. Lo que se arregló, en orden de aparición y todo medido:
   1. **El rescate miraba `HEAD`** y daba «nada que salvar» con **22 commits atrapados** en 8 ramas del VPS. Un trabajador entrega en una rama por tarea y vuelve a `main`: lo entregado nunca es `HEAD`.
@@ -6160,6 +6143,35 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Guardarraíl a extender:** `endpointsPagoIdentidad` solo escanea `app/api/stripe`. El equivalente para el resto necesita antes la lista de los 38 y su política.
 - **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
+
+### [T-485] 🔴 [REABIERTO 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
+
+- **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
+- **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
+- **EL HUECO REAL:** la exclusión mutua de verdad no la da la tabla, la da **`flock` sobre `/tmp/vence-deploy.lock`** (`scripts/deploy-frontend.sh:47`, `deploy-backend.sh`). Un fichero en `/tmp` es **per-máquina**. Dos deploys lanzados desde máquinas distintas **no se ven**, y el propio código lo dice sin saberlo: *«el `flock` sigue siendo quien impide de verdad el solape»* (comentario en `lib/deploy/estado.cjs`). Hoy no ha pasado porque solo se despliega desde un sitio.
+- **Qué se rompería:** dos `update-service` de ECS solapados sobre el mismo servicio, que es literalmente el incidente del 24/07 ([T-075]) — allí lo causó soltar el `flock` antes de la convergencia, y se arregló manteniéndolo. Un lock que no cruza máquinas reintroduce ese fallo por otra puerta.
+- **Cómo atacarlo:** el candado se muda a `deploy_runs` con **lease renovable**, el mismo patrón ya probado en `backlog_tasks` (arriendo + latido + `reap`), no un lock eterno: si el deploy muere, la fila tiene que caducar sola. El `flock` se queda como segunda puerta **local** (defensa en profundidad, y sigue siendo el más barato para el caso normal). Cuidado con el criterio único: `estado.cjs` ya sabe clasificar runs abiertos — el lease tiene que apoyarse en él, no ser una tercera opinión (lección de [T-130]).
+- **NO bloquea el piloto** [T-486]: allí los trabajadores tienen prohibido desplegar, precisamente por esto. Se vuelve obligatoria el día que un trabajador remoto pueda desplegar.
+- **HALLAZGO AL LEER EL CÓDIGO (06/08): la detección entre máquinas YA EXISTE, lo que falta es que BLOQUEE.** `veredicto()` de `lib/deploy/estado.cjs` clasifica un run de OTRO host como `en_curso` (si es reciente) o `sospechoso` (pasados `MINUTOS_SOSPECHOSO`), porque `procesoVivo` devuelve `null` cuando `host !== hostActual`. O sea que el sistema **ya sabe** que hay un deploy ajeno en marcha — y su propio comentario dice que da igual: *«un `dudoso` no bloquea a nadie: solo evita que dos sesiones se pisen sin saberlo»*. El trabajo NO es escribir un detector nuevo: es **convertir ese veredicto en puerta**, que es exactamente lo que pide el punto de «apoyarse en `estado.cjs`, no ser una tercera opinión».
+- **Diseño concreto derivado de eso:**
+  1. `deploy_runs` gana `lease_until timestamptz`. Adquirir = INSERT atómico condicionado a que `veredicto(runs abiertos con lease vivo).estado === 'libre'`, en el MISMO statement (como el claim de `backlog_tasks`), no leer-y-luego-escribir.
+  2. **Renovación en primer plano durante el deploy**: un build de frontend pasa de 30 min (medido el 28/07, por eso `DEPLOY_LOCK_WAIT` son 45), así que el lease tiene que renovarse o caducará a mitad. Sin renovación no es un lease, es un temporizador.
+  3. **El `flock` se QUEDA**: sigue siendo la puerta local y la más barata para el caso normal. Defensa en profundidad, no sustitución.
+  4. Soltar en `trap EXIT`, y que la caducidad sola cubra el caso de que el proceso muera sin trap.
+- **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
+- **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
+
+- **♻️ REABIERTA EL 06/08/2026 — la verificación que faltaba salió NEGATIVA.** Medido en `deploy_runs`:
+  **56 de 57 corridas tienen `lease_until` a NULL**, incluidas las tres de hoy (ids 67 `ok`, 68 `fail`,
+  69 en curso). El arriendo se tomó **una sola vez**, cuando se construyó, y no se ha vuelto a tomar:
+  la puerta que cruza máquinas **no está actuando**, y hoy lo único que protege es el `flock` de
+  `/tmp`, que es per-máquina — que es exactamente el hueco que esta ficha existe para cerrar.
+- **Se ve desde fuera, sin mirar la tabla:** `deploy-estado.cjs` dice a la vez *«🔴 el lock está
+  tomado»* y *«registro: libre»* con un deploy real corriendo. Las dos puertas no ven lo mismo.
+- **Dónde mirar:** `lib/deploy/candado.cjs` está escrito y testeado, pero hay que comprobar **quién lo
+  llama**: si `deploy-frontend.sh` / `deploy-backend.sh` / `deploy-cuando-verde.sh` lo invocan de
+  verdad, o si el arriendo quedó implementado sin cablear. Un candado que nadie toma es peor que
+  ninguno, porque el panel dice que estás protegido.
 
 ## Hechas
 
