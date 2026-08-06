@@ -12,7 +12,7 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
-import { emit } from '@/lib/observability/emit'
+import { emit, emitFireAndForget } from '@/lib/observability/emit'
 import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
 import { marcarPersistente } from '@/lib/api/fraud/marcaPersistente'
 import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
@@ -20,6 +20,8 @@ import { esFraudeConfirmado } from '@/lib/api/fraud/esConfirmado'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
+import { construirEventoRutaLenta } from '@/lib/api/v2/answer-and-save/rutaLenta'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -56,6 +58,13 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
   try {
     // 1. Auth via wrapper (soporta off/shadow/on via env JWT_LOCAL_VERIFY_MODE)
     const auth = await verifyAuth(request, '/api/v2/answer-and-save')
+    // T-312 (ampliación 06/08): desglose de fases a nivel de RUTA. El desglose interno de
+    // validateAndSaveAnswer (validar/guardar/score) lleva 0 disparos en 7 días de producción
+    // mientras request_completed sigue viendo el mismo ~1,3% de peticiones >2s — su reloj arranca
+    // DESPUÉS de auth+antifraude, así que es ciego justo a la fase que más probablemente domina
+    // (ver lib/api/v2/answer-and-save/rutaLenta.ts). authMs se mide aquí, aunque el resto del
+    // desglose solo se completa (y se emite) si la petición llega al camino feliz.
+    const authMs = Date.now() - startTime
     if (!auth.success) {
       return NextResponse.json(
         { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado' } as const,
@@ -136,6 +145,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
 
     // 3. Anti-fraud checks in parallel (device limit + daily limits)
     // All three RPCs are independent — run them concurrently to save ~400ms
+    const tAntifraude0 = Date.now() // T-312: arranca el reloj de la fase que se sospecha dominante
     const deviceId = getDeviceIdFromRequest(request)
     const hwFingerprint = getHwFingerprintFromRequest(request)
     const [deviceCheck, dailyLimit, deviceUsage] = await withDbTimeout(
@@ -259,16 +269,32 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
+    // T-312: cierra la ventana de antifraude aquí — es el punto exacto donde el reloj interno de
+    // validateAndSaveAnswer (validar/guardar/score) habría arrancado si midiera desde el principio.
+    const antifraudeMs = Date.now() - tAntifraude0
+
     // 4. Ejecutar: validar + guardar + actualizar score
+    const tGuardar0 = Date.now()
     const result = await withDbTimeout(
       () => validateAndSaveAnswer(parsed.data, user.id),
       VALIDATE_AND_SAVE_TIMEOUT_MS,
     )
+    const guardarTotalMs = Date.now() - tGuardar0
 
     const totalMs = Date.now() - startTime
     if (totalMs > 2000) {
       console.warn(`⚠️ [answer-and-save] Respuesta lenta: ${totalMs}ms questionId=${parsed.data.questionId}`)
     }
+
+    // T-312 (ampliación 06/08): desglose de RUTA (auth + antifraude + guardado completo). Solo se
+    // emite cuando la petición es lenta y al 100% — mismo criterio que el desglose interno de
+    // validateAndSaveAnswer, que sigue viviendo aparte y explica el reparto DENTRO de guardarTotal
+    // cuando es esa la fase dominante. Ver rutaLenta.ts para por qué hacía falta uno nuevo.
+    const eventoRuta = construirEventoRutaLenta(
+      { authMs, antifraudeMs, guardarTotalMs, totalMs },
+      { questionId: parsed.data.questionId, instanceId: INSTANCE_ID },
+    )
+    if (eventoRuta) emitFireAndForget(eventoRuta)
 
     // 4. Operaciones background (no bloquean la respuesta)
     after(async () => {
