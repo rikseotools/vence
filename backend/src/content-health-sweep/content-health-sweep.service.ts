@@ -814,6 +814,32 @@ function clasificarVigilanciaInline(
   return { nivel: 'ok', severidad: 'ok', motivo: 'contenido suficiente para vigilar' };
 }
 
+// ── Mirror INLINE de lib/convocatoria/notasSinVigilancia.cjs — MANTENER EN SYNC (T-311) ────
+// El sensor de NOTAS (versión de software, fechas, criterio — `detect-notas-convocatoria`)
+// parece vigilar y no vigila. Umbral calibrado 06/08/2026: 103/111 oposiciones sanas ven su
+// última nota en <2 días; 7 forman una cola aparte de 7 a 21.6 días, sin casos intermedios.
+const NOTAS_UMBRAL_DIAS_STALE = 4;
+function clasificarNotasVigilanciaInline(
+  docsCorpus: number,
+  notasCount: number,
+  diasSinVer: number | null,
+): { severidad: 'error' | 'ok'; motivo: string | null } {
+  if (docsCorpus <= 0) return { severidad: 'ok', motivo: null };
+  if (notasCount === 0) {
+    return {
+      severidad: 'error',
+      motivo: `${docsCorpus} documento(s) en el corpus y 0 notas — el sensor nunca ha dejado nada aquí`,
+    };
+  }
+  if (diasSinVer !== null && diasSinVer >= NOTAS_UMBRAL_DIAS_STALE) {
+    return {
+      severidad: 'error',
+      motivo: `la última nota vista hace ${Math.round(diasSinVer)} días (cron diario) — el sensor lo vigiló alguna vez y dejó de hacerlo`,
+    };
+  }
+  return { severidad: 'ok', motivo: null };
+}
+
 function diagnosticarSeguimientoUrl(
   url: string | null | undefined,
   anioVigente: number | null | undefined,
@@ -2520,6 +2546,46 @@ export class ContentHealthSweepService {
       );
     }
     marcar('seguimiento_fuente_ciega', ciegaRows.length);
+
+    // ── El sensor de NOTAS parece vigilar y no vigila (notas_convocatoria_sin_vigilancia, T-311) ──
+    // Hermano del bloque anterior pero del sensor `detect-notas-convocatoria` (versión de
+    // software/fechas/criterio), no del cron de hash. Dos condiciones: nunca dejó nota pese a
+    // tener documentos clonados, o dejó una y se congeló ≥4 días — la primera sola se le escapa
+    // a los sensores que SÍ llegaron a vigilar alguna vez y luego se pararon en silencio (caso
+    // real: 3 oposiciones de Madrid con 1 nota cada una, congelada 11+ días). Ver CLAUDE.md
+    // §"revisa las notas sin vigilancia" y lib/convocatoria/notasSinVigilancia.cjs.
+    const notasRows = (await this.db.execute(sql`
+      SELECT o.slug,
+        (SELECT count(*) FROM convocatoria_documentos cd
+          JOIN convocatorias cv ON cv.id = cd.convocatoria_id
+          WHERE cv.oposicion_id = o.id)::int AS docs_corpus,
+        (SELECT count(*) FROM convocatoria_notas n WHERE n.oposicion_id = o.id)::int AS notas_count,
+        (SELECT EXTRACT(EPOCH FROM (now() - max(n.last_seen)))/86400
+           FROM convocatoria_notas n WHERE n.oposicion_id = o.id) AS dias_sin_ver
+      FROM oposiciones o
+      WHERE o.is_active AND o.seguimiento_url IS NOT NULL
+    `)) as unknown as Array<{
+      slug: string;
+      docs_corpus: number;
+      notas_count: number;
+      dias_sin_ver: number | string | null;
+    }>;
+    for (const r of notasRows) {
+      const v = clasificarNotasVigilanciaInline(
+        r.docs_corpus,
+        r.notas_count,
+        r.dias_sin_ver != null ? Number(r.dias_sin_ver) : null,
+      );
+      if (v.severidad !== 'error') continue;
+      add(
+        'content',
+        'error',
+        r.slug,
+        'notas_convocatoria_sin_vigilancia',
+        `${r.slug}: el sensor de notas no está vigilando esta oposición — ${v.motivo}`,
+      );
+    }
+    marcar('notas_convocatoria_sin_vigilancia', notasRows.length);
 
     // ── NOTAS INTERNAS PUBLICADAS EN LA LANDING (nota_interna_publicada, T-435) ──
     // Los campos de REFERENCIA se PINTAN en el hero y bajo el botón oficial, y se estaban usando
