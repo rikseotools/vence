@@ -87,7 +87,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 5. **Corregir** lo que esté mal (§5): no oficial + mejorable = se mejora aunque la queja sea parcial (§7.3); oficial = no se toca enunciado/opciones. Re-vincular artículo exige explicación nueva coherente. Si la pregunta estaba oculta, transicionar lifecycle (§5.2).
 
 6. **Redactar el mensaje** (§6): conciso, aireado, reconocer si el usuario tenía razón, firmar "Equipo de Vence". Mostrar el borrador y ESPERAR aprobación.
-   - ⚖️ **Si la vas a RECHAZAR, la respuesta tiene que convencer, no solo informar (§7.3.quater):** cita literal del artículo, nombre de la ley, **el enlace a la fuente que prueba lo que él discute** (el BOE si discute lo que dice la norma; **sus bases** si discute si entra en el temario; ninguno si discute cómo está construida la pregunta — ver la tabla de §7.3.quater punto 2) y —lo que de verdad resuelve la duda— **por qué él vio otra cosa** (una redacción anterior, un apunte sin actualizar, un plazo parecido de otra norma). Un «no procede» a secas hace que la próxima vez no nos avise de un fallo real.
+   - ⚖️ **Si la vas a RECHAZAR, la respuesta tiene que convencer, no solo informar (§7.3.quater):** cita literal del artículo, nombre de la ley, **el enlace a la fuente que prueba lo que él discute — pero SOLO si la cita no lo prueba ya** (si con la frase literal la duda queda resuelta, el enlace sobra; y cuando sí hace falta: el BOE si discute lo que dice la norma; **sus bases** si discute si entra en el temario; ninguno si discute cómo está construida la pregunta — ver §7.3.quater punto 2) y —lo que de verdad resuelve la duda— **por qué él vio otra cosa** (una redacción anterior, un apunte sin actualizar, un plazo parecido de otra norma). Un «no procede» a secas hace que la próxima vez no nos avise de un fallo real.
 
 > **NUNCA afirmes categóricamente que está resuelto (Manuel, 30/07/2026).** Escribe **«no debería
 > volver a salirte»**, no «dejará de salirte»; **«ya debería estar resuelto»**, no «ya está
@@ -1068,15 +1068,31 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 
 > **Regla (Manuel, 01/08/2026):** cuando la impugnación NO procede, la respuesta tiene que dejar al
 > usuario **satisfecho y convencido**, no simplemente informado de que se equivocaba. Eso significa
-> **citar el artículo concreto, nombrar la ley y darle el enlace** para que lo compruebe él mismo.
-> Un «tu impugnación no procede» a secas es la peor respuesta posible: el opositor se queda pensando
-> que no le hemos mirado el caso, y la próxima vez que vea un fallo real **ya no nos lo dice**.
+> **citar el artículo concreto y nombrar la ley**, y darle el enlace **si con la cita no le basta**
+> para comprobarlo él mismo. Un «tu impugnación no procede» a secas es la peor respuesta posible: el
+> opositor se queda pensando que no le hemos mirado el caso, y la próxima vez que vea un fallo real
+> **ya no nos lo dice**.
 
 **Qué tiene que llevar una respuesta de `rejected`:**
 
 1. **La cita literal del precepto**, entrecomillada y con su referencia exacta (artículo, apartado y
    letra). No parafrasear: el opositor quiere ver la frase.
-2. **El enlace directo a la fuente que prueba LO QUE SE DISCUTE** — y solo si hay algo que probar.
+2. **El enlace directo a la fuente que prueba LO QUE SE DISCUTE** — y solo si hay algo que probar
+   **y la cita no lo prueba ya**.
+   > 🔗 **PRIMERO decide SI enlazar; solo después, CUÁL (Manuel, 06/08/2026).** El criterio es
+   > sencillo: **si la cita literal ya convence por sí sola, el enlace sobra**. Se pone cuando con la
+   > frase no basta — porque el usuario tendría que ver el contexto, porque la duda va de qué
+   > redacción está vigente, o porque lo que se discute no cabe en una cita.
+   >
+   > La tabla de abajo contesta a la pregunta SIGUIENTE (con qué fuente), no a ésta. Aplicarla sin
+   > pasar antes por aquí es lo que convierte el enlace en un reflejo.
+   >
+   > **Caso que lo fija (06/08/2026, impugnación `00208e53`, Estela):** sostenía que el plazo del
+   > art. 9.2.c) de la Ley 39/2015 eran tres meses. La respuesta ya llevaba la cita literal
+   > («habrán de transcurrir **dos meses** desde dicha comunicación») **y** la explicación de por qué
+   > ella recordaba tres (el RD-ley 14/2019 daba ese plazo a la autorización previa que la Ley
+   > 11/2022 suprimió). Con eso la duda queda resuelta; el enlace al BOE no añadía nada que ella
+   > fuera a abrir. Se envió sin él.
    > 🎯 **EL ENLACE AL BOE NO ES UN ADORNO QUE SE PONE EN TODAS (Manuel, 06/08/2026).** Esta regla
    > se leía como «toda respuesta de `rejected` lleva su enlace al BOE», y así se volvió un reflejo:
    > se pegaba el enlace sin preguntarse qué demuestra. **Antes de ponerlo, contesta a una pregunta:
