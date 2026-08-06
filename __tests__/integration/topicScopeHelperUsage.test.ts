@@ -69,4 +69,46 @@ describe('Guardarraíl de código: scope de artículos siempre NULL-safe', () =>
 
     expect(offenders.length).toBe(0)
   })
+
+  // T-560, 06/08/2026: el check de arriba solo mira `= ANY(...)`, y hay una SEGUNDA
+  // forma de la misma trampa que se le escapa por completo — `unnest(ts.article_numbers)`
+  // + JOIN a articles por `an.num` no contiene ningún `= ANY(`, así que pasaba el
+  // guardarraíl anterior mientras `unnest(NULL)` devolvía 0 filas y borraba el scope
+  // "toda la ley" del cálculo. Ya mordió tres veces con esta forma exacta:
+  // articleInScope() (bug original, 2026-06-10), huerfanos-plan/health-sweep ([T-451])
+  // y el panel /admin/contenido ([T-560], lib/api/admin-contenido/queries.ts). El
+  // `unnest(...)` SIN guarda cercana solo es legítimo para el detector de artículos
+  // fantasma (un número que figura en la lista no puede existir si la lista es NULL),
+  // y ese caso YA declara `IS NOT NULL` explícitamente — por eso esa forma sí pasa.
+  it('ningún `unnest(...articleNumbers)` sin declarar qué hace con el NULL', () => {
+    const offenders: string[] = []
+
+    for (const file of walk(LIB_DIR)) {
+      const rel = file.slice(process.cwd().length + 1)
+      if (ALLOWED.has(rel)) continue
+
+      const lines = readFileSync(file, 'utf8').split('\n')
+      lines.forEach((line, i) => {
+        if (!/unnest\([^)]*article_?numbers/i.test(line)) return
+        // La declaración (guarda IS NULL/IS NOT NULL, o el helper canónico) puede ir
+        // en líneas cercanas — la condición sobre el JOIN a `articles` suele quedar
+        // pegada al `unnest`, no siempre en la misma línea.
+        const windowText = lines.slice(Math.max(0, i - 3), i + 4).join(' ')
+        if (!/IS NOT NULL|IS NULL|articleInScope/i.test(windowText)) {
+          offenders.push(`  ${rel}:${i + 1}  ${line.trim().slice(0, 100)}`)
+        }
+      })
+    }
+
+    if (offenders.length > 0) {
+      throw new Error(
+        `${offenders.length} uso(s) de \`unnest(...articleNumbers)\` sin declarar qué ` +
+          `hace con el NULL (usa articleInScope() para "toda la ley", o \`IS NOT NULL\` ` +
+          `explícito si de verdad solo te interesan los scopes con lista):\n` +
+          offenders.join('\n'),
+      )
+    }
+
+    expect(offenders.length).toBe(0)
+  })
 })
