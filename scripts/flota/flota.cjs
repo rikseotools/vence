@@ -1072,10 +1072,19 @@ async function main() {
         console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
         // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
         // síntoma de un supervisor muerto es justamente que NO PASA NADA.
+        // ⚠️ ESTE INSERT ESCRIBÍA EN UNA COLUMNA QUE NO EXISTE, y por eso el rastro nunca existió
+        // ([T-626], medido el 06/08/2026: **0 eventos `flota_bucle_pasada` en toda la historia**).
+        // `observable_events` tiene `metadata`, no `event_data`; los otros CUATRO inserts de este
+        // mismo fichero ya usaban la forma correcta y solo éste se escribió distinto. Como el
+        // `catch` está —y debe estar— vacío, cada pasada fallaba en silencio: el fail-open de la
+        // telemetría acabó ocultando que la telemetría misma estaba rota, que es justo lo que el
+        // comentario de arriba dice que no puede pasar. Mismo modo de fallo que [T-615].
         try {
-          await sql`INSERT INTO public.observable_events (event_type, severity, event_data)
-                    VALUES ('flota_bucle_pasada', ${motivoSalto ? 'warn' : 'info'},
-                            ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
+          await sql`
+            INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+            VALUES ('fargate', ${motivoSalto ? 'warn' : 'info'}, 'flota_bucle_pasada', 'flota',
+                    ${motivoSalto || null},
+                    ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
         await dormir(pausa)
