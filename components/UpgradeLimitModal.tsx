@@ -4,6 +4,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, type FC } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useRouter } from 'next/navigation'
 import { trackUpgradeModalView, trackUpgradeButtonClick } from '@/lib/services/conversionTracker'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -269,7 +270,7 @@ const UpgradeLimitModal: FC<UpgradeLimitModalProps> = ({
   const currentMessage = message || DEFAULT_MESSAGE
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4" style={{ zIndex: CAPAS.modal }}>
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"

@@ -3,6 +3,7 @@
 // app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
@@ -2108,7 +2109,7 @@ export default function AdminFeedbackPage() {
 
         {/* Modal de respuesta - Solo se abre cuando NO hay usuario seleccionado (modo antiguo) */}
         {selectedFeedback && !selectedUser && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-2 sm:p-4" style={{ zIndex: CAPAS.modal }}>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
               
               {/* Header */}
@@ -2246,7 +2247,7 @@ export default function AdminFeedbackPage() {
 
         {/* Modal de Chat */}
         {selectedConversation && (
-          <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4">
+          <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: CAPAS.modal }}>
             <div className={`bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full h-[70vh] sm:h-[80vh] flex ${userOtherConversations.length > 0 ? 'sm:max-w-4xl' : 'sm:w-96 sm:max-w-md'}`}>
 
               {/* Panel izquierdo: Lista de conversaciones del usuario */}
@@ -2628,7 +2629,7 @@ export default function AdminFeedbackPage() {
 
         {/* Modal para crear nueva conversación */}
         {showNewConversationModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="p-4 border-b dark:border-gray-700 flex items-center justify-between">
@@ -2755,7 +2756,8 @@ export default function AdminFeedbackPage() {
         {/* Modal para expandir imagen (estilo WhatsApp) */}
         {expandedImage && (
           <div
-            className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+            className="fixed inset-0 bg-black/90 flex items-center justify-center p-4"
+            style={{ zIndex: CAPAS.modal }}
             onClick={() => setExpandedImage(null)}
           >
             <div className="relative max-w-full max-h-full">

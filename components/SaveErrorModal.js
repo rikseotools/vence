@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CAPAS } from '@/lib/ui/capas'
 
 function SaveErrorModal({
   isOpen,
@@ -19,7 +20,7 @@ function SaveErrorModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
         <div className="flex items-start mb-4">
           <div className="flex-shrink-0">

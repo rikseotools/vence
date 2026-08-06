@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 
 interface Section {
   id: string
@@ -117,7 +118,7 @@ export default function SectionFilterModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
 
       <div className="relative mx-auto max-w-2xl w-full bg-white dark:bg-gray-800 rounded-lg shadow-xl max-h-[80vh] overflow-hidden">

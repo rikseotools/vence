@@ -21,6 +21,7 @@
 // Observabilidad: emite 'temario_print_action' en cada rama.
 
 import { useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { emitClientEvent } from '@/lib/observability/client'
@@ -204,7 +205,7 @@ export default function TopicPrintButton({ loginHref, topicNumber }: TopicPrintB
 
       {/* Sin sesión: captación de email (lead-gen) */}
       {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/50" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 relative">
             <button
               onClick={() => setShowPrintModal(false)}

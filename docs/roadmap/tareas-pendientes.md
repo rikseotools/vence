@@ -1137,6 +1137,70 @@ luego a que el modal sea visible — misma lección que ya pagó `sim-repaso-aje
 `fixed inset-0 … z-50` a `CAPAS`, y un guardarraíl que rechace un `z-[NNNN]` suelto en un modal nuevo.
 Mientras tanto, `ArticleModal` y `AvatarChanger` siguen con su `9999` a mano.
 
+#### ✅ PARTE 2 HECHA 06/08/2026 (sesión w2) — los 41 + el guardarraíl, y salieron 8 más por el camino
+
+- **Los 41 ficheros medidos por la ficha, migrados** (61 ocurrencias de `fixed inset-0 … z-50`,
+  contadas por el propio codemod). Codemod nuevo `scripts/ui-migrar-modales-a-capas.cjs`
+  (dry-run por defecto, `--apply` para escribir): quita el token `z-50` del `className` y añade
+  `style={{ zIndex: CAPAS.modal }}`, asegurando el import una sola vez por fichero. Verificado
+  antes de escribirlo que las 61 ocurrencias son de una sola línea con `className="…"` (sin
+  `class=` ni plantillas), así que el regex es seguro. **Un caso el codemod no podía prever y
+  reventó ESLint** (`react/jsx-no-duplicate-props` en `app/soporte/page.tsx:1432`, un `div` que
+  YA tenía `style={{ scrollbarWidth… }}` en la línea siguiente): corregido a mano fusionando el
+  `zIndex` dentro de ese `style` existente, no duplicando el prop.
+- **Además de los 41, un barrido MÁS AMPLIO encontró 8 ficheros más con el MISMO defecto que el
+  grep original (`fixed inset-0 … z-50`) no podía ver, por usar otro número:** 2 con `z-[9999]`
+  ya conocidos por la ficha (`ArticleModal.tsx`, `AvatarChanger.tsx`) + **6 NUEVOS** con números
+  mágicos distintos —`app/admin/feedback/page.tsx` (`z-[60]`, DOS modales, uno de ellos un
+  tercer caso de escalada a mano nunca detectado), `AvisoMultiCuentaModal.tsx` (`z-[60]`),
+  `UserProfileModal.js` (`z-[1000]`), `RankingModal.js` (`z-[999]`),
+  `premium/PremiumFeatureModal.tsx` (`z-[100]` — el modal de upgrade a premium, tan crítico para
+  conversión como el caso de Laura) y `referrals/DesgloseCartera.tsx` (`z-[9998]`, modal
+  EXPLÍCITAMENTE "solo móvil"). Los seis: mismo criterio, `style={{ zIndex: CAPAS.modal }}`.
+- **Y una CUARTA cosa, que no es "modal pierde contra el banner" sino su espejo: `FranjaImpersonacion.tsx`
+  (el aviso rojo de suplantación) estaba en `z-[9999]` — MENOR que `CAPAS.modal` (10000).**
+  Medido por aritmética de z-index, no por sospecha: con un modal cualquiera abierto durante una
+  suplantación, el modal (10000) pintaba POR ENCIMA del aviso (9999), tapando el "estás viendo la
+  cuenta de otra persona" que `lib/ui/capas.ts` documenta como no-negociable desde que se escribió
+  — la propia doc decía que `sistema` debía tapar a `modal`, pero el componente real nunca se
+  había migrado a esa capa. Migrado a `CAPAS.sistema`. De paso, `CookieConsent.tsx` (el banner
+  mismo) también pasa de `z-[9999]` a `CAPAS.avisoLegal` (mismo valor, 9999 — por consistencia:
+  con `capas.ts` ya existiendo, ningún z-index de este subsistema debería quedar fuera de él).
+- **NO tocado a propósito, y por qué (para que no se reintente sin medir):**
+  - Backdrops `fixed inset-0` de "clic fuera para cerrar" pegados a la cabecera (`app/Header.tsx`
+    ×2, `HeaderDesktopNav.tsx`, `NotificationBell.tsx`, `InteractiveBreadcrumbs.tsx`,
+    `UserAvatar.tsx`, todos en `z-40`/`z-[60]`): no son diálogos centrados — ninguno tiene `flex
+    items-center justify-center` ni `overflow-y-auto` — sino zonas invisibles de clic-fuera para
+    menús que viven arriba de la pantalla. Es jerarquía LOCAL frente a su propio contenido, no
+    frente al banner (que vive abajo).
+  - `components/tts/TTSFloatingPlayer.tsx` y `components/PwaInstallBanner.tsx`: barras `fixed
+    bottom-0` (no `inset-0`, no modal) que SÍ podrían solaparse con el banner de cookies —mismo
+    borde de pantalla—, pero es un fenómeno DISTINTO (dos barras inferiores compitiendo, no un
+    modal con la parte de abajo inalcanzable) y decidir cuál gana es una decisión de producto que
+    no toca este arreglo. Anotado como posible ficha futura, sin medir todavía.
+- **Guardarraíl nuevo `__tests__/integration/modalZIndexCapas.test.ts`** (gemelo de
+  `topicScopeHelperUsage.test.ts` en el patrón: escanea código fuente, no BD). Dos `it()`:
+  (1) ningún `className` con `fixed inset-0` que además centre contenido o sea desplazable
+  (`flex items-center justify-center` / `overflow-y-auto` — la firma real de "esto es un modal"
+  en este código, verificada contra los 6 backdrops de cabecera para que NO les diera falso
+  positivo) lleva un `z-NN`/`z-[NNNN]` suelto; (2) `FranjaImpersonacion.tsx` usa `CAPAS.sistema`
+  por su nombre, nunca un número. **Verificado que el guardarraíl CAZA la regresión**: revertido
+  a mano un fichero ya arreglado (`SessionExpiredModal.tsx` a su `z-50` original) con el resto
+  del árbol ya migrado → el test falla señalando la línea exacta; reaplicado el arreglo → verde.
+- **Capas corridas:** `npx eslint` sobre los 52 ficheros tocados → 0 errores (1 encontrado y
+  arreglado, ver arriba: duplicate props) · `npx tsc --noEmit` del proyecto ENTERO en verde
+  (con `NODE_OPTIONS=--max-old-space-size=6144`; sin eso el proceso muere por OOM en esta
+  máquina — no es un fallo del cambio, es el proyecto entero) · los 6 tests de
+  `__tests__/lib/ui/capas.test.ts` (ya existían, part 1) siguen en verde · 299 tests de las 15
+  suites de `__tests__/components` que tocan ficheros modificados, en verde · 129 más de
+  `onboardingModalEndpoints`/`debugPageNoApiAnswer`/`testPageWrapper*`/`TemaPage*`, en verde ·
+  el resto de `__tests__/integration/` tiene 21 suites en rojo **preexistentes**, todas por
+  `permission denied` (tablas que un trabajador no puede leer) o por calidad de datos de
+  contenido (barajado, temario) — ninguna toca los ficheros de esta entrega, comprobado por
+  nombre de fichero.
+- **Entregado, rama a pushear por esta sesión (w2).** No aplicado en producción (frontend, no
+  requiere deploy de backend): entra en el próximo deploy de frontend agrupado.
+
 ### [T-609] 🔴 [ABIERTO 06/08] Un `--igualmente` dejó salir tres correos que Manuel había vetado ocho minutos antes: el cierre no mira la respuesta del embudo
 
 > ⚠️ **Manuel dijo dos veces que no hacía falta ficha.** Se escribe igual, al pedir él que no quede

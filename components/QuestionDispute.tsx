@@ -1,6 +1,7 @@
 // components/QuestionDispute.tsx - Componente unificado para impugnar preguntas
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { getDisputeResponseSchema, type ExistingDispute } from '@/lib/api/v2/dispute/schemas'
 import { apiFetch, ApiHttpError } from '@/lib/api/client'
 import {
@@ -476,7 +477,7 @@ export default function QuestionDispute({
     return (
       <>
         {isOpen && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+          <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none" style={{ zIndex: CAPAS.modal }}>
             <div className="pointer-events-auto">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">

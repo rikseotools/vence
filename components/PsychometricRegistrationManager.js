@@ -1,6 +1,7 @@
 // components/PsychometricRegistrationManager.js
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -181,7 +182,7 @@ export default function PsychometricRegistrationManager({
 
       {/* Modal de registro progresivo para psicotécnicos */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-center">
             <div className="text-6xl mb-4">
               {attempt <= 2 ? '🧠' :

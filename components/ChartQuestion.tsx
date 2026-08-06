@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricAIHelpButton from './PsychometricAIHelpButton'
 import PsychometricExplanation from './PsychometricExplanation'
@@ -191,7 +192,7 @@ export default function ChartQuestion({
       {/* Modal de zoom - solo desktop */}
       {showZoomModal && chartComponent && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm" style={{ zIndex: CAPAS.modal }}
           onClick={closeZoomModal}
         >
           {/* Barra de controles */}

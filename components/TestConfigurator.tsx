@@ -2167,7 +2167,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* Modal de Información de Priorización Inteligente */}
       {showPrioritizationModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -2323,7 +2323,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* Modal de Información de Artículos Imprescindibles */}
       {showEssentialArticlesModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -2485,7 +2485,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* Modal de Información de Preguntas Oficiales */}
       {showOfficialQuestionsModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -2589,7 +2589,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* Modal de Información sobre Artículos Imprescindibles (en el recuadro rojo) */}
       {showEssentialArticlesInfoModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -2671,7 +2671,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* 🆕 Modal de Filtro de Artículos */}
       {showArticleModal && currentLawForArticles && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
             {/* Header */}
             <div className="bg-blue-600 text-white px-6 py-4">
@@ -3110,7 +3110,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* 💾 Modal de Guardar Favorito */}
       {showSaveFavoriteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
             {/* Header */}
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -3212,7 +3212,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* 📂 Modal de Cargar Favorito */}
       {showLoadFavoriteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[80vh] shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 flex items-center justify-between">

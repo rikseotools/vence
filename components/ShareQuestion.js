@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -166,7 +167,7 @@ D) ${options[3] || ''}
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }} onClick={handleClose}>
       <div
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
         onClick={e => e.stopPropagation()}

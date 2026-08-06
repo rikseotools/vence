@@ -13,6 +13,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import Link from 'next/link'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 import type { SimulacroPublicConfig } from '@/lib/api/simulacro/config'
@@ -58,7 +59,7 @@ export default function SimulacroPaywallModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="simulacro-paywall-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/60 p-4" style={{ zIndex: CAPAS.modal }}
       onClick={onClose}
     >
       <div

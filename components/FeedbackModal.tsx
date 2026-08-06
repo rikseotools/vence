@@ -1,6 +1,7 @@
 // components/FeedbackModal.tsx - Modal para solicitudes de soporte
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useQuestionContext } from '../contexts/QuestionContext'
@@ -518,7 +519,7 @@ export default function FeedbackModal({
   const isDisputeWithoutQuestion = isDispute && !detectedQuestionId
 
   return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-1 sm:p-4">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-1 sm:p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl shadow-2xl w-full max-w-md max-h-[98vh] sm:max-h-[90vh] overflow-hidden">
 
         {success ? (

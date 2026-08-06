@@ -1,6 +1,7 @@
 // components/SessionWarningModal.tsx
 // Modal BLOQUEANTE por uso simultáneo desde IPs distintas
 'use client'
+import { CAPAS } from '@/lib/ui/capas'
 
 export interface SessionInfo {
   id: string
@@ -37,7 +38,7 @@ export default function SessionWarningModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden">

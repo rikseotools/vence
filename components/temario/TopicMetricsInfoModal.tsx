@@ -6,6 +6,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import type { TrendSummary } from '@/lib/utils/topicTrend'
 
 interface TopicMetricsInfoModalProps {
@@ -33,7 +34,7 @@ export default function TopicMetricsInfoModal({ open, onClose, summary, oposicio
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />

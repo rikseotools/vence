@@ -1,6 +1,7 @@
 // app/admin/conversiones/page.tsx - Panel completo de tracking de conversiones
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import type { ConversionStatsResponse } from '@/lib/api/admin-conversion-stats'
@@ -1046,7 +1047,7 @@ export default function ConversionesPage() {
 
       {/* Modal Journey Usuario */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedUser(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }} onClick={() => setSelectedUser(null)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">

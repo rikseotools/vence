@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { getOposicionById } from '@/lib/config/oposiciones'
+import { CAPAS } from '@/lib/ui/capas'
 
 export default function UserProfileModal({ isOpen, onClose, userId, userName }) {
   const [loading, setLoading] = useState(true)
@@ -266,7 +267,8 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 backdrop-blur-md bg-white/30 dark:bg-gray-900/30 z-[1000] overflow-y-auto"
+      className="fixed inset-0 backdrop-blur-md bg-white/30 dark:bg-gray-900/30 overflow-y-auto"
+      style={{ zIndex: CAPAS.modal }}
     >
       <div className="min-h-screen flex items-center justify-center p-4">
         <div

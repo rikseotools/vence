@@ -1,6 +1,7 @@
 // components/ProgressiveRegistrationModal.tsx - CON DARK MODE COMPLETO
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { signInWithGoogle } from '../lib/supabase'
 import { auth } from '@/lib/auth'
 
@@ -247,7 +248,7 @@ export default function ProgressiveRegistrationModal({
   const content = getModalContent()
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
 
         {/* Header */}

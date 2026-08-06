@@ -1,6 +1,7 @@
 // components/FailedQuestionsModal.tsx - Modal reutilizable para preguntas falladas
 'use client'
 import { useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import type { FailedQuestionsData, FailedQuestionItem } from './TestConfigurator.types'
 
 export type FailedPeriod = 'all' | '7d' | '30d'
@@ -52,7 +53,7 @@ export default function FailedQuestionsModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-4 flex items-center justify-between">

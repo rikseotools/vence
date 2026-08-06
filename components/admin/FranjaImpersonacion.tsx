@@ -12,6 +12,7 @@
 // extra: se apoya en la sesión que el AuthContext ya tiene.
 
 import { useEffect, useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 
 export default function FranjaImpersonacion() {
   const [datos, setDatos] = useState<{ email: string | null; admin: string } | null>(null)
@@ -51,7 +52,11 @@ export default function FranjaImpersonacion() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] bg-red-600 text-white text-sm font-semibold shadow-lg">
+    // z-index por CAPAS.sistema (T-608): con z-[9999] empataba con el banner de cookies y
+    // quedaba POR DEBAJO de CAPAS.modal (10000) — un modal abierto durante una suplantación
+    // tapaba el aviso de "estás viendo la cuenta de otra persona", justo lo que este aviso
+    // existe para impedir.
+    <div className="fixed top-0 left-0 right-0 bg-red-600 text-white text-sm font-semibold shadow-lg" style={{ zIndex: CAPAS.sistema }}>
       <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between gap-3">
         <span className="truncate">
           👁️ Estás viendo la cuenta de <strong>{datos.email ?? 'este usuario'}</strong> — solo lectura

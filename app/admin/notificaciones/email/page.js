@@ -1,6 +1,7 @@
 // app/admin/notificaciones/email/page.js - PÁGINA DETALLADA DE EMAIL TRACKING
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
@@ -1313,7 +1314,7 @@ export default function EmailDetailPage() {
 
         {/* Modal de Email */}
         {showEmailModal && selectedEmail && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: CAPAS.modal }}>
             <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
               <div className="flex justify-between items-center p-6 border-b">
                 <h3 className="text-lg font-semibold text-gray-800">

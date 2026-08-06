@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, createContext, useContext, useCallback, ReactNode } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 
 // Constantes
 const COOKIE_CONSENT_KEY = 'vence_cookie_consent'
@@ -180,7 +181,7 @@ export default function CookieBanner() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg" style={{ zIndex: CAPAS.avisoLegal }}>
       <div className="max-w-6xl mx-auto">
         {!showSettings ? (
           // Vista principal del banner
