@@ -20,7 +20,7 @@
 // `__tests__/guardrails/testsDeOposicionPersonalizada.guardrail.test.ts`.
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ArticleTTS from '@/components/ArticleTTS'
 import LawTestCTA from '@/components/temario/LawTestCTA'
 import Link from 'next/link'
@@ -35,6 +35,8 @@ import { encabezadoArticulo } from '@/lib/teoria/encabezadoArticulo'
 import { resolverBloque } from '@/lib/temario/bloquesTemario'
 import { BLOQUES_POR_OPOSICION } from '@/lib/temario/bloquesPorOposicion'
 import { acentoDe, clasesAcento, type AcentoTemario, type ClasesAcento } from '@/lib/temario/acentoPorOposicion'
+import { anclaArticulo } from '@/lib/navigation/backToArticleLink'
+import { emitClientEvent } from '@/lib/observability/client'
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -95,6 +97,43 @@ export default function TopicContentView({
   const articlesWithOfficialQuestions = content.laws.reduce((acc, law) => {
     return acc + law.articles.filter((a) => a.officialQuestionCount > 0).length
   }, 0)
+
+  // [T-611] Al VOLVER de un test, devolverle a su artículo. No basta con el ancla del
+  // navegador: la tarjeta existe en el DOM pero su ley está PLEGADA (`hidden`), así que sin
+  // desplegarla el salto no lleva a ninguna parte. Se hace en efecto (tras montar) para no
+  // tocar el HTML que se sirve — es una página ISR y cualquier diferencia sería un hydration
+  // mismatch.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ancla = window.location.hash.replace(/^#/, '')
+    if (!ancla) return
+
+    const ley = content.laws.find((l) =>
+      l.articles.some((a) => anclaArticulo(l.law.shortName, a.articleNumber) === ancla),
+    )
+    emitClientEvent({
+      severity: 'info',
+      eventType: 'temario_vuelta_articulo',
+      metadata: {
+        resultado: ley ? 'articulo' : 'no_encontrado',
+        oposicion: oposicion ?? null,
+        topicNumber: content.topicNumber,
+      },
+    })
+    if (!ley) return
+
+    setExpandedLaws((prev) => new Set(prev).add(ley.law.id))
+    // El artículo sigue oculto hasta que React repinta con la ley ya desplegada.
+    const t = window.setTimeout(() => {
+      // `scrollIntoView` no está en todos los entornos (jsdom, navegadores in-app antiguos).
+      // Si no está, la ley ya se ha desplegado y el ancla del navegador hace su trabajo: lo
+      // que NO puede pasar es que una excepción aquí se lleve por delante la vuelta entera.
+      document.getElementById(ancla)?.scrollIntoView?.({ block: 'center' })
+    }, 0)
+    return () => window.clearTimeout(t)
+    // Solo al abrir la página con ancla: re-ejecutarlo pelearía con el usuario si pliega la ley.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.topicNumber])
 
   // Lo escribían a mano 119 copias con esta misma fórmula; las otras 12 ya lo derivaban así.
   // Sin slug (oposición PERSONALIZADA) no se inventa uno: antes heredaba el de
@@ -378,10 +417,14 @@ function ArticleCard({
 }) {
   const { getSlug } = useLawSlugs()
   const hasOfficialQuestions = article.officialQuestionCount > 0
+  // [T-611] El sitio al que se vuelve tras el test. Sin este `id` el enlace de vuelta no tiene
+  // a dónde apuntar: eran 0 de 131 copias las que anclaban sus artículos.
+  const ancla = anclaArticulo(lawShortName, article.articleNumber) ?? undefined
 
   return (
     <article
-      className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
+      id={ancla}
+      className={`print-avoid-break scroll-mt-20 bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
         hasOfficialQuestions ? acento.bordeArticulo : 'border-gray-200 dark:border-gray-700'
       }`}
     >
@@ -443,9 +486,12 @@ function ArticleCard({
           <Link
             href={`/leyes/${getSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
             onClick={() => {
-              // Store current URL for "Volver a mi temario" button
+              // Vuelta de «📖 Volver a mi temario» (LawTestPageWrapper). [T-611] Va CON el
+              // ancla del artículo: sin ella devolvía arriba del tema y con las leyes
+              // plegadas, que es justo lo que reportó la usuaria.
               if (typeof window !== 'undefined') {
-                sessionStorage.setItem('temario_return_url', window.location.href)
+                const base = window.location.href.split('#')[0]
+                sessionStorage.setItem('temario_return_url', ancla ? `${base}#${ancla}` : base)
               }
             }}
             className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"

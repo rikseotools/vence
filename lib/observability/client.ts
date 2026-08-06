@@ -28,6 +28,8 @@ const SAMPLE_RATES: Record<string, number> = {
   // Clic en "Hacer test de {ley}" del temario. Volumen moderado; muestreo 20% basta
   // para la señal (proporción scoped vs no-scoped). Si sube el ruido, bajar.
   law_test_cta_click: 0.2,
+  // [T-611] Una por vuelta al temario: volumen bajo y es LA medida de si el bucle se cerró.
+  temario_vuelta_articulo: 1.0,
   pre_hydration_error: 1.0,
   // TTS — bajo volumen (1 por sesión) al 100%, alto volumen muestreado.
   tts_session_start: 1.0,
@@ -188,6 +190,16 @@ export type ClientEventType =
   // scopedArticleCount=0, es una regresión (un CTA volvió a enlazar la ley entera).
   // Ver docs/runbooks/observability.md.
   | 'law_test_cta_click'
+  // [T-611] Vuelta del test AL ARTÍCULO del temario donde estabas. El bucle
+  // temario → «Hacer test Art. N» → volver estaba ABIERTO: el enlace de vuelta llevaba
+  // arriba del tema y con las leyes otra vez plegadas, así que había que buscar el artículo
+  // a mano (lo reportó una premium). Mide si el bucle se cierra de verdad:
+  //   · resultado='articulo'      → volvió a su artículo (con la ley desplegada)
+  //   · resultado='no_encontrado' → el ancla no casa con ningún artículo del tema (el scope
+  //                                 del tema cambió, o el enlace venía de otra oposición)
+  // Solo se emite cuando la página se abre CON ancla: una visita normal al tema no es una
+  // vuelta, y contarla ahogaría la señal. Se compara contra los ~8.385 clics/30d de salida.
+  | 'temario_vuelta_articulo'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'
