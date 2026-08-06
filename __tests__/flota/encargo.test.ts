@@ -579,9 +579,30 @@ describe('a quién y a qué se reparte', () => {
     expect((fuente.match(/trabajadoresQueReciben\(\)/g) || []).length).toBeGreaterThanOrEqual(2)
   })
 
-  it('las impugnaciones no se reparten solas, y hace falta declararlo para reactivarlas', () => {
-    expect(fuente).toMatch(/VENCE_FLOTA_IMPUGNACIONES/)
+  // ── ESTE TEST NACE DE HABERSE QUEDADO CORTO ────────────────────────────────────────────
+  // La primera versión comprobaba que `VENCE_FLOTA_IMPUGNACIONES` APARECIERA en el fichero. Y
+  // aparecía: se había arreglado `vigilar` y NO `repartir`, así que el test pasó en verde
+  // mientras `repartir` seguía mandando a los cuatro del VPS a impugnaciones — que es como se
+  // descubrió, mandándolas de verdad. Ahora se exige que las DOS puertas pregunten al MISMO
+  // sitio, que es lo único que impide que se vuelvan a separar.
+  it('NINGUNA de las dos puertas reparte impugnaciones por su cuenta', () => {
+    const { flotaCogeImpugnaciones } = require(
+      require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'))
+    expect(flotaCogeImpugnaciones()).toBe(false)
+    // Las dos puertas (repartir y vigilar) consultan el helper, no un `if` propio.
+    expect((fuente.match(/ENC\.flotaCogeImpugnaciones\(\)/g) || []).length).toBeGreaterThanOrEqual(2)
+    // Y ninguna decide por su cuenta leyendo la variable de entorno.
+    expect(fuente).not.toMatch(/process\.env\.VENCE_FLOTA_IMPUGNACIONES/)
     // El fallback «si no hay tarea, dale una impugnación» ya no puede ser incondicional.
     expect(fuente).not.toMatch(/if \(!texto\) \{ texto = ENC\.encargoImpugnacion/)
+  })
+
+  it('se puede reactivar declarándolo, y el criterio vive en UN sitio', () => {
+    const path = require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs')
+    delete require.cache[path]
+    process.env.VENCE_FLOTA_IMPUGNACIONES = '1'
+    expect(require(path).flotaCogeImpugnaciones()).toBe(true)
+    delete process.env.VENCE_FLOTA_IMPUGNACIONES
+    delete require.cache[path]
   })
 })

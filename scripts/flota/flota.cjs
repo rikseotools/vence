@@ -687,7 +687,7 @@ async function main() {
               //
               // En el backlog un error es un commit malo que la revisión caza, y hay 250 tareas
               // abiertas: ahí su volumen sí compensa. Para volver a activarlo: VENCE_FLOTA_IMPUGNACIONES=1.
-              const IMPUGNACIONES_A_LA_FLOTA = process.env.VENCE_FLOTA_IMPUGNACIONES === '1'
+              const IMPUGNACIONES_A_LA_FLOTA = ENC.flotaCogeImpugnaciones()
               const aImpugnaciones = IMPUGNACIONES_A_LA_FLOTA && !MAQ.puedeDesplegar(trabajador).puede
               let texto = null, queEs = null
               if (!aImpugnaciones) {
@@ -783,7 +783,7 @@ async function main() {
         // quien no, impugnaciones (análisis puro, sin deploy). Si esto no fuera igual en los dos
         // sitios, el reparto dependería de por dónde entrases — que es como una de las dos puertas
         // se queda sin lo que se añade a la otra ([T-130]).
-        if (!MAQ.puedeDesplegar(f.trabajador).puede) {
+        if (ENC.flotaCogeImpugnaciones() && !MAQ.puedeDesplegar(f.trabajador).puede) {
           try {
             const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
             const r = mandarEncargo(f.trabajador,
