@@ -1017,6 +1017,73 @@ clones desfasados (w4 iba 11 commits por detrás).
 
 **Pendiente:** instalar la unidad en el VPS (`supervisor.env` con `DATABASE_URL` de coordinación +
 `VENCE_FLOTA_AQUI=flota-1`) y comprobar una pasada del bucle ya como servicio.
+### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
+
+**No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es
+el **choque entre dos reglas de la casa diseñadas por separado**: «pushear a `main` al tocar» (correcta
+con 2-10 sesiones y la flota) y «el deploy solo sale con el CI en verde **en la punta de `main`**».
+
+**Medido el 06/08/2026 sobre `origin/main`:**
+
+| | |
+|---|---|
+| Commits en `main` en el día | **40** |
+| Hueco MEDIANO entre pushes | **2 min** (p75: 9 min) |
+| Huecos por debajo de 15 min | **35 de 39** |
+| SHAs recientes con checks completados | **0** (`cancelled, cancelled, cancelled, queued`) |
+
+**El mecanismo, que no es el que parece.** `test.yml` agrupa por rama
+(`concurrency.group: ${{ github.workflow }}-${{ github.ref }}`) con
+`cancel-in-progress: ${{ github.event_name == 'pull_request' }}` → en un push a `main` vale **false**,
+así que **NO es que un push cancele al que se está ejecutando**. Lo que pasa es lo otro: GitHub guarda
+**un solo run PENDIENTE por grupo**, y al llegar el tercero **cancela al que estaba esperando**. Con un
+push cada dos minutos y un CI de varios, la inmensa mayoría de los SHAs muere en la cola sin llegar a
+ejecutarse. Es un detalle de la plataforma, no del workflow: leer el `cancel-in-progress` y darlo por
+descartado es el error fácil aquí.
+
+**Y el lanzador persigue un blanco móvil.** `scripts/deploy-cuando-verde.sh` hace `fetch` +
+`reset --hard origin/main` **en cada vuelta** (hasta 12), a propósito, para desplegar exactamente el SHA
+cuyo CI verificó. Con la punta moviéndose cada dos minutos, cuando va a juzgar un SHA ya hay otro:
+se pasa las 12 vueltas resincronizando y no dispara.
+
+**Lo que lo hace caro es CÓMO falla: no da error.** Simplemente no despliega. El trabajo se queda como
+«hecho pero sin verificar» y nadie se entera — el 06/08 había **6 tareas** esperando deploy de frontend
+y **3** de backend, y la ficha de [T-448] ya anotaba un deploy de frontend lanzado a las 11:30 de ese
+día con la SHA viva todavía por detrás horas después. O sea: **ya había pasado antes y se leyó como
+«tarda»**.
+
+---
+
+#### El arreglo (propuesto, NO implementado)
+
+**No es tocar el CI ni pedir que nadie pushee.** Es que el lanzador deje de exigir *«la punta en
+verde»* y pase a desplegar **el ancestro más reciente de `main` que SÍ tenga un run verde completado**.
+Es justo lo que necesita un deploy **acumulativo**: no le importa la punta, le importa subir todo lo
+que está verificado. Hoy, exigir la punta convierte una propiedad deseable (muchas sesiones pusheando
+seguido) en un bloqueo total.
+
+Piezas:
+
+1. `deploy-cuando-verde.sh`: recorrer `git rev-list origin/main` hacia atrás (con un techo, p. ej. 20
+   commits) y quedarse con el **primero que tenga los checks de código en `success`**. Desplegar ESE.
+2. **Decirlo en voz alta:** imprimir cuántos commits se queda por detrás de la punta y cuáles. Un
+   deploy que sube «casi todo» sin nombrar lo que deja fuera es el mismo modo de fallo que el guard
+   silencioso.
+3. **Que el silencio se note:** si tras las 12 vueltas no hay ningún ancestro verde, eso hoy no deja
+   rastro en ningún sitio. Debería emitir señal (`observable_events`) — un deploy que no ocurre es
+   invisible por construcción, y ese es el fallo de fondo de esta ficha.
+4. Comprobar de paso por qué **`Integration / perf / security` sale en `failure`** también en commits
+   YA desplegados (15656eef6, de733a2d1, f45352ec2): si ese check lleva días rojo, cualquier criterio
+   de «verde» que lo incluya no puede pasar nunca, y hay que decidir si entra en el gate o no.
+
+**Cómo se reproduce sin esperar a que pase:** contar los huecos entre commits de `main` de un día
+(`git log origin/main --since=… --format=%cI`) y cruzarlos con la duración de los runs de `Tests` en la
+API de GitHub. Si la mediana del hueco es menor que la duración del run, el gate actual es
+inalcanzable por construcción.
+
+**Relacionadas:** [T-448] (su ficha ya llevaba el síntoma sin diagnosticar), [T-485] (el candado de
+deploy entre máquinas), [T-364]/[T-365] (dónde se lanza el deploy: las guardas de worktree que llevaron
+a tener `~/vence-deploy` dedicado), [T-611] (una de las tareas atrapadas esperando este deploy).
 
 ### [T-597] 🟠 [ABIERTO 05/08] Una oposición personalizada no puede servir NINGUNA pregunta oficial (`exam_positions` vacío)
 
