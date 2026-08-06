@@ -6352,7 +6352,9 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
-### [T-485] 🔴 [REABIERTO 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
+## Hechas
+
+### [T-485] ✅ [HECHA 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
 
 - **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
 - **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
@@ -6369,19 +6371,19 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
 - **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
 
-- **♻️ REABIERTA EL 06/08/2026 — la verificación que faltaba salió NEGATIVA.** Medido en `deploy_runs`:
-  **56 de 57 corridas tienen `lease_until` a NULL**, incluidas las tres de hoy (ids 67 `ok`, 68 `fail`,
-  69 en curso). El arriendo se tomó **una sola vez**, cuando se construyó, y no se ha vuelto a tomar:
-  la puerta que cruza máquinas **no está actuando**, y hoy lo único que protege es el `flock` de
-  `/tmp`, que es per-máquina — que es exactamente el hueco que esta ficha existe para cerrar.
-- **Se ve desde fuera, sin mirar la tabla:** `deploy-estado.cjs` dice a la vez *«🔴 el lock está
-  tomado»* y *«registro: libre»* con un deploy real corriendo. Las dos puertas no ven lo mismo.
-- **Dónde mirar:** `lib/deploy/candado.cjs` está escrito y testeado, pero hay que comprobar **quién lo
-  llama**: si `deploy-frontend.sh` / `deploy-backend.sh` / `deploy-cuando-verde.sh` lo invocan de
-  verdad, o si el arriendo quedó implementado sin cablear. Un candado que nadie toma es peor que
-  ninguno, porque el panel dice que estás protegido.
+- **✅ VERIFICADA EN PRODUCCIÓN EL 06/08/2026 — el candado FUNCIONA.** Medido sobre las corridas
+  **EN CURSO**: 1 de 1 con `lease_until`, y 0 de las cerradas conservándolo. Comprobado además que
+  los tres verbos se llaman de verdad: `deploy-frontend.sh` y `deploy-backend.sh` invocan `adquirir`,
+  renuevan cada 120 s en segundo plano y hacen `soltar` en el trap.
+- **⚠️ Y una lección de MEDIDA, que es lo que casi la reabre por error.** Ese mismo día la di por
+  rota con un dato que sonaba demoledor —*«56 de 57 corridas sin arriendo»*— y era **sesgo de
+  selección**: contaba filas **CERRADAS**, donde `lease_until` es NULL **por diseño** (`soltar`
+  cierra la corrida y un trigger libera el arriendo siempre). La pregunta correcta no es «¿cuántas
+  filas tienen arriendo?» sino «¿lo tienen las que están EN CURSO?». El segundo síntoma que parecía
+  confirmarlo —`deploy-estado` diciendo «el lock está tomado» y «registro: libre» a la vez— también
+  se disuelve al mirar el reloj: la corrida 68 acababa de fallar (19:50:03) y la 69 aún no había
+  arrancado (19:52:04). El registro decía la verdad.
 
-## Hechas
 
 ### [T-624] ✅ [HECHA 06/08] La credencial de lectura de negocio se resolvía por su cuenta en 4 scripts: unificada en un punto y cerrada la puerta a un quinto
 
