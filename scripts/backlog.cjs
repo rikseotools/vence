@@ -1640,6 +1640,28 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         console.error(`❌ ${id} la entregaste TÚ. Nadie revisa lo suyo — que la mire otro.`);
         process.exit(3);
       }
+      // ── ¿EL TRABAJO ENTREGADO ESTÁ A SALVO? (T-632) ──────────────────────────────────────
+      // Un veredicto sobre un commit que no cuelga de ninguna rama publicada da una garantía que
+      // se evapora: le pasó a [T-560] el 06/08 — trabajo real, revisión rigurosa (leyó el diff y
+      // reprodujo la medición contra RDS), y el commit quedó huérfano cuando la rama del
+      // trabajador se movió. Ficha diciendo «arreglado», veredicto `ok`, bug intacto en `main`.
+      // Solo bloquea el `ok`: un `problemas` devuelve el trabajo a quien lo hizo, y ahí que el
+      // commit se haya perdido es parte de lo que hay que contarle, no un motivo para callarse.
+      {
+        const [ent] = await s`SELECT review_note FROM public.backlog_tasks WHERE id = ${id}`;
+        const RAMAS = require('../lib/backlog/ramasDeTarea.cjs');
+        const salvo = RAMAS.trabajoASalvo(ent && ent.review_note);
+        const v = REV.puedeRevisarse(salvo);
+        if (veredicto === 'ok' && !v.permitido) {
+          console.error(`❌ ${id} — ${v.motivo}.`);
+          console.error(`   El commit ${String(salvo.sha).slice(0, 9)} existe, pero NINGUNA rama remota lo contiene.`);
+          console.error('   Antes de aprobarlo hay que ponerlo a salvo (es lo que hace el rescate):');
+          console.error(`     git push origin ${String(salvo.sha).slice(0, 9)}:refs/heads/rescate/<algo>-${String(salvo.sha).slice(0, 9)}`);
+          console.error('   O, si de verdad hay que aprobarlo igual, dilo en los hallazgos y usa --veredicto problemas.');
+          process.exit(4);
+        }
+        if (salvo.alcanzable === true) console.log(`   🔒 trabajo a salvo (${salvo.sha.slice(0, 9)} en ${salvo.referencias.length} ref remota(s))`);
+      }
       // ── REVISAR TAMBIÉN ES SOLTARLA (T-486, 06/08) ────────────────────────────────────────
       // El revisor coge la tarea para mirarla, así que al terminar tiene que devolverla al pool:
       // su trabajo sobre ella se acabó. Al estrenar el verbo no lo hacía, y lo pagó el mismo día:
