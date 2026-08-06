@@ -12004,6 +12004,52 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 **Cómo:** `docs/runbooks/verificar-convocatorias.md` + `docs/runbooks/provenance-convocatorias.md`.
 - **♻️ Rescatada el 29/07 del worktree `sesion-28jul-d`**, que murió con el lease caducado y sin pushear la ficha. La tarea seguía viva en `backlog_tasks`, así que `list` la ofrecía por su título y detrás no había nada que leer — el mismo agujero que se tragó T-251 y T-254 ese día, salvo que ésta no estaba en el historial de `main` y no habría podido recuperarse.
 
+- **✅ MEDIDO DE NUEVO (06/08, w2) — el auto-clonado NO es 1 de 125, es CERO, y no es solo por sumarios.**
+  `SELECT count(*) FROM convocatoria_documentos WHERE fuente='oep-radar'` = **0 filas, en toda la
+  historia de la tabla.** Ni una. Es una medida más directa que el regex sobre `source_url` de la
+  ficha original (que mide "¿pasaría el filtro?", no "¿de verdad clonó?") y confirma la conclusión
+  con más fuerza: el auto-clonado nunca ha escrito un solo documento.
+  - **Y el diagnóstico de "son sumarios, no documentos" NO explica el 100% de los casos.** De los
+    287 registros de `oep`, **13 tienen `fuente_url`** (o sea, pasaron por el bloque F3 con una
+    URL real) y de esos, **2 tienen una URL que SÍ es un boletín reconocido** —comprobado en vivo:
+    `SELECT boletin_doc_key_reconocido('https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-15052')`
+    → `true`, `boletin_doc_key(...)` → `'BOE-A-2026-15052'`— y aun así **ninguno de los dos clonó**:
+    `oep.doc_key IS NULL` y `oep.source_documento_id IS NULL` en ambos (`id`
+    `7c0c8eb7-dee3-4845-b2c9-ba5f144888f1` y `57fc4c90-5873-4ded-a7ae-8b8eb62b9908`, oposición
+    `0b264286-17a3-4dc9-bb1e-61616d1e09f3`, creados el 29/07 17:12:46-47 UTC). Descarté que fuera
+    un problema de deduplicación: `SELECT * FROM convocatoria_documentos WHERE doc_key='BOE-A-2026-15052'`
+    da **0 filas de CUALQUIER fuente** — no hay nada que deduplicar, el `INSERT` simplemente nunca
+    llegó a completarse (o completarse con éxito). Y confirmé que el resto del bloque F3 SÍ corrió
+    hasta ese punto: `convocatoria_oep` tiene las dos filas (`convocatoria_id`
+    `706f17d0-2a86-41bd-b4cd-20683f5980d1`), así que `oepId`/`convId` eran válidos y el código llegó
+    hasta la llamada de clonado — falla específicamente ahí.
+  - **SOSPECHO que es una excepción silenciosa dentro de `registrarDocumentoDeSenal` →
+    `ensure_convocatoria_documento`** (quizá una carrera entre los dos OEP del mismo decreto,
+    aplicados con ~600 ms de diferencia, o algo en cómo Drizzle evalúa el `SELECT CASE WHEN … THEN
+    ensure_convocatoria_documento(…) END` sin `FROM`), **pero NO lo he demostrado**: no tengo
+    permiso de escritura de negocio para invocar la función a mano y ver qué lanza, y `console.warn`
+    —que es TODO lo que el código hacía antes de hoy en ese punto— no aterriza en ningún sitio
+    consultable (comprobado: 0 filas en `observable_events` con esas palabras clave). Para
+    confirmarlo de verdad hace falta alguien con `DATABASE_URL` de escritura que ejecute
+    `SELECT ensure_convocatoria_documento(...)` con estos mismos parámetros dentro de una
+    transacción con `ROLLBACK`.
+  - **Lo que SÍ pude arreglar sin permiso de escritura de negocio, porque es código de aplicación,
+    no un dato:** el bloque F3 y su vecino de provenance ahora **emiten** en vez de solo avisar por
+    `console.warn` — exactamente el mismo patrón que ya usa el bloque de provenance de más abajo
+    (`senal_aplicada_sin_documento`, T-221) pero que el bloque F3 nunca tuvo. Dos eventos nuevos:
+    `oep_f3_clonado_fallido` (boletín reconocido pero `ensure_convocatoria_documento` devuelve NULL)
+    y `oep_f3_upsert_fallo` (excepción real dentro del bloque, con el mensaje de error). **Esto no
+    arregla el auto-clonado — lo hace OBSERVABLE por primera vez**, que es la capa que faltaba: sin
+    ella, la próxima vez que alguien intente diagnosticar esto tendrá que repetir la misma
+    arqueología de datos de cero. Rama `flota/T-238-observabilidad-f3-w2`, commit con 2 tests que
+    ejercitan el CÓDIGO REAL (`__tests__/lib/api/oep-signals/f3ObservabilidadClonado.test.ts`, mock
+    de `db.execute` por CONTENIDO de la consulta, no por orden — robusto a reordenamientos).
+  - **NO tocado, y por qué:** el arreglo de fondo (sensores guardando la URL del documento, no solo
+    la del sumario) sigue sin hacerse — es una campaña por-sensor, no un parche de una sesión, y
+    sigue siendo el owner correcto del defecto raíz (91/125 sin URL utilizable). Esta entrega es
+    ortogonal: cierra el hueco de OBSERVABILIDAD del otro 100% de los casos (con URL buena) que
+    hasta hoy fallaban en silencio incluso cuando el sensor SÍ había hecho bien su trabajo.
+
 ### [T-240] 🟠 [ABIERTO 28/07] El detector de completitud de leyes cuenta artículos pero no compara el TEXTO: da verde a una ley entera parafraseada
 - **Qué pasa:** `classifyLawCompleteness` / `scripts/audit-law-completeness.cjs` (kind `law_unverified_source`) responden a *«¿están todos los artículos?»*. No responden a *«¿dicen lo que dice la fuente?»*. Son preguntas distintas y hoy solo se hace la primera.
 - **El caso que lo destapó ([T-193], 28/07):** el RGPD figuraba como verificado con este resumen literal — *«RGPD completo: 99 artículos (1-99, sin huecos) = articulado íntegro»*, `is_ok: true`. Y **72 de esos 99 artículos eran una paráfrasis**, no el texto oficial: en el art. 43 la redacción se comía *«Los Estados miembros garantizarán que…»*. Cantidad perfecta, fidelidad nula. La ley se sirve en **49 temas de 49 oposiciones**.
