@@ -61,7 +61,7 @@ async function marcarCasosCerradosEnEmbudo(sql, filas) {
   } catch { return filas }
 }
 
-const cmd = process.argv[2] || 'estado'
+let cmd = process.argv[2] || 'estado'
 const arg = (n) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : null }
 
 function url() {
@@ -81,6 +81,10 @@ function enMaquina(trabajador, orden, { entrada = null } = {}) {
   if (!m) throw new Error(`el trabajador "${trabajador}" no está declarado en ninguna máquina (lib/flota/maquinas.cjs)`)
   const opciones = { encoding: 'utf8', input: entrada || undefined, timeout: 120_000 }
   if (m.local) return execFileSync('bash', ['-c', orden], opciones)
+  // Desde el VPS, el portátil es «remoto» y no declara host: sin esto se construiría un `ssh` sin
+  // destino y el error diría cualquier cosa menos lo que pasa (T-617).
+  const noLlego = MAQ.inalcanzable(m)
+  if (noLlego) throw new Error(noLlego)
   // ── REINTENTO ANTE UN CORTE TRANSITORIO (T-486, 06/08) ────────────────────────────────
   // `sshd` cierra conexiones cuando le llegan en ráfaga (MaxStartups por defecto 10:30:100), y
   // el supervisor abre varias seguidas: sondear el clon, leer la sesión, medir el transcript,
@@ -755,130 +759,47 @@ async function main() {
     //   · a quien tenga tarea cogida y NINGÚN proceso, le relanza el turno con SU tarea
     // No responde preguntas, no aprueba borradores y no toca a las sesiones de Manuel: eso es de
     // una persona, y automatizarlo sería justo lo que este sistema no quiere.
+    // ── ⚠️ DOS PROGRAMADORES PARA UNA SOLA FLOTA — colapsado el 06/08 (T-617) ──────────────
+    // Este bucle (`vigilar`, 05/08 16:22) y `bucle` (06/08 11:35) hacían lo MISMO con criterios
+    // PROPIOS: los dos decidían a quién dar trabajo y cuál, cada uno con su copia de la regla de
+    // reparto por capacidad. Es el olor de los cinco escritores de `seguimiento_url` [T-130]…
+    // dentro del propio supervisor, que es donde más caro sale: dos repartidores con criterios
+    // distintos entregan cosas distintas según quién corra, y entonces «la flota hace lo que toca»
+    // deja de ser una frase comprobable.
+    //
+    // Y encima el bueno era INVISIBLE: la línea de ayuda ofrecía `vigilar` y no mencionaba
+    // `bucle` por ningún sitio, así que quien no leyera el código no podía saber que existía.
+    //
+    // Gana `bucle` porque NO reimplementa la criba: lanza `flota.cjs repartir` como hijo (un solo
+    // criterio, el de `repartir`), aísla los fallos de una pasada y detecta turnos atascados.
+    // `vigilar` se queda como ALIAS —no se borra el nombre— para que nadie se encuentre con que
+    // su comando de siempre ya no existe.
     if (cmd === 'vigilar') {
-      const cada = Math.max(60, Number(arg('--cada') || 300))
-      const vueltas = Number(arg('--vueltas') || 0)   // 0 = para siempre
-      console.log(`👁️  vigilando la flota cada ${cada}s${vueltas ? ` (${vueltas} vueltas)` : ''}. Ctrl-C para parar.`)
-      for (let n = 1; !vueltas || n <= vueltas; n++) {
-        const sesiones = await sql`
-          SELECT sid, slug, last_signal_at FROM public.worktree_sessions WHERE rol = 'trabajador'`
-        const enCurso = await sql`
-          SELECT id, title, claimed_by FROM public.backlog_tasks
-           WHERE status = 'in_progress' AND claimed_by IS NOT NULL`
-        const porSlug = new Map(sesiones.map((x) => [x.slug, x.sid]))
-        const tareaDe = (w) => enCurso.find((t) => t.claimed_by === porSlug.get(w))
-
-        const sello = new Date().toISOString().slice(11, 19)
-        // Dos trabajadores no pueden llevarse la MISMA tarea en la misma vuelta.
-        const repartidas = new Set()
-        let movidos = 0
-        // Solo los que RECIBEN trabajo solos: el portátil quedó fuera del reparto automático
-        // (`reparte: false`) porque es el sitio donde Manuel trabaja. Siguen existiendo para el
-        // panel y para un encargo explícito.
-        for (const { trabajador } of MAQ.trabajadoresQueReciben()) {
-          if (!sesionViva(trabajador)) continue
-          // ¿Está ejecutando algo? Entonces no se le toca, tenga tarea o no.
-          if (!ENC.puedeRecibir(comandoDelPanel(trabajador)).libre) continue
-
-          const suya = tareaDe(trabajador)
-          try {
-            if (suya) {
-              // Tarea cogida y sin proceso: su turno murió. Se relanza CON SU TAREA, no con otra —
-              // empezar algo nuevo encima de un trabajo a medias es como se pierde ese trabajo.
-              const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
-              const r = mandarEncargo(trabajador, ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }),
-                { alDia, turno: () => { emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' }); emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' }) } })
-              if (r.ok) {
-                // Un turno que murió con la tarea cogida es el fallo que más tiempo cuesta: la
-                // tarea queda bloqueada para todos y nadie avanza. Sin esta señal solo se veía
-                // mirando el panel en el momento justo.
-                console.log(`   [${sello}] ↻ ${trabajador} retoma ${suya.id}`); movidos++
-              }
-              else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
-            } else {
-              // ── SE REPARTE POR CAPACIDAD, NO POR TURNO ───────────────────────────
-              // Primera versión: alternar por el nombre. Funcionaba, pero repartía mal — mandaba
-              // tareas de backlog a máquinas que no pueden cerrarlas.
-              //
-              // Una tarea de backlog casi siempre acaba en «desplegar y verificar en producción»,
-              // y eso solo lo puede hacer quien comparte el candado del deploy (los locales). Una
-              // impugnación, en cambio, es análisis puro: no despliega nada, así que la cierra
-              // igual de bien un trabajador del VPS.
-              //
-              // Así que **quien puede cerrar el ciclo entero se lleva el backlog**, y quien no,
-              // las impugnaciones. Sale más trabajo TERMINADO con los mismos trabajadores, que es
-              // lo que se pedía; y deja de generarse cola de «hecho, falta desplegar».
-              // ── PERO DESDE EL 05/08 NINGUNO VA A IMPUGNACIONES ──────────────────────────
-              // Decisión de Manuel tras revisar la primera tanda. El motivo no es que analicen
-              // mal —la que se verificó a fondo (`2477d39d`) la acertaron, y tres por separado—
-              // sino DÓNDE cuesta el error: una impugnación acaba en un correo a una persona.
-              //
-              // Y ahí el criterio que evita el fallo no está en el repo: la trampa de las páginas
-              // `support.microsoft.com/es-es` (que dan los atajos internacionales aunque la
-              // instalación española use otros) y la prueba discriminante de localización viven
-              // en la memoria de Manuel, no en el manual. Los tres trabajadores verificaron
-              // contra esa página —la única fuente que el manual desaconseja— y ninguno aplicó la
-              // prueba. Mientras ese conocimiento no baje al repo, van a repetirlo.
-              //
-              // En el backlog un error es un commit malo que la revisión caza, y hay 250 tareas
-              // abiertas: ahí su volumen sí compensa. Para volver a activarlo: VENCE_FLOTA_IMPUGNACIONES=1.
-              const IMPUGNACIONES_A_LA_FLOTA = ENC.flotaCogeImpugnaciones()
-              const aImpugnaciones = IMPUGNACIONES_A_LA_FLOTA && !MAQ.puedeDesplegar(trabajador).puede
-              let texto = null, queEs = null
-              if (!aImpugnaciones) {
-                const libres = await sql`
-                  SELECT id, title FROM public.backlog_tasks
-                   WHERE status = 'open' AND claimed_by IS NULL
-                     AND (snooze_until IS NULL OR snooze_until <= now())
-                     AND wake_on_deploy_sha IS NULL AND review_requested_at IS NULL
-                   ORDER BY CASE priority WHEN 'critica' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, id
-                   LIMIT 60`
-                const { tarea: elegida } = ENC.elegir(libres.filter((t) => !repartidas.has(t.id)), { puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede })
-                if (elegida) {
-                  repartidas.add(elegida.id)
-                  texto = ENC.encargo({ trabajador, tarea: elegida, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede })
-                  queEs = elegida.id
-                }
-              }
-              // Sin tarea apta libre, antes se caía a impugnaciones («mejor eso que pararlo»). Ya
-              // no: con la flota fuera de esa cola, un trabajador ocioso es preferible a uno
-              // escribiéndole a una persona. Se dice en voz alta para que se vea el hueco.
-              if (!texto) {
-                if (!IMPUGNACIONES_A_LA_FLOTA) {
-                  console.log(`   [${sello}] ⏸️  ${trabajador}: sin tarea apta libre (no se le dan impugnaciones)`)
-                  continue
-                }
-                texto = ENC.encargoImpugnacion({ trabajador, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }); queEs = 'una impugnación'
-              }
-              const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) } })
-              const r = mandarEncargo(trabajador, texto,
-                { alDia, turno: () => emitirTurno(trabajador, 'encargado', { tarea: queEs.startsWith('T-') ? queEs : null, tipo: queEs.startsWith('T-') ? 'backlog' : 'impugnacion' }) })
-              if (r.ok) {
-                console.log(`   [${sello}] ✅ ${trabajador} → ${queEs}`); movidos++
-              }
-              else console.log(`   [${sello}] ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
-            }
-          } catch (e) {
-            console.log(`   [${sello}] ❌ ${trabajador}: ${String(e.message || e).slice(0, 70)}`)
-          }
-        }
-        if (!movidos) console.log(`   [${sello}] todo en marcha, nada que repartir`)
-        if (vueltas && n === vueltas) break
-        await new Promise((r) => setTimeout(r, cada * 1000))
-      }
-      return 0
+      console.log('ℹ️  `vigilar` es ahora `bucle`: un solo programador (T-617). Sigue el mismo comando.')
+      cmd = 'bucle'
     }
 
-    // ── LANZAR UN TRABAJADOR EN EL PORTÁTIL ───────────────────────────────────────────────
-    // El equivalente local de `arrancar-trabajador.sh`, sin usuario nuevo ni systemd: la sesión es
-    // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
-    // origin/main, credenciales RESTRINGIDAS (no tu .env.local, que abre usuarios y pagos) y el
-    // preflight como puerta: si no puede latir, no arranca.
+
+    // ── REPARTIR: dar trabajo a TODOS los que estén libres, de una vez ────────────────────
+    // Es lo que cierra el bucle. Sin esto, «hablo solo con el supervisor» seguía significando
+    // «pídele trabajo a w1, luego a w2, luego a l1»: el supervisor sabía quién estaba libre y aun
+    // así había que decírselo uno a uno.
+    //
+    // NO reparte a las sesiones de Manuel, ni con --todos: a una terminal de una persona no se le
+    // manda un encargo. Y no reparte a quien ya tiene tarea — el claim manda, no esta lista.
+    if (cmd === 'repartir') {
       // ── LO REPARTIDO HACE POCO, SEGÚN LA BD ─────────────────────────────────────────────
       // El `Set` de repartidas vive en RAM y muere con el proceso, así que dos invocaciones
       // seguidas de `repartir` daban la MISMA tarea a dos trabajadores — pasó dos veces el 06/08
       // (T-038 a w3 y w4; T-533 a w2 y w3). La memoria tiene que estar donde sobreviva, y ya
       // existe: cada encargo emite un `flota_turno` con su tarea. Se lee de ahí.
+      //
+      // ⚠️ VIVE DENTRO DE `repartir`, y hubo que devolverlo aquí (T-617, 06/08). Un merge lo dejó
+      // en el cuerpo principal del `try`, FUERA de todo `if (cmd === …)`: seguía funcionando para
+      // el reparto —quedaba en ámbito— pero lanzaba su consulta en CADA invocación de `flota.cjs`
+      // (`estado`, `lanzar`, `parar`…) y dejaba huérfano el comentario del comando de al lado. Es
+      // sintácticamente válido, así que `node --check` y los tests pasaban: una cicatriz de merge
+      // solo se ve leyendo.
       const repartidasHacePoco = new Set((await sql`
         SELECT metadata->>'tarea' AS tarea
           FROM public.observable_events
@@ -889,15 +810,6 @@ async function main() {
       if (repartidasHacePoco.size) {
         console.log(`   (${repartidasHacePoco.size} tarea(s) repartida(s) hace <25 min: no se repiten)`)
       }
-
-    // ── REPARTIR: dar trabajo a TODOS los que estén libres, de una vez ────────────────────
-    // Es lo que cierra el bucle. Sin esto, «hablo solo con el supervisor» seguía significando
-    // «pídele trabajo a w1, luego a w2, luego a l1»: el supervisor sabía quién estaba libre y aun
-    // así había que decírselo uno a uno.
-    //
-    // NO reparte a las sesiones de Manuel, ni con --todos: a una terminal de una persona no se le
-    // manda un encargo. Y no reparte a quien ya tiene tarea — el claim manda, no esta lista.
-    if (cmd === 'repartir') {
       const sesiones = await sql`
         SELECT sid, slug, last_signal_at FROM public.worktree_sessions WHERE rol = 'trabajador'`
       const ocupadas = await sql`
@@ -914,8 +826,51 @@ async function main() {
       const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
       const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
 
+      // ── UN TURNO QUE MURIÓ CON LA TAREA COGIDA SE RETOMA CON **SU** TAREA (T-617) ────────
+      // Es el fallo que más caro sale: la tarea queda bloqueada para todos —el claim la protege—
+      // y nadie avanza, así que el sistema entero se para por un trabajador. Vivía SOLO en el
+      // programador viejo (`vigilar`), y al colapsar los dos en uno se habría perdido en silencio;
+      // lo cazaron sus propios tests de paridad, que es justo para lo que estaban.
+      //
+      // Va aquí, en `repartir`, y no en `bucle`: `bucle` no reimplementa nada, delega. Así el
+      // comportamiento es el MISMO se llegue por el programador continuo o por un `repartir` a
+      // mano — que es la razón de haber colapsado los dos.
+      //
+      // Se le devuelve SU tarea, nunca otra: empezar algo nuevo encima de un trabajo a medias es
+      // exactamente como se pierde ese trabajo [T-577].
+      const conTareaYSinProceso = []
+      for (const f of vivos) {
+        const sid = porSlug.get(f.trabajador)
+        if (!conTarea.has(sid)) continue
+        if (ENC.puedeRecibir(comandoDelPanel(f.trabajador)).libre === false) continue  // está trabajando
+        const suya = ocupadas.length
+          ? (await sql`
+              SELECT id, title FROM public.backlog_tasks
+               WHERE status = 'in_progress' AND claimed_by = ${sid} LIMIT 1`)[0]
+          : null
+        if (suya) conTareaYSinProceso.push({ trabajador: f.trabajador, suya })
+      }
+      let retomadas = 0
+      for (const { trabajador, suya } of conTareaYSinProceso) {
+        try {
+          const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
+          const r = mandarEncargo(trabajador,
+            ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }),
+            { alDia, turno: () => {
+              emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
+              emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' })
+            } })
+          if (r.ok) { console.log(`   ↻ ${trabajador} retoma ${suya.id}`); retomadas++ }
+          else console.log(`   ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+        } catch (e) {
+          console.log(`   ❌ ${trabajador}: ${String(e.message || e).slice(0, 70)}`)
+        }
+      }
+
       if (!libres.length) {
-        console.log(`✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
+        console.log(retomadas
+          ? `✅ ${retomadas} turno(s) retomado(s); nadie libre a quien dar tarea nueva.`
+          : `✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
         return 0
       }
       const candidatas = await sql`
@@ -1094,6 +1049,12 @@ async function main() {
       return 0
     }
 
+    // ── LANZAR UN TRABAJADOR EN EL PORTÁTIL ───────────────────────────────────────────────
+    // El equivalente local de `arrancar-trabajador.sh`, sin usuario nuevo ni systemd: la sesión es
+    // TUYA, no del sistema. Lo que sí se conserva es lo que importa — árbol propio desde
+    // origin/main, credenciales RESTRINGIDAS (no tu .env.local, que abre usuarios y pagos) y el
+    // preflight como puerta: si no puede latir, no arranca.
+    // (Este comentario había quedado huérfano sobre otro comando por el mismo merge — T-617.)
     if (cmd === 'lanzar') {
       const w = process.argv[3]
       if (!w) { console.error('Uso: flota.cjs lanzar <trabajador>'); return 2 }
@@ -1200,7 +1161,10 @@ async function main() {
       return 0
     }
 
-    console.error('Uso: flota.cjs [estado] | productividad [--dias 7] | vigilar [--cada 300] | repartir | rescatar [<w>] | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
+    // `bucle` va el PRIMERO de los verbos continuos y se nombra: era el único programador bueno y
+    // no aparecía en esta línea, así que nadie que no leyera el código sabía que existía — y la
+    // flota se quedó siete horas parada teniéndolo escrito (T-617).
+    console.error('Uso: flota.cjs [estado] | bucle [--cada 300] (el supervisor continuo; `vigilar` es su alias) | repartir | productividad [--dias 7] | rescatar [<w>] | lanzar <w> | encargar <w> [--tarea T-nnn] | arrancar <w> | parar <w>')
     return 2
   } finally {
     try { await sql.end({ timeout: 5 }) } catch {}

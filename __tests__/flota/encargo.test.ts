@@ -301,37 +301,51 @@ describe('el ciclo completo depende de la máquina, no de una política', () => 
   })
 })
 
-describe('el bucle de vigilancia', () => {
+// ── UN SOLO PROGRAMADOR (T-617, 06/08) ──────────────────────────────────────────────────────
+// Estos tests vigilaban que DOS bucles (`vigilar` y `bucle`) no divergieran. Ya no hay dos: se
+// colapsaron en uno, y `bucle` delega en `repartir` en vez de reimplementar la criba. Así que las
+// mismas propiedades se comprueban ahora donde de verdad viven — y siguen haciendo falta.
+//
+// Merece la pena dejar dicho lo que pasó al colapsarlos: `repartir` NO relanzaba turnos muertos
+// (eso solo estaba en `vigilar`), así que la fusión perdía esa capacidad en silencio. Lo cazaron
+// estos mismos tests, que es exactamente para lo que se escribieron.
+describe('el programador continuo', () => {
   const src = require('fs').readFileSync(
     require('path').join(process.cwd(), 'scripts', 'flota', 'flota.cjs'), 'utf8')
+  const bloqueRepartir = src.slice(src.indexOf("cmd === 'repartir'"), src.indexOf("cmd === 'bucle'"))
 
-  it('existe y se puede acotar en cadencia y duración', () => {
-    expect(src).toMatch(/cmd === 'vigilar'/)
+  it('existe, se puede acotar la cadencia, y `vigilar` sigue funcionando como alias', () => {
+    expect(src).toMatch(/cmd === 'bucle'/)
     expect(src).toMatch(/--cada/)
-    expect(src).toMatch(/--vueltas/)
+    expect(src).toMatch(/cmd = 'bucle'/)   // el alias
+  })
+
+  // NO reimplementa la criba: lanza `repartir` como hijo. Una segunda copia acabaría entregando
+  // cosas distintas según quién repartiera ([T-130]).
+  it('el bucle delega en `repartir`, no reparte por su cuenta', () => {
+    const bloqueBucle = src.slice(src.indexOf("cmd === 'bucle'"))
+    expect(bloqueBucle).toMatch(/execFileSync\(process\.execPath,\s*\[__filename,\s*'repartir'\]/)
+    expect(bloqueBucle).not.toMatch(/tmux send-keys/)
   })
 
   // Pasa por la MISMA puerta que el reparto manual: si tuviera su propio camino de envío, se
   // quedaría sin las comprobaciones que se le añadan a la otra ([T-130]).
   it('reparte por mandarEncargo, no por su cuenta', () => {
-    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
-    expect(bloque).toMatch(/mandarEncargo\(/)
-    expect(bloque).not.toMatch(/tmux send-keys/)
+    expect(bloqueRepartir).toMatch(/mandarEncargo\(/)
+    expect(bloqueRepartir).not.toMatch(/tmux send-keys/)
   })
 
   // Un turno muerto se relanza CON SU TAREA. Darle otra encima de un trabajo a medias es como se
-  // pierde ese trabajo, que es exactamente lo que la puerta del clon existe para evitar.
+  // pierde ese trabajo [T-577]. Y una tarea cogida por un turno muerto bloquea a TODOS.
   it('a quien tiene tarea cogida y sin proceso le devuelve LA SUYA', () => {
-    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
-    expect(bloque).toMatch(/reanuda:\s*true/)
-    expect(bloque).toMatch(/tarea:\s*suya/)
+    expect(bloqueRepartir).toMatch(/reanuda:\s*true/)
+    expect(bloqueRepartir).toMatch(/tarea:\s*suya/)
   })
 
   // Lo que es de una persona sigue siéndolo: automatizar la aprobación sería justo lo que este
   // sistema no quiere.
   it('no responde preguntas ni aprueba borradores', () => {
-    const bloque = src.slice(src.indexOf("cmd === 'vigilar'"), src.indexOf('LANZAR UN TRABAJADOR'))
-    expect(bloque).not.toMatch(/responder|answer\s*=|aprob/i)
+    expect(bloqueRepartir).not.toMatch(/responder|answer\s*=|aprob/i)
   })
 })
 
@@ -573,10 +587,11 @@ describe('a quién y a qué se reparte', () => {
     expect(reciben).not.toContain('l1')
   })
 
-  it('los dos repartidores (vigilar y repartir) usan la lista de los que RECIBEN', () => {
-    // Si uno de los dos se queda con `trabajadoresEsperados`, el portátil vuelve a recibir
-    // trabajo por esa puerta y el bloqueo no sirve de nada.
-    expect((fuente.match(/trabajadoresQueReciben\(\)/g) || []).length).toBeGreaterThanOrEqual(2)
+  it('el reparto usa la lista de los que RECIBEN, no la de los declarados', () => {
+    // Si se colara `trabajadoresEsperados`, el portátil volvería a recibir trabajo automático y
+    // el bloqueo no serviría de nada. Antes se exigían ≥2 apariciones porque había DOS puertas
+    // (`repartir` y `vigilar`); desde [T-617] hay UNA, que es lo que de verdad lo garantiza.
+    expect((fuente.match(/trabajadoresQueReciben\(\)/g) || []).length).toBeGreaterThanOrEqual(1)
   })
 
   // ── ESTE TEST NACE DE HABERSE QUEDADO CORTO ────────────────────────────────────────────
@@ -585,12 +600,13 @@ describe('a quién y a qué se reparte', () => {
   // mientras `repartir` seguía mandando a los cuatro del VPS a impugnaciones — que es como se
   // descubrió, mandándolas de verdad. Ahora se exige que las DOS puertas pregunten al MISMO
   // sitio, que es lo único que impide que se vuelvan a separar.
-  it('NINGUNA de las dos puertas reparte impugnaciones por su cuenta', () => {
+  it('la puerta del reparto no manda impugnaciones por su cuenta', () => {
     const { flotaCogeImpugnaciones } = require(
       require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'))
     expect(flotaCogeImpugnaciones()).toBe(false)
-    // Las dos puertas (repartir y vigilar) consultan el helper, no un `if` propio.
-    expect((fuente.match(/ENC\.flotaCogeImpugnaciones\(\)/g) || []).length).toBeGreaterThanOrEqual(2)
+    // Consulta el helper, no un `if` propio. Se exigían ≥2 porque eran dos puertas y una se había
+    // arreglado sin la otra; desde [T-617] hay UNA sola, que es la forma fuerte de lo mismo.
+    expect((fuente.match(/ENC\.flotaCogeImpugnaciones\(\)/g) || []).length).toBeGreaterThanOrEqual(1)
     // Y ninguna decide por su cuenta leyendo la variable de entorno.
     expect(fuente).not.toMatch(/process\.env\.VENCE_FLOTA_IMPUGNACIONES/)
     // El fallback «si no hay tarea, dale una impugnación» ya no puede ser incondicional.
