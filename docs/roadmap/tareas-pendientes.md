@@ -1112,8 +1112,31 @@ cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
 **4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
 clones desfasados (w4 iba 11 commits por detrás).
 
-**Pendiente:** instalar la unidad en el VPS (`supervisor.env` con `DATABASE_URL` de coordinación +
-`VENCE_FLOTA_AQUI=flota-1`) y comprobar una pasada del bucle ya como servicio.
+#### INSTALADO Y CORRIENDO (06/08 18:43) — y arrancarlo de verdad destapó tres fallos más
+
+`vence-flota-supervisor.service` está **activo en el VPS**, repartiendo cada 8 min. Comprobado en
+`journalctl` y en `npm run flota`: tres de los cuatro trabajadores ejecutando, el cuarto recogido
+en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
+
+1. **`ficheroEntorno` deducía la ruta de `m.local`.** Accidentalmente correcto mientras «local»
+   solo podía ser el portátil; en cuanto el supervisor corre EN el VPS, sus trabajadores pasan a
+   ser locales y la deducción manda a buscar `w1.env` a `$HOME/.vence-flota` cuando está en
+   `/etc/vence-flota`. El supervisor no habría encontrado el entorno de nadie, ni el turno vivo
+   (`ficheroEncargo` deriva de esta). La ruta es una convención **de la máquina** → `dirEntorno`,
+   al lado de `arbol`, que ya lo era.
+2. **La telemetría paraba el reparto.** El rol `vence_coordinacion` no tenía GRANT sobre
+   `observable_events`, así que cada pasada moría con «permission denied»: **el supervisor corría
+   y la flota seguía parada**. Los emisores del bus ya fallaban abiertos; la LECTURA de
+   `repartidasHacePoco` no. Arreglado el GRANT (SELECT, INSERT) y, sobre todo, la lectura: avisa y
+   sigue. Una avería de la telemetría no puede impedir GOBERNAR la flota (§9).
+3. **`systemctl restart` tardaba 120 s y acababa en SIGKILL.** Poner `parar = true` no basta: el
+   bucle pasa casi todo su tiempo dormido y no mira la bandera hasta despertar. Y matarlo a media
+   pasada deja un `repartir` huérfano lanzando encargos que ya no vigila nadie — justo lo que la
+   salida limpia existía para evitar. Con la espera cancelable: **2 min → 45 ms**, medido.
+
+**Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
+~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
+
 ### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
 
 **No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es
