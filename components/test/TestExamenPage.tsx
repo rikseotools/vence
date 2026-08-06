@@ -120,6 +120,13 @@ function TestExamenContent({ oposicionSlug, params, positionTypeOverride, basePa
           difficultyMode,
           onlyFailedQuestions,
           failedQuestionIds,
+          // T-277: el simulacro tiene que parecerse al examen real (decisión Manuel,
+          // 29/07) — mismas condiciones de elegibilidad que los tests de práctica
+          // (T-267): shuffleOptions=true, y el servidor decide por su cuenta si la
+          // oposición examina con menos opciones (isShuffleEnabledFor/opcionesExamenDe).
+          // NO confundir con la REPRODUCCIÓN de un examen oficial pasado
+          // (/test/examen-oficial), que no pasa por aquí.
+          shuffleOptions: true,
         })
       })
 
@@ -145,6 +152,11 @@ function TestExamenContent({ oposicionSlug, params, positionTypeOverride, basePa
         exam_source: q.metadata?.exam_source,
         exam_date: q.metadata?.exam_date,
         exam_entity: q.metadata?.exam_entity,
+        // T-277: si el servidor barajó/recortó esta pregunta (shuffleOptions=true de
+        // arriba), viaja aquí el orden de exposición — createDetailedTestSession lo lee
+        // para grabarlo UNA vez en questions_metadata.option_orders. Sin esto, el orden
+        // que se acaba de mostrar se perdería nada más crear el test.
+        option_order: q.option_order ?? null,
         articles: {
           id: q.article?.id,
           article_number: q.article?.number,

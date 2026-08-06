@@ -14,6 +14,17 @@
 //
 // Por eso, al corregir, la nota mostrada y el detalle por-pregunta se derivan de
 // la BD, no del batch. Estos helpers son puros para poder testearlos sin BD.
+//
+// T-277: `test_questions.user_answer` vive SIEMPRE en coordenadas ORIGINALES del banco
+// (ver lib/shuffle/examOrder.ts), pero lo que este módulo devuelve es lo que el CLIENTE
+// va a pintar contra sus propias opciones, que están en coordenadas MOSTRADAS. Si
+// `overlayResultsWithDb` inyectara `db.userAnswer` tal cual, un examen barajado que ganó
+// la autoridad de la BD resaltaría el botón EQUIVOCADO en la pantalla de revisión — la
+// nota (isCorrect) seguiría bien, pero el usuario vería marcada una opción que no fue la
+// suya. Por eso recibe `optionOrders` (opcional, `{}` = identidad = comportamiento de
+// siempre) y traduce ANTES de superponer.
+
+import { orderForQuestion, originalLetterToDisplayed, type OptionOrders } from '@/lib/shuffle/examOrder'
 
 export interface DbAnswerRow {
   questionId: string | null
@@ -75,11 +86,16 @@ export function summarizeDbScore(rows: DbAnswerRow[], totalQuestions: number): E
 export function overlayResultsWithDb(
   payloadResults: ExamQuestionResult[],
   dbByQuestionId: Map<string, DbAnswerRow>,
+  optionOrders: OptionOrders = {},
 ): ExamQuestionResult[] {
   return payloadResults.map((r) => {
     const db = dbByQuestionId.get(r.questionId)
     if (db && isAnswered(db.userAnswer)) {
-      return { ...r, userAnswer: db.userAnswer, isCorrect: db.isCorrect }
+      // db.userAnswer está en coordenadas ORIGINALES (lo que persiste test_questions);
+      // se traduce a MOSTRADAS para que cuadre con las opciones que el cliente ya tiene.
+      const order = orderForQuestion(optionOrders, r.questionId)
+      const userAnswerDisplayed = order ? (originalLetterToDisplayed(order, db.userAnswer) ?? db.userAnswer) : db.userAnswer
+      return { ...r, userAnswer: userAnswerDisplayed, isCorrect: db.isCorrect }
     }
     return r
   })
