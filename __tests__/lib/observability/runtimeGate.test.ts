@@ -82,4 +82,22 @@ describe('validation-error-log/queries.ts y withErrorLogging.ts comparten la MIS
     expect(content).toMatch(/shouldEmitTiming = !SKIP_REQUEST_COMPLETED_EMIT/)
     expect(content).toMatch(/if \(!SKIP_REQUEST_COMPLETED_EMIT\) \{\s*\n\s*after\(async \(\) => \{/)
   })
+
+  // T-206 (06/08): TERCER emisor con la MISMA grieta — un daemon (setInterval,
+  // arranca solo desde instrumentation.ts#register(), sin que nadie pegue a un
+  // endpoint) que emitía `event_loop_lag` sin este freno. MEDIDO: 77% (17/22)
+  // de los `critical` de 9 días venían del portátil de Manuel corriendo
+  // `next dev` (INSTANCE_ID prefijado `fedora:…`), ensuciando tanto la alerta
+  // de producción como la investigación de T-206 sobre si los picos de CPU
+  // de Fargate son reales.
+  it('eventLoopLag.ts importa shouldSkipObservabilityPersistence y gatea event_loop_lag', () => {
+    const content = fs.readFileSync(path.join(ROOT, 'lib/observability/eventLoopLag.ts'), 'utf-8')
+    expect(content).toMatch(
+      /import\s*\{\s*shouldSkipObservabilityPersistence\s*\}\s*from\s*['"]\.\/runtimeGate['"]/,
+    )
+    expect(content).toMatch(
+      /const SKIP_EVENT_LOOP_LAG_EMIT = shouldSkipObservabilityPersistence\(\)/,
+    )
+    expect(content).toMatch(/if \(SKIP_EVENT_LOOP_LAG_EMIT\) return/)
+  })
 })
