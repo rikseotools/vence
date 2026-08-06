@@ -23,6 +23,10 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
   const searchParams = useSearchParams()
   const selectedArticlesParam = searchParams.get('selected_articles')
   const sourceParam = searchParams.get('source')
+  // [T-367] Camino nuevo desde el temario ("Elegir qué artículos entran"): llega SIN
+  // selected_articles (no dispara el auto-arranque de abajo) y con esto abre el panel
+  // "Filtrar por Artículos" ya desplegado, en vez de obligar a pulsar "Mostrar" a ciegas.
+  const abrirFiltroParam = searchParams.get('abrir_filtro') === '1'
 
   useEffect(() => {
     async function loadData() {
@@ -182,6 +186,7 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
           preselectedLaw={lawShortName}
           hideOfficialQuestions={true}
           hideEssentialArticles={true}
+          initialShowLawsFilter={abrirFiltroParam}
           onStartTest={(config) => {
             console.log('Starting law test with config:', config)
 
