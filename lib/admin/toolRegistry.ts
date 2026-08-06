@@ -1647,6 +1647,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Tras aplicar hay que invalidar caché y comprobar el HTML SERVIDO.',
   },
 
+  // ── topic_scope_verification (estado de verificación del temario) ──────────────────────────
+  degradar_sellado_sin_pipeline: {
+    titulo: 'Degradar a never_verified los temas sellados a mano y sin Paso 1',
+    ruta: 'scripts/temario/degradar-sellado-sin-pipeline.cjs',
+    estado: 'vivo',
+    escribe: ['topic_scope_verification.state'],
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      'Dry-run por defecto; `--apply` escribe en UNA transacción y deja rastro en el historial ' +
+      'append-only con `verified_by` propio. NO toca `topic_scope`: las preguntas se sirven igual, ' +
+      'lo único que cambia es que el estado deja de afirmar que alguien verificó lo que nadie ' +
+      'verificó. El criterio de «sellado sin pipeline» NO se reescribe aquí: sale de ' +
+      '`ESCRITORES_SIN_PIPELINE` (`lib/temario/revisionEpigrafe.cjs`), la MISMA constante que usa ' +
+      'el badge — dos puertas al mismo hecho con criterios distintos se contradicen. Aborta si el ' +
+      'conjunto supera `--max` (700 por defecto): un salto así es criterio roto, no deuda nueva. ' +
+      'Corrido el 06/08/2026: 562 temas en 32 oposiciones (`scopeSinPipeline` 881→319). Se dejaron ' +
+      'fuera a propósito los 319 que SÍ tienen el epígrafe verificado literal — decisión de Manuel: ' +
+      'degradar los 881 encendía 45 oposiciones de golpe y así es como se mata un badge.',
+  },
   // ── seguimiento_url ────────────────────────────────────────────────────────────────────────
   repuntar_seguimiento_url: {
     titulo: 'Cambiar la seguimiento_url de una oposición (con guardarraíl de vigilabilidad)',
