@@ -10,6 +10,7 @@
 import { getTraceDb, getPoolerDb } from '@/db/client'
 import { validationErrorLogs } from '@/db/schema'
 import { emit } from '@/lib/observability/emit'
+import { shouldSkipObservabilityPersistence } from '@/lib/observability/runtimeGate'
 import type { ValidationErrorLogInput } from './schemas'
 
 // after() de Next.js 15+ — registra una callback para ejecutarse tras
@@ -36,7 +37,9 @@ const DEPLOY_REGION = process.env.AWS_REGION || null
 // sin SHA que perder el error). Bug detectado 2026-05-27 (cabo #7):
 // si no está inyectado, GIT_COMMIT_SHA es undefined → DEPLOY_VERSION='local'
 // → guard descartaba 100% de 5xx. 643 errores perdidos en 24h.
-const SKIP_PERSISTENCE = process.env.NODE_ENV !== 'production'
+// Fuente única del criterio en runtimeGate.ts (compartida con withErrorLogging,
+// ver T-572) — mismo cálculo, calculado una vez al cargar el módulo.
+const SKIP_PERSISTENCE = shouldSkipObservabilityPersistence()
 
 /**
  * Clasifica un error en un errorType conocido.

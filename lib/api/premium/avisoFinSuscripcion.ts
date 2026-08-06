@@ -180,6 +180,9 @@ export async function runCampanaFinSuscripcion(
         fechaFin: fechaLarga(c.finPeriodo),
         importe: formatearImporte(oferta.importeCentimos),
         periodicidad: ETIQUETA_INTERVALO[oferta.intervalo],
+        // El plazo sale de `fechaLimiteRetorno`, la MISMA función que usa el barrido que anula
+        // las ofertas. Calcularlo aparte aquí sería prometer un mes y quitar el precio otro día.
+        fechaLimite: fechaLarga(fechaLimiteRetorno(c.finPeriodo)),
         ctaUrl: CTA_URL,
       },
     })
@@ -187,14 +190,13 @@ export async function runCampanaFinSuscripcion(
     if (envio.success) {
       r.enviados++
       r.detalle.push({ email: c.email, estado: 'enviado' })
-      try {
-        await getDb().insert(emailLogs).values({
-          userId: c.userId,
-          emailType: EMAIL_TYPE,
-          subject: `Tu Premium termina el ${fechaLarga(c.finPeriodo)}`,
-          status: 'sent',
-        })
-      } catch { /* el log no puede tumbar una campaña que ya envió */ }
+      // NO se escribe en `email_logs` aquí: `sendEmailV2` ya lo hace (`logEmailSent`, que inserta
+      // en `email_logs` Y en `email_events` con este mismo `emailType`). Este insert de más
+      // duplicaba la fila en CADA envío — medido el 06/08: **40 filas para 20 personas**, dos por
+      // cabeza todos los días desde el estreno. No era cosmético: `email_logs` es de donde salen
+      // las medidas de campaña (los 424 recordatorios de [T-456] se contaron así), y la
+      // idempotencia de `yaAvisado` lee esta misma tabla — contarla por filas en vez de por
+      // persona daría el doble.
     } else if ('cancelled' in envio && envio.cancelled) {
       r.omitidos++
       r.detalle.push({ email: c.email, estado: 'preferencias', motivo: envio.reason })
