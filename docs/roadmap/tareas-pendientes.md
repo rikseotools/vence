@@ -1979,63 +1979,6 @@ con esa medición como aval): la usuaria tenía razón, y el «no debería volve
 **`topic_scope` no tiene `updated_at`.** Sin esa columna, un recorte no deja rastro y la siguiente
 sesión repetirá estas dos horas por tercera vez. Añadirla es una migración additiva.
 
-### [T-606] 🟡 [ABIERTO 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
-
-**Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
-abiertos** en `session_questions`, **11 (73 %) apuntan a una impugnación que ya está `resolved` o
-`rejected`**. Es decir, casi todo lo que Manuel ve al abrir `npm run backlog.cjs preguntas` es una
-decisión que ya no hay que tomar.
-
-| Embudo | Sesión que lo escribió | Impugnación | Estado real |
-|---|---|---|---|
-| #31 | l5-fedora-e6 | `71a15cae` | rejected |
-| #33 | l2-fedora-1d | `f34b88ad` | resolved |
-| #43 | l2-fedora-1d | `4ac133b7` | rejected |
-| #44 | l2-fedora-1d | `066a3d65` | rejected |
-| #52 | l2-fedora-1d | `199d3ab8` | rejected |
-| #56 | w1-vence-flota | `1aac9e3c` | rejected |
-| #57 | w1-vence-flota | `71a15cae` | rejected |
-| #61 | l3-fedora-2b | `ea65996b` | rejected |
-| #71 | l2-fedora-1d | `21be6a56` | rejected |
-| #76 | w4-vence-flota | `433b900e` | resolved |
-| #77 | w1-vence-flota | `4ac133b7` | rejected |
-
-**Por qué no se limpia solo, que es el fondo del asunto:** `backlog.cjs retirar` lleva
-`WHERE id = … AND sid = <la tuya>` (línea ~1942). O sea que **un borrador solo lo puede retirar la
-sesión que lo escribió**, y esas sesiones son turnos de flota o worktrees de ayer: **están muertas y
-no van a volver a limpiar nada**. Cuando otra sesión cierra el caso —que es el flujo normal, y el
-correcto: quien tiene la reserva es quien cierra— el borrador se queda ahí para siempre. Verificado en
-vivo: `retirar 56` y `retirar 52` devuelven *«no existe, no es tuya o ya está cerrada»*.
-
-**Por qué importa y no es cosmético:** un embudo con ruido **se deja de leer**, y entonces se pierde
-justo la pregunta que sí necesitaba a una persona. Hoy conviven ahí borradores muertos con preguntas
-vivas de trabajadores parados esperando respuesta (`#15`, `#38`, `#45`, `#58`), y las segundas quedan
-sepultadas bajo las primeras. Es el mismo modo de fallo que ya obligó a filtrar la Capa 3 del radar
-cuando inundaba el inbox de OEPs.
-
-**El arreglo, por orden de valor:**
-
-1. **Que el cierre limpie lo suyo.** `cerrar.ts` / `cerrar-feedback.ts` ya saben qué caso están
-   cerrando: al cerrar, marcar `withdrawn` **todos** los borradores abiertos de ese `draft_target`,
-   con motivo automático («caso cerrado por <sid> el <fecha>»). Es el punto de escritura, que es donde
-   este repo impide las cosas.
-2. **Que `retirar` deje de ser propietario cuando el caso está cerrado.** El `AND sid` protege de que
-   una sesión borre el trabajo vivo de otra, y eso está bien; pero sobre un caso YA cerrado no hay
-   trabajo que proteger. Levantar la condición **solo** en ese supuesto.
-3. **Barrido de una vez** para las 11 de hoy (mismo criterio: `draft_target` cuyo dispute no está
-   `pending`/`appealed`).
-
-**Cuidado al implementar el punto 1:** el `draft_target` es **texto libre** («impugnación 4ac133b7
-(CE art.112, …)»), unas veces con el uuid entero y otras con los 8 primeros caracteres. Emparejar por
-`LIKE 'id%'` funciona hoy, pero lo robusto es **guardar el id del caso en una columna propia** en vez
-de seguir parseando prosa — misma lección que `snooze_until`, `due_at` y la espera de revisión: una
-condición en prosa no es una condición.
-
-**Relacionada:** el aviso `#73` del propio embudo (borradores DUPLICADOS del mismo caso: 12 de 26
-redundantes) es la otra mitad de esto — allí sobran borradores del mismo caso vivo, aquí sobran
-borradores de casos muertos. Las dos se arreglan en el mismo sitio: el embudo no sabe en qué estado
-está el caso del que habla. [T-539] (el embudo como canal de entrega de la flota).
-
 ### [T-605] 🟡 [ABIERTO 06/08] No hay forma de reescribir la explicación de una psicotécnica: las cinco herramientas de explicaciones son solo del banco legislativo
 
 **Origen medido el 06/08/2026,** resolviendo la impugnación `199d3ab8` (Angelanie Cispas, psicotécnica
@@ -6094,6 +6037,76 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-606] ✅ [HECHA 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
+
+**Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
+abiertos** en `session_questions`, **11 (73 %) apuntan a una impugnación que ya está `resolved` o
+`rejected`**. Es decir, casi todo lo que Manuel ve al abrir `npm run backlog.cjs preguntas` es una
+decisión que ya no hay que tomar.
+
+| Embudo | Sesión que lo escribió | Impugnación | Estado real |
+|---|---|---|---|
+| #31 | l5-fedora-e6 | `71a15cae` | rejected |
+| #33 | l2-fedora-1d | `f34b88ad` | resolved |
+| #43 | l2-fedora-1d | `4ac133b7` | rejected |
+| #44 | l2-fedora-1d | `066a3d65` | rejected |
+| #52 | l2-fedora-1d | `199d3ab8` | rejected |
+| #56 | w1-vence-flota | `1aac9e3c` | rejected |
+| #57 | w1-vence-flota | `71a15cae` | rejected |
+| #61 | l3-fedora-2b | `ea65996b` | rejected |
+| #71 | l2-fedora-1d | `21be6a56` | rejected |
+| #76 | w4-vence-flota | `433b900e` | resolved |
+| #77 | w1-vence-flota | `4ac133b7` | rejected |
+
+**Por qué no se limpia solo, que es el fondo del asunto:** `backlog.cjs retirar` lleva
+`WHERE id = … AND sid = <la tuya>` (línea ~1942). O sea que **un borrador solo lo puede retirar la
+sesión que lo escribió**, y esas sesiones son turnos de flota o worktrees de ayer: **están muertas y
+no van a volver a limpiar nada**. Cuando otra sesión cierra el caso —que es el flujo normal, y el
+correcto: quien tiene la reserva es quien cierra— el borrador se queda ahí para siempre. Verificado en
+vivo: `retirar 56` y `retirar 52` devuelven *«no existe, no es tuya o ya está cerrada»*.
+
+**Por qué importa y no es cosmético:** un embudo con ruido **se deja de leer**, y entonces se pierde
+justo la pregunta que sí necesitaba a una persona. Hoy conviven ahí borradores muertos con preguntas
+vivas de trabajadores parados esperando respuesta (`#15`, `#38`, `#45`, `#58`), y las segundas quedan
+sepultadas bajo las primeras. Es el mismo modo de fallo que ya obligó a filtrar la Capa 3 del radar
+cuando inundaba el inbox de OEPs.
+
+**El arreglo, por orden de valor:**
+
+1. **Que el cierre limpie lo suyo.** `cerrar.ts` / `cerrar-feedback.ts` ya saben qué caso están
+   cerrando: al cerrar, marcar `withdrawn` **todos** los borradores abiertos de ese `draft_target`,
+   con motivo automático («caso cerrado por <sid> el <fecha>»). Es el punto de escritura, que es donde
+   este repo impide las cosas.
+2. **Que `retirar` deje de ser propietario cuando el caso está cerrado.** El `AND sid` protege de que
+   una sesión borre el trabajo vivo de otra, y eso está bien; pero sobre un caso YA cerrado no hay
+   trabajo que proteger. Levantar la condición **solo** en ese supuesto.
+3. **Barrido de una vez** para las 11 de hoy (mismo criterio: `draft_target` cuyo dispute no está
+   `pending`/`appealed`).
+
+**Cuidado al implementar el punto 1:** el `draft_target` es **texto libre** («impugnación 4ac133b7
+(CE art.112, …)»), unas veces con el uuid entero y otras con los 8 primeros caracteres. Emparejar por
+`LIKE 'id%'` funciona hoy, pero lo robusto es **guardar el id del caso en una columna propia** en vez
+de seguir parseando prosa — misma lección que `snooze_until`, `due_at` y la espera de revisión: una
+condición en prosa no es una condición.
+
+**Relacionada:** el aviso `#73` del propio embudo (borradores DUPLICADOS del mismo caso: 12 de 26
+redundantes) es la otra mitad de esto — allí sobran borradores del mismo caso vivo, aquí sobran
+borradores de casos muertos. Las dos se arreglan en el mismo sitio: el embudo no sabe en qué estado
+está el caso del que habla. [T-539] (el embudo como canal de entrega de la flota).
+
+
+#### 06/08 (tarde) — HECHO: puntos 2 y 3, y el criterio obvio era FALSO
+
+- **El punto 1 ya estaba** (`retirarBorradorDelEmbudo` en `cerrar.ts`, llegó con el rescate de [T-486]): al cerrar un caso se retiran sus borradores. Eso tapa el flujo hacia delante; lo acumulado seguía ahí.
+- **Punto 2 y 3, ahora:** núcleo puro `lib/sessions/embudoObsoleto.cjs` + `node scripts/backlog.cjs limpiar-embudo [--apply]` (dry-run por defecto). Se **reutiliza `mencionaDispute` de `embudoVeto.cjs`** ([T-609]) en vez de escribir un tercer emparejador de ids — que es como nacieron los cinco escritores de `seguimiento_url` ([T-130]).
+- **⚠️ EL HALLAZGO, y es lo que hay que recordar de esta ficha: el criterio que la propia ficha proponía —«entrada que menciona un caso cerrado»— es FALSO.** Ejecutado en seco contra el embudo real dio **12 de 16, con CINCO falsos positivos**: `#38` (¿investigo la fuga de scope?), `#45` (huecos de permisos), `#55` (¿documento `position_type`?), `#73` (la medida del propio embudo) y `#74` (`cola.cjs` revienta con `user_feedback`). Las cinco **citan** una impugnación como ejemplo o como contexto y son preguntas **VIVAS** esperando a una persona. Aplicarlo habría borrado justo lo que este canal existe para no perder.
+  - **La segunda condición que lo arregla:** la entrada tiene que **PEDIR aprobar o enviar** algo (`pideAprobacion`: los `kind='borrador'` por construcción, y para el resto la fórmula explícita). Es [T-403] otra vez: **citar no es trabajar**.
+  - **La asimetría manda el sentido del corte:** un falso retiro borra una decisión que alguien espera y nadie sabrá que faltaba; un falso mantenimiento solo deja ruido, que se barre a la siguiente. Por eso el criterio es estrecho a propósito — `#46` («¿**aprieto** el borrador…?») y `#75` («dos decisiones antes de **enviar**») se quedan dentro del embudo aunque su caso esté cerrado. Se prefiere.
+- **Aplicado:** 6 retiradas (`#28`, `#47`, `#51`, `#54`, `#60`, `#68`), todas de 26-29 h y todas pidiendo permiso para mandar correos **que ya se habían mandado** — cuatro de ellas son el incidente de [T-609]. El embudo pasa de 16 a **10**, y las 10 son decisiones reales.
+- **Lo que el dry-run demostró de paso:** que sea dry-run por defecto no es ceremonia. Aquí fue lo único que separó un barrido correcto de perder cinco preguntas.
+- **Capas:** `__tests__/sessions/embudoObsoleto.test.ts` (15 casos; los **cinco falsos positivos reales van clavados uno a uno** para que no vuelvan) + la ejecución en seco contra el embudo real, antes y después de apretar el criterio. 1.055 tests de `sessions/`+`backlog/`+`impugnaciones/` en verde.
+- **QUEDA:** `retirar` sigue con su `AND sid` — no se tocó, porque el barrido cubre el caso real y levantar el dueño en el comando individual es superficie nueva sin demanda. Y el fondo que la ficha ya señalaba: **el id del caso debería vivir en una columna propia** en vez de parsearse de la prosa. Mientras siga en prosa, cualquier emparejador es aproximado.
 
 ### [T-620] ✅ [HECHA 06/08] `pause --tras-deploy` aceptaba un sha que nunca se desplegará: la tarea se duerme para siempre y en `list` se ve igual que una espera legítima
 
