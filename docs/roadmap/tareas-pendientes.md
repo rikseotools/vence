@@ -842,6 +842,21 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-610] 🟡 [ABIERTO 06/08] `convocatoria_documentos.tipo`/`doc_key` sin registrar en `RECURSOS_SENSIBLES` pese a tener 4+ escritores
+- **Qué:** el registro de escritores sensibles (`lib/admin/toolWriters.ts`, T-130) evita que una sesión reconstruya de cero una clasificación que ya existe (pasó con `seguimiento_url`, 5 escritores distintos el mismo día). `convocatoria_documentos.tipo` (y `doc_key`, con quien viaja siempre) tiene ya **4+ escritores** medidos al cerrar [T-147] y NINGUNO está en `RECURSOS_SENSIBLES`:
+  - `backend/scripts/clonar-documento.ts` — el único INSERT real del hub.
+  - `scripts/convocatoria/sim-tipo-documento.cjs --apply` — reclasifica en el sitio, usa el núcleo puro `lib/convocatoria/tipoDocumento.cjs`.
+  - `scripts/convocatoria/campana-clonar-programa.cjs` — clona con tipo ya decidido, mismo núcleo (`clasificarTipoDocumento`).
+  - `scripts/provenance/merge-dup-docs.cjs --notas --adoptar-texto` — al fusionar duplicados, decide qué fila sobrevive y con qué tipo.
+  - `backend/src/tipificar-documentos/` (cron nuevo de T-147, @Cron 09:45 UTC) — **NO** importa el núcleo (el backend es self-contained): usa un **mirror** (`tipo-documento-mirror.ts`) con paridad fijada por test (`__tests__/backend/tipoDocumentoMirror.test.ts`).
+- **Por qué no es trivial "añadir una fila" — hay una decisión de diseño real:** el patrón de protección de este recurso NO es "todos importan el mismo módulo" (que es lo único que `RECURSOS_SENSIBLES.moduloGuardarrail` sabe comprobar hoy — el guardarraíl exige que el fichero *referencie* el módulo compartido). Es **mirror + test de paridad byte-a-byte**, porque el backend no puede importar `lib/`. Antes de registrar hay que decidir:
+  1. ¿El campo `moduloGuardarrail` acepta apuntar al núcleo `lib/convocatoria/tipoDocumento.cjs` y dar por bueno que el backend cumple vía su test de paridad (`tipoDocumentoMirror.test.ts`), aunque el fichero del backend no lo referencie por import? Si el guardarraíl comprueba "referencia el módulo" literalmente, el cron nuevo lo INCUMPLIRÍA aunque esté correctamente protegido — falso positivo.
+  2. O hace falta una regla nueva en `toolWriters.ts` (un tercer valor de `ReglaRecurso`, algo como `guardarrail_por_paridad`) para el patrón "mirror con test de paridad", que es legítimo y ya existe en el repo (mismo patrón que otros mirrors backend/frontend) pero el registro actual no tiene vocabulario para él.
+- **Qué mirar primero:** `lib/admin/toolWriters.ts` (formato de `RecursoSensible`, los ejemplos ya registrados) + `__tests__/guardrails/toolRegistry.guardrail.test.ts` (qué exige exactamente el guardarraíl hoy) + confirmar si existe ya algún recurso registrado con el patrón mirror+paridad como precedente (grep `moduloGuardarrail` cruzado con `backend/src`).
+- **Alcance de esta tarea:** SOLO el registro (y, si hace falta, la regla nueva en `toolWriters.ts`). NO toca la lógica de tipado en sí — [T-147] ya la implementó, verificó en producción y cerró.
+- **Origen:** cabo suelto anotado al cerrar [T-147] (05-06/08).
+- **Relacionadas:** [T-147] (de donde sale), [T-130] (el registro y su motivación original).
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
