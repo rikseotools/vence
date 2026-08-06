@@ -959,6 +959,7 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 - **Relacionadas:** [T-513] (el hueco del tag, que es la OTRA mitad de este caso y sigue esperando decisión), [T-507] y [T-566] (cerraron la brecha de oficiales en el CONTADOR; esta ficha es sobre el SERVE), [T-397].
 
 - **📌 Rescatada el 06/08 de un worktree abandonado.** La ficha se escribió el 05/08 a las 23:01 en `sesion/colas-feedback`, que murió esa noche sin que su rama llegara a `main`; lo medido arriba es de ese día. El claim quedó colgado 17 h con el lease vencido y se soltó con `reap`.
+
 ### [T-614] 🔴 [ABIERTO 06/08] El embudo no sabe si su impugnación ya se cerró: 10 de 16 preguntas eran fantasmas y casi se envía un segundo correo al mismo usuario
 
 **Lo que pasó (06/08, revisando la flota).** Le presenté a Manuel el borrador de la réplica de
