@@ -148,6 +148,7 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
     }
   }
   lote.errores.forEach((e) => errores.push(e))
+  ;(lote.avisos || []).forEach((a) => avisos.push(a))
   analizarDuplicados(Q, rv.rows.map((r) => ({ question_text: r.question_text, clave: r.clave }))).forEach((d) =>
     avisos.push(`${etiqueta(Q[d.i], d.i)}: ${d.motivo}`),
   )

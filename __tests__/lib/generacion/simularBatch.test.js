@@ -168,6 +168,154 @@ describe('simularBatch — §2.2-ter distribución y secuencia del lote', () => 
   })
 })
 
+// ─── Tell de FORMA a nivel de LOTE (T-150) ──────────────────────────────────────────────
+//
+// La clave es la más larga y los absolutos viven en los distractores: dos patrones que solo
+// se ven mirando el lote entero, no una pregunta suelta. Los umbrales y los casos de prueba
+// están calibrados contra los tres puntos de dato reales del backlog: 13/16 (81%, el lote que
+// motiva la ficha) y 7/10 (70%, citado explícitamente como "el nivel que T-150 documenta como
+// explotable") SÍ disparan; 6/14 (43%, el caso T204 con márgenes de +3%/+5%/+8%/+11%/+15%/+36%
+// que el propio backlog documenta como "alarma falsa" al contarlos en bruto) NO dispara con
+// el umbral del 60%.
+describe('simularBatch — §2.2-bis tell de FORMA de LOTE (longitud) — T-150', () => {
+  // Clave en `correctIdx`, longitud derivada de `margenPct` sobre `maxDist`; los otros tres
+  // slots llevan siempre [maxDist, maxDist-5, maxDist-10] EN ORDEN, así que el mayor
+  // distractor es siempre `maxDist` sea cual sea la posición de la clave.
+  const pregLarga = (margenPct, correctIdx = 0, maxDist = 1000) => {
+    const distractorLens = [maxDist, maxDist - 5, maxDist - 10]
+    const options = [0, 1, 2, 3].map((i) => {
+      if (i === correctIdx) return 'x'.repeat(Math.round(maxDist * (1 + margenPct / 100)))
+      return 'x'.repeat(distractorLens[i < correctIdx ? i : i - 1])
+    })
+    return { options, correct_option: correctIdx }
+  }
+  const pregCorta = () => ({
+    options: ['x'.repeat(500), 'x'.repeat(1000), 'x'.repeat(995), 'x'.repeat(990)],
+    correct_option: 0,
+  })
+
+  it('NO avisa con el caso real del T204 (6/14 = 43%, márgenes +3/+5/+8/+11/+15/+36%)', () => {
+    const preguntas = [
+      pregLarga(3), pregLarga(5), pregLarga(8), pregLarga(11), pregLarga(15), pregLarga(36),
+      pregCorta(), pregCorta(), pregCorta(), pregCorta(), pregCorta(), pregCorta(), pregCorta(), pregCorta(),
+    ]
+    const { avisos } = analizarLote(preguntas)
+    expect(avisos.some((a) => a.includes('tell de FORMA de lote (longitud)'))).toBe(false)
+  })
+
+  it('AVISA con el 70% real (lote LECrim, "el nivel que T-150 documenta como explotable")', () => {
+    const preguntas = [
+      ...Array.from({ length: 7 }, () => pregLarga(20)), // clave más larga, margen NO explotable (20% < 30%)
+      ...Array.from({ length: 3 }, () => pregCorta()),
+    ]
+    const { avisos } = analizarLote(preguntas)
+    const aviso = avisos.find((a) => a.includes('tell de FORMA de lote (longitud)'))
+    expect(aviso).toBeDefined()
+    expect(aviso).toContain('7/10')
+    // los 7 tienen margen 20%, por debajo del explotable (30%): el aviso debe decirlo.
+    expect(aviso).toContain('0 superan además el margen explotable')
+  })
+
+  it('AVISA con el 81% del lote que motiva la ficha (13/16, gen_atc_t208) y cuenta los explotables', () => {
+    const preguntas = [
+      ...Array.from({ length: 13 }, () => pregLarga(40)), // margen 40% > 30%: explotable
+      ...Array.from({ length: 3 }, () => pregCorta()),
+    ]
+    const { avisos } = analizarLote(preguntas)
+    const aviso = avisos.find((a) => a.includes('tell de FORMA de lote (longitud)'))
+    expect(aviso).toBeDefined()
+    expect(aviso).toContain('13/16')
+    expect(aviso).toContain('13 superan además el margen explotable')
+  })
+
+  it('NO avisa cuando la clave no destaca por longitud en el lote', () => {
+    const preguntas = Array.from({ length: 10 }, (_, i) => (i % 2 === 0 ? pregLarga(10) : pregCorta()))
+    const { avisos } = analizarLote(preguntas)
+    expect(avisos.some((a) => a.includes('tell de FORMA de lote (longitud)'))).toBe(false)
+  })
+
+  it('el aviso de longitud NO bloquea la inserción (va en avisos, no en errores)', () => {
+    // correct_option repartido y sin ciclo, para que esta prueba aísle el check de FORMA
+    // del check de distribución/ciclo de §2.2-ter (que son otro par de checks distintos).
+    const posiciones = [0, 1, 2, 3, 0, 2, 1, 3, 0, 1]
+    const preguntas = posiciones.map((p) => pregLarga(40, p))
+    const { errores, avisos } = analizarLote(preguntas)
+    expect(avisos.some((a) => a.includes('tell de FORMA de lote (longitud)'))).toBe(true)
+    expect(errores).toEqual([])
+  })
+})
+
+describe('simularBatch — §2.2-bis tell de FORMA de LOTE (absolutos en distractores) — T-150', () => {
+  // Réplica del caso real gen_atc_t208_2026-07-26_s26c: absolutos en 10/16 preguntas y en
+  // 9 de esas 10 SOLO en distractores. La 10ª tiene el absoluto en la CLAVE porque lo dice
+  // la propia ley ("en ningún caso") — no debe contar como "solo distractor".
+  const conMarcadorSoloEnDistractor = (marcador) => ({
+    options: [
+      `El órgano competente resolverá conforme al procedimiento ordinario aplicable al caso.`, // clave, sin marcador
+      `El órgano competente resolverá ${marcador} tras el trámite de audiencia previsto.`,
+      'El órgano competente carece de competencia para resolver sobre la materia planteada.',
+      'El órgano competente delega la resolución en el superior jerárquico correspondiente.',
+    ],
+    correct_option: 0,
+  })
+  const sinMarcador = () => ({
+    options: [
+      'El plazo de resolución es de tres meses desde la solicitud.',
+      'El plazo de resolución es de un mes desde la solicitud.',
+      'El plazo de resolución es de seis meses desde la solicitud.',
+      'El plazo de resolución es de quince días desde la solicitud.',
+    ],
+    correct_option: 0,
+  })
+  const conMarcadorEnLaClave = () => ({
+    options: [
+      'En ningún caso procederá la ejecución sin previa notificación al interesado.', // clave, con marcador
+      'La ejecución procederá siempre que medie autorización expresa del órgano superior.',
+      'La ejecución procederá previa audiencia de las partes interesadas en el expediente.',
+      'La ejecución procederá conforme al procedimiento abreviado aplicable.',
+    ],
+    correct_option: 0,
+  })
+
+  it('AVISA con el caso real 9/10 (marcador solo en distractores)', () => {
+    const marcadores = ['únicamente', 'exclusivamente', 'solo', 'siempre', 'en exclusiva', 'únicamente', 'exclusivamente', 'solo', 'siempre']
+    const preguntas = [...marcadores.map(conMarcadorSoloEnDistractor), conMarcadorEnLaClave()]
+    const { avisos } = analizarLote(preguntas)
+    const aviso = avisos.find((a) => a.includes('tell de FORMA de lote (absolutos)'))
+    expect(aviso).toBeDefined()
+    expect(aviso).toContain('9/10')
+  })
+
+  it('NO avisa si el absoluto se reparte entre clave y distractores', () => {
+    const preguntas = [
+      conMarcadorSoloEnDistractor('únicamente'),
+      conMarcadorEnLaClave(),
+      conMarcadorSoloEnDistractor('exclusivamente'),
+      conMarcadorEnLaClave(),
+      sinMarcador(), sinMarcador(), sinMarcador(), sinMarcador(),
+    ]
+    const { avisos } = analizarLote(preguntas)
+    expect(avisos.some((a) => a.includes('tell de FORMA de lote (absolutos)'))).toBe(false)
+  })
+
+  it('NO avisa con menos de 4 preguntas con marcador (ruido de muestra)', () => {
+    const preguntas = [
+      conMarcadorSoloEnDistractor('únicamente'),
+      conMarcadorSoloEnDistractor('exclusivamente'),
+      conMarcadorSoloEnDistractor('solo'),
+      ...Array.from({ length: 7 }, sinMarcador),
+    ]
+    const { avisos } = analizarLote(preguntas)
+    expect(avisos.some((a) => a.includes('tell de FORMA de lote (absolutos)'))).toBe(false)
+  })
+
+  it('no se pronuncia sobre lotes pequeños (menos de 8), igual que el resto de §2.2-ter', () => {
+    const preguntas = [conMarcadorSoloEnDistractor('únicamente'), conMarcadorSoloEnDistractor('solo')]
+    const { avisos } = analizarLote(preguntas)
+    expect(avisos).toEqual([])
+  })
+})
+
 describe('simularBatch — §2.2 truncamiento por cabeza vs condensación válida', () => {
   // Art. 3.4 TRLRHL: el inciso condicionante ("salvo que la legislación de desarrollo de
   // las comunidades autónomas prevea otra cosa") PRECEDE al texto que se cita como

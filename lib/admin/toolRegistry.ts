@@ -2566,7 +2566,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'preguntas reescritas EN BD en vez de en el borrador. Ya bloquea en PARIDAD. Hermano de ' +
       '`verificar_batch_generado`: si los dos discrepan, el simulador no sirve para nada. ' +
       'Con `--equilibrar` además REPARA la posición de la correcta (§2.2-ter) reescribiendo el ' +
-      'borrador — ver `transponer_posicion_correcta`.',
+      'borrador — ver `transponer_posicion_correcta`. `analizarLote` incluye también el tell de ' +
+      'FORMA a nivel de LOTE (T-150, avisos no bloqueantes): la clave más larga en >60% del lote ' +
+      '(reutiliza el margen explotable de 30% de `tellLongitud`, calibrado contra 13/16 y 7/10 ' +
+      'reales del backlog que SÍ disparan y 6/14 que NO) y los marcadores de absoluto ' +
+      '(«únicamente», «solo», «siempre»…) que viven SOLO en distractores en >60% de las preguntas ' +
+      'que los usan. Núcleo puro `lib/generacion/absolutosOpcion.js`.',
   },
   audit_clave_inciso_anulado: {
     titulo: '¿La RESPUESTA CORRECTA de una pregunta viva reproduce un inciso anulado por el TC?',
