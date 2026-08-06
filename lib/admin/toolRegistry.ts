@@ -2402,6 +2402,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'propios `deploy-*.sh` vía `scripts/deploy-marcar.cjs`, best-effort y con `trap`, así que ' +
       'un build que aborta no deja la fila abierta y la telemetría nunca puede tumbar un deploy.',
   },
+  revision_entre_trabajadores: {
+    titulo: 'La flota se revisa a sí misma: el escalón «entregada → revisada»',
+    ruta: 'scripts/backlog.cjs',
+    estado: 'vivo',
+    escribe: ['backlog_tasks', 'review_verdict'],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`backlog.cjs revisado <id> --veredicto ok|problemas --hallazgos "…"`. De los SEIS escalones ' +
+      'del ciclo de una tarea, cinco avanzaban solos (el supervisor reparte, el trabajador ' +
+      'entrega, el deploy despierta, el reloj suelta) y «entregada → revisada» esperaba a que ' +
+      'ALGUIEN decidiera mirar: medido el 06/08, **23 entregas paradas, 15 h de media, la más ' +
+      'vieja 41 h** — no una cola lenta, una cola SIN SALIDA. Lo mueve ahora otro trabajador con ' +
+      '`ENC.encargoRevision`, que es un encargo DISTINTO a propósito: con el normal («haz esta ' +
+      'tarea») el siguiente la REHARÍA desde cero, que es lo que pasó con las impugnaciones ' +
+      '(cinco borradores del mismo caso). Tres reglas en la TABLA, no en la buena voluntad: ' +
+      'veredicto cerrado (un «ok pero…» no contesta «¿se puede mergear?»), hallazgos con longitud ' +
+      'mínima (un veredicto sin hallazgos es un sello) y **nadie revisa lo suyo**. NO delega el ' +
+      'merge a `main`: al juntar ramas salen choques que ninguna ve por separado. Primeros seis ' +
+      'veredictos: 3 ok y 3 problemas — uno destapó un FALSO VERDE en la ficha de [T-486] ' +
+      '(«canarios 19/19» no probaba nada: RLS sin política devuelve 0 filas sin error).',
+  },
   candado_deploy: {
     titulo: 'El candado de deploy que SÍ cruza máquinas (arriendo en deploy_runs)',
     ruta: 'scripts/deploy/candado.cjs',
