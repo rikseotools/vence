@@ -1,0 +1,3245 @@
+{
+ "_leeme": "Comportamiento REAL de las 131 getBlockInfo originales, muestreado tema a tema (n=1..999) ANTES de unificar el componente (T-611) y guardado comprimido en tramos. Es la prueba de que bloquesPorOposicion.ts no cambió lo que ve el opositor; el test lo EXPANDE y compara tema a tema. Incluye los tramos SIN bloque a propósito: son el caso por defecto, que el dato no almacena. NO regenerar: los originales ya no existen.",
+ "maxTema": 999,
+ "formato": "[desde, hasta, bloque, offset]  ·  nºMostrado = nºTema - offset",
+ "oposiciones": {
+  "administrativa-universidad-de-murcia": [
+   [
+    1,
+    7,
+    "Parte General Común",
+    0
+   ],
+   [
+    8,
+    18,
+    "Parte Específica",
+    7
+   ],
+   [
+    19,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-agencia-tributaria-canaria": [
+   [
+    1,
+    15,
+    "Bloque I: Derecho Constitucional, Europeo, Administrativo y de Canarias",
+    0
+   ],
+   [
+    16,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    225,
+    "Bloque II: Derecho Tributario",
+    0
+   ],
+   [
+    226,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-andalucia": [
+   [
+    1,
+    16,
+    "Área Jurídico-Administrativa General",
+    0
+   ],
+   [
+    17,
+    24,
+    "Gestión Financiera",
+    16
+   ],
+   [
+    25,
+    29,
+    "Gestión de Personal",
+    24
+   ],
+   [
+    30,
+    37,
+    "Organización y Gestión Administrativa",
+    29
+   ],
+   [
+    38,
+    42,
+    "Tecnología",
+    37
+   ],
+   [
+    43,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-aragon": [
+   [
+    1,
+    5,
+    "Materias comunes",
+    0
+   ],
+   [
+    6,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Materias específicas",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-asturias": [
+   [
+    1,
+    7,
+    "Bloque I: Derecho Constitucional y Organización Administrativa",
+    0
+   ],
+   [
+    8,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    216,
+    "Bloque II: Derecho Administrativo y Comunitario",
+    193
+   ],
+   [
+    217,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    306,
+    "Bloque III: Gestión de Recursos Humanos",
+    277
+   ],
+   [
+    307,
+    400,
+    "",
+    0
+   ],
+   [
+    401,
+    405,
+    "Bloque IV: Gestión Financiera",
+    371
+   ],
+   [
+    406,
+    500,
+    "",
+    0
+   ],
+   [
+    501,
+    504,
+    "Bloque V: Ofimática",
+    466
+   ],
+   [
+    505,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-canarias": [
+   [
+    1,
+    8,
+    "Organización del Estado",
+    0
+   ],
+   [
+    9,
+    14,
+    "Organización de Canarias",
+    0
+   ],
+   [
+    15,
+    20,
+    "La Unión Europea",
+    0
+   ],
+   [
+    21,
+    24,
+    "Régimen Jurídico, Transparencia y Datos",
+    0
+   ],
+   [
+    25,
+    30,
+    "Derechos, Igualdad, Empleo Público y Prevención",
+    0
+   ],
+   [
+    31,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-cantabria": [
+   [
+    1,
+    21,
+    "Derecho Administrativo y Constitucional",
+    0
+   ],
+   [
+    22,
+    28,
+    "Gestión de Personal",
+    21
+   ],
+   [
+    29,
+    34,
+    "Gestión Financiera",
+    28
+   ],
+   [
+    35,
+    40,
+    "Organización de las Oficinas Públicas",
+    34
+   ],
+   [
+    41,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-carm": [
+   [
+    1,
+    14,
+    "Organización del Estado y Gestión Administrativa",
+    0
+   ],
+   [
+    15,
+    21,
+    "Gestión de Recursos Humanos",
+    0
+   ],
+   [
+    22,
+    28,
+    "Gestión Económico-Presupuestaria y Tributaria",
+    0
+   ],
+   [
+    29,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-castilla-la-mancha": [
+   [
+    1,
+    10,
+    "Parte Común",
+    0
+   ],
+   [
+    11,
+    36,
+    "Parte Específica",
+    10
+   ],
+   [
+    37,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-castilla-leon": [
+   [
+    1,
+    10,
+    "Grupo I",
+    0
+   ],
+   [
+    11,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    209,
+    "Grupo II",
+    190
+   ],
+   [
+    210,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    305,
+    "Grupo III",
+    281
+   ],
+   [
+    306,
+    400,
+    "",
+    0
+   ],
+   [
+    401,
+    406,
+    "Grupo IV",
+    376
+   ],
+   [
+    407,
+    500,
+    "",
+    0
+   ],
+   [
+    501,
+    511,
+    "Grupo V",
+    470
+   ],
+   [
+    512,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-diputacion-jaen": [
+   [
+    1,
+    8,
+    "Materias Comunes",
+    0
+   ],
+   [
+    9,
+    21,
+    "Derecho Administrativo General",
+    0
+   ],
+   [
+    22,
+    28,
+    "Régimen Local y Protección de Datos",
+    0
+   ],
+   [
+    29,
+    33,
+    "Función Pública Local",
+    0
+   ],
+   [
+    34,
+    38,
+    "Haciendas Locales",
+    0
+   ],
+   [
+    39,
+    40,
+    "Documentación y Administración Electrónica",
+    0
+   ],
+   [
+    41,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-diputacion-valencia": [
+   [
+    1,
+    15,
+    "Bloque I",
+    0
+   ],
+   [
+    16,
+    40,
+    "Bloque II",
+    0
+   ],
+   [
+    41,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-estado": [
+   [
+    1,
+    11,
+    "Bloque I",
+    0
+   ],
+   [
+    12,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    204,
+    "Bloque II",
+    200
+   ],
+   [
+    205,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    307,
+    "Bloque III",
+    300
+   ],
+   [
+    308,
+    400,
+    "",
+    0
+   ],
+   [
+    401,
+    409,
+    "Bloque IV",
+    400
+   ],
+   [
+    410,
+    500,
+    "",
+    0
+   ],
+   [
+    501,
+    506,
+    "Bloque V",
+    500
+   ],
+   [
+    507,
+    600,
+    "",
+    0
+   ],
+   [
+    601,
+    608,
+    "Bloque VI",
+    600
+   ],
+   [
+    609,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-extremadura": [
+   [
+    1,
+    13,
+    "Organizacion y Empleo Publico de Extremadura",
+    0
+   ],
+   [
+    14,
+    30,
+    "Derecho Administrativo, Contratacion y Hacienda",
+    0
+   ],
+   [
+    31,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-galicia": [
+   [
+    1,
+    7,
+    "Bloque I: Parte General",
+    0
+   ],
+   [
+    8,
+    19,
+    "Bloque II: Parte Específica",
+    0
+   ],
+   [
+    20,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-gva": [
+   [
+    1,
+    10,
+    "Materias Comunes",
+    0
+   ],
+   [
+    11,
+    24,
+    "Materias Especificas",
+    0
+   ],
+   [
+    25,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-junta-general-asturias": [
+   [
+    1,
+    7,
+    "Bloque I: Derecho Constitucional y Organización",
+    0
+   ],
+   [
+    8,
+    19,
+    "Bloque II: La Junta General del Principado",
+    0
+   ],
+   [
+    20,
+    26,
+    "Bloque III: Lengua Española y Documentación",
+    0
+   ],
+   [
+    27,
+    36,
+    "Bloque IV: Derecho Administrativo y Laboral",
+    0
+   ],
+   [
+    37,
+    40,
+    "Bloque V: Ofimática",
+    0
+   ],
+   [
+    41,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-la-rioja": [
+   [
+    1,
+    10,
+    "Organización del Estado",
+    0
+   ],
+   [
+    11,
+    16,
+    "Organización de La Rioja",
+    0
+   ],
+   [
+    17,
+    26,
+    "Derecho Administrativo General",
+    0
+   ],
+   [
+    27,
+    31,
+    "Gestión de Personal",
+    0
+   ],
+   [
+    32,
+    39,
+    "Gestión Financiera",
+    0
+   ],
+   [
+    40,
+    42,
+    "Informática",
+    0
+   ],
+   [
+    43,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-madrid": [
+   [
+    1,
+    8,
+    "Organización del Estado y de la Comunidad de Madrid",
+    0
+   ],
+   [
+    9,
+    24,
+    "Derecho Administrativo General",
+    8
+   ],
+   [
+    25,
+    32,
+    "Gestión de Recursos Humanos",
+    24
+   ],
+   [
+    33,
+    39,
+    "Gestión Financiera",
+    32
+   ],
+   [
+    40,
+    47,
+    "Informática y Ofimática",
+    39
+   ],
+   [
+    48,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-navarra": [
+   [
+    1,
+    5,
+    "Parte I: Actividad Administrativa",
+    0
+   ],
+   [
+    6,
+    23,
+    "Parte II: Normativa",
+    0
+   ],
+   [
+    24,
+    27,
+    "Parte III: Informatica",
+    0
+   ],
+   [
+    28,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-pais-vasco": [
+   [
+    1,
+    13,
+    "Temario General",
+    0
+   ],
+   [
+    14,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-seguridad-social": [
+   [
+    1,
+    23,
+    "Bloque I: Temario general",
+    0
+   ],
+   [
+    24,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    113,
+    "Bloque II: Temario específico de Seguridad Social",
+    100
+   ],
+   [
+    114,
+    999,
+    "",
+    0
+   ]
+  ],
+  "administrativo-universidad-leon": [
+   [
+    1,
+    5,
+    "Bloque 1",
+    0
+   ],
+   [
+    6,
+    11,
+    "Bloque 2",
+    0
+   ],
+   [
+    12,
+    15,
+    "Bloque 3",
+    0
+   ],
+   [
+    16,
+    21,
+    "Bloque 4",
+    0
+   ],
+   [
+    22,
+    25,
+    "Bloque 5",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "agente-hacienda": [
+   [
+    1,
+    12,
+    "Materias Comunes",
+    0
+   ],
+   [
+    13,
+    32,
+    "Materias Específicas (Hacienda Pública y Derecho Tributario)",
+    0
+   ],
+   [
+    33,
+    999,
+    "",
+    0
+   ]
+  ],
+  "agrupacion-profesional-servicios-publicos-carm": [
+   [
+    1,
+    7,
+    "Parte General",
+    0
+   ],
+   [
+    8,
+    12,
+    "Funciones de Servicios Públicos",
+    0
+   ],
+   [
+    13,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-andalucia": [
+   [
+    1,
+    12,
+    "Bloque I",
+    0
+   ],
+   [
+    13,
+    22,
+    "Bloque II",
+    0
+   ],
+   [
+    23,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-aragon": [
+   [
+    1,
+    15,
+    "Materias Comunes",
+    0
+   ],
+   [
+    16,
+    20,
+    "Materias Especificas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-asturias": [
+   [
+    1,
+    6,
+    "Derecho Constitucional y Organizacion Administrativa",
+    0
+   ],
+   [
+    7,
+    20,
+    "Derecho Administrativo y Comunitario",
+    0
+   ],
+   [
+    21,
+    25,
+    "Ofimatica",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-alcala-henares": [
+   [
+    1,
+    5,
+    "Materias Comunes",
+    0
+   ],
+   [
+    6,
+    24,
+    "Materias Específicas",
+    5
+   ],
+   [
+    25,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-badajoz": [
+   [
+    1,
+    4,
+    "Bloque I",
+    0
+   ],
+   [
+    5,
+    20,
+    "Bloque II",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-cordoba": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-granada": [
+   [
+    1,
+    5,
+    "Materias Comunes",
+    0
+   ],
+   [
+    6,
+    22,
+    "Materias Específicas",
+    5
+   ],
+   [
+    23,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-huesca": [
+   [
+    1,
+    11,
+    "Bloque I: Derecho Constitucional y Administrativo",
+    0
+   ],
+   [
+    12,
+    19,
+    "Bloque II: Régimen Local y Hacienda Local",
+    0
+   ],
+   [
+    20,
+    24,
+    "Bloque III: Prevención y Gestión Documental",
+    0
+   ],
+   [
+    25,
+    25,
+    "Bloque IV: Ofimática e Informática",
+    0
+   ],
+   [
+    26,
+    28,
+    "Bloque V: Protección de Datos e Igualdad",
+    0
+   ],
+   [
+    29,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-madrid": [
+   [
+    1,
+    20,
+    "Parte teórica",
+    0
+   ],
+   [
+    21,
+    22,
+    "Ofimática",
+    0
+   ],
+   [
+    23,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-marbella": [
+   [
+    1,
+    6,
+    "Materias Comunes",
+    0
+   ],
+   [
+    7,
+    11,
+    "Administración Local",
+    0
+   ],
+   [
+    12,
+    18,
+    "Régimen Jurídico y Derechos",
+    0
+   ],
+   [
+    19,
+    25,
+    "Gestión y Función Pública Local",
+    0
+   ],
+   [
+    26,
+    27,
+    "Transparencia e Informática",
+    0
+   ],
+   [
+    28,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-murcia": [
+   [
+    1,
+    10,
+    "Bloque I",
+    0
+   ],
+   [
+    11,
+    20,
+    "Bloque II",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-salamanca": [
+   [
+    1,
+    10,
+    "Derecho Constitucional y Administrativo",
+    0
+   ],
+   [
+    11,
+    22,
+    "Administración Local",
+    0
+   ],
+   [
+    23,
+    29,
+    "Atención, Transparencia, Protección de Datos y Archivo",
+    0
+   ],
+   [
+    30,
+    34,
+    "Calidad, Igualdad y Violencia de Género",
+    0
+   ],
+   [
+    35,
+    41,
+    "Ofimática e Informática",
+    0
+   ],
+   [
+    42,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-sevilla": [
+   [
+    1,
+    18,
+    "Parte I: Organización pública y Derecho administrativo",
+    0
+   ],
+   [
+    19,
+    26,
+    "Parte II: Ofimática",
+    0
+   ],
+   [
+    27,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-valencia": [
+   [
+    1,
+    10,
+    "Bloque I",
+    0
+   ],
+   [
+    11,
+    21,
+    "Bloque II",
+    0
+   ],
+   [
+    22,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-valladolid": [
+   [
+    1,
+    6,
+    "Organización del Estado y de Castilla y León",
+    0
+   ],
+   [
+    7,
+    10,
+    "El Ayuntamiento de Valladolid",
+    0
+   ],
+   [
+    11,
+    19,
+    "Derecho Administrativo y Contratación",
+    0
+   ],
+   [
+    20,
+    22,
+    "Personal, Igualdad y Prevención de Riesgos",
+    0
+   ],
+   [
+    23,
+    31,
+    "Información, Archivo, Transparencia e Informática",
+    0
+   ],
+   [
+    32,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ayuntamiento-zaragoza": [
+   [
+    1,
+    9,
+    "Organización Jurídica y Administrativa",
+    0
+   ],
+   [
+    10,
+    20,
+    "Administración Local y Empleo Público",
+    0
+   ],
+   [
+    21,
+    25,
+    "Ofimática e Informática",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-baleares": [
+   [
+    1,
+    20,
+    "Materias Comunes",
+    0
+   ],
+   [
+    21,
+    36,
+    "Ofimatica",
+    0
+   ],
+   [
+    37,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-canarias": [
+   [
+    1,
+    20,
+    "Parte General",
+    0
+   ],
+   [
+    21,
+    40,
+    "Parte Practica",
+    0
+   ],
+   [
+    41,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-cantabria": [
+   [
+    1,
+    18,
+    "Parte General",
+    0
+   ],
+   [
+    19,
+    25,
+    "Informatica",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-carm": [
+   [
+    1,
+    9,
+    "Bloque I",
+    0
+   ],
+   [
+    10,
+    16,
+    "Bloque II",
+    0
+   ],
+   [
+    17,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-catalunya": [
+   [
+    1,
+    15,
+    "Temari General",
+    0
+   ],
+   [
+    16,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-clm": [
+   [
+    1,
+    12,
+    "Organizacion Administrativa",
+    0
+   ],
+   [
+    13,
+    24,
+    "Ofimatica",
+    0
+   ],
+   [
+    25,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-consell-formentera": [
+   [
+    1,
+    8,
+    "Temario General",
+    0
+   ],
+   [
+    9,
+    20,
+    "Temario Específico",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-cyl": [
+   [
+    1,
+    19,
+    "Grupo I",
+    0
+   ],
+   [
+    20,
+    28,
+    "Grupo II",
+    0
+   ],
+   [
+    29,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-alicante": [
+   [
+    1,
+    18,
+    "Materias jurídico-administrativas",
+    0
+   ],
+   [
+    19,
+    20,
+    "Ofimática",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-avila": [
+   [
+    1,
+    24,
+    "Materias Comunes",
+    0
+   ],
+   [
+    25,
+    30,
+    "Materias Específicas",
+    0
+   ],
+   [
+    31,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-barcelona": [
+   [
+    1,
+    4,
+    "Temario General",
+    0
+   ],
+   [
+    5,
+    20,
+    "Temario Específico",
+    4
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-cadiz": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-cordoba": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-cuenca": [
+   [
+    1,
+    4,
+    "Materia Común",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materia Específica",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-girona": [
+   [
+    1,
+    20,
+    "Programa oficial",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-huelva": [
+   [
+    1,
+    4,
+    "Temas Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Temas Específicos",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-huesca": [
+   [
+    1,
+    23,
+    "Programa oficial",
+    0
+   ],
+   [
+    24,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-leon": [
+   [
+    1,
+    8,
+    "Bloque I: Derecho Constitucional, Autonómico y Comunitario",
+    0
+   ],
+   [
+    9,
+    16,
+    "Bloque II: Derecho Administrativo General",
+    0
+   ],
+   [
+    17,
+    25,
+    "Bloque III: Administración Local y Función Pública",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-ourense": [
+   [
+    1,
+    20,
+    "Programa oficial",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-segovia": [
+   [
+    1,
+    30,
+    "Programa oficial",
+    0
+   ],
+   [
+    31,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-zamora": [
+   [
+    1,
+    4,
+    "Parte General",
+    0
+   ],
+   [
+    5,
+    20,
+    "Parte Específica",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-diputacion-zaragoza": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-estado": [
+   [
+    1,
+    16,
+    "Bloque I",
+    0
+   ],
+   [
+    17,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    112,
+    "Bloque II",
+    100
+   ],
+   [
+    113,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-extremadura": [
+   [
+    1,
+    14,
+    "Empleo Publico y Organizacion",
+    0
+   ],
+   [
+    15,
+    25,
+    "Derecho Administrativo y Ofimatica",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-galicia": [
+   [
+    1,
+    13,
+    "Parte General",
+    0
+   ],
+   [
+    14,
+    17,
+    "Parte Especifica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-ingesa": [
+   [
+    1,
+    15,
+    "Parte general",
+    0
+   ],
+   [
+    16,
+    35,
+    "Parte específica",
+    0
+   ],
+   [
+    36,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-la-rioja": [
+   [
+    1,
+    21,
+    "Parte General",
+    0
+   ],
+   [
+    22,
+    23,
+    "Informatica",
+    0
+   ],
+   [
+    24,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-madrid-2027": [
+   [
+    1,
+    15,
+    "Bloque I",
+    0
+   ],
+   [
+    16,
+    21,
+    "Bloque II",
+    0
+   ],
+   [
+    22,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-madrid": [
+   [
+    1,
+    15,
+    "Bloque I",
+    0
+   ],
+   [
+    16,
+    21,
+    "Bloque II",
+    0
+   ],
+   [
+    22,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-pais-vasco": [
+   [
+    1,
+    13,
+    "Temario General",
+    0
+   ],
+   [
+    14,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-scs-canarias": [
+   [
+    1,
+    20,
+    "Materias jurídicas, sanitarias y de personal",
+    0
+   ],
+   [
+    21,
+    22,
+    "Ofimática y herramientas informáticas",
+    0
+   ],
+   [
+    23,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-sermas": [
+   [
+    1,
+    8,
+    "Bloque I — Organización Política y Sanitaria",
+    0
+   ],
+   [
+    9,
+    11,
+    "Bloque II — Derecho Administrativo",
+    0
+   ],
+   [
+    12,
+    19,
+    "Bloque III — Personal y Legislación Laboral",
+    0
+   ],
+   [
+    20,
+    26,
+    "Bloque IV — Gestión Administrativa y Sanitaria",
+    0
+   ],
+   [
+    27,
+    31,
+    "Bloque V — Informática y Administración Electrónica",
+    0
+   ],
+   [
+    32,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-sms": [
+   [
+    1,
+    6,
+    "Parte general",
+    0
+   ],
+   [
+    7,
+    24,
+    "Parte especifica",
+    0
+   ],
+   [
+    25,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-alcala": [
+   [
+    1,
+    18,
+    "Programa oficial",
+    0
+   ],
+   [
+    19,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-almeria": [
+   [
+    1,
+    17,
+    "Programa oficial",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-cadiz": [
+   [
+    1,
+    7,
+    "Bloque I: Organización de la Administración",
+    0
+   ],
+   [
+    8,
+    14,
+    "Bloque II: Derecho Administrativo",
+    0
+   ],
+   [
+    15,
+    19,
+    "Bloque III: Gestión de personal",
+    0
+   ],
+   [
+    20,
+    27,
+    "Bloque IV: Gestión universitaria",
+    0
+   ],
+   [
+    28,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-carlos-iii": [
+   [
+    1,
+    12,
+    "Programa oficial",
+    0
+   ],
+   [
+    13,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-complutense": [
+   [
+    1,
+    12,
+    "Programa oficial",
+    0
+   ],
+   [
+    13,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-huelva": [
+   [
+    1,
+    17,
+    "Programa oficial",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-leon": [
+   [
+    1,
+    21,
+    "Programa oficial",
+    0
+   ],
+   [
+    22,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-universidad-uned": [
+   [
+    1,
+    11,
+    "Materia General",
+    0
+   ],
+   [
+    12,
+    19,
+    "Materia Específica (UNED)",
+    11
+   ],
+   [
+    20,
+    21,
+    "Ofimática",
+    19
+   ],
+   [
+    22,
+    999,
+    "Temario",
+    0
+   ]
+  ],
+  "auxiliar-administrativo-valencia": [
+   [
+    1,
+    10,
+    "Materias Comunes",
+    0
+   ],
+   [
+    11,
+    24,
+    "Materias Especificas",
+    0
+   ],
+   [
+    25,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-archivos-estado": [
+   [
+    1,
+    11,
+    "Legislación",
+    0
+   ],
+   [
+    12,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    107,
+    "Historia cultural",
+    100
+   ],
+   [
+    108,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    227,
+    "Archivística (parte específica)",
+    200
+   ],
+   [
+    228,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    303,
+    "Parte práctica",
+    300
+   ],
+   [
+    304,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-biblioteca-estado": [
+   [
+    1,
+    11,
+    "Legislación",
+    0
+   ],
+   [
+    12,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    104,
+    "Historia del libro y las bibliotecas",
+    100
+   ],
+   [
+    105,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    230,
+    "Biblioteconomía (parte específica)",
+    200
+   ],
+   [
+    231,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    303,
+    "Parte práctica",
+    300
+   ],
+   [
+    304,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-clinica-diputacion-sevilla": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas (atención sociosanitaria residencial)",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-enfermeria-geriatria-diputacion-cadiz": [
+   [
+    1,
+    8,
+    "Materias Comunes",
+    0
+   ],
+   [
+    9,
+    25,
+    "Materias Específicas",
+    0
+   ],
+   [
+    26,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-enfermeria-gva": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-enfermeria-osakidetza": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxiliar-museos-estado": [
+   [
+    1,
+    11,
+    "Legislación",
+    0
+   ],
+   [
+    12,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    110,
+    "Historia cultural",
+    100
+   ],
+   [
+    111,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    224,
+    "Museología (parte específica)",
+    200
+   ],
+   [
+    225,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    303,
+    "Parte práctica",
+    300
+   ],
+   [
+    304,
+    999,
+    "",
+    0
+   ]
+  ],
+  "auxilio-judicial": [
+   [
+    1,
+    5,
+    "Bloque I",
+    0
+   ],
+   [
+    6,
+    15,
+    "Bloque II",
+    0
+   ],
+   [
+    16,
+    26,
+    "Bloque III",
+    0
+   ],
+   [
+    27,
+    999,
+    "",
+    0
+   ]
+  ],
+  "ayudante-instituciones-penitenciarias": [
+   [
+    1,
+    17,
+    "Bloque I",
+    0
+   ],
+   [
+    18,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    110,
+    "Bloque II",
+    100
+   ],
+   [
+    111,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    220,
+    "Bloque III",
+    200
+   ],
+   [
+    221,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    303,
+    "Bloque IV",
+    300
+   ],
+   [
+    304,
+    999,
+    "",
+    0
+   ]
+  ],
+  "ayudantes-ejecucion-penal-pais-vasco": [
+   [
+    1,
+    25,
+    "Parte general",
+    0
+   ],
+   [
+    26,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    128,
+    "Parte específica",
+    100
+   ],
+   [
+    129,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-galicia": [
+   [
+    1,
+    8,
+    "Parte Común",
+    0
+   ],
+   [
+    9,
+    17,
+    "Parte Específica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-ibsalut": [
+   [
+    1,
+    8,
+    "Parte Común",
+    0
+   ],
+   [
+    9,
+    17,
+    "Parte Específica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-ics": [
+   [
+    1,
+    8,
+    "Parte Común",
+    0
+   ],
+   [
+    9,
+    17,
+    "Parte Específica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-murcia": [
+   [
+    1,
+    7,
+    "Parte general (materias comunes)",
+    0
+   ],
+   [
+    8,
+    14,
+    "Parte específica (Celador-Subalterno)",
+    0
+   ],
+   [
+    15,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-sas": [
+   [
+    1,
+    10,
+    "Parte Común",
+    0
+   ],
+   [
+    11,
+    19,
+    "Parte Específica",
+    0
+   ],
+   [
+    20,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-scs-canarias": [
+   [
+    1,
+    14,
+    "Temario Oficial",
+    0
+   ],
+   [
+    15,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-sermas-madrid": [
+   [
+    1,
+    8,
+    "Parte Común",
+    0
+   ],
+   [
+    9,
+    17,
+    "Parte Específica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "celador-sescam-clm": [
+   [
+    1,
+    8,
+    "Parte Común",
+    0
+   ],
+   [
+    9,
+    17,
+    "Parte Específica",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ],
+  "correos-personal-operativo": [
+   [
+    1,
+    6,
+    "Bloque I: La Empresa y sus Productos",
+    0
+   ],
+   [
+    7,
+    12,
+    "Bloque II: Operaciones y Normativa",
+    0
+   ],
+   [
+    13,
+    999,
+    "",
+    0
+   ]
+  ],
+  "cuidador-diputacion-cordoba": [
+   [
+    1,
+    4,
+    "Materias Comunes",
+    0
+   ],
+   [
+    5,
+    20,
+    "Materias Específicas",
+    0
+   ],
+   [
+    21,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-ics": [
+   [
+    1,
+    11,
+    "Temario Transversal",
+    0
+   ],
+   [
+    12,
+    19,
+    "Temario Específico",
+    0
+   ],
+   [
+    20,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-sacyl": [
+   [
+    1,
+    9,
+    "Parte General",
+    0
+   ],
+   [
+    10,
+    54,
+    "Parte Específica",
+    0
+   ],
+   [
+    55,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-sas-andalucia": [
+   [
+    1,
+    10,
+    "Temario Común",
+    0
+   ],
+   [
+    11,
+    79,
+    "Temario Específico",
+    0
+   ],
+   [
+    80,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-scs-canarias": [
+   [
+    1,
+    7,
+    "Temario Común",
+    0
+   ],
+   [
+    8,
+    50,
+    "Temario Específico",
+    0
+   ],
+   [
+    51,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-scs-cantabria": [
+   [
+    1,
+    5,
+    "Parte General",
+    0
+   ],
+   [
+    6,
+    65,
+    "Parte Específica",
+    0
+   ],
+   [
+    66,
+    999,
+    "",
+    0
+   ]
+  ],
+  "enfermero-sms": [
+   [
+    1,
+    15,
+    "Parte Común",
+    0
+   ],
+   [
+    16,
+    71,
+    "Parte Específica",
+    15
+   ],
+   [
+    72,
+    999,
+    "",
+    0
+   ]
+  ],
+  "escala-administrativa-universidad-de-granada": [
+   [
+    1,
+    7,
+    "Parte General Común",
+    0
+   ],
+   [
+    8,
+    18,
+    "Parte Específica",
+    7
+   ],
+   [
+    19,
+    999,
+    "",
+    0
+   ]
+  ],
+  "etgoa-sanidad-consumo": [
+   [
+    1,
+    20,
+    "Parte común",
+    0
+   ],
+   [
+    21,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    200,
+    "Área de Consumo",
+    100
+   ],
+   [
+    201,
+    999,
+    "",
+    0
+   ]
+  ],
+  "guardia-civil": [
+   [
+    1,
+    999,
+    "",
+    0
+   ]
+  ],
+  "mecanico-conductor-estado": [
+   [
+    1,
+    5,
+    "Parte común: organización y funcionamiento de la Administración General del Estado",
+    0
+   ],
+   [
+    6,
+    15,
+    "Parte específica: conducción y seguridad vial",
+    0
+   ],
+   [
+    16,
+    999,
+    "",
+    0
+   ]
+  ],
+  "oficial-de-gestion-parlamento-de-andalucia": [
+   [
+    1,
+    16,
+    "Bloque I. Materia General del Estado",
+    0
+   ],
+   [
+    17,
+    44,
+    "Bloque II. Andalucía y el Parlamento",
+    0
+   ],
+   [
+    45,
+    999,
+    "",
+    0
+   ]
+  ],
+  "ordenanza-ayuntamiento-cordoba": [
+   [
+    1,
+    4,
+    "Temas Generales",
+    0
+   ],
+   [
+    5,
+    10,
+    "Temas Específicos",
+    0
+   ],
+   [
+    11,
+    999,
+    "",
+    0
+   ]
+  ],
+  "policia-municipal-madrid": [
+   [
+    1,
+    26,
+    "Bloque A: Ciencias Jurídicas",
+    0
+   ],
+   [
+    27,
+    37,
+    "Bloque B: Ciencias Sociales",
+    0
+   ],
+   [
+    38,
+    999,
+    "Bloque C: Ciencias Técnico-Científicas",
+    0
+   ]
+  ],
+  "policia-nacional": [
+   [
+    1,
+    26,
+    "Bloque A: Ciencias Jurídicas",
+    0
+   ],
+   [
+    27,
+    37,
+    "Bloque B: Ciencias Sociales",
+    0
+   ],
+   [
+    38,
+    999,
+    "Bloque C: Ciencias Técnico-Científicas",
+    0
+   ]
+  ],
+  "subalterno-gva": [
+   [
+    1,
+    7,
+    "Materias Comunes",
+    0
+   ],
+   [
+    8,
+    15,
+    "Materias Especificas",
+    0
+   ],
+   [
+    16,
+    999,
+    "",
+    0
+   ]
+  ],
+  "subalterno-parlamento-andalucia": [
+   [
+    1,
+    10,
+    "Bloque I. Materia General y de Andalucía",
+    0
+   ],
+   [
+    11,
+    15,
+    "Bloque II. El Parlamento de Andalucía",
+    0
+   ],
+   [
+    16,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-aragon": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-canarias": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-extremadura": [
+   [
+    1,
+    4,
+    "Temario Común",
+    0
+   ],
+   [
+    5,
+    30,
+    "Temario Específico",
+    0
+   ],
+   [
+    31,
+    999,
+    "Temario",
+    0
+   ]
+  ],
+  "tcae-galicia": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-murcia": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-sas": [
+   [
+    1,
+    10,
+    "Materia Común",
+    0
+   ],
+   [
+    11,
+    29,
+    "Materia Específica",
+    10
+   ],
+   [
+    30,
+    999,
+    "Temario",
+    0
+   ]
+  ],
+  "tcae-sermas-madrid": [
+   [
+    1,
+    19,
+    "Bloque I — Temario Común",
+    0
+   ],
+   [
+    20,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    130,
+    "Bloque II — Temario Específico",
+    100
+   ],
+   [
+    131,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tcae-sescam": [
+   [
+    1,
+    5,
+    "Temario Común",
+    0
+   ],
+   [
+    6,
+    30,
+    "Temario Específico",
+    0
+   ],
+   [
+    31,
+    999,
+    "Temario",
+    0
+   ]
+  ],
+  "tecnico-auxiliar-universidad-de-murcia": [
+   [
+    1,
+    7,
+    "Parte General Común",
+    0
+   ],
+   [
+    8,
+    18,
+    "Parte Específica",
+    7
+   ],
+   [
+    19,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tecnico-informatica": [
+   [
+    1,
+    100,
+    "",
+    0
+   ],
+   [
+    101,
+    109,
+    "Bloque I: Organizacion del Estado y Administracion electronica",
+    100
+   ],
+   [
+    110,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    205,
+    "Bloque II: Tecnologia basica",
+    200
+   ],
+   [
+    206,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    309,
+    "Bloque III: Desarrollo de sistemas",
+    300
+   ],
+   [
+    310,
+    400,
+    "",
+    0
+   ],
+   [
+    401,
+    410,
+    "Bloque IV: Sistemas y comunicaciones",
+    400
+   ],
+   [
+    411,
+    999,
+    "",
+    0
+   ]
+  ],
+  "tramitacion-procesal": [
+   [
+    1,
+    11,
+    "Bloque I",
+    0
+   ],
+   [
+    12,
+    200,
+    "",
+    0
+   ],
+   [
+    201,
+    204,
+    "Bloque II",
+    200
+   ],
+   [
+    205,
+    300,
+    "",
+    0
+   ],
+   [
+    301,
+    307,
+    "Bloque III",
+    300
+   ],
+   [
+    308,
+    400,
+    "",
+    0
+   ],
+   [
+    401,
+    409,
+    "Bloque IV",
+    400
+   ],
+   [
+    410,
+    500,
+    "",
+    0
+   ],
+   [
+    501,
+    506,
+    "Bloque V",
+    500
+   ],
+   [
+    507,
+    600,
+    "",
+    0
+   ],
+   [
+    601,
+    608,
+    "Bloque VI",
+    600
+   ],
+   [
+    609,
+    999,
+    "",
+    0
+   ]
+  ],
+  "ujieres-cortes-generales": [
+   [
+    1,
+    17,
+    "Programa oficial (Anexo I)",
+    0
+   ],
+   [
+    18,
+    999,
+    "",
+    0
+   ]
+  ]
+ }
+}
