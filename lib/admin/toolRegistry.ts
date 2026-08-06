@@ -895,7 +895,21 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'cruzan las dos caras del MISMO hecho: `identityMismatch` (SERVIDOR, existía desde el ' +
       '07/07 y **no la miraba nadie** — no hubo que construir detector, hubo que mirarla) y ' +
       '`auth_identidad_ajena_descartada` (CLIENTE, el drenaje). Mismatch>0 con CERO descartes = ' +
-      'el arreglo no corre → compruébalo con `npm run sim:sesion-fantasma`, no lo supongas.',
+      'el arreglo no corre → compruébalo con `npm run sim:sesion-fantasma`, no lo supongas. ' +
+      '**QUINTO bloque (06/08, T-633): ¿la UNIÓN de las tres curas cubre a todos?** Los cuatro ' +
+      'bloques de arriba miden cada mecanismo por separado; nadie había comprobado su unión ' +
+      'contra el total de gente que rebota — y esta ficha nació porque `auth_perfil_recuperado`/' +
+      '`auth_alta_sin_perfil` llevaban 5 días mudas mientras «Usuario no existe» seguía activo. ' +
+      'La primera lectura (comparar CONTEOS diarios) parecía dar el visto bueno porque ' +
+      '`auth_identidad_ajena_descartada` tenía un volumen parecido — la misma trampa que ya le ' +
+      'costó cara a esta ficha el 01/08 (contar por DÍA, no por USUARIO). Medido usuario a ' +
+      'usuario: de 49 afectados en 48 h, **29 (59 %) no tenían NINGUNA de las tres señales**. ' +
+      'Núcleo puro `lib/auth/coberturaCuracion.cjs` (`sinNingunaCobertura`, 6 tests, incluida ' +
+      'una regresión nombrada con `140ef91a` — el user_id que motivó la ficha original de T-434 ' +
+      'el 30/07 y que SIGUE sin cobertura). No identifica la causa del hueco, solo lo hace ' +
+      'observable: primeras pistas medidas, mezclan `userIdVerified=true`/`=false` DENTRO de la ' +
+      'misma sesión y algunos traen "Session expired (no access_token)" — un patrón que ninguno ' +
+      'de los tres mecanismos existentes contempla.',
   },
   sesion_fantasma: {
     titulo: 'Comprobar en un navegador real que se suelta la identidad ajena sin desloguear al sano',

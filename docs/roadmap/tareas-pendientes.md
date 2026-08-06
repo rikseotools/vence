@@ -981,6 +981,151 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-633] 🔴 `auth_perfil_recuperado`/`auth_alta_sin_perfil` (T-434) llevan 5 días mudos mientras el síntoma que curaban sigue activo — HAY DINERO EN JUEGO, mismo patrón que motivó T-434
+
+- **Esfuerzo: larga.**
+- **Nace sin ficha** (título en `backlog_tasks`, cuerpo vacío hasta esta sesión) — investigada desde cero.
+
+#### Lo primero comprobado: NO es el bug de siempre — el código sigue vivo y wireado
+
+Antes de sospechar una regresión tipo *"construido pero no conectado"* (el propio patrón que
+costó caro varias veces en [T-434], 04/08), leí `lib/auth/authjs.ts` línea a línea: los tres
+`emitFireAndForget` de `auth_alta_sin_perfil` (×2), `auth_perfil_recuperado` y
+`auth_sesion_sin_email` **siguen en el callback `jwt`, sin condicionales raros que los saltarían**.
+No es un caso de "está en `main` pero nadie lo llama".
+
+#### Confirmado, medido, no de oídas: los 5 días mudos son reales
+
+```sql
+SELECT event_type, max(ts) ultimo, count(*) total FROM observable_events
+ WHERE event_type IN ('auth_perfil_recuperado','auth_alta_sin_perfil','auth_sesion_sin_email')
+ GROUP BY 1;
+```
+
+- `auth_perfil_recuperado`: último evento **2026-08-01T11:28:59Z** — y los 13 eventos que tiene
+  en TODA su historia son, según la propia ficha de T-434 del 01/08, corridas de simulación, no
+  curaciones reales.
+- `auth_sesion_sin_email`: último evento **2026-08-01T11:28:57Z** (mismo instante — misma sesión
+  de prueba), 4 eventos en total.
+- `auth_alta_sin_perfil`: **CERO eventos en toda su historia.** Nunca ha hablado, ni una vez.
+
+#### El síntoma agregado (`Usuario no existe`) sigue activo, con cifra real
+
+```sql
+SELECT date_trunc('day', ts), count(*) FROM observable_events
+ WHERE error_message ILIKE '%usuario no existe%' AND ts > now() - interval '10 days' GROUP BY 1;
+```
+39-511 eventos/día en los últimos 10 días, sin tendencia a cero. El **primer intento** de
+explicarlo (comparar el volumen diario de este síntoma contra `auth_identidad_ajena_descartada`,
+el mecanismo MÁS RECIENTE de T-434, desplegado el 05/08) parecía dar el visto bueno: los
+totales diarios eran parecidos (06/08: 39 "usuario no existe" vs 39 "descartada"). **Esa lectura
+era la trampa de siempre — contar por DÍA, no por USUARIO —, la misma que ya le costó cara a
+esta ficha el 01/08** ("0 no significa que nadie falló, significa que no se ejecuta"). Repetido
+usuario a usuario:
+
+```sql
+WITH afectados AS (SELECT DISTINCT user_id FROM observable_events
+   WHERE error_message ILIKE '%usuario no existe%' AND ts > now()-interval '48 hours' AND user_id IS NOT NULL),
+     curados AS (SELECT DISTINCT user_id FROM observable_events
+   WHERE event_type IN ('auth_identidad_ajena_descartada','auth_perfil_recuperado','sesion_fantasma_soltada')
+     AND ts > now()-interval '48 hours' AND user_id IS NOT NULL)
+SELECT count(*) FROM afectados WHERE user_id NOT IN (SELECT user_id FROM curados);
+```
+
+**De 49 usuarios afectados en 48 h, 29 (59 %) no tienen NINGUNA de las tres señales de cura
+existentes** (`auth_identidad_ajena_descartada`, `auth_perfil_recuperado`,
+`sesion_fantasma_soltada`) en la misma ventana. Ampliado a 7 días: **104 sin cobertura**, y entre
+ellos está `140ef91a` — el mismo `user_id` que motivó la ficha ORIGINAL de T-434 el 30/07
+("intentó contratar premium y recibió 404, 16 llamadas rechazadas"). Sigue sin arreglo, 7 días
+después.
+
+#### Dinero en juego, medido en las últimas 48 h (no solo histórico)
+
+```sql
+SELECT user_id, count(*), array_agg(DISTINCT error_message)
+  FROM observable_events WHERE endpoint='/api/stripe/create-checkout'
+   AND severity IN ('error','warn') AND ts > now()-interval '48 hours' GROUP BY 1;
+```
+
+Dos usuarios: `127063e1…` (12 eventos, `error_message` null — **es el `SMOKE_USER_ID` de los
+canarios de humo**, `canary-answer-premium.cjs` lo usa como cuenta premium de prueba; probable
+falso positivo, no un cliente real) y `3745afb0…` (2 eventos, "No autorizado"). **Ojo con el
+bloque "checkouts rechazados" del canario `perfil-sin-resolver`: cuenta CUALQUIER evento
+error/warn en ese endpoint, incluidos los `auth_identidad_ajena_rechazada` con `bloqueado=false`
+(que NO impiden pagar, solo avisan) y el tráfico de humo — sobrestima el daño real si no se
+filtra a mano.** No lo he arreglado (es un bloque de T-434 preexistente, fuera del alcance de
+esta ficha), lo dejo anotado.
+
+#### SOSPECHO, no lo demuestro: un patrón nuevo, distinto de "identidad ajena estable"
+
+Los 29 sin cobertura de 48 h no tienen una identidad ajena FIJA que limpiar de una vez (que es
+lo que `decidirIdentidadAjena` sabe arreglar). Mirando sus eventos:
+
+- **Mezclan `userIdVerified=true` y `=false` DENTRO DE LA MISMA SESIÓN** (ejemplo real,
+  `c428942f…`: 12 verificados y 10 no verificados en 182 eventos de 23 horas). No es "arrastra
+  el id viejo todo el rato": el estado FLIP-FLOPEA petición a petición.
+- Algunos traen `client_error` con `"Error: Session expired (no access_token)"` en
+  `createDetailedTestSession` — un caso que ni `decidirSesionFantasma` (sesión ausente) ni
+  `decidirIdentidadAjena` (dos identidades estables) contemplan: aquí HAY sesión, pero el
+  access_token expira A MITAD de uso sin que nada la refresque o la limpie.
+- Ninguno de estos 29 tocó `/api/stripe/create-checkout` en su ventana de 48 h — pero eso no
+  dice que no vayan a intentarlo: son gente navegando temario y tests durante horas con la
+  identidad rota, exactamente el perfil que en T-434 SÍ acabó intentando pagar días después.
+
+**NO tengo la causa exacta.** Candidatos sin comprobar: (a) el `access_token` expira y el
+refresco de Auth.js falla o se retrasa, dejando una ventana donde el cliente manda el id de una
+sesión ya inválida; (b) el mismo hueco de "pre-hydrate vs INITIAL_SESSION" que motivó
+`decidirIdentidadAjena`, pero con una variante donde el rastro NO es del localStorage legacy de
+Supabase sino de un token Auth.js caducado que el cliente sigue usando. Confirmarlo exige
+instrumentar el momento exacto en que `userIdVerified` pasa de `true` a `false` dentro de una
+misma sesión — no lo he hecho: toca código de identidad, y el propio historial de esta ficha
+(04/08: *"mi primera versión era demasiado agresiva... deslogueaba a premium sanos"*) es la
+prueba de que aquí un apaño sin dato de sobra sale caro. **No se toca sin decisión de Manuel.**
+
+#### Lo que SÍ hice (seguro, solo observabilidad, sin tocar comportamiento de auth)
+
+Los tres mecanismos de cura de T-434 nacieron cada uno en su momento, cada uno mirando su propio
+caso, y **nadie había comprobado si su UNIÓN cubre a todo el mundo que rebota**. Añadido un
+QUINTO bloque al canario existente `npm run canary:perfil-sin-resolver` (mismo patrón que sus
+otros cuatro bloques, ninguno nuevo aparte):
+
+- Núcleo puro `lib/auth/coberturaCuracion.cjs` (`sinNingunaCobertura`, 6 tests, con una
+  regresión NOMBRADA sobre `140ef91a` — si algún día aparece en `curados`, es la señal real de
+  que este hueco se cerró para él).
+- El bloque compara, en la ventana pedida, quién rebota contra quién tiene AL MENOS una de las
+  tres señales de cura, y lista los primeros 8 sin cubrir. Contribuye al código de salida del
+  canario (🔴 si hay alguno) — no está calibrado con un umbral de tolerancia (a diferencia de
+  los otros bloques, que sí tienen banda por persistencia): con la cifra actual (29 en 48h) no
+  hacía falta, y calibrar un umbral sin más datos habría sido inventarlo.
+- Verificado corriendo el canario real contra RDS (`DATABASE_URL=$VENCE_LECTOR_URL npm run
+  canary:perfil-sin-resolver -- --horas 48`): el bloque nuevo da **49 afectados / 81 con alguna
+  cura (las tres señales se solapan entre sí) / 29 sin ninguna**, coincide exacto con la
+  consulta manual de arriba.
+- Registrado en `toolRegistry.ts` (extensión de la entrada `perfil_sin_resolver` ya existente,
+  no una nueva).
+- **Esto NO arregla nada — hace el hueco observable**, que es lo único que un trabajador sin
+  permiso de escritura en identidad puede hacer con seguridad. Mismo patrón que T-434 ya usó
+  varias veces con éxito ("esto no arregla X, lo hace visible").
+
+#### Lo que NO he tocado, y por qué
+
+- **El bloque "checkouts rechazados" del canario, que sobrestima** (cuenta smoke-tests y
+  rechazos no bloqueantes como si fueran ventas perdidas). Es un defecto preexistente de T-434,
+  no de esta ficha; arreglarlo es tarea aparte y pequeña, la dejo anotada por si alguien la coge.
+- **Cualquier cambio a `AuthContext.tsx` o al callback `jwt`.** El patrón encontrado (flip-flop
+  verificado/no-verificado + tokens que expiran a mitad de sesión) necesita instrumentación
+  ADICIONAL para localizar el punto exacto antes de proponer un arreglo — y tocar esto sin eso
+  es exactamente el error que esta misma ficha cometió y corrigió tres veces entre el 31/07 y
+  el 05/08.
+
+**Capas:** 6 tests del núcleo puro + guardrail de `toolRegistry` (16/16) + suite completa de
+`__tests__/lib/auth/` (195/195, sin regresión) + `perfilSeReintenta.guardrail.test.ts` e
+`identidadAjenaSeDescarta.guardrail.test.ts` (34/34) + `robustez-push-guard.cjs` y
+`contexto-push-guard.cjs` en verde. Canario corrido en vivo contra RDS, no solo en local.
+
+**Relacionadas:** [T-434] (todo este subsistema), [T-245] (el arreglo original que no bastó),
+[T-353] (el cabo de seguridad de `/api/v2/user-stats` sin `verifyAuth`, ya trazado ahí).
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
