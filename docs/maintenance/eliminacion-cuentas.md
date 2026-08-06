@@ -48,6 +48,26 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 > 07:56:02 y **siguió estudiando 17 minutos**, con un test completo de 25 preguntas a las 08:00 y
 > otro a las 08:12. Se le escribió preguntando y no contestó. No se borró.
 >
+> 💸 **SI EL MOTIVO ES QUE NO QUIERE PAGAR, SE BORRA — aunque siga usando la app después de pedirlo
+> (Manuel, 06/08/2026).** Es la excepción a la excepción de arriba, y hay que leerla junto a ella:
+> «sigue usando la app» NO convierte por sí solo una solicitud en ambigua. Convierte en ambigua la
+> que **no tiene un motivo legible**. Cuando el journey enseña el motivo —chocar con el muro de
+> pago— la solicitud **sí** es inequívoca: la persona ha visto el precio y ha decidido. Ahí no se
+> pregunta, se borra por el flujo normal.
+>
+> **Cómo se distingue una de otra, con el journey delante:**
+> - **Ambigua → preguntar** (caso Sara, 04/08): pide la baja y **sigue estudiando con normalidad**
+>   (tests completos, respuestas guardadas). Nada en su recorrido explica por qué se iría.
+> - **Inequívoca → borrar** (caso Oscar, 06/08, feedback `e10bce9b`): se registra a las 17:45
+>   llegando de Google, y en cuatro minutos toca el candado de premium **tres veces** (`/test/por-leyes`
+>   y dos veces en `/leyes/lo-3-2007`) antes de pedir la baja a las 17:49. Que después volviera trece
+>   minutos y tocara el candado **una cuarta vez** no es «sigue estudiando»: es **seguir chocando con
+>   lo mismo**. Respondió 2 preguntas en toda su vida en la plataforma.
+>
+> **La pregunta que decide, y es una sola:** ¿lo que hace DESPUÉS de pedir la baja es *usar el
+> producto* o *volver a topar con el motivo por el que se va*? Lo primero es duda; lo segundo es
+> confirmación.
+>
 > ⚠️ **Esto NO dice que se pueda ignorar una solicitud clara.** Quien la pide y no da señales de
 > ambigüedad se borra por el flujo normal de este manual. La excepción es solo para las que ya
 > nacieron dudosas y se preguntaron.

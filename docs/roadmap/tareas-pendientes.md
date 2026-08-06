@@ -1061,33 +1061,6 @@ automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia 
 **Relacionadas:** [T-556] (misma oposición, defecto contrario, misma causa raíz), [T-518] (el Paso 2
 sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
 
-### [T-629] 🟠 [ABIERTO 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
-
-- **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
-- **ORIGEN.** Manuel preguntó cuál es el cuello de botella y si el sistema se puede mejorar. Medido por etapas el 06/08:
-
-  | etapa | nº | horas medias |
-  |---|---|---|
-  | 1 · sin coger (pool) | 203 | 166 h |
-  | 2 · en curso | 9 | 7 h |
-  | **3 · entregada, sin revisar** | **0** | — |
-  | 4 · revisada, sin mergear | 27 | 9 h |
-  | 5 · en `main`, esperando deploy | 10 | **69 h** |
-  | 6 · cerrada sin archivar | 3 | 111 h |
-
-  **La etapa 3 a cero es la prueba de que esto se arregla:** ayer era EL cuello (23 paradas, 15 h de media, la más vieja 41 h) y [T-486] la vació poniendo a los trabajadores a revisarse entre ellos.
-- **EL PROBLEMA, y no es cosmético.** La etapa 4 se presenta entera como «esperando tu decisión», y **no lo está**. Medido el mismo día: de 24, **6 no esperaban ninguna decisión** — su nota decía *«CÓDIGO COMPLETO… PERO NO SE HA PODIDO PUSHEAR»* ([T-628]). El panel pedía criterio sobre un fallo de infraestructura. Es el MISMO patrón que T-486 arregló un escalón más abajo: **una cola que parece esperar a una persona y en realidad espera a una máquina**. Mientras estén mezcladas, la cola no se puede vaciar por partes y se mira entera o no se mira.
-- **⚠️ EL CRITERIO OBVIO ES FALSO, y está medido antes de escribir nada.** Clasificar leyendo `review_note` (buscar «rama», «commit», «pusheada»…) sobre las 27 da **5 problemas · 7 falta mergear · 0 ya en main · 15 SIN CLASIFICAR**. Quince de veintisiete es no tener criterio. Es la lección que este repo ya aprendió tres veces —`snooze_until`, `due_at`, `review_requested_at`—: **una condición en prosa no es una condición**.
-- **EL DISEÑO QUE SÍ, derivando de HECHOS y no de texto** (mismo principio que la puerta del `done` de [T-392], que deriva «superficie servida» de los imports y no de un comentario):
-  - **`solo_mergear`** — existe en `origin` una rama que declara esa tarea con contenido no fusionado (`git cherry origin/main <rama>`). Es comprobable, no opinable.
-  - **`solo_cerrar`** — sus commits ya están en `main` por contenido y solo falta `done`. Ojo con la trampa medida hoy: **`git cherry` compara PARCHES**, así que una rama reescrita sigue marcando «único» aunque su contenido esté dentro (pasó tres veces en el rescate de `flota/w3`). El criterio tiene que ser el contenido, no el sha.
-  - **`criterio`** — `review_verdict='problemas'`, o toca superficie servida, o no hay rama que mirar. Aquí sí decide una persona.
-- **DÓNDE ENGANCHA (nada nuevo):** el mismo sitio que ya imprime «⚖️ N YA REVISADA(S)» en `npm run flota` y en `backlog.cjs list`. Núcleo puro compartido por los dos, como `lib/backlog/revision.cjs` — que es donde vive `esperaRevision`/`esperaDecision` y donde debe vivir esto, no en un módulo aparte.
-- **EL VALOR ES QUE SE PUEDA VACIAR POR PARTES:** «solo mergear» lo puede hacer una sesión seguida, sin pensar en cada una; «criterio» son las que de verdad hay que leer. Hoy son 27 indistinguibles y por eso llevan 9 h paradas.
-- **CAPAS al implementarlo:** núcleo puro con los tres cubos + los casos que hoy fallan clavados (las 6 de [T-628] tienen que salir `solo_mergear`, no `criterio`); y **medir la clasificación contra las 27 reales antes de darla por buena** — si vuelve a dejar un tercio sin clasificar, el criterio no vale, igual que el de prosa.
-- **NO automatizar el merge.** Juntar ramas saca choques que ninguna rama ve por separado — medido tres veces el 06/08 (un guardarraíl de paridad roto, una colisión de migraciones, un puntero a un fichero borrado). Esto solo separa la cola; mergear sigue siendo de una persona.
-- **Relacionadas:** [T-486] (vació la etapa 3 con este mismo patrón), [T-628] (las 6 que destaparon la mezcla), [T-619] (la etapa 5, el otro cuello y el más viejo), [T-392] (derivar de hechos y no de prosa).
-
 ### [T-628] 🔴 [ABIERTO 06/08] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
 
 - **Esfuerzo: rato.** Es una clave de despliegue y un `remote`; lo caro es no tenerla.
@@ -3140,6 +3113,24 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Lo que NO hay que hacer:** dejar de guardar la elección cuando no está construida. Es deliberado y es lo que permite medir la demanda; lo que falta es no dejar a la persona en el callejón.
 
 ### [T-560] 🟠 [ABIERTO 05/08] El panel de admin sigue con el `unnest` ciego a los scopes de «ley entera» que [T-451] arregló en el barrido
+
+> ⚠️ **06/08 (noche) — SU VEREDICTO DICE «ARREGLADO» Y EL ARREGLO NO EXISTE EN NINGÚN SITIO.**
+> Comprobado al estrenar la clasificación de [T-629]: la nota de revisión dice *«Arreglado: las
+> tres consultas de `lib/api/admin-contenido/queries.ts` … usaban `unnest(ts.article_numbers)` sin
+> guarda para NULL»*, pero en `origin/main` **las tres siguen exactamente igual** (líneas 159, 357
+> y 376: `JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true`, sin guarda). Y no hay
+> ninguna rama que lo traiga: `git branch -r | grep 560` no devuelve nada, y el único commit que
+> menciona la tarea es `7e44e2c8e docs(T-451, T-560)`, que precisamente dice que **el bug sigue**.
+>
+> **El trabajo no está perdido en una rama: no llegó a existir en ningún sitio alcanzable.** Por
+> eso la tarea NO se cierra pese a tener veredicto `ok` — cerrarla dejaría el panel de admin con
+> el mismo `unnest` ciego que la ficha describe, y con la ficha diciendo que se arregló.
+>
+> **Lo que esto enseña sobre [T-629], y hay que arreglarlo ahí:** el cajón «solo falta cerrar»
+> significa **«no hay rama que mergear»**, que NO es lo mismo que «está terminada». Aquí las dos
+> lecturas se separan: no hay nada que mergear *porque el arreglo no se hizo*. El nombre del cajón
+> induce a error y hay que afinarlo — o partirlo en «nada que mergear, y el código está» frente a
+> «nada que mergear, y tampoco está», que se distinguen comprobando el arreglo concreto.
 
 - **De dónde sale.** Verificando el cierre de [T-451] (que arregló `unnest(NULL)` en el barrido y hoy, ya desplegado, sube de 371 a **461 temas**), fui a mirar si el patrón sobrevivía en otro sitio. Sobrevive: **tres consultas** de `lib/api/admin-contenido/queries.ts` (líneas ~159, ~357 y ~376) hacen `JOIN LATERAL unnest(ts.article_numbers)` **sin la guarda**, así que un scope `NULL` —que en este proyecto significa LA LEY ENTERA— no produce ni una fila y desaparece del cálculo de cobertura por artículo.
 - **Lo que NO es un fallo, y por eso conviene decirlo:** el `unnest` de `health-sweep.cjs:1236` (artículos fantasma) lleva `WHERE ts.article_numbers IS NOT NULL` **a propósito y está bien**: un artículo fantasma es un número que figura en la lista, y un scope sin lista no puede tener ninguno. La regla no es «todo `unnest` está mal», es «¿qué significa aquí no tener lista?».
@@ -6432,7 +6423,9 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Relacionadas:** [T-340] (el patrón y la política), [T-352] (el cliente que manda un id inexistente).
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
-### [T-485] 🔴 [REABIERTO 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
+## Hechas
+
+### [T-485] ✅ [HECHA 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
 
 - **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
 - **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
@@ -6449,19 +6442,37 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
 - **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
 
-- **♻️ REABIERTA EL 06/08/2026 — la verificación que faltaba salió NEGATIVA.** Medido en `deploy_runs`:
-  **56 de 57 corridas tienen `lease_until` a NULL**, incluidas las tres de hoy (ids 67 `ok`, 68 `fail`,
-  69 en curso). El arriendo se tomó **una sola vez**, cuando se construyó, y no se ha vuelto a tomar:
-  la puerta que cruza máquinas **no está actuando**, y hoy lo único que protege es el `flock` de
-  `/tmp`, que es per-máquina — que es exactamente el hueco que esta ficha existe para cerrar.
-- **Se ve desde fuera, sin mirar la tabla:** `deploy-estado.cjs` dice a la vez *«🔴 el lock está
-  tomado»* y *«registro: libre»* con un deploy real corriendo. Las dos puertas no ven lo mismo.
-- **Dónde mirar:** `lib/deploy/candado.cjs` está escrito y testeado, pero hay que comprobar **quién lo
-  llama**: si `deploy-frontend.sh` / `deploy-backend.sh` / `deploy-cuando-verde.sh` lo invocan de
-  verdad, o si el arriendo quedó implementado sin cablear. Un candado que nadie toma es peor que
-  ninguno, porque el panel dice que estás protegido.
+- **✅ VERIFICADA EN PRODUCCIÓN EL 06/08/2026 — el candado FUNCIONA.** Medido sobre las corridas
+  **EN CURSO**: 1 de 1 con `lease_until`, y 0 de las cerradas conservándolo. Comprobado además que
+  los tres verbos se llaman de verdad: `deploy-frontend.sh` y `deploy-backend.sh` invocan `adquirir`,
+  renuevan cada 120 s en segundo plano y hacen `soltar` en el trap.
+- **⚠️ Y una lección de MEDIDA, que es lo que casi la reabre por error.** Ese mismo día la di por
+  rota con un dato que sonaba demoledor —*«56 de 57 corridas sin arriendo»*— y era **sesgo de
+  selección**: contaba filas **CERRADAS**, donde `lease_until` es NULL **por diseño** (`soltar`
+  cierra la corrida y un trigger libera el arriendo siempre). La pregunta correcta no es «¿cuántas
+  filas tienen arriendo?» sino «¿lo tienen las que están EN CURSO?». El segundo síntoma que parecía
+  confirmarlo —`deploy-estado` diciendo «el lock está tomado» y «registro: libre» a la vez— también
+  se disuelve al mirar el reloj: la corrida 68 acababa de fallar (19:50:03) y la 69 aún no había
+  arrancado (19:52:04). El registro decía la verdad.
 
-## Hechas
+
+### [T-632] ✅ [HECHA 06/08] Una revisión podía aprobar trabajo que no estaba a salvo: se verificaba un COMMIT, no que fuera alcanzable
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Manuel preguntó, al ver que [T-560] decía «arreglado» con el bug intacto: *«¿por qué dice arreglada y no está arreglada? ¿es un bug?»* y *«¿cómo se puede resolver que sea fiable?»*. La reconstrucción dio algo mejor que un culpable: **nadie mintió en ningún paso**.
+  1. `w1` hizo el trabajo de verdad — commit `db2c44e2c`: las tres consultas de `admin-contenido/queries.ts` con el helper canónico `articleInScope()`, más un test.
+  2. `w2` lo revisó **bien**: leyó el diff línea a línea, confirmó que el helper ya se usa en 6 ficheros más, y **reprodujo la medición contra RDS** en vez de fiarse del número. Veredicto `ok`, merecido.
+  3. `w1` **no pudo empujarlo** — sin credenciales de git ([T-628]).
+  4. Después su rama se movió (rebase o reset del siguiente turno) y el commit quedó **HUÉRFANO**: existe como objeto y **ninguna rama lo contiene**. A un `git gc` de desaparecer.
+- **EL HUECO NO ESTÁ EN EL TRABAJO NI EN LA REVISIÓN, SINO EN QUÉ SE REVISÓ:** un **commit**, no un **estado alcanzable**. Un commit que no cuelga de ninguna referencia publicada no es un entregable, es un objeto suelto — y revisarlo da una garantía que se evapora sola. La ficha acabó diciendo «arreglado», con veredicto `ok`, y el bug intacto en `main`.
+- **ARREGLO — en el punto de escritura del veredicto**, que es donde hay alguien delante y donde el dato es cierto (mismo principio que [T-620] con las esperas imposibles). `revisado` extrae los shas que **la propia entrega cita** —son los que el trabajador escribe para que otro los mire— y comprueba que al menos uno cuelgue de una rama remota.
+  - **Solo corta el `ok`.** Un `problemas` devuelve el trabajo a quien lo hizo, y ahí que el commit se haya perdido es **parte de lo que hay que contarle**, no un motivo para callarse.
+  - **Si no se puede comprobar, deja pasar** — y conviene decir por qué, para no confundirlo con [T-615]: esto es una comprobación auxiliar, no la autoridad. Dejar a la flota sin poder revisar porque el git local falle sería peor que el problema, y el daño no es irreversible (la tarea sigue ahí, revisable otra vez).
+  - **Basta con que UNO de los shas citados esté a salvo:** una entrega puede nombrar varios (el commit y el de una rama hermana) y exigirlos todos daría falsos noes.
+- **CAPAS:** 8 unit (`__tests__/backlog/trabajoASalvo.test.ts`), incluido que un sha de menos de 7 caracteres no se casa —si no, «added» o «facade» pasarían por commits— y que el motivo del bloqueo explica el DAÑO y no solo la regla. **Y la prueba que cuenta: fabricar un huérfano de verdad** (`git commit-tree`) y ver que da `alcanzable=false` y **rechaza**, frente a uno publicado que pasa. El caso original ya no sirve como prueba porque se rescató esa misma noche — por eso hizo falta fabricar uno.
+- **RESCATADO de paso:** el `db2c44e2c` de [T-560] estaba a punto de perderse; se empujó a `rescate/huerfano-T-560-db2c44e2c`.
+- **⏭️ QUEDA** la tercera capa que se propuso y no se hizo: un **barrido de huérfanos** que busque, en todas las entregas, commits citados que no sean alcanzables desde ningún remoto. T-560 se encontró de casualidad al estrenar [T-629]; es poco probable que sea el único.
+- **Relacionadas:** [T-560] (el caso que lo destapó), [T-628] (la causa: sin credenciales el trabajo no sale de la máquina), [T-577] (trabajo destruido entre sesiones), [T-629] (la clasificación que lo hizo visible), [T-486] (el ciclo de revisión de la flota).
 
 ### [T-629] ✅ [HECHA 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
 
