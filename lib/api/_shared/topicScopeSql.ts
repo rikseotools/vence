@@ -115,6 +115,53 @@ export async function positionHasScopeForLaw(
   return rows.length > 0
 }
 
+/**
+ * La MISMA pertenencia que {@link articleInScope}, pero en JS y sobre datos ya en memoria.
+ *
+ * Por qué existe (T-607, 06/08/2026): comprobar si lo que ACABAMOS de servir cae dentro del
+ * temario solo se puede hacer **en el momento de servir**. Medirlo después no vale — y no es una
+ * opinión: T-583 dio por fuga 73 servidas de las que 46 eran legítimas, y al re-medirlo bien
+ * quedaban 33 que tampoco lo demostraban, porque la consulta comparaba servidas del PASADO contra
+ * el scope y el vínculo de HOY. Si a una pregunta le cambian el `primary_article_id` o alguien
+ * recorta un `topic_scope`, una servida perfectamente correcta aparece «fuera de scope» meses
+ * después. La prueba: la pregunta del art. 9 de la Ley 7/2023 de Galicia figuraba servida en
+ * cuatro oposiciones donde el modo tema NO puede servirla, porque fija la ley en el WHERE.
+ *
+ * Función PURA a propósito: el juicio se puede probar sin BD, y el que sirve no paga una query.
+ *
+ * ⚠️ Espeja `articleInScope`, así que las dos tienen que decir lo mismo: `articleNumbers` a
+ * `null`/`undefined` es **toda la ley**, no «ninguno». Un array vacío es una fila inerte y no
+ * aporta nada (misma convención que el modo tema).
+ */
+export function fueraDeScope<T extends { lawId: string | null; articleNumber: string | null }>(
+  servidas: T[],
+  scope: Array<{ lawId: string | null; articleNumbers: string[] | null }>,
+): T[] {
+  // Índice por ley: `null` = toda la ley gana sobre cualquier lista de esa misma ley (una
+  // oposición puede escopar la ley entera en un tema y unos artículos sueltos en otro).
+  const porLey = new Map<string, Set<string> | null>()
+  for (const fila of scope) {
+    if (!fila.lawId) continue
+    if (fila.articleNumbers === null || fila.articleNumbers === undefined) {
+      porLey.set(fila.lawId, null)
+      continue
+    }
+    const actual = porLey.get(fila.lawId)
+    if (actual === null) continue // ya es "toda la ley": no se puede acotar
+    const set = actual ?? new Set<string>()
+    for (const n of fila.articleNumbers) set.add(n)
+    porLey.set(fila.lawId, set)
+  }
+
+  return servidas.filter((q) => {
+    if (!q.lawId || q.articleNumber === null || q.articleNumber === undefined) return false
+    if (!porLey.has(q.lawId)) return true // la ley entera está fuera del temario
+    const permitidos = porLey.get(q.lawId)
+    if (!permitidos) return false // `null` = toda la ley (y `undefined` no puede darse: has() lo cubre)
+    return !permitidos.has(q.articleNumber)
+  })
+}
+
 export function articleInPositionScopeExists(opts: {
   lawId: SqlExpr
   articleNumber: SqlExpr
