@@ -270,6 +270,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'tcae_galicia 19/3, auxiliar_administrativo_clm 12/9 — cada issue con el bloque de materia ' +
       'escrito en `findings`, listo para la cola de generación sin re-investigar.',
   },
+  generar_bloques_por_oposicion: {
+    titulo: 'Convertir a DATO las 131 getBlockInfo copiadas en los TopicContentView del temario',
+    ruta: 'scripts/temario/generar-bloques-por-oposicion.cjs',
+    estado: 'historico',
+    runbook: 'docs/maintenance/crear-nueva-oposicion.md',
+    notas:
+      'UN SOLO USO (T-611): generó `lib/temario/bloquesPorOposicion.ts` y el fixture ' +
+      '`__tests__/temario/fixtures/bloques-originales.json`. Se conserva como PRUEBA de cómo se ' +
+      'derivó el dato, no para re-ejecutarlo: desde el borrado de los originales ya no hay de dónde ' +
+      'derivar nada y el dato manda. Deriva del COMPORTAMIENTO (transpila cada getBlockInfo y la ' +
+      'ejecuta para n=1..999), no del texto, así que la migración es equivalente por construcción: ' +
+      '131/131 convertidas, 130.869 comprobaciones, 0 divergencias. GOTCHA que casi lo estropea: la ' +
+      'primera versión muestreó hasta 120 y perdió los Bloques II a VI de administrativo-estado ' +
+      '(numera 201..608) dando "0 divergencias", porque la comprobación medía sobre el MISMO rango ' +
+      'truncado que la generación. Por eso hay una segunda comprobación por otro camino —los ' +
+      'literales numéricos del código original, ignorando comentarios y textos, tienen que caber bajo ' +
+      'el techo— que es la que lo cazó. Al dar de alta una oposición NO se ejecuta esto: se añade su ' +
+      'fila a mano en bloquesPorOposicion.ts (el test de cobertura te para si falta).',
+  },
   sim_materias_ganadas: {
     titulo: 'Medir qué materias GANA un temario al reescribir sus epígrafes al literal, y si las servimos',
     ruta: 'scripts/temario/sim-materias-ganadas.cjs',
