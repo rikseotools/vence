@@ -1722,6 +1722,35 @@ export class ContentHealthSweepService {
       );
     marcar('audit_note_explanation', anRows.length);
 
+    // ── CONTENIDO: la prosa de auditoría también está DENTRO del temario (T-253) ──
+    // Mirror INLINE de lib/health/articleAuditNote.cjs (MANTENER EN SYNC — content-sweep-parity
+    // compara el VALOR de ARTICLE_AUDIT_NOTE_RE_SRC_SQL, no el texto). Hermano de
+    // audit_note_explanation, un escalón más grave: la nota está en el ARTÍCULO (la teoría que
+    // el opositor lee directamente en /temario), no en la explicación de una pregunta suelta.
+    // El sujeto "afirmación" es obligatorio a propósito — sin él, "también es incorrecta"
+    // (Access 365: una trampa de examen explicada, contenido legítimo) da falso positivo. Y el
+    // límite de palabra es `\y`, NO `\b`: en Postgres ARE `\b` no es límite de palabra (medido:
+    // `'esta es' ~* '\besta'` → false), así que sin `\y` el patrón casaría "esta" dentro de
+    // "respuesta". Detalle y calibración completa (17 artículos, 45 apariciones, 8.410
+    // preguntas colgando, medido 06/08/2026) en el núcleo.
+    const ARTICLE_AUDIT_NOTE_RE_SRC_SQL =
+      '\\y(esa|esta|dicha|tal)\\s+afirmaci[oó]n\\s+(es|resulta)\\s+(\\*\\*)?incorrect';
+    const aanRows = (await this.db.execute(sql`
+      SELECT a.id FROM articles a JOIN laws l ON l.id = a.law_id
+       WHERE a.is_active = true AND l.is_active = true AND a.content ~* ${ARTICLE_AUDIT_NOTE_RE_SRC_SQL}
+       LIMIT 50
+    `)) as unknown as Array<{ id: string }>;
+    if (aanRows.length)
+      add(
+        'content',
+        'warn',
+        null,
+        'article_audit_note',
+        `${aanRows.length}${aanRows.length >= 50 ? '+' : ''} artículo(s) activos con la nota de auditoría incrustada en la TEORÍA (contrastar con la fuente oficial y revisar las preguntas del artículo)`,
+        { count: aanRows.length, sample: aanRows.slice(0, 15).map((r) => r.id) },
+      );
+    marcar('article_audit_note', aanRows.length);
+
     // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
     // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido no

@@ -571,6 +571,43 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
   })
 })
 
+describe('mirror del detector article_audit_note (núcleo ↔ backend @Cron) [T-253]', () => {
+  const core = require('@/lib/health/articleAuditNote.cjs')
+
+  /** Lee `const ARTICLE_AUDIT_NOTE_RE_SRC_SQL = '…' + '…';` del backend y lo evalúa. */
+  function evalArticleAuditNoteRe(src: string): string {
+    const m = src.match(/const ARTICLE_AUDIT_NOTE_RE_SRC_SQL\s*=\s*([\s\S]*?);\n/)
+    if (!m) throw new Error('no se encontró const ARTICLE_AUDIT_NOTE_RE_SRC_SQL en el fuente')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el patrón del backend es IDÉNTICO al del núcleo (mismo valor, no solo mismo texto)', () => {
+    expect(evalArticleAuditNoteRe(BACKEND)).toBe(core.ARTICLE_AUDIT_NOTE_RE_SRC_SQL)
+  })
+
+  it('el patrón usa \\y (límite de palabra en Postgres ARE), NO \\b — \\b no lo es ahí', () => {
+    expect(core.ARTICLE_AUDIT_NOTE_RE_SRC_SQL).toMatch(/^\\y/)
+    expect(evalArticleAuditNoteRe(BACKEND)).toMatch(/^\\y/)
+  })
+
+  it('los DOS gemelos aplican el patrón sobre articles.content, no sobre explanation', () => {
+    expect(SCRIPT).toMatch(/a\.content ~\* \$/)
+    expect(BACKEND).toMatch(/a\.content ~\* \$\{ARTICLE_AUDIT_NOTE_RE_SRC_SQL\}/)
+  })
+
+  it('el CLI CONSUME el patrón del núcleo, no lo redeclara', () => {
+    expect(SCRIPT).toContain("require('../lib/health/articleAuditNote.cjs')")
+    expect(SCRIPT).toContain('ARTICLE_AUDIT_NOTE_RE_SRC_SQL')
+    expect(SCRIPT).not.toMatch(/const ARTICLE_AUDIT_NOTE_RE_SRC_SQL\s*=/)
+  })
+
+  it('los dos gemelos emiten el kind', () => {
+    expect(hasKind(SCRIPT, 'article_audit_note')).toBe(true)
+    expect(hasKind(BACKEND, 'article_audit_note')).toBe(true)
+  })
+})
+
 // ── El gemelo CLI tiene que PARSEAR ────────────────────────────────────────────
 // La paridad de arriba compara TEXTO: busca el literal del kind en el fichero. Eso no se entera
 // de si el fichero es JavaScript válido, y por eso el 29/07 se descubrió que `health-sweep.cjs`
