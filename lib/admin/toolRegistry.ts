@@ -376,7 +376,15 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'construido → acotar no puede dar 0) y **control** (oposición con temario → acotar TIENE que ' +
       'recortar); sin el control, un "degradar siempre" pasaría la prueba y estaríamos sirviendo ' +
       'materia fuera de programa, que es el defecto opuesto y peor. Los fixtures se descubren de la ' +
-      'BD, no se clavan, para que siga valiendo cuando esas oposiciones tengan temario.',
+      'BD, no se clavan, para que siga valiendo cuando esas oposiciones tengan temario. ' +
+      '**TERCER caso desde [T-623]: que la petición QUEPA.** Los dos anteriores preguntan si el ' +
+      'número es correcto; éste pregunta algo anterior — si la petición llega siquiera. La selección ' +
+      'de artículos viaja DENTRO de la URL como JSON y al url-encodificar se triplica, así que a ' +
+      'partir de ~8 KB nginx corta con 414/494 y devuelve HTML; el cliente lo parsea como JSON, ' +
+      'revienta, y la pantalla se queda igual: el usuario lo vive como que la app se ha colgado (lo ' +
+      'reportó una usuaria, no una alerta). Por eso la simulación lee el cuerpo como TEXTO antes de ' +
+      'parsear: así dice «el servidor devolvió HTML, HTTP 414, URL de N bytes» en vez del críptico ' +
+      '«Unexpected token \'<\'» que ve el usuario.',
   },
   audit_verificacion_cosmetica: {
     titulo: 'Preguntas que figuran VERIFICADAS apoyándose solo en un pase cosmético',
