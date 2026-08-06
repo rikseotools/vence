@@ -606,3 +606,35 @@ describe('a quién y a qué se reparte', () => {
     delete require.cache[path]
   })
 })
+
+// ── EL ENCARGO NO PUEDE CONTRADECIRSE A SÍ MISMO ────────────────────────────────────────────
+// Tenía a la vez la regla dura «NO pushees a main» y el paso «git push origin HEAD:main». Un
+// trabajador que lee las dos elige una, y no hay forma de saber cuál. Salió al preguntarse por
+// qué el trabajo se quedaba en el disco: la instrucción de empujar existía y era la equivocada.
+describe('el encargo dice UNA sola cosa sobre empujar y cerrar', () => {
+  const ENC = require(require('path').join(process.cwd(), 'lib', 'flota', 'encargo.cjs'))
+  const texto = (puedeDesplegar: boolean) =>
+    ENC.encargo({ trabajador: 'w1', tarea: { id: 'T-1', title: 'prueba' }, puedeDesplegar })
+
+  it('no manda empujar a main, que es lo que su propia regla dura prohíbe', () => {
+    for (const t of [texto(false), texto(true)]) {
+      expect(t).toMatch(/NO pushees a main/)
+      expect(t).not.toMatch(/push origin HEAD:main/)
+    }
+  })
+
+  it('manda empujar la rama PRONTO, no al final', () => {
+    for (const t of [texto(false), texto(true)]) {
+      expect(t).toMatch(/git push origin HEAD\b/)
+      expect(t).toMatch(/NO EXISTE|no existe/)
+    }
+  })
+
+  it('exige cerrar antes de terminar el turno, con la comprobación de que no queda nada suelto', () => {
+    for (const t of [texto(false), texto(true)]) {
+      expect(t).toMatch(/TU TURNO NO TERMINA SIN CERRAR/)
+      expect(t).toMatch(/--not --remotes/)
+      expect(t).toMatch(/COGIDA POR NADIE/)
+    }
+  })
+})
