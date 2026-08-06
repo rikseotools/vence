@@ -11490,6 +11490,83 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Urgencia real, matizada:** el plazo de **solicitud** cierra el 5 de agosto, pero el **examen** cae dentro de meses, así que la ventana de venta NO se cierra esa semana. Lo que sí conviene es tenerla antes de que la gente que se inscriba empiece a buscar dónde preparársela.
 - **Demanda medida:** **1 usuario** la ha pedido (Chema, free, prepara Policía Municipal de Madrid). No hay ninguno con esa oposición fijada en su perfil. Es poca señal — pero 196 plazas con inscripción abierta y cero cobertura nuestra es el otro lado de la balanza.
 
+- **▸ SESIÓN w1 (06/08): la ficha estaba MUY desfasada — la oposición NO está "catalogada y vacía",
+  lleva construida (temario+scope+rutas) desde ANTES de esta ficha, ya está `is_active=true` y
+  `audit:oposicion` pasa 0❌/0🟡. El trabajo real que queda es distinto del que describe la ficha.**
+  - **MEDIDO, no de la ficha:** `oposiciones.is_active=true`, `coverage_level='con_landing'`,
+    `created_at=2026-06-01` (la fila lleva viva desde JUNIO, antes incluso del 28/07). **15 topics**
+    con epígrafe + `topic_scope`, rutas de temario/test, registros en `OnboardingModal`/perfil,
+    `CcaaFlag` resuelto. `npm run audit:oposicion mecanico-conductor-estado` → **0 ❌ / 0 🟡** (con el
+    workaround de conectividad de T-197 más abajo — sin él, falsos 🟡 por un corte de red, no de
+    datos). El nombre ya está resuelto: se llama *"Conducción de Vehículos de Transporte por
+    Carretera del Parque Móvil del Estado"*, no "Mecánico-Conductor" — la duda de la ficha original
+    ya no aplica.
+  - **El reparto real de temas — esto SÍ es la información nueva y útil:** de los 15 temas, **5 están
+    `disponible=true`** y sirven contenido (T1 CE, T2 Gobierno/Admón., T3 Régimen del personal, T4
+    Contrato de trabajo, T5 Igualdad — todos reutilizan banco genérico ya existente, 63 a 1.520
+    preguntas cada uno). **Los OTROS 10 — el núcleo real de esta oposición, conducción/mecánica/vía/
+    señales/accidentes — están `disponible=false`**, con 0-42 preguntas en el scope según el tema
+    (T9 "La vía" y T10 "La velocidad": **0** preguntas; T11 "Maniobras de circulación": 42, el
+    mejor cubierto). `disponible=false` es la razón por la que `audit:oposicion` NO los marca como
+    fallo — el sistema los tiene correctamente APAGADOS mientras no tengan contenido real, no hay
+    incidente de usuario viendo temas vacíos hoy. Esto confirma lo que la propia ficha ya anticipaba
+    ("reutilizaremos mucho menos banco del habitual") con la cifra exacta: **es la parte que falta
+    de verdad, y es grande.**
+  - **✅ La materia prima YA está importada — el trabajo que queda es SOLO generar preguntas, no
+    traer texto legal.** Las 4 leyes que escopan esos 10 temas (RGC 171 arts, RD 2822/1998 72 arts,
+    RD 818/2009 108 arts, Ley de Tráfico 145 arts — 496 artículos activos, prácticamente todos con
+    `content` real) **ya están en BD**, con texto verificado. No hace falta el paso más arriesgado
+    (importar/verificar un temario nuevo desde cero); hace falta escribir preguntas desde texto ya
+    verificado + el pipeline de doble auditoría ciega habitual, tema a tema, empezando por los de
+    más plazas/demanda relativa (T9/T10 a 0 son los más urgentes: un tema `disponible=false` con
+    epígrafe visible pero sin nada que estudiar es peor que no tenerlo). **No lo he intentado en esta
+    sesión**: son ~10 temas de contenido técnico (seguridad vial, mecánica, normativa de tráfico)
+    que exigen la misma verificación cuidadosa que cualquier generación — no es una tarea de una
+    sesión, es la que justifica el esfuerzo `sesion_propia` que la ficha original ya preveía.
+  - **🚨 HALLAZGO REAL, verificado contra el BOE en vivo, no contra la ficha: el plazo de
+    inscripción YA CERRÓ y el sistema sigue diciendo que está abierto.** La ficha decía "~5 de
+    agosto" como estimación; leí BOE-A-2026-15052 directamente hoy (06/08) y confirma: Resolución
+    de 8 de julio de 2026, BOE núm. 167 de 10/07/2026, plazo de **20 días hábiles desde el 11/07** →
+    cierra **el 4 de agosto de 2026** — hace **2 días**. En BD, `oposiciones_ssot.estado_proceso`
+    sigue en `'inscripcion_abierta'`. Es el patrón exacto de `convocatoria_estado_incoherente`
+    (`docs/runbooks/verificar-convocatorias.md`): el estado contradice su propia fecha. **No es
+    grave para la venta** (el examen cae meses después, la ficha ya lo decía), pero SÍ es un dato
+    incorrecto que estamos mostrando si algo en la landing lo refleja.
+  - **Y de paso, tres campos que la ficha decía "ya volcados el 28/07" están en realidad NULL,
+    medido con SELECT directo (no con lo que dice la ficha):** `boe_reference` e
+    `inscription_deadline` son `NULL` tanto en `oposiciones` como en `convocatorias`/
+    `oposiciones_ssot` — no se volcaron, o se perdieron. `programa_url` SÍ está poblado y correcto
+    (`hacienda.gob.es/pme/20260713basesconvocatoria.pdf`). Las **3 filas de `convocatoria_hitos`**
+    existentes tienen **`tipo=null`** (sin clasificar) y **`cita_literal=null`** (sin fuente —
+    exactamente lo que vigila `hito_registro_sin_fuente`); ninguna representa el cierre del plazo.
+    **Valores correctos, verificados contra el BOE hoy, listos para quien tenga escritura:**
+    - `boe_reference`: `BOE-A-2026-15052` (o el formato canónico que use el resto del catálogo)
+    - `inscription_deadline`: `2026-08-04`
+    - `estado_proceso`: pasar de `inscripcion_abierta` a lo que corresponda tras el cierre (revisar
+      convención del catálogo — no lo cambio yo sin ver cómo lo hacen fichas ya cerradas, es
+      decisión de una sesión con escritura + criterio sobre esa convención)
+    - Hito nuevo: `tipo` de cierre de plazo, `fecha=2026-08-04`, `origen='registro'`,
+      `cita_literal`: *"La presentación de solicitudes se realizará en el plazo de 20 días hábiles
+      contados a partir del día siguiente al de la fecha de publicación"* (BOE-A-2026-15052,
+      Resolución de 8 de julio de 2026), `url` al propio BOE.
+  - **🔧 GOTCHA DE CONECTIVIDAD, ya diagnosticado por otra sesión (T-197), reproducido aquí:**
+    `audit-oposicion-completa.ts` (y cualquier script que use `getDb()`/`db/client.ts`, paquete
+    `postgres`/porsager) no conecta con `VENCE_LECTOR_URL` tal cual la recibe un trabajador — sin
+    `?sslmode=require` en la URL, `postgres` conecta en plano y RDS lo rechaza. Workaround
+    verificado, sin tocar código: `DATABASE_URL="${VENCE_LECTOR_URL}?sslmode=require"`. Con eso el
+    `audit:oposicion` de arriba pasó de 5 falsos 🟡 a 0/0 limpio. No he tocado `db/client.ts`
+    (arreglo de fondo, alto radio de impacto — es infraestructura compartida por toda la app, y ya
+    está siendo trackeado en la ficha de T-197): fuera de alcance de esta tarea, correcto dejarlo
+    donde ya se está siguiendo.
+  - **Queda, en orden — y ninguno de los dos primeros es para un trabajador:** (1) aplicar los
+    valores de convocatoria de arriba (boe_reference, inscription_deadline, estado_proceso, hito de
+    cierre con cita); (2) generar el contenido de los 10 temas `disponible=false` — el trabajo
+    grande, con el texto legal ya importado y verificado, empezando por T9/T10 (0 preguntas); (3)
+    tras cada tema, el ciclo habitual `verify:scope`/refresh MV/flip a `disponible=true` solo con
+    contenido auditado.
+  - **Relacionada:** [T-197] (el mismo gotcha de conectividad, con más detalle y 5 scripts
+    reproducidos), [T-140] (población de `law_sections` — NO aplica aquí, las 4 leyes ya la
+    tienen).
 
 ### [T-233] 🟡 [ABIERTO 28/07] 105 explicaciones con la tabla APLANADA: en pantalla dicen algo distinto de lo que guarda la BD
 - **Qué ve el opositor:** la explicación se escribió como tabla usando `|` pero **sin la línea separadora** (`|---|---|`), así que markdown no la reconoce como tabla y **colapsa las filas en un solo párrafo**. El dato queda pegado a la etiqueta equivocada. Caso real (impugnación `bb487ee7`, usuaria Laura Zurdo, Outlook 365): la explicación guardaba correctamente `Crear un contacto | Ctrl+Mayús+C` y `Crear una convocatoria de reunión | Ctrl+Mayús+Q`, pero al renderizarse se leía *"…Ctrl+Mayús+**C** Crear una convocatoria de reunión…"*. Ella lo reportó como error de contenido, y tenía razón en lo que veía.
