@@ -1026,6 +1026,7 @@ construcción.
 [T-596] (el codemod sobre las 131 copias — el precedente que esta ficha existe para no repetir),
 [T-073] (el CTA de test del temario servía la ley entera; se arregló centralizando en `LawTestCTA`,
 mismo patrón un escalón más abajo), [T-130] (registro de herramientas: comprobar antes de construir).
+
 ### [T-613] 🔴 [ABIERTO 06/08] Los drenadores de tablas gigantes borran 50k por noche en vez de 2,5M — y dicen que 0, así que llevan semanas en verde
 
 - **Esfuerzo: sesion_propia.** Toca tres servicios del backend, uno del frontend, y lo que hace falta de verdad es la capa que impide que vuelva a pasar en silencio.
