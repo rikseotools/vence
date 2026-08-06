@@ -81,6 +81,12 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--selftest')) return selftest();
 
+  // Preferir VENCE_LECTOR_URL (T-571, redescubierto en T-518): esta query es un SELECT de solo
+  // lectura sobre `topics`, exactamente lo que el rol lector puede leer. DATABASE_URL en un
+  // trabajador de la flota es `vence_coordinacion` (4 tablas de coordinación, NINGUNA de negocio,
+  // por diseño — T-539), así que usarla aquí da `permission denied for table topics` SIEMPRE, para
+  // cualquier trabajador. Sin cambio para sesiones humanas: casi nunca tienen VENCE_LECTOR_URL en
+  // su `.env.local`, así que caen a DATABASE_URL igual que antes. El orden vive en `pickDbUrl`.
   const DB_URL = pickDbUrl(process.env);
   if (!DB_URL) { console.error('❌ ni VENCE_LECTOR_URL ni DATABASE_URL configurados'); process.exit(2); }
   const postgres = require('postgres');

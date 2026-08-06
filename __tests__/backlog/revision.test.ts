@@ -237,6 +237,28 @@ describe('al retomar una devuelta, el veredicto no se pierde', () => {
     expect(REV.retomarTrasProblemas(entregada())).toBeNull()
     expect(REV.retomarTrasProblemas(null)).toBeNull()
   })
+
+  // T-518 (06/08/2026): esta copia es la ÚNICA que sobrevive — al retomar, `review_findings`
+  // se pone a NULL. Estaba cortada a 800 caracteres y los veredictos reales miden 2.400-4.600,
+  // así que retomar destruía el 70-85% del trabajo de quien revisó. Y la cola es justo donde
+  // están los problemas: un veredicto empieza por lo que está bien. Le pasó a T-443 y a T-518,
+  // las dos cortadas a 843 caracteres exactos (43 del prefijo + 800), en mitad de la frase.
+  it('conserva el veredicto ENTERO, por largo que sea (no lo recorta)', () => {
+    const largo =
+      'Empiezo por lo que está bien: ' + 'x'.repeat(3000) + ' PERO los problemas son: FALTA EL PUNTO 6.'
+    const r = REV.retomarTrasProblemas(revisada({ review_verdict: 'problemas', review_findings: largo }))
+    expect(r.nota).toContain(largo)
+    expect(r.nota).toContain('FALTA EL PUNTO 6')      // la COLA, que es lo que se perdía
+    expect(r.nota.length).toBeGreaterThan(3000)
+  })
+
+  it('el recorte vive en la IMPRESIÓN, no en el dato', () => {
+    // Lo que no puede inundar la pantalla es la línea de `list`; el dato guardado va entero.
+    const largo = 'y'.repeat(2000)
+    const task = revisada({ review_verdict: 'problemas', review_findings: largo })
+    expect(REV.lineaRevisada(task, AHORA)!.length).toBeLessThan(700)
+    expect(REV.retomarTrasProblemas(task)!.nota.length).toBeGreaterThan(2000)
+  })
 })
 
 describe('la línea de la ya revisada enseña el VEREDICTO (antes no se enseñaba en ningún sitio)', () => {

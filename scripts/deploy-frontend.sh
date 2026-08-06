@@ -86,7 +86,8 @@ SHA=$(printf '%s' "$FULL_SHA" | cut -c1-8)   # 8 chars EXACTOS: debe casar con /
 TAG="deploy-${SHA}"
 IMG="${REG}:${TAG}"
 [ -e /proc/self/fd/9 ] && { : >&9; echo "frontend $SHA pid=$$ $(date -u +%FT%TZ)" >&9; } || true
-echo "→ se desplegará origin/main = ${SHA} (el árbol de trabajo no se toca)"
+# El registro tiene que NOMBRAR lo que se despliega: con DEPLOY_SHA ya no es la punta ([T-619]).
+echo "→ se desplegará ${DEPLOY_SHA:+(ancestro elegido) }${DEPLOY_SHA:-origin/main} = ${SHA} (el árbol de trabajo no se toca)"
 
 # ── DEJAR CONSTANCIA PARA LAS DEMÁS SESIONES (T-404) ─────────────────────────
 # El lock ya serializa, pero es INVISIBLE hasta que lo intentas: nadie podía preguntar «¿hay
