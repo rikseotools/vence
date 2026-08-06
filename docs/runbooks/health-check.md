@@ -160,6 +160,53 @@ entregadas, **488 tienen token (100%)**; si eso baja, el discriminante dejó de 
   hacerlo (decisión de Manuel, 03/08): la persona tiene la respuesta en la campana y en
   `/soporte`. Lo que toca es averiguar por qué se perdió.
 
+### 0.quater — `subscription_cancel_error_burst`: cuenta PERSONAS antes de culpar a Stripe (T-601, 06/08/2026)
+
+Esta alerta nombra el **endpoint** («8 errores en `/api/stripe/cancel` en 15 min»), así que se lee
+sola como *«Stripe degradado o regresión nuestra»*. **Puede ser exactamente lo contrario: UNA
+persona pulsando cancelar 16 veces porque está atrapada.**
+
+Pasó el 05/08. Detrás de ese burst había un cliente que llevaba **19 días** intentando comprar —6
+suscripciones `incomplete`, 11 checkouts `unpaid`, ni un cobro— y que al querer limpiarlo se
+topaba con que Stripe **se niega a cancelar mientras haya un checkout abierto**. Ni compraba ni
+deshacía. La alerta describía el síntoma y escondía el problema: dinero que no entra.
+
+**La primera pregunta es cuántos usuarios DISTINTOS, no cuántos errores:**
+
+```sql
+SELECT user_id, COUNT(*) FROM observable_events
+WHERE event_type='subscription_cancel_error' AND ts > NOW() - INTERVAL '1 hour'
+GROUP BY user_id ORDER BY 2 DESC;
+```
+
+| Usuarios distintos | Qué es | Qué hacer |
+|---|---|---|
+| **1** | alguien atrapado comprando | seguir abajo — **no** es un incidente de plataforma |
+| **varios** | ahí sí: Stripe degradado o regresión | `status.stripe.com` + mirar el último deploy |
+
+**Si es una sola persona:**
+
+```bash
+npm run stripe:compras-atascadas            # solo LEE: quién lleva días sin poder pagar
+npm run stripe:compras-atascadas -- --rescatar cus_XXXX   # expira sus checkouts abiertos
+```
+
+- El bloqueo **ya se arregla solo** desde T-601 (`/api/stripe/cancel` expira el checkout y
+  reintenta), y cada rescate emite `subscription_checkout_expirado_para_cancelar` → alerta
+  `compra_atascada_checkout_expirado`, **umbral 1**. Esa sí nombra el problema.
+- ⚠️ **El comando ve a quien la alerta NO puede ver:** la alerta solo se entera de quien *intenta
+  cancelar*. Quien está atascado y calla no emite nada.
+- **El corte descarta el abandono, y sin eso no sirve:** medido sobre 60 días y las dos cuentas,
+  8 clientes nunca llegaron a pagar pero **6 no tienen ni un cargo** (abrieron el checkout y se
+  fueron: embudo normal). Exigir ≥1 cargo **fallido** deja **2**, los reales.
+- **Escribirle a la persona necesita el OK de Manuel**, como todo lo que sale hacia un usuario.
+
+**Lo que se encontró y NO era el bug:** los 2 atascados morían en **Link** (el monedero de
+Stripe), con el banco rechazando la tarjeta guardada una y otra vez. Link se autorrellena al
+reconocer el correo, así que reintentaban con la MISMA tarjeta mala sin saberlo. Por personas
+distintas y 90 días, Link pierde al **11%** (7) frente al **3%** de tarjeta (9) — pero **trae 58
+clientes que sí pagan**, así que no se toca sin decidirlo a propósito.
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:

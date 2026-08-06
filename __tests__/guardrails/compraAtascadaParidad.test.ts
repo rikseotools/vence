@@ -97,6 +97,18 @@ describe('paridad del rescate de compra atascada (T-601)', () => {
     expect(rescate).toMatch(/sessions\.expire/)
   })
 
+  it('las DOS alertas apuntan al runbook, y ese apartado existe', () => {
+    // Una alerta sin procedimiento es cómo se leyó mal la primera vez. Y un runbook citado que
+    // no existe es peor que ninguno: manda a alguien a buscar humo en mitad de un incidente.
+    const runbook = readFileSync(join(raiz, 'docs/runbooks/health-check.md'), 'utf8')
+    expect(runbook).toContain('### 0.quater')
+    expect(runbook).toContain('stripe:compras-atascadas')
+    for (const nombre of ['RULE_COMPRA_ATASCADA_CHECKOUT', 'RULE_SUBSCRIPTION_CANCEL_ERROR_BURST']) {
+      const i = reglas.indexOf(nombre)
+      expect(reglas.slice(i, i + 3500)).toContain('health-check.md §0.quater')
+    }
+  })
+
   it('la alerta que ENGAÑABA sigue mandando contar usuarios distintos', () => {
     // `subscription_cancel_error_burst` nombra el endpoint y por eso se leyó como incidente de
     // Stripe. Si alguien limpia ese aviso, se pierde la única pista de que puede ser UNA persona.
