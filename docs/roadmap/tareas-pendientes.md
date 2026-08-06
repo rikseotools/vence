@@ -981,6 +981,67 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
+
+**Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
+*«El Título III no entra en el temario.»* Tenía razón exacta.
+
+**Verificado contra la fuente oficial** — Anexo II «Programa», punto 3, de la Resolución de
+16/02/2026 de la Universidad de León (**BOE-A-2026-4150**), copiado verbatim:
+
+> *«Ley Orgánica 3/2007…: Título I: Principios de igualdad y la tutela contra la discriminación.
+> Título II: Políticas públicas para la igualdad. Título IV.: Derecho al trabajo en igualdad de
+> oportunidades. Título V: Principio de igualdad en el empleo público (capítulos I, II y III).
+> Título VIII: Disposiciones organizativas.»*
+
+El programa pide **cinco títulos**. El `topic_scope` del Tema 3 del Bloque I tenía la **ley entera,
+78 artículos**. La pregunta impugnada cuelga del **art. 40**, que es Título III.
+
+#### Alcance, medido (no estimado)
+
+| Fuera del programa oficial | Preguntas activas |
+|---|---|
+| Título III, arts 36-41 (Igualdad y medios de comunicación) | **44** |
+| Título V caps IV-V, arts 65-68 (FFAA y Fuerzas y Cuerpos de Seguridad) | 13 |
+| Título VI, arts 69-72 (acceso a bienes y servicios) | 14 |
+| Título VII, arts 73-75 (responsabilidad social de las empresas) | 10 |
+| **TOTAL** | **81** |
+
+**13 usuarios** tienen esta oposición elegida. Tras el recorte quedan **705 preguntas dentro** de
+programa, así que el tema no se queda seco — el recorte no tenía coste.
+
+#### Hecho ya (06/08, al resolver la impugnación)
+
+1. **Paso 1 del Tema 3**: su epígrafe estaba **parafraseado** («Títulos I, II, IV, V y VIII»).
+   Sustituido por el **literal del BOE** con `source_url` y nota de sourcing → `verified_literal`.
+   El boletín no parsea (`fetch=html`, `temario_parseado=0/21`), así que la literalidad se acredita
+   a mano con `--fuente-manual`, que queda anotado.
+2. **Scope recortado 78 → 61 artículos** (los 17 de la tabla). El **Título Preliminar (1-2) se
+   CONSERVA**: los temarios lo incluyen como base sin nombrarlo y el runbook lo marca como falso
+   positivo conocido.
+3. Caché `temario` + `test-counts` invalidada (paso aparte que §7.2 marca como obligatorio).
+4. Comprobado después: el gate devuelve `tema_no_localizado` para esa pregunta — **ningún tema suyo
+   la sirve ya**.
+
+#### Lo que queda, y por qué es una ficha y no un apartado del cierre
+
+**18 de los 21 temas de esta oposición siguen en `never_sourced`.** O sea: lo arreglado es el tema
+por el que alguien se quejó, y los otros 18 están exactamente igual de sin contrastar que estaba
+éste. Con un scope «ley entera» como el que había, cada uno es un candidato a servir materia fuera
+de programa — y solo nos enteramos cuando un usuario lo nota.
+
+**Esto ya pasó aquí:** [T-556] (05/08, HECHA) arregló el defecto CONTRARIO en esta MISMA oposición
+— allí FALTABAN los arts. 2-4 de la Ley 19/2013 (15 preguntas sin servir) — y su propia ficha dejó
+escrito que 24 de 25 temas seguían `never_sourced`. Se cerró el tema de la queja y los demás
+quedaron igual. **Dos usuarios distintos, dos quejas opuestas, la misma causa raíz sin cerrar.**
+
+**El trabajo:** Paso 1 de los 18 temas restantes contra `BOE-A-2026-4150` (el documento ya está
+identificado y es uno solo para toda la oposición), y después Paso 2 del scope tema a tema. No es
+automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia a mano del Anexo II.
+
+**Relacionadas:** [T-556] (misma oposición, defecto contrario, misma causa raíz), [T-518] (el Paso 2
+sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
+
 ### [T-629] 🟠 [ABIERTO 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
 
 - **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
@@ -3060,6 +3121,24 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Lo que NO hay que hacer:** dejar de guardar la elección cuando no está construida. Es deliberado y es lo que permite medir la demanda; lo que falta es no dejar a la persona en el callejón.
 
 ### [T-560] 🟠 [ABIERTO 05/08] El panel de admin sigue con el `unnest` ciego a los scopes de «ley entera» que [T-451] arregló en el barrido
+
+> ⚠️ **06/08 (noche) — SU VEREDICTO DICE «ARREGLADO» Y EL ARREGLO NO EXISTE EN NINGÚN SITIO.**
+> Comprobado al estrenar la clasificación de [T-629]: la nota de revisión dice *«Arreglado: las
+> tres consultas de `lib/api/admin-contenido/queries.ts` … usaban `unnest(ts.article_numbers)` sin
+> guarda para NULL»*, pero en `origin/main` **las tres siguen exactamente igual** (líneas 159, 357
+> y 376: `JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true`, sin guarda). Y no hay
+> ninguna rama que lo traiga: `git branch -r | grep 560` no devuelve nada, y el único commit que
+> menciona la tarea es `7e44e2c8e docs(T-451, T-560)`, que precisamente dice que **el bug sigue**.
+>
+> **El trabajo no está perdido en una rama: no llegó a existir en ningún sitio alcanzable.** Por
+> eso la tarea NO se cierra pese a tener veredicto `ok` — cerrarla dejaría el panel de admin con
+> el mismo `unnest` ciego que la ficha describe, y con la ficha diciendo que se arregló.
+>
+> **Lo que esto enseña sobre [T-629], y hay que arreglarlo ahí:** el cajón «solo falta cerrar»
+> significa **«no hay rama que mergear»**, que NO es lo mismo que «está terminada». Aquí las dos
+> lecturas se separan: no hay nada que mergear *porque el arreglo no se hizo*. El nombre del cajón
+> induce a error y hay que afinarlo — o partirlo en «nada que mergear, y el código está» frente a
+> «nada que mergear, y tampoco está», que se distinguen comprobando el arreglo concreto.
 
 - **De dónde sale.** Verificando el cierre de [T-451] (que arregló `unnest(NULL)` en el barrido y hoy, ya desplegado, sube de 371 a **461 temas**), fui a mirar si el patrón sobrevivía en otro sitio. Sobrevive: **tres consultas** de `lib/api/admin-contenido/queries.ts` (líneas ~159, ~357 y ~376) hacen `JOIN LATERAL unnest(ts.article_numbers)` **sin la guarda**, así que un scope `NULL` —que en este proyecto significa LA LEY ENTERA— no produce ni una fila y desaparece del cálculo de cobertura por artículo.
 - **Lo que NO es un fallo, y por eso conviene decirlo:** el `unnest` de `health-sweep.cjs:1236` (artículos fantasma) lleva `WHERE ts.article_numbers IS NOT NULL` **a propósito y está bien**: un artículo fantasma es un número que figura en la lista, y un scope sin lista no puede tener ninguno. La regla no es «todo `unnest` está mal», es «¿qué significa aquí no tener lista?».
@@ -6384,6 +6463,33 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
   se disuelve al mirar el reloj: la corrida 68 acababa de fallar (19:50:03) y la 69 aún no había
   arrancado (19:52:04). El registro decía la verdad.
 
+
+### [T-629] ✅ [HECHA 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
+
+- **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
+- **ORIGEN.** Manuel preguntó cuál es el cuello de botella y si el sistema se puede mejorar. Medido por etapas el 06/08:
+
+  | etapa | nº | horas medias |
+  |---|---|---|
+  | 1 · sin coger (pool) | 203 | 166 h |
+  | 2 · en curso | 9 | 7 h |
+  | **3 · entregada, sin revisar** | **0** | — |
+  | 4 · revisada, sin mergear | 27 | 9 h |
+  | 5 · en `main`, esperando deploy | 10 | **69 h** |
+  | 6 · cerrada sin archivar | 3 | 111 h |
+
+  **La etapa 3 a cero es la prueba de que esto se arregla:** ayer era EL cuello (23 paradas, 15 h de media, la más vieja 41 h) y [T-486] la vació poniendo a los trabajadores a revisarse entre ellos.
+- **EL PROBLEMA, y no es cosmético.** La etapa 4 se presenta entera como «esperando tu decisión», y **no lo está**. Medido el mismo día: de 24, **6 no esperaban ninguna decisión** — su nota decía *«CÓDIGO COMPLETO… PERO NO SE HA PODIDO PUSHEAR»* ([T-628]). El panel pedía criterio sobre un fallo de infraestructura. Es el MISMO patrón que T-486 arregló un escalón más abajo: **una cola que parece esperar a una persona y en realidad espera a una máquina**. Mientras estén mezcladas, la cola no se puede vaciar por partes y se mira entera o no se mira.
+- **⚠️ EL CRITERIO OBVIO ES FALSO, y está medido antes de escribir nada.** Clasificar leyendo `review_note` (buscar «rama», «commit», «pusheada»…) sobre las 27 da **5 problemas · 7 falta mergear · 0 ya en main · 15 SIN CLASIFICAR**. Quince de veintisiete es no tener criterio. Es la lección que este repo ya aprendió tres veces —`snooze_until`, `due_at`, `review_requested_at`—: **una condición en prosa no es una condición**.
+- **EL DISEÑO QUE SÍ, derivando de HECHOS y no de texto** (mismo principio que la puerta del `done` de [T-392], que deriva «superficie servida» de los imports y no de un comentario):
+  - **`solo_mergear`** — existe en `origin` una rama que declara esa tarea con contenido no fusionado (`git cherry origin/main <rama>`). Es comprobable, no opinable.
+  - **`solo_cerrar`** — sus commits ya están en `main` por contenido y solo falta `done`. Ojo con la trampa medida hoy: **`git cherry` compara PARCHES**, así que una rama reescrita sigue marcando «único» aunque su contenido esté dentro (pasó tres veces en el rescate de `flota/w3`). El criterio tiene que ser el contenido, no el sha.
+  - **`criterio`** — `review_verdict='problemas'`, o toca superficie servida, o no hay rama que mirar. Aquí sí decide una persona.
+- **DÓNDE ENGANCHA (nada nuevo):** el mismo sitio que ya imprime «⚖️ N YA REVISADA(S)» en `npm run flota` y en `backlog.cjs list`. Núcleo puro compartido por los dos, como `lib/backlog/revision.cjs` — que es donde vive `esperaRevision`/`esperaDecision` y donde debe vivir esto, no en un módulo aparte.
+- **EL VALOR ES QUE SE PUEDA VACIAR POR PARTES:** «solo mergear» lo puede hacer una sesión seguida, sin pensar en cada una; «criterio» son las que de verdad hay que leer. Hoy son 27 indistinguibles y por eso llevan 9 h paradas.
+- **CAPAS al implementarlo:** núcleo puro con los tres cubos + los casos que hoy fallan clavados (las 6 de [T-628] tienen que salir `solo_mergear`, no `criterio`); y **medir la clasificación contra las 27 reales antes de darla por buena** — si vuelve a dejar un tercio sin clasificar, el criterio no vale, igual que el de prosa.
+- **NO automatizar el merge.** Juntar ramas saca choques que ninguna rama ve por separado — medido tres veces el 06/08 (un guardarraíl de paridad roto, una colisión de migraciones, un puntero a un fichero borrado). Esto solo separa la cola; mergear sigue siendo de una persona.
+- **Relacionadas:** [T-486] (vació la etapa 3 con este mismo patrón), [T-628] (las 6 que destaparon la mezcla), [T-619] (la etapa 5, el otro cuello y el más viejo), [T-392] (derivar de hechos y no de prosa).
 
 ### [T-624] ✅ [HECHA 06/08] La credencial de lectura de negocio se resolvía por su cuenta en 4 scripts: unificada en un punto y cerrada la puerta a un quinto
 

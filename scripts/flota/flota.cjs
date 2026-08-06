@@ -448,10 +448,29 @@ async function main() {
       const sinMirar = entregas.filter((e) => REV.esperaRevision(e))
       const conVeredicto = entregas.filter((e) => REV.esperaDecision(e))
       if (conVeredicto.length) {
+        // ── SEPARADAS POR CLASE DE ESPERA (T-629) ───────────────────────────────────────────
+        // Esta cola se presentaba entera como «falta tu decisión» y NO lo estaba: medido el
+        // 06/08, 6 de 24 solo esperaban una tubería de git ([T-628]). Mezcladas, la cola se lee
+        // entera o no se lee; separadas, la parte mecánica se vacía de una sentada.
+        const RAMAS = require(path.join(REPO, 'lib', 'backlog', 'ramasDeTarea.cjs'))
+        const idx = RAMAS.indiceDeRamas()
+        const porClase = { criterio: [], solo_mergear: [], solo_cerrar: [] }
+        for (const e of conVeredicto) {
+          porClase[REV.claseDeEspera(e, RAMAS.hechosDeGit(e.id, idx)).clase].push(e)
+        }
         const malas = conVeredicto.filter((e) => REV.devueltaConProblemas(e)).length
-        console.log(`\n⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto y falta tu decisión` +
-                    (malas ? ` (${malas} con problemas)` : ''))
-        for (const e of conVeredicto) console.log(REV.lineaRevisada(e))
+        console.log(`\n⚖️  ${conVeredicto.length} YA REVISADA(S) — hay veredicto${malas ? ` (${malas} con problemas)` : ''}`)
+        if (!idx) console.log('   ⚠️  sin git a mano: no se han podido separar, van todas como «criterio»')
+        const titulos = {
+          criterio: '🧠 PIDEN CRITERIO (léelas)',
+          solo_mergear: '🔀 SOLO FALTA MERGEAR (mecánico: hay rama sin fusionar que las declara)',
+          solo_cerrar: '✅ SOLO FALTA CERRAR (ninguna rama sin fusionar las declara)',
+        }
+        for (const clase of ['criterio', 'solo_mergear', 'solo_cerrar']) {
+          if (!porClase[clase].length) continue
+          console.log(`\n   ${titulos[clase]} — ${porClase[clase].length}`)
+          for (const e of porClase[clase]) console.log(REV.lineaRevisada(e))
+        }
       }
       if (sinMirar.length) {
         console.log(`\n🙋 ${sinMirar.length} ENTREGADA(S) esperando que las revises:`)
