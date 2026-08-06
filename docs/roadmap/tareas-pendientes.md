@@ -842,6 +842,78 @@
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-607] 🟡 [ABIERTO 06/08] El test personalizado de TU oposición te ofrece artículos fuera de tu temario: cae en el modo ley-only, que se salta el scope a propósito
+
+**Es el diagnóstico de [T-583]**, cuya ficha planteaba tres hipótesis. **Las tres eran las equivocadas**,
+así que esto no la continúa: la corrige. (T-583 vive commiteada en `sesion/l5` sin fusionar; no se
+reescribe desde aquí para no perder su contenido — [T-428].)
+
+**Lo que NO es, comprobado uno por uno el 06/08/2026:**
+
+| Hipótesis de T-583 | Veredicto |
+|---|---|
+| El fix de `articleInPositionScopeExists` no está desplegado | ❌ **Sí lo está.** El commit `5d338e2d8` (16/06) es ancestro del sha vivo `b06868c2` |
+| Casts/tipos en el `EXISTS` | ❌ **Funciona.** Evaluado a mano contra RDS para `auxiliar_administrativo_universidad_carlos_iii`: art. 28 → `false`, arts. 7 y 45 → `true` |
+| Un segundo camino de servido que no pasa por `isGlobalMode` | ✅ **Esto sí**, pero no es un camino olvidado: es una rama **deliberada** |
+
+**La causa.** `lib/api/filtered-questions/queries.ts` tiene tres modos: tema, **ley-only** y global. Los
+modos tema y global aplican el scope por artículo; **el ley-only NO, y a propósito**, con la razón
+escrita en el código desde el 16/04/2026 (caso «M», `daluamva`):
+
+> *«en modo ley-only NO aplicamos scope-check de leyes. El usuario ha entrado a `/leyes/[slug]`
+> explícitamente — sabe lo que quiere. Coherente con la promesa de /premium»*
+
+Esa decisión es correcta **para `/leyes/[slug]`**. El problema es quién más acaba en esa rama:
+`/[oposicion]/test/test-personalizado` monta el `TestConfigurator` **sin pasar `scopeToPosition`**
+(su default es `false`, `TestConfigurator.tsx` L74), así que en cuanto el usuario elige una ley el
+request lleva `selectedLaws` y **cae en ley-only** → ley entera, sin acotar a su temario.
+
+**Y no se cuelan solas: se las ofrecemos.** El selector de artículos llama a
+`/api/v2/test-config/articles` con `positionType` pero **sin `topicNumber`** (en esa página `tema=0`) y
+**sin `scopeToPosition`**, así que lista los artículos de **toda la ley**. El usuario ve artículos que no
+son de su temario, los marca, y el test se los sirve. El defecto está en la puerta, no en el sótano.
+
+**Medición — la de T-583 estaba inflada y así se corrige.** T-583 contaba «73 servidas a 6 usuarios»
+tomando como fuga todo lo que caía fuera del scope **de Carlos III**. Pero **46 de esas 73 eran
+legítimas**: `administrativa_universidad_de_murcia`, `auxiliar_administrativo_universidad_almeria` y
+`escala_administrativa_universidad_de_granada` escopan ese mismo RD con `article_numbers = NULL`, que
+por convención es **la ley entera**. Servirles el Cap. V es correcto.
+
+Re-medido sobre **todo el banco**, 14 días, cruzando cada servida con el `topic_scope` de la oposición
+**del usuario** (68.971 servidas medibles de 1.243 usuarios):
+
+| Vía | Servidas | Usuarios | ¿Defecto? |
+|---|---|---|---|
+| Ruta de **su propia** oposición | **33** | **12** | ✅ **Sí — esta ficha** |
+| Ruta de **otra** oposición (la abrió él) | 2.330 | 115 | No: eligió mirar otro temario |
+| `/leyes/*`, `/test/por-leyes`, `/test/multi-ley` | 2.174 | 136 | No: es el diseño de [T-073]/premium |
+
+**33 y no 4.625: separar las tres vías es lo que hace la cifra utilizable.** El número crudo «fuera de
+scope» mete en el mismo saco al que estudia otra oposición a propósito.
+
+**Qué hacer (no está decidido, hay dos caminos legítimos):**
+1. **Que la página lo pida:** `/[oposicion]/test/test-personalizado` pasa `scopeToPosition` al
+   `TestConfigurator`. Es una línea y arregla las dos mitades a la vez (el selector deja de ofrecer lo
+   que no toca y el servido deja de darlo).
+2. **O invertir el default:** que ley-only acote **salvo** que se pida lo contrario, y que sea
+   `/leyes/[slug]` quien declare `scopeToPosition: false`. Más correcto de fondo (el default seguro es
+   el acotado) y más arriesgado: hay que revisar todos los call-sites de ley-only antes.
+
+**NO tocar el `topic_scope` de la UC3M** — está bien y coincide con su epígrafe oficial (verificado en
+T-583 contra el índice del BOE).
+
+**Capas al arreglarlo:** un test de integración que pida un test personalizado de una oposición con
+scope PARCIAL de una ley y exija 0 preguntas fuera; y mirar si `vence-sim` cubre ya el configurador.
+
+**Impugnaciones que lo destaparon:** `dba485dc` y `410025b4` (UC3M, arts. 28 y 28.4 del RD 534/2024).
+**PROCEDEN** — el usuario tenía razón — pero **no se le puede responder «no debería volver a salirte»
+hasta que esto esté desplegado**, porque hoy le volvería a salir.
+
+**Relacionadas:** [T-583] (el síntoma y la medición inicial), [T-073] (**hecha**: la misma clase de
+defecto en otra puerta, el CTA «Hacer test de {ley}» del temario), [T-533] (scope mal escrito — aquí el
+scope está BIEN), y el caso Laura CARM del 16/06 (`e7f0b57c`), que es el que cerró esta fuga en el modo
+global.
+
 ### [T-606] 🟡 [ABIERTO 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
 **Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
@@ -942,8 +1014,13 @@ escribe en el embudo, y ahí muere. **Un arreglo que nadie puede aplicar no es u
 2. **Registrarlo en `lib/admin/toolRegistry.ts`** — `psychometric_questions.explanation` pasa a ser
    recurso con escritor, y el guardarraíl `toolRegistry.guardrail` exige que todo escritor de recurso
    sensible esté declarado.
-3. Estrenarlo con el caso que lo origina: reordenar el remate de la explicación de la pregunta
-   `4e37c266` a «Las soluciones son x = 1 y x = 2 (el orden entre paréntesis no importa)».
+3. Estrenarlo con los **dos casos que lo originan**, ambos de la misma usuaria el mismo día:
+   - `4e37c266` (ecuaciones): reordenar el remate a «Las soluciones son x = 1 y x = 2 (el orden entre
+     paréntesis no importa)», que hoy se contradice con su propia derivación.
+   - `0a52068b` (sinónimo de LIGERO, impugnación `41b2b69f`): explicación apelotonada, sin decir cuál
+     es la correcta y **con un asterisco huérfano** que se sirve en pantalla (`diligente/**`). Es el
+     mismo defecto de forma que en el banco legislativo detecta `explicacion_estructura_rota`… que
+     **tampoco mira psicotécnicas**.
 
 **Lo que NO hay que hacer:** meter psicotécnicas dentro de `aplicar-explicacion.ts`. Ese escribe
 `explanation_data` estructurado por opción, que es la maquinaria del **barajado** del banco legislativo
