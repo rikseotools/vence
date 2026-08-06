@@ -66,6 +66,15 @@ interface FakeDbOptions {
     stripe_customer_id: string | null;
     payment_account: string | null;
   };
+  /** Pass-1: filas user_subscriptions×user_profiles candidatas (T-295) */
+  pass1Rows?: Array<{
+    user_id: string;
+    status: string;
+    stripe_subscription_id: string;
+    current_period_end: string | null;
+    email: string;
+    profile_plan_type: string;
+  }>;
 }
 
 class FakeDb {
@@ -85,7 +94,9 @@ class FakeDb {
       return Promise.resolve([]);
     }
     // Pass-1
-    if (/INNER JOIN user_profiles/i.test(text)) return Promise.resolve([]);
+    if (/INNER JOIN user_profiles/i.test(text)) {
+      return Promise.resolve(this.opts.pass1Rows ?? []);
+    }
     // Pass-3 (a): filas active cuya sub ya no está activa en Stripe
     if (/JOIN user_profiles up ON up\.id = us\.user_id/i.test(text)) {
       return Promise.resolve(this.opts.filasActivas ?? []);
@@ -408,6 +419,123 @@ describe('Pass-2 multi-cuenta', () => {
 
     expect(r.pass2.errors).toContain('no_stripe_key');
     expect(r.pass2.degraded).toBe(true);
+  });
+});
+
+describe('Pass-1 — el HECHO manda sobre el status (T-295)', () => {
+  it('caso real T-295: fila active con current_period_end vencido hace meses → NO se concede', async () => {
+    const db = new FakeDb({
+      pass1Rows: [
+        {
+          user_id: 'u-stale',
+          status: 'active',
+          stripe_subscription_id: 'sub_stale',
+          current_period_end: '2026-05-27T00:00:00Z',
+          email: 'cliente@example.com',
+          profile_plan_type: 'free',
+        },
+      ],
+    });
+    const svc = new FakeService(db, {});
+
+    const r = await svc.run(false);
+
+    expect(r.pass1.detected).toBe(0);
+    expect(r.pass1.fixed).toBe(0);
+    expect(r.pass1.staleSinVigencia).toBe(1);
+    expect(r.pass1.staleSample[0]).toMatchObject({
+      user_id: 'u-stale',
+      current_period_end: '2026-05-27T00:00:00Z',
+    });
+    // Y sobre todo: NINGÚN UPDATE user_profiles para ESTE usuario (Pass-3(b) query siempre
+    // corre y también menciona "plan_type = 'premium'", así que hay que acotar por user_id).
+    expect(
+      db.queries.some(
+        (q) => /UPDATE user_profiles/i.test(q) && q.includes('u-stale'),
+      ),
+    ).toBe(false);
+  });
+
+  it('fila active con current_period_end en el futuro → SÍ se concede (comportamiento previo intacto)', async () => {
+    const futuro = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    const db = new FakeDb({
+      pass1Rows: [
+        {
+          user_id: 'u-vigente',
+          status: 'active',
+          stripe_subscription_id: 'sub_vigente',
+          current_period_end: futuro,
+          email: 'paga@example.com',
+          profile_plan_type: 'free',
+        },
+      ],
+    });
+    const svc = new FakeService(db, {});
+
+    const r = await svc.run(false);
+
+    expect(r.pass1.detected).toBe(1);
+    expect(r.pass1.fixed).toBe(1);
+    expect(r.pass1.staleSinVigencia).toBe(0);
+    expect(
+      db.queries.some(
+        (q) => /UPDATE user_profiles/i.test(q) && q.includes('u-vigente'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fila active SIN current_period_end (dato incompleto) → se respeta el status, se concede', async () => {
+    const db = new FakeDb({
+      pass1Rows: [
+        {
+          user_id: 'u-sin-fecha',
+          status: 'trialing',
+          stripe_subscription_id: 'sub_sin_fecha',
+          current_period_end: null,
+          email: 'trial@example.com',
+          profile_plan_type: 'free',
+        },
+      ],
+    });
+    const svc = new FakeService(db, {});
+
+    const r = await svc.run(false);
+
+    expect(r.pass1.detected).toBe(1);
+    expect(r.pass1.staleSinVigencia).toBe(0);
+  });
+
+  it('mezcla: una fila vigente se concede y una vencida no, en la misma pasada', async () => {
+    const futuro = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString();
+    const db = new FakeDb({
+      pass1Rows: [
+        {
+          user_id: 'u-ok',
+          status: 'active',
+          stripe_subscription_id: 'sub_ok',
+          current_period_end: futuro,
+          email: 'ok@example.com',
+          profile_plan_type: 'free',
+        },
+        {
+          user_id: 'u-stale-2',
+          status: 'past_due',
+          stripe_subscription_id: 'sub_stale_2',
+          current_period_end: '2026-01-01T00:00:00Z',
+          email: 'viejo@example.com',
+          profile_plan_type: 'free',
+        },
+      ],
+    });
+    const svc = new FakeService(db, {});
+
+    const r = await svc.run(false);
+
+    expect(r.pass1.detected).toBe(1);
+    expect(r.pass1.fixed).toBe(1);
+    expect(r.pass1.sample[0].user_id).toBe('u-ok');
+    expect(r.pass1.staleSinVigencia).toBe(1);
+    expect(r.pass1.staleSample[0].user_id).toBe('u-stale-2');
   });
 });
 
