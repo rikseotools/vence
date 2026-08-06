@@ -11025,6 +11025,23 @@ y eso solo ocurre donde las dos se sirven.
 
 ### [T-302] 🟠 [ABIERTO 30/07] Los contenedores de Office 2016 y los clínicos TCAE están vacíos: 3.203 preguntas activas cuelgan de artículos 20-40 veces más delgados que los enriquecidos
 
+> **📦 PRIMERA TANDA DEL BLOQUE CLÍNICO (06/08/2026, w2) — entregada sin aplicar, este worker no
+> tiene escritura en la BD de negocio.** Contenido en `data/pilotos/t302-clinicos-06ago/`
+> (rama `flota/T-302-clinicos-w2`), medido con `medir-cobertura.cjs` (gemelo de solo-lectura del
+> `aplicar-articulo.cjs` de [T-291]): **Farmacologia TCAE art.3** (8/9→8/9, la que falta es
+> meta-opción), **art.4** (36/52→51/52), **Funciones del TCAE art.2** (7/16→14/16), **art.3**
+> (3/4→4/4). Hechos añadidos con fuente citada en el propio markdown: precauciones con
+> anticoagulantes orales (Sintrom), furosemida fotosensible, agujas de insulina de un solo uso,
+> manejo de blísteres con caducidad en el borde, colirios (1 mes tras abrir), protocolo de rotura
+> de cadena de frío, tipos de equipo inter/intradisciplinar, fases del PAE, Educación para la
+> Salud (OMS), Atención Primaria y salud pública (Ley 14/1986 + RD 1030/2006). **Detalle y
+> siguiente paso en el README de esa carpeta.** Medido también: los 4 artículos `.1` de los 4
+> contenedores (562+465+746+360 ≈ 2.133 preguntas activas, la mayoría del bloque clínico) son
+> "cajones de sastre" que mezclan materias muy dispares bajo un solo epígrafe (p. ej.
+> `Comunicacion sanitaria` art.1 mete psicología clínica, duelo, mecanismos de defensa
+> freudianos y teorías del aprendizaje bajo el título "concepto y tipos de comunicación") — antes
+> de escribirlos, alguien debería decidir si hace falta PARTIRLOS, no solo engordarlos.
+
 - **Cómo salió a la luz:** revisando con agentes las 500 preguntas nunca verificadas más vistas ([T-291] escalón 2), **219 de 500 salieron `article_ok=false`** — una tasa altísima que al abrirla NO era un problema de vinculación pregunta→artículo. **216 de esas 219 cuelgan de contenedores VIRTUALES** y solo 3 de leyes reales. Los agentes lo dijeron por separado, lote a lote, con las mismas palabras: *«el contenedor es un resumen muy corto que no cubre literalmente el supuesto»*.
 - **El dato que lo prueba** (medido en RDS, media de caracteres por artículo activo):
 
