@@ -912,6 +912,75 @@ async function main() {
       return 0
     }
 
+    // ── EL SUPERVISOR CONTINUO (T-486, 06/08) ────────────────────────────────────────────
+    // Pregunta de Manuel: «¿por qué el supervisor no les da tareas continuamente? así no es
+    // productivo». No existía programador ninguno: `repartir` se corría a mano, así que la flota
+    // trabajaba solo mientras alguien la mirase. Esto es la otra mitad del arreglo — la primera
+    // es que el encargo ahora manda ENCADENAR dentro del turno; esto arranca uno nuevo cuando
+    // un trabajador termina de verdad.
+    //
+    // NO reimplementa el reparto: LANZA `flota.cjs repartir` como hijo. Una segunda copia de la
+    // criba acabaría entregando cosas distintas según quién repartiera, que es exactamente el
+    // fallo de los cinco escritores de `seguimiento_url` [T-130]. Y de regalo, aísla: si una
+    // pasada revienta, el bucle sigue vivo.
+    if (cmd === 'bucle') {
+      const BUC = require(path.join(REPO, 'lib', 'flota', 'bucle.cjs'))
+      const cada = Math.max(60, Number(arg('--cada') || BUC.CADA_S))
+      const limiteAtasco = Math.max(10, Number(arg('--atascado') || BUC.ATASCADO_MIN))
+      let pausa = cada
+      let parar = false
+      // Salida limpia: systemd manda SIGTERM al reiniciar, y matar el bucle en mitad de una
+      // pasada dejaría un `repartir` huérfano lanzando encargos que nadie va a vigilar.
+      for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { parar = true })
+
+      console.log(`🔁 supervisor continuo — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
+      while (!parar) {
+        let repartidos = 0
+        let motivoSalto = null
+        let atascados = []
+        try {
+          const puede = BUC.puedeRepartir({
+            hayBd: Boolean(url()),
+            hayTrabajadores: MAQ.trabajadoresQueReciben().length > 0,
+          })
+          if (!puede.ok) {
+            motivoSalto = puede.motivo
+          } else {
+            // Turnos abiertos demasiado tiempo. Se AVISA, no se mata: matar un turno puede tirar
+            // trabajo sin commitear, y eso ya tiene ficha propia [T-577]. Caso que lo calibra:
+            // el 06/08 un `git commit` de w1 llevaba 2 h con un worker de jest al 99,8% de CPU.
+            const turnos = MAQ.trabajadoresQueReciben().map(({ trabajador }) => {
+              try {
+                const t = enMaquina(trabajador, `stat -c %Y ${ficheroEncargo(trabajador)} 2>/dev/null || true`).trim()
+                return { trabajador, inicio: t ? new Date(Number(t) * 1000) : null }
+              } catch { return { trabajador, inicio: null } }
+            })
+            atascados = BUC.turnosAtascados(turnos, { limiteMin: limiteAtasco })
+            const r = execFileSync(process.execPath, [__filename, 'repartir'], { encoding: 'utf8', timeout: 600_000 })
+            process.stdout.write(r)
+            const m = r.match(/(\d+)\s+encargo\(s\) repartido/)
+            repartidos = m ? Number(m[1]) : 0
+          }
+        } catch (e) {
+          // Una pasada que falla NO para el bucle: la flota se quedaría parada por un SSH caído.
+          motivoSalto = `la pasada falló: ${String(e.message || e).slice(0, 120)}`
+        }
+        pausa = BUC.siguientePausa({ repartidos, cada, anterior: pausa })
+        console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
+        // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
+        // síntoma de un supervisor muerto es justamente que NO PASA NADA.
+        try {
+          await sql`INSERT INTO public.observable_events (event_type, severity, event_data)
+                    VALUES ('flota_bucle_pasada', ${motivoSalto ? 'warn' : 'info'},
+                            ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
+        if (parar) break
+        await new Promise((r) => setTimeout(r, pausa * 1000))
+      }
+      console.log('🛑 supervisor continuo detenido')
+      return 0
+    }
+
     if (cmd === 'lanzar') {
       const w = process.argv[3]
       if (!w) { console.error('Uso: flota.cjs lanzar <trabajador>'); return 2 }

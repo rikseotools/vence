@@ -2055,6 +2055,24 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     console.error('❌', e.message);
     process.exitCode = 1;
   } finally {
+    // ── EL MÉTODO, POR RELOJ (T-486, 06/08) ─────────────────────────────────────────────
+    // Orden de Manuel: «las frases no solo deben saltar en cada tarea, también cada x minutos
+    // para que no se le olviden». Va en el `finally` a propósito: así lo ve CUALQUIER comando
+    // del andamiaje, no solo los que alguien se acuerde de instrumentar — y como un turno que
+    // encadena pasa por aquí todo el rato, la cadencia sale sola sin pedirle nada al modelo.
+    // Los otros tres canales no alcanzan a un trabajador: el hook necesita prompts (`claude -p`
+    // no los tiene), el pre-commit solo dispara al estrenar ficheros, y `heartbeat` exige que se
+    // ACUERDE de lanzarlo. Fail-open y silencioso: un recordatorio nunca puede romper un comando.
+    try {
+      if (sid) {
+        const [ws] = await s`SELECT last_method_reminder_at FROM public.worktree_sessions WHERE sid = ${sid}`;
+        if (ws && RECORDATORIO.tocaRecordar({ ultimo: ws.last_method_reminder_at })) {
+          console.log('');
+          for (const l of RECORDATORIO.bloqueMetodo()) console.log(l);
+          await s`UPDATE public.worktree_sessions SET last_method_reminder_at = now() WHERE sid = ${sid}`;
+        }
+      }
+    } catch { /* sin columna, sin sesión o sin red: el comando ya hizo lo suyo */ }
     await s.end();
   }
 })();

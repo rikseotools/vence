@@ -100,3 +100,44 @@ describe('recordatorioPorTiempo — momentos, no reloj', () => {
     expect(t).toContain('vence-sim')
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// CADENCIA POR RELOJ (T-486, 06/08)
+//
+// Orden de Manuel: «las frases no solo deben saltar en cada tarea, también de forma cada x
+// minutos para que no se le olviden». Los tres canales anteriores NO alcanzan a un trabajador
+// autónomo que encadena tareas: el hook `UserPromptSubmit` necesita prompts y un `claude -p` no
+// los tiene; el `pre-commit` solo dispara al estrenar ficheros; y `heartbeat` sí lo imprime pero
+// exige que el trabajador se ACUERDE de lanzarlo — que es exactamente el modo de fallo que se
+// está corrigiendo (la misma razón por la que «lee el manual entero» no funciona).
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe('el método vuelve por reloj, sin depender de que nadie se acuerde', () => {
+  const REC = require('@/lib/sessions/recordatorio.cjs')
+  const AHORA = new Date('2026-08-06T12:00:00Z')
+  const haceMin = (m: number) => new Date(AHORA.getTime() - m * 60000)
+
+  it('a una sesión nueva se le enseña enseguida (nunca visto = toca)', () => {
+    expect(REC.tocaRecordar({ ultimo: null, ahora: AHORA })).toBe(true)
+  })
+
+  it('no se repite en cada comando: eso sería ruido y se aprende a ignorar', () => {
+    expect(REC.tocaRecordar({ ultimo: haceMin(5), ahora: AHORA })).toBe(false)
+    expect(REC.tocaRecordar({ ultimo: haceMin(29), ahora: AHORA })).toBe(false)
+  })
+
+  it('pero vuelve pasada la cadencia', () => {
+    expect(REC.tocaRecordar({ ultimo: haceMin(REC.CADA_MIN), ahora: AHORA })).toBe(true)
+    expect(REC.tocaRecordar({ ultimo: haceMin(180), ahora: AHORA })).toBe(true)
+  })
+
+  it('el bloque lleva las frases de la casa, no una paráfrasis', () => {
+    const t = REC.bloqueMetodo().join('\n')
+    expect(t).toMatch(/nada de chapuzas/)
+    expect(t).toMatch(/tools:buscar/)
+    expect(t).toMatch(/nada de silos/)
+    expect(t).toMatch(/capas/)
+    // Que salga de la MISMA constante que el resto de canales: dos redacciones del método
+    // divergen, y entonces cada sesión trabaja con una versión distinta de las reglas.
+    for (const l of REC.METODO) expect(t).toContain(l)
+  })
+})

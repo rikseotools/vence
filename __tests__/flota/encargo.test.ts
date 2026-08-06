@@ -759,3 +759,55 @@ describe('el rescate se aparta de un commit en curso', () => {
     expect(f).toMatch(/está commiteando ahora mismo/)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// ENCADENAR TAREAS DENTRO DEL TURNO (T-486, 06/08)
+//
+// Pregunta de Manuel: «¿por qué ellos mismos no se sugieren qué tarea seguir aprovechando el
+// contexto? eso sí pasa con tareas en local con Claude Code». Tenía razón y la causa era literal:
+// el encargo decía que el turno es de un solo tiro y NUNCA les decía que encadenaran, así que
+// terminaban una tarea y se paraban. Medido el 06/08: w2, w3 y w4 llevaban ~30 min encendidos sin
+// hacer nada esperando a que el supervisor repartiera otra vez.
+//
+// La diferencia con una sesión local es que allí el proceso sigue vivo; aquí `claude -p` muere al
+// terminar de escribir. Pero DENTRO del turno no hay ninguna limitación: puede cerrar una tarea y
+// coger otra. Lo que faltaba no era una capacidad, era la instrucción.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe('el turno no termina con contexto libre', () => {
+  const texto = () => ENC.COLA_COMUN({ puedeDesplegar: false }).join('\n')
+
+  it('le dice que coja otra tarea al cerrar la suya', () => {
+    expect(texto()).toMatch(/ENCADENA MIENTRAS TE QUEDE CONTEXTO/)
+  })
+
+  it('y que la coja RELACIONADA, que es donde el contexto vale (orden de Manuel)', () => {
+    const t = texto()
+    expect(t).toMatch(/RELACIONADA/)
+    // Se apoya en lo que el CLI YA sugiere al cerrar (`sugerirSiguiente`, T-498: relacionadas
+    // primero y `next` como red), en vez de mandarle a elegir a ciegas.
+    expect(t).toMatch(/backlog\.cjs done/)
+    expect(t).toMatch(/backlog\.cjs claim/)
+  })
+
+  it('renueva el lease mientras encadena, o su tarea queda libre para otro', () => {
+    // Sin esto, encadenar 3 h significaba perder el claim a los 90 min y que otro trabajador
+    // cogiera la MISMA tarea mientras el primero seguía escribiendo en ella.
+    expect(texto()).toMatch(/backlog\.cjs heartbeat/)
+    expect(texto()).toMatch(/90 min/)
+  })
+
+  it('y el límite sigue siendo el CONTEXTO, no la tarea (no contradice la regla del 80%)', () => {
+    const t = texto()
+    expect(t).toMatch(/80%/)
+    // Encadenar y «no dejes nada en segundo plano» conviven: lo segundo prohíbe esperar fuera del
+    // turno, no trabajar más dentro de él. Si alguien borra una de las dos, esto lo canta.
+    expect(t).toMatch(/TU TURNO NO TIENE FUTURO/)
+    expect(t).toMatch(/primer plano/)
+  })
+
+  it('recuerda que se reclama antes y se cierra antes de coger la siguiente', () => {
+    // Sin esto, «encadena» se leería como «acumula tareas», que es justo lo contrario: dos
+    // cogidas a la vez se las quitan a los demás mientras solo se trabaja una.
+    expect(texto()).toMatch(/dos\s*\n?\s*tareas cogidas a la vez|dos tareas cogidas a la vez/)
+  })
+})
