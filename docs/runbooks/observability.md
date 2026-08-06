@@ -155,7 +155,7 @@ línea en `getSink()` — cero cambios en callers.
 | Tabla `observable_events` + 4 índices | Migración `2026-05-25-observable-events.sql` aplicada | ✅ Live |
 | Endpoint ingest HTTP | `/api/observability/ingest` (auth: shared secret, Zod, batch ≤50) | ✅ Live (24 tests; eventos frontend llegando en tiempo real) |
 | Captura client-side | `EarlyErrorsBridge` (window.onerror + unhandledrejection) → ingest, montado en `app/layout.tsx` | ✅ Live |
-| Cron poda 30d | `observability/cleanup.cron.ts` (`@Cron`, emite su propio run) | ✅ Live |
+| Cron poda 30d | `telemetry-retention/telemetry-retention.service.ts` (`@Cron` 04:10 UTC, por lotes, poda `observable_events` **y** `validation_error_logs`) | ✅ Live |
 | Dashboard admin `/admin/observability` | 4 KPI + timeseries + tablas (commit `a01ef8ff`) | ✅ Live |
 | Alertas activas (cron rules engine) | `backend/src/alerts/` — 30 reglas, motor `alerts-engine` cada 5min | ✅ Live |
 | SLOs declarados + medidos | `/api/admin/slos` (7 indicadores) + `docs/SLO.md` | ✅ Live |

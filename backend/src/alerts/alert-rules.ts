@@ -2015,6 +2015,163 @@ export const RULE_COMPRA_ATASCADA_CHECKOUT: AlertRule<{
   cooldownMin: 720,
 };
 
+/** Una ejecución de un drenador, tal y como la deja en `cron_run`. */
+export interface DrenajeRun {
+  endpoint: string;
+  ts: Date;
+  /** Filas que dice haber movido/borrado en esa pasada (suma de todas sus tablas). */
+  procesadas: number;
+  /** Filas que dice que le QUEDAN fuera de retención, por tabla (acotado). */
+  remaining: Record<string, number>;
+}
+
+/** Veredicto sobre un drenador. `null` = va bien (o no hay con qué juzgarlo). */
+export interface DrenajeDiagnostico {
+  endpoint: string;
+  motivo: 'no_drena' | 'no_alcanza';
+  atrasado: number;
+  tabla: string;
+  procesadas: number;
+}
+
+/**
+ * ¿Hay un drenador que no está drenando? (T-613)
+ *
+ * Dos firmas, y las dos hacen falta:
+ *
+ * - **`no_drena`** — la pasada dice **0 procesadas** y a la vez **quedan filas
+ *   fuera de retención**. Es la firma EXACTA del defecto que abrió esta regla:
+ *   `telemetry-retention` y `archive-interactions` reportaron «0 borradas» con
+ *   `status: 'success'` durante semanas mientras las dos tablas más grandes de la
+ *   BD crecían sin freno, porque leían las filas afectadas de un campo que
+ *   postgres-js no rellena y el bucle salía en la primera vuelta. **«Éxito, 0» y
+ *   «no había nada que hacer» se leen igual** — este es el par que los distingue.
+ * - **`no_alcanza`** — sí procesa, pero lleva **3 pasadas seguidas** dejando el
+ *   atraso pegado al tope. Un drenaje legítimo de un backlog grande baja cada
+ *   noche; uno que no baja en tres noches no va a bajar solo.
+ *
+ * Se juzga la ÚLTIMA pasada de cada drenador, no una ventana: estos crons corren
+ * una vez al día y un agregado de 24 h mezclaría un fallo de anoche con el éxito
+ * de hoy.
+ */
+export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
+  const porEndpoint = new Map<string, DrenajeRun[]>();
+  for (const r of runs) {
+    const lista = porEndpoint.get(r.endpoint) ?? [];
+    lista.push(r);
+    porEndpoint.set(r.endpoint, lista);
+  }
+
+  const salida: DrenajeDiagnostico[] = [];
+  for (const [endpoint, lista] of porEndpoint) {
+    const ordenadas = [...lista].sort((a, b) => b.ts.getTime() - a.ts.getTime());
+    const ultima = ordenadas[0];
+    // Sin `remaining` no se puede juzgar: es una versión anterior al deploy de
+    // T-613. Callar es correcto — inventar un veredicto sin el dato, no.
+    if (!ultima || Object.keys(ultima.remaining).length === 0) continue;
+
+    const peor = Object.entries(ultima.remaining).sort((a, b) => b[1] - a[1])[0];
+    if (!peor || peor[1] <= 0) continue;
+
+    if (ultima.procesadas === 0) {
+      salida.push({
+        endpoint,
+        motivo: 'no_drena',
+        atrasado: peor[1],
+        tabla: peor[0],
+        procesadas: 0,
+      });
+      continue;
+    }
+
+    const tresUltimas = ordenadas.slice(0, 3);
+    const pegadoAlTope =
+      tresUltimas.length === 3 &&
+      tresUltimas.every((r) => (r.remaining[peor[0]] ?? 0) >= ATRASO_TOPE_ALERTA);
+    if (pegadoAlTope) {
+      salida.push({
+        endpoint,
+        motivo: 'no_alcanza',
+        atrasado: peor[1],
+        tabla: peor[0],
+        procesadas: ultima.procesadas,
+      });
+    }
+  }
+  return salida.sort((a, b) => b.atrasado - a.atrasado);
+}
+
+/**
+ * Tope con el que los drenadores acotan su conteo de atraso (`ATRASO_TOPE` en
+ * `telemetry-retention.service.ts` y `archive-interactions.service.ts`). Aquí se
+ * usa para leer «está pegado al tope», así que tiene que ser el MISMO número; lo
+ * vigila `alert-rules.drenaje.spec.ts`.
+ */
+export const ATRASO_TOPE_ALERTA = 200_000;
+
+export const RULE_DRENAJE_ATRASADO: AlertRule<DrenajeRun> = {
+  name: 'drenaje_atrasado',
+  severity: 'error',
+  query: sql`
+    SELECT endpoint,
+           ts,
+           COALESCE(
+             (metadata->>'observableEventsDeleted')::int, 0
+           ) + COALESCE(
+             (metadata->>'validationErrorLogsDeleted')::int, 0
+           ) + COALESCE(
+             (metadata->>'archived')::int, 0
+           ) AS procesadas,
+           COALESCE(metadata->'remaining', '{}'::jsonb) AS remaining
+    FROM observable_events
+    WHERE event_type = 'cron_run'
+      AND endpoint IN ('telemetry-retention', 'archive-interactions')
+      AND metadata->>'status' = 'success'
+      AND ts > NOW() - INTERVAL '7 days'
+    ORDER BY ts DESC
+  `,
+  shouldFire: (rows) => diagnosticarDrenaje(rows).length > 0,
+  buildNotification: (rows) => {
+    const malos = diagnosticarDrenaje(rows);
+    const lineas = malos.map(
+      (m) =>
+        `  - ${m.endpoint} → ${m.tabla}: ${m.atrasado.toLocaleString('es-ES')}+ filas fuera de retención ` +
+        `(la última pasada procesó ${m.procesadas.toLocaleString('es-ES')})` +
+        (m.motivo === 'no_drena'
+          ? `\n      ⚠️ dijo «éxito» habiendo procesado CERO: eso no es «no había nada que hacer»`
+          : `\n      ⚠️ lleva 3 pasadas sin bajar del tope: procesa, pero no alcanza`),
+    );
+    return {
+      title: `${malos.length} drenador(es) que no están drenando`,
+      body:
+        `Un cron de retención/archivado terminó en «éxito» dejando atrás un backlog.\n\n${lineas.join('\n\n')}\n\n` +
+        `POR QUÉ EXISTE ESTA REGLA (T-613): los dos drenadores leían las filas afectadas de ` +
+        `\`res.rowCount\`, que **postgres-js no rellena** (las pone en \`.count\`). El bucle corta con ` +
+        `«si el lote devolvió menos de lo pedido, hemos terminado», así que un 0 constante lo sacaba ` +
+        `en la PRIMERA vuelta: 50 k filas por noche en vez de 2,5 M, reportando 0. Estuvo semanas en ` +
+        `verde porque «éxito, 0 borradas» se lee igual que «no había nada que borrar». Las dos tablas ` +
+        `mayores de la BD (6,9 GB y 10 GB) crecieron sin freno.\n\n` +
+        `ACCIONES:\n` +
+        `  1. Mirar la última pasada entera:\n` +
+        `     SELECT ts, duration_ms, metadata FROM observable_events\n` +
+        `     WHERE event_type='cron_run' AND endpoint='<cron>' ORDER BY ts DESC LIMIT 5;\n` +
+        `  2. Si «procesadas» es 0 y el atraso no baja, sospechar del CONTADOR antes que de la query:\n` +
+        `     el drenador puede estar borrando de verdad y no saberlo.\n` +
+        `  3. Comprobar el tamaño real: SELECT relname, n_live_tup, pg_size_pretty(pg_total_relation_size(relid))\n` +
+        `     FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 5;\n\n` +
+        `Runbook: docs/runbooks/health-check.md`,
+      metadata: {
+        drenadores: malos.map((m) => m.endpoint),
+        peor: malos[0]?.endpoint,
+        atrasado: malos[0]?.atrasado,
+      },
+      fingerprint: `drenaje_atrasado_${malos.map((m) => m.endpoint).join(',')}`,
+    };
+  },
+  // Diario: estos crons corren una vez al día, avisar más a menudo no añade nada.
+  cooldownMin: 1440,
+};
+
 /**
  * Subscription drift "missing in DB" — el caso Andrea exacto.
  *
@@ -6505,6 +6662,9 @@ export const ALERT_RULES: AlertRule[] = [
   // en 1 h, así que un cron diario roto no alertaba nunca (el sweep de contenido estuvo
   // dos días muerto con el panel en verde).
   RULE_CRON_SIN_EXITO as AlertRule,
+  // T-613: el cron corre, termina bien y NO drena. `cron_sin_exito` no puede verlo
+  // (para él es un éxito) y el tamaño de la tabla no lo miraba nadie.
+  RULE_DRENAJE_ATRASADO as AlertRule,
   // T-529: un kind del barrido que dejó de aparecer en su propio latido de evaluación —
   // el 0 de content_health_findings ya no se puede leer como "limpio" sin esto.
   RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR as AlertRule,

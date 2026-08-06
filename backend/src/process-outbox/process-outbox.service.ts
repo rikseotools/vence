@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { filasAfectadas } from '../db/filasAfectadas';
 import { processOutboxBatch, type ProcessResult } from './process-batch';
 
 /**
@@ -38,7 +39,9 @@ export class ProcessOutboxService {
           LIMIT ${this.pruneBatch}
         )
       `);
-      const n = (res as unknown as { rowCount?: number }).rowCount ?? res.length ?? 0;
+      // postgres-js pone las filas afectadas en `count` (T-613): aquí no hay bucle
+      // que romper, pero el log decía «podadas 0» cada vez que podaba.
+      const n = filasAfectadas(res);
       if (n > 0) this.logger.log(`Outbox: podadas ${n} filas procesadas > ${this.processedRetentionDays}d`);
       return n;
     } catch (err) {
