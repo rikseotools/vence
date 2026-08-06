@@ -1121,17 +1121,38 @@ va con esfuerzo `sesion_propia` y no como higiene.
   opción + cita literal del BOE). No era trámite del gate: dos de ellas se resuelven por un matiz que
   la explicación vieja no explicaba (art. 30, *«promover la convocatoria»* ≠ *«convocar»*; art. 48,
   *«aguas interiores»* frente a exteriores).
-
-#### ⏳ LO QUE FALTA
-
-1. **El Paso 2 (recorte) por el PIPELINE, no a mano.** `verify:scope dump` → los 2 agentes + juez →
-   `plan` → `apply`. Es de **impacto alto** (92 artículos fuera, ~51 dentro, 29 preguntas dejan de
-   servirse ahí), así que el clasificador lo mandará a **puerta de juicio** y necesita OK explícito.
-   ⚠️ **Nada se borra:** las 29 preguntas siguen en el banco, solo dejan de servirse en ESE tema.
-2. **Generar las preguntas de los arts. 89-139**, que es lo que el programa pide y hoy tiene **0**.
-   Ojo al mapeo fino: el epígrafe no pide el Título IV entero sino **los capítulos I, III, IV, VI y
-   VII**, así que hay que bajar la estructura por capítulos del BOE antes de escopar (regla del manual:
-   casar por RÚBRICA, no por el número a ojo).
+- **Paso 2 (recorte) PREPARADO por el pipeline, pendiente de `apply` con criterio humano (06/08,
+  sesión w1).** El mapeo fino de capítulos —lo que este mismo ítem pedía como pendiente— está HECHO y
+  **verificado por triplicado contra `BOE-A-2007-5825`**: mi propia lectura del índice del BOE, el
+  agente ANALISTA y el agente ESCÉPTICO (2 agentes independientes, cada uno con WebFetch propio al
+  BOE, sin verse entre sí) llegaron **exactamente** a los mismos rangos:
+  - Título III (organización territorial): **89-98**.
+  - Título IV, solo capítulos I (**100-107**), III (**117-118**), IV (**119-123**), VI (**128-132**)
+    y VII (**133-139**) — se excluyen a propósito el art. 99 (introductorio del título, sin capítulo),
+    el capítulo II 108-116 («La Junta de Andalucía») y el capítulo V 124-127 («La Administración de la
+    Junta de Andalucía»), que el epígrafe NO cita.
+  - Total scope correcto: **37 artículos** (89-98, 100-107, 117-123, 128-139) — **no 51**: la cifra
+    «~51» de arriba era la estimación ANTES de filtrar por capítulo (Título III + Título IV entero =
+    10+41=51); con el filtro fino son 14 menos (art. 99 + cap. II + cap. V).
+  - `node scripts/verify-topic-scope.cjs dump auxiliar_administrativo_ayuntamiento_sevilla` →
+    `plan auxiliar_administrativo_ayuntamiento_sevilla <propuestas.json>` (propuestas = consenso de
+    los 2 agentes) da: **quitar 92 / añadir 37, impacto 51 preguntas** (activas hoy en T4 que dejan de
+    servirse ahí — no se borran, ver arriba), `deltaValid: true`, `category: judgment_gate`
+    (`flags: ['epigrafe_no_localizable']` — heurística conservadora esperada: el epígrafe dice «el
+    Estatuto de Autonomía para Andalucía», no «LO 2/2007», así que el localizador automático no casa
+    el segmento; NO es un dato sospechoso, es el propio diseño del clasificador pidiendo ojos humanos).
+  - **NO se ha aplicado**: además de la puerta de juicio, este rol (trabajador, `VENCE_LECTOR_URL`
+    de solo lectura) no tiene permiso de escritura en tablas de negocio. `dump`/`plan` corrieron
+    sustituyendo `DATABASE_URL` por `VENCE_LECTOR_URL` (son solo `SELECT`); `apply` necesita el
+    `DATABASE_URL` real (`vence_coordinacion` tampoco sirve: sin acceso a `topic_scope`).
+  - **Para aplicar** (sesión/persona con `DATABASE_URL` de escritura): re-generar `dump` y `plan` en
+    fresco (el dump lee `topic_scope` EN VIVO, no reutilizar el de esta sesión) con la misma
+    `propuestas.json` (los rangos de arriba), revisar la tabla que imprime `plan`, y
+    `apply auxiliar_administrativo_ayuntamiento_sevilla plan.json --include-gate` (el `--include-gate`
+    es obligatorio: sin él `apply` solo tocaría los `auto_safe`, que aquí son 0).
+2. **Generar las preguntas de los arts. 89-139** (el subconjunto real: 89-98, 100-107, 117-123,
+   128-139 — ver mapeo de arriba), que es lo que el programa pide y hoy tiene **0**. Ya no falta
+   mapeo: los rangos exactos están arriba, verificados.
 3. **Los otros 25 temas de la oposición siguen en `never_sourced`** (Paso 1 sin hacer). No bloquea las
    respuestas ya dadas, pero la próxima queja de temario de Sevilla volverá a parar en la puerta.
    El literal de los 26 temas está **entero en el mismo documento del hub** — es clonar, no investigar.
