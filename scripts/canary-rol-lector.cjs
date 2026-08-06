@@ -60,6 +60,10 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-220] triar los checks de seguimiento con cambio sin revisar: sin esto no se puede ver QUÉ
+  // cambió (hash/preview/status), solo que `oposiciones.seguimiento_change_status='changed'`.
+  // Ver 20260806_rls_convocatoria_seguimiento_checks_lector.sql.
+  ['convocatoria_seguimiento_checks', 'el histórico de checks de seguimiento, para triar qué cambió'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
