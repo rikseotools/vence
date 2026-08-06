@@ -1,0 +1,13 @@
+{
+  "cita": {
+    "ref": "Art. 9.1 CE",
+    "texto": "Los ciudadanos y los poderes públicos están sujetos a la Constitución y al resto del ordenamiento jurídico."
+  },
+  "options": {
+    "0": "Habla de \"residentes\", un concepto más amplio que no es la fórmula que emplea el precepto: el art. 9.1 CE sujeta específicamente a los ciudadanos y a los poderes públicos, no a todo residente.",
+    "1": "Reproduce literalmente la fórmula del art. 9.1 CE, que somete a la Constitución y al ordenamiento jurídico tanto a los ciudadanos como a los poderes públicos.",
+    "2": "El precepto no menciona a las instituciones europeas, que ni siquiera están sujetas al ordenamiento jurídico interno español del mismo modo que los ciudadanos y los poderes públicos.",
+    "3": "El gobierno de la nación es solo uno de los poderes públicos: la fórmula completa del art. 9.1 CE incluye también, expresamente, a los ciudadanos."
+  },
+  "estilo": "impugnacion"
+}

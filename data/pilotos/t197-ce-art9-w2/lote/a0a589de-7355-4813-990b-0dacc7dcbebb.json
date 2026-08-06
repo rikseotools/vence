@@ -1,0 +1,13 @@
+{
+  "cita": {
+    "ref": "Art. 9.3 CE",
+    "texto": "La Constitución garantiza el principio de legalidad, la jerarquía normativa, la publicidad de las normas, la irretroactividad de las disposiciones sancionadoras no favorables o restrictivas de derechos individuales, la seguridad jurídica, la responsabilidad y la interdicción de la arbitrariedad de los poderes públicos."
+  },
+  "options": {
+    "0": "Reduce a mera \"posibilidad\" algo que el art. 9.3 CE no deja opcional: la irretroactividad de las disposiciones sancionadoras no favorables está GARANTIZADA por la Constitución, no simplemente permitida.",
+    "1": "El art. 9.3 CE prohíbe expresamente la retroactividad de las normas restrictivas de derechos que sean desfavorables; esta opción afirma justo lo contrario de lo que garantiza el precepto.",
+    "2": "El art. 9.3 CE prohíbe la retroactividad de las disposiciones sancionadoras no favorables; solo se admite la retroactividad de las normas sancionadoras favorables (principio de la ley más favorable), nunca de las desfavorables.",
+    "3": "Reproduce fielmente la garantía del art. 9.3 CE: la Constitución impide que una norma sancionadora o restrictiva de derechos individuales, si es desfavorable, se aplique a hechos anteriores a su entrada en vigor."
+  },
+  "estilo": "impugnacion"
+}
