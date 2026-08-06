@@ -136,7 +136,11 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
     r.avisos.forEach((a) => avisos.push(`${etiqueta(q, i)}: ${a}`))
   })
 
-  let lote = analizarLote(Q)
+  // Texto del artículo de cada pregunta, en el MISMO orden que Q — lo que necesita el
+  // check CLOZE de lote (T-153) para comparar enunciado y clave contra la fuente.
+  const articulos = Q.map((q) => arts.get(claveDe(q)) || '')
+
+  let lote = analizarLote(Q, articulos)
   let equilibrado = null
   if (EQUILIBRAR && lote.errores.length) {
     const r = equilibrarLote(Q)
@@ -144,7 +148,7 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
       r.preguntas.forEach((q, i) => { Q[i] = q })
       fs.writeFileSync(FILE, JSON.stringify(Q, null, 2) + '\n')
       equilibrado = r.movimientos
-      lote = analizarLote(Q)
+      lote = analizarLote(Q, articulos)
     }
   }
   lote.errores.forEach((e) => errores.push(e))

@@ -2571,7 +2571,16 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(reutiliza el margen explotable de 30% de `tellLongitud`, calibrado contra 13/16 y 7/10 ' +
       'reales del backlog que SÍ disparan y 6/14 que NO) y los marcadores de absoluto ' +
       '(«únicamente», «solo», «siempre»…) que viven SOLO en distractores en >60% de las preguntas ' +
-      'que los usan. Núcleo puro `lib/generacion/absolutosOpcion.js`.',
+      'que los usan. Núcleo puro `lib/generacion/absolutosOpcion.js`. También cubre [T-153] — ' +
+      'problema de VALIDEZ, no de forma: `analizarPregunta` avisa del PAR ESPEJO (un distractor es ' +
+      'la clave con un único término invertido — superior/inferior, o una negación con «no» ' +
+      'insertada delante del clítico, detectado por diff de palabras, no por `replace()` de texto ' +
+      'plano; núcleo `lib/generacion/espejoOpciones.js`) y `analizarLote` avisa del formato CLOZE de ' +
+      'lote (>50% de las preguntas con artículo conocido donde el enunciado cita literalmente el ' +
+      'arranque de un tramo del artículo y la clave es la continuación verbatim — relleno de huecos, ' +
+      'no pregunta; núcleo `lib/generacion/clozeArticulo.js`). El CLOZE necesita el texto del ' +
+      'artículo por pregunta: `analizarLote(preguntas, articulos)` — sin el segundo argumento, ese ' +
+      'check concreto simplemente no se pronuncia.',
   },
   audit_clave_inciso_anulado: {
     titulo: '¿La RESPUESTA CORRECTA de una pregunta viva reproduce un inciso anulado por el TC?',

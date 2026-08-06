@@ -14,6 +14,7 @@
 const {
   analizarPregunta,
   analizarLote,
+  analizarValidezLote,
   analizarDuplicados,
   claveDe,
   clausulaEnEnunciado,
@@ -110,6 +111,44 @@ describe('simularBatch — §2.2-bis tell de longitud', () => {
   it('no marca nada cuando los cuatro tamaños son comparables', () => {
     const { errores } = analizarPregunta(preguntaBuena(), ART_6B)
     expect(errores.some((e) => e.includes('tell de longitud'))).toBe(false)
+  })
+})
+
+describe('simularBatch — PAR ESPEJO (T-153)', () => {
+  it('avisa cuando un distractor es la inversión exacta de la clave', () => {
+    const q = preguntaBuena({
+      option_a: 'El plazo se interrumpe por la interposición del recurso ante el órgano competente.',
+      option_b: 'El plazo no se interrumpe por la interposición del recurso ante el órgano competente.',
+      correct_option: 0,
+    })
+    const { avisos } = analizarPregunta(q, ART_6B)
+    expect(avisos.some((a) => a.includes('PAR ESPEJO'))).toBe(true)
+    expect(avisos.find((a) => a.includes('PAR ESPEJO'))).toContain('opción B')
+  })
+
+  it('NO avisa cuando ningún distractor es espejo de la clave', () => {
+    // OJO: la fixture `preguntaBuena()` por defecto SÍ tiene un espejo real (option_b
+    // cambia "fuera"↔"dentro" del territorio, que está en PARES_INVERTIDOS) — es un
+    // acierto del check, no un fallo del fixture, así que aquí se usa una pregunta sin
+    // ese patrón para probar el caso negativo.
+    const q = preguntaBuena({
+      option_b: CORRECTA_6B.replace('de la Entidad impositora', 'de la comunidad autónoma'),
+      option_c: CORRECTA_6B.replace('que no hayan nacido ni hubieran', 'que hayan nacido o hubieran'),
+      option_d: CORRECTA_6B.replace('bienes, derechos u obligaciones', 'bienes, derechos u obligaciones futuras'),
+    })
+    const { avisos } = analizarPregunta(q, ART_6B)
+    expect(avisos.some((a) => a.includes('PAR ESPEJO'))).toBe(false)
+  })
+
+  it('el aviso de espejo NO bloquea (va en avisos, no en errores)', () => {
+    const q = preguntaBuena({
+      option_a: 'El plazo se interrumpe por la interposición del recurso ante el órgano competente.',
+      option_b: 'El plazo no se interrumpe por la interposición del recurso ante el órgano competente.',
+      correct_option: 0,
+    })
+    const { errores, avisos } = analizarPregunta(q, ART_6B)
+    expect(avisos.some((a) => a.includes('PAR ESPEJO'))).toBe(true)
+    expect(errores.some((e) => e.includes('ESPEJO'))).toBe(false)
   })
 })
 
@@ -313,6 +352,73 @@ describe('simularBatch — §2.2-bis tell de FORMA de LOTE (absolutos en distrac
     const preguntas = [conMarcadorSoloEnDistractor('únicamente'), conMarcadorSoloEnDistractor('solo')]
     const { avisos } = analizarLote(preguntas)
     expect(avisos).toEqual([])
+  })
+})
+
+// ─── Formato CLOZE a nivel de LOTE (T-153) ──────────────────────────────────────────────
+describe('simularBatch — formato CLOZE de lote — T-153', () => {
+  // Artículo simple y autocontenido para que la cola citada sea inequívoca.
+  const ART =
+    'Los tributos que establezcan las entidades locales respetarán, en todo caso, los siguientes principios: no gravar, como tales, negocios, actos o hechos celebrados o realizados fuera del territorio de la Entidad impositora.'
+
+  const preguntaCloze = () => ({
+    options: [
+      'no gravar, como tales, negocios, actos o hechos celebrados o realizados fuera del territorio de la Entidad impositora.',
+      'gravar libremente cualquier negocio celebrado fuera del término municipal correspondiente.',
+      'exigir el tributo con independencia del territorio donde se hubiera celebrado el negocio.',
+      'aplicar el tributo únicamente a los negocios celebrados dentro del término municipal.',
+    ],
+    correct_option: 0,
+    question_text:
+      'Según el artículo 6.b) del TRLRHL, los tributos que establezcan las entidades locales respetarán, en todo caso, los siguientes principios:',
+  })
+
+  const preguntaPregunta = () => ({
+    options: [
+      'no gravar, como tales, negocios, actos o hechos celebrados o realizados fuera del territorio de la Entidad impositora.',
+      'gravar libremente cualquier negocio celebrado fuera del término municipal correspondiente.',
+      'exigir el tributo con independencia del territorio donde se hubiera celebrado el negocio.',
+      'aplicar el tributo únicamente a los negocios celebrados dentro del término municipal.',
+    ],
+    correct_option: 0,
+    question_text: '¿Qué principio deben respetar los tributos que establezcan las entidades locales según el artículo 6.b) del TRLRHL?',
+  })
+
+  it('AVISA cuando más del 50% del lote es CLOZE (relleno de huecos)', () => {
+    const preguntas = Array.from({ length: 8 }, (_, i) => (i < 5 ? preguntaCloze() : preguntaPregunta()))
+    const articulos = preguntas.map(() => ART)
+    const { avisos } = analizarLote(preguntas, articulos)
+    const aviso = avisos.find((a) => a.includes('formato CLOZE de lote'))
+    expect(aviso).toBeDefined()
+    expect(aviso).toContain('5/8')
+  })
+
+  it('NO avisa cuando el lote está por debajo del 50% CLOZE', () => {
+    const preguntas = Array.from({ length: 8 }, (_, i) => (i < 3 ? preguntaCloze() : preguntaPregunta()))
+    const articulos = preguntas.map(() => ART)
+    const { avisos } = analizarLote(preguntas, articulos)
+    expect(avisos.some((a) => a.includes('formato CLOZE de lote'))).toBe(false)
+  })
+
+  it('sin `articulos`, el check simplemente no se pronuncia (degrada, no revienta)', () => {
+    const preguntas = Array.from({ length: 8 }, () => preguntaCloze())
+    const { avisos } = analizarLote(preguntas) // sin segundo argumento
+    expect(avisos.some((a) => a.includes('formato CLOZE de lote'))).toBe(false)
+  })
+
+  it('el aviso de CLOZE NO bloquea la inserción (va en avisos, no en errores)', () => {
+    const preguntas = Array.from({ length: 8 }, () => preguntaCloze())
+    const articulos = preguntas.map(() => ART)
+    const { errores, avisos } = analizarLote(preguntas, articulos)
+    expect(avisos.some((a) => a.includes('formato CLOZE de lote'))).toBe(true)
+    expect(errores.some((e) => e.includes('CLOZE'))).toBe(false)
+  })
+
+  it('analizarValidezLote es accesible directamente (paridad de contrato con analizarFormaLote)', () => {
+    const preguntas = Array.from({ length: 8 }, () => preguntaCloze())
+    const articulos = preguntas.map(() => ART)
+    const { avisos } = analizarValidezLote(preguntas, articulos)
+    expect(avisos.some((a) => a.includes('formato CLOZE de lote'))).toBe(true)
   })
 })
 
