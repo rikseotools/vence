@@ -981,6 +981,33 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-629] 🟠 [ABIERTO 06/08] La etapa «revisada» mezcla lo que solo falta MERGEAR con lo que pide CRITERIO: el panel pide una decisión sobre trabajo mecánico
+
+- **Esfuerzo: rato.** El criterio es pequeño; lo que hay que resistir es escribirlo mirando la prosa (ver abajo).
+- **ORIGEN.** Manuel preguntó cuál es el cuello de botella y si el sistema se puede mejorar. Medido por etapas el 06/08:
+
+  | etapa | nº | horas medias |
+  |---|---|---|
+  | 1 · sin coger (pool) | 203 | 166 h |
+  | 2 · en curso | 9 | 7 h |
+  | **3 · entregada, sin revisar** | **0** | — |
+  | 4 · revisada, sin mergear | 27 | 9 h |
+  | 5 · en `main`, esperando deploy | 10 | **69 h** |
+  | 6 · cerrada sin archivar | 3 | 111 h |
+
+  **La etapa 3 a cero es la prueba de que esto se arregla:** ayer era EL cuello (23 paradas, 15 h de media, la más vieja 41 h) y [T-486] la vació poniendo a los trabajadores a revisarse entre ellos.
+- **EL PROBLEMA, y no es cosmético.** La etapa 4 se presenta entera como «esperando tu decisión», y **no lo está**. Medido el mismo día: de 24, **6 no esperaban ninguna decisión** — su nota decía *«CÓDIGO COMPLETO… PERO NO SE HA PODIDO PUSHEAR»* ([T-628]). El panel pedía criterio sobre un fallo de infraestructura. Es el MISMO patrón que T-486 arregló un escalón más abajo: **una cola que parece esperar a una persona y en realidad espera a una máquina**. Mientras estén mezcladas, la cola no se puede vaciar por partes y se mira entera o no se mira.
+- **⚠️ EL CRITERIO OBVIO ES FALSO, y está medido antes de escribir nada.** Clasificar leyendo `review_note` (buscar «rama», «commit», «pusheada»…) sobre las 27 da **5 problemas · 7 falta mergear · 0 ya en main · 15 SIN CLASIFICAR**. Quince de veintisiete es no tener criterio. Es la lección que este repo ya aprendió tres veces —`snooze_until`, `due_at`, `review_requested_at`—: **una condición en prosa no es una condición**.
+- **EL DISEÑO QUE SÍ, derivando de HECHOS y no de texto** (mismo principio que la puerta del `done` de [T-392], que deriva «superficie servida» de los imports y no de un comentario):
+  - **`solo_mergear`** — existe en `origin` una rama que declara esa tarea con contenido no fusionado (`git cherry origin/main <rama>`). Es comprobable, no opinable.
+  - **`solo_cerrar`** — sus commits ya están en `main` por contenido y solo falta `done`. Ojo con la trampa medida hoy: **`git cherry` compara PARCHES**, así que una rama reescrita sigue marcando «único» aunque su contenido esté dentro (pasó tres veces en el rescate de `flota/w3`). El criterio tiene que ser el contenido, no el sha.
+  - **`criterio`** — `review_verdict='problemas'`, o toca superficie servida, o no hay rama que mirar. Aquí sí decide una persona.
+- **DÓNDE ENGANCHA (nada nuevo):** el mismo sitio que ya imprime «⚖️ N YA REVISADA(S)» en `npm run flota` y en `backlog.cjs list`. Núcleo puro compartido por los dos, como `lib/backlog/revision.cjs` — que es donde vive `esperaRevision`/`esperaDecision` y donde debe vivir esto, no en un módulo aparte.
+- **EL VALOR ES QUE SE PUEDA VACIAR POR PARTES:** «solo mergear» lo puede hacer una sesión seguida, sin pensar en cada una; «criterio» son las que de verdad hay que leer. Hoy son 27 indistinguibles y por eso llevan 9 h paradas.
+- **CAPAS al implementarlo:** núcleo puro con los tres cubos + los casos que hoy fallan clavados (las 6 de [T-628] tienen que salir `solo_mergear`, no `criterio`); y **medir la clasificación contra las 27 reales antes de darla por buena** — si vuelve a dejar un tercio sin clasificar, el criterio no vale, igual que el de prosa.
+- **NO automatizar el merge.** Juntar ramas saca choques que ninguna rama ve por separado — medido tres veces el 06/08 (un guardarraíl de paridad roto, una colisión de migraciones, un puntero a un fichero borrado). Esto solo separa la cola; mergear sigue siendo de una persona.
+- **Relacionadas:** [T-486] (vació la etapa 3 con este mismo patrón), [T-628] (las 6 que destaparon la mezcla), [T-619] (la etapa 5, el otro cuello y el más viejo), [T-392] (derivar de hechos y no de prosa).
+
 ### [T-628] 🔴 [ABIERTO 06/08] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
 
 - **Esfuerzo: rato.** Es una clave de despliegue y un `remote`; lo caro es no tenerla.
@@ -6291,24 +6318,6 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **VERIFICADO EJECUTANDO los cuatro**, no leyendo sus tests: `audit-temario-display-drift --selftest` 5/5 · `health/kinds-evaluados --dias 1` contra RDS (1 pasada, ningún kind sin evaluar) · `temario/revisar-oposicion auxiliar_administrativo_estado` (28 temas, 0 rotos) · `impugnaciones/revisar-impugnacion` con una impugnación pendiente real (dossier completo, leyendo `questions`/`articles`). 1.107 tests de `guardrails/`+`lib/db/` en verde.
 - **QUEDA:** `revisar-impugnacion.cjs` muere con una excepción sin capturar si le pasas un id corto en vez del uuid entero (`invalid input syntax for type uuid`). Es previo a esta ficha y no se tocó para no mezclar; se arregla con una validación de formato antes de la query.
 - **Relacionadas:** [T-130] (el registro de herramientas, que es este mismo fallo una capa arriba), [T-486] (el rol lector), [T-539] (el de coordinación restringido), [T-612] (credenciales en los worktrees de trabajador).
-### [T-485] ✅ [HECHA 06/08] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
-
-- **Esfuerzo: larga.** El cambio es pequeño; lo delicado es tocar el deploy sin romper la serialización que hoy SÍ funciona.
-- **ORIGEN.** Salió comprobando lo que hacía falta para [T-486] (flota remota). **Y corrige lo que se dijo primero:** el sospechoso era `deploy_runs.pid`, y ese lado **ya está bien resuelto** — `lib/deploy/estado.cjs` solo se cree un pid si `host === hostActual` y, si no, devuelve `null` y clasifica como `sospechoso` en vez de inventarse un veredicto. Eso es exactamente lo que hay que hacer y ya está hecho.
-- **EL HUECO REAL:** la exclusión mutua de verdad no la da la tabla, la da **`flock` sobre `/tmp/vence-deploy.lock`** (`scripts/deploy-frontend.sh:47`, `deploy-backend.sh`). Un fichero en `/tmp` es **per-máquina**. Dos deploys lanzados desde máquinas distintas **no se ven**, y el propio código lo dice sin saberlo: *«el `flock` sigue siendo quien impide de verdad el solape»* (comentario en `lib/deploy/estado.cjs`). Hoy no ha pasado porque solo se despliega desde un sitio.
-- **Qué se rompería:** dos `update-service` de ECS solapados sobre el mismo servicio, que es literalmente el incidente del 24/07 ([T-075]) — allí lo causó soltar el `flock` antes de la convergencia, y se arregló manteniéndolo. Un lock que no cruza máquinas reintroduce ese fallo por otra puerta.
-- **Cómo atacarlo:** el candado se muda a `deploy_runs` con **lease renovable**, el mismo patrón ya probado en `backlog_tasks` (arriendo + latido + `reap`), no un lock eterno: si el deploy muere, la fila tiene que caducar sola. El `flock` se queda como segunda puerta **local** (defensa en profundidad, y sigue siendo el más barato para el caso normal). Cuidado con el criterio único: `estado.cjs` ya sabe clasificar runs abiertos — el lease tiene que apoyarse en él, no ser una tercera opinión (lección de [T-130]).
-- **NO bloquea el piloto** [T-486]: allí los trabajadores tienen prohibido desplegar, precisamente por esto. Se vuelve obligatoria el día que un trabajador remoto pueda desplegar.
-- **HALLAZGO AL LEER EL CÓDIGO (06/08): la detección entre máquinas YA EXISTE, lo que falta es que BLOQUEE.** `veredicto()` de `lib/deploy/estado.cjs` clasifica un run de OTRO host como `en_curso` (si es reciente) o `sospechoso` (pasados `MINUTOS_SOSPECHOSO`), porque `procesoVivo` devuelve `null` cuando `host !== hostActual`. O sea que el sistema **ya sabe** que hay un deploy ajeno en marcha — y su propio comentario dice que da igual: *«un `dudoso` no bloquea a nadie: solo evita que dos sesiones se pisen sin saberlo»*. El trabajo NO es escribir un detector nuevo: es **convertir ese veredicto en puerta**, que es exactamente lo que pide el punto de «apoyarse en `estado.cjs`, no ser una tercera opinión».
-- **Diseño concreto derivado de eso:**
-  1. `deploy_runs` gana `lease_until timestamptz`. Adquirir = INSERT atómico condicionado a que `veredicto(runs abiertos con lease vivo).estado === 'libre'`, en el MISMO statement (como el claim de `backlog_tasks`), no leer-y-luego-escribir.
-  2. **Renovación en primer plano durante el deploy**: un build de frontend pasa de 30 min (medido el 28/07, por eso `DEPLOY_LOCK_WAIT` son 45), así que el lease tiene que renovarse o caducará a mitad. Sin renovación no es un lease, es un temporizador.
-  3. **El `flock` se QUEDA**: sigue siendo la puerta local y la más barata para el caso normal. Defensa en profundidad, no sustitución.
-  4. Soltar en `trap EXIT`, y que la caducidad sola cubra el caso de que el proceso muera sin trap.
-- **Lo que hace falta para creérselo:** una simulación con DOS procesos concurrentes (`npm run sim:candado-deploy`) que compruebe (a) que el segundo espera, (b) que si el primero muere sin soltar, el segundo entra al caducar el lease y no antes, y (c) que el `flock` local sigue serializando. Un test de texto no vale aquí: lo que se está afirmando es exclusión mutua.
-- **Por qué NO se hizo el 06/08:** la sesión que lo miró llevaba muchas horas y esto toca el deploy. Se prefirió dejar el diseño escrito a dejar el candado a medias.
-
-
 ### [T-606] ✅ [HECHA 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
 **Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
