@@ -70,7 +70,11 @@ const DEBE_LEER = [
   // [T-108] "Claude en el bucle" del runbook OEP: sin esto ninguna sesión puede ver una sola
   // señal pendiente para triar (RLS activo, cero políticas — mismo mecanismo que test_questions/
   // tests). Ver 20260807_rls_oep_detection_signals_lector.sql.
-  ['oep_detection_signals', 'las señales del radar de OEP pendientes de revisar'],
+  // [T-237] llegó por su lado a la MISMA necesidad (contrastar cuántas señales produjo un sensor
+  // y triar una concreta, docs/runbooks/salud-radar.md) con la migración 20260806. La tabla se
+  // declara UNA vez: dos entradas de la misma tabla no dan más permiso, solo hacen creer que son
+  // controles distintos.
+  ['oep_detection_signals', 'las señales del radar de OEP pendientes de revisar (y el histórico, para contrastar sensores)'],
   ['detection_sources', 'qué fuentes vigila el radar y si están sanas (salud del radar)'],
   // [T-638] fuente única de verdad del audit trail de lifecycle (CLAUDE.md) — sin esto un
   // worker no puede COMPROBAR que una transición pasó de verdad, solo fiarse de la prosa de
