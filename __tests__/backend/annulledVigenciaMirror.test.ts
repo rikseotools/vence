@@ -96,7 +96,28 @@ describe('espejo CLI ↔ lib — audit-annulled-provisions (T-169)', () => {
   const {
     articleCarriesVigenciaNote: libNote,
     boeBlockRetainsAnnulment: libRetains,
+    annulmentAppliesToOriginalWordingOnly: libOriginal,
   } = require('@/lib/laws/annulledProvisions')
+
+  // T-208 — texto REAL de la API BOE datosabiertos para el CP (BOE-A-1995-25444, art. 335 /
+  // STC 101/2012), verificado el 06/08/2026: el FP que este descarte cierra.
+  const TEXTO_335_CP =
+    ', en la Cuestión 4246/2001, inconstitucional y nulo, en la redacción original, el art. 335, ' +
+    'por Sentencia 101/2012, de 8 de mayo'
+  // Hermano SIN el marcador (art. 607.2 / STC 235/2007) — sigue sin descartarse en las dos
+  // copias; el arreglo de éste queda pendiente (comparar fecha STC vs. reforma posterior).
+  const TEXTO_607_CP =
+    'en la Cuestión 5152/2000, la inconstitucionalidad y nulidad de lo indicado del art. 607.2 y ' +
+    'la constitucionalidad del primer inciso del mismo, interpretado según el f.j 9, por Sentencia ' +
+    '235/2007, de 7 de noviembre'
+
+  it.each([
+    ['con el marcador (art. 335 CP)', TEXTO_335_CP, true],
+    ['sin el marcador (art. 607 CP — pendiente, no cubierto por este descarte)', TEXTO_607_CP, false],
+  ])('annulmentAppliesToOriginalWordingOnly coincide: %s', (_caso, texto, esperado) => {
+    expect(cli.annulmentAppliesToOriginalWordingOnly(texto)).toBe(esperado)
+    expect(cli.annulmentAppliesToOriginalWordingOnly(texto)).toBe(libOriginal(texto))
+  })
 
   const BLOQUES: Array<[string, string]> = [
     ['inline tachado (art. 126.2 LBRL)', '<p>… Declarado inconstitucional y nulo por Sentencia del TC 103/2013</p>'],
