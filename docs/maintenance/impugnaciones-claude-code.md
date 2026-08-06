@@ -87,7 +87,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 5. **Corregir** lo que esté mal (§5): no oficial + mejorable = se mejora aunque la queja sea parcial (§7.3); oficial = no se toca enunciado/opciones. Re-vincular artículo exige explicación nueva coherente. Si la pregunta estaba oculta, transicionar lifecycle (§5.2).
 
 6. **Redactar el mensaje** (§6): conciso, aireado, reconocer si el usuario tenía razón, firmar "Equipo de Vence". Mostrar el borrador y ESPERAR aprobación.
-   - ⚖️ **Si la vas a RECHAZAR, la respuesta tiene que convencer, no solo informar (§7.3.quater):** cita literal del artículo, nombre de la ley, enlace al BOE y —lo que de verdad resuelve la duda— **por qué él vio otra cosa** (una redacción anterior, un apunte sin actualizar, un plazo parecido de otra norma). Un «no procede» a secas hace que la próxima vez no nos avise de un fallo real.
+   - ⚖️ **Si la vas a RECHAZAR, la respuesta tiene que convencer, no solo informar (§7.3.quater):** cita literal del artículo, nombre de la ley, **el enlace a la fuente que prueba lo que él discute** (el BOE si discute lo que dice la norma; **sus bases** si discute si entra en el temario; ninguno si discute cómo está construida la pregunta — ver la tabla de §7.3.quater punto 2) y —lo que de verdad resuelve la duda— **por qué él vio otra cosa** (una redacción anterior, un apunte sin actualizar, un plazo parecido de otra norma). Un «no procede» a secas hace que la próxima vez no nos avise de un fallo real.
 
 > **NUNCA afirmes categóricamente que está resuelto (Manuel, 30/07/2026).** Escribe **«no debería
 > volver a salirte»**, no «dejará de salirte»; **«ya debería estar resuelto»**, no «ya está
@@ -1076,8 +1076,31 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 
 1. **La cita literal del precepto**, entrecomillada y con su referencia exacta (artículo, apartado y
    letra). No parafrasear: el opositor quiere ver la frase.
-2. **El enlace directo** al texto oficial (`https://www.boe.es/buscar/act.php?id=…#<ancla>`), para
-   que lo verifique sin buscarlo.
+2. **El enlace directo a la fuente que prueba LO QUE SE DISCUTE** — y solo si hay algo que probar.
+   > 🎯 **EL ENLACE AL BOE NO ES UN ADORNO QUE SE PONE EN TODAS (Manuel, 06/08/2026).** Esta regla
+   > se leía como «toda respuesta de `rejected` lleva su enlace al BOE», y así se volvió un reflejo:
+   > se pegaba el enlace sin preguntarse qué demuestra. **Antes de ponerlo, contesta a una pregunta:
+   > ¿qué es exactamente lo que el usuario discute?** Porque cada queja se prueba con una fuente
+   > distinta, y la equivocada no es neutral: aparenta rigor mientras contesta a otra cosa.
+   >
+   > | Lo que discute | Lo que lo prueba |
+   > |---|---|
+   > | Qué **dice** la norma (clave errónea, cita no literal, redacción vieja) | El **BOE/boletín** del artículo, con su ancla |
+   > | Si el artículo **entra en su temario** («no corresponde», «fuera de temario») | **SUS bases** (`oposiciones.programa_url`), citando el epígrafe literal |
+   > | Cómo está **construida** la pregunta (mal formulada, doble solución, orden de las opciones) | El **razonamiento**, no un enlace: ya sabe lo que dice la norma |
+   > | Que la **app** hace algo raro (no le sale, se ve vacío, se repite) | Nada externo: lo que cambia para él |
+   >
+   > **Caso que lo destapa (06/08/2026, impugnación `1aac9e3c`, Natalia Suárez):** se quejaba de que
+   > el art. 12 de la LO 3/2007 *«no corresponde al temario»*, y el borrador llevaba el enlace al
+   > BOE del artículo. Ese enlace prueba **lo que dice el artículo**, que es justo lo único que ella
+   > **no** discutía. Lo que contestaba a su queja estaba en **sus bases** (`BOP-A-2025-1439`), cuyo
+   > tema c) dice literalmente «La Igualdad efectiva de mujeres y hombres…», el epígrafe exacto de
+   > su Tema 3. Se cambió el enlace por esa cita. **Su convocatoria la publica el BOP de Córdoba, no
+   > el BOE: para una queja de temario, el BOE no pinta nada.**
+   >
+   > Y cuando el enlace no aporta —porque la cita literal ya va en el mensaje y el usuario no
+   > discute el texto—, **no se pone**: un enlace de más obliga a quien lee en el móvil a
+   > comprobar algo que no le preocupaba.
    > ⚠️ **ABRE EL ENLACE ANTES DE MANDARLO Y COMPRUEBA QUE DICE LO QUE DICES (Manuel, 01/08/2026).**
    > **El ancla NO es `#a<número de artículo>` en todos los textos** — es un id de bloque del
    > consolidado, y la convención cambia de norma a norma:
