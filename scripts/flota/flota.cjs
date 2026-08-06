@@ -282,12 +282,19 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   return { ok: true, al }
 }
 
-/** Dónde vive el fichero de entorno de un trabajador, que en local no está en /etc. */
+/**
+ * Dónde vive el fichero de entorno de un trabajador.
+ *
+ * Lo dice la MÁQUINA (`dirEntorno`), no si el proceso corre aquí o allí. Se deducía de `m.local`,
+ * lo que era accidentalmente correcto mientras «local» solo podía significar el portátil; en
+ * cuanto el supervisor puede correr en el VPS [T-617], esa deducción manda a buscar los entornos
+ * de w1-w4 a `$HOME/.vence-flota` cuando están en `/etc/vence-flota`, y el supervisor no
+ * encontraría el entorno de sus propios trabajadores.
+ */
 function ficheroEntorno(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
-  return m && m.local
-    ? `${process.env.HOME}/.vence-flota/${trabajador}.env`
-    : `/etc/vence-flota/${trabajador}.env`
+  if (!m) throw new Error(`el trabajador "${trabajador}" no está declarado en ninguna máquina`)
+  return `${m.dirEntorno}/${trabajador}.env`
 }
 
 /**
