@@ -103,7 +103,7 @@ describe('trinquetes del cableado', () => {
 // Ningún test que corra en el repo principal puede verlo: aquí los módulos SÍ están. Por eso este
 // bloque ejecuta el CLI **desde otro árbol**, que es donde el fallo vive.
 describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
-  const { execFileSync } = require('child_process')
+  const { execFileSync, spawnSync } = require('child_process')
   const os = require('os')
   const ENT = require(path.join(REPO, 'lib', 'deploy', 'entorno.cjs'))
 
@@ -161,21 +161,29 @@ describe('desde el árbol de DEPLOY (sin node_modules ni .env.local)', () => {
   const hay = fs.existsSync(CLI_DEPLOY)
     && !fs.existsSync(path.join(ARBOL_DEPLOY, 'node_modules'))
     && /cargarPg\(REPO\)/.test(fs.readFileSync(CLI_DEPLOY, 'utf8'))
+  // ⚠️ El código de salida NO se juzga, y no es un descuido: `candado estado` sale con != 0
+  // cuando el candado está OCUPADO, que es una respuesta correcta suya, no un fallo. La primera
+  // versión usaba `execFileSync` a secas —que LANZA con exit != 0—, así que este test se ponía
+  // rojo para TODAS las sesiones mientras hubiera un deploy en curso: el 06/08 bloqueó un commit
+  // de documentación que no tenía nada que ver, y la única salida a mano era PRECOMMIT_TESTS_SKIP=1,
+  // o sea apagar 23.512 tests para esquivar uno. Un test del pre-commit no puede depender de un
+  // estado global que cambia solo.
+  // Lo que este test comprueba —y lo dice su nombre— es que el CLI ARRANCA: que resuelve `postgres`
+  // desde el checkout principal en vez de reventar con «Cannot find module».
   ;(hay ? it : it.skip)('el candado ARRANCA desde el árbol de deploy (no revienta al cargar postgres)', () => {
-    // `estado` sale con 3 cuando el candado está OCUPADO, que es correcto y pasa de verdad
-    // (un deploy real lo tenía tomado la primera vez que este test corrió). Lo que se comprueba
-    // aquí es que ARRANQUE —que cargue `postgres` desde un árbol sin `node_modules`—, no que
-    // esté libre: exigir 0 lo ataba al azar de si alguien estaba desplegando.
-    let salida = ''
-    try {
-      salida = execFileSync('node', [CLI_DEPLOY, 'estado'],
-        { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    } catch (e) {
-      expect(e.status).not.toBe(4)   // 4 = no pudo comprobar: eso SÍ sería el fallo original
-      salida = String(e.stdout || '') + String(e.stderr || '')
-    }
-    expect(salida).toMatch(/candado (LIBRE|)|DEPLOY EN CURSO/)
+    // `estado` sale con 3 cuando el candado está OCUPADO, y eso es correcto: pasó de verdad, con
+    // un deploy real teniéndolo tomado. `spawnSync` no lanza por código de salida, así que sirve
+    // para las dos situaciones sin envolver nada.
+    const r = spawnSync('node', [CLI_DEPLOY, 'estado'],
+      { cwd: ARBOL_DEPLOY, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const salida = `${r.stdout || ''}${r.stderr || ''}`
+    expect(r.error).toBeUndefined()
+    // 4 = «no pudo comprobar», que es EXACTAMENTE el fallo original (sin node_modules). Un 0 o un
+    // 3 significan que arrancó; un 4, que no.
+    expect(r.status).not.toBe(4)
     expect(salida).not.toMatch(/Cannot find module/)
+    // Arrancar = haber llegado a decir algo del candado, LIBRE u OCUPADO. Las dos valen.
+    expect(salida).toMatch(/candado LIBRE|DEPLOY EN CURSO|deploy\(s\) EN CURSO/)
   })
 
   it('el candado NO vuelve a requerir postgres por ruta fija (el error original)', () => {
