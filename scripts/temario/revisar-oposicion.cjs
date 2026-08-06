@@ -129,7 +129,9 @@ async function main() {
   // el manual (§ QUEJA DE TEMARIO) muere con "permission denied for table topics" antes de dar
   // veredicto, mismo patrón que T-581 en revisar-impugnacion.cjs. Con `.env.local` completo
   // (una persona) no cambia nada: VENCE_LECTOR_URL no existe ahí y se usa DATABASE_URL igual.
-  const c = new Client(pgConfig(process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL))
+  // [T-624] La elección de credencial vive en `negocioSoloLectura.cjs` y el «cómo conectar» en
+  // `pgConfig`. Se componen: uno dice CON QUÉ y el otro CÓMO.
+  const c = new Client(pgConfig(require('../../lib/db/negocioSoloLectura.cjs').urlLecturaNegocio()))
   await c.connect()
   try {
     const hechos = await reunirHechos(c, positionType, questionId)

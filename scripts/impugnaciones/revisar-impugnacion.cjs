@@ -33,14 +33,14 @@ function getUrl() {
 // `PostgresError 42501` sin capturar (medido 05/08 con la impugnación 4683e35b-137f…, mismo
 // patrón de fondo que [T-581] pero un punto de fallo distinto: no falta un try/catch, falta usar
 // la credencial que SÍ puede leer la tabla — ver CLAUDE.md "PARA CONSULTAR DATOS").
+// [T-624] El criterio (entorno > `.env.local`, valor vacío no cuenta) vive en
+// `lib/db/negocioSoloLectura.cjs`, compartido con los otros scripts que leen negocio. Aquí se
+// quiere SOLO el lector —`null` significa «no hay rol lector, reusa la conexión de arriba»— así
+// que se pregunta por la FUENTE en vez de aceptar su fallback a coordinación.
 function getUrlLector() {
-  if (process.env.VENCE_LECTOR_URL) return process.env.VENCE_LECTOR_URL;
-  try {
-    const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
-    const m = env.match(/^VENCE_LECTOR_URL=(.*)$/m);
-    if (m) return m[1].trim();
-  } catch { /* sin .env.local (p.ej. worker sin ese fichero): se prueba con DATABASE_URL */ }
-  return null;
+  const { urlLecturaNegocioConFuente } = require('../../lib/db/negocioSoloLectura.cjs');
+  const r = urlLecturaNegocioConFuente();
+  return r && r.fuente.startsWith('VENCE_LECTOR_URL') ? r.url : null;
 }
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const words = (s) => new Set(norm(s).split(' ').filter((w) => w.length > 3));
