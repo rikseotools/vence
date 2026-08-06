@@ -18512,6 +18512,52 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Cómo se mide el éxito de la campaña:** línea base **11 de 258 premium** han abierto el panel (4,3%). Tras enviar la tanda de 21, contar cuántos de ESOS 21 generan `referral_page_view` con su `src`. Query: `select metadata->>'src', count(distinct user_id) from observable_events where event_type='referral_page_view' group by 1`.
 - **Impacto:** 🟠 es la palanca más rentable disponible hoy y no cuesta desarrollo de producto. **Origen:** conversación del 28/07 sobre recompensas por menciones.
 
+- **▸ SESIÓN w1 (06/08): la «decisión de canal» de arriba estaba OBSOLETA — el canal (a) ya está
+  construido, probado y en `main` desde el 28/07-29/07; lo único que faltaba de verdad era la
+  puerta de aprobación, y estaba ausente. Corregido.**
+  - **La ficha decía «decisión pendiente: (a) campana sale hoy sin desarrollo · (b) hilo de soporte
+    exige montar el alta». MEDIDO, no supuesto: (a) NO es una opción futura, ya está HECHA.**
+    `scripts/campana-programa-recompensas.cjs` (commits `8393b73c5`/`7c7db08b6`, en `main`) genera
+    el destinatario por SQL (premium, actividad real este mes, nunca abrió el panel) e inserta en
+    `notification_logs` con `context_data.type='programa_recompensas'`; `NOTIFICATION_TYPES` lo
+    pinta en la campana y `generateActionUrl` lo enruta a `/recompensas?src=aviso-mencion`
+    (`hooks/useIntelligentNotifications.ts:500`, `components/NotificationBell.tsx:380-381`),
+    probado en `__tests__/notifications/programaRecompensasAviso.test.ts` (5 tests, verdes). La
+    página `/recompensas` ya registra la visita con ese `src` (`app/recompensas/page.tsx:280`).
+    Es decir: el trabajo de «(a) campana» que la ficha daba por sin desarrollar YA ESTABA
+    desarrollado, probado y desplegado — nadie actualizó esta ficha al construirlo.
+  - **Confirmado con consulta directa (no con lo que dice `observable_events` de refilón): CERO
+    enviados hasta hoy.** `SELECT count(*) FROM notification_logs WHERE context_data->>'type'=
+    'programa_recompensas'` → **0**. Y `referral_page_view` sigue sin ningún `src='aviso-mencion'`
+    (por `src`: `header` 43, `nav` 35, sin etiquetar 60 — nada de la campaña). El bloqueo real
+    nunca fue técnico: es que nadie ha pulsado `--commit`, y con razón — ver el hallazgo siguiente.
+  - **🔧 HALLAZGO Y ARREGLO: el script de envío NO tenía la puerta `exigirPersona`.** Es un aviso
+    PERSONALIZADO (nombre, días activos, preguntas) a un LOTE de usuarios reales prometiendo
+    dinero — exactamente lo que `lib/sessions/aprobacion.cjs` protege — y no estaba en la lista
+    `SCRIPTS_QUE_ENVIAN` de `__tests__/guardrails/aprobacionEnvios.guardrail.test.ts` (que hoy
+    solo enumera 5 rutas a mano; no es un escaneo automático). Confirmado en vivo con mi propio
+    rol: `puedeEnviar('trabajador','aviso')` → `{ok:false}`, pero el script en sí no lo comprobaba
+    — con la credencial de escritura correcta, CUALQUIERA (persona o trabajador) podía disparar
+    `--commit` sin que Manuel lo viera. Añadida `exigirPersona('aviso')` justo antes del bucle de
+    INSERT (después de enseñar el dry-run, que sigue siendo revisable sin permiso) — mismo tipo
+    `aviso` que ya usa `scripts/soporte/avisar-usuario.cjs`, no hizo falta un tipo nuevo — y
+    registrado el script en el guardarraíl y en `lib/admin/toolRegistry.ts`. **Mutation-testeado**:
+    revertido el fix, el guardarraíl cae (3 tests en rojo); restaurado, 33/33 verdes.
+  - **Lo que NO he podido remedir: la lista de 21 candidatos y sus nombres.** El script necesita
+    `user_profiles.email`/`full_name` para el saludo y el destinatario, y esa tabla está DENEGADA
+    para `VENCE_LECTOR_URL` a nivel de tabla completa (`permission denied for table user_profiles`,
+    comprobado en vivo, no solo con las columnas de nombre/correo — con `count(*)` a secas). Es el
+    diseño correcto (un trabajador no debe ver PII), pero significa que el recuento «25→21
+    candidatos» del 28/07 **no se puede refrescar sin `DATABASE_URL` de negocio real**. Quien
+    retome esto con esa credencial: `node scripts/campana-programa-recompensas.cjs` (dry-run,
+    sin flags) da la lista actual y el mensaje de ejemplo.
+  - **Lo que queda, y es SOLO decisión, no desarrollo:** que Manuel apruebe disparar la tanda
+    (`--commit`) sobre la lista dry-run del día que se apruebe. Pregunta dejada en el embudo desde
+    esta sesión. La opción (b) (hilo de soporte) sigue sin construir y, con (a) ya probada y
+    barata, no parece necesaria salvo que Manuel prefiera esa UX — lo dejo dicho, no decidido por
+    mí.
+  - **Relacionada:** [T-486] (el sistema de aprobación de envíos, del que este es el sexto script cubierto).
+
 ### [T-230] ✅ [CERRADA 28/07 — la alarma era mía, no del sistema] «Feedbacks cerrados sin responder»: eran respuestas AGRUPADAS
 - **Lo que denuncié:** de 707 feedbacks resueltos, **69 sin ningún mensaje de admin en el hilo**; y de la usuaria Luisa, **8 avisos de temario cerrados "sin decirle nada"**, 7 el mismo día. Lo presenté como que se le estaban cerrando avisos en silencio.
 - **Lo que pasaba de verdad (lo cazó Manuel: *"pero serían por el mismo asunto"*):** los 7 del 17/07 **se contestaron juntos, en una sola respuesta agrupada** colgada de otro de sus avisos (*"Lo hemos comprobado uno a uno contra el texto literal del programa oficial (BORM de 7 de octubre de 2021)… Tema 2 (Estatuto de Autonomía)…"*), y los demás se cerraron con ella. Mismo asunto, una respuesta. **Es la forma correcta de tratar una tanda**, no un descuido.
