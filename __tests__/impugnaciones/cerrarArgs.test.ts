@@ -37,6 +37,17 @@ describe('cerrar.ts — reparto de argumentos', () => {
     expect(a.aplicar).toBe(true)
   })
 
+  it('recoge el escape de la puerta del embudo (T-609), separado de los otros dos', () => {
+    const a = parsearDispute([
+      'id', '--estado', 'resolved', '--mensaje', 'm.txt',
+      '--embudo-igualmente', 'el veto ya no aplica, hablado con Manuel',
+    ])
+    expect(a.embudoIgualmente).toBe('el veto ya no aplica, hablado con Manuel')
+    // Sin pasarlo, los tres escapes quedan sin motivo — no se confunden entre sí.
+    expect(a.igualmente).toBeNull()
+    expect(a.temarioIgualmente).toBeNull()
+  })
+
   it('distingue la psicotécnica, que va a otra tabla', () => {
     expect(parsearDispute(['id', '--estado', 'resolved', '--mensaje', 'm.txt']).psicotecnica).toBe(false)
     expect(parsearDispute(['id', '--estado', 'resolved', '--mensaje', 'm.txt', '--psicotecnica']).psicotecnica).toBe(true)
