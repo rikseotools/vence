@@ -1495,15 +1495,6 @@ Medido: 16 vales, 3 Nike bien etiquetados, 0 sin destino.
 
 **Falta:** desplegar y mirarlo en `/recompensas` con los ojos (la simulación cubre el dato, no el render).
 
-### [T-584] 🟠 [ABIERTO 05/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
-
-- **Esfuerzo: minutos** para lo mitigado; el root cause real no está encontrado.
-- **Reproducido DOS VECES en la misma sesión (T-566, 05/08).** `git config --get core.hooksPath` pasó de `.husky/_` a `--version/_` sin que yo tocara `git config` — la segunda vez ocurrió entre dos intentos de commit separados por unos minutos de trabajo normal (editar markdown, correr jest). Con ese valor, git busca el hook en `--version/_/pre-commit` y `sh` lo interpreta como flag: `sh: --version/_/pre-commit: opción inválida`. Ningún hook corre — ni siquiera el "una sesión por índice" ([T-415]) ni el push-guard.
-- **El valor "--version/_" delata la causa.** `node_modules/husky/index.js` exporta `(d = '.husky') => { ...git config core.hooksPath `${d}/_`... }`. El bin `node_modules/.bin/husky` hace `p.stdout.write(i(a == 'install' ? undefined : a))` — para CUALQUIER argumento que no sea `install`/`init`/`add`/`set`/`uninstall`, ese argumento se usa TAL CUAL como directorio de hooks. Si algo invoca `husky --version` (patrón habitual para "¿está instalado y qué versión es"), `a='--version'` y el resultado es exactamente `core.hooksPath = --version/_`. Es un bug de parseo de argumentos de husky (no distingue `--version` de un nombre de directorio), no algo que dependa del rol de la sesión.
-- **NO localizado: quién invoca `husky --version`.** Grepeado `scripts/*.cjs` y `scripts/lib/*.sh` en busca de invocaciones directas a husky — ninguna. `package.json` solo tiene `"prepare": "husky install"` (que SÍ maneja bien el caso `install` y da `.husky/_` correcto). Candidatos sin confirmar: algo en el toolchain de npm/npx que sondea versiones de binarios instalados, o una segunda sesión en la MISMA máquina compartiendo este `.git/config` (los worktrees comparten `core.hooksPath`, que vive en el repo principal) ejecutando algo que sí lo invoca.
-- **Mitigado, no arreglado:** [T-566] encontró que ADEMÁS `.husky/pre-commit` corre con `sh -e` (`.husky/_/h`) y dos de sus bloques (`db:check`, `audit:display-drift`) tenían el patrón `cmd; if [ $? -ne 0 ]` como statement suelto — bajo `-e` CUALQUIER fallo de esos comandos (drift real, "permission denied" de un rol restringido, o cualquier otra cosa) abortaba el hook entero antes de decidir si bloquear o solo avisar. Reescrito con `if ! cmd; then … fi` (exento de `-e`). Esto hace el hook más robusto a fallos DENTRO de un `sh` que sí arranca, pero **no evita** que `core.hooksPath` corrupto impida a git encontrar el hook en absoluto — ese síntoma sigue vivo.
-- **Por dónde seguir:** (1) instrumentar quién invoca husky con qué argv — un wrapper temporal en `.bin/husky` que loguee `process.argv` a un fichero antes de delegar, dejarlo un día y ver qué cae; (2) mientras tanto, un guardarraíl barato: un check (en `sesion:preflight` o el propio latido) que verifique `core.hooksPath == .husky/_` y lo corrija solo, para que ninguna sesión se quede bloqueada por esto sin saber por qué.
-- **Relacionadas:** [T-566] (donde se encontró y se mitigó de paso), [T-576] (mismo síntoma general — el pre-commit bloqueando a la flota — causa distinta).
 ### [T-586] 🟡 [ABIERTO 05/08] Universidad de León: 19 de sus 21 epígrafes siguen `never_sourced` — gemela exacta de [T-471] (UC3M), y las dos venden
 
 **Medido el 05/08/2026** sobre `topic_epigrafe_verification`:
@@ -5329,6 +5320,40 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-584] ✅ [HECHA 06/08] `core.hooksPath` del repo compartido se corrompe solo a `--version/_` y tumba TODOS los hooks
+
+> **SUPERADA por [T-568], comprobado punto por punto el 06/08/2026** — esta ficha daba por no
+> encontrada una causa que su hermana **sí** identificó, y por pendiente una mitigación que **ya
+> estaba escrita**. Se cierra con la medida delante, no por antigüedad.
+>
+> - **La causa está confirmada, leyendo el código instalado:** `node_modules/husky/bin.js` **9.1.7**
+>   (la última de la v9) hace `p.stdout.write(i(a == 'install' ? undefined : a))`, así que cualquier
+>   `argv[2]` que no sea `init`/`add`/`set`/`uninstall`/`install` se usa **tal cual como directorio
+>   de hooks**. `npx husky --version` deja por tanto `core.hooksPath = "--version/_"`.
+>   ⚠️ **Subir de versión dentro de la v9 NO lo arregla**: es su diseño actual. Queda anotado para
+>   que nadie lo intente como «arreglo rápido».
+> - **La mitigación está completa y en el sitio correcto:** `lib/sessions/hooksPath.cjs` decide (núcleo
+>   puro), `scripts/sessions/latir.cjs` repara y emite `hookspath_corrupto` al bus de fricción. Vive
+>   **fuera de los hooks** —con el valor corrupto git no ejecuta ninguno, que es la paradoja que
+>   bloqueó el primer intento— y corre **antes** de las comprobaciones de `sid` y `DATABASE_URL`, así
+>   que cubre incluso a una sesión que todavía no puede latir.
+> - **Medido en RDS:** 2 eventos históricos, los dos con el valor `--version/_` (el detalle **sí** se
+>   guarda: va en `error_message`, no en `metadata`), ambos del 05/08 a las 16:06 y 16:10 — justo al
+>   estrenarse la reparación. **Cero en las 17 h siguientes**, con varias sesiones y commits de por
+>   medio; el valor actual es `.husky/_` y los hooks corrieron en los 6 commits de la sesión que
+>   cerró esto.
+> - **Se decide NO perseguir el proceso invocador.** Exigiría un wrapper sobre
+>   `node_modules/.bin/husky` —que `npm ci` borra— para un fenómeno que la reparación automática ya
+>   deja sin consecuencias. Si los eventos reaparecen, ese es el siguiente paso.
+
+- **Esfuerzo: minutos** para lo mitigado; el root cause real no está encontrado.
+- **Reproducido DOS VECES en la misma sesión (T-566, 05/08).** `git config --get core.hooksPath` pasó de `.husky/_` a `--version/_` sin que yo tocara `git config` — la segunda vez ocurrió entre dos intentos de commit separados por unos minutos de trabajo normal (editar markdown, correr jest). Con ese valor, git busca el hook en `--version/_/pre-commit` y `sh` lo interpreta como flag: `sh: --version/_/pre-commit: opción inválida`. Ningún hook corre — ni siquiera el "una sesión por índice" ([T-415]) ni el push-guard.
+- **El valor "--version/_" delata la causa.** `node_modules/husky/index.js` exporta `(d = '.husky') => { ...git config core.hooksPath `${d}/_`... }`. El bin `node_modules/.bin/husky` hace `p.stdout.write(i(a == 'install' ? undefined : a))` — para CUALQUIER argumento que no sea `install`/`init`/`add`/`set`/`uninstall`, ese argumento se usa TAL CUAL como directorio de hooks. Si algo invoca `husky --version` (patrón habitual para "¿está instalado y qué versión es"), `a='--version'` y el resultado es exactamente `core.hooksPath = --version/_`. Es un bug de parseo de argumentos de husky (no distingue `--version` de un nombre de directorio), no algo que dependa del rol de la sesión.
+- **NO localizado: quién invoca `husky --version`.** Grepeado `scripts/*.cjs` y `scripts/lib/*.sh` en busca de invocaciones directas a husky — ninguna. `package.json` solo tiene `"prepare": "husky install"` (que SÍ maneja bien el caso `install` y da `.husky/_` correcto). Candidatos sin confirmar: algo en el toolchain de npm/npx que sondea versiones de binarios instalados, o una segunda sesión en la MISMA máquina compartiendo este `.git/config` (los worktrees comparten `core.hooksPath`, que vive en el repo principal) ejecutando algo que sí lo invoca.
+- **Mitigado, no arreglado:** [T-566] encontró que ADEMÁS `.husky/pre-commit` corre con `sh -e` (`.husky/_/h`) y dos de sus bloques (`db:check`, `audit:display-drift`) tenían el patrón `cmd; if [ $? -ne 0 ]` como statement suelto — bajo `-e` CUALQUIER fallo de esos comandos (drift real, "permission denied" de un rol restringido, o cualquier otra cosa) abortaba el hook entero antes de decidir si bloquear o solo avisar. Reescrito con `if ! cmd; then … fi` (exento de `-e`). Esto hace el hook más robusto a fallos DENTRO de un `sh` que sí arranca, pero **no evita** que `core.hooksPath` corrupto impida a git encontrar el hook en absoluto — ese síntoma sigue vivo.
+- **Por dónde seguir:** (1) instrumentar quién invoca husky con qué argv — un wrapper temporal en `.bin/husky` que loguee `process.argv` a un fichero antes de delegar, dejarlo un día y ver qué cae; (2) mientras tanto, un guardarraíl barato: un check (en `sesion:preflight` o el propio latido) que verifique `core.hooksPath == .husky/_` y lo corrija solo, para que ninguna sesión se quede bloqueada por esto sin saber por qué.
+- **Relacionadas:** [T-566] (donde se encontró y se mitigó de paso), [T-576] (mismo síntoma general — el pre-commit bloqueando a la flota — causa distinta).
 
 ### [T-603] ✅ [HECHA 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
 
