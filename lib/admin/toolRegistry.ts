@@ -536,6 +536,34 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'configurador→URL, con ida y vuelta contra el parser de producción) y al NIVEL A-bis de ' +
       '`__tests__/integration/failedQuestionsLawScope.integration.test.ts` (la query real contra RDS).',
   },
+  // ── ¿lo que servimos entra en el temario de quien lo recibe? ──────────────────────────────
+  sim_scope_servido: {
+    titulo: '¿Le servimos a ESTA persona preguntas fuera de SU temario? (medida hacia delante, T-607)',
+    ruta: 'scripts/sim/sim-scope-servido.ts',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    notas:
+      '`npm run sim:scope-servido -- --usuario <uuid>` o `-- --oposicion <position_type>` (elige un ' +
+      'usuario real con historial); `--ruta` para otro camino (p.ej. el examen de un tema), ' +
+      '`--tandas N`, `SIM_BASE` para local. Necesita AUTH_SECRET de SSM. SOLO LEE. ' +
+      '⚠️ MIDE HACIA DELANTE, y ese es el punto: la misma pregunta se intentó responder DOS veces ' +
+      'cruzando servidas de hace días contra el `topic_scope` de hoy ([T-583] y la 1ª versión de ' +
+      '[T-607]) y las dos dieron cifras sin significado — si a una pregunta le cambian el artículo o ' +
+      'alguien recorta un scope, la servida de la semana pasada aparece «fuera» sin haberlo estado ' +
+      'nunca, y **`topic_scope` no tiene `updated_at`**, así que hacia atrás no se puede resolver. ' +
+      'Aquí las preguntas se piden AHORA con la sesión de un usuario REAL y se juzgan contra el ' +
+      'scope de AHORA. ' +
+      'El criterio NO se reimplementa: lo pone `fueraDeScope` (`lib/api/_shared/topicScopeSql.ts`), ' +
+      'gemelo en memoria de `articleInScope` — respeta `article_numbers IS NULL` = «toda la ley», ' +
+      'que es justo el error que infló las dos mediciones anteriores (46 de 73 «fugas» eran legítimas). ' +
+      'GOTCHA de medida: la ley y el artículo se resuelven en BD por `question.id`, NO leyendo el ' +
+      'JSON servido — adivinar el nombre del campo dio un falso «40 de 40 fuera» el 06/08. ' +
+      'NO sustituye a la sonda continua que sigue pendiente en [T-607] (esa mide todas las servidas ' +
+      'de todo el mundo en el punto de servicio); esta es la versión bajo demanda, para contestar ' +
+      'una impugnación concreta («¿le va a volver a pasar?») sin esperar días de telemetría. ' +
+      'Usada el 06/08 para cerrar `dba485dc`/`410025b4` (Lucia, UC3M): 50 servidas por Test Rápido y ' +
+      '32 por el examen de su tema, 0 fuera.',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',

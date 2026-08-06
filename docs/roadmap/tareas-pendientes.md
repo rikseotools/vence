@@ -917,6 +917,46 @@ ni que la fuga siga viva ni que esté cerrada. Con la sonda puesta, la respuesta
 otra puerta, el CTA «Hacer test de {ley}» del temario), el caso Laura CARM del 16/06 (`e7f0b57c`), que
 es el que cerró esta clase de fuga en el modo global.
 
+---
+
+#### 📏 Medida HACIA DELANTE hecha el 06/08 — y las dos impugnaciones ya contestadas
+
+Esta ficha decía que la respuesta *«llega sola en días»* con la sonda puesta. **No hacía falta
+esperar:** la misma pregunta se puede responder para UNA persona pidiendo preguntas **ahora**, con su
+sesión, y juzgándolas contra el scope de **ahora** — los dos extremos del mismo instante.
+
+Hecho con la cuenta de la usuaria que lo destapó (`113905a0`, UC3M), contra producción:
+
+| Camino | Servidas | Fuera de su temario |
+|---|---|---|
+| `/test/rapido` (modo global) | 50 | **0** |
+| Examen de su Tema 17 (modo tema) | 32 únicas — el pool entero | **0** |
+
+**Y lo que sí fue real, con fecha.** Su examen del Tema 17 del **03/08** sirvió **13 de 25** y **23 de
+50** fuera de programa (arts. 9-21 y 27-36 del RD 534/2024). El `topic_scope_verification` de ese tema
+se selló `verified_correct` el **04/08 a las 09:02** y **no se ha movido desde entonces** — y eso es
+demostrativo, porque el trigger de hash lo habría invalidado a `stale` con cualquier cambio de scope.
+O sea: el 03/08 esos artículos **estaban** en su temario, al día siguiente se corrigió, y desde
+entonces los dos caminos sirven cero. Encaja exactamente con el hallazgo de método de esta ficha.
+
+**Queda un caso sin explicar, y se anota en vez de taparlo:** una servida el **05/08 11:44** por
+`/test/rapido`, posterior al recorte. **Una sola**, y hoy no se reproduce en 50 intentos por ese mismo
+camino. No alcanza para afirmar una fuga viva.
+
+**Herramienta, para no volver a improvisarlo:** `npm run sim:scope-servido -- --usuario <uuid>`
+(o `--oposicion <position_type>`), registrada en `toolRegistry`. Usa `fueraDeScope` como criterio
+único. **No sustituye a la sonda continua** que sigue siendo el trabajo pendiente de esta ficha: aquella
+mide TODAS las servidas de todo el mundo en el punto de servicio; ésta contesta *«¿le va a volver a
+pasar a esta persona?»* en dos minutos.
+
+**Las dos impugnaciones YA ESTÁN CONTESTADAS** (`dba485dc` y `410025b4`, cerradas `resolved` el 06/08
+con esa medición como aval): la usuaria tenía razón, y el «no debería volver a pasarte» se apoya en los
+50 + 32 servidas con cero fuera, no en una suposición.
+
+**La causa de que nada de esto se pueda demostrar hacia atrás, y es barata de arreglar:**
+**`topic_scope` no tiene `updated_at`.** Sin esa columna, un recorte no deja rastro y la siguiente
+sesión repetirá estas dos horas por tercera vez. Añadirla es una migración additiva.
+
 ### [T-606] 🟡 [ABIERTO 06/08] 11 de los 15 borradores del embudo son de impugnaciones YA CERRADAS, y nadie puede retirarlos: `retirar` solo borra los tuyos
 
 **Medido el 06/08/2026 contra RDS,** al vaciar la cola de impugnaciones: de los **15 borradores
