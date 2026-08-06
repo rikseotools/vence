@@ -1,0 +1,38 @@
+[
+  {
+    "tema": 3,
+    "title": "PREVENCIÓN DE RIESGOS LABORALES",
+    "veredicto": [
+      {
+        "ley": "LPRL",
+        "quitar": ["33","34","35","36","37","38","39","40"],
+        "anadir": ["3","41","42","43","44","45","46","47","48","49","50","51","52","53","54"],
+        "razon": "El epígrafe oficial (TEMARIO_INGRESO_GC_ACTUALIZADO_2024, T3) pide Cap. I, II, III, VI y VII de la Ley 31/1995 — EXCLUYE explícitamente el Cap. IV (Servicios de prevención, arts 30-32bis) y el Cap. V (Consulta y participación de los trabajadores, arts 33-40). El scope actual (36 arts) comete dos errores a la vez: (a) incluye el Cap. V completo (33-40, 128 preguntas fuera de programa) que el epígrafe NO pide, y (b) excluye por completo los Cap. VI-VII (41-54, 82 preguntas) que el epígrafe SÍ pide, además de faltarle el art.3 (Cap I, ámbito de aplicación). Verificado contra BOE-A-1995-24292 (índice de capítulos) y contra el contenido real de los artículos en BD (art.30='Protección y prevención de riesgos profesionales' abre Cap IV, art.33='Consulta de los trabajadores' abre Cap V, art.41='Obligaciones de los fabricantes...' abre Cap VI — coincide con la rúbrica del epígrafe)."
+      }
+    ]
+  },
+  {
+    "tema": 4,
+    "title": "DERECHO CONSTITUCIONAL (Bloque 2 — LO 3/1981 Defensor del Pueblo)",
+    "veredicto": [
+      {
+        "ley": "LO 3/1981",
+        "quitar": [],
+        "anadir": ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","DFunica"],
+        "razon": "El epígrafe pide 'TÍTULO I. Nombramiento, cese y condiciones. TÍTULO II. Del Procedimiento. TÍTULO III. De las resoluciones. Disposición Final Única' — la ley tiene un CUARTO título ('Medios personales y materiales', arts 34-37) que el epígrafe NO nombra. El scope actual es NULL (ley entera), así que sirve también el Título IV: 6 preguntas fuera de programa. Verificado contra BOE-A-1981-10325 (4 títulos: I Nombramiento/cese arts 1-8, II Procedimiento arts 9-27, III Resoluciones arts 28-33, IV Medios personales y materiales arts 34-37) + Disposición Final Única (Mecanismo Nacional de Prevención de la Tortura, presente en BD como DFunica, nombrada explícitamente en el epígrafe). Se excluyen también 'dt' (disposición transitoria) y 'preámbulo', que el epígrafe no cita."
+      }
+    ]
+  },
+  {
+    "tema": 10,
+    "title": "DERECHO ADMINISTRATIVO (Bloque 2 — Ley 40/2015 LRJSP)",
+    "veredicto": [
+      {
+        "ley": "Ley 40/2015",
+        "quitar": [],
+        "anadir": ["46 bis","47","48","49","50","51","52","53","54","55","55 bis","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77","78","79","80","DF3"],
+        "razon": "BUG DE INFRA-INCLUSIÓN (no es el patrón habitual de T-148, pero salió al hacer Paso 2 de este tema): el epígrafe pide 'TÍTULO Preliminar... TÍTULO I. Administración General del Estado... TÍTULO III. Relaciones interadministrativas... Disposición Final 3ª' — o sea EXCLUYE el Título II (Sector Público Institucional, arts 81-139, correctamente fuera del scope actual) pero el scope actual (65 arts: 1-46 + 140-158) se queda CORTO en el propio Título Preliminar (llega solo a 46, la ley lo extiende hasta el 53) y OMITE POR COMPLETO el Título I (Administración General del Estado, arts 54-80) que el epígrafe pide expresamente, además de la DF3. Resultado: 534 preguntas sobre contenido QUE SÍ ES TEMARIO se le niegan al usuario en los tests de este tema. Verificado contra BOE-A-2015-10566 (Preliminar arts 1-53, Título I AGE arts 54-80, Título II Sector Público Institucional arts 81-139 EXCLUIDO, Título III Relaciones interadministrativas arts 140-158) y contra el contenido real en BD (art.54='Principios y competencias de organización... de la AGE' abre Tít.I, art.81='Principios generales de actuación' —de las entidades del sector público institucional— abre Tít.II, art.140='Principios de las relaciones interadministrativas' abre Tít.III)."
+      }
+    ]
+  }
+]
