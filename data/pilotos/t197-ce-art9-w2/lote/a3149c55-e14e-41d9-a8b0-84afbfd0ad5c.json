@@ -1,0 +1,13 @@
+{
+  "cita": {
+    "ref": "Art. 9.2 CE",
+    "texto": "Corresponde a los poderes públicos promover las condiciones para que la libertad y la igualdad del individuo y de los grupos en que se integra sean reales y efectivas; remover los obstáculos que impidan o dificulten su plenitud y facilitar la participación de todos los ciudadanos en la vida política, económica, cultural y social."
+  },
+  "options": {
+    "0": "El art. 10 CE recoge la dignidad de la persona y los derechos inviolables que le son inherentes como fundamento del orden político y la paz social; no es la sede de la igualdad material.",
+    "1": "El art. 35.1 CE reconoce el derecho al trabajo y a una remuneración suficiente sin discriminación por razón de sexo; regula el derecho al trabajo, no la igualdad material con carácter general.",
+    "2": "Es la sede constitucional de la igualdad material o sustancial: el art. 9.2 CE encomienda a los poderes públicos promover las condiciones para que la libertad y la igualdad del individuo y de los grupos sean reales y efectivas.",
+    "3": "El art. 14 CE consagra la igualdad formal o ante la ley (que nadie sea discriminado), distinta de la igualdad material o de resultado que persigue el art. 9.2 CE mediante la acción activa de los poderes públicos."
+  },
+  "estilo": "impugnacion"
+}

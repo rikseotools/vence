@@ -11359,6 +11359,43 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **Cómo:** lote por lote sobre las `unsafe` con más alcance (las que sirven a más oposiciones), reescribiendo con el formato de una razón por opción y **pasando por el mismo comparador de no-regresión** (`mismoContenidoExplicacion`) para no cambiar el sentido; después `backfill-explanation-data.ts --pregunta <id> --apply`. Ojo a las referencias POSICIONALES sin letra («como se ha visto en la primera opción»): sobreviven a la transcripción y siguen rompiendo el sentido al barajar — hay que reescribirlas también.
 - **Impacto:** 🟠 es lo que queda para poder encender el barajado con cobertura amplia. Hoy hay ~4.300 preguntas transcritas de las ~47.000 bloqueadas por citar letras.
 - **Relacionado:** [T-080] (Fase 2), `lib/shuffle/structuredExplanation.ts`, `docs/maintenance/impugnaciones-claude-code.md`. *(Nació como T-192; renumerada a T-197 porque otra sesión reclamó ese id a la vez.)*
+- **▸ SESIÓN w2 (06/08): primer lote real, 8 preguntas — verificado end-to-end, NO aplicado (trabajador
+  sin escritura en BD de negocio). Lote en `data/pilotos/t197-ce-art9-w2/` (README con el detalle).**
+  - **Cómo se priorizó (siguiendo la propia ficha, "las `unsafe` con más alcance"):** medido el 06/08,
+    hay **42.360** activas `unsafe`/`shuffle_mode='full'`/sin `explanation_data` (más que las ~47.000
+    "bloqueadas por citar letras" de la ficha original, incluye también `anchor_last`/`no_shuffle` con
+    otras 14.856). Ordenadas por nº de oposiciones que sirven su artículo (join `topic_scope`), el
+    artículo de MÁS alcance es **CE art. 9: 116 oposiciones, 20 preguntas** ahí colgadas. Se trabajaron
+    9 de esas 20; 8 se aplican, 1 se excluye (ver abajo). Quedan 12 del mismo artículo sin tocar —
+    mismo texto fuente ya verificado, coste marginal bajo para la siguiente sesión.
+  - **Verificado, no solo escrito:** las 8 explicaciones nuevas pasan `gate-citas.cjs --pre` (8/8
+    citas literales contra `articles.content`, 0 cortadas), `aplicar-explicacion.ts --lote` en dry-run
+    (8/8 validadas: estructura completa, sin referencias a letra/posición) y `validar-explicacion.cjs`
+    sobre el texto renderizado (7/8 limpias; la 8ª con un AVISO falso conocido del parser legacy en
+    preguntas `select_incorrect`, documentado en el propio script). Los seis artículos cruzados en las
+    razones (7, 8.1, 10, 14, 35.1, 44 CE) se leyeron de BD uno a uno antes de escribir la razón que
+    los cita — no se dio ninguno por sabido.
+  - **Excluida `fb2012e8-f247-4f50-bd1b-f4ee5bc60196`: su OPCIÓN D (no la explicación) dice
+    "las disposiciones indicadas en la opción ANTERIOR..."** — la referencia posicional que la propia
+    ficha avisaba que "sobrevive a la transcripción", pero está en el TEXTO DE LA OPCIÓN, no en la
+    explicación, así que un lote de explicaciones no la puede arreglar (toca `corregir-opcion.cjs`,
+    que aborta si el cambio de una opción supera 3 caracteres, y es decisión de producto). Queda para
+    quien reparta trabajo de OPCIONES.
+  - **🔧 GOTCHA DE CONECTIVIDAD, reproducido y medido — bloquea a CUALQUIER trabajador que use esta
+    familia de herramientas:** `aplicar-explicacion.ts`, `validar-explicacion.cjs` y en general todo
+    lo que use `getDb()` (`db/client.ts`, paquete `postgres`/porsager) **no conectan con
+    `VENCE_LECTOR_URL` tal cual se entrega a un trabajador** — la URL no lleva `?sslmode=require` y
+    `db/client.ts` no pasa ninguna opción `ssl` explícita, así que `postgres` intenta conectar en
+    plano y RDS lo rechaza (`no pg_hba.conf entry ... no encryption`). Medido: 5 scripts distintos
+    fallan igual con `DATABASE_URL="$VENCE_LECTOR_URL"` a secas; los 5 conectan añadiendo
+    `?sslmode=require` a la URL, sin tocar ni un fichero del repo. Es el mismo mecanismo que documenta
+    `lib/db/pgSsl.cjs` para `pg` pero en sentido CONTRARIO (`pg` necesita QUITAR `sslmode`; `postgres`
+    necesita AÑADIRLO cuando no está). Detalle completo en el README del lote.
+  - **Falta para cerrar el ciclo de ESTE lote:** una sesión con escritura corra
+    `npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts --lote data/pilotos/t197-ce-art9-w2/lote --apply`,
+    purgue caché, y haga el paso 7 del manual (re-verificación independiente sobre la fila viva) antes
+    de cerrarlo. Y para la CAMPAÑA completa: seguir con las 12 restantes de CE art. 9, luego el
+    siguiente artículo por alcance.
 
 ### [T-188] 🟡 [ABIERTO 27/07 · (b) resuelto en parte] Los 15 `programa_url` que la campaña de clonado NO pudo clonar, y por qué cada uno
 - **De dónde sale:** la campaña de [T-147] clonó 27 documentos oficiales al hub y dejó **15 sin clonar, ya triados** por causa (`node scripts/convocatoria/campana-clonar-programa.cjs` los vuelve a listar en 2 minutos, sin escribir nada). No es una lista de pendientes vaga: cada grupo tiene un arreglo distinto y ninguno es "clonar mejor".
