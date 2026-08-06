@@ -139,17 +139,45 @@ describeIfDb('data accuracy', () => {
   })
 })
 
+// ── SE MIDE LA CONSULTA, NO LA RED (06/08/2026) ──────────────────────────────────────────────
+// Esto medía la IDA Y VUELTA con `Date.now()` y exigía <100 ms. Medido ese día contra RDS: la
+// consulta tarda **0,036 ms en el servidor** y el viaje de red, él solo, tiene una mediana de
+// 38 ms con picos de 226. O sea que el umbral no afirmaba «la búsqueda es rápida» sino «la red
+// estuvo bien en esta ejecución» — y fallaba al azar. No es teórico: **dejó el CI en rojo y
+// bloqueó el deploy del backend** mientras los otros 23.503 tests pasaban.
+//
+// Subir el umbral habría sido tapar el síntoma, y además envejece mal: con 300 ms de margen, el
+// día que alguien tire el índice y esto pase a Seq Scan seguiría en verde, porque el ruido de red
+// se come la diferencia.
+//
+// Lo que el contrato dice de verdad es «la búsqueda es rápida», y esa magnitud es el TIEMPO DE
+// EJECUCIÓN EN EL SERVIDOR, que `EXPLAIN ANALYZE` da sin red de por medio. El listón queda más
+// exigente que antes (10 ms frente a 100), no menos.
 describeIfDb('performance', () => {
-  it('summary lookup takes <100ms for heaviest user', async () => {
+  const planDe = async () => {
     const { rows: [heaviest] } = await pool.query(`
       SELECT user_id FROM user_stats_summary ORDER BY total_questions DESC LIMIT 1
     `)
+    const { rows: [r] } = await pool.query(
+      'EXPLAIN (ANALYZE, FORMAT JSON) SELECT * FROM user_stats_summary WHERE user_id = $1',
+      [heaviest.user_id],
+    )
+    return (r as { 'QUERY PLAN': Array<{ 'Execution Time': number; Plan: { 'Node Type': string } }> })['QUERY PLAN'][0]
+  }
 
-    const start = Date.now()
-    await pool.query('SELECT * FROM user_stats_summary WHERE user_id = $1', [heaviest.user_id])
-    const elapsed = Date.now() - start
+  it('la búsqueda del usuario más pesado se ejecuta en <10ms EN EL SERVIDOR', async () => {
+    const p = await planDe()
+    expect(p['Execution Time']).toBeLessThan(10)
+  })
 
-    expect(elapsed).toBeLessThan(100)
+  // El tiempo solo NO basta, y está MEDIDO: forzando `enable_indexscan=off` contra RDS el plan
+  // cae a Seq Scan y aun así tarda **0,996 ms** — por debajo del umbral de 10. O sea que la
+  // regresión que se quiere cazar (índice caído) pasaría entera por el test del tiempo. La caza
+  // solo esta comprobación. Hoy la tabla es pequeña; el día que crezca, el Seq Scan duele, y para
+  // entonces ya está puesto el aviso.
+  it('y lo hace por ÍNDICE, no recorriendo la tabla', async () => {
+    const p = await planDe()
+    expect(p.Plan['Node Type']).toMatch(/Index/)
   })
 
   // Speedup real verificado con simulación: 148x (11.3s → 77ms) para Nila (55k preguntas).
