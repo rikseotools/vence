@@ -5506,6 +5506,17 @@ tiene precedente y solución.
 
 ### [T-603] ✅ [HECHA 06/08/2026] El repaso de fallos DESCARTA en silencio la selección de artículos — las casillas siguen marcadas en pantalla
 
+> **📬 POSIBLE VECINO SIN CONFIRMAR (anotado el 06/08 por otra sesión, al cerrar).** Hay un feedback
+> NUEVO de **`laurasimar@gmail.com` (premium, `7847ff3e`)** que dice: *«En la app cuando quiero
+> realizar test únicamente de fallos, la pantalla se queda translúcida»*. **Misma pantalla que esta
+> ficha** (el repaso de fallos), aunque el síntoma es otro —aquí el filtro se descartaba en
+> silencio, allí la pantalla se queda a medio cargar—. **No está comprobado que sea lo mismo**: se
+> anota solo para que quien coja ese feedback empiece mirando el arreglo de esta ficha
+> (`lawRepasoFallosUrl.ts`, `LawTestConfigurator.tsx`) y **compruebe si el deploy del 06/08 lo
+> resuelve**, en vez de partir de cero. Si no lo resuelve, es un defecto distinto de la misma
+> pantalla. Herramienta que ya existe para reproducirlo: `npm run sim:repaso-articulos`.
+
+
 **Qué ve el usuario.** En `/leyes/<ley>` acota los artículos con las casillas (p. ej. la LCSP de la 1 a la 112), marca **«solo preguntas falladas»** y le salen preguntas de artículos que **no ha elegido**. No hay aviso: las casillas que acaba de marcar **siguen marcadas** mientras el filtro se tira a la basura.
 
 **Dónde se pierde exactamente** (no es el filtro de artículos, que funciona):
