@@ -57,6 +57,10 @@ export class ArchiveInteractionsCron {
           archived: result.archived,
           deleted: result.deleted,
           batches: result.batches,
+          // Lo que QUEDA por archivar al terminar. Va en el mismo evento a
+          // propósito: «archivadas» solo se interpreta junto a «pendientes»
+          // (T-613). Lo vigila la regla `drenaje_atrasado`.
+          remaining: { user_interactions: result.remaining },
         },
       });
     } catch (error) {

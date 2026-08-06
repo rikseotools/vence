@@ -1,12 +1,22 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { filasAfectadas } from '../db/filasAfectadas';
+
+/** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
+export const ATRASO_TOPE = 200_000;
 
 /** Resultado de una ejecución del cron. */
 export interface ArchiveInteractionsResult {
   archived: number;
   deleted: number;
   batches: number;
+  /**
+   * Filas que QUEDAN por archivar al terminar (acotado a `ATRASO_TOPE`). Sin este
+   * número, «archivadas: 0» y «no había nada que archivar» se leen igual — que es
+   * cómo T-613 estuvo semanas invisible. Lo mira la regla `drenaje_atrasado`.
+   */
+  remaining: number;
 }
 
 /**
@@ -47,7 +57,12 @@ export class ArchiveInteractionsService {
     const startTime = Date.now();
     this.logger.log('Iniciando archivado de interacciones…');
 
-    const result: ArchiveInteractionsResult = { archived: 0, deleted: 0, batches: 0 };
+    const result: ArchiveInteractionsResult = {
+      archived: 0,
+      deleted: 0,
+      batches: 0,
+      remaining: 0,
+    };
 
     // ── FASE 1: archivar ──────────────────────────────────────────────────────
     for (let i = 0; i < this.maxBatches; i++) {
@@ -67,8 +82,10 @@ export class ArchiveInteractionsService {
         WHERE id IN (SELECT id FROM to_move)
       `);
 
-      // postgres-js devuelve un array de filas; rowCount es la longitud.
-      const count = (moved as unknown as { rowCount?: number }).rowCount ?? moved.length ?? 0;
+      // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` ni en
+      // `length` (T-613). Leerlo mal cortaba el bucle en la 1.ª vuelta: 10 k por
+      // noche en vez de 200 k, y reportando 0.
+      const count = filasAfectadas(moved);
       result.archived += count;
       result.batches++;
 
@@ -85,8 +102,20 @@ export class ArchiveInteractionsService {
       DELETE FROM user_interactions_archive
       WHERE created_at < now() - interval '${sql.raw(String(this.deleteAfterMonths))} months'
     `);
-    result.deleted =
-      (deleted as unknown as { rowCount?: number }).rowCount ?? deleted.length ?? 0;
+    result.deleted = filasAfectadas(deleted);
+
+    // Lo que queda para la próxima noche, medido DESPUÉS de archivar. Acotado: un
+    // `count(*)` sobre 11 M filas es justo lo que no se puede hacer cada noche, y
+    // para decidir «esto no drena» da igual 200 k que 2 M.
+    const pendientes = await this.db.execute(sql`
+      SELECT count(*)::int AS n FROM (
+        SELECT 1 FROM user_interactions
+        WHERE created_at < now() - interval '${sql.raw(String(this.archiveAfterDays))} days'
+        LIMIT ${ATRASO_TOPE}
+      ) x
+    `);
+    result.remaining =
+      (pendientes as unknown as Array<{ n?: number }>)[0]?.n ?? 0;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     this.logger.log(

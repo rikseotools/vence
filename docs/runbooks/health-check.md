@@ -207,6 +207,49 @@ reconocer el correo, así que reintentaban con la MISMA tarjeta mala sin saberlo
 distintas y 90 días, Link pierde al **11%** (7) frente al **3%** de tarjeta (9) — pero **trae 58
 clientes que sí pagan**, así que no se toca sin decidirlo a propósito.
 
+### 0.quinquies — «éxito, 0 filas» NO es «no había nada que hacer» (T-613, 06/08/2026)
+
+Un cron de retención o archivado que termina en **`status: 'success'` con 0 procesadas** se lee, en
+cualquier panel y en cualquier consulta, exactamente igual que uno que no tenía trabajo. **Son la
+misma fila.** Por eso este defecto duró semanas:
+
+| Cron | Diseñado para | Hacía de verdad | Decía |
+|---|---|---|---|
+| `telemetry-retention` (04:10) | 2,5 M filas/noche | **50 k** | `deleted: 0`, éxito |
+| `archive-interactions` (03:30) | 200 k filas/noche | **10 k** | `archived: 0`, éxito |
+
+La causa: los dos leían las filas afectadas de `res.rowCount`, que **postgres-js no rellena** (las
+pone en `.count`). Como el bucle corta con *«si el lote devolvió menos de lo pedido, hemos
+terminado»*, un 0 constante lo sacaba en la **primera vuelta**. Las dos tablas más grandes de la BD
+—`observable_events` (6,9 GB) y `user_interactions` (10 GB)— crecieron sin freno hasta acumular
+**2,7 M y 2,4 M filas** fuera de retención, y el `VACUUM` final tampoco corría nunca (está detrás de
+`if (deleted > 0)`).
+
+**Lo que lo delató fue el cron ROTO, no los buenos.** El único síntoma visible era
+`cron_sin_exito` por `observability-cleanup`, un **duplicado viejo** que podaba la misma tabla de un
+solo `DELETE` gigante y llevaba desde el 04/08 muriendo en el `statement_timeout` (30.097 ms). Ese
+se borró (dos podadores de la misma tabla con criterios distintos —`ts` vs `created_at`— no
+protegen: se contradicen).
+
+**Qué mirar cuando un drenador diga que va bien:**
+
+```sql
+-- lo que dice que hizo Y lo que le queda, juntos (si falta `remaining`, es una versión anterior)
+SELECT ts, duration_ms, metadata FROM observable_events
+WHERE event_type='cron_run' AND endpoint IN ('telemetry-retention','archive-interactions')
+ORDER BY ts DESC LIMIT 6;
+```
+
+- Desde T-613 cada drenador publica **`remaining`** (atraso acotado a 200 k) en su `cron_run`, y la
+  regla **`drenaje_atrasado`** dispara con dos firmas: **`no_drena`** (0 procesadas habiendo
+  pendientes — la firma exacta de este defecto) y **`no_alcanza`** (3 pasadas seguidas sin bajar del
+  tope). Un drenaje legítimo de un backlog grande **baja cada noche** y no dispara.
+- **Regla general, más allá de este caso:** un contador que solo puede equivocarse hacia abajo
+  produce silencio, no ruido — y el silencio no se investiga. Si un cron informa de *cuánto hizo*,
+  tiene que informar también de *cuánto queda*, o su cero no significa nada.
+- El contador vive en UN sitio (`backend/src/db/filasAfectadas.ts` y su espejo `lib/db/`), con
+  guardarraíl `__tests__/guardrails/filasAfectadas.guardrail.test.ts`.
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:
