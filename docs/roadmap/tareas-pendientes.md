@@ -1036,56 +1036,86 @@ construcción.
 
 ---
 
-#### ⏳ LO QUE FALTA (en este orden)
+#### ✅ HECHO Y EN `main` — los pasos 1 a 6 (commits `7131c4dc9` + `7005e5a3c`, 06/08)
 
-1. **El componente único** `components/temario/TopicContentView.tsx`. **La base a copiar es
-   `app/administrativo-estado/temario/[slug]/TopicContentView.tsx`**, porque es la que ya soporta
-   `basePath` y `temasExistentes` — los props del arreglo de [T-541] — y la usan las **oposiciones
-   personalizadas**. Tiene que aceptar:
-   - `oposicion` (slug) → resuelve bloques con `resolverBloque(BLOQUES_POR_OPOSICION[slug], n)`;
-   - `basePath` y `temasExistentes` (personalizadas, [T-541] — **no romper esto**);
-   - **artículos débiles** (`useTopicUnlock`) como capacidad **opcional apagada por defecto**: hoy
-     solo la tiene `auxiliar-administrativo-estado`, y encenderla para todos sería un cambio de
-     comportamiento (y de carga) que no toca decidir aquí;
-   - `TopicVideoCourses` **para todas** (se auto-oculta; recupera los cursos de las 54);
-   - el `loginHref` del `TopicPrintButton`, que hoy va **hardcodeado por oposición** — derivarlo.
-2. **Migrar las 131 rutas.** Es un cambio de UNA línea por fichero: en cada
-   `app/<opo>/temario/[slug]/page.tsx`, `import TopicContentView from './TopicContentView'` →
-   `from '@/components/temario/TopicContentView'`, y **borrar** el fichero local. Comprobado que es
-   seguro: **130/131 páginas ya pasan `oposicion=`**; las dos excepciones son
-   `auxiliar-administrativo-estado` (no lo pasa: su componente lleva el positionType dentro) y
-   `app/oposicion-personalizada/[id]/temario/[slug]/page.tsx` (importa el de `administrativo-estado`
-   y pasa `basePath`/`temasExistentes`).
-3. **El arreglo de Ángela**, que una vez unificado son ~15 líneas en UN fichero:
-   - `<article id={anclaArticulo(ley, art)}>` en la tarjeta;
-   - el `onClick` que guarda `temario_return_url` guarda **la URL con `#ancla`**;
-   - al montar, si hay `hash`, **desplegar esa ley** y hacer scroll.
-   El ancla se construye en el núcleo puro que ya existe (`lib/navigation/backToArticleLink.ts`),
-   **no en el componente** — ahí están ya `buildLawTestLink` / `buildBackToArticleLink` y su
-   guardarraíl `lawTestCtaNoBareLink.test.ts`.
-4. **Guardarraíl anti-copia-132:** que no pueda existir ningún `TopicContentView.tsx` bajo `app/`.
-   Va como eslabón del guardarraíl que ya vigila esta familia
-   (`testsDeOposicionPersonalizada.guardrail.test.ts`, que ya tiene la regla *«ninguna página puede
-   montar el TopicContentView de otra oposición sin pasarle basePath»*), **no en un fichero nuevo**.
-5. **Cerrar la fábrica:** `scripts/create-oposicion.cjs` + `docs/maintenance/crear-nueva-oposicion.md`
-   dejan de copiar el componente y pasan a **añadir la fila en `bloquesPorOposicion.ts`** (el test de
-   cobertura ya obliga).
-6. **Observabilidad:** evento al usar la vuelta con ancla, para medir si el retorno pasa de ≲190
-   usuarios a acercarse a los 663 que salen. Sin esto no se sabe si el arreglo sirvió.
-7. **vence-sim (Playwright):** el viaje entero temario → «Hacer test Art. N» → terminar → volver **al
-   mismo artículo con la ley desplegada**. Es lo único que prueba que el bucle se cierra de verdad;
-   los unit no pueden verlo.
+**1-2. El componente es UNO** (`components/temario/TopicContentView.tsx`) y **130 rutas migradas**.
+Antes de borrar nada se midió qué cambiaba DE VERDAD entre las 131, y salió una cosa que la ficha no
+tenía: **el acento del «ha caído en examen» son TRES colores** (amber 78 · rose 27 · red 26) y **no es
+ruido, agrupa por tipo de oposición** (rose = administrativos autonómicos y parlamentos; red = la
+familia sanitaria + Madrid/UNED). Así que se conserva como **dato** (`lib/temario/acentoPorOposicion.ts`)
+y la migración no cambia lo que ve nadie: el color de las 131 quedó **congelado en fixture antes del
+borrado** (`__tests__/temario/fixtures/acentos-originales.json`) con **137 tests de equivalencia**.
+`<TopicVideoCourses>` ya lo montan **todas** (recupera los cursos de las 54 que lo perdieron por olvido)
+y el `loginHref` se **deriva** con la misma fórmula que las 12 copias que ya lo derivaban.
 
-#### 🙋 Pendiente con Ángela (feedback `f57e3001`, reservado por `colas-06ago`)
+**La 131 NO se migró y no es una copia: es otro DISEÑO.** `auxiliar-administrativo-estado` tiene
+cabecera de ley en degradado índigo, badge «LEY» y la capa de «artículos a repasar» (`useTopicUnlock`).
+Absorberla cambia el aspecto de la oposición insignia → **decisión de producto de Manuel**, no de un
+refactor. Queda como **única excepción declarada con trinquete** (la lista solo puede menguar).
 
-- **No se le ha contestado todavía, y es a propósito:** el manual manda responder a una sugerencia
-  que hay que construir **con la cosa ya viva** (`gestionar-feedback-bug.md`, orden de la cola §4).
-- Cuando se le escriba: es **premium** y el aviso es **certero**, así que entra en **recompensa de
-  bug (3 €)** — pero **exige orden explícita de Manuel** y **NUNCA se menciona en el mensaje**.
-- **Antes de responder**, el dossier marca que su oposición tiene **6 temas con el Paso 2 sin cerrar**
-  (`verified_correct=18, stale=6`) → pasar `npm run epigrafe:revision -- auxiliar_administrativo_valencia`.
-- Su punto 1 (**marcapáginas explícito**) queda **sin decidir**: el arreglo 3 le da la mayor parte sin
-  que ella tenga que marcar nada. Si se hace, el gemelo natural es `user_question_favorites`.
+**3. El arreglo de Ángela, hecho:** ancla por artículo (`anclaArticulo(ley, art)` en el núcleo puro),
+la vuelta se guarda **con `#ancla`**, y al llegar se **despliega esa ley** y se salta a la tarjeta.
+El ancla lleva la LEY porque un tema sirve varias y el art. 1 de cada una colisionaría, y admite los
+identificadores no numéricos (`55 ter`, `DA 1`, `D. F. 2ª`).
+
+**4. Guardarraíl anti-copia-132**, con un cambio de criterio sobre lo que pedía la ficha: **no** mira
+que no exista un fichero con ese nombre (eso se rodea renombrando) sino que **ninguna ruta de temario
+vuelva a montar su propio árbol de leyes/artículos**.
+
+**5. Fábrica cerrada:** `create-oposicion.cjs` ya no copia el componente ni reescribe un `getBlockInfo`
+dentro; da de alta la oposición como **una fila** en `bloquesPorOposicion.ts` (idempotente, aborta si
+el fichero cambió de forma). Manual actualizado. 8 tests.
+
+**6. Observabilidad:** `temario_vuelta_articulo` (`info`) con `resultado ∈ {articulo, no_encontrado}`.
+Solo se emite si la página se abre CON ancla — una visita normal al tema no es una vuelta y contarla
+ahogaría la señal.
+
+> ⚠️ **GOTCHA que casi deja SEIS guardarraíles ciegos, y es el aprendizaje reutilizable.** Media docena
+> de suites enumeraban las 131 copias **cada una con su propio glob** (una incluso desde
+> `git ls-tree HEAD`, el árbol COMMITEADO). Al unificar, esos globs pasaban a mirar **un fichero
+> residual** y **seguían en verde**: la protección desaparecía sin que nada fallara. La lista va ahora
+> en un sitio (`__tests__/helpers/vistasDeTemario.ts`) y **empieza por el componente compartido**.
+
+> ⚠️ **Efecto colateral corregido de paso:** la oposición **personalizada** reutilizaba el componente de
+> `administrativo-estado` y, al no pasar `oposicion`, heredaba **su slug REAL** por el valor por defecto
+> → resolvía SUS bloques y mandaba a SU login. Es el mismo modo de fallo de [T-541] un enlace más abajo.
+
+**Capas:** 137 equivalencia del acento · 7 del ancla · 8 del alta de bloques · guardarraíles de las tres
+piezas del bucle · y sobre todo **7 casos que EJECUTAN el componente en jsdom**
+(`__tests__/components/temarioVueltaAlArticulo.test.tsx`): abre con ancla, comprueba que la ley se
+despliega, que **la otra ley del mismo tema con el MISMO número de artículo no se confunde**, que se
+salta a la tarjeta correcta y que un ancla muerta no rompe la página. Un guardarraíl de TEXTO habría
+dado verde con el bucle abierto — y ese test cazó que `scrollIntoView` iba **sin guarda**: no existe en
+todos los entornos (jsdom, navegadores in-app viejos) y una excepción ahí se llevaba por delante la
+vuelta entera, incluida la parte que sí funciona.
+
+**23.391 tests verdes** en el pre-commit (repo completo), `tsc` limpio, pusheado a `main`.
+
+#### ⏳ LO QUE FALTA
+
+1. **VERIFICAR EN PRODUCCIÓN (no desplegado aún).** El viaje real: temario → «Hacer test Art. N» →
+   terminar → «📖 Volver a mi temario» → **aterrizar en ese artículo con su ley desplegada**. Mirar
+   además `temario_vuelta_articulo` en `observable_events`: si aparece `resultado='no_encontrado'` de
+   forma sostenida, el ancla y el scope no casan.
+2. **vence-sim (Playwright), el viaje ENTERO.** El test de jsdom prueba el componente; lo que NO cubre
+   es la otra mitad del bucle: `LawTestPageWrapper` leyendo `temario_return_url` de `sessionStorage` y
+   pintando «Volver a mi temario». Esa costura solo se ve con navegador.
+3. **Decisión de Manuel — el acento.** Hoy son 3 colores heredados. Colapsarlos a uno es cambiar UN
+   fichero (`acentoPorOposicion.ts`), ya no 131. **No se hizo a propósito:** es un cambio visible para
+   53 oposiciones y no toca meterlo dentro de un refactor.
+4. **Decisión de Manuel — `auxiliar-administrativo-estado`.** Migrarla exige unificar su diseño con el
+   del resto (o portar su capa de «artículos a repasar» al componente único como opción apagada).
+5. **El marcapáginas EXPLÍCITO de Ángela** (su punto 1) sigue **sin decidir**: el arreglo 3 le da la
+   mayor parte sin que ella tenga que marcar nada. Si se hace, el gemelo natural es
+   `user_question_favorites`.
+
+#### 🙋 Ángela — CONTESTADA el 06/08 (feedback `f57e3001` cerrado)
+
+Borrador aprobado por Manuel y enviado (`emailSent:true`): se le reconocen las dos ideas como una sola
+(«que la app te devuelva donde estabas leyendo») y se le dice que **se está trabajando en ello**, sin
+prometer fecha ni darlo por resuelto — la parte 3 está en `main` pero **no desplegada**.
+Pendiente aparte: es **premium** y el aviso es **certero**, así que entraría en **recompensa de bug
+(3 €)**, que **exige orden explícita de Manuel** y **NUNCA se menciona en el mensaje**.
 
 **Relacionadas:** [T-541] (`basePath`: el default de este mismo componente teletransportaba al usuario),
 [T-596] (el codemod sobre las 131 copias — el precedente que esta ficha existe para no repetir),
