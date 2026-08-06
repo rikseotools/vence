@@ -564,6 +564,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Usada el 06/08 para cerrar `dba485dc`/`410025b4` (Lucia, UC3M): 50 servidas por Test Rápido y ' +
       '32 por el examen de su tema, 0 fuera.',
   },
+  // ── un modal abierto en móvil, ¿se puede TOCAR entero? ────────────────────────────────────
+  sim_modal_tocable: {
+    titulo: 'Comprobar que un modal en móvil no tiene zonas que se ven pero no se pueden pulsar (T-608)',
+    ruta: 'scripts/sim/sim-modal-tocable.ts',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:modal-tocable -- --usuario <uuid>` (o `--oposicion <position_type> --tema N`, ' +
+      '`--movil "iPhone 13"`, `SIM_BASE` para local). Necesita AUTH_SECRET de SSM. SOLO LEE. ' +
+      'Abre el modal de «solo preguntas falladas» en un viewport de móvil y pregunta, punto por ' +
+      'punto de arriba abajo, **quién recibiría el toque** (`document.elementFromPoint`). ' +
+      '⚠️ LAS TRES CONDICIONES SON NECESARIAS A LA VEZ, y por eso el fallo llevaba tiempo ' +
+      'invisible: **móvil** (en escritorio el modal no llega a la franja de abajo), **con el ' +
+      'banner de cookies EN PANTALLA** (quien ya las aceptó no vuelve a verlo, y desde ahí ' +
+      'probamos siempre) y mirando el PUNTO, no el aspecto — el modal se pintaba perfecto. ' +
+      'Corre las dos pasadas y el CONTRASTE no es adorno: si aceptar las cookies no cambiara el ' +
+      'resultado, la simulación no estaría midiendo el banner. Solo cuenta como fallo la pasada ' +
+      'sin aceptar. ' +
+      'Contraste medido el 06/08: contra PRODUCCIÓN, 2 de 5 puntos del modal se los queda el ' +
+      'banner (z=9999 sobre el modal en z=50); con el arreglo (`CAPAS.modal`), 0 de 5. ' +
+      'GOTCHA de medida: se espera la RESPUESTA del endpoint de falladas y luego a que el modal ' +
+      'sea visible, NUNCA un `waitForTimeout` — en dev la primera compilación tarda y daba «el ' +
+      'modal no llegó a abrirse» con el arreglo bien puesto. ' +
+      'El criterio de capas vive en `lib/ui/capas.ts` (`CAPAS`/`tapaA`, 6 tests): quedan **41** ' +
+      'ficheros con modales en `z-50` sin migrar, que es la parte 2 de [T-608].',
+  },
   // ── suplantación («ver como usuario») ─────────────────────────────────────────────────────
   sim_impersonacion: {
     titulo: 'Comprobar que la suplantación es de solo lectura, visible, cerrable y que CADUCA sola',

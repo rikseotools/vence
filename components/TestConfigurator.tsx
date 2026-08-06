@@ -14,6 +14,7 @@ import { trackConfigFeaturesUsed } from '@/lib/services/conversionTracker';
 import { summarizeLawInclusion, inclusionBadgeLabel } from '@/lib/laws/lawInclusionSummary';
 import { decidirContadorArticulos, textoContadorArticulos } from '@/lib/laws/contadorArticulos';
 import { emitClientEvent } from '@/lib/observability/client';
+import { CAPAS } from '@/lib/ui/capas';
 
 function getOposicionName(positionType: string): string {
   return getOposicionByPositionType(positionType)?.name || 'tu oposición'
@@ -2806,7 +2807,14 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
       {/* 🆕 MODAL DE PREGUNTAS FALLADAS */}
       {showFailedQuestionsModal && failedQuestionsData && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        // z-index por CAPAS y no `z-50` (T-608): con `z-50` el banner de cookies (z 9999) se
+        // llevaba los toques del cuarto inferior de la pantalla en móvil, así que las opciones
+        // se veían y no se podían pulsar. Va en `style` porque Tailwind solo genera los valores
+        // arbitrarios que encuentra literales en el código.
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          style={{ zIndex: CAPAS.modal }}
+        >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-4 flex items-center justify-between">
