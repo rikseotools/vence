@@ -102,6 +102,7 @@
     "sim:push-guard-menciones": "node scripts/backlog/sim-push-guard-menciones.cjs",
     "sim:verificacion": "node scripts/backlog/sim-verificacion.cjs",
     "sim:reset-commits": "node scripts/deploy/sim-reset-commits.cjs",
+    "sim:vuelta-articulo": "npx tsx --env-file=.env.local scripts/sim/sim-vuelta-al-articulo.ts",
     "backlog:verificacion": "node scripts/backlog/verificacion.cjs",
     "sim:baja-emails": "NODE_OPTIONS=\"--require ./scripts/sim/stubs/server-only-shim.cjs\" tsx --env-file=.env.local scripts/sim/sim-baja-emails.ts",
     "sim:audit-landings": "node scripts/convocatoria/sim-audit-landings.cjs",

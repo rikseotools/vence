@@ -1655,6 +1655,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Tras aplicar hay que invalidar caché y comprobar el HTML SERVIDO.',
   },
 
+  sim_vuelta_al_articulo: {
+    titulo: 'Comprobar con navegador que la vuelta del test devuelve a SU artículo',
+    ruta: 'scripts/sim/sim-vuelta-al-articulo.ts',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/roadmap/tareas-pendientes.md',
+    notas:
+      '`npm run sim:vuelta-articulo [-- --url https://www.vence.es]`. Solo navega, no escribe. ' +
+      'Nace de [T-611] (feedback de Ángela): al volver de un test aterrizaba arriba del tema y con ' +
+      'las leyes PLEGADAS. Hace falta navegador porque la ley plegada NO es `display:none` en el ' +
+      'HTML servido — es estado de React tras hidratar, y el despliegue va en un efecto post-montaje ' +
+      'a propósito (la página es ISR y tocar el HTML sería un hydration mismatch): medirlo por HTTP ' +
+      'da VERDE con el bug puesto. Cuatro comprobaciones: control (sin ancla la tarjeta no se ve, o ' +
+      'el resto no prueba nada), la vuelta (con ancla la tarjeta se VE), la señal ' +
+      '`temario_vuelta_articulo=articulo`, y el ancla rota (ni revienta ni miente: `no_encontrado`). ' +
+      'El caso NO va quemado: se elige de BD un tema activo con 2+ leyes, porque un slug fijo ' +
+      'envejece y acaba probando una página que ya no existe. GOTCHA: el ancla se localiza por ' +
+      'selector de ATRIBUTO, no por `#id` — `CSS.escape` es un global del navegador y en Node no existe.',
+  },
   // ── topic_scope_verification (estado de verificación del temario) ──────────────────────────
   degradar_sellado_sin_pipeline: {
     titulo: 'Degradar a never_verified los temas sellados a mano y sin Paso 1',
