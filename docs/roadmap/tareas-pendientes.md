@@ -931,6 +931,68 @@ luego a que el modal sea visible — misma lección que ya pagó `sim-repaso-aje
 `fixed inset-0 … z-50` a `CAPAS`, y un guardarraíl que rechace un `z-[NNNN]` suelto en un modal nuevo.
 Mientras tanto, `ArticleModal` y `AvatarChanger` siguen con su `9999` a mano.
 
+### [T-609] 🔴 [ABIERTO 06/08] Un `--igualmente` dejó salir tres correos que Manuel había vetado ocho minutos antes: el cierre no mira la respuesta del embudo
+
+> ⚠️ **Manuel dijo dos veces que no hacía falta ficha.** Se escribe igual, al pedir él que no quede
+> ningún cabo suelto antes de compactar, porque es **lo único de la jornada que llegó a un usuario**
+> y su único rastro estaba en una conversación que iba a desaparecer. **Si sigue sin parecerte
+> prioritario, ciérrala** — pero que la decisión se tome mirándola, no por haberla perdido.
+
+**Lo que pasó, con reloj (06/08/2026).** Un trabajador había dejado en el embudo cuatro borradores de
+rechazo (`#34`-`#37`) para las cuatro impugnaciones de Manolo sobre los arts. 108/110/112/114 CE.
+
+| Hora (UTC) | Qué |
+|---|---|
+| 06:12 | Se responde su **feedback** `38b93ac3` reconociendo que el Título V se mostraba sin texto |
+| **06:16** | **Manuel responde a los cuatro borradores: «NO ENVIAR TAL CUAL»**, y explica por qué (la causa era [T-596], la visualización, y un rechazo seco sería incoherente con el correo de las 06:12) |
+| 06:24 · 06:25 · 06:26 | La sesión `colas-05ago-fedora-8f7f5d` **cierra tres impugnaciones y manda los tres correos con el texto vetado** |
+| 06:27 | Lo intenta con la cuarta; ya estaba cerrada en silencio por otra sesión |
+
+**Lo que falló, y no fue el despiste de nadie.** Cada uno de esos cierres **saltó dos guardarraíles a la
+vez** con `--igualmente`, y quedó contado en el bus de fricción (`sesion_friccion`, clase
+`guard_escape`): **ocho escapes en cuatro minutos**, cuatro del guard de `cierre-cola` y cuatro del de
+`temario`.
+
+1. **El veredicto de Manuel vive en `session_questions.answer` y el cierre no lo consulta.** `cerrar.ts`
+   comprueba la reserva, el sistémico, el temario y la explicación estructurada — pero **no mira si el
+   borrador de esa misma impugnación tiene una respuesta que NO es una aprobación**. El dato estaba en
+   la BD ocho minutos antes de que saliera el correo.
+2. **El `--igualmente` del guard de reserva se salta un claim VIVO.** Las cuatro impugnaciones estaban
+   reservadas por otra sesión (`colas-06ago`, latiendo). La reserva es la única puerta que protege el
+   reparto, y un escape con motivo la anula entera. Compárese con el criterio de [T-375]: el push-guard
+   dejó de bloquear lo que no se puede satisfacer, pero **sigue** bloqueando el lease vivo de otra
+   sesión, porque eso sí tiene arreglo (coordinarse).
+3. **Ocho escapes en cuatro minutos y ni un aviso.** El contador de fricción de [T-423] los registró
+   todos y nadie los mira en caliente. Una ráfaga de escapes del mismo guard en minutos no es fricción
+   normal: es alguien empujando contra una puerta.
+
+**Por qué importa más que el correo en sí.** El texto enviado no era falso —los artículos SÍ entran en
+su temario— pero llegaba **seco**, justo después de haberle dicho que el fallo era nuestro y ya estaba
+corregido. La regla de la casa es que **nada sale hacia una persona sin que Manuel lo apruebe**
+([T-486]); aquí Manuel se pronunció **en contra**, por el canal previsto, y el correo salió igual. El
+permiso funcionó (el trabajador no podía enviar); lo que falló fue una sesión con permiso que no
+consultó la decisión.
+
+**Qué hacer (por orden de valor, ninguno caro):**
+1. **Que `cerrar.ts` mire el embudo.** Antes de enviar, buscar borradores de ese `draft_target` con
+   `answered_at` puesto: si la respuesta no es una aprobación, **abortar** con el texto de Manuel
+   delante. Es el mismo patrón que la puerta de temario, en el mismo sitio.
+   ⚠️ Al implementarlo, cuidado con lo que ya avisa [T-606]: `draft_target` es **texto libre**
+   (unas veces el uuid entero, otras los 8 primeros), así que emparejar por prosa es frágil. Lo
+   robusto es guardar el id del caso en una columna propia.
+2. **Que el `--igualmente` del guard de reserva NO cubra el caso de lease vivo ajeno.** Que siga
+   sirviendo para lo demás, pero un claim vivo se resuelve hablando, no escapando.
+3. **Alerta por ráfaga de escapes**: N escapes del mismo guard en M minutos. El dato ya está en
+   `observable_events`; solo falta la regla.
+
+**Lo que NO hay que hacer:** escribirle otra vez a Manolo. Ya tiene tres correos y la respuesta de su
+feedback, que sí explica lo de la visualización. Un cuarto mensaje corrigiendo el tono solo subraya el
+ruido — decidido el 06/08.
+
+**Relacionadas:** [T-486] (nada sale sin aprobación), [T-375] (qué debe y qué no debe bloquear un
+guard), [T-423] (el contador de fricción, que ya tiene el dato), [T-606] (el embudo no sabe en qué
+estado está el caso del que habla), [T-596] (la causa real de las cuatro impugnaciones).
+
 ### [T-607] 🟡 [ABIERTO 06/08] No se puede afirmar que haya fuga de scope: medir servidas del pasado contra el scope de HOY no distingue una fuga de un re-vínculo posterior
 
 **Qué es esto.** El intento de diagnosticar [T-583] (*«Test Rápido sirve preguntas fuera de
@@ -1438,6 +1500,18 @@ página real** — es UI y aquí un test de texto no demuestra nada.
 - **Relacionadas:** [T-486] (la flota y su supervisor), [T-397] y [T-588] (el trabajo que estaba en riesgo), [T-415] (una sesión por directorio).
 
 ### [T-573] 🔴 [ABIERTO 05/08] `vence_lector`: RLS activo sin política bloqueaba `test_questions`/`tests` pese al GRANT — arreglado el par que hacía falta, el resto se queda bloqueado a propósito
+
+> **🔍 REVISADA el 06/08/2026 — el diagnóstico es CIERTO, confirmado en RDS. Falta aplicar el DDL.**
+> `test_questions` y `tests` tienen `relrowsecurity = true` y **CERO políticas** en `pg_policies`: con
+> RLS activo el GRANT de tabla no basta y el motor devuelve **cero filas EN SILENCIO**, sin error —
+> por eso un canario que solo mira «¿lanzó excepción?» lo daba por bueno.
+>
+> La migración `20260805_rls_test_questions_lector.sql` está en `main`, leída entera: acotada (solo
+> esas 2 tablas, SELECT, solo `vence_lector`), idempotente y con una guarda que **aborta** si el GRANT
+> no está. **Queda aplicarla a RDS, y eso es DDL en producción: decisión de Manuel.** Recomendación de
+> la revisión: **no urge** — su único beneficiario es el rol de lectura de la flota, no hay nada de
+> cara al usuario que dependa de ella. Se agrupa con [T-038], que espera exactamente lo mismo.
+
 
 **QUÉ PASABA.** `20260805_rol_lector_flota.sql` concedió `GRANT SELECT ON ALL TABLES IN SCHEMA
 public TO vence_lector`, pero un `GRANT` de tabla no basta cuando la tabla tiene **RLS activo**:
@@ -10875,6 +10949,15 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Relacionado:** [T-142] (de donde sale y quien lo mide), [T-134] (auditoría de la landing), `docs/runbooks/provenance-convocatorias.md`.
 
 ### [T-146] 🟠 [DETECTOR ARREGLADO 29/07 — queda generar las preguntas] Punto ciego del detector: 715 artículos servidos con 0 preguntas que el badge NUNCA verá (numeración no numérica)
+
+> **🔍 REVISADA el 06/08/2026 — el lote de la LCCSNS YA ESTÁ INSERTADO y servido.**
+> La entrega de `l5` decía «lote listo para insertar, rama `flota/l5` commit `ac74381e1`, NO en main»,
+> y ese commit efectivamente solo trae `scratchpad/t146/` (borrador, auditoría y verificador). Pero
+> alguien lo aplicó después: comprobado en RDS pregunta a pregunta, los cinco artículos de reforma
+> —**8 bis, 8 ter, 8 quáter, 8 quinquies y 65 bis**— sirven hoy **6 preguntas activas** en
+> `lifecycle_state='approved'`, creadas el **05/08**, que son las 6 exactas que anunciaba la entrega.
+> Ese hueco concreto está cubierto; lo que siga abierto de T-146 es el RESTO de la deuda invisible.
+
 - **✅ VERIFICADO EL 31/07 — el badge YA cuenta los artículos de reforma.** Barrido de las 12:28 UTC: de sus **98 hallazgos `article_no_coverage`, 12 incluyen artículos `bis`/`ter`** en sus ejemplos, y salen **27 artículos de reforma distintos** listados como huecos. Antes ninguno podía aparecer como trabajo pendiente por mucho que sirviera cero preguntas. Muestra de lo que ahora se ve: `Ley 29/1998 87 ter` (en 5 hallazgos), `Ley 3/2001 CyL 48 bis` y `48 ter`, `LECrim 14 bis` y `17 bis`, `CP 31 ter`, `Ley 15/2015 26 bis`, `DL 2/1998 Asturias 67 bis/quater/quinquies`. **Esta mitad de la ficha está cerrada.**
 - **Progreso 01/08 (sesión `t115-huerfanos`) — lote `gen_lig_and_2026-08-01_t146` CERRADO: 18 preguntas, Ley 12/2007 de Igualdad de Género de Andalucía, arts. `11 bis`, `15 bis`, `21 bis`, `26 bis`, `37 bis`, `48 bis`, `50 bis`, `50 ter`, `50 quater` y `52 bis`.** Era el lote que esta ficha señalaba como el mejor, y lo era. Los 10 pasan de 0 a servir preguntas y **la ley se queda sin un solo artículo de reforma huérfano** (los otros 2 ya tenían). Lo sirven **6 temas de 6 oposiciones**. Cadena completa: BOE 10/10 idénticos → simulación → **gate 18/18 limpio A LA PRIMERA** (el primero de la campaña sin ronda de reparación) → doble auditoría ciega 18/18 + 18/18 → Paso 9 18/18 → `batch:servido` 5/5.
   - **Se partió del UNIVERSO, no de la lista de esta ficha** — la lección que dejó escrita el lote 4 de la LBRL. La consulta pidió *todos* los artículos de reforma activos de la ley con su cobertura real, y confirmó los 10 (ni uno más ni uno menos). Preguntar por lo tuyo solo puede confirmarte.
@@ -11025,6 +11108,20 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **📌 QUÉ QUEDA (estado al cerrar la sesión del 26/07):** las **4 leyes** que piden mirada una a una (3 `demasiadas_vacias`: Ley 14/1990, Ley 1/2026 LUA, RDL 1/1996; y 1 `solape`: Ley 4/2005 La Rioja) · la **Orden 01/02/1996** que numera por «Regla» · el cardinal **`tdos`** de `RE_TIT` · la rúbrica del **RD 375/2003 Cap. VI**. Las 9 planas de verdad y las 5 sin índice consolidado **no son deuda**: están cerradas con veredicto. Las 17 rúbricas de nivel LIBRO son **[T-104]**.
 
 ### [T-137] 🟠 [ABIERTO 26/07 — ficha escrita 26/07] Parlamento de Andalucía T12 escopa la Ley 22/2009 ENTERA para un epígrafe que solo pide el modelo de financiación
+
+> **🔍 REVISADA el 06/08/2026 — la adjudicación es CORRECTA, pero aplicarla sola empeora el tema.**
+> Verificado por MATERIA y no solo por la evidencia que traía la entrega: los arts. **1-24** de la Ley
+> 22/2009 son el modelo de financiación (*Objeto*, *Necesidades globales*, *Fondo de Suficiencia
+> Global*, *Fondo de Cooperación*) y los **25-66** son tributos cedidos y gestión. El epígrafe del T12
+> pide «El actual modelo de financiación de las comunidades autónomas de régimen común», así que
+> 1-24 es lo que toca. Confirmada también su cifra contra RDS: **0** preguntas activas en 1-24 y
+> **24** en 25-66.
+>
+> ⚠️ **Lo que la entrega NO decía y hay que hacer a la vez:** tras el recorte el tema se queda con
+> **CERO preguntas de esa ley**, porque no hay ni una escrita sobre 1-24. El recorte quita lo que
+> sobra (fuera de programa) y deja un hueco de CONTENIDO (familia `article_no_coverage`). Aplicarlo
+> sin generar preguntas de 1-24 arregla el programa y empeora lo que el alumno puede practicar.
+
 - **⚠️ Ficha DUPLICADA y fusionada el 26/07:** existían dos entradas `T-137` para esta misma tarea (ids repetidos → el guardarraíl de CI en rojo y el `claim` roto, porque dos tareas compartían id). Se han unido conservando el contenido de ambas.
 - **Qué:** `oficial_de_gestion_parlamento_de_andalucia` **T12** (*"Distribución de competencias entre el Estado y las comunidades autónomas"*) escopa la **Ley 22/2009 con `article_numbers = NULL`**, es decir sus **69 artículos**. Su epígrafe pide: *"Generalidades. Las normas de atribución y delimitación de las competencias. El actual modelo de financiación de las comunidades autónomas de régimen común."*
 - **Por qué es sobre-inclusión:** la ley entera incluye toda la maquinaria de **gestión** de los tributos cedidos —delegación de competencias (art. 54), colaboración entre Administraciones (art. 61), puntos de conexión impuesto por impuesto (arts. 26-33), órganos y juntas arbitrales— que no es "el modelo de financiación" que pide el epígrafe. El tema está **`disponible=true`**, así que eso se sirve HOY a sus usuarios.
@@ -11147,6 +11244,20 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **8) Método que sí funciona, en orden:** `--suspects` (mira `consenso_banco`) → `--peers` (¿hay hermano verificado con epígrafe parecido?) → si no lo hay, `arbol-ley-boe.cjs "<short_name>" --rubricas` y mapear el epígrafe a bloques → `verify:scope plan/apply`. **NUNCA** recortar por rango numérico ni por cercanía, y **NUNCA** teclear el id del BOE de memoria (existen DOS "LO 14/2007").
 
 ### [T-148] 🟠 [ABIERTO 26/07 · 12 de 25 temas · CERO sospechosos sin adjudicar] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
+
+> **🔍 REVISADA el 06/08/2026 — plan verificado contra RDS cifra a cifra, listo para aplicar.**
+> El scope actual del **T3 (LPRL)** tiene 36 artículos: incluye el **Cap. V entero (33-40)**, que el
+> epígrafe NO pide, y excluye los **Cap. VI-VII (41-54)**, que sí pide. Sus dos números son exactos:
+> **128** preguntas activas en 33-40 (fuera de programa) y **82** en 41-54 más el art. 3 (dentro de
+> programa y hoy sin servir). El fichero de propuestas existe en `origin/sesion/w4`.
+>
+> ⚠️ **Nota de método para quien lo contraste:** al recontar las 82 me salían **41**, porque dejé
+> fuera el art. 3 que la propuesta sí añade. **La cifra de la entrega es la correcta y la mía era la
+> incompleta.** Se anota para que el próximo no «corrija» un número que está bien.
+>
+> **Queda** aplicarlo con `verify-topic-scope.cjs plan/apply` desde una sesión con escritura. Cambia
+> lo que se sirve, así que conviene mirar el impacto por tema antes de darle.
+
 - **Qué se descubrió (26/07):** los 25 epígrafes de `guardia_civil` están **`verified_literal`** contra el temario oficial (`TEMARIO_INGRESO_GC_ACTUALIZADO_2024`, clonado en el hub con `content_hash`), y ese temario enumera **libro › título › capítulo** con mucho detalle. Pero **58 de los 64 `topic_scope` tienen `article_numbers = NULL` (= la ley ENTERA)**. O sea: el epígrafe es quirúrgico y el scope es la norma completa.
 - **Cómo salió a la luz:** no lo cazó ningún badge. Salió al preguntar por un detalle de 6 preguntas del Tema 9 y tirar del hilo hacia el temario oficial, que **ya estaba en el sistema** (hub de documentos + `topic_epigrafe_verification`), no había que pedírselo a nadie.
 - **✅ HECHOS 4 temas · 5 leyes · −2.149 preguntas fuera de programa** (nada borrado: siguen en BD y vuelven con una orden):
@@ -12081,6 +12192,14 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - **Ojo al leer cifras de este bucket (falso pánico de esta sesión):** medido sobre TODAS las leyes salen «482 sin fuente», pero la mayoría son **contenedores editoriales** (`is_virtual`: Inglés PN, Biblioteconomía, temario de enfermería, Word 365) que no tienen BOE que consultar y que el clasificador **ya exime**. Filtrando `is_virtual=false` quedan **165**, y de esas las accionables son 65. **Siempre filtrar por `is_virtual` antes de dar un número.**
 
 ### [T-038] 🟠 [MEDIA — cola de trabajo que dejan los 3 cubos drenados] Relink de `needs_human` + reescritura de explicaciones flojas (19/07)
+
+> **🔍 REVISADA el 06/08/2026 — mismo bloqueo que [T-573] y misma decisión pendiente.**
+> Su commit `b49c0d85d` está en `origin/main`. Lo que queda son **dos migraciones sin aplicar**
+> (`20260805_rls_ai_verification_results_lector.sql` y `20260805_rls_test_questions_lector.sql`):
+> DDL en la base de producción, que un trabajador de solo lectura no puede correr. El análisis es
+> correcto y el alcance está acotado; no hay nada más que revisar en el diff. **Las dos fichas se
+> resuelven con la misma decisión.**
+
 > **🚧 [BLOQUEO ESTRUCTURAL para la FLOTA, medido 05/08 — worker w3, sesión de un solo turno.**
 > Esta tarea es de las que la ficha ya avisa que exige escritura en BD (relink de artículo,
 > reescritura de explicación, `transition_question_state`). Un trabajador de la flota **no tiene
