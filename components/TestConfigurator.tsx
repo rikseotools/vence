@@ -57,6 +57,33 @@ import {
   clampCustomQuestionCount,
 } from '@/lib/test/questionCount'
 
+/**
+ * Lee la respuesta como TEXTO antes de parsear, para que un fallo no vuelva a verse como un
+ * cuelgue. (T-623, 06/08/2026)
+ *
+ * Con `await res.json()` directo, cualquier respuesta que no sea JSON —una página de error de
+ * nginx, un HTML de mantenimiento, un challenge— revienta con «Unexpected token '<'», el `catch`
+ * no repinta nada y la pantalla se queda EXACTAMENTE IGUAL. Ése es el motivo real de que una
+ * usuaria escribiera «se me queda colgada» en vez de «me da un error»: para ella no había error,
+ * había una app congelada.
+ *
+ * El POST quita la causa que lo disparaba (la selección ya no viaja en la URL), pero la lección
+ * es del RENDER: un cliente que no sabe distinguir «no hay respuesta» de «la respuesta no es
+ * JSON» convierte cualquier avería futura en un cuelgue mudo. Aquí se nombra, y quien lo llame
+ * puede decidir qué pintar.
+ */
+async function leerJson(res: Response): Promise<{
+  success?: boolean; count?: number; error?: string; byLaw?: unknown
+}> {
+  const texto = await res.text()
+  try {
+    return JSON.parse(texto)
+  } catch {
+    const pista = /^\s*</.test(texto) ? 'el servidor devolvió HTML en vez de JSON' : 'respuesta ilegible'
+    throw new Error(`HTTP ${res.status} — ${pista}`)
+  }
+}
+
 const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   tema = 7,
   temaDisplayName = null,
@@ -435,22 +462,33 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   // Params de la estimación, compartidos por los dos consumidores: el conteo de
   // preguntas disponibles y (en modo "por leyes") el de oficiales que enciende la
   // casilla. Uno solo para que no puedan contar cosas distintas — T-326.
-  const buildEstimateParams = useCallback(
+  // ── LA SELECCIÓN VIAJA EN EL CUERPO, NO EN LA URL (T-623, 06/08/2026) ──────────────────
+  //
+  // Esto era un `URLSearchParams` con `selectedArticlesByLaw` serializado dentro de la URL. Al
+  // url-encodificar, cada `"` pasa a `%22` y cada `,` a `%2C`: la cadena se TRIPLICA. Medido
+  // contra producción: 7.514 bytes → 200, 8.914 → 414, 41.114 → 494 (los 8 KB del
+  // `large_client_header_buffers` de nginx). nginx contesta con una PÁGINA HTML, el `res.json()`
+  // de abajo revienta con «Unexpected token '<'», el `catch` no repinta nada y la pantalla se
+  // queda igual: el usuario lo vive como que la app se ha COLGADO. Lo reportó una usuaria
+  // (feedback e790c7bf: «se me queda colgada… cuando termino un test y quiero hacer otro»);
+  // medido, 87 respuestas 494 a 12 usuarios en 48 h.
+  //
+  // Devolver el OBJETO y no la query es lo que quita el techo de raíz: el cuerpo de un POST no
+  // tiene ese límite, y una selección no puede volver a romper por ser grande.
+  const buildEstimateBody = useCallback(
     (overrides?: { onlyOfficialQuestions?: boolean }) => {
-      const params = new URLSearchParams({
+      const body: Record<string, unknown> = {
         positionType,
-        onlyOfficialQuestions: String(overrides?.onlyOfficialQuestions ?? onlyOfficialQuestions),
-        focusEssentialArticles: String(focusEssentialArticles),
+        onlyOfficialQuestions: overrides?.onlyOfficialQuestions ?? onlyOfficialQuestions,
+        focusEssentialArticles,
         difficultyMode,
-      });
-      if (tema) params.set('topicNumber', String(tema));
+      };
+      if (tema) body.topicNumber = Number(tema);
       // Sin tema, el acotado a la oposición decide si se cuenta el temario o la ley entera.
-      if (!tema && scopeToPosition) params.set('scopeToPosition', 'true');
+      if (!tema && scopeToPosition) body.scopeToPosition = true;
 
       const selectedLawsArray = Array.from(selectedLaws);
-      if (selectedLawsArray.length > 0) {
-        params.set('selectedLaws', selectedLawsArray.join(','));
-      }
+      if (selectedLawsArray.length > 0) body.selectedLaws = selectedLawsArray;
 
       const articlesByLawObj: Record<string, (string | number)[]> = {};
       for (const [lawName, articlesSet] of selectedArticlesByLaw) {
@@ -459,13 +497,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
         }
       }
       if (Object.keys(articlesByLawObj).length > 0) {
-        params.set('selectedArticlesByLaw', JSON.stringify(articlesByLawObj));
+        body.selectedArticlesByLaw = articlesByLawObj;
       }
 
       if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-        params.set('selectedSectionFilters', JSON.stringify(selectedSectionFilters));
+        body.selectedSectionFilters = selectedSectionFilters;
       }
-      return params;
+      return body;
     },
     [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode,
      selectedLaws, selectedArticlesByLaw, selectedSectionFilters, scopeToPosition],
@@ -487,12 +525,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
     const fetchEstimate = async () => {
       setLoadingEstimate(true);
       try {
-        const params = buildEstimateParams();
-
-        const res = await fetch(`/api/v2/test-config/estimate?${params}`, {
+        const res = await fetch('/api/v2/test-config/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildEstimateBody()),
           signal: controller.signal,
         });
-        const data = await res.json();
+        const data = await leerJson(res);
 
         if (data.success) {
           console.log('📊 Estimación v2:', data.count, 'preguntas disponibles', data.byLaw);
@@ -516,7 +555,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [tema, selectedLaws, buildEstimateParams]);
+  }, [tema, selectedLaws, buildEstimateBody]);
 
   // 🏛️ Cuántas oficiales hay para la selección ACTUAL, en modo "por leyes".
   //
@@ -537,9 +576,13 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
     const fetchOfficialCount = async () => {
       try {
-        const params = buildEstimateParams({ onlyOfficialQuestions: true });
-        const res = await fetch(`/api/v2/test-config/estimate?${params}`, { signal: controller.signal });
-        const data = await res.json();
+        const res = await fetch('/api/v2/test-config/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildEstimateBody({ onlyOfficialQuestions: true })),
+          signal: controller.signal,
+        });
+        const data = await leerJson(res);
         if (data.success) {
           setOfficialCountForLaws(data.count ?? 0);
         } else {
@@ -557,7 +600,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [tema, hideOfficialQuestions, selectedLaws, buildEstimateParams]);
+  }, [tema, hideOfficialQuestions, selectedLaws, buildEstimateBody]);
 
   // Conteo efectivo de oficiales: por prop en modo tema, del endpoint en modo por leyes.
   const officialCount = tema ? officialQuestionsCount : (officialCountForLaws ?? 0);
