@@ -60,6 +60,11 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-108] "Claude en el bucle" del runbook OEP: sin esto ninguna sesión puede ver una sola
+  // señal pendiente para triar (RLS activo, cero políticas — mismo mecanismo que test_questions/
+  // tests). Ver 20260807_rls_oep_detection_signals_lector.sql.
+  ['oep_detection_signals', 'las señales del radar de OEP pendientes de revisar'],
+  ['detection_sources', 'qué fuentes vigila el radar y si están sanas (salud del radar)'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
