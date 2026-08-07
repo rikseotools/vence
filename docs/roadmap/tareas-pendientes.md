@@ -3987,6 +3987,34 @@ noches en drenar del todo, que es el diseño.
   `remaining` con números reales igualmente); (2) `drenaje_atrasado` no vuelve a aparecer en
   `alert_rule_failed`; (3) el conteo de filas fuera de retención sigue bajando noche a noche.
 
+- **✅ DESPLIEGUE CONFIRMADO (07/08 21:45 UTC, w1) — ítem (2) ya verificado con evidencia fuerte;
+  ítems (1) y (3) siguen esperando al cron de esta noche (08/08 ~03:30-04:10 UTC).**
+  - **El SHA vivo lo confirma solo:** `curl https://api.vence.es/health` → `deploy:"165b6e5d"`.
+    `git merge-base --is-ancestor 269e31e1 165b6e5d` → sí — el merge que trae AMBOS fixes de esta
+    ficha (`1a5803669`, el mío, y `bc8bcce5d`, uno de OTRA sesión que apareció mientras verificaba
+    — *"la regla que vigila el drenaje llevaba 201 evaluaciones fallando, así que no vigilaba
+    nada"*, mismo síntoma, atacado en paralelo) está desplegado de verdad, no solo en `main`.
+  - **✅ Ítem (2) CONFIRMADO con evidencia fuerte, no solo "no ha vuelto a salir todavía":**
+    contado en `observable_events`, `drenaje_atrasado` (`error_message ILIKE '%getTime is not a
+    function%'`) disparó **222 veces** entre el 06/08 22:30 y el **07/08 14:55:18 UTC** (cada
+    ~5 min, el intervalo de evaluación de la regla) — y **CERO veces desde entonces** hasta ahora
+    (07/08 21:45 UTC, `SELECT now()`), **casi 7 horas y ~80 ciclos de evaluación sin fallar una
+    sola vez**, mientras `cron_tick` sigue llegando con normalidad (1.098 en las últimas 3 h) —
+    así que no es que el motor de alertas esté callado, es que esta regla concreta dejó de
+    reventar. Antes de esta sesión la propia máquina de alertas llevaba fallando esta regla
+    ininterrumpidamente: el corte es limpio y medible.
+  - **⏳ Ítems (1) y (3) sin confirmar todavía — genuinamente pendientes del reloj, no de nada
+    que se pueda apresurar.** `telemetry-retention` (04:10 UTC) y `archive-interactions`
+    (03:30 UTC) corren una vez al día; los últimos `cron_run` vistos (07/08 03:31 y 04:10:53 UTC)
+    son de ANTES de que el fix se desplegara (los commits de esta rama son de la tarde del 07/08)
+    y por tanto siguen mostrando el `status:'failure'` viejo del VACUUM — no demuestran nada sobre
+    el fix, solo confirman que el fix no existía todavía a esa hora. La próxima ejecución real es
+    esta noche. `pg_stat_user_tables` ahora mismo: `observable_events` 8.484.242 filas vivas
+    (subió de la baseline 8.459.475 en ~17 h sin ningún drenaje de por medio — crecimiento normal
+    de ingesta diaria, NO señal de que algo siga roto) y `user_interactions` 11.685.680 (subió de
+    11.672.350, mismo patrón). Se comprobará mañana si estas cifras BAJAN tras el cron de esta
+    noche, que es la prueba real.
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
