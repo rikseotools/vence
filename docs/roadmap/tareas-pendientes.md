@@ -1197,7 +1197,6 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
-### [T-678] 🟡 [ABIERTO 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
 
 **Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
 producción y probado y simulado. Deberías hacer guardrail o algo.»*
@@ -1325,67 +1324,6 @@ de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método ant
 **Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
 artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
 
-### [T-675] 🔴 [ABIERTO 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
-
-**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
-para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
-desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
-desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
-
-Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
-`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
-describe.
-
-#### Medido antes de tocar nada (401 por día, TZ Madrid)
-
-| endpoint | 29/07 – 05/08 | 07/08 |
-|---|---|---|
-| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
-| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
-| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
-
-**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
-no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
-personas en toda la plataforma.
-
-#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
-
-[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
-`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
-son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
-user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
-`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
-
-#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
-
-Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
-`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
-guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
-con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
-es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
-
-#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
-
-- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
-  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
-- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
-  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
-  las cuatro (`.js/.jsx/.ts/.tsx`).
-- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
-  tenía dentro dos endpoints con dueño.
-- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
-  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
-
-#### Lo que NO cubre, y hay que mirarlo aparte
-
-**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
-encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
-Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
-y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
-aquí.**
-
-**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
-correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
 ### [T-677] 🟠 [ABIERTO 07/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
 
 **Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
@@ -9083,6 +9021,134 @@ incluida).
     reactivar `detect-oep-llm` — con el timeout ya puesto, o esperar también al gate de hash de
     coste; (3) si se reactiva, confirmar unos días que `cron_tick`/`cron_run` cierran en pareja.
 
+### [T-675] ✅ [HECHA 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
+
+**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
+para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
+desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
+desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
+
+Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
+`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
+describe.
+
+#### Medido antes de tocar nada (401 por día, TZ Madrid)
+
+| endpoint | 29/07 – 05/08 | 07/08 |
+|---|---|---|
+| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
+| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
+| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
+
+**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
+no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
+personas en toda la plataforma.
+
+#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
+
+[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
+`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
+son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
+user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
+`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
+
+#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
+
+Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
+`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
+guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
+con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
+es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
+
+#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
+
+- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
+  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
+- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
+  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
+  las cuatro (`.js/.jsx/.ts/.tsx`).
+- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
+  tenía dentro dos endpoints con dueño.
+- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
+  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
+
+#### Lo que NO cubre, y hay que mirarlo aparte
+
+**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
+encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
+Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
+y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
+aquí.**
+
+**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
+correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
+
+### [T-678] ✅ [HECHA 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
+
+**Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
+producción y probado y simulado. Deberías hacer guardrail o algo.»*
+
+**El fallo, concreto:** a Esther (feedback `e523eabc`) se le envió *«Las dos venían del mismo fallo y
+ya está corregido. Actualiza la página y vuelve a probar, que no debería volver a pasarte»* con el
+arreglo en `main` y **sin desplegar** — `/api/health` servía `76404f1d` y el commit no era ancestro
+suyo. Si ella entra, le sigue fallando, con un correo nuestro diciendo lo contrario.
+
+**Y el error de método que lo permitió:** se leyó una bajada de 401 como «el arreglo está entrando»
+cuando era **menos tráfico** (a esa hora solo 4 personas respondían preguntas en toda la plataforma).
+Horas punta comparadas con hora valle, sin normalizar por actividad.
+
+#### La regla ya existía a medias, y ese es el punto
+
+[T-392] impide **cerrar una tarea** cuyos commits tocan superficie servida y no están vivos, con
+`lib/deploy/shaVivo.cjs`. El criterio estaba; lo que no tenía puerta era **el punto por donde sale un
+mensaje a una persona**, que es el irreversible. Esto no inventa criterio: **lo reutiliza**.
+
+#### ✅ Construido
+
+- **Núcleo puro** `lib/impugnaciones/promesaDeArreglo.cjs`: `afirmaArreglo(texto)` (la promesa en
+  PRESENTE) + `puedeAfirmarse({texto, shaVivo, commitsPendientes})`.
+- **Puerta IO** `scripts/impugnaciones/lib/puerta-vivo.ts`, cableada en los **dos** cierres
+  (`cerrar.ts` y `cerrar-feedback.ts`), con la forma de las otras tres puertas: anuncia, cuenta el
+  roce dentro de la puerta, y escape **propio** `--vivo-igualmente "<cómo lo comprobaste>"`
+  (compartir escape apagaría cuatro puertas a la vez).
+- **Fail-open** sin sha vivo: hay una persona esperando respuesta, y «no lo sé» no es «no está
+  desplegado».
+
+#### Calibrada contra los mensajes REALES, no a ojo
+
+`npm run sim:promesa-arreglo` mide sobre lo ya enviado. **569 mensajes de admin en 30 días, 134
+(23,6 %) afirman un arreglo.** Ese 23,6 % es el TECHO, no el bloqueo: **la puerta solo para si además
+hay commits que CITAN el caso, tocan superficie servida y no están vivos**. Por eso mira los commits
+del caso y no «cualquier cosa sin desplegar» — la mayoría de esos 134 son arreglos de **contenido**
+(una explicación, una clave, un scope) que viven en la BD y no necesitan deploy: ahí decir «ya está»
+es CIERTO, y bloquearlo convertiría la puerta en un estorbo que se rodea con el escape.
+
+#### El hueco de [T-392] que salió al construirla
+
+La puerta **no bloqueaba** el caso de Esther. Al depurarlo: `importadoEn` devolvía `servidos: []`
+porque los ficheros eran `app/test/aleatorio-examen/page.js` y un componente `.js` — **a una página
+de Next no la importa nadie**, la sirve el framework por su ruta. Es decir, el verificador que
+impide cerrar tareas sin desplegar **era ciego a las páginas y a las rutas de API**. Arreglado en el
+módulo compartido (`servidoPorConvencion` en `scripts/backlog/verificacion.cjs`), no en la puerta
+nueva, para que lo aprovechen los dos. Tras el cambio, `npm run sim:verificacion` sigue verde y el
+alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispara.
+
+#### Capas
+
+- **19 unitarios** (`__tests__/impugnaciones/promesaDeArreglo.test.js`) anclados al **texto exacto**
+  que se envió a Esther, con los contrastes que NO deben marcarse (el futuro honesto, «lo estamos
+  mirando», los mensajes que no hablan de arreglos).
+- **Reproducción del caso real**: con el id de su feedback y su mensaje, la puerta **bloquea** y
+  nombra el commit sin desplegar. Antes del arreglo de `servidoPorConvencion`, no.
+- **Simulación de calibración** contra 30 días de mensajes enviados, con ancla y contraste, y exit
+  code (falla si el ancla deja de dispararla o si el mensaje honesto empieza a marcarse).
+- 311 tests de `__tests__/impugnaciones` + `__tests__/backlog/verificacion` en verde, typecheck verde.
+
+#### Lo que NO cubre
+
+Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
+`shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
+y sin un caso real que lo pida sería adivinar.
 
 ### [T-638] ✅ [HECHA 07/08] `vence_lector` no puede leer `question_lifecycle_history`: RLS activo sin política, mismo mecanismo que T-573
 
