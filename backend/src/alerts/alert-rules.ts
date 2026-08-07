@@ -5975,6 +5975,67 @@ export const RULE_REINTENTO_PERFIL_ROTO: AlertRule<{ veces: number; muestra: str
 };
 
 /**
+ * Una sesión con `appUserId` YA PUESTO deja de tener perfil de verdad — no es "nunca resuelto"
+ * (eso lo cubre `reintento_perfil_roto`/T-434), es "resuelto una vez y luego el perfil
+ * desapareció". [T-352]
+ *
+ * ── POR QUÉ (31/07-06/08/2026) ───────────────────────────────────────────────
+ * Un usuario intentó pagar 17 veces en 10 minutos con 403 en todas: su sesión llevaba un id
+ * que YA NO existe en `user_profiles`. Medido: 247 eventos en 3 días, 44 acuñados de token
+ * (200 OK en `/api/auth/token`) con ese mismo id, y CERO fila en `user_profiles` desde el
+ * primer evento — nunca se revalidaba porque `decidirReintentoPerfil` solo mira si está VACÍO,
+ * y este id nunca lo estuvo.
+ *
+ * `canonicalSubForToken` (T-245) ya reconciliaba esto en cada acuñado de ACCESS TOKEN, pero sin
+ * forma de escribir de vuelta en la cookie de sesión — medido: un mismo usuario reconciliado 5
+ * veces en 2 días, la cura sin quedarse pegada nunca. Este evento nace de aplicar la MISMA
+ * comprobación (`canonicalSubForToken`) dentro del callback `jwt`, así que sí puede persistirla.
+ *
+ * `huerfano` es el caso que de verdad importa: ni el id cacheado ni el email resuelven, así que
+ * el perfil desapareció de verdad (o nunca existió) y la persona sigue sin poder pagar hasta que
+ * alguien mire por qué. `reconciliado` es la cura funcionando — no dispara alerta, es la métrica
+ * de drenaje (igual que `auth_perfil_recuperado` de T-434).
+ *
+ * Umbral en 1: igual que `alta_sin_perfil`, no hay volumen mínimo aceptable para alguien que no
+ * puede pagar.
+ */
+export const RULE_PERFIL_REVALIDADO_HUERFANO: AlertRule<{
+  usuarios: number;
+  veces: number;
+}> = {
+  name: 'perfil_revalidado_huerfano',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT user_id)::int AS usuarios,
+           COUNT(*)::int AS veces
+      FROM observable_events
+     WHERE event_type = 'auth_perfil_revalidado'
+       AND metadata->>'resultado' = 'huerfano'
+       AND coalesce(metadata->>'simulacion', 'false') <> 'true'
+       AND ts >= now() - interval '24 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.veces ?? 0) > 0,
+  buildNotification: (rows) => ({
+    title: `${rows[0]?.usuarios ?? 0} sesión(es) con perfil que YA NO EXISTE (huérfano) en 24 h`,
+    body:
+      `Un id que la sesión tenía cacheado dejó de tener fila en user_profiles, y ni el id ni el ` +
+      `email de la sesión resuelven a ningún perfil. La sesión sigue viva (JWT sin lista de ` +
+      `revocación) pero todo lo que se indexa por ese id rebota: estadísticas, checkout, soporte.\n\n` +
+      `Quiénes son (subOriginal trunca a 8 chars, sin PII):\n` +
+      `  SELECT metadata->>'subOriginal', count(*), max(ts)\n` +
+      `    FROM observable_events WHERE event_type='auth_perfil_revalidado'\n` +
+      `     AND metadata->>'resultado'='huerfano' AND ts >= now() - interval '24 hours'\n` +
+      `   GROUP BY 1;\n\n` +
+      `Comprobar si el id apareció alguna vez en una baja de cuenta (borrado RGPD) — la sesión no ` +
+      `se invalida al borrar el perfil, así que un navegador que ya estaba logueado sigue ` +
+      `presentando el id borrado hasta que expira o se desloguea. Ficha: T-352.`,
+    metadata: { usuarios: rows[0]?.usuarios ?? 0, veces: rows[0]?.veces ?? 0 },
+    fingerprint: 'perfil_revalidado_huerfano',
+  }),
+  cooldownMin: 1440,
+};
+
+/**
  * [T-327] SE PIERDE UN TEMARIO QUE ALGUIEN ACABA DE ARMAR.
  *
  * Guardar una oposición personalizada es el final de un trabajo LARGO: buscar leyes, elegir
@@ -6601,6 +6662,9 @@ export const ALERT_RULES: AlertRule[] = [
   // El navegador con DOS identidades (2026-08-05, T-434): el camino del token está sano, así que
   // ninguna señal del servidor lo veía. Vigila la persistencia, no el pico del drenaje.
   RULE_IDENTIDAD_AJENA_NO_DRENA as AlertRule,
+  // Distinta de la de arriba: aquí NO hay dos identidades en conflicto — hay UNA, verificada,
+  // autoconsistente, apuntando a un perfil que ya no existe (2026-08-07, T-352).
+  RULE_PERFIL_REVALIDADO_HUERFANO as AlertRule,
   RULE_REINTENTO_PERFIL_ROTO as AlertRule,
   RULE_TEMARIO_PROPIO_PERDIDO as AlertRule,
   // Evasión por cambio de equipo (2026-07-30): rotar dispositivos deja MÁS rastro, y aquí se

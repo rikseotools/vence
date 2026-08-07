@@ -2723,3 +2723,39 @@ describe('RULE_IDENTIDAD_AJENA_NO_DRENA (el navegador con DOS identidades — T-
     );
   });
 });
+
+describe('RULE_PERFIL_REVALIDADO_HUERFANO (el perfil que YA NO existe — T-352, 07/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_PERFIL_REVALIDADO_HUERFANO: R, ALERT_RULES } = require('./alert-rules');
+  const fila = (usuarios: number, veces: number) => [{ usuarios, veces }];
+
+  it('UN solo huérfano ya dispara: no hay volumen mínimo aceptable, igual que alta_sin_perfil', () => {
+    expect(R.shouldFire(fila(1, 1))).toBe(true);
+  });
+
+  it('sin huérfanos, silencio', () => {
+    expect(R.shouldFire(fila(0, 0))).toBe(false);
+  });
+
+  it('tolera filas vacías o corruptas', () => {
+    expect(R.shouldFire([])).toBe(false);
+    expect(R.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('es `error`: quien está en este estado no puede pagar hasta que alguien mire', () => {
+    expect(R.severity).toBe('error');
+  });
+
+  it('el aviso manda a comprobar la baja de cuenta y da la consulta de quiénes son', () => {
+    const n = R.buildNotification(fila(1, 3));
+    expect(n.body).toContain('auth_perfil_revalidado');
+    expect(n.body).toContain('borrado RGPD');
+    expect(n.body).toContain('T-352');
+  });
+
+  it('está registrada en ALERT_RULES (si no, la señal nace sin quien la mire)', () => {
+    expect(
+      ALERT_RULES.some((r: { name: string }) => r.name === 'perfil_revalidado_huerfano'),
+    ).toBe(true);
+  });
+});
