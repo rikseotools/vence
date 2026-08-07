@@ -1997,6 +1997,50 @@ siempre). **Se borra.**
 `batches` > 2, y el conteo de filas fuera de retención tiene que BAJAR. Las dos tablas tardan varias
 noches en drenar del todo, que es el diseño.
 
+- **✅ VERIFICADO EN PRODUCCIÓN (07/08) — el arreglo funciona, y aparecieron 2 regresiones NUEVAS,
+  las dos arregladas. Rama: `flota/T-613-drenaje-alerta-vacuum-fix` (pusheada, NO desplegada).**
+
+  **`archive-interactions` SÍ funciona ya, medido contra el `cron_run` real de esta noche (07/08
+  03:31 UTC):** `batches:20, deleted:16096, archived:200000` — exacto a lo que predecía la ficha
+  ("archived=200000 y batches=20"). El fix de T-613 está vivo y drenando de verdad.
+
+  **`telemetry-retention` (04:10 UTC) reportó `status:'failure'`, pero el borrado SÍ funcionó** —
+  confirmado con `pg_stat_user_tables` (no con el log, que no lo decía): `observable_events`
+  `n_live_tup` bajó de 11.101.699 a 8.459.475 (~2,64 M borradas), `last_autovacuum` a las
+  04:12:47 (2 min después del fallo) limpió los `dead_tup` a 0. La causa del `status:'failure'`
+  (`error_message`, no estaba en `metadata`, hay que pedir la columna aparte): `"Failed query:
+  VACUUM (ANALYZE) observable_events"`. El `VACUUM (ANALYZE)` manual —tras borrar millones de
+  filas de golpe— corre DESPUÉS del delete y ANTES de calcular `remaining`; su fallo (sospecho
+  `statement_timeout` de 30 s del pool sobre una tabla de 6,9 GB recién vaciada — no confirmado al
+  100 %, mi rol de lectura no puede reproducir el timeout porque ni siquiera tiene permiso de
+  VACUUM sobre esa tabla, solo un WARNING de Postgres que no llega a intentar el trabajo) tiraba
+  TODO `run()`, perdiendo el reporte del borrado real. **Arreglado:** VACUUM envuelto en
+  try/catch, no bloqueante; nuevo campo `vacuumFailed: string[]` en el resultado y en el
+  `cron_run` para que quede constancia sin ocultar el éxito del borrado.
+
+  **Y la "capa que faltaba" (punto 3 del plan, YA CONSTRUIDA y desplegada como parte de
+  9ac140319) murió su primera noche con datos reales que juzgar.** `drenaje_atrasado` disparó
+  `alert_rule_failed` a las 04:10:22 UTC: `"b.ts.getTime is not a function"`. **Reproducido, no
+  solo leído:** `db.execute(sql\`SELECT ts ...\`)` de drizzle-orm/postgres-js devuelve un
+  `timestamptz` como STRING (`'2026-08-07 06:18:49.668061+00'`), NO como `Date` — a diferencia de
+  llamar al cliente postgres-js directamente, que sí lo parsea (confirmado con las dos vías en
+  paralelo contra RDS). `diagnosticarDrenaje` asumía `ts: Date` sin el guardarraíl `instanceof
+  Date` que YA usan otros 3 sitios del mismo fichero (`kindsSinEvaluarBackend` ~1014, y 231, 566)
+  — es la regresión de una lección que el propio código ya sabía, no un gotcha nuevo. Arreglado
+  con el mismo patrón defensivo + 3 tests de regresión (verificados a mano contra el código SIN
+  arreglar antes de aplicar el fix: los 3 fallan con el `TypeError` exacto de producción).
+
+  **Lo que NO se ha tocado:** el bloqueo de RLS en `user_interactions`/`user_interactions_archive`
+  para `vence_lector` (0 políticas, daría `0` falso en cualquier comprobación de mañana por fecha)
+  sigue en su propia rama ya pusheada, `flota/T-613-rls-user-interactions-w2` (`ffe5c9755` +
+  `6c2ce77b7`), sin aplicar — necesita `DATABASE_URL` de escritura, que ningún trabajador tiene.
+
+  **Falta:** desplegar backend. Tras el deploy, a la noche siguiente confirmar: (1)
+  `telemetry-retention` reporta `status:'success'` con `vacuumFailed:[]` (o, si el VACUUM sigue sin
+  entrar en el timeout, `status:'success'` con `vacuumFailed:['observable_events']` pero
+  `remaining` con números reales igualmente); (2) `drenaje_atrasado` no vuelve a aparecer en
+  `alert_rule_failed`; (3) el conteo de filas fuera de retención sigue bajando noche a noche.
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
