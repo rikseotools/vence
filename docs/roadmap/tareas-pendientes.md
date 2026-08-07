@@ -2339,6 +2339,63 @@ con esa medición como aval): la usuaria tenía razón, y el «no debería volve
 **`topic_scope` no tiene `updated_at`.** Sin esa columna, un recorte no deja rastro y la siguiente
 sesión repetirá estas dos horas por tercera vez. Añadirla es una migración additiva.
 
+#### 🔁 Addendum 07/08 (w2) — el caso "sin explicar" del 05/08 NO fue un caso aislado: se repitió el 07/08, y el gap está localizado
+
+**Contexto: por qué miro esto.** Manuel pidió investigar si `113905a0` (UC3M) sigue recibiendo
+preguntas fuera de su temario y, si el patrón es real, abrir ficha propia con la medición — pero
+**esta ficha [T-607] ya es esa ficha** (mismo usuario, misma investigación, misma conclusión de
+método), así que amplío aquí en vez de duplicar (regla `tools:buscar`).
+
+**Medido hoy contra RDS (`VENCE_LECTOR_URL`), independiente del `sim:scope-servido` del 06/08:**
+
+De las 16 impugnaciones históricas de `113905a0` (todas "fuera de temario"), **14 referencian
+artículos que hoy siguen fuera** del `topic_scope` de T6 (LO 3/2018) o T17 (RD 534/2024) de
+`auxiliar_administrativo_universidad_carlos_iii` — comprobado fila a fila contra `topic_scope`
+actual, no contra lo que digan las impugnaciones. Las otras 2 SÍ están dentro de scope (art. 17 LO
+3/2018, esa impugnación fue `rejected`; y art. 2, dentro de scope pero resuelta igual — inconsistencia
+menor, no investigada).
+
+**Lo nuevo: `user_question_history_v2` para los 2 `question_id` del caso "05/08 sin explicar"**
+(`9248545d`→RD534/2024 art.28, `1f05c829`→RD534/2024 art.28.4, disputas `410025b4`/`dba485dc`,
+cerradas `resolved` el 06/08 con el sim como aval):
+
+| question_id | intentos | último intento |
+|---|---|---|
+| `9248545d` | 4 | **2026-08-07T05:23** |
+| `1f05c829` | 2 | **2026-08-07T05:23** |
+
+O sea: **volvieron a intentarse HOY**, más de 24h después del cierre de la disputa y del `sim`
+0-fuera del 06/08. Con `total_attempts` subiendo en días distintos (03/08→07/08) para el MISMO
+`question_id`, esto no encaja con "un test ya generado antes del recorte que el usuario sigue
+terminando" (eso sería un batch fijo respondido de una sentada) — encaja mejor con un camino que
+**vuelve a ofrecer la misma pregunta en días distintos**, patrón típico de repaso por fallo.
+
+**Localizado (leído, no ejecutado — sin AUTH_SECRET no puedo correr `sim:scope-servido`):**
+`registrarScopeServido` (esta rama, `flota/T-607-sonda-scope-servido`) se cablea **solo** en
+`getFilteredQuestions` (`lib/api/filtered-questions/queries.ts`, endpoint `/api/questions/filtered`
+— Test Rápido, examen de tema, personalizado). **No está cableado en `getUserFailedQuestions`**
+(`lib/api/user-failed-questions/queries.ts`, el "repasa tus fallos"), que es un camino de query
+COMPLETAMENTE DISTINTO. Ese segundo camino sí filtra por `topic_scope` del `positionType` del
+usuario (líneas 82-123, fix del caso Cristina) — **pero cae a "sin scope" (legacy, sin filtro) si
+la resolución de scope da 0 filas** (línea 105-111), lo cual pasa si `user_profiles.target_oposicion`
+no calza EXACTO con `topics.position_type` para esa oposición (typo, mayúscula, alias legado). No
+pude comprobar `target_oposicion` de este usuario — `user_profiles` da `permission denied` completo
+para `vence_lector` (no es RLS-vacío como `tests`/`test_questions`, es ausencia de GRANT; caso
+distinto de [T-639], que es RLS-vacío en `daily_question_usage`).
+
+**SOSPECHO que la re-oferta del 07/08 viene de `getUserFailedQuestions`, no de `/api/questions/filtered`** — encaja con el patrón multi-día y con que ese código NO tiene la sonda nueva —
+**pero no lo he demostrado**: me falta (a) `AUTH_SECRET` para repetir `sim:scope-servido` apuntando
+a la página de repaso de fallos en vez de `/test/rapido`, o (b) acceso a `target_oposicion` de este
+usuario para descartar el fallback silencioso. Cualquiera de las dos cierra la duda en minutos.
+
+**Qué pediría antes de mergear esta rama:** la sonda tal como está es correcta y necesaria, pero
+**cubre un solo camino de los (al menos) dos que sirven preguntas contra `topic_scope`**. Si el
+objetivo es "que la próxima fuga se vea sola" (la razón de ser de esta ficha), un
+`registrarScopeServido` hermano en `getUserFailedQuestions` — incluyendo el caso del fallback sin
+scope, que hoy no emite nada — cierra el hueco real que esta medición acaba de encontrar. Sin eso,
+el caso "sin explicar" del 05/08 puede seguir repitiéndose indefinidamente sin que la sonda nueva lo
+vea nunca, porque vigila el camino que no es.
+
 ### [T-605] 🟡 [ABIERTO 06/08] No hay forma de reescribir la explicación de una psicotécnica: las cinco herramientas de explicaciones son solo del banco legislativo
 
 **Origen medido el 06/08/2026,** resolviendo la impugnación `199d3ab8` (Angelanie Cispas, psicotécnica
