@@ -48,6 +48,14 @@ describe('ArticleTTS — UI pura sobre useTTS', () => {
     expect(SRC).not.toMatch(/function cleanText/)
   })
 
+  // [T-161] `lastError` lo calcula el engine desde hace tiempo, pero ningún
+  // componente lo leía: el circuit breaker (Android Chrome backgrounding) cortaba
+  // la sesión en silencio, el botón pasaba a "Continuar" sin explicar por qué.
+  it('lee lastError del hook y avisa cuando la sesión se cortó y es resumible', () => {
+    expect(SRC).toMatch(/lastError/)
+    expect(SRC).toMatch(/lastError\s*&&\s*canResume/)
+  })
+
   it('expone botón inline Escuchar/Continuar (Pausar/Parar viven en el player flotante)', () => {
     expect(SRC).toMatch(/Escuchar/)
     expect(SRC).toMatch(/Continuar/)

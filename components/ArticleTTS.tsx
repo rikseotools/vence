@@ -125,7 +125,7 @@ export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
 
   if (!tts.supported || sections.length === 0) return null
 
-  const { state, canResume, voices, voicesTotal } = tts
+  const { state, canResume, voices, voicesTotal, lastError } = tts
   const isActivelyPlaying = state === 'playing' || state === 'loading_voices'
   const isPausedNow = state === 'paused'
   const showInline = !isActivelyPlaying && !isPausedNow
@@ -178,6 +178,17 @@ export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
         <div className="mb-2">
           <ChainModeToggle />
         </div>
+      )}
+      {/* [T-161] `lastError` lo calcula el engine específicamente para esto — antes
+          ningún componente lo leía, así que el circuit breaker (Android Chrome
+          backgrounding, ~40-100 sesiones/día) cortaba la sesión en silencio: el
+          botón pasaba a "Continuar" sin que nadie supiera por qué se paró la
+          lectura. La sesión YA es resumible con un clic (canResume), esto solo
+          hace visible por qué. */}
+      {showInline && lastError && canResume && (
+        <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
+          La lectura se cortó — toca «Continuar» para seguir donde lo dejaste.
+        </p>
       )}
       {showInline && (
         <div className="inline-flex items-center gap-1">
