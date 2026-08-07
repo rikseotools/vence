@@ -106,6 +106,15 @@ export type ClientEventType =
   // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
   // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
   | 'storage_unavailable'
+  // Al cerrar un test, la cola de respuestas no drenó dentro de la espera, así que el servidor
+  // tuvo que rellenar. Tipo PROPIO por lo mismo que los dos de arriba: interesa CONSERVAR
+  // visibilidad —cuánta gente termina un test con el guardado a medias— sin contarlo como error
+  // de cliente (no lo es: es una consecuencia del servidor saturado, y contarlo como tal
+  // dispararía la alerta equivocada). Nace de [T-315] / feedback `e790c7bf`: lo único que había
+  // era un `console.warn` con 6 apariciones en 10 días, ninguna de la usuaria que escribió,
+  // mientras el servidor rellenaba respuestas 2-6 veces al día. No se puede arreglar lo que no
+  // se cuenta.
+  | 'test_cierre_sin_drenar'
   // El cliente y el servidor no coinciden sobre si el usuario acertó el intento que acaba de
   // hacer (panel "Tu Evolución en esta pregunta"). Tipo PROPIO, por lo mismo que
   // `usage_limit_hit` y `storage_unavailable`: interesa CONSERVAR visibilidad sin contarlo como

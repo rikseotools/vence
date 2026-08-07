@@ -752,6 +752,83 @@ export const RULE_ALERT_RULE_FAILING: AlertRule<{
   cooldownMin: 120,
 };
 
+/**
+ * La misma ceguera, pero SOSTENIDA — y eso ya no es un aviso. (07/08/2026)
+ *
+ * ── POR QUÉ NO BASTABA CON `alert_rule_failing` ────────────────────────────────────────────
+ * Aquella dispara con 3 fallos en 1 h y es `warn`, lo cual es CORRECTO para su causa típica: la
+ * query se pasa del `statement_timeout` y a la siguiente pasada va bien. Un `critical` ahí sería
+ * ruido.
+ *
+ * Pero el 06/08 la regla `drenaje_atrasado` empezó a fallar a las 22:30 con un error de código
+ * (`b.ts.getTime is not a function`) y siguió fallando **201 evaluaciones seguidas, 17 horas**.
+ * Durante todo ese tiempo el drenaje no lo vigilaba nadie, y el aviso siguió siendo un `warn`
+ * entre otros veinte. Un timeout puntual y una regla rota se ven IGUAL en la primera hora; lo que
+ * los separa es que la rota no se arregla sola.
+ *
+ * Así que: primera hora, aviso. Seis horas seguidas fallando, `critical` — porque a esas alturas
+ * ya no es «puede que se recupere», es «llevamos media jornada sin vigilar eso y nadie lo ha
+ * mirado». Es la misma forma que ya usa `endpoint_latency_sustained`: el mismo hecho, medido en
+ * el tiempo, cambia de categoría.
+ *
+ * Se mira la ANTIGÜEDAD del primer fallo, no el número: 201 fallos en 20 minutos es una ráfaga y
+ * se recupera; 20 fallos repartidos en 17 horas es una regla muerta.
+ */
+export const RULE_ALERT_RULE_FAILING_SUSTAINED: AlertRule<{
+  rule: string;
+  fallos: number;
+  horas: number;
+  ultimaCausa: string | null;
+}> = {
+  name: 'alert_rule_failing_sustained',
+  severity: 'critical',
+  query: sql`
+    SELECT metadata->>'rule' AS rule,
+           COUNT(*)::int AS fallos,
+           ROUND(EXTRACT(EPOCH FROM (NOW() - MIN(ts))) / 3600)::int AS horas,
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "ultimaCausa"
+    FROM observable_events
+    WHERE event_type = 'alert_rule_failed'
+      AND ts > NOW() - INTERVAL '48 hours'
+    GROUP BY metadata->>'rule'
+    HAVING MIN(ts) < NOW() - INTERVAL '6 hours'
+       AND MAX(ts) > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => ({
+    title: `${rows.length} regla(s) llevan HORAS sin vigilar nada`,
+    body:
+      `Esto ya no es un timeout puntual: estas reglas fallan desde hace horas y siguen fallando ` +
+      `ahora. Lo que cubren lleva todo ese tiempo SIN VIGILANCIA, y además ensucian ` +
+      `\`alert_rule_failed\`, donde tapan a cualquier otra regla que empiece a fallar.\n\n` +
+      rows
+        .map(
+          (r) =>
+            `  - ${r.rule}: ${r.fallos} fallos, lleva ${r.horas} h así\n` +
+            `      causa: ${r.ultimaCausa ?? '(sin detalle)'}`,
+        )
+        .join('\n\n') +
+      `\n\nCASO QUE LA ESTRENA (06-07/08/2026): \`drenaje_atrasado\` falló 201 veces seguidas ` +
+      `durante 17 h con «b.ts.getTime is not a function» — un error de CÓDIGO, no de carga: la ` +
+      `regla asumía que \`ts\` es un Date y el driver lo entrega como cadena. Se estrenó y se ` +
+      `quedó ciega el mismo día. Su hermana \`alert_rule_failing\` sí avisó, pero como \`warn\`, ` +
+      `y ahí se quedó.\n\n` +
+      `SI LA CAUSA ES UN ERROR DE JS (y no un timeout), el arreglo es de código:\n` +
+      `  SELECT metadata->>'rule', count(*), max(error_message) FROM observable_events\n` +
+      `  WHERE event_type='alert_rule_failed' AND ts > NOW() - INTERVAL '48 hours' GROUP BY 1;\n\n` +
+      `Runbook: docs/runbooks/health-check.md`,
+    metadata: {
+      reglas: rows.map((r) => `${r.rule}:${r.horas}h`).join(','),
+      peor: rows[0]?.rule,
+      horas: rows[0]?.horas,
+    },
+    fingerprint: `alert_rule_failing_sustained_${rows.map((r) => r.rule).join(',')}`,
+  }),
+  // 12 h: es `critical` y hay que arreglarlo, pero repetirlo cada hora entierra a las demás — que
+  // es exactamente el daño que esta regla denuncia.
+  cooldownMin: 720,
+};
+
 /** Deploy fallido — alertar inmediato si aparece event deploy_failed. */
 export const RULE_DEPLOY_FAILED: AlertRule<{
   n: number;
@@ -1276,6 +1353,81 @@ export const RULE_ENDPOINT_LATENCY_SUSTAINED: AlertRule<{
       metadata: {
         endpoints: rows.length,
         peorP95Ms: Math.max(...rows.map((r) => r.peorP95Ms)),
+      },
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
+ * ## `answer_save_presupuesto_agotado` — el 503 que deja al opositor colgado, con la fase culpable
+ *
+ * Hermana de `endpoint_latency_sustained` y NO redundante con ella: aquella mira el p95 del
+ * VIAJE ENTERO medido por el proxy, así que dice «este endpoint va lento» y no puede decir
+ * dónde se fue el tiempo. Ésta la emite el backend desde dentro, y trae la fase — comprobar
+ * (dispositivos + cupo) o guardar (la respuesta del usuario) — que agotó el presupuesto.
+ *
+ * Por qué hace falta que alguien la mire: cuando esta señal aparece, la respuesta del opositor
+ * NO se ha guardado, la pantalla se queda igual que estaba y él sale y vuelve a entrar. Es
+ * literalmente lo que reportó Lourdes el 07/08 (feedback `e790c7bf`, siete cortes seguidos en
+ * un solo test) y lo que ningún indicador contaba: el 503 salía por `logger.warn` a CloudWatch.
+ *
+ * Umbral: ≥5 eventos y ≥2 usuarios en 30 min. Con un solo usuario puede ser su conexión o su
+ * dispositivo; con dos o más ya es nuestro. Medido sobre producción (5 días), el suelo de 503
+ * de este endpoint son 7-31/día repartidos en 2-10 usuarios, así que este corte NO se enciende
+ * con el goteo normal — se enciende con los racimos, que es cuando hay alguien estudiando y
+ * fallando en serie.
+ */
+export const RULE_ANSWER_SAVE_PRESUPUESTO_AGOTADO: AlertRule<{
+  fase: string | null;
+  n: number;
+  usuarios: number;
+  peorMs: number;
+}> = {
+  name: 'answer_save_presupuesto_agotado',
+  severity: 'error',
+  query: sql`
+    SELECT COALESCE(metadata->>'fase', '(sin fase)') AS fase,
+           COUNT(*)::int                             AS n,
+           COUNT(DISTINCT user_id)::int              AS usuarios,
+           COALESCE(MAX(duration_ms), 0)::int        AS "peorMs"
+      FROM observable_events
+     WHERE event_type = 'answer_save_presupuesto_agotado'
+       AND ts > NOW() - INTERVAL '30 minutes'
+     GROUP BY 1
+    HAVING COUNT(*) >= 5 AND COUNT(DISTINCT user_id) >= 2
+     ORDER BY COUNT(*) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const total = rows.reduce((acc, r) => acc + r.n, 0);
+    const usuarios = Math.max(...rows.map((r) => r.usuarios));
+    const lineas = rows.map(
+      (r) =>
+        `  - fase «${r.fase ?? '?'}»: ${r.n} corte(s) en ${r.usuarios} usuario(s), peor ${r.peorMs} ms`,
+    );
+    const guardar = rows.some((r) => r.fase === 'guardar');
+    return {
+      title: `${total} respuesta(s) de test sin guardar por saturación (${usuarios} usuarios)`,
+      body:
+        `El servidor agotó su presupuesto de tiempo guardando respuestas de tests. Para el ` +
+        `opositor no es un error: la pantalla se queda igual que estaba, así que la ve colgada, ` +
+        `sale y vuelve a entrar.\n\n${lineas.join('\n')}\n\n` +
+        (guardar
+          ? `⚠️ La fase que se agota es GUARDAR: la respuesta del usuario NO llegó a ` +
+            `\`test_questions\`. Mirar primero la BD (pool, pg_stat_activity, CPU/IOPS de RDS).\n\n`
+          : `La fase que se agota es COMPROBAR (dispositivos + cupo del plan free), no el ` +
+            `guardado. Mirar las RPC de antifraude y \`daily_question_usage\`.\n\n`) +
+        `QUÉ MIRAR, en orden:\n` +
+        `  1. CPU del contenedor BACKEND: los @Cron corren donde se sirven las peticiones.\n` +
+        `  2. ¿Coincide con una estampida de crons? (guardarraíl cron-colisiones.ts).\n` +
+        `  3. Solo DESPUÉS la BD: pool (max:5), pg_stat_activity, CPU/IOPS de RDS.\n` +
+        `  4. Desglose por fases de las lentas que SÍ acaban: event_type='answer_save_fases'.\n\n` +
+        `Ficha: [T-315]. Presupuesto: backend/src/answer-save/presupuesto.ts.`,
+      metadata: {
+        total,
+        usuarios,
+        fases: rows.map((r) => r.fase),
       },
     };
   },
@@ -2018,7 +2170,13 @@ export const RULE_COMPRA_ATASCADA_CHECKOUT: AlertRule<{
 /** Una ejecución de un drenador, tal y como la deja en `cron_run`. */
 export interface DrenajeRun {
   endpoint: string;
-  ts: Date;
+  /**
+   * `Date | string`, y el `string` no es paranoia: es lo que devuelve el driver según la columna
+   * y el camino. Declararlo solo como `Date` fue lo que dejó pasar `b.ts.getTime()` — los tests
+   * construían `new Date()` y daban verde mientras producción fallaba en cada evaluación.
+   * El tipo tiene que decir la verdad, o el compilador ayuda a equivocarse.
+   */
+  ts: Date | string;
   /** Filas que dice haber movido/borrado en esa pasada (suma de todas sus tablas). */
   procesadas: number;
   /** Filas que dice que le QUEDAN fuera de retención, por tabla (acotado). */
@@ -2054,6 +2212,18 @@ export interface DrenajeDiagnostico {
  * una vez al día y un agregado de 24 h mezclaría un fallo de anoche con el éxito
  * de hoy.
  */
+/**
+ * Los milisegundos de un `ts` que puede venir como Date o como cadena.
+ *
+ * No es defensa por si acaso: es lo que pasa de verdad. El driver decide el tipo según la columna
+ * y el camino, así que una regla que asuma `Date` funciona en los tests (que construyen `new
+ * Date()`) y revienta en producción. Es exactamente cómo `drenaje_atrasado` se pasó 201
+ * evaluaciones sin vigilar nada.
+ */
+function msDe(ts: Date | string): number {
+  return ts instanceof Date ? ts.getTime() : Date.parse(String(ts));
+}
+
 export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
   const porEndpoint = new Map<string, DrenajeRun[]>();
   for (const r of runs) {
@@ -2064,7 +2234,14 @@ export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
 
   const salida: DrenajeDiagnostico[] = [];
   for (const [endpoint, lista] of porEndpoint) {
-    const ordenadas = [...lista].sort((a, b) => b.ts.getTime() - a.ts.getTime());
+    // `ts` NO siempre llega como Date: el driver lo entrega como CADENA según la columna y el
+    // camino por el que venga, y `b.ts.getTime()` explotaba con «b.ts.getTime is not a function».
+    // Medido: la regla llevaba desde el 06/08 22:30 fallando en CADA evaluación —201 veces— así
+    // que el drenaje se quedó sin vigilancia justo después del deploy que la estrenó, y encima
+    // ensuciaba `alert_rule_failed` tapando cualquier otra regla que fallara de verdad.
+    // Mismo criterio que ya usa `latenciaSostenida` diez líneas más arriba (línea ~1014): no se
+    // asume el tipo, se normaliza.
+    const ordenadas = [...lista].sort((a, b) => msDe(b.ts) - msDe(a.ts));
     const ultima = ordenadas[0];
     // Sin `remaining` no se puede juzgar: es una versión anterior al deploy de
     // T-613. Callar es correcto — inventar un veredicto sin el dato, no.
@@ -6750,6 +6927,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Quién vigila al vigilante (2026-07-27): una regla que revienta no vigila
   // nada, y hasta hoy eso solo se veía en los logs.
   RULE_ALERT_RULE_FAILING as AlertRule,
+  // Y su escalón: la de arriba avisa en la primera hora (casi siempre un timeout que se cura
+  // solo); ésta grita cuando la ceguera lleva 6 h y sigue. Las dos hacen falta — con una sola,
+  // o se pierde el aviso temprano o 17 h sin vigilancia se leen como un `warn` más (07/08/2026).
+  RULE_ALERT_RULE_FAILING_SUSTAINED as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
   // T-307: el cron que corre y FALLA tick tras tick. `cron_failure_burst` exige 3 fallos
@@ -6769,6 +6950,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Latencia SOSTENIDA por endpoint de usuario (T-254): respuestas correctas que
   // llegan tarde — el indicador de 5xx no las ve y el opositor sí.
   RULE_ENDPOINT_LATENCY_SUSTAINED as AlertRule,
+  // Su complemento desde DENTRO del backend (T-315, 07/08/2026): la anterior mide el viaje
+  // entero desde el proxy y no puede decir qué fase se comió el tiempo; ésta trae la fase y
+  // solo aparece cuando la respuesta del opositor NO se guardó.
+  RULE_ANSWER_SAVE_PRESUPUESTO_AGOTADO as AlertRule,
   RULE_WORKFLOW_FAILURE_BURST as AlertRule,
   // Un CI rojo en `main` bloquea a TODAS las sesiones (commit y deploy): avisa al primer fallo,
   // sin esperar racimo. 28/07/2026.

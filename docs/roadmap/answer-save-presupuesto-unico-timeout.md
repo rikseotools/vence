@@ -1,6 +1,13 @@
 # Propuesta: presupuesto único de timeout para `/api/v2/answer-and-save`
 
-> **Estado:** PROPUESTA, sin aplicar. Pedida por Manuel el 05/08 (pregunta bloqueante #10 de
+> **✅ ESTADO (07/08/2026): APLICADA la opción B**, decidida por Manuel ese día. El código vive en
+> `backend/src/answer-save/presupuesto.ts` + `answer-save.controller.ts`; el reparto real, las
+> capas y lo que falta por verificar están en la ficha [T-315]. Lo de abajo se conserva como el
+> razonamiento que llevó a la decisión — **el §6 «Qué NO propongo tocar todavía» ya no aplica**, y
+> el valor del presupuesto quedó en **20.000 ms** (no 25.000) para que el backend termine dentro de
+> la ventana del proxy y su 503 llegue al usuario.
+>
+> **Estado original:** PROPUESTA, sin aplicar. Pedida por Manuel el 05/08 (pregunta bloqueante #10 de
 > [T-315]) tras corregir el diagnóstico: el muro de "25 s" no está en `route.ts` (código casi
 > inerte desde que `shouldRouteToBackend('answer-and-save')` es `true` sin rollout desde el
 > 24/05), está en `backend/src/answer-save/answer-save.controller.ts`. **No la aplico yo — es un
