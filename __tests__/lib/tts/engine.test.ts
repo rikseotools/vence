@@ -308,6 +308,33 @@ describe('TTSEngine', () => {
     eng.destroy()
   })
 
+  // [T-161] Medido: 15/15 `react_error_boundary` con `Object.getPrototypeOf(voice)`
+  // desde 14/07 a 05/08 son Brave — su shim anti-fingerprinting sustituye
+  // `getVoices()` por una versión que a veces LANZA. Antes del fix, ese throw subía
+  // sin atrapar hasta React y tumbaba el árbol entero. play() no debe propagar el
+  // throw — tiene que degradar al mismo estado que "sin voces disponibles".
+  it('FIX CRASH: getVoices() lanzando (shim roto de un navegador) no tumba play(), degrada a sin voces', () => {
+    synth.getVoices.mockImplementation(() => {
+      throw new TypeError("undefined is not an object (evaluating 'Object.getPrototypeOf(voice)')")
+    })
+    const eng = new TTSEngine()
+    expect(() => eng.play({ text: 'Frase uno.', rate: 1 })).not.toThrow()
+    // Sin voces (0 en español) tras el throw: no hay nada que reproducir, no se
+    // queda "playing" con una voz que nunca existió.
+    expect(synth.speak).not.toHaveBeenCalled()
+    eng.destroy()
+  })
+
+  it('FIX CRASH: pickVoice() con getVoices() lanzando no rompe setVoice()', () => {
+    const eng = new TTSEngine()
+    eng.play({ text: 'Frase uno. Frase dos.', rate: 1, voiceURI: null })
+    synth.getVoices.mockImplementation(() => {
+      throw new Error('shim roto')
+    })
+    expect(() => eng.setVoice('otra-voz')).not.toThrow()
+    eng.destroy()
+  })
+
   it('destroy() libera recursos y bloquea callbacks futuros', () => {
     const onNaturalEnd = jest.fn()
     const eng = new TTSEngine({ onNaturalEnd })

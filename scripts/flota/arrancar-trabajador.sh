@@ -212,7 +212,13 @@ EnvironmentFile=/etc/vence-flota/%i.env
 # 07/08 al aplicarlos: con servidor compartido, las sesiones de w2, w3 y w4 vivían dentro de
 # `vence-flota@w1.service`. Con `-L` cada uno tiene el suyo y responde de lo suyo.
 ExecStart=/usr/bin/tmux -L %i new-session -d -s %i -c ${VENCE_SESSION_HOME} /bin/bash
-ExecStop=/usr/bin/tmux -L %i kill-session -t %i
+# El `-` NO es cosmético (T-663, 07/08). Si el tmux del trabajador ya se ha muerto por su cuenta
+# —un OOM, una caída, alguien que lo mató—, `kill-session` sale con 1 y systemd da la PARADA por
+# fallida: la unidad se queda en `deactivating` y **`systemctl restart` se bloquea esperándola**.
+# O sea: justo en el único caso en el que hace falta resucitar a alguien, la resurrección no puede
+# ejecutarse. Reproducido en el VPS matando el tmux de w3 a mano. «La sesión ya no está» es una
+# parada CONSEGUIDA, no un error.
+ExecStop=-/usr/bin/tmux -L %i kill-session -t %i
 RemainAfterExit=yes
 Restart=on-failure
 RestartSec=30
@@ -229,13 +235,26 @@ RestartSec=30
 # atribuible.
 #
 # Los números salen de lo medido, no de una regla general: 0,4 GB en reposo, y los picos legítimos
-# son los `jest`/`typecheck` de dentro del turno (2-3 GB observados). 2 GB de aviso y 3 GB de tope
-# dejan correr lo legítimo y cortan lo desbocado. ⚠️ Cuatro por 3 GB pasan de los 7,7 de la
-# máquina: es sobre-reserva deliberada, porque los picos rara vez coinciden y `MemoryHigh` frena
-# antes. Si los OOM no bajan a cero, lo siguiente NO es subir esto — es bajar `--maxWorkers` de
+# son los `jest`/`typecheck` de dentro del turno (2-3 GB observados).
+#
+# ⚠️ EL AVISO ERA DE 2 GB Y ESE NÚMERO ESTABA MAL — lo desmintió la medición (07/08, 18:07). Se
+# justificaba diciendo que cuatro topes sumaban más que la máquina «porque los picos rara vez
+# coinciden». **Coinciden**: mirando `MemoryCurrent` de los cuatro cgroups a la vez salió
+# `w1 2,16 GB · w2 2,15 GB · w3 2,03 GB` — los TRES por encima de su propio aviso a la vez, 6,3 GB
+# entre tres, sobre 7,7 GB de máquina y con el sistema y el supervisor también dentro. Con la suma
+# de los avisos (8 GB) por encima de la RAM, quien dispara no es el tope de nadie: es el OOM killer
+# del KERNEL, que elige víctima a nivel de máquina y se lleva por delante a un trabajador que se
+# estaba portando bien. Resultado medido: **19 OOM en un día**, con el arreglo ya puesto.
+#
+# 1400 MB × 4 = 5,6 GB, que deja ~2 GB para el sistema, el supervisor y los tmux. Y bajar el AVISO
+# no mata turnos: `MemoryHigh` **no mata**, frena y fuerza reclamo — un turno que necesite más va
+# más lento en vez de morir. `MemoryMax=3G` se queda como tope duro para el desbocado de verdad,
+# porque ahí el kill cae DENTRO de su cgroup, que es la víctima correcta.
+#
+# Si aun así los OOM no bajan a cero, lo siguiente NO es subir esto — es bajar `--maxWorkers` de
 # jest o quitar un trabajador.
 MemoryAccounting=yes
-MemoryHigh=2G
+MemoryHigh=1400M
 MemoryMax=3G
 
 # Que jest no abra un worker por núcleo DENTRO de cada turno: con cuatro turnos a la vez eso
@@ -249,6 +268,41 @@ WantedBy=multi-user.target
 UNITF
 systemctl daemon-reload
 echo "→ unidad systemd instalada (vence-flota@$SLUG)"
+
+# ── 7.bis. EL PERMISO SIN EL CUAL LA RESURRECCIÓN NO PUEDE EJECUTARSE (T-663) ────────────────
+# El supervisor corre como «$USUARIO», y un usuario normal NO puede `systemctl restart` una
+# unidad del sistema: polkit le pide autenticación INTERACTIVA y la orden falla siempre. Sin esta
+# regla, `ordenDeArranque()` está escrita, se invoca, y no arranca nada nunca — que es distinto
+# de no tenerla: el supervisor CREE que lo intentó.
+#
+# **Medido en el VPS el 07/08:** `w1` estuvo 6 h muerto con su tarea cogida (el supervisor lo
+# contaba como ocupado y no le mandaba nada), y en el diario quedó el rastro exacto:
+#   ❌ w3: sin sesión y no se pudo resucitar (Failed to restart vence-flota@w3.service:
+#      Interactive authentication required.)
+#
+# Se concede lo MÍNIMO y por el camino estándar: solo `manage-units`, solo al usuario de la flota,
+# y solo sobre unidades `vence-flota*`. No se usa sudoers a propósito — obligaría a meter `sudo`
+# en el código del supervisor y entonces el mismo binario no serviría para el portátil.
+POLKIT_RULE=/etc/polkit-1/rules.d/49-vence-flota.rules
+if [ -d /etc/polkit-1/rules.d ]; then
+  cat > "$POLKIT_RULE" <<POLKIT
+// Generado por arrancar-trabajador.sh — NO editar a mano (T-663).
+// Deja que el supervisor de la flota, que corre como "$USUARIO", relance a un trabajador muerto.
+// Acotado a propósito: solo las unidades de la flota, solo ese usuario, solo gestionar unidades.
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      subject.user == "$USUARIO") {
+    var u = action.lookup("unit") || "";
+    if (u.indexOf("vence-flota") === 0) return polkit.Result.YES;
+  }
+});
+POLKIT
+  chmod 0644 "$POLKIT_RULE"
+  systemctl reload polkit 2>/dev/null || systemctl restart polkit 2>/dev/null || true
+  echo "→ permiso de resurrección instalado ($POLKIT_RULE)"
+else
+  echo "⚠️  sin /etc/polkit-1/rules.d: el supervisor NO podrá relanzar trabajadores muertos aquí."
+fi
 
 # ── 8. EL GATE: si no puede participar del reparto, NO arranca ──────────────────────────────
 echo ""

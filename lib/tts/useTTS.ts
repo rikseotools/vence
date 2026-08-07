@@ -9,7 +9,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { TTSEngine, type TTSEngineCallbacks, type TTSLastError } from './engine'
+import { TTSEngine, safeGetVoices, type TTSEngineCallbacks, type TTSLastError } from './engine'
 import type {
   TTSCurrentSection,
   TTSPlayOptions,
@@ -97,7 +97,7 @@ export function useTTS(callbacks: TTSEngineCallbacks = {}): UseTTSReturn {
     }
     setSupported(true)
     const loadVoices = () => {
-      const all = window.speechSynthesis.getVoices()
+      const all = safeGetVoices()
       setVoicesTotal(all.length)
       setVoices(all.filter((v) => v.lang.startsWith('es')))
     }

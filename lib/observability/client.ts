@@ -219,6 +219,7 @@ export type ClientEventType =
   | 'tts_chain_advance'
   | 'tts_error'
   | 'tts_unsupported'
+  | 'tts_voices_api_threw'
   | 'tts_user_action'
   | 'tts_seek'
   // Imágenes de preguntas — ¿renderizó realmente la imagen en el cliente?
