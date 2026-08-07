@@ -429,6 +429,23 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'razona sobre basura. OJO: «Depósito legal» es materia legítima en biblioteconomía — el detector ya no lo ' +
       'marca solo, pero al limpiar a mano no lo borres.',
   },
+  epigrafe_truncado: {
+    title: 'Epígrafe cortado: promete la lista de materias y no la trae',
+    triggerPhrase: 'revisa los epígrafes cortados',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'el `topics.epigrafe` termina literalmente en `:` y ahí se acaba — el epígrafe anuncia que ' +
+      'va a enumerar las materias del tema y no enumera ninguna (caso real: «Régimen Jurídico del ' +
+      'Sector Público (I):»). El epígrafe es la VARA DE MEDIR de todo el sistema de temario: con él ' +
+      'se decide el `topic_scope` (Paso 2), se verifica su literalidad (Paso 1) y se adjudican los ' +
+      'recortes de sobre-inclusión. Uno truncado no se puede contrastar con NADA — cualquier scope ' +
+      'le encaja, porque no dice nada. Completa el epígrafe con el texto LITERAL del programa ' +
+      'oficial (el hub ya tiene el documento en muchas oposiciones) y re-verifica el Paso 1. NUNCA ' +
+      'inventar la continuación ni «redondear» con lo que parezca razonable: eso es exactamente lo ' +
+      'que este defecto provoca. HERMANO de «revisa los epígrafes sucios» ' +
+      '(`epigrafe_ruido_boletin`): aquel es basura de maquetación PEGADA a la frase, este es ' +
+      'materia que FALTA por completo. Núcleo: `lib/health/epigrafeTruncado.cjs`.',
+  },
   explicacion_estructura_rota: {
     title: 'Explicación estructurada que se renderiza rota',
     triggerPhrase: 'revisa las explicaciones descuadradas',

@@ -981,6 +981,32 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-641] 🟡 [ABIERTO 07/08/2026] Completar los 14 epígrafes truncados (detector T-625) con el texto literal del programa oficial
+
+- **Esfuerzo: larga.** 6 oposiciones distintas, cada una exige localizar el documento oficial (hub o `programa_url`), leer la continuación literal y re-verificar el Paso 1 — no es un find-and-replace.
+- **De dónde sale:** [T-625] construyó el detector (`lib/health/epigrafeTruncado.cjs`, kind `epigrafe_truncado`) para que un `topics.epigrafe` cortado en seco (termina en `:` sin traer la lista de materias que promete) no vuelva a pasar desapercibido. La propia ficha de T-625 separa esto A PROPÓSITO: el detector es "rato", completar los 14 "va por oposición" y es más grande.
+- **LOS 14 (medido 07/08/2026 contra RDS, `is_active=true`):**
+  ```
+  administrativo_diputacion_valencia   T36
+  administrativo_extremadura           T14, T16, T19, T20, T22, T25, T27, T30   (8, no 6 — la ficha
+                                        original de T-625 decía "(6)"; corregido aquí con lo MEDIDO)
+  auxiliar_administrativo_sermas       T9, T19
+  auxiliar_administrativo_universidad_huelva  T5
+  celador_sescam_clm                   T2
+  enfermero_scs_canarias               T31   (no estaba nombrado en la ficha original de T-625,
+                                        pero SÍ entra en el total de 14 medido — verificado con
+                                        SELECT directo, no es un descuadre de mi cálculo)
+  ```
+  Query para reproducir: `SELECT position_type, topic_number, epigrafe FROM topics WHERE is_active = true AND epigrafe IS NOT NULL AND btrim(epigrafe) ~ ':\s*$';`
+- **QUÉ HACER, por cada tema:**
+  1. Localizar el documento oficial de la oposición (`convocatoria_documentos` del hub, o `programa_url` si aún no está clonado — clonar con `backend/scripts/clonar-documento.ts`, NUNCA con WebFetch para el articulado).
+  2. Encontrar el epígrafe TAL CUAL aparece en el programa oficial y copiar la continuación LITERAL (la lista de materias que el `:` promete).
+  3. Actualizar `topics.epigrafe` con el texto completo (dual-write si aplica el patrón de esa tabla).
+  4. Re-verificar el Paso 1 (literalidad) de ese tema: `npm run epigrafe:revision -- <position_type> --pregunta <question_id>` o el pipeline `verify:scope` según corresponda — un epígrafe que cambia invalida su verificación previa por trigger, así que esto debería pasar solo, pero comprobarlo.
+- **NUNCA inventar la continuación ni "redondear" con lo que parezca razonable** — es exactamente el defecto que motivó el detector. Si el documento oficial no está localizable para alguna oposición, dejarla fuera y anotarlo (no rellenar a ciegas).
+- **Cómo se sabe que salió bien:** el badge de `epigrafe_truncado` en `/admin/salud-sistema` / `/admin/contenido` baja de 14 a 0 (o al número de las que de verdad no se pudieron localizar, documentado). Es un trinquete: cualquier subida después de esto es una regresión demostrable.
+- **Relacionadas:** [T-625] (el detector), [T-518] (de donde salió el problema — 1 de 12 temas no se pudo recortar por esto), [T-528] (temarios sin contrastar contra su fuente, mismo espíritu).
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):

@@ -3295,6 +3295,33 @@ export class ContentHealthSweepService {
       this.logger.warn(`ruido de boletín en epígrafes no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
+    // ── Epígrafe CORTADO: promete la lista de materias y no la trae (T-625) ──
+    // ⚠️ ESPEJO de `lib/health/epigrafeTruncado.cjs` (el núcleo puro y testeado que usa el CLI).
+    // El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas el
+    // patrón aquí, tócalo allí — `content-sweep-parity.test.ts` vigila que los KINDS no diverjan.
+    //
+    // Al importar por lotes, la continuación del epígrafe (lo que sigue a los dos puntos) se
+    // pierde: «Régimen Jurídico del Sector Público (I):». El epígrafe es la VARA DE MEDIR del
+    // temario (Paso 1/Paso 2/sobre-inclusión); uno truncado no se contrasta con nada. Solo temas
+    // ACTIVOS. Nace en 14 (medido 06-07/08/2026): cualquier subida es regresión demostrable.
+    try {
+      const EPIGRAFE_TRUNCADO_RE = /:\s*$/;
+      const epActivosRows = (await this.db.execute(sql`
+        SELECT position_type AS slug, topic_number AS tema, epigrafe
+          FROM topics WHERE is_active = true AND epigrafe IS NOT NULL
+      `)) as unknown as Array<{ slug: string; tema: number; epigrafe: string }>;
+      const truncados = (Array.isArray(epActivosRows) ? epActivosRows : [])
+        .filter((e) => EPIGRAFE_TRUNCADO_RE.test((e.epigrafe ?? '').trim()));
+      for (const e of truncados.slice(0, 20)) {
+        add('content', 'warn', e.slug, 'epigrafe_truncado',
+          `${e.slug} T${e.tema}: el epígrafe termina en ":" sin traer la lista de materias que promete ("${(e.epigrafe || '').slice(-50)}")`,
+          { slug: e.slug, tema: e.tema, epigrafe: e.epigrafe });
+      }
+      marcar('epigrafe_truncado', epActivosRows.length);
+    } catch (e) {
+      this.logger.warn(`epígrafes truncados no evaluados: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
     // ── Explicación estructurada que se RENDERIZA rota (29/07) ──
     // ⚠️ ESPEJO de `lib/health/explicacionEstructuraRota.cjs` (núcleo puro y testeado que usa el
     // CLI). El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas la

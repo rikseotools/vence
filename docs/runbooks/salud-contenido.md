@@ -154,6 +154,12 @@ Qué hace, recorriendo el **inventario de superficies** (`lib/admin/landingSurfa
    WHERE epigrafe ~* '(Fima autom|copia electrónica de un documento|Código Seguro de Verificación|Powered by TCPDF|Boletín Oficial de la Provincia|Lo que se hace público|Nº ?[0-9]+ p\. ?[0-9]+)';
   ```
   Arreglo: reescribir con el texto **literal** del anexo oficial (no recortar a ojo: el corte puede estar en mitad de una frase). Ojo, el epígrafe es lo que hashea la verificación de scope → al tocarlo se invalida sola, que es lo correcto.
+- **Epígrafe CORTADO en seco (`epigrafe_truncado`, T-625, 06/08/2026): promete la lista de materias y no la trae.** Distinto del anterior — allí sobra basura de maquetación PEGADA a la frase; aquí falta materia entera, y no hay ruido visible que lo delate. Se detecta porque `topics.epigrafe` termina literalmente en `:` (*"Régimen Jurídico del Sector Público (I):"*). Es la vara de medir del temario (Paso 1/Paso 2/sobre-inclusión) y uno truncado no se contrasta con NADA — falso verde por construcción. Origen: al recortar sobre-inclusión en [T-518], 1 de 12 temas no se pudo decidir por esto. Medido contra RDS (solo temas `is_active=true`):
+  ```sql
+  SELECT position_type, topic_number, right(epigrafe, 60) FROM topics
+   WHERE is_active = true AND epigrafe IS NOT NULL AND btrim(epigrafe) ~ ':\s*$';
+  ```
+  14 de 3.799 temas activos con epígrafe (06-07/08/2026). Arreglo: completar con el texto **literal** del programa oficial de esa oposición (el hub de `convocatoria_documentos` ya tiene el documento en muchas) y re-verificar el Paso 1. NUNCA inventar la continuación ni "redondear" el epígrafe con lo que parezca razonable — es exactamente lo que este defecto provoca. Núcleo puro `lib/health/epigrafeTruncado.cjs` (el `:` se marca SOLO al final, con `$`: hay epígrafes legítimos con `:` en medio, tipo *"La Constitución Española de 1978: estructura y contenido"*).
 - **Alias en mayúscula:** pg pasa `SELECT plazas_libres L` a `row.l` (minúscula) — leer `row.plazas_libres`, no `row.L`.
 - **La imagen ECS poda postgres-js** → el sweep usa `pg` (node-postgres), presente en la imagen. NO usar `postgres`/postgres-js en scripts que corran en la imagen.
 - **Reusar la imagen del frontend** para el sweep acopla: cambiar el script exige re-deploy del frontend.
