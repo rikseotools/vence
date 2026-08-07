@@ -191,6 +191,55 @@ describe('jobs programados externos', () => {
     expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(false);
   });
 
+  // ── SIMULACIÓN DE AUSENCIA para los dos jobs que este catálogo NO declaraba
+  // hasta [T-325]: `vence-content-radar` y `vence-instagram-daily`. Antes de
+  // esto podían morir exactamente como `temario-pdf-worker` (27→29/07) sin que
+  // `cron_overdue` se enterara — la regla ni sabía que existían. Se ejercita
+  // contra las entradas REALES del catálogo (`EXTERNAL_SCHEDULED_JOBS`), no un
+  // fixture aparte, para probar lo que de verdad se despliega. ───────────────
+
+  it('SIMULACIÓN de ausencia — content-radar nunca visto y su tick de L/X/V ya pasó de sobra → overdue', async () => {
+    const svc = await build(EXTERNAL_SCHEDULED_JOBS);
+    // Miércoles 05/08 09:00 Madrid (07:00 UTC en agosto, CEST): el tick de las
+    // 06:00 Madrid de HOY ya pasó hace 3h, muy por encima de la ventana de
+    // bootstrap de 60 min.
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-05T07:00:00Z'));
+    const ctx: AlertRuleContext = { cronSchedule: svc };
+    const rows: Array<{ endpoint: string; lastTs: string | null }> = [];
+
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(true);
+    const notif = RULE_CRON_OVERDUE.buildNotification(rows, ctx);
+    expect(notif.metadata?.externalOverdue).toContain('vence-content-radar');
+  });
+
+  it('SIMULACIÓN: content-radar con señal de esta misma mañana NO dispara', async () => {
+    const svc = await build(EXTERNAL_SCHEDULED_JOBS);
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-05T07:00:00Z'));
+    const ctx: AlertRuleContext = { cronSchedule: svc };
+    const rows = [
+      { endpoint: 'vence-content-radar', lastTs: '2026-08-05T04:00:05Z' }, // 06:00:05 Madrid
+      // Los otros dos jobs del catálogo real TAMBIÉN necesitan su señal sana aquí:
+      // sin fila, `lastRun` es null y —sin `processStartedAtMs`— caen fuera de la
+      // ventana de bootstrap y disparan por su cuenta, ensuciando este caso.
+      { endpoint: 'vence-instagram-daily', lastTs: '2026-08-05T08:00:03Z' }, // 10:00:03 Madrid (ayer)
+      { endpoint: 'temario-pdf-worker', lastTs: '2026-08-05T06:50:00Z' },
+    ];
+
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(false);
+  });
+
+  it('SIMULACIÓN de ausencia — instagram-daily nunca visto y su tick diario ya pasó de sobra → overdue', async () => {
+    const svc = await build(EXTERNAL_SCHEDULED_JOBS);
+    // 12:00 Madrid: el tick de las 10:00 de hoy pasó hace 2h.
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-05T10:00:00Z'));
+    const ctx: AlertRuleContext = { cronSchedule: svc };
+    const rows: Array<{ endpoint: string; lastTs: string | null }> = [];
+
+    expect(RULE_CRON_OVERDUE.shouldFire(rows, ctx)).toBe(true);
+    const notif = RULE_CRON_OVERDUE.buildNotification(rows, ctx);
+    expect(notif.metadata?.externalOverdue).toContain('vence-instagram-daily');
+  });
+
   // ── Invariantes del catálogo de producción ────────────────────────
 
   describe('catálogo real', () => {

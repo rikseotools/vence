@@ -6,15 +6,16 @@
  *
  * La liveness de estos jobs (`cron_overdue`) une DOS ficheros por un string:
  *   - el catálogo    `backend/src/cron-schedule/external-jobs.registry.ts`  (`name`)
- *   - el propio job  `scripts/pdf-worker.ts`                                (`JOB_NAME`)
+ *   - el propio job  (p.ej. `scripts/pdf-worker.ts`)                        (`JOB_NAME`)
  * y emite/consulta `observable_events.endpoint` con ese valor.
  *
  * No pueden importarse el uno al otro: el backend tiene `rootDir = backend/` y
- * nunca importa de `../lib`, y el script del worker vive en la raíz del repo.
- * Sin este test, un rename en cualquiera de los dos lados deja el job SIN
- * vigilancia y en silencio — que es exactamente el fallo del 27→29/07/2026 que
- * la vigilancia viene a cerrar. Un guardarraíl de paridad es el mismo patrón que
- * ya usa `runbookRegistry` ↔ `CLAUDE.md`.
+ * nunca importa de `../lib`, y los scripts de los jobs viven en la raíz del repo
+ * (algunos ni siquiera en el mismo lenguaje — `instagram_daily.py`). Sin este
+ * test, un rename en cualquiera de los dos lados deja el job SIN vigilancia y en
+ * silencio — que es exactamente el fallo del 27→29/07/2026 que la vigilancia
+ * viene a cerrar. Un guardarraíl de paridad es el mismo patrón que ya usa
+ * `runbookRegistry` ↔ `CLAUDE.md`.
  */
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -22,6 +23,8 @@ import { join } from 'path'
 const ROOT = join(__dirname, '..', '..')
 const REGISTRY = join(ROOT, 'backend/src/cron-schedule/external-jobs.registry.ts')
 const PDF_WORKER = join(ROOT, 'scripts/pdf-worker.ts')
+const CONTENT_RADAR = join(ROOT, 'marketing/social-content/content-radar/content_radar.mjs')
+const INSTAGRAM_DAILY = join(ROOT, 'marketing/social-content/instagram_daily.py')
 
 /** Nombres declarados en el catálogo (`name: '...'`). */
 function nombresDelCatalogo(): string[] {
@@ -57,6 +60,55 @@ describe('guardarraíl — jobs programados externos', () => {
     // El INSERT debe usar la constante, no un literal suelto que pueda divergir.
     const insert = src.slice(src.indexOf('async function emitCronSignal'))
     expect(insert).toMatch(/\$\{JOB_NAME\}/)
+  })
+
+  // ── Los otros dos jobs externos, destapados en [T-325]: el catálogo solo
+  // declaraba temario-pdf-worker mientras vence-content-radar y
+  // vence-instagram-daily podían morir exactamente igual y nadie se enteraría. ──
+
+  it('el JOB_NAME de content-radar (.mjs) coincide EXACTO con su entrada del catálogo', () => {
+    const src = readFileSync(CONTENT_RADAR, 'utf8')
+    const m = src.match(/const JOB_NAME\s*=\s*'([^']+)'/)
+    expect(m).not.toBeNull()
+    expect(nombresDelCatalogo()).toContain(m![1])
+  })
+
+  it('content-radar emite las DOS señales del contrato de liveness, con endpoint = JOB_NAME', () => {
+    const src = readFileSync(CONTENT_RADAR, 'utf8')
+    expect(src).toContain("'cron_tick'")
+    expect(src).toContain("'cron_run'")
+    const fn = src.slice(src.indexOf('async function emitCronSignal'))
+    expect(fn).toMatch(/\$\{JOB_NAME\}/)
+  })
+
+  it('el JOB_NAME de instagram-daily (.py) coincide EXACTO con su entrada del catálogo', () => {
+    const src = readFileSync(INSTAGRAM_DAILY, 'utf8')
+    // Sintaxis Python: sin `const`, comillas dobles.
+    const m = src.match(/^JOB_NAME\s*=\s*"([^"]+)"/m)
+    expect(m).not.toBeNull()
+    expect(nombresDelCatalogo()).toContain(m![1])
+  })
+
+  it('instagram-daily emite las DOS señales del contrato de liveness, con endpoint = JOB_NAME', () => {
+    const src = readFileSync(INSTAGRAM_DAILY, 'utf8')
+    expect(src).toContain('"cron_tick"')
+    expect(src).toContain('"cron_run"')
+    // Python no interpola con `${}`: aquí el contrato es que el INSERT use la
+    // variable JOB_NAME (parámetro %s ligado a JOB_NAME), no un literal suelto.
+    const fn = src.slice(src.indexOf('def emit_cron_signal'))
+    expect(fn).toMatch(/JOB_NAME/)
+    // Y que el propio JOB_NAME esté entre los parámetros ligados al INSERT.
+    const execute = fn.slice(fn.indexOf('cur.execute'))
+    expect(execute).toMatch(/JOB_NAME/)
+  })
+
+  it('los tres jobs externos que emiten señal están TODOS en el catálogo (ni uno se queda fuera)', () => {
+    const nombres = [PDF_WORKER, CONTENT_RADAR, INSTAGRAM_DAILY].map((f) => {
+      const src = readFileSync(f, 'utf8')
+      const m = src.match(/JOB_NAME\s*=\s*['"]([^'"]+)['"]/)
+      return m![1]
+    })
+    expect(nombres.sort()).toEqual([...nombresDelCatalogo()].sort())
   })
 
   it('el catálogo no declara cadencias en dialecto de proveedor', () => {

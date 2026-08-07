@@ -12,6 +12,35 @@ const SINCE = Date.now() - 14 * 864e5 // últimos 14 días
 const TOP_ABS = 20
 const TOP_RATE = 12
 
+/**
+ * Nombre del job para la liveness de crons. DEBE coincidir EXACTO con la entrada de
+ * `EXTERNAL_SCHEDULED_JOBS` en `backend/src/cron-schedule/external-jobs.registry.ts`:
+ * la regla `cron_overdue` une catálogo y señales por este string. Lo fija el
+ * guardarraíl `__tests__/guardrails/externalScheduledJobs.test.ts`. [T-325]
+ */
+const JOB_NAME = 'vence-content-radar'
+
+/**
+ * Señal de LIVENESS del job, con el MISMO contrato que `scripts/pdf-worker.ts` da al
+ * worker de PDFs: `cron_tick` al arrancar y `cron_run` al terminar, ambos con
+ * `endpoint = JOB_NAME`. Sin esto el job es invisible para `cron_overdue` — que es
+ * exactamente cómo `temario-pdf-worker` estuvo 2 días muerto sin una sola alerta
+ * (27→29/07/2026): un contenedor que muere ANTES del entrypoint no puede avisar de
+ * su propia muerte, y la única señal fiable es la AUSENCIA de estas dos.
+ */
+async function emitCronSignal(sql, eventType, opts = {}) {
+  const meta = JSON.stringify(eventType === 'cron_tick' ? { phase: 'start' } : { status: opts.status ?? 'success' })
+  try {
+    await sql`
+      INSERT INTO observable_events (source, severity, event_type, endpoint, duration_ms, error_message, metadata)
+      VALUES ('worker', ${opts.error ? 'error' : 'debug'}, ${eventType}, ${JOB_NAME}, ${opts.ms ?? null}, ${opts.error ?? null}, ${meta}::jsonb)
+    `
+  } catch {
+    // La observabilidad nunca tumba el job. Si se pierde el tick, el `cron_run` de
+    // completado actúa de fallback (la regla lee ambos).
+  }
+}
+
 async function bd(handle) {
   const f = `business_discovery.username(${handle}){followers_count,media.limit(15){caption,like_count,comments_count,media_type,timestamp,permalink}}`
   const url = `https://graph.facebook.com/v21.0/${IG}?fields=${encodeURIComponent(f)}&access_token=${TOKEN}`
@@ -24,9 +53,11 @@ async function bd(handle) {
 }
 
 async function main() {
-  if (!IG || !TOKEN) throw new Error('Falta META_IG_USER_ID / META_ADS_ACCESS_TOKEN')
+  const t0 = Date.now()
   const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, ssl: { rejectUnauthorized: false } })
+  await emitCronSignal(sql, 'cron_tick')
   try {
+    if (!IG || !TOKEN) throw new Error('Falta META_IG_USER_ID / META_ADS_ACCESS_TOKEN')
     const comps = await sql`SELECT name, instagram FROM competitors WHERE instagram IS NOT NULL ORDER BY name`
     const posts = []
     for (const c of comps) {
@@ -56,6 +87,12 @@ async function main() {
       n++
     }
     console.log(`✅ radar refrescado: ${n} posts (de ${posts.length} recogidos / ${comps.length} competidores)`)
+    await emitCronSignal(sql, 'cron_run', { ms: Date.now() - t0, status: 'success' })
+  } catch (e) {
+    // Un ciclo que peta SÍ anuncia que terminó: sin `cron_run` la regla lo vería
+    // como colgado en vez de como fallado, y son dos diagnósticos distintos.
+    await emitCronSignal(sql, 'cron_run', { ms: Date.now() - t0, status: 'error', error: e.message })
+    throw e
   } finally {
     await sql.end()
   }
