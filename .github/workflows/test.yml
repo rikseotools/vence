@@ -79,10 +79,10 @@ jobs:
         id: preflight
         continue-on-error: true
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_REPLICA }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::El secret DATABASE_URL_READONLY no existe o está vacío."
+            echo "::error::El secret DATABASE_URL_REPLICA no existe o está vacío."
             echo "Sin BD, esta categoría entera (integración/perf/seguridad) NO verifica NADA:"
             echo "  invariantes de topic_scope · integridad de la entidad OEP · aislamiento entre"
             echo "  usuarios · circuito de referidos (dinero) · guardarraíles anti-scraping."
@@ -100,7 +100,7 @@ jobs:
           # Estos tests pegan a BD real (read-only en producción + datos snapshot).
           # Suministrados como secrets del repo. Si faltan, el step falla y se
           # ve claro qué pasa — mejor que un timeout silencioso.
-          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_REPLICA }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run test:integration
@@ -117,7 +117,7 @@ jobs:
         if: steps.preflight.outcome == 'success'
         continue-on-error: true
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_READONLY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL_REPLICA }}
         run: npm run audit:coherencia:gate
 
       # ── Que el rojo SE NOTE ───────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ jobs:
         run: |
           if [ "${{ steps.preflight.outcome }}" = "failure" ]; then
             CAUSA="sin_base_de_datos"
-            MSG="El gate de integración/perf/seguridad NO verificó nada: falta el secret DATABASE_URL_READONLY"
+            MSG="El gate de integración/perf/seguridad NO verificó nada: falta el secret DATABASE_URL_REPLICA"
           elif [ "${{ steps.tests.outcome }}" = "failure" ]; then
             CAUSA="tests_en_rojo"
             MSG="El gate de integración/perf/seguridad corrió con BD y tiene tests en rojo"
