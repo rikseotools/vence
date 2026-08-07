@@ -1359,6 +1359,81 @@ export const RULE_ENDPOINT_LATENCY_SUSTAINED: AlertRule<{
   cooldownMin: 60,
 };
 
+/**
+ * ## `answer_save_presupuesto_agotado` — el 503 que deja al opositor colgado, con la fase culpable
+ *
+ * Hermana de `endpoint_latency_sustained` y NO redundante con ella: aquella mira el p95 del
+ * VIAJE ENTERO medido por el proxy, así que dice «este endpoint va lento» y no puede decir
+ * dónde se fue el tiempo. Ésta la emite el backend desde dentro, y trae la fase — comprobar
+ * (dispositivos + cupo) o guardar (la respuesta del usuario) — que agotó el presupuesto.
+ *
+ * Por qué hace falta que alguien la mire: cuando esta señal aparece, la respuesta del opositor
+ * NO se ha guardado, la pantalla se queda igual que estaba y él sale y vuelve a entrar. Es
+ * literalmente lo que reportó Lourdes el 07/08 (feedback `e790c7bf`, siete cortes seguidos en
+ * un solo test) y lo que ningún indicador contaba: el 503 salía por `logger.warn` a CloudWatch.
+ *
+ * Umbral: ≥5 eventos y ≥2 usuarios en 30 min. Con un solo usuario puede ser su conexión o su
+ * dispositivo; con dos o más ya es nuestro. Medido sobre producción (5 días), el suelo de 503
+ * de este endpoint son 7-31/día repartidos en 2-10 usuarios, así que este corte NO se enciende
+ * con el goteo normal — se enciende con los racimos, que es cuando hay alguien estudiando y
+ * fallando en serie.
+ */
+export const RULE_ANSWER_SAVE_PRESUPUESTO_AGOTADO: AlertRule<{
+  fase: string | null;
+  n: number;
+  usuarios: number;
+  peorMs: number;
+}> = {
+  name: 'answer_save_presupuesto_agotado',
+  severity: 'error',
+  query: sql`
+    SELECT COALESCE(metadata->>'fase', '(sin fase)') AS fase,
+           COUNT(*)::int                             AS n,
+           COUNT(DISTINCT user_id)::int              AS usuarios,
+           COALESCE(MAX(duration_ms), 0)::int        AS "peorMs"
+      FROM observable_events
+     WHERE event_type = 'answer_save_presupuesto_agotado'
+       AND ts > NOW() - INTERVAL '30 minutes'
+     GROUP BY 1
+    HAVING COUNT(*) >= 5 AND COUNT(DISTINCT user_id) >= 2
+     ORDER BY COUNT(*) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const total = rows.reduce((acc, r) => acc + r.n, 0);
+    const usuarios = Math.max(...rows.map((r) => r.usuarios));
+    const lineas = rows.map(
+      (r) =>
+        `  - fase «${r.fase ?? '?'}»: ${r.n} corte(s) en ${r.usuarios} usuario(s), peor ${r.peorMs} ms`,
+    );
+    const guardar = rows.some((r) => r.fase === 'guardar');
+    return {
+      title: `${total} respuesta(s) de test sin guardar por saturación (${usuarios} usuarios)`,
+      body:
+        `El servidor agotó su presupuesto de tiempo guardando respuestas de tests. Para el ` +
+        `opositor no es un error: la pantalla se queda igual que estaba, así que la ve colgada, ` +
+        `sale y vuelve a entrar.\n\n${lineas.join('\n')}\n\n` +
+        (guardar
+          ? `⚠️ La fase que se agota es GUARDAR: la respuesta del usuario NO llegó a ` +
+            `\`test_questions\`. Mirar primero la BD (pool, pg_stat_activity, CPU/IOPS de RDS).\n\n`
+          : `La fase que se agota es COMPROBAR (dispositivos + cupo del plan free), no el ` +
+            `guardado. Mirar las RPC de antifraude y \`daily_question_usage\`.\n\n`) +
+        `QUÉ MIRAR, en orden:\n` +
+        `  1. CPU del contenedor BACKEND: los @Cron corren donde se sirven las peticiones.\n` +
+        `  2. ¿Coincide con una estampida de crons? (guardarraíl cron-colisiones.ts).\n` +
+        `  3. Solo DESPUÉS la BD: pool (max:5), pg_stat_activity, CPU/IOPS de RDS.\n` +
+        `  4. Desglose por fases de las lentas que SÍ acaban: event_type='answer_save_fases'.\n\n` +
+        `Ficha: [T-315]. Presupuesto: backend/src/answer-save/presupuesto.ts.`,
+      metadata: {
+        total,
+        usuarios,
+        fases: rows.map((r) => r.fase),
+      },
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const RULE_HYDRATION_MISMATCH_SPIKE: AlertRule<{
   endpoint: string | null;
   deployVersion: string | null;
@@ -6875,6 +6950,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Latencia SOSTENIDA por endpoint de usuario (T-254): respuestas correctas que
   // llegan tarde — el indicador de 5xx no las ve y el opositor sí.
   RULE_ENDPOINT_LATENCY_SUSTAINED as AlertRule,
+  // Su complemento desde DENTRO del backend (T-315, 07/08/2026): la anterior mide el viaje
+  // entero desde el proxy y no puede decir qué fase se comió el tiempo; ésta trae la fase y
+  // solo aparece cuando la respuesta del opositor NO se guardó.
+  RULE_ANSWER_SAVE_PRESUPUESTO_AGOTADO as AlertRule,
   RULE_WORKFLOW_FAILURE_BURST as AlertRule,
   // Un CI rojo en `main` bloquea a TODAS las sesiones (commit y deploy): avisa al primer fallo,
   // sin esperar racimo. 28/07/2026.

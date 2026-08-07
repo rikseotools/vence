@@ -14,6 +14,7 @@ import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
 import React from 'react'
 import { getTopicContentBaseInternal as getTopicContentUncached, getLawSectionNames } from '@/lib/api/temario/queries'
 import { OPOSICIONES, type OposicionSlug } from '@/lib/api/temario/schemas'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 import { buildTopicPdfModel } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { stampTopicPdfChrome } from '@/lib/temario/pdf/stampChrome'
@@ -128,10 +129,29 @@ export async function pregenerateTopicPdf(
   topicNumber: number,
   opts: { force?: boolean } = {},
 ): Promise<PregenResult> {
-  const oposicion = oposicionRaw.replace(/_/g, '-')
+  // ── UNA PERSONALIZADA NO SE «SLUGIFICA»: SU IDENTIFICADOR YA ES EL BUENO (T-648) ──────────
+  // El `replace(/_/g,'-')` traduce el `position_type` del catálogo a su slug, que es lo correcto
+  // para las 131 del registro estático. Pero una oposición PERSONALIZADA no tiene slug: lo que
+  // llega **ya es** su `position_type` (`personalizada_<id>`), y convertirlo lo rompe. Es la
+  // misma rama que `getTopicContentBaseInternal` ya tiene desde [T-327] — aquí no se inventa un
+  // criterio nuevo, se reutiliza el que existe (`esObjetivoPersonalizado`).
+  const esPersonalizada = esObjetivoPersonalizado(oposicionRaw)
+  const oposicion = esPersonalizada ? oposicionRaw : oposicionRaw.replace(/_/g, '-')
   const base: PregenResult = { oposicion, tema: topicNumber, ok: false, outcome: 'error' }
 
-  if (!(oposicion in OPOSICIONES)) return { ...base, error: 'oposicion_desconocida' }
+  // ── POR QUÉ ESTO ACEPTA ALGO QUE NO ESTÁ EN EL REGISTRO ESTÁTICO (T-648, 07/08/2026) ──────
+  // Medido ese día: **195 de los 220 jobs muertos** de la cola de PDFs eran personalizadas, todos
+  // con la firma `hook:scope` — o sea encolados por el TRIGGER de `topic_scope`, que salta cuando
+  // el usuario edita su temario. El trigger encolaba y este `if` rechazaba: **dos componentes con
+  // criterios distintos sobre qué es una oposición**, y la DLQ era donde se acumulaba el
+  // desacuerdo. 54 oposiciones de 7 usuarios llevaban desde el 01/08 sin recibir su PDF, sin una
+  // sola incidencia — nadie se queja de un PDF que no llega, simplemente deja de pedirlo.
+  //
+  // Una personalizada NO puede estar en el registro estático (`lib/config/oposiciones.ts`, 131
+  // entradas fijas): la crea el usuario en caliente y vive en `custom_oposiciones`. Meterla ahí
+  // sería un registro que crece con cada usuario. Lo que sí tiene es `topics` y `topic_scope`,
+  // que es todo lo que la renderización necesita — y el resolutor de contenido ya sabe leerlos.
+  if (!esPersonalizada && !(oposicion in OPOSICIONES)) return { ...base, error: 'oposicion_desconocida' }
   if (!Number.isInteger(topicNumber) || topicNumber <= 0) return { ...base, error: 'tema_invalido' }
 
   const started = Date.now()

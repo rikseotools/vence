@@ -5,9 +5,14 @@ import type { AuthenticatedUser } from '../auth/jwt-verifier';
 import { BackgroundService } from '../background/background.service';
 import type { CacheService } from '../cache/cache.service';
 import { DailyLimitService } from '../daily-limit/daily-limit.service';
+import type { ObservabilityService } from '../observability/observability.service';
 import { AnswerSaveController } from './answer-save.controller';
 import { AnswerSaveService } from './answer-save.service';
 import type { AnswerSaveRequest } from './answer-save.types';
+import {
+  ANSWER_SAVE_BUDGET_MS,
+  COMPROBACIONES_MAX_MS,
+} from './presupuesto';
 
 const USER_ID = '3260627f-2018-4a5e-8234-e6f07015abb9';
 const SESSION_ID = '00000000-0000-0000-0000-000000000001';
@@ -52,6 +57,7 @@ interface ControllerMocks {
   dailyLimit: jest.Mocked<DailyLimitService>;
   cache: jest.Mocked<CacheService>;
   bg: BackgroundService;
+  obs: jest.Mocked<ObservabilityService>;
 }
 
 function makeController(): {
@@ -110,15 +116,23 @@ function makeController(): {
 
   const bg = new BackgroundService();
 
+  const obs = {
+    emit: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<ObservabilityService>;
+
   const controller = new AnswerSaveController(
     answerSave,
     antifraud,
     dailyLimit,
     cache,
     bg,
+    obs,
   );
 
-  return { controller, mocks: { answerSave, antifraud, dailyLimit, cache, bg } };
+  return {
+    controller,
+    mocks: { answerSave, antifraud, dailyLimit, cache, bg, obs },
+  };
 }
 
 describe('AnswerSaveController.post', () => {
@@ -328,7 +342,7 @@ describe('AnswerSaveController.post', () => {
       );
       const res = makeRes();
       const promise = controller.post(makeBody(), USER, {}, res);
-      jest.advanceTimersByTime(11_000);
+      jest.advanceTimersByTime(COMPROBACIONES_MAX_MS + 1_000);
       jest.useRealTimers();
       const result = await promise;
       expect((result as { error: string }).error).toContain('saturado');
@@ -344,12 +358,82 @@ describe('AnswerSaveController.post', () => {
       );
       const res = makeRes();
       const promise = controller.post(makeBody(), USER, {}, res);
-      jest.advanceTimersByTime(16_000);
+      jest.advanceTimersByTime(ANSWER_SAVE_BUDGET_MS + 1_000);
       jest.useRealTimers();
       const result = await promise;
       expect((result as { error: string }).error).toContain('saturado');
       expect(res.status).toHaveBeenCalledWith(503);
-    }, 20000);
+    }, 25000);
+  });
+
+  // [T-315] — el reparto del presupuesto, comprobado en el controller y no solo
+  // en el núcleo puro: el defecto de origen no era el cálculo, era QUÉ número
+  // recibía cada fase.
+  describe('presupuesto único (T-315)', () => {
+    it('comprobar corta a su techo corto, no a los 10 s de antes', async () => {
+      jest.useFakeTimers();
+      const { controller, mocks } = makeController();
+      mocks.antifraud.registerAndCheckDevice.mockImplementation(
+        () => new Promise(() => {}),
+      );
+      const res = makeRes();
+      const promise = controller.post(makeBody(), USER, {}, res);
+      // Un pelo por debajo del techo: todavía NO puede haber cortado.
+      jest.advanceTimersByTime(COMPROBACIONES_MAX_MS - 500);
+      expect(res.status).not.toHaveBeenCalledWith(503);
+      jest.advanceTimersByTime(1_000);
+      jest.useRealTimers();
+      await promise;
+      expect(res.status).toHaveBeenCalledWith(503);
+    }, 15000);
+
+    it('guardar recibe MÁS de los 15 s fijos de antes cuando comprobar va rápido', async () => {
+      jest.useFakeTimers();
+      const { controller, mocks } = makeController();
+      mocks.answerSave.validateAndSaveAnswer.mockImplementation(
+        () => new Promise(() => {}),
+      );
+      const res = makeRes();
+      const promise = controller.post(makeBody(), USER, {}, res);
+      // A los 15 s (el techo VIEJO de esta fase) todavía no debe haber cortado.
+      jest.advanceTimersByTime(15_500);
+      expect(res.status).not.toHaveBeenCalledWith(503);
+      jest.advanceTimersByTime(ANSWER_SAVE_BUDGET_MS);
+      jest.useRealTimers();
+      await promise;
+      expect(res.status).toHaveBeenCalledWith(503);
+    }, 25000);
+
+    it('el 503 deja rastro CONSULTABLE con la fase que se comió el presupuesto', async () => {
+      jest.useFakeTimers();
+      const { controller, mocks } = makeController();
+      mocks.antifraud.registerAndCheckDevice.mockImplementation(
+        () => new Promise(() => {}),
+      );
+      const res = makeRes();
+      const promise = controller.post(makeBody(), USER, {}, res);
+      jest.advanceTimersByTime(COMPROBACIONES_MAX_MS + 1_000);
+      jest.useRealTimers();
+      await promise;
+
+      expect(mocks.obs.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'answer_save_presupuesto_agotado',
+          severity: 'error',
+          httpStatus: 503,
+          userId: USER_ID,
+          metadata: expect.objectContaining({ fase: 'comprobaciones' }),
+        }),
+      );
+    }, 15000);
+
+    it('una respuesta RÁPIDA no emite nada: la señal es la avería, no el tráfico', async () => {
+      const { controller, mocks } = makeController();
+      const res = makeRes();
+      await controller.post(makeBody(), USER, {}, res);
+
+      expect(mocks.obs.emit).not.toHaveBeenCalled();
+    });
   });
 
   describe('mapeo status codes según saveAction', () => {
