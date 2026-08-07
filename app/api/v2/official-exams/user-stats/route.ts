@@ -1,33 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getReadDb } from '@/db/client'
 import { tests } from '@/db/schema'
 import { eq, and, gt, desc, sql } from 'drizzle-orm'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 
-const userIdSchema = z.string().uuid()
+const ENDPOINT = '/api/v2/official-exams/user-stats'
+
+// SIN esto la guarda de abajo NO PROTEGE — mismo gotcha que en
+// app/api/tests/[testId]/review/route.ts: un GET sin declarar `dynamic` es candidato a
+// servirse desde la caché de rutas de Next antes de que el código de autenticación corra.
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/v2/official-exams/user-stats
  *
  * Query params:
- * - userId: string - Required
+ * - userId: string - Required (tiene que ser el del token: se contrasta, no se usa tal cual)
  * - oposicion: string - Optional filter
  *
  * Returns user's best score for each official exam they've taken
+ *
+ * Hasta [T-565] esto leía `tests` filtrando por el `userId` de la query SIN autenticar: el
+ * historial de exámenes oficiales de cualquiera (aciertos, nota, fecha) se leía con solo su
+ * UUID. Su único llamante real (TestHubClient) siempre pide las stats de la sesión propia.
  */
 async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const rawUserId = searchParams.get('userId')
     const oposicion = searchParams.get('oposicion')
 
-    if (!userId || !userIdSchema.safeParse(userId).success) {
-      return NextResponse.json(
-        { success: false, error: 'userId inválido o faltante (debe ser UUID)' },
-        { status: 400 }
-      )
-    }
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, rawUserId)
+    if (!identidad.ok) return identidad.response
+    const userId = identidad.userId
 
     // Query tests table for official exams completed by user
     // Filter directly in DB by detailed_analytics->>'isOfficialExam' = 'true'

@@ -76,6 +76,7 @@ describe('saveAnswer — traduce userAnswer de MOSTRADA a ORIGINAL antes de comp
 
     const result = await saveAnswer({
       testId: TEST_ID,
+      callerUserId: 'user-1',
       questionId: Q_ID,
       questionOrder: 1,
       userAnswer: 'b', // lo que el usuario CLICÓ (posición mostrada)
@@ -102,7 +103,7 @@ describe('saveAnswer — traduce userAnswer de MOSTRADA a ORIGINAL antes de comp
     })
 
     // 'a' mostrada → order[0]=2 → original 'c', que NO es 'a' (la correcta) → debe fallar
-    const result = await saveAnswer({ testId: TEST_ID, questionId: Q_ID, questionOrder: 1, userAnswer: 'a' })
+    const result = await saveAnswer({ testId: TEST_ID, callerUserId: 'user-1', questionId: Q_ID, questionOrder: 1, userAnswer: 'a' })
 
     expect(result.isCorrect).toBe(false)
     expect(chainable.set.mock.calls[0][0].userAnswer).toBe('c')
@@ -116,7 +117,7 @@ describe('saveAnswer — traduce userAnswer de MOSTRADA a ORIGINAL antes de comp
       return [{ userId: 'user-1', questionsMetadata: { question_ids: [Q_ID] } }] // sin option_orders
     })
 
-    const result = await saveAnswer({ testId: TEST_ID, questionId: Q_ID, questionOrder: 1, userAnswer: 'b' })
+    const result = await saveAnswer({ testId: TEST_ID, callerUserId: 'user-1', questionId: Q_ID, questionOrder: 1, userAnswer: 'b' })
 
     expect(result.isCorrect).toBe(true)
     expect(chainable.set.mock.calls[0][0].userAnswer).toBe('b') // sin traducir, tal cual llegó
@@ -131,7 +132,7 @@ describe('saveAnswer — traduce userAnswer de MOSTRADA a ORIGINAL antes de comp
       return [{ userId: 'user-1', questionsMetadata: { option_orders: { 'otra-pregunta-id': [1, 0] } } }]
     })
 
-    const result = await saveAnswer({ testId: TEST_ID, questionId: Q_ID, questionOrder: 1, userAnswer: 'c' })
+    const result = await saveAnswer({ testId: TEST_ID, callerUserId: 'user-1', questionId: Q_ID, questionOrder: 1, userAnswer: 'c' })
 
     expect(result.isCorrect).toBe(true) // identidad: 'c' se compara tal cual contra 'c'
     expect(chainable.set.mock.calls[0][0].userAnswer).toBe('c')

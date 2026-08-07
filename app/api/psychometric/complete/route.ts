@@ -2,11 +2,21 @@
 // POST - Marcar una sesión psicotécnica como completada (server-side, bypasses RLS)
 
 import { NextRequest, NextResponse } from 'next/server'
-import { completePsychometricSession, completePsychometricSessionRequestSchema } from '@/lib/api/psychometric-session'
+import {
+  completePsychometricSession,
+  completePsychometricSessionRequestSchema,
+  getSessionOwnerId,
+} from '@/lib/api/psychometric-session'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const ENDPOINT = '/api/psychometric/complete'
 
 export const dynamic = 'force-dynamic'
 
+// [T-565]: la propiedad se comparaba contra un `userId` puesto por el CLIENTE — con
+// el UUID de la sesión y el de la víctima (su propio id, no secreto) se le podía
+// completar el test a otra persona.
 async function _POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -19,7 +29,14 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    const result = await completePsychometricSession(parsed.data)
+    const sessionOwnerId = await getSessionOwnerId(parsed.data.sessionId)
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, sessionOwnerId)
+    if (!identidad.ok) return identidad.response
+
+    const result = await completePsychometricSession({
+      ...parsed.data,
+      userId: sessionOwnerId ?? parsed.data.userId,
+    })
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 })

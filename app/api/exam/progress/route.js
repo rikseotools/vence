@@ -3,15 +3,24 @@ import { NextResponse } from 'next/server'
 import {
   safeParseGetExamProgressRequest,
   getExamProgress,
-  verifyTestOwnership
+  getTestOwnerId,
 } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const ENDPOINT = '/api/exam/progress'
+
+// SIN esto la guarda de abajo NO PROTEGE — mismo gotcha que en
+// app/api/tests/[testId]/review/route.ts.
+export const dynamic = 'force-dynamic'
+
+// [T-565]: mismo defecto que /api/exam/resume — la comprobación era opcional y su
+// único llamante real (ExamLayout) nunca manda `userId`, así que nunca corría.
 async function _GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const testId = searchParams.get('testId')
-    const userId = searchParams.get('userId')
 
     if (!testId) {
       return NextResponse.json(
@@ -34,23 +43,9 @@ async function _GET(request) {
       )
     }
 
-    // Si se proporciona userId, verificar propiedad del test (validar UUID antes de tocar SQL)
-    if (userId) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      if (!uuidRegex.test(userId)) {
-        return NextResponse.json(
-          { success: false, error: 'userId inválido (debe ser UUID)' },
-          { status: 400 }
-        )
-      }
-      const isOwner = await verifyTestOwnership(testId, userId)
-      if (!isOwner) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este test' },
-          { status: 403 }
-        )
-      }
-    }
+    const testOwnerId = await getTestOwnerId(testId)
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, testOwnerId)
+    if (!identidad.ok) return identidad.response
 
     // Obtener progreso del examen
     const result = await getExamProgress(testId)

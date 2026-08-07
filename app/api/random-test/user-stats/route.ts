@@ -1,15 +1,18 @@
 // app/api/random-test/user-stats/route.ts - API para estadísticas de usuario por tema
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserThemeStats } from '@/lib/api/random-test/queries'
-import {
-  GetUserStatsRequestSchema,
-  type UserStatsResponse,
-} from '@/lib/api/random-test/schemas'
+import { GetUserStatsRequestSchema } from '@/lib/api/random-test/schemas'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const dynamic = 'force-dynamic'
 
-async function _POST(request: NextRequest): Promise<NextResponse<UserStatsResponse>> {
+const ENDPOINT = '/api/random-test/user-stats'
+
+// Hasta [T-565] esto tomaba `userId` del body y lo usaba tal cual: gemelo del agujero de
+// /api/v2/user-stats, con el mismo dato (progreso por tema) y la misma ausencia de caso de
+// uso legítimo cruzado (RandomTestClient solo pide las stats de quien tiene la sesión).
+async function _POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json()
 
@@ -24,8 +27,11 @@ async function _POST(request: NextRequest): Promise<NextResponse<UserStatsRespon
 
     const { oposicion, userId } = parseResult.data
 
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, userId)
+    if (!identidad.ok) return identidad.response
+
     // Obtener estadísticas
-    const stats = await getUserThemeStats(oposicion, userId)
+    const stats = await getUserThemeStats(oposicion, identidad.userId)
 
     return NextResponse.json({
       success: true,

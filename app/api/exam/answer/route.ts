@@ -3,15 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   safeParseSaveAnswerRequest,
   saveAnswer,
-  verifyTestOwnership
+  getTestOwnerId,
 } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
-import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken, incrementDailyCount, debeConsumirCupo } from '@/lib/api/dailyLimit'
+import { getDailyLimitStatus, checkDeviceDailyUsage, incrementDailyCount, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 // Evitar 504 de Vercel (default 300s): fail fast
 export const maxDuration = 30
+
+const ENDPOINT = '/api/exam/answer'
 
 async function _POST(request: NextRequest) {
   let body: Record<string, unknown> | undefined
@@ -36,11 +39,15 @@ async function _POST(request: NextRequest) {
 
     const data = parseResult.data
 
-    // Extract userId from Bearer token (trusted) instead of body (untrusted)
-    const tokenUserId = await withDbTimeout(
-      () => getUserIdFromToken(request),
-      5_000
-    )
+    // El examen admite tomarse sin sesión (anónimo), así que la identidad puede ser
+    // `null` — pero si el test TIENE dueño, tiene que ser quien pide. [T-565]: hasta
+    // hoy esto solo se comprobaba cuando el body traía `userId` (opcional, y puesto
+    // por el CLIENTE) — bastaba con omitirlo para escribir la respuesta de otra
+    // persona en su examen.
+    const testOwnerId = await withDbTimeout(() => getTestOwnerId(data.testId), 5_000)
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, testOwnerId)
+    if (!identidad.ok) return identidad.response
+    const tokenUserId = identidad.callerUserId
 
     // Anonymous users: max 5 per IP per day
     if (!tokenUserId) {
@@ -117,24 +124,11 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    // Si se proporciona userId, verificar propiedad del test
-    if (body?.userId) {
-      const requestUserId = body.userId as string
-      const isOwner = await withDbTimeout(
-        () => verifyTestOwnership(data.testId, requestUserId),
-        8_000
-      )
-      if (!isOwner) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este test' },
-          { status: 403 }
-        )
-      }
-    }
-
-    // Guardar la respuesta (usa UPSERT internamente)
+    // Guardar la respuesta (usa UPSERT internamente). La propiedad del test se
+    // comprueba DENTRO, contra `tokenUserId` (del Bearer, arriba) — nunca contra un
+    // userId que mande el cliente en el body. Ver [T-565].
     const result = await withDbTimeout(
-      () => saveAnswer(data),
+      () => saveAnswer({ ...data, callerUserId: tokenUserId }),
       15_000
     )
 
@@ -144,7 +138,7 @@ async function _POST(request: NextRequest) {
       // questionId → no se puede derivar correctAnswer) = 422 (culpa del
       // cliente), no 500 (fallo del servidor). Evita contaminar la métrica de
       // 5xx y el veredicto de salud con requests malformadas.
-      const status = result.reason === 'invalid_input' ? 422 : 500
+      const status = result.reason === 'not_owner' ? 403 : result.reason === 'invalid_input' ? 422 : 500
       return NextResponse.json(
         { success: false, error: result.error || 'Error guardando respuesta' },
         { status }

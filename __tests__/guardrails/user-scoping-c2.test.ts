@@ -303,8 +303,14 @@ function tablasPorBuilder(src: string): string[] {
 
 // `requireUsuarioPropio` cuenta como autenticar: envuelve a `verifyAuth` y además contrasta
 // el id que afirma el cliente. Se comprueba abajo que sigue siendo esa envoltura.
+// `requireDuenoDelRecurso` cuenta igual que `requireUsuarioPropio`: es el gemelo para
+// recursos que pueden ser ANÓNIMOS (examen/psicotécnico sin sesión) — comprueba contra
+// el dueño real en BD, nunca contra lo que afirme el cliente [T-565]. NO se añade
+// `getUserIdFromToken` (ni `verifyAuthOptional` a secas): esas solo EXTRAEN identidad,
+// no la contrastan contra nada — es justo el patrón que dejó ciego a `exam/answer`
+// mientras SÍ la llamaba, así que reconocerlas produciría el mismo falso verde.
 function rutaAutentica(src: string): boolean {
-  return /\b(?:verifyAuth|getAuthenticatedUser|requireUsuarioPropio|requireAdmin)\s*\(/.test(src)
+  return /\b(?:verifyAuth|getAuthenticatedUser|requireUsuarioPropio|requireAdmin|requireDuenoDelRecurso)\s*\(/.test(src)
 }
 
 // ----------------------------------------------------------------------------
@@ -341,24 +347,11 @@ const ZONA_CIEGA_PENDIENTE: string[] = [
   'app/api/email/track-click/route.ts',
   'app/api/email/track-open/route.ts',
   'app/api/emails/send-medal-congratulation/route.ts',
-  'app/api/exam/answer/route.ts',
-  'app/api/exam/complete/route.js',
-  'app/api/exam/discard/route.ts',
-  'app/api/exam/pending/route.js',
-  'app/api/exam/progress/route.js',
-  'app/api/exam/resume/route.ts',
-  'app/api/exam/validate/route.ts',
   'app/api/interactions/route.ts',
   'app/api/profile/avatar-settings/route.ts',
   'app/api/profile/email-preferences/route.ts',
   'app/api/psychometric-test-data/questions/route.ts',
   'app/api/psychometric-test-data/route.ts',
-  'app/api/psychometric/complete/route.ts',
-  'app/api/psychometric/completed-sessions/route.ts',
-  'app/api/psychometric/create/route.ts',
-  'app/api/psychometric/discard/route.ts',
-  'app/api/psychometric/pending/route.ts',
-  'app/api/psychometric/resume/route.ts',
   'app/api/questions/failed-by-topic/route.ts',
   'app/api/questions/filtered/route.ts',
   'app/api/questions/user-failed/route.ts',
@@ -368,7 +361,6 @@ const ZONA_CIEGA_PENDIENTE: string[] = [
   'app/api/random-test/availability/route.ts',
   'app/api/random-test/config/route.ts',
   'app/api/random-test/generate/route.ts',
-  'app/api/random-test/user-stats/route.ts',
   'app/api/ranking/route.ts',
   'app/api/ranking/streaks/route.ts',
   'app/api/spelling/session/route.ts',
@@ -384,9 +376,7 @@ const ZONA_CIEGA_PENDIENTE: string[] = [
   'app/api/v2/dispute/route.ts',
   'app/api/v2/official-exams/answer/route.ts',
   'app/api/v2/official-exams/questions/route.ts',
-  'app/api/v2/official-exams/user-stats/route.ts',
   'app/api/v2/psychometric-stats/route.ts',
-  'app/api/v2/user-stats/route.ts',
   'app/api/webhooks/resend-inbound/route.ts',
 ]
 

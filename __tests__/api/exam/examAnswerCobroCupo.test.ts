@@ -31,7 +31,16 @@ const mockGetDailyLimitStatus = jest.fn()
 jest.mock('@/lib/api/exam', () => ({
   safeParseSaveAnswerRequest: (data: unknown) => ({ success: true, data }),
   saveAnswer: (...a: unknown[]) => mockSaveAnswer(...a),
-  verifyTestOwnership: jest.fn().mockResolvedValue(true),
+  // El dueño real del test: [T-565] movió la comprobación de propiedad a
+  // `requireDuenoDelRecurso` (abajo), que la usa. No es lo que este fichero prueba.
+  getTestOwnerId: jest.fn().mockResolvedValue('user-free-1'),
+}))
+
+// [T-565]: la ruta ahora resuelve identidad vía `requireDuenoDelRecurso` antes de
+// tocar cupo/dispositivo. Se deja pasar siempre como el dueño mockeado — este fichero
+// prueba el COBRO, no la propiedad (que tiene su propio test dedicado).
+jest.mock('@/lib/api/shared/auth', () => ({
+  requireDuenoDelRecurso: jest.fn().mockResolvedValue({ ok: true, callerUserId: 'user-free-1' }),
 }))
 
 jest.mock('@/lib/api/dailyLimit', () => {
@@ -43,7 +52,6 @@ jest.mock('@/lib/api/dailyLimit', () => {
     incrementDailyCount: (...a: unknown[]) => mockIncrement(...a),
     getDailyLimitStatus: (...a: unknown[]) => mockGetDailyLimitStatus(...a),
     checkDeviceDailyUsage: jest.fn().mockResolvedValue({ allowed: true, deviceTotal: 0 }),
-    getUserIdFromToken: jest.fn().mockResolvedValue('user-free-1'),
   }
 })
 

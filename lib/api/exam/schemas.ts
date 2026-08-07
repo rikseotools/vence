@@ -40,7 +40,8 @@ export const saveAnswerResponseSchema = z.object({
   // eso es 4xx (culpa del cliente), NO un 5xx (fallo del servidor). Sin este
   // discriminador todo `success:false` caía en 500 y contaminaba la métrica de
   // 5xx y el veredicto de salud user-facing (incidente 08/07/2026).
-  reason: z.enum(['invalid_input']).optional(),
+  // `not_owner` [T-565]: el test tiene dueño y no es quien firma la petición (403).
+  reason: z.enum(['invalid_input', 'not_owner']).optional(),
   // Qué hizo de verdad el guardado, con el MISMO vocabulario que `answer-and-save`
   // (T-450, 01/08/2026). Existe para que el cobro del cupo pueda decidirse con la
   // política compartida `debeConsumirCupo(saveAction, isPremium)` en vez de con un
