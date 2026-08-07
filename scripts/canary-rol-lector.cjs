@@ -67,6 +67,10 @@ const DEBE_LEER = [
   // [T-639] canario de T-450 (cupo vs respuestas reales): sin esto no se puede comparar el cupo
   // consumido contra las respuestas de verdad. Ver 20260807_rls_daily_question_usage_lector.sql.
   ['daily_question_usage', 'el cupo diario consumido, para diagnosticar fugas de cupo'],
+  // [T-168] cruzar version_check_reload_immediate/deferred contra tests.is_completed=false
+  // es la métrica que la propia ficha pide para medir el daño real de un reload en caliente.
+  // Ver 20260807_rls_user_interactions_lector.sql.
+  ['user_interactions', 'los eventos de interacción (version-check, tests…), para medir daño de reloads'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
