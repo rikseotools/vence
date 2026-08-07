@@ -211,6 +211,33 @@ RemainAfterExit=yes
 Restart=on-failure
 RestartSec=30
 
+# ── TECHO DE MEMORIA POR TRABAJADOR (T-647, 07/08/2026) ─────────────────────────────────────
+# Medido ese día en esta máquina: **20 muertes por OOM en 6 h**. Y no era que cuatro turnos no
+# quepan en 7,7 GB —en reposo cada uno ocupa 0,3-0,4 GB—: era que UNO SOLO llegó a **6,6 GB** y
+# se llevó por delante lo que el kernel eligió, incluido el supervisor dos veces. Sin techo, el
+# que se desboca no paga él: paga la máquina entera, y el daño cae donde toque.
+#
+# `MemoryHigh` aprieta ANTES de matar (el kernel le mete presión de reclamo y lo frena); solo si
+# aun así sigue subiendo entra `MemoryMax`, y entonces el kill queda DENTRO de este cgroup: muere
+# ese turno y solo ese. Eso convierte «se cayó la flota» en «ese turno falló», que además es
+# atribuible.
+#
+# Los números salen de lo medido, no de una regla general: 0,4 GB en reposo, y los picos legítimos
+# son los `jest`/`typecheck` de dentro del turno (2-3 GB observados). 2 GB de aviso y 3 GB de tope
+# dejan correr lo legítimo y cortan lo desbocado. ⚠️ Cuatro por 3 GB pasan de los 7,7 de la
+# máquina: es sobre-reserva deliberada, porque los picos rara vez coinciden y `MemoryHigh` frena
+# antes. Si los OOM no bajan a cero, lo siguiente NO es subir esto — es bajar `--maxWorkers` de
+# jest o quitar un trabajador.
+MemoryAccounting=yes
+MemoryHigh=2G
+MemoryMax=3G
+
+# Que jest no abra un worker por núcleo DENTRO de cada turno: con cuatro turnos a la vez eso
+# multiplica el pico justo cuando menos margen hay. Es la fuente más probable de los `node` de
+# 2-3 GB que mató el kernel.
+Environment=JEST_MAX_WORKERS=2
+Environment=NODE_OPTIONS=--max-old-space-size=2048
+
 [Install]
 WantedBy=multi-user.target
 UNITF

@@ -184,3 +184,30 @@ describe('[T-642] el supervisor que se despide SUELTA el sitio', () => {
     expect(v.hay).toBe(true)
   })
 })
+
+describe('[T-647] muertesPorMemoria — los OOM dejan de ser invisibles', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BUC = require('../../lib/flota/bucle.cjs')
+
+  it('cuenta las muertes y dice a QUIÉN mataron', () => {
+    // Líneas reales del 07/08 en la máquina de la flota.
+    const txt = [
+      'kernel: Out of memory: Killed process 905990 (claude.exe) total-vm:7637004kB, anon-rss:6614912kB',
+      'kernel: Out of memory: Killed process 933101 (node) total-vm:3149764kB, anon-rss:2199292kB',
+      'kernel: Out of memory: Killed process 946359 (node) total-vm:3774824kB, anon-rss:2836572kB',
+    ].join('\n')
+    const r = BUC.muertesPorMemoria(txt)
+    expect(r.muertes).toBe(3)
+    expect(r.victimas).toEqual({ 'claude.exe': 1, node: 2 })
+  })
+
+  it('sin muertes no inventa nada: una señal que se emite siempre no avisa de nada', () => {
+    expect(BUC.muertesPorMemoria('').muertes).toBe(0)
+    expect(BUC.muertesPorMemoria('kernel: nada que ver aquí').muertes).toBe(0)
+  })
+
+  it('tolera entrada nula sin romper el bucle', () => {
+    expect(BUC.muertesPorMemoria(null).muertes).toBe(0)
+    expect(BUC.muertesPorMemoria(undefined).victimas).toEqual({})
+  })
+})

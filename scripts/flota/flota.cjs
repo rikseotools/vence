@@ -1049,7 +1049,7 @@ async function main() {
         }
         const m = MAQ.maquinaDe(f.trabajador)
         try {
-          enMaquina(f.trabajador, ENC.ordenDeArranque({ trabajador: f.trabajador, local: !!(m && m.local) }))
+          enMaquina(f.trabajador, ENC.ordenDeArranque({ trabajador: f.trabajador, systemd: !!(m && m.systemd) }))
           const ok = sesionViva(f.trabajador) === true
           console.log(`   [${sello}] ${ok ? '🫀' : '❌'} ${f.trabajador}: sin sesión → ${ok ? 'resucitado' : 'NO levanta, requiere una persona'}`)
         } catch (e) {
@@ -1352,6 +1352,26 @@ async function main() {
           // Una pasada que falla NO para el bucle: la flota se quedaría parada por un SSH caído.
           motivoSalto = `la pasada falló: ${String(e.message || e).slice(0, 120)}`
         }
+        // ── LOS OOM DEJAN DE SER INVISIBLES (T-647) ────────────────────────────────────────
+        // Se encontraron por casualidad, mirando por qué el supervisor había cambiado de PID.
+        // Ahora cada pasada mira el registro del núcleo desde la anterior y lo publica como
+        // cualquier otra señal, para que salga en el panel de salud y no en la terminal de quien
+        // pase por allí. Solo cuenta cuando hay muertes: una señal que se emite siempre no avisa.
+        try {
+          const desde = Math.max(2, Math.round(pausa / 60) + 1)
+          const txt = execFileSync('bash', ['-c',
+            `journalctl --no-pager --since '-${desde}min' 2>/dev/null | grep 'Killed process' || true`],
+          { encoding: 'utf8', timeout: 30_000 })
+          const oom = BUC.muertesPorMemoria(txt)
+          if (oom.muertes > 0) {
+            console.log(`   💀 ${oom.muertes} proceso(s) muertos por falta de memoria: ${JSON.stringify(oom.victimas)}`)
+            await sql`
+              INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+              VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
+                      ${`${oom.muertes} proceso(s) matados por el kernel en los últimos ${desde} min`},
+                      ${sql.json({ host: yo, ...oom })})`
+          }
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
         pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa })
         console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
         // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
@@ -1502,7 +1522,7 @@ async function main() {
       // start` es un **no-op silencioso** — medido con `w2` y `w4`, que se dieron por arrancados
       // sin que volviera ninguna sesión mientras el comando imprimía `✅`. El comando lo decide
       // `ordenDeArranque` (puro y testeado), no una condición suelta aquí.
-      enMaquina(w, ENC.ordenDeArranque({ trabajador: w, local: !!m.local }))
+      enMaquina(w, ENC.ordenDeArranque({ trabajador: w, systemd: !!m.systemd }))
       // Y se COMPRUEBA, que es de lo que iba todo esto: declarar el arranque sin mirar es
       // exactamente el fallo que esta tarea existe para quitar.
       const vivaTras = sesionViva(w)
@@ -1512,7 +1532,7 @@ async function main() {
         return 0
       }
       console.error(`❌ ${w}: la orden de arranque no ha levantado su sesión — míralo a mano:`)
-      console.error(`   ssh … "${m.local ? 'tmux ls' : `systemctl status vence-flota@${w} --no-pager`}"`)
+      console.error(`   ssh … "${m.systemd ? `systemctl status vence-flota@${w} --no-pager` : 'tmux ls'}"`)
       return 1
     }
 

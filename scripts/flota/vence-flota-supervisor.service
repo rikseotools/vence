@@ -51,6 +51,17 @@ RestartSec=30
 KillSignal=SIGTERM
 TimeoutStopSec=120
 
+# ── EL COORDINADOR NO PUEDE SER LA VÍCTIMA (T-647, 07/08/2026) ──────────────────────────────
+# El 07/08 el kernel lo mató DOS VECES por falta de memoria (`Failed with result 'oom-kill'`), y
+# no por gastar él: los turnos de los trabajadores colgaban de SU cgroup, así que el consumo de
+# ellos se le atribuía a él. Eso ya está arreglado por la raíz —los turnos los levanta systemd y
+# viven en el cgroup de su propio trabajador—, pero el blindaje se queda igualmente: si un día
+# vuelve a faltar memoria, que muera un turno y no quien es capaz de levantarlo después. Un
+# trabajador muerto lo resucita el supervisor; un supervisor muerto no lo resucita nadie hasta
+# que alguien mire.
+OOMScoreAdjust=-800
+MemoryAccounting=yes
+
 # Un supervisor no necesita escribir en ningún sitio del sistema salvo su propio HOME.
 NoNewPrivileges=yes
 PrivateTmp=yes
