@@ -1436,19 +1436,6 @@ no esta ruta.
 - **Capas:** 9 tests (`__tests__/flota/sesionVigente.test.ts`) con el caso real de `w1`, **probando los DOS órdenes de llegada** —un test de un solo orden habría pasado con el código roto— y con un guardarraíl anti-silo que **rechaza que reaparezca el `new Map(sesiones.map(...))`**. Ese guardarraíl ya se ganó el sitio: al escribirlo encontró la **segunda copia**, la del panel, que yo no había visto.
 - **Relacionadas:** [T-407] (una sola identidad de sesión — mismo problema una capa más abajo: había SEIS copias con DOS reglas), [T-617] (el turno muerto con la tarea cogida, que es lo que esto impedía detectar), [T-642], [T-663].
 
-### [T-665] 🟠 [ABIERTO 07/08] Dos puertas con criterios opuestos: el push-guard impide justo el merge que el claim-guard acaba de mandar hacer
-
-- **Reproducido hoy (07/08 18:30) mergeando T-161 y T-163**, las dos entregadas por la flota y revisadas EN VERDE. Secuencia literal, sin trampa:
-  1. `git push` → **`❌ PUSH BLOQUEADO`**: *«T-161: sin reclamar — hazlo antes de pushear: `claim T-161`»*.
-  2. `claim T-161` → **`❌ ya revisada y SIN problemas: falta que una persona la MERGEE, no más trabajo`**.
-  Una puerta manda reclamar, la otra se niega a entregar el claim, y la única salida es `claim --force --motivo` — o sea, **forzar un guardarraíl para hacer exactamente lo que el sistema quiere que pase**.
-- **Por qué importa más de lo que parece.** El merge de lo revisado en verde es, por diseño, **el trabajo del supervisor** y el escalón que ya se atascó una vez hasta las 96 entregas. Ponerle un `--force` obligatorio delante es enseñar a forzar en el caso BUENO, que es como un escape se convierte en prefijo: medido en el bus de fricción, `backlog-push` va **rodeado el 36% (109/306)** y **70 de esos 109 escapes no respondían a ningún bloqueo**. Cada `--force` legítimo de más empuja en esa dirección.
-- **Ya hay precedente y criterio escrito: [T-375]** quitó del push-guard tres bloqueos «que no se podían satisfacer» exactamente por esto — *dos puertas al mismo recurso con criterios distintos no protegen, se contradicen*. Este es el cuarto caso y encaja en el mismo molde: (a) lease vencido, (b) la que pausaste tú, (c) push que solo toca la ficha… y ahora **(d) la revisada en verde que solo espera merge**.
-- **El arreglo propuesto (estrecho, como los otros tres):** el push-guard deja pasar —imprimiendo el aviso, como hace siempre— una tarea cuyo estado sea **revisada con veredicto `ok` y sin claim vivo de otra sesión**. El criterio YA existe y no hay que inventarlo: `lib/backlog/revision.cjs` (`esperaDecision`), que es el mismo que usa `claim` para rechazarla. **Que las dos puertas lean la MISMA función es el punto**: hoy discrepan porque cada una decide por su cuenta.
-- **Lo que NO se toca:** sigue bloqueando la tarea viva sin reclamar y la que tiene lease vivo de otra sesión, que es lo suyo. Y `claim` sigue rechazando la revisada en verde (está bien: no hay más trabajo que hacer, hay que mergear).
-- **Capas:** el núcleo de `pushGuard` ya tiene tests (`__tests__/backlog/pushGuard.test.ts`) y hay simulación (`npm run sim:push-guard-menciones`); el caso nuevo va ahí, con el escenario real de hoy. Medir después en `npm run sesiones:friccion` que bajan los `guard_escape` de `backlog-push` — sin evento propio (dos emisores del mismo hecho no miden el doble, divergen).
-- **Relacionadas:** [T-375] (los tres bloqueos imposibles que ya se quitaron, y el criterio), [T-423] (el bus de fricción que lo mide), [T-486] (el ciclo entregada→revisada→mergeada).
-
 ### [T-664] 🟠 [ABIERTO 07/08] El correo de «pago fallido» sigue colándose durante el 3DS: T-594 cerró el 87% y la causa de fondo es avisar al instante
 
 **Lo que ya funciona (no rehacerlo).** T-594 (05/08) metió `decidirAvisoPagoFallido`
@@ -9149,6 +9136,66 @@ alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispar
 Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
 `shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
 y sin un caso real que lo pida sería adivinar.
+
+### [T-665] 🟠 [HECHA 07/08] ✅ Dos puertas con criterios opuestos: el push-guard impide justo el merge que el claim-guard acaba de mandar hacer
+
+- **Reproducido hoy (07/08 18:30) mergeando T-161 y T-163**, las dos entregadas por la flota y revisadas EN VERDE. Secuencia literal, sin trampa:
+  1. `git push` → **`❌ PUSH BLOQUEADO`**: *«T-161: sin reclamar — hazlo antes de pushear: `claim T-161`»*.
+  2. `claim T-161` → **`❌ ya revisada y SIN problemas: falta que una persona la MERGEE, no más trabajo`**.
+  Una puerta manda reclamar, la otra se niega a entregar el claim, y la única salida es `claim --force --motivo` — o sea, **forzar un guardarraíl para hacer exactamente lo que el sistema quiere que pase**.
+- **Por qué importa más de lo que parece.** El merge de lo revisado en verde es, por diseño, **el trabajo del supervisor** y el escalón que ya se atascó una vez hasta las 96 entregas. Ponerle un `--force` obligatorio delante es enseñar a forzar en el caso BUENO, que es como un escape se convierte en prefijo: medido en el bus de fricción, `backlog-push` va **rodeado el 36% (109/306)** y **70 de esos 109 escapes no respondían a ningún bloqueo**. Cada `--force` legítimo de más empuja en esa dirección.
+- **Ya hay precedente y criterio escrito: [T-375]** quitó del push-guard tres bloqueos «que no se podían satisfacer» exactamente por esto — *dos puertas al mismo recurso con criterios distintos no protegen, se contradicen*. Este es el cuarto caso y encaja en el mismo molde: (a) lease vencido, (b) la que pausaste tú, (c) push que solo toca la ficha… y ahora **(d) la revisada en verde que solo espera merge**.
+- **El arreglo propuesto (estrecho, como los otros tres):** el push-guard deja pasar —imprimiendo el aviso, como hace siempre— una tarea cuyo estado sea **revisada con veredicto `ok` y sin claim vivo de otra sesión**. El criterio YA existe y no hay que inventarlo: `lib/backlog/revision.cjs` (`esperaDecision`), que es el mismo que usa `claim` para rechazarla. **Que las dos puertas lean la MISMA función es el punto**: hoy discrepan porque cada una decide por su cuenta.
+- **Lo que NO se toca:** sigue bloqueando la tarea viva sin reclamar y la que tiene lease vivo de otra sesión, que es lo suyo. Y `claim` sigue rechazando la revisada en verde (está bien: no hay más trabajo que hacer, hay que mergear).
+- **Capas:** el núcleo de `pushGuard` ya tiene tests (`__tests__/backlog/pushGuard.test.ts`) y hay simulación (`npm run sim:push-guard-menciones`); el caso nuevo va ahí, con el escenario real de hoy. Medir después en `npm run sesiones:friccion` que bajan los `guard_escape` de `backlog-push` — sin evento propio (dos emisores del mismo hecho no miden el doble, divergen).
+- **Relacionadas:** [T-375] (los tres bloqueos imposibles que ya se quitaron, y el criterio), [T-423] (el bus de fricción que lo mide), [T-486] (el ciclo entregada→revisada→mergeada).
+
+#### RESUELTO (07/08, w3)
+
+**Implementado exactamente el arreglo propuesto, importando el criterio en vez de reimplementarlo.**
+`lib/backlog/pushGuard.cjs` ahora requiere `REV = require('./revision.cjs')` y `evaluatePush` exime
+—con `notice`, nunca en silencio— una tarea cuando `REV.esperaDecision(t) && !REV.devueltaConProblemas(t)`
+es cierto (el MISMO booleano que usa `claimGate.cjs:103` para negarse a entregar el claim) **y**
+no hay otra sesión con lease VIVO sobre ella (`!(t.claimed_by && !leaseMuerto(t, now))` — mismo
+orden de prioridad que `claimGate`, donde lease-ajena-viva se comprueba ANTES que esperaDecision).
+Una `problemas` sigue bloqueando sin cambios: eso es trabajo pendiente de verdad, no una espera.
+
+**El bridge (`scripts/backlog-push-guard.cjs`) necesitaba las 3 columnas nuevas en su SELECT**
+(`review_requested_at, reviewed_at, review_verdict`) — sin ellas la función pura nunca ve el dato
+y la exención no dispara nunca en producción, aunque el test unitario (que las pasa a mano) sí
+pasara. Es exactamente el tipo de hueco que un test puro no puede cazar por sí solo.
+
+**Verificado, no solo argumentado — tres capas:**
+1. **Reproducido el bloqueo real de HOY, con tareas reales** (no las T-161/T-163 de la ficha, que
+   ya no estaban disponibles): `node scripts/backlog.cjs claim T-186` → `❌ ya revisada y SIN
+   problemas (la revisó sesion-07ago): falta que una persona la mergee, no más trabajo` — la
+   misma contradicción, en vivo, hoy.
+2. **Medido contra la BD real** (no un mock): `SELECT ... FROM backlog_tasks WHERE id IN
+   ('T-186','T-617')` (las dos, `review_verdict='ok'`, `claimed_by=NULL`) pasado a `evaluatePush`
+   con el fix aplicado → `allowed:true`, con el `notice` explicando por qué. Sin el fix, esas
+   mismas dos filas bloquean (`sin reclamar`).
+3. **Mutación:** desactivado a propósito el `if` de la exención (`if (false)`) y re-corridos los
+   tests — 2 de los 7 nuevos fallan exactamente como se espera (el caso real T-161-equivalente y
+   el de sid-irrelevante). Revertido, `node --check` limpio, 53/53 verde de nuevo.
+
+**Tests:** 7 nuevos en `__tests__/backlog/pushGuard.test.ts` (permite el caso real; el sid de quien
+mergea es irrelevante; sigue bloqueando `problemas`; sigue bloqueando sin revisar aún; no exime lo
+nunca entregado a revisión; cede el paso solo si NO hay lease ajeno vivo, y si lo hay sigue
+bloqueando). Suite completa `__tests__/backlog/` + guardrails relacionados: **627/627 verde**
+(31 suites), sin tocar ninguno de los existentes.
+
+**Corrección a la propia ficha:** decía que el caso nuevo iba en
+`npm run sim:push-guard-menciones` — leída esa simulación, es una calibración histórica de UNA
+regla distinta (T-403, «cita ≠ trabajo», mide qué % de menciones en el cuerpo de un commit eran
+trabajo real). No clasifica por estado de revisión y no es el sitio de este caso; la capa
+correcta y donde encaja de verdad es el test unitario del núcleo puro, que es donde quedó.
+
+**No tocado, a propósito:** `npm run sesiones:friccion` (medir que bajan los `guard_escape` de
+`backlog-push`) — necesita días de uso real tras el deploy del fix para decir algo; no se puede
+medir hoy mismo. Nadie con acceso a merge me ha pedido nada más.
+
+**Entrega:** rama `flota/T-665-puertas-criterios-opuestos`, pusheada. Sin desplegar: no aplica —
+es un script de git hook local (`.husky/pre-push`), no código de servidor.
 
 ### [T-638] ✅ [HECHA 07/08] `vence_lector` no puede leer `question_lifecycle_history`: RLS activo sin política, mismo mecanismo que T-573
 

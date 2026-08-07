@@ -134,7 +134,8 @@ async function main() {
     const s = postgres(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
     try {
       const rows = await s`
-        SELECT id, status, claimed_by, lease_until, snoozed_by, snooze_until, wake_on_deploy_sha
+        SELECT id, status, claimed_by, lease_until, snoozed_by, snooze_until, wake_on_deploy_sha,
+               review_requested_at, reviewed_at, review_verdict
           FROM public.backlog_tasks WHERE id IN ${s(referencedIds)}`
       for (const r of rows) tasksById.set(r.id, r)
     } finally { await s.end({ timeout: 5 }) }

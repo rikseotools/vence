@@ -161,6 +161,63 @@ describe('evaluatePush — tarea que pausaste TÚ', () => {
 })
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
+// REVISADA Y SOLO FALTA MERGEAR (T-665) — dos puertas con criterios opuestos
+//
+// Reproducido el 07/08 mergeando T-161 y T-163: `revisado` suelta el claim (igual que `pause`)
+// así que el push-guard exigía reclamarla, y `claimGate` se niega a entregar el claim de una
+// revisada-sin-problemas (T-539) — la única salida era `claim --force`, forzar un guardarraíl
+// para hacer justo lo que el sistema quiere que pase. Mismo molde que ya arregló T-375 tres veces.
+// ────────────────────────────────────────────────────────────────────────────────────────────
+describe('evaluatePush — revisada y sin problemas: solo falta mergear (T-665)', () => {
+  const revisadaOk = (extra = {}) => ({
+    status: 'in_progress', claimed_by: null, lease_until: null,
+    review_requested_at: mins(-120), reviewed_at: mins(-30), review_verdict: 'ok', ...extra,
+  })
+  const run = (tasks: Record<string, any>, ids: string[], sid = SID) =>
+    evaluatePush({ referencedIds: ids, tasksById: tasks, sid, now: AHORA })
+
+  it('PERMITE — el caso real de hoy: T-161 revisada ok, claim ya suelto, nadie la reclamó', () => {
+    const r = run({ 'T-161': revisadaOk() }, ['T-161'])
+    expect(r.allowed).toBe(true)
+    expect(r.notices[0].reason).toMatch(/falta que una persona la mergee/)
+  })
+
+  it('el que mergea NO tiene por qué ser quien la trabajó o la revisó — el sid es irrelevante aquí', () => {
+    const r = run({ 'T-163': revisadaOk() }, ['T-163'], 'quien-sea-que-esta-mergeando')
+    expect(r.allowed).toBe(true)
+  })
+
+  it('BLOQUEA si el veredicto fue "problemas": sigue siendo trabajo pendiente de verdad, no una espera', () => {
+    const r = run({ 'T-597': revisadaOk({ review_verdict: 'problemas' }) }, ['T-597'])
+    expect(r.allowed).toBe(false)
+    expect(r.violations[0].reason).toMatch(/sin reclamar/)
+  })
+
+  it('BLOQUEA si aún no se ha revisado (entregada, sin veredicto todavía): esa espera es de una persona', () => {
+    const r = run({ 'T-186': revisadaOk({ reviewed_at: null, review_verdict: null }) }, ['T-186'])
+    expect(r.allowed).toBe(false)
+  })
+
+  it('no exime lo que nunca se entregó a revisión: sigue siendo el olvido de reclamar de siempre', () => {
+    const r = run({ 'T-044': revisadaOk({ review_requested_at: null, reviewed_at: null, review_verdict: null }) }, ['T-044'])
+    expect(r.allowed).toBe(false)
+  })
+
+  it('CEDE ante un lease VIVO ajeno: si alguien la reabrió con --force, es su trabajo en curso', () => {
+    // Mismo orden de prioridad que `claimGate`: lease-ajena-viva se comprueba ANTES que
+    // esperaDecision, así que aquí tampoco puede saltárselo.
+    const r = run({ 'T-353': revisadaOk({ claimed_by: OTRA, lease_until: mins(45) }) }, ['T-353'])
+    expect(r.allowed).toBe(false)
+    expect(r.violations[0].reason).toMatch(/la tiene la sesión/)
+  })
+
+  it('…pero SÍ cede si ese lease ya murió: no hay nadie de verdad trabajándola', () => {
+    const r = run({ 'T-353': revisadaOk({ claimed_by: OTRA, lease_until: mins(-4320) }) }, ['T-353'])
+    expect(r.allowed).toBe(true)
+  })
+})
+
+// ────────────────────────────────────────────────────────────────────────────────────────────
 // «Solo documento la ficha» (T-375, segundo roce) — documentar ≠ trabajar
 // ────────────────────────────────────────────────────────────────────────────────────────────
 describe('evaluatePush — push que solo toca el markdown de fichas', () => {
