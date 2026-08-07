@@ -168,6 +168,26 @@ function logDelTurno(trabajador) {
   } catch { return '' }
 }
 
+/**
+ * ¿Cuántos turnos (`claude -p`) hay VIVOS para este trabajador en su máquina?
+ *
+ * Es la señal que manda sobre el panel, porque es la única que ve un turno HUÉRFANO: cuando el
+ * OOM se lleva el servidor de tmux, el `claude -p` de dentro sobrevive y sigue escribiendo en el
+ * worktree aunque su sesión ya no exista (T-642, 07/08). Se busca por la primera línea del
+ * encargo (`Eres w1,`), que es lo único que identifica al trabajador dentro de la línea de
+ * órdenes — el binario es el mismo para los cuatro.
+ *
+ * Devuelve 0 si no se puede preguntar: aquí el fail-open es el correcto, porque el número solo
+ * se usa para NO dar trabajo, y quedarse sin poder repartir por un ssh caído sería peor. Las
+ * otras dos puertas (`puedeRecibir` y el arranque comprobado) siguen delante.
+ */
+function turnosVivosDe(trabajador) {
+  try {
+    const n = enMaquina(trabajador, `pgrep -fc 'Eres ${trabajador},' 2>/dev/null || true`).trim()
+    return Number(n) || 0
+  } catch { return 0 }
+}
+
 /** Qué está ejecutando el panel de un trabajador. Cadena vacía si no se puede ver (≠ «nada»). */
 function comandoDelPanel(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
@@ -262,6 +282,12 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   // ventana el trabajador es invisible para el reparto. La verdad la tiene su panel.
   const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
   if (!ocupacion.libre) return { ok: false, ocupado: true, motivo: ocupacion.motivo }
+  // Y aunque su panel diga que está libre: si queda un `claude -p` suyo VIVO, está trabajando.
+  // El panel puede ser una sesión recién creada mientras el turno anterior sigue corriendo
+  // huérfano —lo que pasa cuando el OOM se lleva el tmux y no al proceso—, y mandarle otro
+  // encargo pone dos turnos a escribir en el mismo worktree (T-642).
+  const vivos = turnosVivosDe(trabajador)
+  if (vivos > 0) return { ok: false, ocupado: true, motivo: `ya tiene ${vivos} turno(s) vivo(s) (huérfano: su sesión murió y el proceso siguió)` }
 
   // ── SIN CUOTA NO SE MANDA NADA, VENGA POR DONDE VENGA (T-642, 07/08) ──────────────────────
   // La comprobación de cuota agotada de [T-617] vivía SOLO en el camino de «retomar su tarea».
@@ -999,6 +1025,9 @@ async function main() {
           sesionExiste: viva,
           paneCommand: viva === true ? comandoDelPanel(f.trabajador) : '',
           reparte: true,
+          // Solo hace falta cuando NO hay sesión: es ahí donde vive el turno huérfano que la
+          // reanimación duplicaría. Con sesión, el panel ya responde y sobra el pgrep.
+          turnosVivos: viva === false ? turnosVivosDe(f.trabajador) : 0,
         })
         if (p.accion !== 'resucitar') {
           // Solo se canta la ceguera sobre la SESIÓN (no se pudo ni preguntar si existe). Que el

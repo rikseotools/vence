@@ -953,3 +953,34 @@ describe('[T-642] ordenDeArranque — tiene que levantar TAMBIÉN a uno ya «arr
     expect(ordenDeArranque({ trabajador: 'l1', local: true })).toBe(ordenDeArranque({ trabajador: 'l1', local: true }))
   })
 })
+
+describe('[T-642] un turno HUÉRFANO sigue siendo un turno', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { presenciaDelPanel } = require('../../lib/flota/encargo.cjs')
+
+  it('sin sesión pero CON proceso vivo: NO se resucita ni se le manda nada', () => {
+    // El caso medido dos veces el 07/08: el OOM del VPS se llevó el servidor de tmux y el
+    // `claude -p` de dentro quedó huérfano y siguió trabajando. Al no ver sesión, se creaba una
+    // nueva y se mandaba un SEGUNDO turno: dos procesos escribiendo en el mismo worktree.
+    const p = presenciaDelPanel({ sesionExiste: false, reparte: true, turnosVivos: 1 })
+    expect(p.estado).toBe('trabajando')
+    expect(p.accion).toBeNull()
+    expect(p.libre).toBe(false)
+    expect(p.motivo).toMatch(/huérfano/)
+  })
+
+  it('el PROCESO manda sobre el panel cuando discrepan', () => {
+    // Panel en un shell (parecería libre) pero con un turno vivo: gana el que puede destruir
+    // trabajo. Un falso «ocupado» cuesta una vuelta de reparto; un falso «libre» cuesta el árbol.
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true, turnosVivos: 1 }).libre).toBe(false)
+  })
+
+  it('sin turnos vivos, la decisión es la de siempre', () => {
+    expect(presenciaDelPanel({ sesionExiste: false, reparte: true, turnosVivos: 0 }).accion).toBe('resucitar')
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true, turnosVivos: 0 }).libre).toBe(true)
+  })
+
+  it('y una máquina apagada con turnos a 0 sigue siendo apagado, no avería', () => {
+    expect(presenciaDelPanel({ sesionExiste: false, reparte: false, turnosVivos: 0 }).estado).toBe('apagado')
+  })
+})
