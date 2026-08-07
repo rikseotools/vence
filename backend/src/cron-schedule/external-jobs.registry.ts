@@ -114,6 +114,39 @@ export const EXTERNAL_SCHEDULED_JOBS: readonly ExternalScheduledJob[] = [
       'Dentro de una task que sirve tráfico tumbaba el health check del ALB (OOM, exit 137, ' +
       '22/07), así que corre fuera del serving y sin ALB delante.',
   },
+  {
+    name: 'vence-content-radar',
+    // `cron(0 6 ? * MON,WED,FRI *)` en EventBridge (tz Europe/Madrid) SÍ tiene fase:
+    // hora de reloj fija, a diferencia de `rate()`. [T-325]
+    cadence: 'phase',
+    expression: '0 6 * * 1,3,5',
+    timeZone: 'Europe/Madrid',
+    runner:
+      'ECS scheduled task `vence-content-radar` (EventBridge Scheduler, ' +
+      'cron(0 6 ? * MON,WED,FRI *) tz Europe/Madrid), repo ECR propio — ' +
+      'marketing/social-content/content-radar/content_radar.mjs',
+    why:
+      'Baja los posts recientes de los competidores (Meta Business Discovery) y actualiza ' +
+      'content_radar_posts para el panel /admin/radar-contenido. Corre L/X/V porque el ' +
+      'contenido de competidores no cambia a diario; runbook: ' +
+      'docs/runbooks/radar-contenido-social.md.',
+  },
+  {
+    name: 'vence-instagram-daily',
+    // `cron(0 10 * * ? *)` en EventBridge (tz Europe/Madrid). [T-325]
+    cadence: 'phase',
+    expression: '0 10 * * *',
+    timeZone: 'Europe/Madrid',
+    runner:
+      'ECS scheduled task `vence-instagram-daily` (EventBridge Scheduler, ' +
+      'cron(0 10 * * ? *) tz Europe/Madrid), repo ECR propio, migrado de GitHub Actions ' +
+      '(2026-07-07) — marketing/social-content/instagram_daily.py',
+    why:
+      'Publica la "pregunta del día" en @vence.es (Instagram). Se migró de GitHub Actions ' +
+      'porque el guard "solo 10:00 Madrid" + los retrasos de cron de GHA hacían que casi ' +
+      'nunca disparara; EventBridge Scheduler dispara exacto. Runbook propio pendiente ' +
+      '(marketing/social-content/README.md es lo único que hay hoy).',
+  },
 ];
 
 /** Búsqueda por nombre (los tests y el diagnóstico la usan). */

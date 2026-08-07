@@ -1678,6 +1678,14 @@ function PerfilPageContent() {
           // Limpiar datos sucios (UUIDs, JSON, slugs desconocidos)
           if (currentOposicion && !ALL_OPOSICION_IDS.includes(currentOposicion)) {
             console.warn('⚠️ [Perfil] target_oposicion inválido:', currentOposicion)
+            // [T-569] El console.warn de arriba se captura como 'console_warn', que es
+            // BENIGNO (lib/observability/benignSignals.ts) — indistinguible del ruido.
+            // Evento propio para que el volumen se pueda vigilar de verdad.
+            emitClientEvent({
+              severity: 'warn',
+              eventType: 'perfil_target_oposicion_invalido',
+              metadata: { valorInvalido: String(currentOposicion).slice(0, 80) },
+            })
             currentOposicion = ''
           }
 
@@ -1932,16 +1940,17 @@ function PerfilPageContent() {
     // Verificar si hay cambios REALES
     const currentNickname = profile.nickname || ''
     const currentStudyGoal = profile.study_goal || 25
-    const currentOposicion = profile.target_oposicion || ''
     const currentAge = profile.age?.toString() || ''
     const currentGender = profile.gender || ''
     const currentCiudad = profile.ciudad || ''
     const currentDailyHours = profile.daily_study_hours?.toString() || ''
 
+    // [T-569] target_oposicion NO entra aquí: saveProfile() ya no la escribe (tiene su
+    // propio escritor, setTargetOposicion), así que compararla solo podía dar un falso
+    // "hay cambios" en cuanto el loader limpiaba un valor inválido a '' en pantalla.
     const hasRealChanges =
       formData.nickname.trim() !== currentNickname ||
       parseInt(formData.study_goal) !== currentStudyGoal ||
-      formData.target_oposicion !== currentOposicion ||
       formData.age !== currentAge ||
       formData.gender !== currentGender ||
       formData.ciudad.trim() !== currentCiudad ||
@@ -2182,27 +2191,24 @@ function PerfilPageContent() {
     try {
       setSaving(true)
 
-      // Preparar datos de la oposición
-      let oposicionData = null
-      if (formData.target_oposicion) {
-        const selectedOposicion = oposiciones.find(op => op.value === formData.target_oposicion)
-        if (selectedOposicion && selectedOposicion.data) {
-          oposicionData = selectedOposicion.data
-        }
-      }
-
       // Validar meta diaria
       const studyGoalNum = parseInt(formData.study_goal)
       if (isNaN(studyGoalNum) || studyGoalNum < 1) {
         throw new Error('La meta diaria debe ser al menos 1 pregunta')
       }
 
-      // Datos en formato camelCase para la API
+      // [T-569] target_oposicion / target_oposicion_data NO viajan en este payload a
+      // propósito. `formData.target_oposicion` es un espejo de PANTALLA que el loader
+      // vacía cuando el valor guardado es inválido (mostrar vacío ≠ escribir vacío) —
+      // incluirlo aquí persistía ese vaciado en cuanto el usuario guardaba CUALQUIER
+      // otro campo (el apodo, la meta diaria…), aunque nunca hubiera tocado el
+      // selector de oposición. El ÚNICO escritor de esta columna es `setTargetOposicion`
+      // (`lib/api/setTargetOposicion.ts`, vía `/api/profile/target`) — se dispara al
+      // elegir o cambiar oposición (`promoteToTarget`, `OposicionChangeModal.onSelect`)
+      // y ya persiste + sincroniza `profile` en el momento, sin depender de este botón.
       const apiData = {
         nickname: formData.nickname.trim(),
         studyGoal: studyGoalNum,
-        targetOposicion: formData.target_oposicion,
-        targetOposicionData: oposicionData,
         // Campos del onboarding
         age: formData.age ? parseInt(formData.age) : null,
         gender: formData.gender || null,
@@ -2226,11 +2232,11 @@ function PerfilPageContent() {
       }
 
       // Actualizar el perfil local (convertir a snake_case)
+      // [T-569] Sin target_oposicion/target_oposicion_data — no se escribieron arriba,
+      // así que no se sincronizan aquí; `profile` conserva lo que de verdad hay en BD.
       const updateData: Partial<UserProfile> = {
         nickname: formData.nickname.trim(),
         study_goal: parseInt(formData.study_goal),
-        target_oposicion: formData.target_oposicion,
-        target_oposicion_data: oposicionData || null,
         age: formData.age ? parseInt(formData.age) : undefined,
         gender: formData.gender || undefined,
         ciudad: formData.ciudad.trim() || undefined,

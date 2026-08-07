@@ -1,0 +1,36 @@
+{
+  "1": {"verdict": "correct", "note": "Ambos agentes: CE 1-55 (Preliminar+Título I) + 116 (garantías/suspensión) encaja con estructura/principios/derechos/garantías."},
+  "2": {"verdict": "correct", "note": "Ambos agentes: CE 137-142 + LRBRL 1-13 cubre organización territorial y autonomía local."},
+  "3": {"verdict": "correct", "note": "Ambos agentes: Ley 39/2015 arts 1-52 cubre disposiciones generales, interesados, actividad y actos administrativos."},
+  "4": {
+    "verdict": "needs_human",
+    "note": "DISCREPANCIA: escéptico=CORRECT (arts 53-126 cubren procedimiento+revisión/recursos). Analista=ISSUES (faltan arts 96-105, tramitación simplificada/ejecución del procedimiento -apremio, ejecución subsidiaria, multa coercitiva, compulsión-, que el epígrafe pide expresamente con 'finalización y ejecución del procedimiento'). Verificar contra la estructura real de la Ley 39/2015 si 96-105 son un hueco genuino o ya están cubiertos por otro tramo del scope.",
+    "findings": {"escéptico": "CORRECT — arts 53-126 cubre procedimiento y revisión/recursos, coincide con el epígrafe", "analista": "ISSUES — faltan arts 96-105 (tramitación simplificada + ejecución del procedimiento)"}
+  },
+  "5": {"verdict": "issues", "note": "Ambos agentes coinciden: falta 'Disposiciones comunes a las Entidades locales' (Título V LRBRL, aprox. arts 68-92), citado LITERALMENTE en el epígrafe; el scope salta de 30 a 121 sin cubrir ese título. Fix propuesto: añadir el rango del Título V LRBRL (68-92 aprox., verificar estructura exacta contra el BOE)."},
+  "6": {"verdict": "correct", "note": "Ambos agentes: RDL 2/2004 arts 59-110 (IBI/IAE/IVTM/ICIO/IIVTNU) coincide con 'Impuestos'."},
+  "7": {"verdict": "issues", "note": "Ambos agentes coinciden: el epígrafe pide solo Tasas/Contribuciones especiales/Precios públicos, pero el scope trae además Impuestos y recargos (38), Participaciones en tributos (39), Subvenciones (40) y sobre todo 'Operaciones de crédito' (48-55, deuda municipal) — materia ajena al epígrafe. Fix propuesto: recortar a los arts de tasas/contribuciones especiales/precios públicos, verificar rango exacto contra el RDL 2/2004."},
+  "8": {"verdict": "issues", "note": "Ambos agentes coinciden: el epígrafe pide SOLO 'Las competencias del Ayuntamiento de Madrid' (Título III de la Ley de Capitalidad, arts 31-37 según el analista), pero el scope trae también el Título I 'Régimen de Capitalidad' (arts 1-8: objeto, autonomía municipal, Comisión Interadministrativa, fuero) — materia distinta no nombrada. Patrón consistente con otros temas de la misma ley (T9, T10, T13) que sí respetan el título exacto que pide su epígrafe. Fix propuesto: recortar a Título III (competencias), verificar arts exactos contra la Ley de Capitalidad."},
+  "9": {"verdict": "correct", "note": "Ambos agentes: Ley 22/2006 arts 9-18 cubre exactamente Pleno/Alcalde/Tenientes de Alcalde/Junta de Gobierno."},
+  "10": {"verdict": "correct", "note": "Ambos agentes: arts 19-30 cubren Administración Pública/Intervención/Tesorería/TEAM/Ente autónomo/Asesoría Jurídica."},
+  "11": {"verdict": "correct", "note": "Ambos agentes: arts 5-8 (marco general) + 40-50 (Áreas de Gobierno) encajan con el epígrafe."},
+  "12": {"verdict": "correct", "note": "Ambos agentes: arts 1-10,12,57-66 (disposiciones generales + órganos/estructura de distritos) coincide con el epígrafe."},
+  "13": {"verdict": "correct", "note": "Ambos agentes: atribuciones Pleno/JGL + potestad reglamentaria + procedimiento de aprobación de ordenanzas encaja con precisión."},
+  "14": {"verdict": "correct", "note": "Ambos agentes: arts 1-3 (objeto/ámbito) + 61-64 (órganos de contratación) coincide con el epígrafe."},
+  "15": {"verdict": "correct", "note": "Ambos agentes: EBEP cubre clases de personal, adquisición/pérdida de la relación, situaciones administrativas, derechos y régimen disciplinario tal como pide el epígrafe."},
+  "16": {"verdict": "issues", "note": "Ambos agentes coinciden: falta el 'Plan de Igualdad del Ayuntamiento de Madrid y sus Organismos Autónomos en vigor' (ámbito municipal, estructura, objetivo general, líneas de intervención), que el epígrafe cita EXPRESAMENTE. El scope solo trae la LO 3/2007 general — sin ninguna entrada para el Plan municipal. Es contenido EDITORIAL (documento institucional propio, no una ley codificada) — no se arregla con un recorte de scope, requiere sourcing/import del texto del Plan (ver docs sobre 'contenido editorial sin fuente oficial registrada')."},
+  "17": {"verdict": "issues", "note": "Ambos agentes coinciden: falta el 'Acuerdo Convenio en vigor sobre condiciones de trabajo comunes al personal funcionario y laboral del Ayuntamiento de Madrid', citado con 'especial referencia' en el epígrafe. El scope solo tiene la LPRL general. Mismo patrón que T16: contenido EDITORIAL municipal específico, no una ley con articulado indexable directamente — requiere sourcing/import."},
+  "18": {"verdict": "correct", "note": "Ambos agentes: arts 36-41 (Título V, registro electrónico) + 68-70 (Título IX, archivo electrónico) coincide exactamente."},
+  "19": {"verdict": "issues", "note": "Ambos agentes coinciden: falta el 'Código de Buenas Prácticas Administrativas del Ayuntamiento de Madrid: Principios generales', citado expresamente en el epígrafe entre la Ordenanza de Atención a la Ciudadanía y la de Transparencia. Ninguna entrada de scope lo cubre. Mismo patrón editorial que T16/T17 — requiere sourcing/import."},
+  "20": {"verdict": "correct", "note": "Ambos agentes: arts 22-32 (Título III, sugerencias/reclamaciones/felicitaciones) coincide exactamente."},
+  "21": {
+    "verdict": "needs_human",
+    "note": "DISCREPANCIA: escéptico=CORRECT ('contenido de ofimática, sin materia legal que evaluar'). Analista=ISSUES (el epígrafe no distingue variante escritorio/web, y el scope trae una ley EXTRA 'Word 365 Escritorio' con 208 preguntas, duplicando el temario como variante aparte). Es exactamente el caso documentado en el runbook (§5-bis, variante Office no especificada) — la regla de la casa dice NO forzar la decisión y marcar needs_human a la espera de nota informativa o decisión de Manuel, no fusionar a ciegas.",
+    "findings": {"escéptico": "CORRECT — ofimática sin materia legal que evaluar", "analista": "ISSUES — variante Escritorio no pedida por el epígrafe, fusionar"}
+  },
+  "22": {
+    "verdict": "needs_human",
+    "note": "DISCREPANCIA, mismo patrón que T21: escéptico=CORRECT. Analista=ISSUES (ley extra 'Excel 365 Escritorio' con 47 preguntas, variante no pedida por el epígrafe). Mismo caso del runbook §5-bis (variante Office no especificada) — needs_human, no forzar.",
+    "findings": {"escéptico": "CORRECT — ofimática sin materia legal que evaluar", "analista": "ISSUES — variante Escritorio no pedida por el epígrafe, fusionar"}
+  }
+}

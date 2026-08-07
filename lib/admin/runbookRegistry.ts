@@ -131,10 +131,10 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace: 'reconstruye el timeline de hitos de la convocatoria vigente contra la fuente oficial.',
   },
   oposicion_incompleta: {
-    title: 'Oposición publicada con la construcción a medias (lo que el gate de creación encontró)',
+    title: 'Oposición publicada con la construcción a medias (lo que los gates de creación y servido encontraron)',
     triggerPhrase: 'revisa las oposiciones incompletas',
     runbook: 'docs/maintenance/crear-nueva-oposicion.md',
-    claudeHace: 'son los hallazgos de `npm run audit:oposicion <slug>`, el gate que se corre AL CREAR una oposición: fila de `oposiciones` con campos vacíos, topics sin `topic_scope`, temas marcados disponibles con 0 preguntas, timeline sin hitos, `estado_proceso` divergente entre `oposiciones` y su convocatoria vigente, rutas de frontend que faltan, registros de UI (OnboardingModal, perfil, mapeo CCAA, CcaaFlag) sin dar de alta. ⚠️ POR QUÉ EXISTE EL KIND (T-455, 01/08/2026): hasta esa fecha el gate escribía **CERO** filas en `content_health_findings` y **CERO** en `observable_events` — comprobaba diez fases y todo moría en la terminal de quien lo ejecutaba, así que si fallaba (o no se corría) la oposición se publicaba igual y no quedaba rastro en ninguna parte. Es el mismo modo de fallo que ya costó semanas con `landing_incompleta`: una comprobación ON-DEMAND que nadie repite no es una comprobación. Ahora cada ejecución REEMPLAZA lo anterior de ese slug (el gate es una foto del estado actual; dejar hallazgos de una oposición ya arreglada es la forma más rápida de que el panel deje de leerse) y emite `oposicion_auditada`. Para resolverlos: correr el gate, arreglar lo que señale siguiendo el manual de creación, y volver a correrlo — el verde es la AUSENCIA de filas. NUNCA marcar `is_active=true` con hallazgos `error` abiertos.',
+    claudeHace: 'son los hallazgos de DOS herramientas distintas bajo el mismo kind (se distinguen por `detail.origen`, y cada una gestiona SOLO sus propios hallazgos al reemplazar): `npm run audit:oposicion <slug>` (`origen: audit:oposicion`), el gate que se corre AL CREAR una oposición — fila de `oposiciones` con campos vacíos, topics sin `topic_scope`, temas marcados disponibles con 0 preguntas, timeline sin hitos, `estado_proceso` divergente entre `oposiciones` y su convocatoria vigente, rutas de frontend que faltan, registros de UI (OnboardingModal, perfil, mapeo CCAA, CcaaFlag) sin dar de alta; y `npm run audit:served [slug]` (`origen: audit:served`, T-455 07/08/2026), que pregunta a la FUENTE de producción (`getTopicFullData`, la misma que sirve `/[oposicion]/temario/tema-N`) si cada tema realmente entrega preguntas — puede correr para UNA oposición o para TODAS las activas de una sola vez. ⚠️ POR QUÉ EXISTE EL KIND (T-455, 01/08/2026): hasta esa fecha los dos gates escribían **CERO** filas en `content_health_findings` y **CERO** en `observable_events` — comprobaban sus fases y todo moría en la terminal de quien lo ejecutaba, así que si fallaban (o no se corrían) la oposición se publicaba igual y no quedaba rastro en ninguna parte. Es el mismo modo de fallo que ya costó semanas con `landing_incompleta`: una comprobación ON-DEMAND que nadie repite no es una comprobación. Cada herramienta REEMPLAZA solo lo anterior DE SU PROPIO origen para ese slug (el gate es una foto del estado actual; dejar hallazgos de una oposición ya arreglada es la forma más rápida de que el panel deje de leerse, y borrar los del otro origen sería pisarle el trabajo) y emite `oposicion_auditada` con `metadata.origen`. Para resolverlos: correr el gate correspondiente, arreglar lo que señale siguiendo el manual de creación, y volver a correrlo — el verde es la AUSENCIA de filas. NUNCA marcar `is_active=true` con hallazgos `error` abiertos.',
   },
   nota_interna_publicada: {
     title: 'La landing publica una nota interna nuestra (el campo de referencia usado como bloc de notas)',
@@ -236,6 +236,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
     claudeHace: 'para cada oposición señalada, verifica contra fuente oficial si la `seguimiento_url` apunta a la convocatoria VIGENTE o a un ciclo ya cerrado. Si está desfasada, repúntala a la página de la convocatoria viva Y pon `seguimiento_last_hash=NULL` (si no, la siguiente pasada del cron da un `changed` falso garantizado). `stale_boletin` (apunta a un documento de boletín inmutable de año viejo) es casi seguro; `posible_ciclo_viejo`/`url_generica` son cola de revisión: pueden ser legítimas (OPE plurianual, portal sin página propia). NUNCA repuntar sin confirmar la URL nueva contra fuente oficial.',
   },
+  notas_convocatoria_sin_vigilancia: {
+    title: 'El sensor de notas (versión de software, fechas, criterio) parece vigilar y no vigila',
+    triggerPhrase: 'revisa las notas sin vigilancia',
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    claudeHace: 'para cada oposición señalada, el sensor `detect-notas-convocatoria` lleva sin dejar nota reciente pese a tener documentos clonados (nunca vio ninguna, o vio una y se congeló ≥4 días). Primero comprobar si es la causa YA conocida (WAF de comunidad.madrid bloqueando la UA propia, arreglado en `oep-signals-llm.service.ts` con reintento de UA de navegador — T-311): reproducir con `curl -A "VenceBot/1.0 (+https://www.vence.es/oep-detection)" <seguimiento_url>` vs `curl -A "Mozilla/5.0 ..." <misma_url>`; si difieren (404 vs 200), es esa causa y el fix ya cubre `comunidad.madrid` — comprobar que el sitio nuevo entra en ese mismo patrón. Si NO es eso (responde igual con las dos UA), el fallo está en otro punto de la tubería (extracción de enlaces a documentos, `fetchPdfText` con el PDF concreto, o el propio documento bloqueado/roto) y hay que diagnosticarlo aparte — este detector solo avisa, no dice la causa. NUNCA marcar como resuelto sin comprobar que `convocatoria_notas.last_seen` vuelve a moverse tras el arreglo.',
+  },
   seguimiento_fuente_ciega: {
     title: 'seguimiento_url que responde 200 pero no vigila nada',
     triggerPhrase: 'revisa las fuentes ciegas de seguimiento',
@@ -294,6 +300,20 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'mira los tres invariantes que emite el barrido sobre `psychometric_questions` activas y los repara UNO A UNO contra la fuente, nunca en lote: sin `section_id` (la pregunta existe pero no cae en ninguna sección, así que NO se sirve a nadie) → asignarle la sección que le corresponde por su categoría; sección de OTRA categoría (los totales por categoría mienten y la pregunta sale donde no toca) → corregir el `section_id`, no la categoría, salvo que la materia diga lo contrario; y `correct_option` fuera de 0-3 o nulo (la pregunta no se puede corregir al responderla) → verificar la clave contra el enunciado y las opciones, y si no se puede determinar, desactivar en vez de adivinar. NUNCA fijar una clave a ojo.',
   },
+  familia_desincronizada: {
+    title: 'El clasificador de familia ya no reproduce lo persistido en BD (deriva de keywords)',
+    triggerPhrase: 'revisa la familia desincronizada',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'compara `classifyFamilia(nombre, administracion)` contra `oposiciones.familia` para cada fila afectada. Si el cambio de keywords es correcto (la familia nueva es mejor) → `node scripts/backfill-familia.cjs --apply` para esa fila. Si la fila persistida es una corrección a mano que el clasificador todavía no sabe reproducir → NO tocar: `degradaFamilia()` ya la protege del backfill, así que si sigue sonando es que el propio criterio de protección necesita revisarse, no la fila.',
+  },
+  familia_cobertura_baja: {
+    title: 'Menos del 80% de las oposiciones con plazo abierto hoy tienen familia útil (no otros/null)',
+    triggerPhrase: 'revisa la cobertura de familia',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'identifica qué oposiciones catalogadas con plazo abierto hoy tienen `familia IS NULL` o `familia=\'otros\'`, y por qué `classifyFamilia()` no las reconoce (nombre atípico, administración sin keyword mapeado). Ampliar el diccionario de keywords en `lib/oposiciones/familia.ts` si el patrón se repite, o corregir la fila a mano si es un caso aislado — y en ambos casos re-correr `scripts/backfill-familia.cjs` para que la BD refleje el cambio.',
+  },
   opciones_duplicadas: {
     title: 'Dos opciones IDÉNTICAS dentro de la misma pregunta (se queda en tres alternativas)',
     triggerPhrase: 'revisa las opciones duplicadas',
@@ -306,6 +326,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     triggerPhrase: 'revisa las explicaciones rotas',
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'localiza las preguntas visibles cuya "explicación" es en realidad la crítica de un pase IA anterior ("La explicación debería…", "posible errata", "Nota técnica:", "Esta pregunta debería anularse"), verifica la clave contra la ley/fuente y reescribe la explicación (o la manda a needs_human si hay defecto de fondo) con el flujo de `docs/maintenance/revisar-preguntas-con-agente.md`.',
+  },
+  article_audit_note: {
+    title: 'La prosa de auditoría también está DENTRO del temario (no solo en la explicación)',
+    triggerPhrase: 'revisa la prosa de auditoría del temario',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza artículos ACTIVOS cuyo `content` —la TEORÍA que el opositor lee en /temario, no la explicación de una pregunta— lleva incrustada la nota de un pase de auditoría anterior (patrón: "esa/esta/dicha/tal afirmación es/resulta incorrecta", con o sin negrita markdown). Por cada hallazgo: contrastar el punto con la FUENTE OFICIAL (nunca reescribir de memoria), reescribir el párrafo afirmando lo que dice la fuente, y revisar las preguntas que cuelgan de ese artículo por si heredaron la confusión — si una pregunta se generó del párrafo confuso, la pregunta también estará mal. Ojo al volumen en los bloques mega-chunk (Correos): el arreglo es de PÁRRAFO, no de artículo entero. NUNCA inventar el dato: si la fuente no lo aclara, quitar la afirmación en vez de adivinarla.',
   },
   law_unverified_source: {
     title: 'Ley sin verificar contra su fuente (falso verde / importada a medias)',
@@ -428,6 +454,23 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'de literalidad compara contra un texto que ya no es el programa, y la adjudicación epígrafe↔scope por LLM ' +
       'razona sobre basura. OJO: «Depósito legal» es materia legítima en biblioteconomía — el detector ya no lo ' +
       'marca solo, pero al limpiar a mano no lo borres.',
+  },
+  epigrafe_truncado: {
+    title: 'Epígrafe cortado: promete la lista de materias y no la trae',
+    triggerPhrase: 'revisa los epígrafes cortados',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'el `topics.epigrafe` termina literalmente en `:` y ahí se acaba — el epígrafe anuncia que ' +
+      'va a enumerar las materias del tema y no enumera ninguna (caso real: «Régimen Jurídico del ' +
+      'Sector Público (I):»). El epígrafe es la VARA DE MEDIR de todo el sistema de temario: con él ' +
+      'se decide el `topic_scope` (Paso 2), se verifica su literalidad (Paso 1) y se adjudican los ' +
+      'recortes de sobre-inclusión. Uno truncado no se puede contrastar con NADA — cualquier scope ' +
+      'le encaja, porque no dice nada. Completa el epígrafe con el texto LITERAL del programa ' +
+      'oficial (el hub ya tiene el documento en muchas oposiciones) y re-verifica el Paso 1. NUNCA ' +
+      'inventar la continuación ni «redondear» con lo que parezca razonable: eso es exactamente lo ' +
+      'que este defecto provoca. HERMANO de «revisa los epígrafes sucios» ' +
+      '(`epigrafe_ruido_boletin`): aquel es basura de maquetación PEGADA a la frase, este es ' +
+      'materia que FALTA por completo. Núcleo: `lib/health/epigrafeTruncado.cjs`.',
   },
   explicacion_estructura_rota: {
     title: 'Explicación estructurada que se renderiza rota',

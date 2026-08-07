@@ -13,6 +13,7 @@ import {
   resolvePlanType,
   type MatchSource,
 } from './pass2-matching';
+import { accesoVigentePorFecha } from './pass1-facts';
 
 /**
  * Reconciliación de suscripciones: Pass-1 (BD-only) + Pass-2 (Stripe directo).
@@ -83,8 +84,30 @@ export class SubscriptionReconciliationService {
         AND up.plan_type != 'premium'
     `)) as unknown as { rows?: Pass1Row[] };
 
-    const inconsistencies = rows.rows ?? (rows as unknown as Pass1Row[]) ?? [];
+    const candidatos = rows.rows ?? (rows as unknown as Pass1Row[]) ?? [];
+    const ahora = new Date();
+
+    // El HECHO manda sobre el status (ver pass1-facts.ts): una fila `active` con
+    // `current_period_end` ya pasado no es un hecho vigente, es un status que quedó
+    // congelado (típicamente porque el webhook que debía moverlo a `canceled` se perdió).
+    // Concederle premium sería reproducir el bug que destapó [T-295] — el propio Pass-1
+    // regalando premium hora tras hora sobre datos que él mismo puede ver que ya caducaron.
+    const inconsistencies = candidatos.filter((r) =>
+      accesoVigentePorFecha(r.current_period_end, ahora),
+    );
+    const sinVigenciaPorFecha = candidatos.filter(
+      (r) => !accesoVigentePorFecha(r.current_period_end, ahora),
+    );
+
     this.logger.log(`Pass-1: ${inconsistencies.length} inconsistencias`);
+    if (sinVigenciaPorFecha.length > 0) {
+      // No se calla: son filas `active`/`trialing`/`past_due` con la fecha ya vencida — dato
+      // stale en `user_subscriptions` que un humano debería limpiar, no daño al usuario (el
+      // perfil ya está en el plan correcto, solo NO se toca).
+      this.logger.warn(
+        `Pass-1: ${sinVigenciaPorFecha.length} fila(s) con status vivo pero current_period_end vencido — NO se conceden (ver pass1-facts.ts)`,
+      );
+    }
 
     if (!dryRun) {
       for (const r of inconsistencies) {
@@ -111,6 +134,8 @@ export class SubscriptionReconciliationService {
       detected: inconsistencies.length,
       fixed: inconsistencies.filter((i) => i.fixed).length,
       sample: inconsistencies.slice(0, 5),
+      staleSinVigencia: sinVigenciaPorFecha.length,
+      staleSample: sinVigenciaPorFecha.slice(0, 5),
     };
   }
 
@@ -702,6 +727,13 @@ export interface Pass1Result {
   detected: number;
   fixed: number;
   sample: Pass1Row[];
+  /**
+   * Filas `active`/`trialing`/`past_due` cuyo `current_period_end` ya venció (T-295): el HECHO
+   * ya no respalda el status. NO se conceden y NO se cuentan en `detected`/`fixed` — son dato
+   * stale en `user_subscriptions`, no una inconsistencia que arreglar concediendo premium.
+   */
+  staleSinVigencia: number;
+  staleSample: Pass1Row[];
 }
 
 interface Pass2MissingEntry {

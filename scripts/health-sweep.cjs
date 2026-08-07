@@ -32,6 +32,7 @@ const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarIncoherenciasEstado, hoyMadrid } = require('../lib/convocatoria/estadoCoherencia.cjs');
 const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
+const { clasificarNotasVigilancia } = require('../lib/convocatoria/notasSinVigilancia.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOrigen.js');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
@@ -41,14 +42,21 @@ const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, tablasSinAjuste, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
 const { detectarTecho } = require('../lib/observability/techoTimeout.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
+const { epigrafesTruncados } = require('../lib/health/epigrafeTruncado.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
+const { ARTICLE_AUDIT_NOTE_RE_SRC_SQL } = require('../lib/health/articleAuditNote.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
+// Clasificador de familia (T-384): `lib/oposiciones/familia.ts` es TS y este script es CJS sin
+// ts-node — el bridge YA existía (`scripts/_load-familia.cjs`, babel-en-memoria), usado hasta hoy
+// solo por `backfill-familia.cjs`. Reutilizarlo aquí es la única fuente, no una copia.
+const loadFamiliaModule = require('./_load-familia.cjs');
+const { degradaFamilia } = require('../lib/oposiciones/familiaBackfill.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -133,8 +141,21 @@ async function main() {
   } catch (e) { console.warn('⚠️ techo de timeout no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
+  //
+  // NO es un TRUNCATE de la tabla entera (arreglado T-455, 07/08/2026): otras herramientas
+  // ON-DEMAND (p.ej. `audit-oposicion-completa.ts`, kind oposicion_incompleta) escriben en
+  // esta MISMA tabla fuera de este barrido, y un TRUNCATE incondicional se las llevaba por
+  // delante cada noche sin que este barrido las volviera a comprobar — la publicación de
+  // T-455 sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC), no hasta que
+  // el problema se arreglara. Medido en vivo (07/08): `content_health_findings` tenía 0 filas
+  // kind oposicion_incompleta (sin comillas) mientras las demás ~37 kinds databan `computed_at` de la
+  // pasada de la noche anterior — el barrido las había borrado y nada las repuso. Ahora solo
+  // se borran los kinds que ESTA pasada evaluó de verdad (`kindsEvaluados`, el mismo objeto
+  // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
+  // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
   if (!NO_WRITE) {
-    await c.query('TRUNCATE content_health_findings');
+    const kindsDeEstaPasada = Object.keys(kindsEvaluados);
+    if (kindsDeEstaPasada.length) await c.query('DELETE FROM content_health_findings WHERE kind = ANY($1::text[])', [kindsDeEstaPasada]);
     for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
     console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
   }
@@ -513,6 +534,21 @@ async function detectarTodo(c, add, marcar, now) {
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
   marcar('audit_note_explanation', anRows.length);
 
+  // ── CONTENIDO: la prosa de auditoría también está DENTRO del temario (T-253) ──
+  // Hermano de audit_note_explanation, un escalón más grave: aquí la nota está en el
+  // ARTÍCULO (la teoría que el opositor lee directamente en /temario y de la que cuelgan
+  // las preguntas), no en la explicación de una pregunta suelta. Ver el núcleo
+  // (lib/health/articleAuditNote.cjs) para la calibración y el falso positivo descartado
+  // (Access 365: "también es incorrecta" es una trampa de examen explicada, no una nota).
+  const aanRows = (await c.query(
+    `SELECT a.id FROM articles a JOIN laws l ON l.id = a.law_id
+      WHERE a.is_active AND l.is_active AND a.content ~* $1 LIMIT 50`,
+    [ARTICLE_AUDIT_NOTE_RE_SRC_SQL])).rows;
+  if (aanRows.length) add('content', 'warn', null, 'article_audit_note',
+    `${aanRows.length}${aanRows.length >= 50 ? '+' : ''} artículo(s) activos con la nota de auditoría incrustada en la TEORÍA (contrastar con la fuente oficial y revisar las preguntas del artículo)`,
+    { count: aanRows.length, sample: aanRows.slice(0, 15).map(r => r.id) });
+  marcar('article_audit_note', aanRows.length);
+
   // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
   // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido de salud
   // no cubría los psicotécnicos EN ABSOLUTO — sus 60+ kinds son todos de temario y convocatoria—,
@@ -545,6 +581,57 @@ async function detectarTodo(c, add, marcar, now) {
     if (partes.length) add('content', 'error', null, 'psicotecnico_integridad',
       `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
       { sinSeccion: psi.sin_seccion, seccionAjena: psi.seccion_ajena, claveInvalida: psi.clave_invalida });
+  }
+
+  // ── CONTENIDO: taxonomía de FAMILIA (T-384) ──
+  // Segundo hueco del inventario de suites del job de integración: `familiaClassification.test.ts`
+  // mezclaba DOS verdades — contrato de esquema (¿la vista expone `familia`? ¿el CHECK rechaza
+  // valores fuera de la taxonomía?) y vigilancia de datos (¿el clasificador sigue de acuerdo con
+  // lo persistido? ¿hay cobertura suficiente?). El esquema se queda en CI, bloqueante
+  // (`__tests__/integration/familiaSchemaContract.test.ts`); esto es la mitad de VIGILANCIA, los
+  // dos `it()` de contenido que quedaron en `familiaClassification.test.ts`.
+  //
+  // CLI-only a propósito, mismo motivo que `cita_no_literal`/`shuffle_*`: `classifyFamilia` vive
+  // en `lib/oposiciones/familia.ts` (TS del frontend) y el @Cron del backend es un build NestJS
+  // aparte sin acceso a ese `lib/`. Duplicar el clasificador (200 líneas de keywords) como TS
+  // nativo en el backend sería la tercera copia de la misma lógica — el propio problema que este
+  // registro existe para evitar. Se documenta en `content-sweep-parity.test.ts` (CLI_ONLY_KINDS).
+  const { classifyFamilia } = loadFamiliaModule();
+  const famRows = (await c.query(
+    `SELECT nombre, administracion, familia FROM oposiciones WHERE familia IS NOT NULL ORDER BY id LIMIT 300`,
+  )).rows;
+  marcar('familia_desincronizada', famRows.length);
+  {
+    // EXENCIÓN (heredada de T-377): que el clasificador diga `otros` donde la BD tiene familia
+    // concreta no es desincronización — es una fila corregida a mano que `degradaFamilia`
+    // protege a propósito. Mismo núcleo puro que el backfill, para que detector y herramienta no
+    // puedan discrepar.
+    const desincronizados = famRows.filter((o) => {
+      const nueva = classifyFamilia(o.nombre, o.administracion);
+      if (nueva === o.familia) return false;
+      return !degradaFamilia(o.familia, nueva);
+    });
+    if (desincronizados.length) {
+      const ejemplos = desincronizados.slice(0, 5).map((o) => o.nombre);
+      add('content', 'error', null, 'familia_desincronizada',
+        `${desincronizados.length} oposición(es) donde classifyFamilia() ya no reproduce la familia persistida (p.ej. ${ejemplos.join(', ')}) — re-correr scripts/backfill-familia.cjs o revisar el cambio de keywords`,
+        { count: desincronizados.length, ejemplos });
+    }
+  }
+  // COBERTURA: catalogadas mostrables (banner, plazo abierto HOY) con familia útil.
+  const famCobertura = (await c.query(
+    `SELECT familia FROM oposiciones
+      WHERE is_active = false AND seguimiento_url IS NOT NULL
+        AND inscription_start::text <= $1 AND inscription_deadline::text >= $1`,
+    [hoyMadrid(now)],
+  )).rows;
+  marcar('familia_cobertura_baja', famCobertura.length);
+  if (famCobertura.length) {
+    const clasificadas = famCobertura.filter((o) => o.familia && o.familia !== 'otros').length;
+    const ratio = clasificadas / famCobertura.length;
+    if (ratio < 0.8) add('content', 'warn', null, 'familia_cobertura_baja',
+      `Solo ${clasificadas}/${famCobertura.length} (${Math.round(ratio * 100)}%) de las catalogadas con plazo abierto hoy tienen familia útil (mínimo 80%)`,
+      { clasificadas, total: famCobertura.length, ratio });
   }
 
   // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──
@@ -624,6 +711,9 @@ async function detectarTodo(c, add, marcar, now) {
     const missing = nn(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null);
     if (missing != null && missing > 0) return 'incomplete';
     if ((nn(su.content_mismatch) ?? 0) > 0 || (nn(su.title_mismatch) ?? 0) > 0) return 'issues';
+    // T-395: is_ok:false sin contadores es una NOTA DE INCIDENCIA (audit_boe_url), no una
+    // comparación limpia — mismo mirror que lib/laws/completeness.ts, MANTENER EN SYNC.
+    if (su.is_ok === false) return 'never_verified';
     return null;
   };
   // ── Hitos que anuncian un evento con la fecha YA PASADA ────────────────────────────────
@@ -783,6 +873,40 @@ async function detectarTodo(c, add, marcar, now) {
       `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`);
   }
   marcar('seguimiento_fuente_ciega', ciegaRows.length);
+
+  // ── El sensor de NOTAS (versión de software, fechas, criterio) parece vigilar y no vigila ──
+  // Hermano de los dos anteriores, pero del sensor `detect-notas-convocatoria`, no del cron de
+  // hash de `check-seguimiento`. Origen (T-311, 30/07→06/08): una usuaria de Madrid preguntó por
+  // Windows 11 y, al comprobarlo, el sensor tenía 0 filas en `convocatoria_notas` para su
+  // oposición pese a tener documentos ya clonados. La consulta simple que proponía la ficha
+  // ("corpus>0 y notas=0") se queda corta: 3 oposiciones de Madrid (celador/TCAE/auxiliar-
+  // administrativo SERMAS) SÍ tenían notas, pero congeladas 11+ días — "notas=0" las daba por
+  // sanas. Con las dos condiciones juntas (nunca vista, o vista pero stale ≥4 días — umbral
+  // calibrado: 103/111 oposiciones sanas ven su última nota en <2 días, 7 forman una cola aparte
+  // de 7 a 21.6 días, sin casos intermedios) la lista mide 21, no 2. Causa raíz DEMOSTRADA solo
+  // para `comunidad.madrid` (WAF que bloquea la UA propia del sensor — arreglado con reintento de
+  // UA de navegador en `oep-signals-llm.service.ts`); el resto queda solo VISIBLE, sin diagnosticar.
+  const notasRows = (await c.query(`
+    SELECT o.slug,
+      (SELECT count(*) FROM convocatoria_documentos cd
+        JOIN convocatorias cv ON cv.id = cd.convocatoria_id
+        WHERE cv.oposicion_id = o.id)::int AS docs_corpus,
+      (SELECT count(*) FROM convocatoria_notas n WHERE n.oposicion_id = o.id)::int AS notas_count,
+      (SELECT EXTRACT(EPOCH FROM (now() - max(n.last_seen)))/86400
+         FROM convocatoria_notas n WHERE n.oposicion_id = o.id) AS dias_sin_ver
+    FROM oposiciones o
+    WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
+  for (const r of notasRows) {
+    const v = clasificarNotasVigilancia({
+      docsCorpus: r.docs_corpus,
+      notasCount: r.notas_count,
+      diasSinVer: r.dias_sin_ver != null ? Number(r.dias_sin_ver) : null,
+    });
+    if (v.severidad !== 'error') continue;
+    add('content', 'error', r.slug, 'notas_convocatoria_sin_vigilancia',
+      `${r.slug}: el sensor de notas no está vigilando esta oposición — ${v.motivo}`);
+  }
+  marcar('notas_convocatoria_sin_vigilancia', notasRows.length);
 
   // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──
   // La caja "Ver … en BOE" de la landing muestra una referencia (boe_reference) pero el enlace
@@ -1715,6 +1839,24 @@ async function detectarTodo(c, add, marcar, now) {
     }
     marcar('epigrafe_ruido_boletin', eps.length);
   } catch (e) { console.warn('⚠️ ruido de boletín en epígrafes no evaluado:', String(e.message || e).slice(0, 120)); }
+
+  // ── Epígrafe CORTADO: promete la lista de materias y no la trae (T-625) ──
+  // Al importar por lotes, la continuación del epígrafe (lo que sigue a los dos puntos) se pierde
+  // y el campo se queda cortado en seco: «Régimen Jurídico del Sector Público (I):». El epígrafe
+  // es la VARA DE MEDIR del temario (Paso 1/Paso 2/sobre-inclusión); uno truncado no se puede
+  // contrastar con NADA — cualquier scope le encaja porque no dice nada. Solo temas ACTIVOS: es la
+  // superficie que sirve al usuario. Nace en 14 (medido 06-07/08/2026): cualquier subida es
+  // regresión demostrable.
+  try {
+    const epsTemasActivos = (await c.query(`SELECT position_type AS slug, topic_number AS tema, epigrafe
+                                  FROM topics WHERE is_active = true AND epigrafe IS NOT NULL`)).rows;
+    for (const e of epigrafesTruncados(epsTemasActivos).slice(0, 20)) {
+      add('content', 'warn', e.slug, 'epigrafe_truncado',
+        `${e.slug} T${e.tema}: el epígrafe termina en ":" sin traer la lista de materias que promete ("${(e.epigrafe || '').slice(-50)}")`,
+        { slug: e.slug, tema: e.tema, epigrafe: e.epigrafe });
+    }
+    marcar('epigrafe_truncado', epsTemasActivos.length);
+  } catch (e) { console.warn('⚠️ epígrafes truncados no evaluados:', String(e.message || e).slice(0, 120)); }
 
 
   // ── Explicación estructurada que se RENDERIZA rota (29/07) ──

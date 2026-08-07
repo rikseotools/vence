@@ -52,9 +52,57 @@ export class OepSignalsLlmService {
     return this.fetchViaHttp(url, timeoutMs);
   }
 
+  /** UA que nos autodeclara honestamente, con URL de contacto (buena práctica de bot). */
+  private static readonly UA_PROPIA =
+    'VenceBot/1.0 (+https://www.vence.es/oep-detection)';
+
+  /**
+   * UA de reserva SOLO para el reintento tras un fallo — un navegador real, sin versión que
+   * mantener a mano: no hace falta que sea la última, basta con que un WAF no la reconozca como
+   * bot desconocido.
+   */
+  private static readonly UA_NAVEGADOR =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
   private async fetchViaHttp(
     url: string,
     timeoutMs: number,
+  ): Promise<{ html: string | null; status: number; error?: string }> {
+    const primero = await this.fetchOnce(
+      url,
+      timeoutMs,
+      OepSignalsLlmService.UA_PROPIA,
+    );
+    if (primero.html !== null) return primero;
+
+    // Reintento con UA de navegador — SOLO si el primero falló. Medido el 06/08/2026 (T-311)
+    // contra comunidad.madrid: la MISMA URL, con TODO igual salvo la cabecera User-Agent, da
+    // 404 con nuestra UA propia y 200 con una de navegador — el WAF bloquea UAs
+    // autodeclaradas-bot que no reconoce (curl/wget SÍ pasan; "VenceBot", "SomeBot", "Mozilla/5.0"
+    // a secas y hasta "MyApp/1.0 (+http://...)" genérico, NO), y eso dejaba el sensor ciego para
+    // esa oposición sin ni un error visible aguas arriba (solo un log de warning por pasada).
+    // No sustituye la UA propia por defecto — sitios que SÍ respetan la autodeclaración honesta
+    // (la mayoría) siguen viéndola en la primera petición; el navegador es la red de rescate.
+    const segundo = await this.fetchOnce(
+      url,
+      timeoutMs,
+      OepSignalsLlmService.UA_NAVEGADOR,
+    );
+    if (segundo.html !== null) {
+      this.logger.warn(
+        `fetch bloqueado con UA propia (${primero.error}), recuperado con UA de navegador: ${url}`,
+      );
+      return segundo;
+    }
+    // Los dos fallaron: se devuelve el error del PRIMERO — es el que describe el fallo real del
+    // sitio contra nuestra identidad habitual, más útil para triaje que el del reintento.
+    return primero;
+  }
+
+  private async fetchOnce(
+    url: string,
+    timeoutMs: number,
+    userAgent: string,
   ): Promise<{ html: string | null; status: number; error?: string }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -62,7 +110,7 @@ export class OepSignalsLlmService {
       const res = await fetch(url, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'VenceBot/1.0 (+https://www.vence.es/oep-detection)',
+          'User-Agent': userAgent,
           Accept:
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         },

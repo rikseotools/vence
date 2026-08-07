@@ -1,12 +1,20 @@
 /** @jest-environment node */
 // __tests__/integration/familiaClassification.test.ts
 //
-// Integración de la FAMILIA end-to-end contra la BD VIVA (RDS) vía pg:
-//  1. la vista oposiciones_ssot EXPONE familia (los readers la reciben),
-//  2. el CHECK rechaza valores fuera de la taxonomía cerrada,
-//  3. CONSISTENCIA: classifyFamilia(nombre, administracion) === familia persistida
-//     (garantiza que el backfill usó ESTE clasificador y no se ha desincronizado),
-//  4. COBERTURA: las catalogadas mostrables (banner) tienen familia (pocos null).
+// La MITAD de VIGILANCIA de la FAMILIA (T-384, 07/08/2026): ¿el clasificador `classifyFamilia()`
+// sigue de acuerdo con lo persistido en BD? ¿hay cobertura suficiente entre las oposiciones que
+// se muestran hoy? Un rojo aquí NO dice «tú acabas de romper esto» — dice «hay una fila
+// desincronizada o un hueco de cobertura», casi siempre de hace semanas.
+//
+// MISMA lógica que ahora emite `scripts/health-sweep.cjs` (kinds `familia_desincronizada` /
+// `familia_cobertura_baja`, CLI-only — el @Cron del backend no puede importar el clasificador,
+// que es TS del frontend). Este test SIGUE corriendo en el job de CI — lo que cambió es que
+// ahora está DECLARADO como `vigilancia` en `lib/admin/suiteRegistry.ts`, no como código: su
+// rojo no debe bloquear el merge por sí solo, tiene su propio dueño (frase-gatillo «revisa la
+// familia desincronizada» / «revisa la cobertura de familia» → `salud-contenido.md`).
+//
+// El contrato de esquema (¿la vista expone `familia`? ¿el CHECK rechaza valores inválidos?) se
+// separó a `familiaSchemaContract.test.ts` — eso SÍ es código y SÍ debe bloquear.
 //
 // Lee de RDS. Skip si no hay DATABASE_URL (mismo patrón que configDbIntegrity).
 
@@ -15,36 +23,20 @@ import dotenv from 'dotenv'
 import { Client } from 'pg'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { degradaFamilia } = require('@/lib/oposiciones/familiaBackfill.cjs')
-import { classifyFamilia, FAMILIA_KEYS } from '@/lib/oposiciones/familia'
+import { classifyFamilia } from '@/lib/oposiciones/familia'
 
 dotenv.config({ path: '.env.local', override: true })
 
 const DB_URL = process.env.DATABASE_URL
 const describeIfDb = DB_URL ? describe : describe.skip
 
-describeIfDb('Familia ↔ BD (integración)', () => {
+describeIfDb('Familia — vigilancia de datos (integración)', () => {
   let client: Client
   beforeAll(async () => {
     client = new Client(testDbConfig())
     await client.connect()
   })
   afterAll(async () => { await client?.end() })
-
-  it('la vista oposiciones_ssot expone la columna familia', async () => {
-    const r = await client.query("SELECT familia FROM oposiciones_ssot LIMIT 1")
-    expect(r.fields.some((f) => f.name === 'familia')).toBe(true)
-  })
-
-  it('el CHECK rechaza familia fuera de la taxonomía', async () => {
-    await expect(
-      client.query("UPDATE oposiciones SET familia='inventada' WHERE id=(SELECT id FROM oposiciones LIMIT 1)"),
-    ).rejects.toThrow()
-  })
-
-  it('toda familia persistida es una clave válida de la taxonomía', async () => {
-    const r = await client.query('SELECT DISTINCT familia FROM oposiciones WHERE familia IS NOT NULL')
-    for (const row of r.rows) expect(FAMILIA_KEYS).toContain(row.familia)
-  })
 
   it('CONSISTENCIA: el clasificador reproduce la familia persistida (muestra 300)', async () => {
     const r = await client.query(

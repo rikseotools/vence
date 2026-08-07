@@ -352,3 +352,52 @@ describe('el temario devuelve al artículo del que saliste', () => {
     expect(componente).toMatch(/resultado: ley \? 'articulo' : 'no_encontrado'/)
   })
 })
+
+/**
+ * NOVENO ESLABÓN: el test ALEATORIO multi-tema — existía la ruta y no había enlace. [T-327]
+ *
+ * Causa raíz reproducida el 06/08/2026: `/test/aleatorio` (el picker del catálogo) resuelve la
+ * oposición con `getOposicionConfig(positionType)`, que sale de `OPOSICIONES` — un array literal
+ * hardcodeado. Una personalizada (`personalizada_<id>`) es una fila dinámica en `topics`, así que
+ * nunca puede estar ahí: esa página se queda cargando para siempre. Y la razón de que nadie lo
+ * hubiera notado no era que "no pasara": es que el hub que SÍ funciona
+ * (`app/oposicion-personalizada/[id]/test/page.tsx`) nunca enlazaba a esa pantalla — no hay
+ * enlace roto que alguien vaya a pisar, hay AUSENCIA de funcionalidad. Se fija aquí para que la
+ * ausencia no vuelva: el hub tiene que seguir enlazando, y la página nueva tiene que seguir sin
+ * pasar por el config estático (el mismo modo de fallo mudo que los otros ocho eslabones).
+ */
+describe('el test aleatorio de una personalizada existe Y es alcanzable', () => {
+  const hub = leer('app/oposicion-personalizada/[id]/test/page.tsx')
+  const rutaAleatorio = leer('app/oposicion-personalizada/[id]/test/aleatorio/page.tsx')
+  const picker = leer('components/oposicionPersonalizada/AleatorioPersonalizadoPicker.tsx')
+
+  it('el hub ENLAZA al test aleatorio (sin esto la ruta es inalcanzable, aunque exista)', () => {
+    expect(hub).toMatch(/href=\{`\/oposicion-personalizada\/\$\{limpio\}\/test\/aleatorio`\}/)
+  })
+
+  it('la ruta del aleatorio valida la FORMA del id antes de servir nada (igual que la de tema)', () => {
+    expect(rutaAleatorio).toContain('notFound()')
+    expect(rutaAleatorio).toMatch(/\[0-9a-f\]\{32\}/)
+  })
+
+  it('la ruta construye el position_type de la fila, NO lo saca del config estático', () => {
+    // La trampa exacta de T-327: `getOposicionConfig`/`getOposicion(` devuelven null para
+    // cualquier personalizada porque salen de `OPOSICIONES`, el array hardcodeado. Se mira el
+    // IMPORT (lo ejecutable), no la prosa — el propio fichero EXPLICA la trampa en un comentario,
+    // y un guardarraíl que mirase el texto entero se dispararía con su propia documentación.
+    expect(rutaAleatorio).not.toMatch(/from '@\/lib\/config\/oposiciones'/)
+    expect(picker).not.toMatch(/from '@\/lib\/config\/oposiciones'/)
+  })
+
+  it('el picker pasa positionType EXPLÍCITO a TestPageWrapper, nunca implícito', () => {
+    expect(picker).toMatch(/positionType=\{positionType\}/)
+    expect(picker).toMatch(/const positionType = `personalizada_\$\{personalizadaId\}`/)
+  })
+
+  it('los temas que ofrece el picker vienen del propio temario, no de una lista fija', () => {
+    // Blindaje anti-regresión de "página propia, sin bloques": si alguien reintroduce
+    // `getAllThemes`/bloques aquí, ha vuelto a acoplar esta pantalla al catálogo estático.
+    expect(rutaAleatorio).not.toMatch(/getAllThemes|themeBlocks/)
+    expect(picker).not.toMatch(/getAllThemes|themeBlocks/)
+  })
+})

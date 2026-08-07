@@ -8,6 +8,8 @@ import {
 import { getAdminDb } from '@/db/client'
 import { questions, articles, laws } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
+import { orderForQuestion, originalLetterToDisplayed } from '@/lib/shuffle/examOrder'
+import { applyOrder } from '@/lib/shuffle/permute'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
@@ -152,17 +154,53 @@ async function _GET(request: NextRequest) {
       (fullQuestions ?? []).map(q => [q.id, q])
     )
 
+    // T-277: si esta pregunta se sirvió barajada/recortada, `option_orders` (grabado UNA
+    // vez al crear el examen, leído aquí de tests.questions_metadata) dice el orden. Sin
+    // esto, un examen reanudado volvería a mostrar las opciones en orden NATURAL —
+    // exactamente la corrupción que esta tarea existe para evitar: el usuario vería otras
+    // opciones que las que dejó a medias, y su respuesta ya guardada (en coordenadas
+    // originales) dejaría de significar lo mismo en pantalla.
+    const optionOrders = examData.optionOrders ?? {}
+
     // Construir respuesta ordenada con preguntas completas y respuestas
     const orderedQuestions: unknown[] = []
     const savedAnswers: Record<string, string> = {}
 
     examData.questions?.forEach((savedQ, index) => {
       if (savedQ.questionId && questionsMap.has(savedQ.questionId)) {
-        orderedQuestions.push(questionsMap.get(savedQ.questionId))
+        const q = questionsMap.get(savedQ.questionId)!
+        const order = orderForQuestion(optionOrders, savedQ.questionId)
 
-        // Guardar respuesta del usuario si existe (no vacía)
+        if (order) {
+          // Reconstruir en el MISMO orden (o subconjunto) que se sirvió: compactar
+          // (quitar huecos, igual que hizo transformQuestion al servir por primera vez),
+          // aplicar el orden persistido, y volver a A-D. Un subconjunto (T-267, examen de
+          // 3 opciones) da menos de 4 elementos: los slots que sobran quedan null, que es
+          // justo como se sirvieron la primera vez.
+          const q4 = q as { option_a: string | null; option_b: string | null; option_c: string | null; option_d: string | null }
+          const natural = [q4.option_a, q4.option_b, q4.option_c, q4.option_d].filter(
+            (v): v is string => v != null && v !== ''
+          )
+          const displayed = applyOrder(natural, order)
+          orderedQuestions.push({
+            ...q,
+            option_a: displayed[0] ?? null,
+            option_b: displayed[1] ?? null,
+            option_c: displayed[2] ?? null,
+            option_d: displayed[3] ?? null,
+          })
+        } else {
+          orderedQuestions.push(q)
+        }
+
+        // Guardar respuesta del usuario si existe (no vacía). `test_questions.userAnswer`
+        // vive en coordenadas ORIGINALES (ver lib/shuffle/examOrder.ts); se traduce a
+        // MOSTRADAS para que cuadre con las opciones reconstruidas arriba.
         if (savedQ.userAnswer && savedQ.userAnswer.trim() !== '') {
-          savedAnswers[index.toString()] = savedQ.userAnswer.toLowerCase()
+          const displayedAnswer = order
+            ? originalLetterToDisplayed(order, savedQ.userAnswer.toLowerCase())
+            : savedQ.userAnswer.toLowerCase()
+          if (displayedAnswer) savedAnswers[index.toString()] = displayedAnswer
         }
       }
     })

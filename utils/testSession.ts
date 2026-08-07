@@ -9,6 +9,7 @@ import { createTestSessionOnServer } from '../lib/api/v2/tests/client'
 import { createUserSessionOnServer } from '../lib/api/v2/user-sessions/client'
 import { getClientVersion } from '@/hooks/useVersionCheck'
 import { logClientError } from '@/lib/logClientError'
+import { buildOptionOrders } from '@/lib/shuffle/examOrder'
 
 // ============================================
 // TIPOS E INTERFACES
@@ -97,6 +98,10 @@ export interface QuestionInput {
   primary_article_id?: string | null
   explanation?: string
   correct_option?: number
+  // T-277: orden de exposición si el servidor barajó/recortó esta pregunta al servirla
+  // (mismo shape que `test_questions.option_order`, ver lib/shuffle/permute.ts). Solo lo
+  // usa el modo examen, para persistirlo UNA vez en questions_metadata.option_orders.
+  option_order?: number[] | null
   articles?: {
     id?: string
     article_number?: string
@@ -163,6 +168,8 @@ const questionSchema = z.object({
   // creaba la sesión detallada → analítica perdida en silencio (38 fallos desde 07/07).
   // El downstream (línea ~446) ya tolera null (|| null), así que aceptarlo es correcto.
   primary_article_id: z.string().nullish(),
+  // T-277: ver QuestionInput.option_order.
+  option_order: z.array(z.number().int()).nullish(),
 }).passthrough() // Permitir campos adicionales
 
 const createTestSessionSchema = z.object({
@@ -445,6 +452,15 @@ export async function createDetailedTestSession(
     // Crear título seguro
     const safeTitle = `Test Tema ${validatedParams.tema} - ${validatedParams.testNumber}`.substring(0, 100)
 
+    // T-277: orden de exposición de las preguntas que el servidor barajó/recortó al
+    // servir el examen — se graba AQUÍ, la única vez que se sirven por primera vez, para
+    // que /api/exam/{answer,validate,resume} lo lean de la BD en vez de fiarse de que el
+    // cliente lo devuelva bien (ver lib/shuffle/examOrder.ts). Solo modo examen: los tests
+    // de práctica ya resuelven esto con el patrón de T-267 (el cliente lo echoa).
+    const optionOrders = validatedParams.testType === 'exam'
+      ? buildOptionOrders(validatedParams.questions)
+      : {}
+
     // Preparar metadata de preguntas (soporta estructura plana y anidada)
     const questionsMetadata = {
       question_ids: validatedParams.questions.map(q => q.id || q.metadata?.id || `temp_${Date.now()}_${Math.random()}`),
@@ -454,6 +470,9 @@ export async function createDetailedTestSession(
       laws: validatedParams.questions.map(q => q.article?.law_short_name || q.articles?.laws?.short_name || 'unknown'),
       total_questions: validatedParams.questions.length,
       estimated_duration: validatedParams.questions.length * 60,
+      // Solo se añade la clave si hay algo que barajar: un examen sin shuffle no lleva
+      // {} colgando en su metadata para siempre.
+      ...(Object.keys(optionOrders).length > 0 ? { option_orders: optionOrders } : {}),
     }
 
     const testUrl = typeof window !== 'undefined' ? window.location.pathname : null

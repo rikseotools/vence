@@ -2284,6 +2284,47 @@ export const RULE_PREMIUM_SIN_RESPALDO: AlertRule<{
 };
 
 /**
+ * Filas de Pass-1 con status vivo pero el HECHO (current_period_end) ya vencido (T-295).
+ *
+ * Es la causa raíz DIRECTA del caso que motivó `premium_sin_respaldo`: Pass-1 leía
+ * `status='active'` sin mirar si `current_period_end` ya había pasado, así que cada hora
+ * volvía a conceder premium sobre una fila que él mismo tenía los datos para saber que
+ * estaba caducada — la auto-reparación trabajando a favor de la fuga. Desde [T-295] esas
+ * filas ya NO se conceden (ver pass1-facts.ts); esta regla avisa de que hay dato stale en
+ * `user_subscriptions` (típicamente un webhook de cancelación perdido) para que alguien lo
+ * limpie, no porque haya premium filtrándose ahora mismo.
+ *
+ * severity=warn: el perfil del usuario ya está en el plan correcto (Pass-1 se abstuvo), no
+ * hay daño ni fuga activa — es higiene de datos, con margen para agruparse.
+ */
+export const RULE_PASS1_FILA_STALE: AlertRule<{
+  detected: number;
+}> = {
+  name: 'pass1_fila_stale_sin_conceder',
+  severity: 'warn',
+  query: sql`
+    SELECT
+      COALESCE((metadata->>'detected')::int, 0) AS detected
+    FROM observable_events
+    WHERE event_type = 'pass1_fila_stale_sin_conceder'
+      AND ts > NOW() - INTERVAL '2 hours'
+    ORDER BY ts DESC
+    LIMIT 1
+  `,
+  shouldFire: (rows) => (rows[0]?.detected ?? 0) > 0,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `${r.detected} fila(s) de user_subscriptions con status vivo pero ya vencido`,
+      body: `Pass-1 encontró fila(s) 'active'/'trialing'/'past_due' cuyo current_period_end ya pasó. NO se concedió premium sobre ellas (T-295) — el status quedó congelado, típicamente porque el webhook que debía moverlo a 'canceled' se perdió.\n\nNo hay fuga activa (el perfil sigue en su plan correcto), pero conviene limpiar la fila: comprobar el estado real en Stripe y alinear status/current_period_end en user_subscriptions.`,
+      metadata: { detected: r.detected },
+      fingerprint: 'pass1_fila_stale_sin_conceder',
+    };
+  },
+  cooldownMin: 720, // 12 h: higiene de datos, no una fuga con reloj corriendo
+};
+
+/**
  * Stripe webhook signature failed — disparo INMEDIATO (≥1 en 5 min, critical).
  *
  * Cada `Webhook signature verification failed` (HTTP 400 de /api/stripe/webhook)
@@ -6555,7 +6596,60 @@ export const RULE_PAGO_FALLIDO_FALSA_ALARMA: AlertRule<{
   cooldownMin: 720,
 };
 
+/**
+ * Sonda continua de scope (T-607): `question_served_out_of_topic_scope` es una comprobación EN
+ * MEMORIA (`fueraDeScope`), independiente del `EXISTS` SQL que ya filtra al servir — una segunda
+ * opinión sobre el MISMO criterio, tomada en el instante de servir para no repetir el error de
+ * medida de T-583 (comparar servidas del pasado contra el scope de hoy, que confunde una fuga
+ * real con un re-vínculo posterior).
+ *
+ * Si el `EXISTS` está bien, esto nunca dispara — y de hecho no ha disparado nunca en las
+ * mediciones manuales de T-607. Por eso el umbral es bajo (≥1 en la ventana): cualquier disparo
+ * es un desacuerdo entre el SQL y el criterio puro, y eso es justo lo que hay que ver, no algo
+ * que absorber con un umbral alto pensado para ruido de fondo.
+ */
+export const RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED: AlertRule<{
+  positionType: string | null;
+  n: number;
+  fuera: number;
+}> = {
+  name: 'question_out_of_topic_scope_served',
+  severity: 'error',
+  query: sql`
+    SELECT metadata->>'positionType' AS "positionType",
+           COUNT(*)::int AS n,
+           SUM(COALESCE((metadata->>'fuera')::int, 0))::int AS fuera
+    FROM observable_events
+    WHERE event_type = 'question_served_out_of_topic_scope'
+      AND ts > NOW() - INTERVAL '30 minutes'
+    GROUP BY metadata->>'positionType'
+    HAVING COUNT(*) >= 1
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map(
+      (r) => `  - ${r.positionType ?? '(desconocida)'}: ${r.fuera} pregunta(s) fuera de temario en ${r.n} petición(es)`,
+    );
+    return {
+      title: `🎯 Test Rápido sirvió preguntas fuera de topic_scope en ${rows.length} oposición(es)`,
+      body:
+        `El filtro SQL (\`articleInPositionScopeExists\`) debería impedir esto por construcción. ` +
+        `Si esto dispara, hay un desacuerdo real entre lo que el SQL dejó pasar y lo que \`fueraDeScope\` ` +
+        `(el mismo criterio, en memoria) dice — no es ruido de fondo, es una regresión.\n\n${lines.join('\n')}\n\n` +
+        `Los ids concretos van en metadata.ids de cada evento (observable_events). Investigar: ¿cambió el ` +
+        `EXISTS?, ¿hay un camino de servir que no pasa por getFilteredQuestions modo global?, ¿topic_scope ` +
+        `cambió entre que se leyó y se sirvió (race)?`,
+      metadata: { oposiciones: rows.length },
+      fingerprint: 'question_out_of_topic_scope_served',
+    };
+  },
+  cooldownMin: 120,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Sonda continua de scope (T-607): el EXISTS de SQL ya filtra, esto es la segunda comprobación
+  // en memoria del MISMO criterio — si discrepan, es una regresión real, no ruido.
+  RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED as AlertRule,
   // Trinquete de T-594: nadie vuelve a recibir «problema con el pago» mientras paga bien. Mira la
   // BD y no los eventos: un camino nuevo que se salte el núcleo tampoco emitiría la omisión.
   RULE_PAGO_FALLIDO_FALSA_ALARMA as AlertRule,
@@ -6702,6 +6796,8 @@ export const ALERT_RULES: AlertRule[] = [
   // La dirección contraria (29/07/2026): premium que NADIE paga. Las 8 reglas de
   // suscripciones protegían al usuario; ninguna al negocio.
   RULE_PREMIUM_SIN_RESPALDO as AlertRule,
+  // Su causa raíz en Pass-1 (T-295): dato stale que el propio Pass-1 ya no concede.
+  RULE_PASS1_FILA_STALE as AlertRule,
   // Gap 17 (2026-06-03 post-incidente Eva) — impugnación resuelta sin email al usuario
   RULE_DISPUTE_EMAIL_DROP as AlertRule,
   // Su gemela para el otro canal (T-501, 03/08/2026): respuesta a feedback sin email.

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { pgTextArray } from '../db/sql-arrays';
 import { detectarReservaSinDeclarar } from './reserva-sin-declarar';
 
 /**
@@ -814,6 +815,32 @@ function clasificarVigilanciaInline(
   return { nivel: 'ok', severidad: 'ok', motivo: 'contenido suficiente para vigilar' };
 }
 
+// ── Mirror INLINE de lib/convocatoria/notasSinVigilancia.cjs — MANTENER EN SYNC (T-311) ────
+// El sensor de NOTAS (versión de software, fechas, criterio — `detect-notas-convocatoria`)
+// parece vigilar y no vigila. Umbral calibrado 06/08/2026: 103/111 oposiciones sanas ven su
+// última nota en <2 días; 7 forman una cola aparte de 7 a 21.6 días, sin casos intermedios.
+const NOTAS_UMBRAL_DIAS_STALE = 4;
+function clasificarNotasVigilanciaInline(
+  docsCorpus: number,
+  notasCount: number,
+  diasSinVer: number | null,
+): { severidad: 'error' | 'ok'; motivo: string | null } {
+  if (docsCorpus <= 0) return { severidad: 'ok', motivo: null };
+  if (notasCount === 0) {
+    return {
+      severidad: 'error',
+      motivo: `${docsCorpus} documento(s) en el corpus y 0 notas — el sensor nunca ha dejado nada aquí`,
+    };
+  }
+  if (diasSinVer !== null && diasSinVer >= NOTAS_UMBRAL_DIAS_STALE) {
+    return {
+      severidad: 'error',
+      motivo: `la última nota vista hace ${Math.round(diasSinVer)} días (cron diario) — el sensor lo vigiló alguna vez y dejó de hacerlo`,
+    };
+  }
+  return { severidad: 'ok', motivo: null };
+}
+
 function diagnosticarSeguimientoUrl(
   url: string | null | undefined,
   anioVigente: number | null | undefined,
@@ -1114,9 +1141,24 @@ export class ContentHealthSweepService {
     }
 
     // ── Escribir snapshot ──
+    //
+    // NO es un TRUNCATE de la tabla entera (arreglado T-455, 07/08/2026): otras herramientas
+    // ON-DEMAND (p.ej. `audit-oposicion-completa.ts`, kind oposicion_incompleta) escriben en
+    // esta MISMA tabla fuera de este barrido, y un TRUNCATE incondicional se las llevaba por
+    // delante cada noche sin que este barrido las volviera a comprobar — la publicación de
+    // T-455 sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC), no hasta que
+    // el problema se arreglara. Medido en vivo (07/08): `content_health_findings` tenía 0 filas
+    // kind oposicion_incompleta (sin comillas) mientras las demás ~37 kinds databan `computed_at` de la
+    // pasada de la noche anterior — el barrido las había borrado y nada las repuso. Ahora solo
+    // se borran los kinds que ESTA pasada evaluó de verdad (`kindsEvaluados`, el mismo objeto
+    // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
+    // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
     let wrote = false;
     if (!NO_WRITE) {
-      await this.db.execute(sql`TRUNCATE content_health_findings`);
+      const kindsDeEstaPasada = Object.keys(kindsEvaluados);
+      if (kindsDeEstaPasada.length) {
+        await this.db.execute(sql`DELETE FROM content_health_findings WHERE kind = ANY(${pgTextArray(kindsDeEstaPasada)})`);
+      }
       for (const f of F) {
         const detailJson = f.detail ? JSON.stringify(f.detail) : null;
         await this.db.execute(sql`
@@ -1721,6 +1763,35 @@ export class ContentHealthSweepService {
         { count: anRows.length, sample: anRows.slice(0, 15).map((r) => r.id) },
       );
     marcar('audit_note_explanation', anRows.length);
+
+    // ── CONTENIDO: la prosa de auditoría también está DENTRO del temario (T-253) ──
+    // Mirror INLINE de lib/health/articleAuditNote.cjs (MANTENER EN SYNC — content-sweep-parity
+    // compara el VALOR de ARTICLE_AUDIT_NOTE_RE_SRC_SQL, no el texto). Hermano de
+    // audit_note_explanation, un escalón más grave: la nota está en el ARTÍCULO (la teoría que
+    // el opositor lee directamente en /temario), no en la explicación de una pregunta suelta.
+    // El sujeto "afirmación" es obligatorio a propósito — sin él, "también es incorrecta"
+    // (Access 365: una trampa de examen explicada, contenido legítimo) da falso positivo. Y el
+    // límite de palabra es `\y`, NO `\b`: en Postgres ARE `\b` no es límite de palabra (medido:
+    // `'esta es' ~* '\besta'` → false), así que sin `\y` el patrón casaría "esta" dentro de
+    // "respuesta". Detalle y calibración completa (17 artículos, 45 apariciones, 8.410
+    // preguntas colgando, medido 06/08/2026) en el núcleo.
+    const ARTICLE_AUDIT_NOTE_RE_SRC_SQL =
+      '\\y(esa|esta|dicha|tal)\\s+afirmaci[oó]n\\s+(es|resulta)\\s+(\\*\\*)?incorrect';
+    const aanRows = (await this.db.execute(sql`
+      SELECT a.id FROM articles a JOIN laws l ON l.id = a.law_id
+       WHERE a.is_active = true AND l.is_active = true AND a.content ~* ${ARTICLE_AUDIT_NOTE_RE_SRC_SQL}
+       LIMIT 50
+    `)) as unknown as Array<{ id: string }>;
+    if (aanRows.length)
+      add(
+        'content',
+        'warn',
+        null,
+        'article_audit_note',
+        `${aanRows.length}${aanRows.length >= 50 ? '+' : ''} artículo(s) activos con la nota de auditoría incrustada en la TEORÍA (contrastar con la fuente oficial y revisar las preguntas del artículo)`,
+        { count: aanRows.length, sample: aanRows.slice(0, 15).map((r) => r.id) },
+      );
+    marcar('article_audit_note', aanRows.length);
 
     // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
@@ -2521,6 +2592,46 @@ export class ContentHealthSweepService {
     }
     marcar('seguimiento_fuente_ciega', ciegaRows.length);
 
+    // ── El sensor de NOTAS parece vigilar y no vigila (notas_convocatoria_sin_vigilancia, T-311) ──
+    // Hermano del bloque anterior pero del sensor `detect-notas-convocatoria` (versión de
+    // software/fechas/criterio), no del cron de hash. Dos condiciones: nunca dejó nota pese a
+    // tener documentos clonados, o dejó una y se congeló ≥4 días — la primera sola se le escapa
+    // a los sensores que SÍ llegaron a vigilar alguna vez y luego se pararon en silencio (caso
+    // real: 3 oposiciones de Madrid con 1 nota cada una, congelada 11+ días). Ver CLAUDE.md
+    // §"revisa las notas sin vigilancia" y lib/convocatoria/notasSinVigilancia.cjs.
+    const notasRows = (await this.db.execute(sql`
+      SELECT o.slug,
+        (SELECT count(*) FROM convocatoria_documentos cd
+          JOIN convocatorias cv ON cv.id = cd.convocatoria_id
+          WHERE cv.oposicion_id = o.id)::int AS docs_corpus,
+        (SELECT count(*) FROM convocatoria_notas n WHERE n.oposicion_id = o.id)::int AS notas_count,
+        (SELECT EXTRACT(EPOCH FROM (now() - max(n.last_seen)))/86400
+           FROM convocatoria_notas n WHERE n.oposicion_id = o.id) AS dias_sin_ver
+      FROM oposiciones o
+      WHERE o.is_active AND o.seguimiento_url IS NOT NULL
+    `)) as unknown as Array<{
+      slug: string;
+      docs_corpus: number;
+      notas_count: number;
+      dias_sin_ver: number | string | null;
+    }>;
+    for (const r of notasRows) {
+      const v = clasificarNotasVigilanciaInline(
+        r.docs_corpus,
+        r.notas_count,
+        r.dias_sin_ver != null ? Number(r.dias_sin_ver) : null,
+      );
+      if (v.severidad !== 'error') continue;
+      add(
+        'content',
+        'error',
+        r.slug,
+        'notas_convocatoria_sin_vigilancia',
+        `${r.slug}: el sensor de notas no está vigilando esta oposición — ${v.motivo}`,
+      );
+    }
+    marcar('notas_convocatoria_sin_vigilancia', notasRows.length);
+
     // ── NOTAS INTERNAS PUBLICADAS EN LA LANDING (nota_interna_publicada, T-435) ──
     // Los campos de REFERENCIA se PINTAN en el hero y bajo el botón oficial, y se estaban usando
     // como bloc de notas de auditoría. Medido el 31/07: 7 landings activas sirviendo cosas como
@@ -3293,6 +3404,33 @@ export class ContentHealthSweepService {
       marcar('epigrafe_ruido_boletin', epRows.length);
     } catch (e) {
       this.logger.warn(`ruido de boletín en epígrafes no evaluado: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
+    }
+
+    // ── Epígrafe CORTADO: promete la lista de materias y no la trae (T-625) ──
+    // ⚠️ ESPEJO de `lib/health/epigrafeTruncado.cjs` (el núcleo puro y testeado que usa el CLI).
+    // El backend NO puede importarlo: su imagen Docker solo copia `backend/src`. Si tocas el
+    // patrón aquí, tócalo allí — `content-sweep-parity.test.ts` vigila que los KINDS no diverjan.
+    //
+    // Al importar por lotes, la continuación del epígrafe (lo que sigue a los dos puntos) se
+    // pierde: «Régimen Jurídico del Sector Público (I):». El epígrafe es la VARA DE MEDIR del
+    // temario (Paso 1/Paso 2/sobre-inclusión); uno truncado no se contrasta con nada. Solo temas
+    // ACTIVOS. Nace en 14 (medido 06-07/08/2026): cualquier subida es regresión demostrable.
+    try {
+      const EPIGRAFE_TRUNCADO_RE = /:\s*$/;
+      const epActivosRows = (await this.db.execute(sql`
+        SELECT position_type AS slug, topic_number AS tema, epigrafe
+          FROM topics WHERE is_active = true AND epigrafe IS NOT NULL
+      `)) as unknown as Array<{ slug: string; tema: number; epigrafe: string }>;
+      const truncados = (Array.isArray(epActivosRows) ? epActivosRows : [])
+        .filter((e) => EPIGRAFE_TRUNCADO_RE.test((e.epigrafe ?? '').trim()));
+      for (const e of truncados.slice(0, 20)) {
+        add('content', 'warn', e.slug, 'epigrafe_truncado',
+          `${e.slug} T${e.tema}: el epígrafe termina en ":" sin traer la lista de materias que promete ("${(e.epigrafe || '').slice(-50)}")`,
+          { slug: e.slug, tema: e.tema, epigrafe: e.epigrafe });
+      }
+      marcar('epigrafe_truncado', epActivosRows.length);
+    } catch (e) {
+      this.logger.warn(`epígrafes truncados no evaluados: ${String((e as Error)?.message ?? e).slice(0, 120)}`);
     }
 
     // ── Explicación estructurada que se RENDERIZA rota (29/07) ──

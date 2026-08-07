@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 113.2 CE",
+    "texto": "La moción de censura deberá ser propuesta al menos por la décima parte de los Diputados, y habrá de incluir un candidato a la Presidencia del Gobierno."
+  },
+  "options": {
+    "0": "Es la INCORRECTA: el art. 113.2 CE exige que la moción de censura sea propuesta al menos por la décima parte de los Diputados, no por una cuarta parte.",
+    "1": "Correcta como afirmación: el art. 113.3 CE establece que la moción de censura no podrá votarse hasta que transcurran cinco días desde su presentación.",
+    "2": "Correcta como afirmación: el art. 113.1 CE permite al Congreso exigir la responsabilidad política del Gobierno mediante la moción de censura, adoptada por mayoría absoluta.",
+    "3": "Correcta como afirmación: el art. 113.4 CE dispone que, si la moción no es aprobada, sus signatarios no pueden presentar otra durante el mismo período de sesiones."
+  },
+  "frame": "select_incorrect",
+  "estilo": "boletin"
+}

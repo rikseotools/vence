@@ -13,6 +13,42 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const A = require('@/lib/flota/autenticacion.cjs')
 
+describe('sin cuota es DISTINTO de sin credencial: se arregla solo, no reintentando (T-617)', () => {
+  it('la salida real del incidente: "You\'ve hit your weekly limit" → cuota_agotada, no desconocido', () => {
+    // Captura de pane real de w1, 07/08: 27 relanzamientos sobre la misma tarea en 3h contra
+    // esta MISMA línea, uno cada ~6 min, porque antes de este fix caía en `desconocido` y el
+    // supervisor la trataba como "el proceso murió, a ver si esta vez arranca".
+    const v = A.clasificar("You've hit your weekly limit · resets 11pm (UTC)", 0)
+    expect(v.estado).toBe('cuota_agotada')
+    expect(A.puedeTrabajar(v)).toBe(false)
+  })
+
+  it('lee CUÁNDO repone, cuando el mensaje lo trae', () => {
+    const v = A.clasificar("You've hit your weekly limit · resets 11pm (UTC)", 0)
+    expect(v.detalle).toMatch(/resets 11pm \(UTC\)/)
+  })
+
+  it('sin el "resets…" no inventa una hora — dice que no se pudo leer', () => {
+    const v = A.clasificar("You've hit your weekly limit", 0)
+    expect(v.estado).toBe('cuota_agotada')
+    expect(v.detalle).toMatch(/no se pudo leer/)
+  })
+
+  it.each([
+    ["You've reached your usage limit for today", 'diaria'],
+    ["You've hit your daily limit · resets at midnight", 'diaria (variante "hit")'],
+    ["You've hit your 5-hour limit · resets 3pm", '5 horas'],
+  ])('otras variantes de cuota (%s) también se reconocen', (salida) => {
+    expect(A.clasificar(salida, 0).estado).toBe('cuota_agotada')
+  })
+
+  it('el diagnóstico dice que se arregla SOLO, no que hay que actuar', () => {
+    const d = A.diagnostico('w1', A.clasificar("You've hit your weekly limit · resets 11pm (UTC)", 0))
+    expect(d).toMatch(/se arregla solo/)
+    expect(d).toMatch(/no relanzar/)
+  })
+})
+
 describe('las tres causas piden acciones distintas, así que se distinguen', () => {
   it('el proveedor rechaza la credencial → token_invalido', () => {
     // La salida real del caso que originó esto.

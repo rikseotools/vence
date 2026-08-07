@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 58 CE",
+    "texto": "La Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia."
+  },
+  "options": {
+    "0": "Incorrecta: el art. 58 CE dice justo lo contrario, que no podrá asumir funciones constitucionales.",
+    "1": "Incorrecta: conceder indultos es una facultad del Rey (art. 62.i CE), no de la Reina consorte.",
+    "2": "Correcta: el art. 58 CE establece que la Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}
