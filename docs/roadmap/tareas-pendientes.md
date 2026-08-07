@@ -1733,7 +1733,52 @@ generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin r
 - **Relacionadas:** [T-486] (la flota), [T-431] (worktrees huérfanos: mismo daño, otra causa), [T-428] (pérdida de contexto al resolver conflictos), [T-539] (la entrega obligatoria, que es lo que permitió recuperarlo).
 - **Esfuerzo: rato.**
 
-### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
+### [T-572] ✅ [HECHA 07/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
+
+> **✅ RESPUESTA (07/08, w4).** El diagnóstico ya estaba hecho por otra sesión (l2) y fusionado a
+> `main` (`cbcd1c01d`, 06/08 11:29) + desplegado (`15656eef`, 06/08 11:37): raíz = un worktree local
+> apuntando a la RDS de producción (`.env.local`, patrón documentado en CLAUDE.md) escribía
+> `request_completed` con `host=localhost:3210` y `httpStatus=500` directamente en la tabla que
+> alimenta el panel — 89 eventos en 4 minutos, mientras `validation_error_logs` (la fuente real del
+> indicador 1) estaba en CERO en esa ventana. Arreglo: `shouldSkipObservabilityPersistence()`
+> (`lib/observability/runtimeGate.ts`, `NODE_ENV!=='production'`) usado ahora por LAS DOS puertas
+> que escriben observabilidad (`withErrorLogging.ts` y `validation-error-log/queries.ts`), que antes
+> solo la tenía una.
+>
+> **Verificado EN VIVO por mí contra RDS (lo que quedaba pendiente de la ficha), no dando el deploy
+> por bueno de oídas:**
+> - `/api/auth/token` desde el deploy (15h): **0 eventos 5xx** (5.797×401 + 1.147×200). Antes eran 89
+>   en 4 minutos.
+> - Tráfico `host=localhost` desde el deploy: 1.589 eventos, **todos 200**, y son tráfico interno
+>   legítimo (1.565 `/api/health/db-ready` en `localhost:3000` — healthcheck del propio contenedor
+>   Fargate — + 12 `/api/internal/isr-apply` en `127.0.0.1:3000`). No es el worktree roto volviendo:
+>   puerto distinto (3000 del contenedor vs 3210 del worktree) y sin un solo error.
+> - 5xx reales desde el deploy (`host=www.vence.es`): **13**, todos con `synthetic=null` (no
+>   canary) y mensajes de fallo genuino («Database operation exceeded 8000ms timeout», «Servicio
+>   saturado momentáneamente») — la «cola larga» que la ficha original ya distinguía del bug
+>   (`answer-and-save`×3, `laws-configurator`×2, `stats`×2, `medals`/`profile`/`user-stats`/
+>   `pdf`/`random-test/availability`×1). Nada de esto es T-572; una parte encaja con [T-315].
+>
+> **HALLAZGO NUEVO al intentar cerrar el segundo punto pendiente** («que el indicador 1 cuadre con
+> `validation_error_logs`»): **no se puede verificar con esta credencial — mismo patrón sistémico de
+> RLS que [T-573]/[T-574].** `validation_error_logs` tiene `relrowsecurity=true` con **una sola
+> política**, `service_role_all` (`roles={service_role}`), y ninguna para `vence_lector` — el GRANT
+> de tabla existe (`has_table_privilege=true`) pero sin política el motor filtra en silencio:
+> `SELECT count(*) FROM validation_error_logs` (sin `WHERE`) da **0**, siempre, aunque la tabla esté
+> llena. Los 13 eventos de arriba deberían tener su espejo en VLE (el código de `withErrorLogging.ts`
+> los escribe con `await` para 5xx no-sintéticos, sin excepción que aplique a ninguno de los 13) y no
+> pude comprobarlo. **No estaba en el catálogo `DEBE_LEER`/`NO_DEBE_LEER` de
+> `scripts/canary-rol-lector.cjs`** — cae en el mismo hueco de catalogación que T-573 ya señala para
+> otras tablas. No abro ficha nueva a propósito (sería la 4ª de la misma familia esta semana);
+> queda anotado aquí y en el `Relacionadas` de abajo para quien retome T-573/T-574.
+>
+> **Veredicto: el bug que motivó la ficha está arreglado y verificado con datos reales, no con la
+> palabra del deploy.** Lo que queda («cuadra VLE con obs_events») es un problema de ACCESO de
+> lectura, no del propio fix.
+
+**Relacionadas:** [T-573], [T-574] (mismo bloqueo RLS de `vence_lector`, ahora también en
+`validation_error_logs`) · [T-315] (parte de la «cola larga» de 5xx reales sí es su timeout de
+antifraude).
 
 - **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
   - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
