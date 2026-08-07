@@ -125,7 +125,7 @@ Este manual documenta cómo resolver impugnaciones de preguntas usando Claude Co
 > defecto, y ese no se cuenta.
 >
 > **El mensaje que se envió, entero, como referencia de longitud:**
-> *«Hola Lucia, tenías razón. Ya está corregida: la pregunta se corresponde ahora con el artículo 2.3
+> *«Hola Lucia, tienes razón. Ya está corregida: la pregunta se corresponde ahora con el artículo 2.3
 > de la Ley Orgánica 3/2018, que entra en tu tema 6. Muchas gracias. Equipo de Vence»* — reconocer,
 > decir lo único que le sirve (qué entra y dónde), y parar.
 
@@ -771,9 +771,9 @@ Equipo de Vence
   desde dentro del texto: si el mensaje lo firma un equipo, el singular delata a un individuo
   detrás y rompe justo lo que la firma construye. Medido el 05/08 sobre los borradores de la
   flota: **4 de 26** se habían escrito en singular, y ninguna de las capas lo miraba.
-- **NO usar fórmulas de apertura tipo "Gracias por avisar", "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. NO abrir el mensaje agradeciendo el aviso: entrar directo al reconocimiento ("Tenías razón…") o a la corrección. El único agradecimiento válido es el cierre "Muchas gracias." al final.
-- Cuando el usuario tenía razón, decirlo claramente ("Tenías razón…", "Tienes razón…"). Refuerza confianza en la plataforma.
-- **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tenías razón" sin listar todo lo que estaba mal.
+- **NO usar fórmulas de apertura tipo "Gracias por avisar", "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. NO abrir el mensaje agradeciendo el aviso: entrar directo al reconocimiento ("Tienes razón…") o a la corrección. El único agradecimiento válido es el cierre "Muchas gracias." al final.
+- Cuando el usuario tiene razón, decirlo claramente: **"Tienes razón…", SIEMPRE en PRESENTE, nunca "Tenías razón"** (Manuel, 07/08/2026, corrigiendo un borrador). El pasado insinúa que la tenía entonces y ya no, o que se le da la razón como trámite; el presente afirma que su observación es correcta. Refuerza confianza en la plataforma.
+- **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tienes razón" sin listar todo lo que estaba mal.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
 ### 6.0.bis Cuando NO tiene razón: enseñarle, no ganarle la discusión (31/07/2026)
