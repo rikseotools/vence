@@ -2443,6 +2443,67 @@ sirve, entonces son 745 temas enseñando un hueco a usuarios de pago.
    subir el invariante a una capa que sí pare. Lo que no puede quedarse es en rojo mudo.
 4. Los 3 `bloque_number` sin asignar van en el mismo lote (mismo test, coste marginal).
 
+---
+
+**🔍 REVISADA el 07/08/2026 — pasos 1 y 3 hechos y verificados; el paso 2 (redactar contra el temario
+oficial) sigue pendiente, es de `sesion_propia` y necesita escritura en BD de negocio que este worker
+(rol `trabajador`) no tiene.**
+
+**Paso 1 — MEDIDO el render (código leído, no supuesto):**
+- `topics.description` alimenta `generateMetadata()` de cada `temario/[slug]/page.tsx` (131 copias,
+  ver [T-611]): `description: content.description || \`Contenido teórico del Tema ${topicNumber}…\`` —
+  esto es **`title`/`og:description` de verdad**, lo que ve un buscador o una tarjeta de red social.
+  Con el campo vacío, cae a un texto GENÉRICO (mismo para los N temas de esa oposición que lo tengan
+  vacío) en vez de uno específico del tema — pérdida de calidad SEO real, medible, pero no un error.
+- También alimenta el párrafo de entrada de `TopicContentView.tsx`: `{content.description && (<p>…)}`
+  — **condicional**. Con el campo vacío simplemente NO SE RENDERIZA ese párrafo: no hay hueco visible,
+  ni layout roto, ni "undefined" en pantalla. El propio test ya lo llamaba "COSMÉTICO" en su comentario.
+- **Conclusión, con las dos partes verificadas:** ni "hay que rellenarlas todas ya" ni "el campo no
+  sirve para nada" — sirve (SEO), pero no es un hueco visible para el usuario. Coherente con el propio
+  test que ya decía "COSMÉTICO (no correctness)".
+
+**Cifras actuales (07/08, `VENCE_LECTOR_URL`, no las del 05/08 — la cifra CRECE):**
+`sin_description=897` (**+29 en 2 días** sobre los 868 del 05/08 — crecimiento orgánico de contenido
+nuevo, coherente con el ~364→868 en 28 días que documentaba el propio test), de ellas **774 servidas**
+(`disponible=true`, +29 también). `sin_bloque=3`, igual que el 05/08.
+
+**Paso 3 — hecho: la señal ya NO depende solo del test informativo.**
+- Nuevo kind **`topic_sin_description`** en `scripts/health-sweep.cjs` + espejo en el `@Cron` real del
+  backend (`content-health-sweep.service.ts`), agregado por oposición (no una fila por tema — 897 filas
+  sería la bandeja ruidosa que este mismo backlog lleva evitando desde T-047), solo cuenta lo SERVIDO
+  (`disponible=true`), severidad `warn` (coherente con lo medido en el paso 1: SEO, no rotura).
+  Registrado en `lib/admin/runbookRegistry.ts` + bullet en CLAUDE.md (*"revisa los temas sin
+  descripción"*). Verificado contra datos reales: `auxiliar_biblioteca_estado` → 48 (coincide con la
+  tabla de esta ficha), `auxiliar_administrativo_estado` → 0 (sanity: el detector discrimina, no
+  marca todo). Tests: `content-sweep-parity.test.ts` (186/186 en verde, incluida la paridad núcleo↔@Cron
+  y el "latido de lo evaluado" que exige `marcar()` en los dos gemelos) + `runbookRegistry.test.ts`.
+- El test de integración **también se tocó** (recalibración de umbral, no arreglo de bug): `<500` ya
+  estaba MEDIDAMENTE por detrás del crecimiento orgánico (897 > 500, sin ser una regresión — dos puntos
+  de medida real lo confirman: 364→868→897), así que llevaba tiempo en rojo permanente sin decir nada
+  útil. Subido a `<1000` con margen documentado; sigue cazando un salto ESTRUCTURAL real (un bug que
+  tumbe cientos de golpe), ya no compite con el barrido nocturno como fuente de seguimiento continuo.
+
+**Paso 2 — SIN HACER, y por qué:** redactar 897 descripciones (26 oposiciones) contra el temario
+OFICIAL de cada una es exactamente el trabajo de `sesion_propia` que la ficha ya declaraba, y además
+termina en un `UPDATE topics SET description=…` — escritura en BD de negocio que este worker no tiene
+permiso de hacer (regla dura de la sesión). Queda para quien tenga la credencial completa, con la señal
+ahora VISIBLE (`topic_sin_description` en `/admin/contenido`) para priorizar por oposición.
+
+**Cabo suelto MEDIDO, sin arreglar — los 3 `bloque_number` sin asignar NO son de las 26 oposiciones del
+catálogo:** los tres son `position_type` tipo `personalizada_<uuid>` (oposiciones PERSONALIZADAS,
+creadas dinámicamente por usuarios, no contenido curado). De las 8 personalizadas activas, **6 SÍ**
+tienen `bloque_number=1` asignado a sus topics y **2 no** (`personalizada_cacfe757…` 1 topic,
+`personalizada_f294439…` 2 topics) — y `oposicion_bloques` SÍ tiene una fila de bloque para esas 2
+mismas personalizadas. **SOSPECHO que es un bug puntual de la creación de oposiciones personalizadas**
+(el `bloque_number=1` no se propagó a los topics en esos 2 casos concretos, a diferencia de los otros
+6) **pero no lo he confirmado mirando el código que crea estos topics** — falta esa lectura antes de
+decidir si el arreglo es "asignar bloque_number=1 a estas 3 filas" o algo más de fondo. Es un `UPDATE`
+de 3 filas — trivial de escribir, pero sigue siendo una escritura en BD de negocio que este worker no
+puede hacer.
+
+Rama: `flota/T-600-temas-sin-description` (ver commits). No se ha escrito nada en `topics` — solo
+lectura (`VENCE_LECTOR_URL`) y código (detector + recalibración de umbral).
+
 ### [T-602] 🟡 [ABIERTO 06/08] `user_profiles.target_oposicion` con valores que no existen en `topics`: al menos 22 usuarios (entre quienes han impugnado), uno con 22+ impugnaciones repetidas de "no incluido en mi selección"
 
 **QUÉ PASA.** Trabajando el cluster de 4 impugnaciones nuevas del usuario `4ded0300-d1d1-45ab-b68f-9c0488a3195c` (todas "ARTÍCULO NO PERTENECIENTE/INCLUIDO EN MI SELECCIÓN", 05/08 19:36-19:40, sobre 4 artículos distintos de la Ley 9/2017 LCSP), `flota_dispute_contexto.reporter_oposicion` (= `user_profiles.target_oposicion`) devuelve **`administrativo_comunidad_autonoma`** — un valor que **no existe en `topics.position_type` ni en `oposiciones`** (ni por `slug` ni por `id`). No es "" (el caso ya cubierto en [T-569]): es un slug con pinta de válido que simplemente no corresponde a NINGUNA oposición real del catálogo.

@@ -1408,6 +1408,37 @@ export class ContentHealthSweepService {
       // El bloque TERMINÓ de mirar su población: un 0 aquí es «vigilado y limpio», no «nadie miró».
       marcar('cobertura_banda_ciega', bandaCiega.length);
 
+      // ── TEMAS SIN description (T-600, 07/08/2026) ──
+      // La única vigilancia que tenía esto era `temarioEpigrafeIntegrity.test.ts` (suite de
+      // INTEGRACIÓN, informativa para el gate de deploy) con un umbral de tolerancia (<500) que
+      // la cifra real ya superó — 897 el 07/08, frente a los ~364 del comentario del test del
+      // 08/07 — sin que ningún kind del barrido lo mirase. Un rojo que nadie mira no vigila nada.
+      //
+      // MEDIDO el render (T-600): `description` se lee en `generateMetadata` de cada
+      // `temario/[slug]/page.tsx` (title/og:description, SEO real, con fallback GENÉRICO cuando
+      // está vacía) y en el párrafo de entrada de `TopicContentView.tsx` (condicional: si está
+      // vacío no se renderiza, sin hueco visible). Por eso `warn`, no `error`: pérdida real de
+      // calidad SEO en temas SERVIDOS, pero ninguna página rota. Solo `disponible=true`.
+      const sinDescripcion = (await this.db.execute(sql`
+        SELECT topic_number FROM topics
+        WHERE position_type = ${pt} AND is_active AND disponible
+          AND (description IS NULL OR length(trim(description)) < 10)
+        ORDER BY topic_number
+      `)) as unknown as Array<{ topic_number: number }>;
+      marcar('topic_sin_description', sinDescripcion.length);
+      if (sinDescripcion.length) {
+        add(
+          'content',
+          'warn',
+          o.slug,
+          'topic_sin_description',
+          `${o.slug}: ${sinDescripcion.length} tema(s) servido(s) sin description (T${sinDescripcion
+            .slice(0, 6)
+            .map((r) => r.topic_number)
+            .join(',T')}${sinDescripcion.length > 6 ? '…' : ''}) — degrada el SEO (title/og:description cae a un texto genérico); redactar contra el temario oficial, nunca a ojo`,
+        );
+      }
+
       // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
       const nTopics = topics.length;
       if (o.temas_count != null && Number(o.temas_count) !== nTopics)
