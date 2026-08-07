@@ -16,7 +16,7 @@
  */
 
 import { renderHook, waitFor } from '@testing-library/react'
-import { isInCriticalRoute, __resetVersionCheckState } from '@/hooks/useVersionCheck'
+import { isInCriticalRoute, shouldSuppressReload, __resetVersionCheckState } from '@/hooks/useVersionCheck'
 
 // ============================================
 // Mocks
@@ -120,6 +120,45 @@ describe('isInCriticalRoute', () => {
   test('devuelve false con pathname vacío o undefined', () => {
     expect(isInCriticalRoute('')).toBe(false)
     expect(isInCriticalRoute(undefined as unknown as string)).toBe(false)
+  })
+})
+
+// ============================================
+// 1.bis shouldSuppressReload — función pura, guard de ráfaga (T-168)
+// ============================================
+//
+// Caso real 26/07: 4 recargas en 11 s (12:09:51, 12:10:00, 12:10:01, 12:10:02) —
+// cada `window.location.reload()` resetea el estado del MÓDULO, así que nada
+// recordaba que ACABABA de recargar. `shouldSuppressReload` compara contra una
+// marca que sí sobrevive al reload (sessionStorage).
+
+describe('shouldSuppressReload', () => {
+  test('sin marca previa: nunca suprime', () => {
+    expect(shouldSuppressReload(null, Date.now())).toBe(false)
+  })
+
+  test('marca reciente (dentro del cooldown): suprime', () => {
+    const now = 1_000_000
+    const mark = { at: now - 5_000, toVersion: 'v2' }
+    expect(shouldSuppressReload(mark, now, 20_000)).toBe(true)
+  })
+
+  test('marca justo en el borde del cooldown: NO suprime (estricto <)', () => {
+    const now = 1_000_000
+    const mark = { at: now - 20_000, toVersion: 'v2' }
+    expect(shouldSuppressReload(mark, now, 20_000)).toBe(false)
+  })
+
+  test('marca antigua (fuera del cooldown): no suprime', () => {
+    const now = 1_000_000
+    const mark = { at: now - 30_000, toVersion: 'v2' }
+    expect(shouldSuppressReload(mark, now, 20_000)).toBe(false)
+  })
+
+  test('respeta un cooldown custom', () => {
+    const now = 1_000_000
+    const mark = { at: now - 5_000, toVersion: 'v2' }
+    expect(shouldSuppressReload(mark, now, 3_000)).toBe(false)
   })
 })
 
@@ -646,5 +685,75 @@ describe('Escenarios end-to-end', () => {
     // confirma que pendingVersion es null)
     // NB: no podemos inspeccionar pendingVersion directamente porque es
     // module-level, pero sí podemos observar el comportamiento.
+  })
+
+  // --------------------------------------------
+  // Escenario 8: reproducción del caso T-168 — ráfaga de reloads
+  // --------------------------------------------
+  test('Ráfaga de reloads (T-168): un deploy rodante que flapea versión sólo recarga UNA vez', async () => {
+    // GIVEN: usuario en ruta NO crítica con deploy v1 (aislamos el guard de
+    // ráfaga del guard de rutas críticas, que ya tiene su propio escenario)
+    mockVersionResponse('v1')
+    setPathname('/')
+
+    const useVersionCheck = await loadHook()
+    const { unmount: unmount1 } = renderHook(() => useVersionCheck())
+    await waitFor(() => expect((global as any).fetch).toHaveBeenCalled())
+    expect(window.location.reload).not.toHaveBeenCalled()
+
+    // WHEN: el ALB rutea la siguiente petición a una tarea de Fargate ya
+    // actualizada — v2. Se recarga (única recarga esperada de este test).
+    mockVersionResponse('v2')
+    triggerVisibilityChange('hidden')
+    triggerVisibilityChange('visible')
+
+    await waitFor(() => {
+      expect(window.location.reload).toHaveBeenCalledTimes(1)
+    })
+    expect(mockTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'version_check_reload_immediate' })
+    )
+
+    // El reload real mataría el módulo entero (clientVersion/pendingVersion
+    // vuelven a null) — lo simulamos desmontando y montando de nuevo, SIN
+    // limpiar sessionStorage (que es justo lo que sí sobrevive a un reload
+    // real, y es la marca que debe suprimir la próxima recarga).
+    unmount1()
+    mockTrack.mockClear()
+    ;(window.location.reload as jest.Mock).mockClear()
+
+    // WHEN: milisegundos después (deploy rodante todavía convergiendo), el
+    // ALB rutea a OTRA tarea con OTRA versión — dispara un cambio de versión
+    // genuino otra vez, dentro del cooldown de la recarga anterior.
+    mockVersionResponse('v3')
+    const { unmount: unmount2 } = renderHook(() => useVersionCheck())
+    await waitFor(() => expect((global as any).fetch).toHaveBeenCalled())
+
+    // THEN: NO se recarga una segunda vez — se suprime por ráfaga.
+    expect(window.location.reload).not.toHaveBeenCalled()
+    expect(mockTrack).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'version_check_reload_suppressed',
+        value: expect.objectContaining({ newVersion: 'v3' }),
+      })
+    )
+    unmount2()
+
+    // AND: pasado el cooldown, un cambio de versión SÍ recarga con normalidad
+    // (el guard no deja al usuario indefinidamente en código viejo). Se
+    // envejece la marca directamente en sessionStorage — más robusto en el
+    // test que mockear Date.now global, que `waitFor` también usa por dentro.
+    mockTrack.mockClear()
+    sessionStorage.setItem(
+      'vence_version_check_last_reload',
+      JSON.stringify({ at: Date.now() - 25_000, toVersion: 'v2' })
+    )
+    mockVersionResponse('v4')
+    const { unmount: unmount3 } = renderHook(() => useVersionCheck())
+
+    await waitFor(() => {
+      expect(window.location.reload).toHaveBeenCalledTimes(1)
+    })
+    unmount3()
   })
 })

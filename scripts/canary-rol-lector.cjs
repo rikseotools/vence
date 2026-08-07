@@ -76,6 +76,10 @@ const DEBE_LEER = [
   // worker no puede COMPROBAR que una transición pasó de verdad, solo fiarse de la prosa de
   // otra sesión. Ver 20260807_rls_question_lifecycle_history_lector.sql.
   ['question_lifecycle_history', 'el audit trail de transiciones de estado de las preguntas'],
+  // [T-168] cruzar version_check_reload_immediate/deferred contra tests.is_completed=false
+  // es la métrica que la propia ficha pide para medir el daño real de un reload en caliente.
+  // Ver 20260807_rls_user_interactions_lector.sql.
+  ['user_interactions', 'los eventos de interacción (version-check, tests…), para medir daño de reloads'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */

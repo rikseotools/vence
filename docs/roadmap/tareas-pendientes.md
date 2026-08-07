@@ -15133,6 +15133,67 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **Ojo al alcance:** NO desactivar el version-check — existe por el congelamiento de chunks (`project_deploy_freeze_chunks_s3`). Lo que se busca es que no atropelle una sesión activa.
 - **Origen:** análisis del `account_deletion` 204b8a54 (27/07).
 
+> **📌 SESIÓN 07/08 (w1) — ítem (2) arreglado y testeado; ítems (1) y (3) documentados, no
+> resueltos.**
+> - **✅ (2) Ráfaga de recargas — arreglada, cooldown de 20 s por `sessionStorage`.**
+>   `window.location.reload()` mata el estado de MÓDULO (`clientVersion`/`pendingVersion` vuelven
+>   a `null`), así que si el servidor sigue sirviendo versiones distintas de una petición a la
+>   siguiente (deploy rodante de Fargate: tareas viejas y nuevas conviviendo tras el ALB, cada
+>   fetch a `/api/version` puede tocar una u otra), la página recién recargada lo lee como "versión
+>   nueva" otra vez y recarga de nuevo — nada recordaba que ACABABA de recargar. Encaja con el
+>   patrón medido: 4 recargas en 11 s. Arreglo: `shouldSuppressReload` (pura, testeada) compara
+>   contra una marca en `sessionStorage` (única cosa que sobrevive a un reload real, a diferencia
+>   de una variable de módulo); si el siguiente intento cae dentro de un cooldown de 20 s, se
+>   SUPRIME — se acepta la versión nueva sin recargar y se reintenta en el próximo
+>   montaje/vuelta de background, cuando el deploy rodante ya debería haber convergido. Nuevo
+>   evento `version_check_reload_suppressed` para que quede rastro de cuándo se suprimió (antes
+>   era invisible por partida doble: ni recargaba mal ni se veía que había DECIDIDO no recargar).
+>   **Capas:** 6 tests unitarios de `shouldSuppressReload` + 1 test end-to-end que reproduce el
+>   incidente completo (reload → flap de versión dentro del cooldown → suprimido → pasado el
+>   cooldown, recarga con normalidad) en `__tests__/hooks/useVersionCheck.test.tsx` — 50/50 en
+>   verde, sin romper ninguno de los 44 tests previos (incluido el caso francofila).
+> - **⏳ (1) Por qué el diferido no aplicó ese día concreto — SOSPECHO, no confirmado.** Medido
+>   contra el código actual: la regex de rutas críticas (`/\/leyes\/[^/]+\/(avanzado|…)/`) SÍ
+>   cubre `/leyes/[ley]/avanzado`, y lo hace desde el commit `c409f1dec` (30/04/2026) — **casi tres
+>   meses antes** del incidente (26/07). El test suite existente (`Caso francofila…`, 44/44 verde
+>   antes de esta sesión) confirma en aislamiento que el defer + aplicación al salir de ruta
+>   crítica funcionan tal y como están escritos. Así que la causa NO parece ser un hueco de
+>   cobertura de rutas. **Lo que no pude confirmar por falta de datos** (ver más abajo, tabla
+>   bloqueada): si esa sesión concreta pasó brevemente por una ruta NO crítica entre preguntas
+>   (p.ej. una redirección intermedia) que aplicara un reload diferido pensando que ya no había
+>   test activo, o si el patrón de "3 recargas en 3 s" que arreglé en (2) es en sí mismo lo que
+>   hizo parecer roto el defer (una ráfaga de reloads inmediatos podría leerse como "el defer no
+>   frenó nada" aunque cada uno individualmente decidiera bien). **Qué falta para confirmarlo:**
+>   los 10 eventos de version-check de esa sesión con su `pathname` y `eventType` exactos — hoy
+>   bloqueados (ver hallazgo colateral debajo).
+> - **🔍 HALLAZGO COLATERAL, mismo mecanismo que T-573/T-038/T-220/T-638: `user_interactions`
+>   (donde aterrizan `version_check_reload_immediate/deferred/suppressed`) tiene RLS activo y
+>   CERO políticas para `vence_lector`.** Medido: `relrowsecurity=true`, `pg_policies` vacío,
+>   `information_schema.role_table_grants` confirma que el GRANT de tabla SÍ existe — así que
+>   cualquier `SELECT` devuelve 0 filas SIEMPRE, sin error, indistinguible de "no hay eventos".
+>   Es justo la tabla que hacía falta leer para investigar (1) y para la medida final que pide
+>   esta misma ficha (cruzar `version_check_reload_immediate` con `tests.is_completed=false`).
+>   Migración `supabase/migrations/20260807_rls_user_interactions_lector.sql` (mismo patrón
+>   establecido, idempotente, con guarda de precondición del GRANT) + `user_interactions` añadida
+>   a `DEBE_LEER` de `scripts/canary-rol-lector.cjs` + test de forma
+>   (`__tests__/db/rlsUserInteractionsLectorMigration.test.js`, 6/6). **NO aplicada** (rol
+>   trabajador sin escritura de negocio, confirmado por `information_schema.role_table_grants`:
+>   ni `vence_coordinacion` ni `vence_lector` tienen INSERT/UPDATE ahí). Una vez aplicada, (1) se
+>   puede investigar de verdad con datos en vez de con hipótesis.
+> - **⏳ (3) Preservar el estado del test / avisar antes de recargar — NO abordado esta sesión,
+>   documentado a propósito.** Es un cambio de UX mayor (snapshot del progreso local antes del
+>   reload + restaurarlo, o un modal de confirmación) que no cabía con solidez en el tiempo
+>   disponible tras (2). El test server-side (`tests` row) sí existe tras el corte — lo que se
+>   pierde es el estado LOCAL de progreso (qué pregunta, qué respuestas ya dadas en cliente). Con
+>   (2) arreglado, el caso más grave (ráfaga de 4 reloads) ya no puede repetirse, así que el coste
+>   de NO tener (3) baja de "se pierde el test 4 veces seguidas" a "se pierde el test como mucho
+>   una vez por deploy" — sigue siendo malo, pero deja de ser catastrófico.
+> - **Ojo al alcance respetado:** el version-check sigue activo y sin desactivar en ningún caso;
+>   el cooldown solo pospone unos segundos un reload que de todas formas iba a pasar la primera
+>   vez, nunca lo cancela indefinidamente.
+> - **Sin código de producción sin capa:** `hooks/useVersionCheck.ts` toca únicamente lo tocado
+>   con sus tests (50/50); la migración con su test de forma (6/6); `tsc --noEmit` limpio.
+
 ### [T-166] 🟠 [ABIERTO 27/07] Embudo determinista para `detect-oep-llm` — el cron está EN PAUSA y el radar de OEPs no corre hasta que esto se haga
 - **Estado de partida:** `detect-oep-llm` quedó **PAUSADO en producción el 27/07** (`DETECT_OEP_LLM_ENABLED=false`, task def `vence-backend:112`; commit `75661c268`). ⚠️ **Mientras siga pausado, el sensor semántico del radar NO detecta convocatorias nuevas** — el triaje depende de que Manuel abra sesión. Reactivar es poner el flag a `true` en `scripts/deploy-backend.sh` + desplegar.
 - **Por qué se pausó (medido, no estimado):** mandaba a Haiku el HTML de **las 2.213 oposiciones con `seguimiento_url`** (solo 123 activas), una llamada por oposición → **~1.700 llamadas y ~8 USD por día laborable (~170 USD/mes)**, 169 min por pasada. Última pasada completa (24/07): **2.206 escaneadas → 424 extracciones → 10 señales (0,45%)**.

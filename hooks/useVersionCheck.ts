@@ -10,6 +10,20 @@
 // la ruta crítica. Esto evita pérdidas de progreso percibidas por el usuario
 // (ver bug francofila 2026-04-09: 3 deploys en 12 min durante un test →
 // UI reseteada a "1/26" tras cada reload).
+//
+// GUARD DE RÁFAGA (T-168, caso real 26/07): un `window.location.reload()` mata
+// TODO el estado JS del módulo — `clientVersion`/`pendingVersion` vuelven a null
+// en la página nueva. Si el servidor sigue sirviendo versiones distintas entre
+// una petición y la siguiente (deploy rodante de Fargate: tareas viejas y nuevas
+// conviviendo tras el ALB, cada fetch a /api/version puede tocar una u otra), la
+// página recién recargada detecta OTRA "versión nueva" y se recarga otra vez —
+// sin nada que recuerde que ACABA de recargar. Medido en el incidente real: 4
+// recargas en 11 s (12:09:51, 12:10:00, 12:10:01, 12:10:02), la primera cortó un
+// test en la pregunta 2. `sessionStorage` (sobrevive al reload, a diferencia de
+// una variable de módulo) guarda cuándo fue el último reload; si el siguiente
+// intento cae dentro del cooldown, se SUPRIME — se acepta la versión sin recargar
+// y se reintentará en el próximo montaje/vuelta de background, que ya no debería
+// pillar el deploy a medias.
 'use client'
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
@@ -20,6 +34,48 @@ let clientVersion: string | null = null
 
 // Versión nueva detectada pero pendiente de aplicar (usuario en ruta crítica)
 let pendingVersion: string | null = null
+
+// ── Guard de ráfaga ──────────────────────────────────────────────────────
+const RELOAD_MARK_KEY = 'vence_version_check_last_reload'
+const RELOAD_COOLDOWN_MS = 20_000
+
+interface ReloadMark {
+  at: number
+  toVersion: string
+}
+
+function readReloadMark(): ReloadMark | null {
+  try {
+    const raw = sessionStorage.getItem(RELOAD_MARK_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.at !== 'number' || typeof parsed?.toVersion !== 'string') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeReloadMark(toVersion: string, nowMs: number): void {
+  try {
+    sessionStorage.setItem(RELOAD_MARK_KEY, JSON.stringify({ at: nowMs, toVersion }))
+  } catch {
+    // sessionStorage puede fallar (modo privado, cuota) — no bloquear el flujo por esto.
+  }
+}
+
+/**
+ * ¿Hay que SUPRIMIR este reload porque acabamos de recargar hace muy poco?
+ * Pura y exportada para poder testearla sin mockear sessionStorage/Date.
+ */
+export function shouldSuppressReload(
+  mark: ReloadMark | null,
+  nowMs: number,
+  cooldownMs: number = RELOAD_COOLDOWN_MS
+): boolean {
+  if (!mark) return false
+  return nowMs - mark.at < cooldownMs
+}
 
 // Rutas donde NO queremos recargar automáticamente. Perder estado aquí
 // resulta en pérdida de progreso visible para el usuario (tests en curso,
@@ -111,6 +167,27 @@ export function useVersionCheck() {
           return
         }
 
+        if (shouldSuppressReload(readReloadMark(), Date.now())) {
+          console.log(
+            `🔄 Nueva versión detectada (${clientVersion} → ${version}) — ` +
+            `SUPRIMIDA, reload reciente (ráfaga): ${currentPath}`
+          )
+          track({
+            eventType: 'version_check_reload_suppressed',
+            eventCategory: 'navigation',
+            component: 'useVersionCheck',
+            action: 'reload_suppressed',
+            value: {
+              clientVersion,
+              newVersion: version,
+              pathname: currentPath,
+            },
+          })
+          clientVersion = version
+          pendingVersion = null
+          return
+        }
+
         console.log(`🔄 Nueva versión detectada: ${clientVersion} → ${version}. Recargando...`)
         track({
           eventType: 'version_check_reload_immediate',
@@ -123,6 +200,7 @@ export function useVersionCheck() {
             pathname: currentPath,
           },
         })
+        writeReloadMark(version, Date.now())
         window.location.reload()
       } catch {
         // Red caída o error — ignorar silenciosamente
@@ -152,6 +230,28 @@ export function useVersionCheck() {
     if (isInCriticalRoute(pathname)) return
 
     const versionToApply = pendingVersion
+
+    if (shouldSuppressReload(readReloadMark(), Date.now())) {
+      console.log(
+        `🔄 Saliendo de ruta crítica con versión pendiente ` +
+        `(${clientVersion} → ${versionToApply}) — SUPRIMIDA, reload reciente (ráfaga)`
+      )
+      track({
+        eventType: 'version_check_reload_suppressed',
+        eventCategory: 'navigation',
+        component: 'useVersionCheck',
+        action: 'reload_suppressed',
+        value: {
+          clientVersion,
+          newVersion: versionToApply,
+          pathname,
+        },
+      })
+      clientVersion = versionToApply
+      pendingVersion = null
+      return
+    }
+
     console.log(
       `🔄 Saliendo de ruta crítica con versión pendiente ` +
       `(${clientVersion} → ${versionToApply}). Recargando...`
@@ -167,6 +267,7 @@ export function useVersionCheck() {
         pathname,
       },
     })
+    writeReloadMark(versionToApply, Date.now())
     window.location.reload()
   }, [pathname, track])
 }
@@ -186,4 +287,9 @@ export function getClientVersion(): string | null {
 export function __resetVersionCheckState(): void {
   clientVersion = null
   pendingVersion = null
+  try {
+    sessionStorage.removeItem(RELOAD_MARK_KEY)
+  } catch {
+    // no-op en entornos sin sessionStorage
+  }
 }
