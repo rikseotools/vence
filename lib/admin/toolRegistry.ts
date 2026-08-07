@@ -625,6 +625,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  audit_corpus_ajeno: {
+    titulo: '¿Los documentos que respaldan una convocatoria salen del sitio de su fuente oficial?',
+    ruta: 'scripts/convocatoria/audit-corpus-ajeno.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      '`npm run audit:corpus-ajeno [-- --slug X] [--todo] [--json]`. SOLO LEE. Núcleo puro en ' +
+      '`lib/convocatoria/corpusAjeno.cjs` (7 tests). Nace de [T-654]: Cádiz tenía 8 documentos ' +
+      'clonados de la carpeta `admto_a` (Administrativo C1, OTRO cuerpo) con su `programa_url` ' +
+      'apuntando a `aux_administrativo`, y publicaba plazas respaldadas por otra oposición a 171 ' +
+      'usuarios. **Punto ciego que cubre:** `plazas_afirmadas_sin_documento` y ' +
+      '`plazas_reserva_sin_declarar` miraban esa cifra y avisaron con razón, pero **ninguno pregunta ' +
+      'de QUIÉN son los documentos** — señalaban el síntoma. ⚠️ **El primer diseño (comparar el TEXTO: ' +
+      '¿los documentos nombran el cuerpo?) se descartó por la medición: 70 de 125 activas daban ' +
+      '«ajeno», el 56 %**, porque nuestro `nombre` es comercial y el boletín usa la denominación ' +
+      'oficial («Auxiliar Administrativo del Estado» es «Cuerpo General Auxiliar…»: 422 apariciones de ' +
+      '«auxiliar» y CERO de la frase). Lo que delató a Cádiz fue la RUTA, y eso es lo que mide. ' +
+      'Medido: 163 convocatorias con fuente oficial → 42 juzgables → 4 hallazgos, 2 ciertos (auxiliar-enfermeria-geriatria-diputacion-cadiz, ' +
+      'misma contaminación de `admto_a`; auxiliar-administrativo-ayuntamiento-valladolid, con ' +
+      'documentos de «técnico de administración general» y «trabajador social») + 2 de ruido de ' +
+      'portal. Precisión ≈50 % → BAJO DEMANDA, no pinga el badge (mismo criterio que ' +
+      '`audit:vinculo-vecino` e `audit:instrumento-derivado`).',
+  },
   sim_baja_emails_vivo: {
     titulo: 'Comprobar que el SERVIDOR DESPLEGADO respeta la casilla de la baja masiva de emails',
     ruta: 'scripts/sim/sim-baja-emails-vivo.cjs',

@@ -512,3 +512,65 @@ persigue desde el principio.
 - **NUNCA** fiarse de una propuesta sin mirar sus números. La primera versión del lector propuso 3 «limpias»
   y **las 3 eran coincidencia aritmética** entre fechas de un índice de procesos. Por eso el informe imprime
   la cuenta que casó, y por eso una fila de números sin vocabulario de reserva al lado ya no es evidencia.
+
+---
+
+## 8. ¿De QUIÉN son los documentos? Corpus de otro proceso (`corpus_ajeno`)
+
+**Frase-gatillo:** *"revisa los corpus de convocatoria"*. **Comando:** `npm run audit:corpus-ajeno`
+(`-- --slug X`, `--todo`, `--json`). **BAJO DEMANDA, no pinga el badge.**
+
+Los apartados 1-7 preguntan si el papeleo está completo y si las cifras están respaldadas. Éste
+pregunta lo que ninguno preguntaba: **si los documentos que respaldan la convocatoria son SUYOS**.
+
+El caso que lo motiva (T-654, 07/08/2026): `auxiliar-administrativo-diputacion-cadiz` —Auxiliar, C2—
+tenía **8 documentos clonados de la carpeta `admto_a`** del portal de la Diputación, que es el proceso
+de **Administrativo (C1)**, otro cuerpo y otras plazas. Su `programa_url` apuntaba a
+`aux_administrativo`. La landing publicaba una cifra de plazas cuyo respaldo documental era de otra
+oposición, a 171 usuarios.
+
+**El punto ciego, que es lo que hace falta entender.** Dos detectores miraban esa misma cifra y los
+dos avisaron **con razón**: `plazas_afirmadas_sin_documento` («la cifra no está en ningún documento»)
+y `plazas_reserva_sin_declarar` («el cupo no está declarado»). Los dos señalaban el síntoma. Ninguno
+pregunta de quién son los documentos, así que la causa —un corpus entero equivocado— no la miraba
+nadie, y se podía «resolver» cada aviso por separado dejando la contaminación intacta.
+
+### ⚠️ Por qué NO compara textos (medido, para que no se reintente)
+
+La idea obvia es preguntar si los documentos **nombran el cuerpo** de la oposición. Se implementó y se
+midió sobre las **125 activas: 70 daban «ajeno», el 56 %**. No era cuestión de umbral sino de premisa:
+**nuestro `nombre` es comercial y el boletín usa la denominación oficial**. Nuestro «Auxiliar
+Administrativo del Estado» es, en el BOE, «Cuerpo General **Auxiliar** de la Administración del
+Estado» — 422 apariciones de «auxiliar» y CERO de la frase buscada. Subir el umbral solo habría
+escondido el problema.
+
+Lo que delató a Cádiz no fue el texto: fue **la ruta**. Por eso el detector compara el **segmento de
+carpeta** del `programa_url` con el de cada documento, descartando a los dos lados los genéricos del
+portal (`pdf`, `files`, `ficheros`, `diario_boe`, ids numéricos). Sin ese filtro salían 12 hallazgos
+de 117 y la mitad comparaban «pdf» con «files».
+
+### Cómo leer la salida
+
+- **🔴 ajeno** — ningún documento sale de la carpeta de su fuente oficial. Es una **sospecha**:
+  medido, ≈50 % son ruido de portal (un sitio que sirve el mismo proceso desde secciones distintas).
+  De los 4 sobre 42 juzgables (de 163 convocatorias con fuente oficial), **2 eran ciertos**: `auxiliar-enfermeria-geriatria-diputacion-cadiz`
+  (la MISMA contaminación de `admto_a`) y `auxiliar-administrativo-ayuntamiento-valladolid` (con
+  documentos de «técnico de administración general» y «trabajador social»).
+- **no juzgables** — el recuento que imprime al final **es parte del resultado**: sobre esas el
+  detector no puede opinar (carpetas genéricas, o sin documentos con URL). No es que estén bien.
+
+### Qué hacer con un hallazgo
+
+1. Abrir el portal y mirar **de qué proceso** son los documentos. Ojo: el título suele ser idéntico
+   entre procesos hermanos («01. Convocatoria de plazas y bases específicas»), así que por título son
+   indistinguibles — hay que abrirlos.
+2. Si son de otro proceso: **despegarlos** de esta convocatoria y clonar los del bueno con el
+   canónico `backend/scripts/clonar-documento.ts`.
+3. Volver a correr §6 y §7: la cifra de plazas y la declaración de reserva se apoyaban en ellos.
+
+### Qué NO hacer
+
+- **NUNCA repuntar el `programa_url`** para que «cuadre» con los documentos. Eso apaga el detector y
+  deja la mentira publicada: el enlace es lo verificado contra el boletín, los documentos son lo
+  sospechoso.
+- **NUNCA** dar por buena una convocatoria «no juzgable». El detector está diciendo que no la ve.

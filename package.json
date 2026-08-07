@@ -188,7 +188,8 @@
     "sim:rescate-flota": "node scripts/flota/sim-rescate.cjs",
     "sim:presencia-flota": "node scripts/flota/sim-presencia.cjs",
     "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs",
-    "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs"
+    "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs",
+    "audit:corpus-ajeno": "node scripts/convocatoria/audit-corpus-ajeno.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
