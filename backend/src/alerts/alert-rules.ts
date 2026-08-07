@@ -752,6 +752,83 @@ export const RULE_ALERT_RULE_FAILING: AlertRule<{
   cooldownMin: 120,
 };
 
+/**
+ * La misma ceguera, pero SOSTENIDA — y eso ya no es un aviso. (07/08/2026)
+ *
+ * ── POR QUÉ NO BASTABA CON `alert_rule_failing` ────────────────────────────────────────────
+ * Aquella dispara con 3 fallos en 1 h y es `warn`, lo cual es CORRECTO para su causa típica: la
+ * query se pasa del `statement_timeout` y a la siguiente pasada va bien. Un `critical` ahí sería
+ * ruido.
+ *
+ * Pero el 06/08 la regla `drenaje_atrasado` empezó a fallar a las 22:30 con un error de código
+ * (`b.ts.getTime is not a function`) y siguió fallando **201 evaluaciones seguidas, 17 horas**.
+ * Durante todo ese tiempo el drenaje no lo vigilaba nadie, y el aviso siguió siendo un `warn`
+ * entre otros veinte. Un timeout puntual y una regla rota se ven IGUAL en la primera hora; lo que
+ * los separa es que la rota no se arregla sola.
+ *
+ * Así que: primera hora, aviso. Seis horas seguidas fallando, `critical` — porque a esas alturas
+ * ya no es «puede que se recupere», es «llevamos media jornada sin vigilar eso y nadie lo ha
+ * mirado». Es la misma forma que ya usa `endpoint_latency_sustained`: el mismo hecho, medido en
+ * el tiempo, cambia de categoría.
+ *
+ * Se mira la ANTIGÜEDAD del primer fallo, no el número: 201 fallos en 20 minutos es una ráfaga y
+ * se recupera; 20 fallos repartidos en 17 horas es una regla muerta.
+ */
+export const RULE_ALERT_RULE_FAILING_SUSTAINED: AlertRule<{
+  rule: string;
+  fallos: number;
+  horas: number;
+  ultimaCausa: string | null;
+}> = {
+  name: 'alert_rule_failing_sustained',
+  severity: 'critical',
+  query: sql`
+    SELECT metadata->>'rule' AS rule,
+           COUNT(*)::int AS fallos,
+           ROUND(EXTRACT(EPOCH FROM (NOW() - MIN(ts))) / 3600)::int AS horas,
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "ultimaCausa"
+    FROM observable_events
+    WHERE event_type = 'alert_rule_failed'
+      AND ts > NOW() - INTERVAL '48 hours'
+    GROUP BY metadata->>'rule'
+    HAVING MIN(ts) < NOW() - INTERVAL '6 hours'
+       AND MAX(ts) > NOW() - INTERVAL '1 hour'
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => ({
+    title: `${rows.length} regla(s) llevan HORAS sin vigilar nada`,
+    body:
+      `Esto ya no es un timeout puntual: estas reglas fallan desde hace horas y siguen fallando ` +
+      `ahora. Lo que cubren lleva todo ese tiempo SIN VIGILANCIA, y además ensucian ` +
+      `\`alert_rule_failed\`, donde tapan a cualquier otra regla que empiece a fallar.\n\n` +
+      rows
+        .map(
+          (r) =>
+            `  - ${r.rule}: ${r.fallos} fallos, lleva ${r.horas} h así\n` +
+            `      causa: ${r.ultimaCausa ?? '(sin detalle)'}`,
+        )
+        .join('\n\n') +
+      `\n\nCASO QUE LA ESTRENA (06-07/08/2026): \`drenaje_atrasado\` falló 201 veces seguidas ` +
+      `durante 17 h con «b.ts.getTime is not a function» — un error de CÓDIGO, no de carga: la ` +
+      `regla asumía que \`ts\` es un Date y el driver lo entrega como cadena. Se estrenó y se ` +
+      `quedó ciega el mismo día. Su hermana \`alert_rule_failing\` sí avisó, pero como \`warn\`, ` +
+      `y ahí se quedó.\n\n` +
+      `SI LA CAUSA ES UN ERROR DE JS (y no un timeout), el arreglo es de código:\n` +
+      `  SELECT metadata->>'rule', count(*), max(error_message) FROM observable_events\n` +
+      `  WHERE event_type='alert_rule_failed' AND ts > NOW() - INTERVAL '48 hours' GROUP BY 1;\n\n` +
+      `Runbook: docs/runbooks/health-check.md`,
+    metadata: {
+      reglas: rows.map((r) => `${r.rule}:${r.horas}h`).join(','),
+      peor: rows[0]?.rule,
+      horas: rows[0]?.horas,
+    },
+    fingerprint: `alert_rule_failing_sustained_${rows.map((r) => r.rule).join(',')}`,
+  }),
+  // 12 h: es `critical` y hay que arreglarlo, pero repetirlo cada hora entierra a las demás — que
+  // es exactamente el daño que esta regla denuncia.
+  cooldownMin: 720,
+};
+
 /** Deploy fallido — alertar inmediato si aparece event deploy_failed. */
 export const RULE_DEPLOY_FAILED: AlertRule<{
   n: number;
@@ -6775,6 +6852,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Quién vigila al vigilante (2026-07-27): una regla que revienta no vigila
   // nada, y hasta hoy eso solo se veía en los logs.
   RULE_ALERT_RULE_FAILING as AlertRule,
+  // Y su escalón: la de arriba avisa en la primera hora (casi siempre un timeout que se cura
+  // solo); ésta grita cuando la ceguera lleva 6 h y sigue. Las dos hacen falta — con una sola,
+  // o se pierde el aviso temprano o 17 h sin vigilancia se leen como un `warn` más (07/08/2026).
+  RULE_ALERT_RULE_FAILING_SUSTAINED as AlertRule,
   RULE_DEPLOY_FAILED as AlertRule,
   RULE_CRON_FAILURE_BURST as AlertRule,
   // T-307: el cron que corre y FALLA tick tras tick. `cron_failure_burst` exige 3 fallos
