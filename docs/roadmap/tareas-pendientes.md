@@ -6120,7 +6120,7 @@ esas preguntas no le habrían salido nunca.
 - **Familias medibles identificadas hasta ahora** (las tres salieron de impugnaciones reales de hoy): (a) **artículo citado ≠ artículo vinculado**; (b) **dos opciones verdaderas**, detectable porque la propia explicación admite que un distractor «es cierto» y lo descarta por «no responde a la pregunta» (2 casos en todo el banco, ya cerrados); (c) **cita literal que no está en el artículo**, que ya tiene su propio barrido (`npm run citas:barrido`).
 - **Ojo con la tentación de ponerlo en el badge:** el patrón (a) tiene 1.082 candidatos en bruto y ~377 acotados, con falsos positivos legítimos. Un detector así en el panel se ignora en dos semanas. La forma correcta es que aparezca **en el momento en que se está cerrando la impugnación**, que es cuando alguien tiene el contexto para juzgarlo.
 
-### [T-388] 🟠 [ABIERTO 31/07] Falta la vía para CONCEDER el euro a mano: existe `skipRewardReason` pero no su simétrico
+### [T-388] 🟠 [ABIERTO 31/07] 🙋 ENTREGADA 07/08 — Falta la vía para CONCEDER el euro a mano: existe `skipRewardReason` pero no su simétrico
 
 - **Lo pide Manuel (31/07):** *«hay que revisar lo de la recompensa cuando el motivo es "otro", algunos casos sí lo merecen»*. Y tiene razón, pero **la política no está mal — le falta la otra mitad**.
 - **Lo que ya está bien y NO hay que tocar:** `lib/referrals/disputeRewardPolicy.js` retiró el automatismo a los motivos subjetivos (`otro`, `explicacion_confusa`, `explicacion_mejorable`) con datos: de 322 impugnaciones aceptadas en 90 días, **195 (61%) eran de motivo subjetivo** y **una sola usuaria concentraba 70**. Encima el manual (§7.3) obliga a mejorar toda explicación mejorable, así que `explicacion_confusa` era un camino casi garantizado a `resolved`: 10 €/mes por persona sin error nuestro. Reabrir el automatismo para `otro` repetiría exactamente eso.
@@ -6131,6 +6131,35 @@ esas preguntas no le habrían salido nunca.
   - La diferencia entre los dos es exactamente la que el sistema no sabe ver: **uno encontró algo verificable y el otro no**, y ambos habían elegido la misma etiqueta.
 - **Arreglo propuesto (simétrico y sin reabrir el agujero):** añadir `grantRewardReason` a `/api/v2/dispute/resolve` —gemelo de `skipRewardReason`— y exponerlo en `scripts/impugnaciones/cerrar.ts` como `--con-recompensa "<motivo>"`. El automatismo sigue retirado; lo que cambia es que **conceder deja de ser un trabajo aparte y pasa a ser un parámetro que queda registrado** (como `dispute_reward_skipped`, su reflejo: `dispute_reward_granted`).
 - **Cuidado con dos cosas al implementarlo:** (1) el tope de 10 €/mes por usuario debe seguir aplicándose también a las concesiones manuales, o el parámetro se convierte en la puerta trasera de lo que se cerró en julio; (2) **NUNCA mencionar la recompensa en el mensaje al usuario** — el badge 🎁 ya se lo comunica, y prometerla por escrito convierte una queja en una factura.
+
+- **✅ IMPLEMENTADO 07/08 tal cual lo pedía la ficha, sin desviarme del arreglo propuesto:**
+  - `lib/referrals/logic.ts`: `shouldRewardResolvedDispute` admite `forceRewardable` — salta SOLO la
+    condición del tipo de impugnación. Premium, origen humano, `resolved`, tope mensual y
+    anti-duplicado siguen intactos (verificado con tests: free con `forceRewardable` sigue sin
+    cobrar, `ai_auto` sigue sin cobrar, tope mensual sigue cortando).
+  - `lib/referrals/disputeReward.ts`: `maybeRewardResolvedDispute` propaga `forceRewardable`.
+  - `lib/api/v2/dispute/schemas.ts`: `grantRewardReason` (mismo contrato que `skipRewardReason`,
+    mínimo 10 caracteres) + `.refine()` que rechaza con 400 si vienen los dos parámetros a la vez
+    (uno quita, el otro concede — no hay ganador implícito).
+  - `lib/api/v2/dispute/queries.ts`: con `grantRewardReason`, `resolveDispute` llama a
+    `maybeRewardResolvedDispute({..., forceRewardable: true})` y emite `dispute_reward_granted`
+    con el **resultado real** (`granted`/`reason`), no solo "se pidió" — puede seguir sin conceder
+    si el usuario no es premium o ya tocó el tope ese mes.
+  - `scripts/impugnaciones/cerrar.ts`: `--con-recompensa "<motivo>"`, con el mismo chequeo de
+    incompatibilidad en el propio CLI (además del 400 del endpoint, para no gastar el viaje de red).
+  - Manual actualizado (`docs/maintenance/impugnaciones-claude-code.md`, checklist + §6.bis) con
+    los dos casos reales de esta ficha (Cristina/Mario) como ejemplo de cuándo sí y cuándo no procede.
+  - **Capas:** 17 tests nuevos (política pura en `logic.ts`, safety de `maybeRewardResolvedDispute`
+    con `forceRewardable`, wiring completo en `resolveDispute` — incluye que emite el evento con el
+    resultado real y no con el simple hecho de haberlo pedido —, validación Zod en la ruta HTTP,
+    parseo del flag en el CLI). Suite completa `referrals`+`dispute`+`impugnaciones`: **622 verdes**,
+    sin romper ninguno de los 605 que ya había. `tsc --noEmit` limpio.
+  - **NO usado para nada**, solo escrito y probado: este worker no tiene escritura de negocio ni
+    puede autenticarse como admin, así que no he podido ejercitarlo contra RDS de verdad ni ver el
+    endpoint responder en vivo — la cobertura es de tests (mocks), no de integración contra BD real.
+  - Rama `flota/T-388-conceder-recompensa-a-mano` (commit `c5669ebf5`), pusheada, no mergeada.
+  - **Para cerrar:** revisar el diff (toca dinero real) y, tras merge+deploy, probar `--con-recompensa`
+    con una impugnación `otro` real de bajo riesgo para confirmar el flujo end-to-end.
 
 ### [T-390] 🟡 [ABIERTO 31/07] 791 temas activos sin descripción en 23 oposiciones: el trinquete de calidad del temario ya está desbordado
 

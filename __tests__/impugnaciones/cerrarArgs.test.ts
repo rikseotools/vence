@@ -37,6 +37,18 @@ describe('cerrar.ts — reparto de argumentos', () => {
     expect(a.aplicar).toBe(true)
   })
 
+  it('recoge el simétrico --con-recompensa (T-388), con el mismo motivo obligatorio', () => {
+    const a = parsearDispute([
+      'id', '--estado', 'resolved', '--mensaje', 'm.txt',
+      '--con-recompensa', 'motivo otro que sí encontró un error real',
+    ])
+    expect(a.conRecompensa).toBe('motivo otro que sí encontró un error real')
+    // Y no se traga el flag siguiente, igual que su hermano.
+    const b = parsearDispute(['id', '--estado', 'resolved', '--mensaje', 'm.txt', '--con-recompensa', '--aplicar'])
+    expect(b.conRecompensa).toBeNull()
+    expect(b.aplicar).toBe(true)
+  })
+
   it('recoge el escape de la puerta del embudo (T-609), separado de los otros dos', () => {
     const a = parsearDispute([
       'id', '--estado', 'resolved', '--mensaje', 'm.txt',
