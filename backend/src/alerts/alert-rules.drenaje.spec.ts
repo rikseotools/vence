@@ -148,6 +148,102 @@ describe('diagnosticarDrenaje (T-613)', () => {
   });
 });
 
+/**
+ * `ts` está tipado `Date` en `DrenajeRun`, pero eso es lo que promete el TIPO, no lo
+ * que entrega el DRIVER. Reproducido en producción el 07/08 con la regla YA
+ * desplegada: `b.ts.getTime is not a function` mató `drenaje_atrasado` la primera
+ * noche que tenía algo real que juzgar. Causa confirmada llamando a
+ * `db.execute(sql\`...\`)` (drizzle-orm/postgres-js) contra RDS: a diferencia de
+ * usar el cliente postgres-js directamente (que SÍ parsea a `Date`), `.execute()`
+ * devuelve un `timestamptz` como STRING — `'2026-08-07 06:18:49.668061+00'`, no un
+ * objeto `Date`. El resto del fichero ya sabía esto (`kindsSinEvaluarBackend` línea
+ * ~1014, `asDate`/`normalizarFecha` 231/566); a `diagnosticarDrenaje` le faltaba.
+ */
+describe('diagnosticarDrenaje — `ts` como lo entrega el driver de VERDAD, no el tipo (T-613)', () => {
+  // OJO con este tipo de test: `diagnosticarDrenaje` agrupa por `endpoint` ANTES de
+  // ordenar, y `Array.prototype.sort` con 0 o 1 elemento NUNCA llama al comparador
+  // (V8 lo salta). Un test con una sola fila —o con una fila por endpoint distinto—
+  // pasaría igual con el bug puesto: hace falta ≥2 filas del MISMO endpoint para que
+  // `.sort((a,b) => b.ts.getTime() ...)` se ejecute de verdad. Es justo el hueco por
+  // el que la primera versión de este test coló en verde con el bug todavía activo.
+  const filaString = (
+    endpoint: string,
+    isoConEspacio: string,
+    remaining: number,
+  ) => ({
+    endpoint,
+    // Formato EXACTO capturado en producción vía db.execute(sql`SELECT ts ...`):
+    // un timestamptz vuelve como STRING, no como Date.
+    ts: isoConEspacio as unknown as Date,
+    procesadas: 0,
+    remaining: { observable_events: remaining },
+  });
+
+  it('REPRODUCE el fallo real: 2 pasadas del MISMO cron con `ts` string no revientan al ordenar', () => {
+    const filas = [
+      filaString(
+        'telemetry-retention',
+        '2026-08-06 04:10:00.000000+00',
+        300_000,
+      ),
+      filaString(
+        'telemetry-retention',
+        '2026-08-07 04:10:53.049061+00',
+        200_000,
+      ),
+    ];
+    expect(() => diagnosticarDrenaje(filas)).not.toThrow();
+    // Y no solo «no explota»: tiene que juzgar la ÚLTIMA (07/08), no la primera que
+    // encuentre — que es lo que demuestra que el string SÍ se comparó bien como fecha.
+    const d = diagnosticarDrenaje(filas);
+    expect(d).toHaveLength(1);
+    expect(d[0].atrasado).toBe(200_000);
+  });
+
+  it('3 pasadas string en desorden temporal: sigue detectando `no_alcanza` con la más reciente', () => {
+    const filas = [
+      filaString(
+        'archive-interactions',
+        '2026-08-05 03:30:00.000000+00',
+        ATRASO_TOPE_ALERTA,
+      ),
+      filaString(
+        'archive-interactions',
+        '2026-08-07 03:30:00.000000+00',
+        ATRASO_TOPE_ALERTA,
+      ),
+      filaString(
+        'archive-interactions',
+        '2026-08-06 03:30:00.000000+00',
+        ATRASO_TOPE_ALERTA,
+      ),
+    ];
+    // Las tres tienen `procesadas: 0`, así que cualquiera de las tres ya dispara
+    // `no_drena` sobre la última — lo que aquí se fija es que "última" se decide bien
+    // (07/08, la del medio en el array) pese a llegar todas como string.
+    const d = diagnosticarDrenaje(filas);
+    expect(d).toHaveLength(1);
+    expect(d[0].motivo).toBe('no_drena');
+  });
+
+  it('mezcla de Date real (tests/mocks antiguos) y string (driver real): la fecha MANDA, no el orden de llegada', () => {
+    // Fixture a propósito discriminante: la fila VIEJA sí dispararía (no_drena) y la
+    // NUEVA no (ya se resolvió, 0 pendientes). Si `.sort` comparara mal Date-vs-string
+    // (p.ej. NaN en la resta) y se quedara con la vieja como "última", este test lo
+    // pillaría en rojo — con la comparación correcta, manda la reciente y calla.
+    const filas = [
+      {
+        endpoint: 'telemetry-retention',
+        ts: new Date('2026-08-05T04:10:00Z'),
+        procesadas: 0,
+        remaining: { observable_events: 500_000 },
+      },
+      filaString('telemetry-retention', '2026-08-07 04:10:00.000000+00', 0),
+    ];
+    expect(diagnosticarDrenaje(filas)).toEqual([]);
+  });
+});
+
 describe('la regla, cableada', () => {
   it('el tope de la alerta es el MISMO que el de los dos drenadores', () => {
     // Si divergen, «pegado al tope» deja de significar nada: la alerta leería un
@@ -174,8 +270,10 @@ describe('la regla, cableada', () => {
         remaining: { observable_events: 200_000 },
       }),
     ];
-    expect(RULE_DRENAJE_ATRASADO.shouldFire(rows, undefined as never)).toBe(true);
-    const n = RULE_DRENAJE_ATRASADO.buildNotification(rows, undefined as never);
+    expect(RULE_DRENAJE_ATRASADO.shouldFire(rows, undefined as never)).toBe(
+      true,
+    );
+    const n = RULE_DRENAJE_ATRASADO.buildNotification(rows, undefined);
     expect(n.title).toContain('drenador');
     expect(n.body).toContain('telemetry-retention');
     expect(n.body).toContain('observable_events');

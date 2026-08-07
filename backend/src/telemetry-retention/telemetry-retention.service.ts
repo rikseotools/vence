@@ -15,6 +15,20 @@ export interface TelemetryRetentionResult {
    * inadvertido. La regla de alerta `drenaje_atrasado` mira este campo.
    */
   remaining: Record<string, number>;
+  /**
+   * Tablas cuyo `VACUUM (ANALYZE)` falló esta pasada (vacío si todo fue bien).
+   *
+   * Reproducido en producción (07/08): un `VACUUM (ANALYZE) observable_events` justo
+   * después de borrar ~2,6 M filas de golpe superó el `statement_timeout` de 30 s del
+   * pool (`connection.statement_timeout` en `database.module.ts`) — VACUUM sobre una
+   * tabla de 6,9 GB con millones de tuplas recién muertas no siempre entra en 30 s. Sin
+   * este try/catch, esa excepción tumbaba TODO `run()` — incluido el cálculo de
+   * `remaining`, que ocurre DESPUÉS — y el cron reportaba `status: 'failure'` sin ni
+   * rastro de que el borrado (lo que de verdad importa) había funcionado. El VACUUM es
+   * higiene (espacio reusable + stats frescas para el planner); perderlo una noche no
+   * es grave, perder la MEDIDA de si se está drenando sí lo es.
+   */
+  vacuumFailed: string[];
 }
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
@@ -62,6 +76,7 @@ export class TelemetryRetentionService {
       validationErrorLogsDeleted: 0,
       batches: 0,
       remaining: {},
+      vacuumFailed: [],
     };
 
     // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
@@ -82,11 +97,18 @@ export class TelemetryRetentionService {
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
     // y refresca stats para que los planes (p.ej. el GROUP BY del panel admin) no
     // degraden. No FULL a propósito: no bloquea lecturas/escrituras.
+    //
+    // try/catch a propósito, NO dejar que se propague: un VACUUM que se pasa del
+    // `statement_timeout` (30 s, sobre una tabla de varios GB recién vaciada de
+    // millones de filas — reproducido en producción el 07/08) no puede tirar todo
+    // `run()` y perderse el conteo de `remaining` que se calcula DESPUÉS. Si falla,
+    // el autovacuum de Postgres acaba haciendo el mismo trabajo por su cuenta más
+    // tarde — lo único que se pierde es el refresco INMEDIATO de stats.
     if (result.observableEventsDeleted > 0) {
-      await this.db.execute(sql`VACUUM (ANALYZE) observable_events`);
+      await this.vacuum('observable_events', result);
     }
     if (result.validationErrorLogsDeleted > 0) {
-      await this.db.execute(sql`VACUUM (ANALYZE) validation_error_logs`);
+      await this.vacuum('validation_error_logs', result);
     }
 
     // Lo que queda para la próxima noche. Se mide DESPUÉS de podar, a propósito:
@@ -101,6 +123,26 @@ export class TelemetryRetentionService {
     );
 
     return result;
+  }
+
+  /**
+   * `VACUUM (ANALYZE)` de una tabla, tolerante a fallo: registra en `result.vacuumFailed`
+   * y sigue en vez de tirar `run()` entero. `table` es un literal controlado por el
+   * código (nunca input externo) → `sql.raw` es seguro aquí.
+   */
+  private async vacuum(
+    table: string,
+    result: TelemetryRetentionResult,
+  ): Promise<void> {
+    try {
+      await this.db.execute(sql`VACUUM (ANALYZE) ${sql.raw(table)}`);
+    } catch (error) {
+      result.vacuumFailed.push(table);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `VACUUM (ANALYZE) ${table} falló (no bloqueante): ${msg}`,
+      );
+    }
   }
 
   /**

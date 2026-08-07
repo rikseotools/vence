@@ -2064,7 +2064,16 @@ export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
 
   const salida: DrenajeDiagnostico[] = [];
   for (const [endpoint, lista] of porEndpoint) {
-    const ordenadas = [...lista].sort((a, b) => b.ts.getTime() - a.ts.getTime());
+    // `ts` está tipado `Date`, pero `db.execute(sql\`...\`)` de Drizzle (a diferencia de
+    // llamar a postgres-js directamente) NO aplica los parsers de tipo de postgres-js:
+    // un `timestamptz` vuelve como STRING (`'2026-08-07 06:18:49.668061+00'`), no como
+    // `Date`. Reproducido en producción (07/08): `b.ts.getTime is not a function` mató
+    // esta regla justo la noche en que más falta hacía. Mismo guardarraíl que ya usan
+    // `kindsSinEvaluarBackend` (línea ~1014) y `normalizarFecha`/`asDate` (231, 566) —
+    // aquí faltaba.
+    const msDe = (r: DrenajeRun) =>
+      r.ts instanceof Date ? r.ts.getTime() : Date.parse(String(r.ts));
+    const ordenadas = [...lista].sort((a, b) => msDe(b) - msDe(a));
     const ultima = ordenadas[0];
     // Sin `remaining` no se puede juzgar: es una versión anterior al deploy de
     // T-613. Callar es correcto — inventar un veredicto sin el dato, no.

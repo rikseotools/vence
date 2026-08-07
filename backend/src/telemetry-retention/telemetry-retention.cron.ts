@@ -63,6 +63,10 @@ export class TelemetryRetentionCron {
           // propósito: «borradas» solo se puede interpretar junto a «pendientes»
           // (T-613). Lo vigila la regla `drenaje_atrasado`.
           remaining: result.remaining,
+          // Tablas cuyo VACUUM (ANALYZE) falló esta pasada (vacío = todo bien). El
+          // borrado sigue siendo `status: 'success'` aunque esto no esté vacío: VACUUM
+          // es higiene, no la medida — ver el comentario en TelemetryRetentionService.
+          vacuumFailed: result.vacuumFailed,
         },
       });
     } catch (error) {
