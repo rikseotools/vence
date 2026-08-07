@@ -72,6 +72,10 @@ const DEBE_LEER = [
   // tests). Ver 20260807_rls_oep_detection_signals_lector.sql.
   ['oep_detection_signals', 'las señales del radar de OEP pendientes de revisar'],
   ['detection_sources', 'qué fuentes vigila el radar y si están sanas (salud del radar)'],
+  // [T-638] fuente única de verdad del audit trail de lifecycle (CLAUDE.md) — sin esto un
+  // worker no puede COMPROBAR que una transición pasó de verdad, solo fiarse de la prosa de
+  // otra sesión. Ver 20260807_rls_question_lifecycle_history_lector.sql.
+  ['question_lifecycle_history', 'el audit trail de transiciones de estado de las preguntas'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
