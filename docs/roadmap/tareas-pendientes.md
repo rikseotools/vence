@@ -1119,8 +1119,26 @@ esto entra como `auth`/`request_completed`, que ya tienen dueño. Cerrar el inci
   `/api/auth/token` acumule **6.333 respuestas 401 con solo 27 usuarios** (bucle de reintento), aunque
   esa serie ya venía alta de antes y hay que comprobar si es el mismo fallo o dos distintos.
 
+**EL DAÑO ES MAYOR QUE «ESTADÍSTICAS A 0» — dos avisos más, del MISMO incidente (07/08, 21:45):**
+`rbsc87@gmail.com` (premium, Aux. Admin. Diputación de León, **alta hace 3 días**) abrió DOS feedbacks
+en una hora (`86071bf9`, `3bcbd41b`):
+> *«Hago test pero no se me permite ver la corrección de los mismos, ni los resultados que obtengo»*
+> *«la página no responde cuando quiero corregir mis test, lanza el mensaje de que no tengo conexión y
+> hubo un problema con el envío de la información cuando la conexión es perfecta»*
+
+Su rastro es el mismo 401 (42× `/api/exam/pending`, 36× `/api/v2/user-stats`) **más 16
+`client_error · ExamLayout`**. O sea: **el MODO EXAMEN no se puede corregir**. No es un panel de
+estadísticas que se ve vacío — es alguien que hace un test entero y no puede saber qué ha acertado.
+Y el fallo se le presenta como *«no tienes conexión»*, así que la persona cree que es culpa suya.
+
+Con esto son **tres testigos** (Laura + este usuario ×2) sobre 248 afectados medidos: la mayoría no
+escribe, simplemente lo sufre. Un premium de tres días de antigüedad es además el peor perfil posible
+para que le pase esto.
+
 **PENDIENTE (sesión propia, es fuego):** seguir por `verifyAuth` / `getAuthHeaders()` y por
 `/api/auth/token` — por qué el cliente se queda sin token válido a partir de las 15:10 UTC del 07/08.
+Mirar también qué hace `ExamLayout` ante un 401, porque lo está traduciendo a «sin conexión».
+Los tres feedbacks quedan SIN CONTESTAR a propósito: no se les puede decir nada hasta arreglarlo.
 Y responder a Laura, que espera por esto Y por unas recompensas (ver abajo).
 
 **Atado a `8bd13f67`** (Laura): su segunda queja es que la impugnación `a1a6e998` y el bug `7847ff3e`,
