@@ -21,9 +21,9 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 import postgres from 'postgres'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { parseBoeSections, parseSeccionesSubsecciones, rubricaVigente } = require('../../lib/laws/parseBoeSections')
+const { parseBoeSections, parseBoeSectionsMultinivel, parseSeccionesSubsecciones, rubricaVigente } = require('../../lib/laws/parseBoeSections')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { classifyTitleBoundary, resumenBarrida, resolverNivelDecisivo } = require('../../lib/laws/scopeTitleBoundary')
+const { classifyTitleBoundary, classifyByRubricaOnly, resumenBarrida, resolverNivelDecisivo } = require('../../lib/laws/scopeTitleBoundary')
 type Seccion = { num: string; from: number; to: number; blockId?: string; rubrica?: string }
 type Bloque = { id: string; label: string }
 
@@ -47,6 +47,73 @@ async function estructuraBoe(bid: string): Promise<Seccion[]> {
   const secs: Seccion[] = parseBoeSections(bl).secciones
   structCache.set(bid, secs)
   return secs
+}
+
+/**
+ * Nivel CAPÍTULO, pero SOLO cuando vive DENTRO de un título (T-467, 07/08/2026) — AGRUPADO
+ * por su título padre.
+ *
+ * `estructuraBoe()` usa `parseBoeSections` (nivel ÚNICO: título si la ley lo tiene, si no
+ * capítulo) — así que en una ley con AMBOS niveles, el capítulo queda completamente invisible
+ * para el runner: el título se ve como un rango sin partir, y el defecto real (un capítulo
+ * dentro de ese título que el epígrafe no nombra) no lo prueba nadie. Caso real: LO 3/2018
+ * (auxiliar_administrativo_universidad_carlos_iii T6), Título V con Capítulos I-IV — el runner
+ * veía "Título V: 28-39" de una pieza y el Capítulo I (28-32, no nombrado por el epígrafe) se
+ * colaba entero.
+ *
+ * NUNCA se prueban todos los capítulos de la ley en una sola llamada: los números de capítulo
+ * son ROMANOS, igual que los de título, y se REINICIAN en cada título ("Título V, Capítulo I" y
+ * "Título III, Capítulo I" son el mismo num='I'). Medido en directo (T-467): pasar todos los
+ * capítulos juntos hacía que un "Título III" citado por NÚMERO en el epígrafe (para OTRA
+ * materia) casara por casualidad con "Capítulo III" de un título totalmente distinto —
+ * `allowedTitles` mezcla dos espacios de numeración que no tienen nada que ver. Aislar por
+ * título padre, y clasificar cada grupo con `classifyByRubricaOnly` (NUNCA
+ * `classifyTitleBoundary`, que sí compara por número) es lo único que evita la colisión.
+ *
+ * Cuando capítulo es el ÚNICO nivel que existe (sin título por encima), `estructuraBoe()` YA lo
+ * devuelve como nivel externo — por eso aquí se exige que `parseBoeSectionsMultinivel` tenga
+ * DOS niveles (título Y capítulo) antes de tratarlo como un nivel aparte: si solo se probara
+ * "capítulo" sin más, una ley con capítulo como único nivel se testearía DOS VECES (aquí y en
+ * `classifyConRubrica`), y `resolverNivelDecisivo` no distingue duplicados de niveles genuinos.
+ */
+type GrupoCapitulo = { tituloNum: string; capitulos: Seccion[] }
+const capituloAnidadoCache = new Map<string, GrupoCapitulo[]>()
+async function gruposCapituloPorTitulo(bid: string): Promise<GrupoCapitulo[]> {
+  if (capituloAnidadoCache.has(bid)) return capituloAnidadoCache.get(bid)!
+  const bl = await bloquesBoe(bid)
+  const { niveles } = parseBoeSectionsMultinivel(bl)
+  const titulo = niveles.find((n: { tipo: string }) => n.tipo === 'titulo')
+  const capitulo = niveles.find((n: { tipo: string }) => n.tipo === 'capitulo')
+  const grupos: GrupoCapitulo[] = []
+  if (titulo && capitulo) {
+    for (const t of titulo.secciones as Seccion[]) {
+      const propios = (capitulo.secciones as Seccion[]).filter((c) => c.from >= t.from && c.to <= t.to)
+      if (propios.length) grupos.push({ tituloNum: t.num, capitulos: propios })
+    }
+  }
+  capituloAnidadoCache.set(bid, grupos)
+  return grupos
+}
+
+/**
+ * classify de capítulo ANIDADO: cada grupo (capítulos de UN título) se enriquece con su
+ * rúbrica y se clasifica por SEPARADO con `classifyByRubricaOnly` — nunca por número (ver el
+ * porqué en `gruposCapituloPorTitulo`). Se fusionan los overflow de todos los grupos del tema
+ * en un único resultado, con la MISMA forma que `classifyTitleBoundary` ({applicable, overflow})
+ * para que el resto del pipeline (impresión, `resolverNivelDecisivo`) no distinga esta llamada
+ * de las demás.
+ */
+async function classifyCapituloAnidado(bid: string, epigrafe: string, grupos: GrupoCapitulo[], arts: string[]) {
+  const overflow: { article: number; titulo: string }[] = []
+  let applicable = false
+  for (const g of grupos) {
+    const enriched: Seccion[] = []
+    for (const s of g.capitulos) enriched.push({ ...s, rubrica: s.blockId ? await rubricaBoe(bid, s.blockId) : '' })
+    const r = classifyByRubricaOnly(epigrafe, enriched, arts)
+    if (r.applicable) applicable = true
+    if (r.applicable && r.overflow.length) overflow.push(...r.overflow)
+  }
+  return { applicable, overflow }
 }
 
 // Niveles de Sección/Subsección (T-333), de más fino a más grueso. Independiente de
@@ -129,6 +196,18 @@ async function classifyMultinivel(bid: string, epigrafe: string, secsExternas: S
   for (const n of seccSubsecc) { // ya vienen de más fino (subsección) a más grueso (sección)
     porNivel.push({ tipo: n.tipo, resultado: await classifySeccSubsecc(bid, epigrafe, n.secciones, arts, law) })
   }
+  // T-467: CAPÍTULO cuando vive DENTRO de un título — más fino que el nivel externo (título),
+  // más grueso que sección/subsección (que anidan dentro del capítulo). AISLADO por título
+  // padre y clasificado SOLO por rúbrica (`classifyCapituloAnidado`/`classifyByRubricaOnly`,
+  // nunca `classifyTitleBoundary`): los números romanos de capítulo y título comparten
+  // alfabeto y se reinician en cada título, así que comparar por NÚMERO produce falsos
+  // positivos/exenciones por casualidad entre títulos distintos (medido en directo). Lista
+  // vacía (capítulo = único nivel, o ley sin capítulos) → no añade nada, y el nivel externo ya
+  // lo cubre — sin duplicar el test.
+  const gruposCapitulo = await gruposCapituloPorTitulo(bid)
+  if (gruposCapitulo.length) {
+    porNivel.push({ tipo: 'capitulo', resultado: await classifyCapituloAnidado(bid, epigrafe, gruposCapitulo, arts) })
+  }
   porNivel.push({ tipo: 'externo', resultado: await classifyConRubrica(bid, epigrafe, secsExternas, arts, law) })
   const decision = resolverNivelDecisivo(porNivel)
   return { decision, porNivel }
@@ -197,9 +276,15 @@ async function main() {
         flagged++
         console.log(`🔴 T${t.topic_number} (${t.title}) · ${s.short_name}`)
         for (const p of niveladosConOverflow) {
-          const etiquetaNivel = p.tipo === 'externo' ? 'título/capítulo' : p.tipo
-          console.log(`   [nivel: ${etiquetaNivel}] permitidos: ${p.resultado.allowedTitles.join(', ') || '(por rúbrica)'}`)
-          for (const o of p.resultado.overflow) console.log(`     art.${o.article} → ${etiquetaNivel === 'título/capítulo' ? 'Título' : 'Sección/Subsección'} ${o.titulo} (NO en el epígrafe)`)
+          // 'externo' = título, o capítulo cuando ES el único nivel de la ley (parseBoeSections
+          // de nivel único). 'capitulo' (T-467) = capítulo ANIDADO dentro de un título — nivel
+          // propio, con su propia etiqueta, para no leerlo como si fuera sección/subsección.
+          const etiquetaNivel = p.tipo === 'externo' ? 'título/capítulo' : p.tipo === 'capitulo' ? 'capítulo' : p.tipo
+          const etiquetaArticulo = etiquetaNivel === 'título/capítulo' ? 'Título'
+            : etiquetaNivel === 'capítulo' ? 'Capítulo' : 'Sección/Subsección'
+          const permitidos = (p.resultado as { allowedTitles?: string[] }).allowedTitles
+          console.log(`   [nivel: ${etiquetaNivel}] permitidos: ${permitidos && permitidos.length ? permitidos.join(', ') : '(por rúbrica)'}`)
+          for (const o of p.resultado.overflow) console.log(`     art.${o.article} → ${etiquetaArticulo} ${o.titulo} (NO en el epígrafe)`)
         }
       }
     }
