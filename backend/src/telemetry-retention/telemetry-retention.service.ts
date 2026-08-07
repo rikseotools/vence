@@ -15,6 +15,14 @@ export interface TelemetryRetentionResult {
    * inadvertido. La regla de alerta `drenaje_atrasado` mira este campo.
    */
   remaining: Record<string, number>;
+  /**
+   * `true` si `observable_events` ya está particionada (T-360) y este `run()` retuvo por
+   * `DROP PARTITION` (`partman.run_maintenance_proc()`) en vez de por DELETE. `false` mientras
+   * la migración de particionado no se haya aplicado — que es el estado de HOY.
+   */
+  observableEventsPorParticion: boolean;
+  /** Particiones de `observable_events` dropeadas en este `run()` (solo tiene sentido si `observableEventsPorParticion`). */
+  observableEventsParticionesDropeadas: number;
 }
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
@@ -62,17 +70,33 @@ export class TelemetryRetentionService {
       validationErrorLogsDeleted: 0,
       batches: 0,
       remaining: {},
+      observableEventsPorParticion: false,
+      observableEventsParticionesDropeadas: 0,
     };
 
-    // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
-    // por la hora del evento: `observable_events.ts` puede venir corrupta (visto un
-    // `ts`=2067 de un cliente) y esas filas con fecha futura nunca cumplirían
-    // `ts < now()-30d` → crecerían para siempre. `created_at` no tiene ese agujero.
-    result.observableEventsDeleted = await this.purgeTable(
+    // [T-360] `observable_events` puede estar particionada por `created_at` (DROP PARTITION en vez
+    // de DELETE) o no, según si la migración de `docs/roadmap/particionado-telemetria.md` ya se
+    // aplicó. Se comprueba EN CADA `run()`, nunca se asume: así este cambio es seguro desplegarlo
+    // ANTES de que la migración exista (sigue tomando la rama DELETE de siempre) y empieza a usar
+    // `DROP PARTITION` solo, sin otro deploy, en cuanto la tabla pase a estar particionada.
+    result.observableEventsPorParticion = await this.estaParticionada(
       'observable_events',
-      'created_at',
-      (n) => (result.batches += n),
     );
+
+    if (result.observableEventsPorParticion) {
+      result.observableEventsParticionesDropeadas =
+        await this.mantenerParticiones('observable_events');
+    } else {
+      // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
+      // por la hora del evento: `observable_events.ts` puede venir corrupta (visto un
+      // `ts`=2067 de un cliente) y esas filas con fecha futura nunca cumplirían
+      // `ts < now()-30d` → crecerían para siempre. `created_at` no tiene ese agujero.
+      result.observableEventsDeleted = await this.purgeTable(
+        'observable_events',
+        'created_at',
+        (n) => (result.batches += n),
+      );
+    }
     result.validationErrorLogsDeleted = await this.purgeTable(
       'validation_error_logs',
       'created_at',
@@ -82,6 +106,9 @@ export class TelemetryRetentionService {
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
     // y refresca stats para que los planes (p.ej. el GROUP BY del panel admin) no
     // degraden. No FULL a propósito: no bloquea lecturas/escrituras.
+    // `observable_events` particionada NO necesita este VACUUM manual para la retención —
+    // `DROP PARTITION` no deja bloat que compactar — pero el autovacuum normal de Postgres
+    // sigue corriendo solo sobre las particiones activas, así que no hace falta sustituirlo.
     if (result.observableEventsDeleted > 0) {
       await this.db.execute(sql`VACUUM (ANALYZE) observable_events`);
     }
@@ -101,6 +128,45 @@ export class TelemetryRetentionService {
     );
 
     return result;
+  }
+
+  /**
+   * `true` si `table` es una tabla PARTICIONADA (`relkind='p'`). Consulta el catálogo por nombre
+   * — O(1), no toca la tabla en sí. `table` es un literal controlado por el código, nunca input
+   * externo, así que interpolarlo en `sql.raw` es seguro (igual criterio que `purgeTable`).
+   */
+  private async estaParticionada(table: string): Promise<boolean> {
+    const res = await this.db.execute(sql`
+      SELECT relkind FROM pg_class WHERE relname = ${table}
+    `);
+    const fila = (res as unknown as Array<{ relkind?: string }>)[0];
+    return fila?.relkind === 'p';
+  }
+
+  /**
+   * Delega TODO el ciclo de vida de las particiones — crear las próximas, dropear las que ya
+   * cumplieron la retención — en `pg_partman` (`partman.run_maintenance_proc()`), en vez de
+   * reimplementar el parseo de límites de partición aquí. Cuenta las particiones hijas antes y
+   * después para reportar cuántas se dropearon: sin esa cifra, «retención por partición: true» y
+   * «no se dropeó nada esta noche» son la misma frase (mismo defecto que T-613 con `remaining`).
+   */
+  private async mantenerParticiones(table: string): Promise<number> {
+    const contar = async (): Promise<number> => {
+      const res = await this.db.execute(sql`
+        SELECT count(*)::int AS n FROM pg_inherits
+        WHERE inhparent = ${sql.raw(table)}::regclass
+      `);
+      const fila = (res as unknown as Array<{ n?: number }>)[0];
+      return fila?.n ?? 0;
+    };
+    const antes = await contar();
+    await this.db.execute(sql`SELECT partman.run_maintenance_proc()`);
+    const despues = await contar();
+    const dropeadas = Math.max(0, antes - despues);
+    this.logger.log(
+      `${table}: retención por partición — ${antes} → ${despues} particiones (${dropeadas} dropeadas)`,
+    );
+    return dropeadas;
   }
 
   /**
