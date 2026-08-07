@@ -318,6 +318,7 @@ export class DailyLimitService {
   async checkDeviceDailyUsage(
     deviceId: string | null,
     fingerprint?: string | null,
+    ip?: string | null,
   ): Promise<{ allowed: boolean; deviceTotal: number } | null> {
     // Anclar SOLO a la huella v2: la v1 (`hw_`) colisiona hasta 83 cuentas y agrupar por ella
     // apagaría a usuarias legítimas que solo comparten modelo de móvil. Ver T-304.
@@ -326,11 +327,14 @@ export class DailyLimitService {
         ? fingerprint
         : null;
     if (!deviceId && !fpV2) return null;
+    const ipCorroborante =
+      typeof ip === 'string' && ip.trim() !== '' ? ip.trim() : null;
     try {
-      // RPC devuelve scalar integer (NO table). v2 = device_id UNIÓN huella v2; nunca cuenta
-      // menos que la anterior (verificado sobre 200 dispositivos reales: 0 regresiones).
+      // RPC devuelve scalar integer (NO table). v3 ([T-657]): device_id siempre, y huella v2 solo
+      // si la corrobora una IP compartida — sola identifica el MODELO de móvil, no el aparato.
+      // GEMELO de `lib/api/dailyLimit.ts` (frontend): si cambia uno, cambia el otro.
       const rows = (await this.db.execute(sql`
-        SELECT get_device_daily_usage_v2(${deviceId}::text, ${fpV2}::text) AS total
+        SELECT get_device_daily_usage_v3(${deviceId}::text, ${fpV2}::text, ${ipCorroborante}::text) AS total
       `)) as unknown as Array<{ total: number | null }>;
 
       const total = Number(rows[0]?.total ?? 0);
@@ -340,7 +344,7 @@ export class DailyLimitService {
       };
     } catch (err) {
       this.logger.warn(
-        `Error en get_device_daily_usage_v2 para device ${(deviceId ?? fpV2 ?? '?').slice(0, 12)} — fail-open:`,
+        `Error en get_device_daily_usage_v3 para device ${(deviceId ?? fpV2 ?? '?').slice(0, 12)} — fail-open:`,
         err,
       );
       return null;

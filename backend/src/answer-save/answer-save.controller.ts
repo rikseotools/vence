@@ -132,7 +132,11 @@ export class AnswerSaveController {
               hwFingerprint,
             ),
             this.dailyLimit.getDailyLimitStatus(user.userId),
-            this.dailyLimit.checkDeviceDailyUsage(deviceId, hwFingerprint),
+            this.dailyLimit.checkDeviceDailyUsage(
+              deviceId,
+              hwFingerprint,
+              AntifraudService.extractIp(headers),
+            ),
           ]),
         presupuesto.comprobacionesMs(),
         'antifraud',

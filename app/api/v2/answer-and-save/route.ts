@@ -18,6 +18,7 @@ import { marcarPersistente } from '@/lib/api/fraud/marcaPersistente'
 import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
 import { esFraudeConfirmado } from '@/lib/api/fraud/esConfirmado'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
+import { ipDeConfianza } from '@/lib/api/clientIp'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
 
@@ -142,7 +143,7 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       () => Promise.all([
         registerAndCheckDevice(user.id, deviceId, request.headers.get('user-agent'), hwFingerprint),
         getDailyLimitStatus(user.id),
-        checkDeviceDailyUsage(deviceId, hwFingerprint),
+        checkDeviceDailyUsage(deviceId, hwFingerprint, ipDeConfianza(request)),
       ]),
       ANTIFRAUD_TIMEOUT_MS,
     )

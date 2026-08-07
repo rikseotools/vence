@@ -15,12 +15,14 @@ import {
   resolveDeviceLimitMode as raiz,
   shouldBlock as bloqueaRaiz,
   shouldEvaluate as evaluaRaiz,
+  cuentaElCupoDelDispositivo as cuentaRaiz,
   DEVICE_LIMIT_MODE_DEFAULT as defRaiz,
 } from '@/lib/security/deviceLimitMode'
 import {
   resolveDeviceLimitMode as espejo,
   shouldBlock as bloqueaEspejo,
   shouldEvaluate as evaluaEspejo,
+  cuentaElCupoDelDispositivo as cuentaEspejo,
   DEVICE_LIMIT_MODE_DEFAULT as defEspejo,
 } from '../../backend/src/daily-limit/device-limit-mode'
 
@@ -41,6 +43,9 @@ describe('paridad raíz ↔ espejo del backend (modo del límite por dispositivo
       const m = raiz(v as string)
       expect(bloqueaEspejo(m)).toBe(bloqueaRaiz(m))
       expect(evaluaEspejo(m)).toBe(evaluaRaiz(m))
+      for (const confirmado of [true, false]) {
+        expect(cuentaEspejo(m, confirmado)).toBe(cuentaRaiz(m, confirmado))
+      }
     }
   })
 

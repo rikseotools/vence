@@ -32,6 +32,18 @@ export function shouldBlock(mode: DeviceLimitMode): boolean {
   return mode === 'enforce';
 }
 
+/**
+ * ¿El cupo del DISPOSITIVO cuenta para este sujeto? Ver el original ([T-657]): es la regla que la
+ * pantalla y el servidor tienen que aplicar IGUAL, porque durante nueve días no lo hicieron.
+ */
+export function cuentaElCupoDelDispositivo(
+  mode: DeviceLimitMode,
+  fraudeConfirmado: boolean,
+): boolean {
+  if (!shouldEvaluate(mode)) return false;
+  return shouldBlock(mode) || fraudeConfirmado === true;
+}
+
 export function currentDeviceLimitMode(): DeviceLimitMode {
   return resolveDeviceLimitMode(process.env.DEVICE_LIMIT_MODE);
 }

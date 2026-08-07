@@ -2346,6 +2346,41 @@ describe('Alertas del BARAJADO (29/07, tras el incidente del piloto T-235)', () 
   });
 });
 
+describe('RULE_MURO_CUPO_SIN_CONSUMO (el muro para a quien no ha respondido nada — T-657, 07/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_MURO_CUPO_SIN_CONSUMO } = require('./alert-rules');
+  const fila = (usuarios: number, eventos = usuarios * 3) => [{ usuarios, eventos }];
+
+  it('59 usuarios sin haber respondido nada → dispara (el caso que la motiva)', () => {
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire(fila(59))).toBe(true);
+  });
+
+  it('los 2 residuales tras corroborar el ancla NO disparan (comparten aparato de verdad)', () => {
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire(fila(2))).toBe(false);
+  });
+
+  it('el corte está en 10: por debajo calla, a partir de ahí avisa', () => {
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire(fila(9))).toBe(false);
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire(fila(10))).toBe(true);
+  });
+
+  it('cero es el estado sano', () => {
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire(fila(0))).toBe(false);
+  });
+
+  it('tolera filas vacías o corruptas sin lanzar (corre en un cron)', () => {
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire([])).toBe(false);
+    expect(RULE_MURO_CUPO_SIN_CONSUMO.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso dice DÓNDE mirar, empezando por la IP que corrobora', () => {
+    const n = RULE_MURO_CUPO_SIN_CONSUMO.buildNotification(fila(59));
+    expect(n.body).toContain('ipDeConfianza');
+    expect(n.body).toContain('get_device_daily_usage_v3');
+    expect(n.body).toContain('ip_sesion_caida');
+  });
+});
+
 describe('RULE_DEVICE_LIMIT_MUDO (enforcement por dispositivo sin cortar — T-304, 30/07)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { RULE_DEVICE_LIMIT_MUDO } = require('./alert-rules');

@@ -52,6 +52,32 @@ export function shouldBlock(mode: DeviceLimitMode): boolean {
   return mode === 'enforce'
 }
 
+/**
+ * ¿El cupo del DISPOSITIVO cuenta para este sujeto, aquí y ahora?
+ *
+ * Es la MISMA pregunta que se hace el servidor antes de rechazar un guardado, y por eso vive
+ * aquí y no en cada endpoint: **la pantalla y el servidor tienen que decidir igual**.
+ *
+ * ── POR QUÉ EXISTE (T-657, 07/08/2026) ──────────────────────────────────────
+ * No lo hacían. El servidor (`/api/v2/answer-and-save`) pasaba por `shouldBlock(modo)` y por la
+ * lista de confirmados, así que en `shadow` no cortaba a nadie; pero
+ * `/api/v2/daily-question/status` —lo ÚNICO que mira el cliente para levantar el muro— sumaba el
+ * consumo del aparato SIEMPRE, sin mirar el modo ni los confirmados. Resultado: la UI le cortaba
+ * el paso a quien el servidor habría dejado pasar, y como el muro sale ANTES de responder, el
+ * evento del servidor no llegaba a emitirse nunca. Medido ese día: **59 cuentas free topadas sin
+ * haber respondido una sola pregunta** (49 con cero), y **cero** eventos que lo contaran.
+ *
+ * La sombra existe justamente para no cortar mientras se mide (ver la nota de arriba). Una sombra
+ * que corta en la pantalla no es una sombra.
+ */
+export function cuentaElCupoDelDispositivo(
+  mode: DeviceLimitMode,
+  fraudeConfirmado: boolean,
+): boolean {
+  if (!shouldEvaluate(mode)) return false
+  return shouldBlock(mode) || fraudeConfirmado === true
+}
+
 /** Modo vigente en este proceso. */
 export function currentDeviceLimitMode(): DeviceLimitMode {
   return resolveDeviceLimitMode(process.env.DEVICE_LIMIT_MODE)

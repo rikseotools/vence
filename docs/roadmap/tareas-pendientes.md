@@ -1202,6 +1202,59 @@ sesión, generalizable): para cada tema que escopa una ley, contrastar el scope 
 capítulo y marcar los **parcialmente** cubiertos. Lo que decide si es defecto es el epígrafe, así
 que la salida es una **cola de adjudicación**, no un badge. Si sale barato generalizarlo más allá
 del TREBEP, mirar primero las leyes que más temas comparten.
+### [T-657] 🔴 [ABIERTO 07/08] El cupo diario bloqueaba a cuentas legítimas por colisión de huella de hardware
+
+**Lo destapó un usuario, no una alerta.** Diego (`papaevo69`, free, Ordenanza Ayto. Córdoba) escribió
+*«cada día me dice que ya he completado el cupo de preguntas diarias»*. Llevaba **9 días** abriendo un
+test al día y abandonándolo sin responder ni una pregunta.
+
+**Causa.** El muro del cupo no mira solo la cuenta: suma lo que consumen todas las cuentas free del
+«mismo dispositivo», anclado a la huella de hardware v2 (`fp2_…`, [T-304]). Pero **la huella v2 no
+identifica un aparato: identifica un MODELO** — es un SHA-256 de canvas + WebGL + audio + RAM +
+núcleos, y dos móviles iguales con el mismo Chrome dan el mismo valor. La de Diego la compartían
+**9 cuentas con 9 navegadores, 9 ciudades (Córdoba, Murcia, Madrid, Barcelona, Granada, Salamanca…),
+9 IPs y 8 oposiciones distintas**. Él gastaba 0 y el grupo llegaba a 25 antes de que se levantara.
+Es el mismo fallo que ya tuvo la v1 (83 cuentas bajo un hash) y que se dio por resuelto al pasar a v2.
+
+**Y una asimetría que lo hacía invisible.** El servidor (`answer-and-save`) pasaba por
+`shouldBlock(modo)` + confirmados, así que en `shadow` no cortaba a nadie; pero
+`/api/v2/daily-question/status` —lo ÚNICO que mira el cliente para levantar el muro— sumaba el
+aparato **siempre**. La pantalla cortaba a quien el servidor dejaba pasar, y como el muro sale ANTES
+de responder, la petición no llegaba al servidor y su evento (`device_daily_limit_blocked`) **no se
+emitía nunca**. Una sombra que corta en la pantalla no es una sombra.
+
+**Medido el 07/08 (30 días):** 125 huellas compartidas · 369 cuentas · la peor con 18 cuentas de 15
+ciudades. Ese día, **59 cuentas free topadas sin haber agotado lo suyo, 49 con CERO respondidas**, y
+**cero** eventos que lo contaran. La tasa de abandono agregada no se movió (~20% estable): el daño
+está concentrado, no es masivo.
+
+**Arreglo (3 capas):**
+1. **El muro respeta el mismo criterio que el servidor** — criterio único
+   `cuentaElCupoDelDispositivo(modo, confirmado)` en `lib/security/deviceLimitMode.ts` (+ espejo en
+   backend, en el guardarraíl de paridad). En sombra no se levanta muro salvo a confirmados.
+2. **La huella deja de agrupar sola** — `get_device_daily_usage_v3(device, huella, ip)`: el
+   `device_id` agrupa siempre (prueba directa) y la huella **solo si la corrobora una IP compartida**.
+   La IP tiene que ser de borde (`ipDeConfianza()`, no `getClientIp()`): con una cabecera falsificable
+   bastaría mandar una IP por cuenta para esquivar el límite. Y una IP inválida no corrobora (no
+   revienta). Migración `20260807_device_daily_usage_corroborada.sql` (aditiva, nombre nuevo, v2 en su
+   sitio → reversible sin tocar la base).
+3. **El muro que ve el usuario deja rastro** — evento `device_daily_limit_muro` + regla
+   `muro_cupo_sin_consumo` (dispara con ≥10 usuarios/24h con `propias=0`; el estado sano tras el
+   arreglo son 2).
+
+**Calibrado contra los DOS lados antes de escribirlo, no después:**
+- CONFIRMADOS: el único con más de una cuenta comparte IP → se le sigue aplicando (v2=25 → v3=25).
+- COLISIONES: de las 25 huellas más compartidas, 23 no comparten ni una IP → dejan de agruparse.
+- **Verificado en RDS tras aplicar: Diego 25 → 0, y de 73 topados sin consumo quedan 2 (71 liberados).**
+
+**Apoyo que hacía falta comprobar:** la corroboración por IP solo vale si se registra la IP de sesión,
+que estuvo 27 días al 1% ([T-314]). Hoy va al **100% desde el 31/07** — medido antes de apoyarse en ella.
+
+**Capas:** 42 tests (paridad raíz↔backend ampliada, `ipDeConfianza`, guardarraíl del muro) + 425 del
+backend + los dos guardarraíles **validados por mutación** (sacar la consulta de la guarda y cambiar
+`ipDeConfianza` por `getClientIp` los ponen en rojo).
+
+**PENDIENTE:** desplegar (frontend + backend) y contestar a Diego. Free, así que sin recompensa.
 
 ### [T-650] 🔴 [ABIERTO 07/08] El scroll con el dedo sobre la barra de meta diaria la ARRASTRA: acaba flotando sobre el contenido y se come los toques
 
