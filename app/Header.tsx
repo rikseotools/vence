@@ -193,7 +193,10 @@ export default function HeaderES() {
       lastLoadAt = now
 
       try {
-        const examRes = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
+        // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+        const examRes = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`, {
+          headers: await getAuthHeaders(),
+        })
         const examData = await examRes.json()
         if (examData.success) {
           setPendingExams(examData.exams || [])
@@ -272,7 +275,8 @@ export default function HeaderES() {
       setConfirmingDiscardId(null)
       const response = await fetch('/api/exam/discard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ testId: examId, userId: user.id })
       })
       const result = await response.json()
@@ -298,7 +302,8 @@ export default function HeaderES() {
       setConfirmingDiscardId(null)
       const response = await fetch('/api/psychometric/discard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ sessionId, userId: user.id })
       })
       const result = await response.json()

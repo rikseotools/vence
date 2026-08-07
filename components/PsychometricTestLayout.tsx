@@ -219,7 +219,8 @@ export default function PsychometricTestLayout({
       try {
         const response = await fetch('/api/psychometric/create', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
           body: JSON.stringify({
             userId: user.id,
             categoryId: questions[0].category_id || null,

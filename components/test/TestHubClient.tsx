@@ -270,7 +270,10 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const loadExamStats = useCallback(async () => {
     if (!user?.id) return
     try {
-      const response = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=${oposicion}`)
+      // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+      const response = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=${oposicion}`, {
+        headers: await getAuthHeaders(),
+      })
       const data = await response.json()
       if (data.success && data.stats) {
         setExamStats(data.stats)

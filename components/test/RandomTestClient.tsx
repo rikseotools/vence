@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import {
@@ -163,7 +164,8 @@ export default function RandomTestClient({
     try {
       const response = await fetch('/api/random-test/user-stats', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ oposicion, userId }),
       })
       const data = await response.json()
