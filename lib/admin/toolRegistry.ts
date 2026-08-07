@@ -2362,6 +2362,37 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'informativa con el recuento TOTAL de tablas RLS-sin-política (85 medidas el 05/08), la ' +
       'mayoría bloqueadas a propósito (PII/operativas) y fuera del veredicto.',
   },
+  migraciones_rls_pendientes: {
+    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: aplicarla es manual, y nadie lo comprobaba',
+    ruta: 'scripts/migraciones-rls-pendientes.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`npm run migraciones:rls-pendientes` (lee `VENCE_LECTOR_URL` de `.env.local`). [T-645]. ' +
+      'Ningún `scripts/deploy-*.sh` ni `.github/workflows/*.yml` menciona `supabase/migrations` ' +
+      '(comprobado por grep): mergear a `main` no aplica nada contra RDS, es un paso manual sin ' +
+      'dueño. Medido el 07/08: `20260805_rls_test_questions_lector.sql` (T-573) y ' +
+      '`20260805_rls_ai_verification_results_lector.sql` (T-038) llevaban 2+ días así, y este ' +
+      'canario destapó dos más al aplicarse a TODO `supabase/migrations/` en vez de a un caso ' +
+      'suelto: dos migraciones de mayo (`20260502_fix_always_true_policies.sql`, ' +
+      '`20260502_security_advisor_fixes.sql`, pre-cutover a RDS) con la misma política ausente. ' +
+      '**Nota de urgencia, medida y no solo señalada:** esas dos son de una familia distinta — ' +
+      'refuerzan el acceso vía `anon`/`authenticated` (rol de PostgREST/Supabase-js), y HOY esos ' +
+      'roles no tienen ni el GRANT de tabla en las 3 tablas afectadas (medido contra ' +
+      '`information_schema.role_table_grants`), así que la política que falta no abre una vía de ' +
+      'acceso que hoy exista — a diferencia de las `flota_lector_lee`, donde el GRANT SÍ estaba y ' +
+      'la tabla parecía vacía en silencio a un rol que SÍ se usa a diario. Reutiliza ' +
+      '`seleccionBloqueadaPorRls` (T-574) para el caso SELECT y lo generaliza a otros `cmd` ' +
+      '(`politicaFalta`) para el caso con política UPDATE (`flota_coordinacion_reclama`), que ese ' +
+      'criterio por sí solo no cubre. **Límite conocido, no un hueco escondido:** solo ve ' +
+      '`CREATE POLICY` — no migraciones de columnas/tablas/funciones, y no ve un ' +
+      '`ALTER TABLE … ENABLE ROW LEVEL SECURITY` que nunca corrió si la migración no declara ' +
+      'ninguna política nueva junto a él (encontrado así, a mano: `user_stats_summary` sigue con ' +
+      '`relrowsecurity=false`, la propia migración de mayo nunca la activó). Núcleo puro ' +
+      '`lib/db/migracionesRlsPendientes.cjs`, con tests contra los ficheros REALES del repo ' +
+      '(`__tests__/db/migracionesRlsPendientes.test.js`), no fixtures inventadas.',
+  },
   flota_gobierno: {
     titulo: 'Gobernar la flota desde el portátil: quién vive, qué hace, darle trabajo — sin entrar en ningún servidor',
     ruta: 'scripts/flota/flota.cjs',
