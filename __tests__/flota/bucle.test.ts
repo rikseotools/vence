@@ -122,3 +122,41 @@ describe('[T-642] siguientePausa — «cero encargos» significaba dos cosas opu
     expect(p).toBeLessThanOrEqual(3600)
   })
 })
+
+describe('[T-642] otroSupervisorVivo — dos repartidores no dan error, dan trabajo repetido', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BUC = require('../../lib/flota/bucle.cjs')
+  const AHORA = new Date('2026-08-07T10:00:00Z')
+  const hace = (min: number) => new Date(AHORA.getTime() - min * 60000).toISOString()
+
+  it('otra máquina con pasada reciente: NO se arranca', () => {
+    // El caso real: el servicio del VPS llevaba horas repartiendo mientras se lanzaba otro
+    // supervisor desde el portátil, cada uno con su reloj sobre los mismos cuatro trabajadores.
+    const v = BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(3), pausaS: 300 }, yo: 'portatil', ahora: AHORA })
+    expect(v.hay).toBe(true)
+    expect(v.motivo).toMatch(/flota-1/)
+  })
+
+  it('la ventana es la espera que el OTRO anunció, no un número fijo', () => {
+    // Un supervisor en calma puede anunciar una hora. Con ventana fija corta se le daría por
+    // muerto justo cuando está más tranquilo, y volverían a arrancar dos.
+    expect(BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(45), pausaS: 3600 }, yo: 'yo', ahora: AHORA }).hay).toBe(true)
+    expect(BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(45), pausaS: 300 }, yo: 'yo', ahora: AHORA }).hay).toBe(false)
+  })
+
+  it('si el rastro es MÍO, no me bloqueo a mí mismo al reiniciar', () => {
+    expect(BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(1), pausaS: 300 }, yo: 'flota-1', ahora: AHORA }).hay).toBe(false)
+  })
+
+  it('sin rastro (o sin host en él) no se juzga: se deja arrancar', () => {
+    // Fail-open deliberado: el primer arranque tras estrenar esto no tiene ningún rastro con
+    // host, y bloquear ahí dejaría la flota sin supervisor por una comprobación nueva.
+    expect(BUC.otroSupervisorVivo({ ultima: null, yo: 'yo', ahora: AHORA }).hay).toBe(false)
+    expect(BUC.otroSupervisorVivo({ ultima: { host: null, ts: hace(1), pausaS: 300 }, yo: 'yo', ahora: AHORA }).hay).toBe(false)
+  })
+
+  it('un rastro viejo caduca solo: lease, no lock', () => {
+    // Si el otro muere, nadie tiene que limpiar nada para que el siguiente pueda arrancar.
+    expect(BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(180), pausaS: 300 }, yo: 'yo', ahora: AHORA }).hay).toBe(false)
+  })
+})

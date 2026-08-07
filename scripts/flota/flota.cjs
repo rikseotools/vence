@@ -26,6 +26,7 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
+const os = require('os')
 
 const REPO = path.resolve(__dirname, '..', '..')
 const MAQ = require(path.join(REPO, 'lib', 'flota', 'maquinas.cjs'))
@@ -1241,7 +1242,33 @@ async function main() {
         despertar = () => { clearTimeout(t); resolve() }
       })
 
-      console.log(`🔁 supervisor continuo — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
+      // ── UN SOLO SUPERVISOR (T-642, 07/08) ────────────────────────────────────────────────
+      // Dos procesos del bucle sobre los mismos trabajadores reparten cosas distintas según
+      // quién llegue antes, y no dan error: el síntoma es trabajo repetido que parece normal.
+      // Pasó ese día —el servicio del VPS llevaba horas corriendo mientras se lanzaba otro desde
+      // el portátil— y nada lo dijo. Se mira el RASTRO de las pasadas, que es común a todas las
+      // máquinas; un `flock` habría sido local y no habría visto al de la otra.
+      const yo = process.env.VENCE_FLOTA_AQUI || os.hostname()
+      if (!process.argv.includes('--igualmente')) {
+        let ultima = null
+        try {
+          const f = await sql`
+            SELECT ts, metadata FROM public.observable_events
+             WHERE event_type = 'flota_bucle_pasada'
+             ORDER BY ts DESC LIMIT 1`
+          if (f[0]) ultima = { host: f[0].metadata?.host, ts: f[0].ts, pausaS: f[0].metadata?.pausaS }
+        } catch { /* sin rastro no se puede juzgar: se sigue, como el resto del andamiaje */ }
+        const otro = BUC.otroSupervisorVivo({ ultima, yo })
+        if (otro.hay) {
+          console.error(`\n⛔ NO ARRANCO — ${otro.motivo}.`)
+          console.error('   Dos supervisores reparten cosas distintas sobre los mismos trabajadores')
+          console.error('   y no da error: se ve como trabajo repetido que parece normal.')
+          console.error('   Párale allí, o arranca este igualmente si sabes lo que haces:')
+          console.error('     node scripts/flota/flota.cjs bucle --igualmente')
+          return 1
+        }
+      }
+      console.log(`🔁 supervisor continuo (${yo}) — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
       while (!parar) {
         let repartidos = 0
         let ocupados = 0
@@ -1295,7 +1322,7 @@ async function main() {
             INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
             VALUES ('fargate', ${motivoSalto ? 'warn' : 'info'}, 'flota_bucle_pasada', 'flota',
                     ${motivoSalto || null},
-                    ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
+                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
         await dormir(pausa)
