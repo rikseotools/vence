@@ -160,3 +160,27 @@ describe('[T-642] otroSupervisorVivo — dos repartidores no dan error, dan trab
     expect(BUC.otroSupervisorVivo({ ultima: { host: 'flota-1', ts: hace(180), pausaS: 300 }, yo: 'yo', ahora: AHORA }).hay).toBe(false)
   })
 })
+
+describe('[T-642] el supervisor que se despide SUELTA el sitio', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BUC = require('../../lib/flota/bucle.cjs')
+  const AHORA = new Date('2026-08-07T10:00:00Z')
+  const hace = (min: number) => new Date(AHORA.getTime() - min * 60000).toISOString()
+
+  it('un cierre limpio libera al instante: reiniciar tras un despliegue es el caso NORMAL', () => {
+    // Medido al estrenar el guard: el supervisor del VPS se pasó 7 min negándose a arrancar por
+    // el rastro de un bucle ya muerto. Bloquear al legítimo es peor que no proteger.
+    const v = BUC.otroSupervisorVivo({
+      ultima: { host: 'flota-1', ts: hace(1), pausaS: 300, parado: true }, yo: 'yo', ahora: AHORA,
+    })
+    expect(v.hay).toBe(false)
+  })
+
+  it('pero una muerte SUCIA sigue bloqueando hasta que caduque: ahí no hubo despedida', () => {
+    // kill -9, máquina caída: no escribe nada, y ahí manda la ventana. Es para lo que está.
+    const v = BUC.otroSupervisorVivo({
+      ultima: { host: 'flota-1', ts: hace(1), pausaS: 300 }, yo: 'yo', ahora: AHORA,
+    })
+    expect(v.hay).toBe(true)
+  })
+})

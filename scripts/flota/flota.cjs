@@ -1261,7 +1261,7 @@ async function main() {
              WHERE event_type = 'flota_bucle_pasada'
                AND metadata->>'host' IS DISTINCT FROM ${yo}
              ORDER BY ts DESC LIMIT 1`
-          if (f[0]) ultima = { host: f[0].metadata?.host, ts: f[0].ts, pausaS: f[0].metadata?.pausaS }
+          if (f[0]) ultima = { host: f[0].metadata?.host, ts: f[0].ts, pausaS: f[0].metadata?.pausaS, parado: f[0].metadata?.parado }
         } catch { /* sin rastro no se puede juzgar: se sigue, como el resto del andamiaje */ }
         const otro = BUC.otroSupervisorVivo({ ultima, yo })
         if (otro.hay) {
@@ -1332,6 +1332,19 @@ async function main() {
         if (parar) break
         await dormir(pausa)
       }
+      // ── AL PARAR, SE SUELTA EL SITIO (T-642) ─────────────────────────────────────────────
+      // Sin esto, el rastro del que acaba de morir sigue diciendo «estoy repartiendo» hasta que
+      // caduque su ventana, y bloquea al SIGUIENTE — que es el caso normal: reiniciar el
+      // servicio tras un despliegue. Medido al estrenarlo: el supervisor del VPS se quedó 7 min
+      // negándose a arrancar por el rastro de un bucle ya muerto. Un cierre limpio libera al
+      // instante; una muerte SUCIA (kill -9, máquina caída) no escribe nada y ahí sí manda la
+      // caducidad de la ventana, que es justo para lo que está.
+      try {
+        await sql`
+          INSERT INTO public.observable_events (source, severity, event_type, endpoint, metadata)
+          VALUES ('fargate', 'info', 'flota_bucle_pasada', 'flota',
+                  ${sql.json({ host: yo, parado: true, pausaS: 0 })})`
+      } catch { /* la telemetría nunca puede parar al supervisor, tampoco al salir */ }
       console.log('🛑 supervisor continuo detenido')
       return 0
     }
