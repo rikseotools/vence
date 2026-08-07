@@ -211,6 +211,34 @@ function comandoDelPanel(trabajador) {
 }
 
 /**
+ * Qué está haciendo un trabajador AHORA MISMO, leído de su propia conversación. (T-653, 07/08)
+ *
+ * `npm run flota` ya sabía CUÁNTO llevaba un turno («hace 137 min»), pero eso no distingue
+ * trabajando de atascado. El dato existe: el transcript de la conversación en curso
+ * (`SES.rutaTranscript`) se escribe EN VIVO, y el criterio de qué contar de su última entrada ya
+ * vive en `SES.resumenActividad` (núcleo puro, testeado aparte). Aquí solo el lado impuro: cuál
+ * es su sesión ACTUAL (el `.session` que `mandarEncargo` mantiene al día) y el tail de su
+ * transcript — un tail corto, nunca el fichero entero, que en un turno largo puede pesar decenas
+ * de MB y esto se llama en cada pasada del panel.
+ *
+ * Cadena vacía si no se puede ver (sin sesión registrada, SSH caído, transcript aún sin líneas
+ * de herramienta) — igual que `comandoDelPanel`, «no se pudo ver» no es «no hace nada».
+ */
+function actividadDe(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  if (!m) return ''
+  const como = m.local ? '' : 'sudo -u flota '
+  try {
+    const fSesion = SES.ficheroSesion(ficheroEntorno(trabajador))
+    const id = enMaquina(trabajador, `${como}sh -c 'cat ${fSesion} 2>/dev/null || true'`).trim()
+    if (!id) return ''
+    const ruta = SES.rutaTranscript({ home: '/home/flota', arbol: MAQ.arbolDe(trabajador).replace('~flota', '/home/flota'), id })
+    const tail = enMaquina(trabajador, `${como}sh -c 'tail -c 4000 ${ruta} 2>/dev/null || true'`)
+    return SES.resumenActividad(tail) || ''
+  } catch { return '' }
+}
+
+/**
  * Envuelve un script para que el shell de la máquina lo pase INTACTO a `bash -c`.
  *
  * Con comillas dobles (`JSON.stringify`) el shell de fuera expande los `$(…)` ANTES de que el
@@ -367,6 +395,15 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
     `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
+    // ── EL ENCARGO QUEDA EN EL LOG ANTES DE ARRANCAR (T-653, 07/08) ────────────────────────
+    // Hasta ahora el log solo guardaba lo que el trabajador CONTESTABA — nunca lo que se le
+    // había pedido. Cuando una entrega salía mal no había forma de distinguir «se le explicó
+    // mal» de «no hizo caso» sin ir a buscar el encargo a otro sitio (con 18 de 63 revisiones en
+    // "problemas" el mismo día, esa distinción es justo la que decide si hay que arreglar el
+    // encargo o al trabajador). Se copia el FICHERO que ya existe (`${enc}`, el mismo que recibe
+    // `claude -p`) — sin volver a mandar el texto por la línea de órdenes, que es lo que
+    // `mandarEncargo` evita a propósito desde el principio (comillas, tamaño, visibilidad en `ps`).
+    `${como}sh -c 'cat ${enc} > ${log} 2>/dev/null; printf "\\n\\n===== SALIDA DEL TURNO =====\\n\\n" >> ${log}' && ` +
     `${como}tmux -L ${trabajador} send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
@@ -535,6 +572,13 @@ async function main() {
           : t ? `${t.id} — ${String(t.title).slice(0, 60)}`
           : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'
           : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
+        // «Ejecutando» solo decía QUE hay un turno vivo, nunca QUÉ hace — la distinción que
+        // separa «trabajando» de «atascado» (T-653). Solo se pregunta cuando ya se sabe que
+        // ejecuta: para libre/caído/abandonado no hay conversación en curso que leer.
+        if (ejecutando) {
+          const actividad = actividadDe(f.trabajador)
+          if (actividad) console.log(`       ↳ ${actividad}`)
+        }
       }
 
       // ── TUS SESIONES ────────────────────────────────────────────────────────────────
