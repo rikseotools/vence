@@ -981,6 +981,45 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
+
+**De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
+Manuel, 07/08). **Sí les llega** —verificado EJECUTANDO `ENC.encargo()` y `ENC.encargoRevision()`, no
+leyendo el código: los dos llevan el bloque «EL MÉTODO DE LA CASA» desde la constante única
+`lib/sessions/recordatorio.cjs` → `METODO`, y el de revisión además manda juzgar contra él («¿le falta
+alguna capa?»)—. Lo que apareció al mirar los logs de verdad son **tres huecos de observabilidad**.
+
+#### Los tres huecos, medidos en el VPS (no supuestos)
+1. **No se ve qué hace un trabajador MIENTRAS trabaja.** `npm run flota` dice *«🟢 ejecutando T-168 ·
+   hace 137 min»* y eso **no distingue trabajando de atascado**. El dato existe: el transcript del
+   turno en curso se escribe EN VIVO
+   (`~/.claude/projects/-home-flota-vence-sessions-w1/*.jsonl`) — leída su última entrada el 07/08,
+   se veía exactamente en qué estaba (esperando un `tsc` en segundo plano). El supervisor **solo lee
+   su TAMAÑO** (`SES.lineaSesion({ tamanoBytes })`), nunca su contenido.
+2. **El log del turno está a 0 bytes hasta que el turno acaba.** Comprobado en w1, w2 y w4 a la vez:
+   `flota-w*.log` en 0 y solo los `.anterior` con contenido (413, 1.616 y 889 bytes). Es efecto de
+   `claude -p`, que escribe al terminar. Mientras dura el turno, el log no sirve de rastro.
+3. **Se guarda el informe del trabajador, NO el encargo que se le dio.** Así que cuando una entrega
+   sale mal no se puede distinguir **«se le explicó mal»** de **«no hizo caso»** — y con 18
+   «problemas» de 63 revisiones en un día (07/08), esa distinción es justo la que decide si hay que
+   arreglar el encargo o al trabajador.
+
+#### El arreglo (por valor/esfuerzo, y sin construir nada nuevo)
+1. **«Qué está haciendo ahora» en `npm run flota`**: una línea por trabajador desde la última entrada
+   de su transcript. Se lee un fichero que ya existe y se pinta en la pantalla que ya se usa — nada
+   de panel aparte.
+2. **Volcar el encargo al log antes de lanzarlo** (`mandarEncargo`): una línea, y cada entrega pasa a
+   ser auditable contra lo que se le pidió.
+3. **Salida en streaming de `claude -p`** para que el log deje de ser un post-mortem.
+
+#### Aviso de tamaño
+Esto es observabilidad de NUESTRA herramienta, no del producto: va **detrás** de la cola de usuarios y
+del merge, que es lo que tiene gente esperando. Encaja bien como encargo de flota (acotado, medible,
+no toca nada que sirva a un usuario).
+
+**Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
+ceguera).
+
 ### [T-650] 🔴 [ABIERTO 07/08] El scroll con el dedo sobre la barra de meta diaria la ARRASTRA: acaba flotando sobre el contenido y se come los toques
 
 **Lo reporta una usuaria, no una alerta.** Feedback `247449ed` (Sara B, premium de Badajoz, 07/08):
