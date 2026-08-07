@@ -5410,7 +5410,50 @@ esas preguntas no le habrían salido nunca.
   - **Regla de alerta propia `law_source_changed`** (`emailAlways`, cooldown 12 h). No se dejó al catch-all `senal_error_sin_vigilancia` porque este exige **≥150 eventos/h** y esto son uno o dos avisos al día: habría nacido invisible **justo por ser poco frecuente**. No dispara con `law_source_unreachable`: una descarga fallida no es un cambio.
   - **⏳ Pendiente de verificar en producción tras el deploy de backend:** que la primera vuelta del cron dé «sin cambio» y no una tromba de falsos positivos, que `pdftotext` esté disponible en el contenedor, y que el heartbeat de `law-source-watch` aparezca vivo.
 
-### [T-381] 🟠 [ABIERTO 31/07] El canary `served-rollup` está ROJO: el tráfico sintético se cuenta como servido y envenena el ratio anti-cosecha
+> **🚧 PARCIAL (07/08, w4). Recuento REMEDIDO (la ficha estaba desfasada — TUE/TFUE/RGPD ya
+> cuentan como "con fuente" desde el arreglo del doble registro) + 6 leyes investigadas y
+> verificadas contra su fuente oficial, NO ESCRITAS (sin credencial de negocio).**
+>
+> **Recuento fresco contra RDS, con la MISMA query que usa `laws:vigilar` (coalesce
+> `law_source_verification.source_url` / `laws.boe_url`, leyes reales activas):** ya NO son
+> 153 leyes / 4.518 preguntas — son **137 leyes / 2.265 preguntas**. La diferencia (16 leyes,
+> 2.253 preguntas) es sobre todo TUE+TFUE+RGPD entrando al contarse los dos registros, tal
+> como ya decía el arreglo de arriba; no he investigado el resto de la diferencia línea a
+> línea, así que **SOSPECHO** que hay algún caso más resuelto por otra vía, sin confirmar cuál.
+>
+> **Investigadas y verificadas (top 6 por impacto de las 137, 647 de las 2.265 preguntas —
+> 29%):** para cada una, localicé el documento oficial, lo descargué, y comparé el número de
+> artículos extraído contra `articles` en BD (mismo criterio que usa `verify-law-source.cjs`:
+> `Artículo N` con regex). Las seis dan **coincidencia EXACTA** de nº de artículos, y en varias
+> además el contenido de un artículo concreto (título o texto) coincide literal:
+>
+> | ley | preg | fuente oficial | verificación |
+> |---|---|---|---|
+> | V Convenio Laboral JdE | 142 | `https://portalempleado.juntaex.es/documents/d/guest/v_convenio_colectivo` | 44/44 artículos (portal oficial Junta Extremadura, texto consolidado "actualizado a 9 de abril de 2026") |
+> | Decreto 225/2014 AE Ext | 129 | `https://doe.juntaex.es/pdfs/doe/2014/2010o/14040254.pdf` | 94/94 artículos, título art. 10 "Enfoque finalista y horizontal" coincide |
+> | OPCAT | 114 | `https://www.boe.es/buscar/doc.php?id=BOE-A-2006-11128` | 37/37 artículos, texto art. 10 coincide literal |
+> | Carta Derechos Ciudadanos Justicia | 95 | `https://www.poderjudicial.es/cgpj/es/Servicios/Atencion-Ciudadana/Modelos-normalizados/Carta-de-Derechos-de-los-Ciudadanos` | 41/41 puntos, texto punto 10 coincide literal (CGPJ, no la copia de `sedejudicial.justicia.es` que solo resume) |
+> | Decreto 149/2013 Jornada Ext | 88 | `https://doe.juntaex.es/pdfs/doe/2013/1550o/13040170C.pdf` | 19/19 artículos, título art. 10 "Duración de las vacaciones anuales" coincide |
+> | Decreto 30/2025 GVA (atención ciudadanía) | 79 | `https://dogv.gva.es/datos/2025/02/26/pdf/2025_3226_es.pdf` | 46/46 artículos, título art. 46 "Transparencia y apertura de datos" coincide |
+>
+> **NO ESCRITO — no es que se me haya olvidado, es la regla de esta tarea.** `verify-law-source.cjs`
+> necesita `DATABASE_URL` con privilegio de escritura sobre `laws`/`law_source_verification`
+> (tabla de NEGOCIO); mi credencial (`vence_coordinacion`) no lo tiene y el encargo de este
+> turno prohíbe explícitamente escribir ahí. **El método por ley que pide la ficha lo hice
+> entero salvo el último paso** (`node scripts/verify-law-source.cjs --law <uuid>` con la URL
+> de la tabla de arriba, para cada una de las 6) — alguien con la credencial completa puede
+> aplicar las 6 en minutos, la investigación ya está hecha y verificada dos veces (recuento de
+> artículos + contenido puntual).
+>
+> **Quedan 131 leyes / ~1.618 preguntas sin investigar** (137 − 6). Siguientes por impacto
+> (medido, no investigado su fuente): `Decreto 622/2019 AE JA` (76, Junta de Andalucía →
+> BOJA), `Agenda 2030 para el Desarrollo Sostenible` (72, plan nacional — ojo, título ambiguo:
+> comprobar primero si el contenido en BD es el plan español o el documento de Naciones
+> Unidas antes de buscar fuente), `Decreto 147/2015` (70, Declaración Derechos y Deberes
+> sistema sanitario de Euskadi → BOPV), `Decreto 42/2019 GVA` (66, Generalitat Valenciana →
+> DOGV, mismo patrón que el Decreto 30/2025 de arriba), `Res. 20/01/2014 DGP` (65). El resto
+> son decretos regionales de menor impacto (≤63 preguntas cada uno) — mismo patrón de research
+> que las 6 de arriba, boletín por boletín.
 
 - **Qué dice el canario, hoy** (`npm run canary:served-rollup`, exit 1):
   ```
