@@ -109,3 +109,9 @@ scripts/impugnaciones/sh2/
 # Vence Sim — reportes/screenshots de simulaciones (no versionar)
 sim-reports/
 revision-t219.json
+
+# Instrucciones LOCALES de una sesión concreta (CLAUDE.local.md). Son de la CARPETA, no del
+# proyecto: p. ej. las sesiones de móvil llevan una que exige respuestas de 6 líneas porque se
+# leen en un teléfono. Si viajaran a `main` se las impondrían a todas las demás sesiones, que es
+# justo lo contrario de para lo que existen.
+CLAUDE.local.md
