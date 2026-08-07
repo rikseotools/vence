@@ -64,7 +64,16 @@ MemoryAccounting=yes
 
 # Un supervisor no necesita escribir en ningún sitio del sistema salvo su propio HOME.
 NoNewPrivileges=yes
-PrivateTmp=yes
+
+# ── ⚠️ SIN `PrivateTmp`, Y NO ES UN DESCUIDO (T-647, 07/08/2026) ─────────────────────────────
+# Los sockets de tmux viven en `/tmp/tmux-<uid>/`. Con `PrivateTmp=yes` el supervisor tiene su
+# PROPIO /tmp y **deja de ver los de sus trabajadores** en cuanto los crea systemd (antes no se
+# notaba porque el servidor de tmux lo arrancaba él mismo, dentro de su /tmp privado). Medido al
+# separar los servidores por trabajador: el supervisor empezó a decir «no se pudo ver qué está
+# ejecutando su panel» de los cuatro y dejó de repartir — una flota entera parada por un ajuste
+# de seguridad que no protegía nada aquí. Si algún día se quiere recuperar el aislamiento, la vía
+# NO es volver a ponerlo: es un directorio de sockets compartido y explícito para los dos lados.
+PrivateTmp=no
 
 [Install]
 WantedBy=multi-user.target
