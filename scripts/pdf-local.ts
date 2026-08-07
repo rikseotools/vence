@@ -13,10 +13,19 @@ import { getTopicContentBaseInternal as getTopicContentUncached, getLawSectionNa
 import { buildTopicPdfModel } from '@/lib/temario/pdf/topicPdfModel'
 import { TopicPdfDocument } from '@/lib/temario/pdf/TopicPdfDocument'
 import { pregenerateTopicPdf } from '@/lib/temario/pdf/pregenerate'
+import { esObjetivoPersonalizado } from '@/lib/oposicion/objetivoPersonalizado'
 
 async function main() {
   const [mode, oposicionRaw, temaRaw] = process.argv.slice(2)
-  const oposicion = (oposicionRaw || '').replace(/_/g, '-')
+  // ⚠️ UNA PERSONALIZADA NO SE SLUGIFICA (T-648). El `replace` traduce el `position_type` del
+  // catálogo a su slug, correcto para las 131 del registro; pero una personalizada NO tiene slug
+  // —lo que llega ya ES su `position_type`— y convertirla la rompe. Es la MISMA rama que ya tienen
+  // `pregenerateTopicPdf` y `getTopicContentBaseInternal`: aquí había una SEGUNDA copia de la
+  // conversión, y arreglar solo la de dentro no servía de nada porque este script la aplica ANTES
+  // de llamarla. Medido el 07/08 ejecutando la ruta real del worker: con el arreglo puesto en
+  // `pregenerate.ts` seguía saliendo `oposicion_desconocida`, y la salida lo delataba —
+  // `personalizada-f228…` con guion—. La prueba directa a la función pasaba; la ruta real no.
+  const oposicion = esObjetivoPersonalizado(oposicionRaw) ? oposicionRaw : (oposicionRaw || '').replace(/_/g, '-')
   const tema = Number(temaRaw)
   if (!mode || !oposicion || !Number.isInteger(tema)) {
     console.error('uso: tsx scripts/pdf-local.ts <render|full> <oposicion> <tema>')

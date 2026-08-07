@@ -196,6 +196,48 @@ export function floatingControlIsReachable(opts: {
 }
 
 /**
+ * INVARIANTE: al terminar un test, las acciones que la persona espera ahí NO pueden depender
+ * de que el guardado vaya bien.
+ *
+ * Bug real ([T-315], feedback `e790c7bf` de Lourdes, 07/08/2026): con el servidor saturado, la
+ * pantalla de resultados esperaba **20 segundos** a que drenara la cola de guardado antes de
+ * enseñar la confirmación y los botones «Revisar fallos» / «Practicar mis fallos». Ella lo
+ * describió como *«se queda colgada… cuando termino un test y quiero hacer otro»*.
+ *
+ * Sus respuestas están a salvo pase lo que pase (localStorage + reintentos + el relleno del
+ * servidor), así que la espera no compraba nada y solo se pagaba entera el día malo.
+ *
+ * Se juzga con el RELOJ, no con el estado interno: lo que se afirma es que después de terminar
+ * el test la pantalla ofrece algo accionable **dentro del margen**, incluso con el guardado
+ * degradado a propósito.
+ */
+export function testEndOffersActionsInTime(opts: {
+  /** ms transcurridos desde que se respondió la última pregunta hasta ver algo accionable. */
+  elapsedMs: number
+  /** margen aceptable (la espera nueva + holgura de red/render). */
+  budgetMs: number
+  /** ¿apareció la confirmación o alguno de los botones de repaso? */
+  actionsVisible: boolean
+}): InvariantResult {
+  const name = 'test_end_offers_actions_in_time'
+  if (!opts.actionsVisible) {
+    return fail(
+      name,
+      `tras terminar el test no apareció NADA accionable en ${opts.elapsedMs} ms ` +
+        `(ni confirmación, ni «Revisar fallos», ni aviso con reintento)`,
+    )
+  }
+  if (opts.elapsedMs > opts.budgetMs) {
+    return fail(
+      name,
+      `las acciones tardaron ${opts.elapsedMs} ms (margen ${opts.budgetMs} ms): ` +
+        `la pantalla sigue esperando al guardado, que es el bug de T-315`,
+    )
+  }
+  return pass(name)
+}
+
+/**
  * INVARIANTE de OBSERVABILIDAD (meta-bug): si el usuario vive un fallo, la observabilidad
  * debió capturarlo. Un fallo visible con CERO eventos = punto ciego (caso Alfonso #1, cuya
  * caída no dejó rastro). Cruza lo que la sim vio con lo que se logueó.

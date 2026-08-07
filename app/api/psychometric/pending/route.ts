@@ -3,19 +3,23 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getPendingPsychometricSessions } from '@/lib/api/psychometric-session'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const ENDPOINT = '/api/psychometric/pending'
 
 export const dynamic = 'force-dynamic'
 
+// [T-565]: se leía con solo el UUID de cualquiera en la query, sin sesión.
 async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const rawUserId = searchParams.get('userId')
     const limitParam = searchParams.get('limit')
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'userId es requerido' }, { status: 400 })
-    }
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, rawUserId)
+    if (!identidad.ok) return identidad.response
+    const userId = identidad.userId
 
     const limit = limitParam ? parseInt(limitParam, 10) : 10
 

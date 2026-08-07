@@ -14,6 +14,16 @@ jest.mock('@/lib/api/exam', () => ({
   safeParseResumeExamRequest: jest.fn(),
   getResumedExamData: jest.fn(),
   verifyTestOwnership: jest.fn(),
+  getTestOwnerId: jest.fn(),
+}))
+
+// [T-565] La ruta comprueba la propiedad con `requireDuenoDelRecurso` (dueño real de BD contra la
+// identidad del TOKEN, nunca contra un userId que mande el cliente). Este test es de T-277 y es
+// ANTERIOR a esa comprobación, así que no la simulaba y la ruta devolvía «no eres el dueño» antes
+// de llegar al reordenado — se vio al MERGEAR las dos, no en ninguna de las dos por separado.
+// Mismo mock que el fichero hermano `resumeRoute.test.ts`, que ejercita esta misma ruta.
+jest.mock('@/lib/api/shared/auth', () => ({
+  requireDuenoDelRecurso: jest.fn(),
 }))
 
 jest.mock('@/db/client', () => ({
@@ -74,7 +84,8 @@ jest.mock('@/lib/api/withErrorLogging', () => ({
 }))
 
 import { GET } from '@/app/api/exam/resume/route'
-import { safeParseResumeExamRequest, getResumedExamData } from '@/lib/api/exam'
+import { safeParseResumeExamRequest, getResumedExamData, getTestOwnerId } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import type { NextRequest } from 'next/server'
 
 const TEST_ID = '11111111-1111-1111-1111-111111111111'
@@ -90,6 +101,10 @@ function createRequest(params: Record<string, string>): NextRequest {
 beforeEach(() => {
   jest.clearAllMocks()
   ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({ success: true, data: { testId: TEST_ID } })
+  // El dueño legítimo reanuda SU examen: es el único caso que estos tests describen. Lo que
+  // comprueban es el reordenado, no la propiedad — esa tiene sus propios tests en [T-565].
+  ;(getTestOwnerId as jest.Mock).mockResolvedValue('user-1')
+  ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({ ok: true, callerUserId: 'user-1' })
 })
 
 describe('/api/exam/resume — reconstruye el orden BARAJADO al reanudar (T-277)', () => {

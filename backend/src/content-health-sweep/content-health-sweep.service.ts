@@ -3109,6 +3109,50 @@ export class ContentHealthSweepService {
     }
     marcar('scope_phantom_article', phantom.length);
 
+    // ── CONTENIDO: artículos huérfanos — inactivos Y sin escopar, con preguntas activas ──
+    // Mirror INLINE de scripts/health-sweep.cjs (orphan_inactive_article) — MANTENER EN SYNC.
+    // `scope_phantom_article` (arriba) solo mira lo que el SCOPE pide y no existe/no está
+    // activo. Punto ciego (T-157, cierre de T-139): un artículo `is_active=false` que además no
+    // aparece en NINGÚN `topic_scope` puede seguir teniendo preguntas `is_active=true`
+    // (`primary_article_id`) — invisibles por partida doble: ningún tema las pide y
+    // scope_phantom_article no las ve porque no hay scope que las reclame. CALIBRADO contra
+    // ruido (07/08/2026): de 379 artículos inactivos-y-sin-escopar, solo 14 tienen preguntas
+    // activas — el resto son bajas legítimas y no se reportan (el JOIN con questions ya filtra).
+    const huerfanos = (await this.db.execute(sql`
+      WITH scoped AS (
+        SELECT DISTINCT ts.law_id,
+               lower(regexp_replace(translate(trim(an), 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g')) AS art_norm
+        FROM topic_scope ts
+        JOIN topics t ON t.id = ts.topic_id
+        CROSS JOIN LATERAL unnest(ts.article_numbers) AS an
+        WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
+      )
+      SELECT coalesce(l.short_name, l.name) AS ley, a.article_number AS art, count(q.id)::int AS preguntas
+        FROM articles a
+        JOIN laws l ON l.id = a.law_id
+        JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+       WHERE a.is_active = false
+         AND NOT EXISTS (
+           SELECT 1 FROM scoped s WHERE s.law_id = a.law_id
+             AND s.art_norm = lower(regexp_replace(translate(a.article_number, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'), '[[:space:])]', '', 'g'))
+         )
+       GROUP BY l.short_name, l.name, a.article_number
+       ORDER BY count(q.id) DESC
+    `)) as unknown as Array<{ ley: string; art: string; preguntas: number }>;
+    if (huerfanos.length) {
+      const totalPreguntas = huerfanos.reduce((s, h) => s + h.preguntas, 0);
+      const leyes = [...new Set(huerfanos.map((h) => h.ley))];
+      add(
+        'content',
+        'warn',
+        null,
+        'orphan_inactive_article',
+        `${totalPreguntas} pregunta(s) activa(s) en ${huerfanos.length} artículo(s) inactivo(s) y SIN escopar en ${leyes.length} ley(es) — invisibles por partida doble: ningún tema las sirve y scope_phantom_article no las ve. Decidir por artículo: entra en el temario de alguna oposición (escoparlo + reactivar) o jubilar las preguntas.`,
+        { count: huerfanos.length, preguntas: totalPreguntas, laws: leyes.length, sample: huerfanos.slice(0, 25) },
+      );
+    }
+    marcar('orphan_inactive_article', huerfanos.length);
+
     // ── CONTENIDO: MISMA LEY REAL duplicada ENTRE TEMAS (repartir por materia) ──
     // Mirror INLINE de scripts/health-sweep.cjs (scope_cross_tema_dup) — MANTENER EN SYNC.
     // Ley REAL escopada ENTERA (article_numbers NULL/vacío) o con solape grande (≥20 arts)

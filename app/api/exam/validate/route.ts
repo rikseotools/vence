@@ -40,6 +40,10 @@ import {
   gateSubjects,
   recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
+import { getTestOwnerId } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
+
+const ENDPOINT = '/api/exam/validate'
 // ============================================
 // SCHEMAS DE VALIDACIÓN
 // ============================================
@@ -699,6 +703,17 @@ return NextResponse.json(
       answeredCount: validation.data.answers.filter(a => a.userAnswer != null).length,
       testId: validation.data.testId,
     })
+
+    // [T-565]: con `testId`, esto persistía las respuestas en bloque, marcaba el test
+    // como completado y subía el cupo diario del DUEÑO DEL TEST (`persistExamQuestions`
+    // lo lee de la fila) — sin comprobar que quien llama sea ese dueño. Con solo el
+    // UUID de un test ajeno se podía forzar su corrección, completarlo y gastarle cupo.
+    // Sin testId (examen sin persistir) no hay recurso ajeno que proteger.
+    if (validation.data.testId) {
+      const testOwnerId = await getTestOwnerId(validation.data.testId)
+      const identidad = await requireDuenoDelRecurso(request, ENDPOINT, testOwnerId)
+      if (!identidad.ok) return identidad.response
+    }
 
     // Validar examen y marcar como completado si se proporcionó testId
     const result = await validateExamAnswers(validation.data.answers, validation.data.testId)

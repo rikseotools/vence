@@ -7,12 +7,18 @@ import { getDb } from '@/db/client'
 import { tests } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { z } from 'zod/v3'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
-// Schema de validación
+const ENDPOINT = '/api/exam/discard'
+// Schema de validación. `userId` se sigue aceptando por compatibilidad con clientes
+// desplegados, pero NO se usa para autorizar — [T-565]: se comparaba contra
+// `existingTest.userId`, pero el propio `userId` lo ponía el CLIENTE, así que bastaba
+// con conocer el id de la víctima (no es secreto, es su propio id) para descartar su
+// examen. La identidad ahora sale siempre de la sesión.
 const discardExamSchema = z.object({
   testId: z.string().uuid('ID de test inválido'),
-  userId: z.string().uuid('ID de usuario inválido')
+  userId: z.string().uuid('ID de usuario inválido').optional(),
 })
 
 async function _POST(request: NextRequest) {
@@ -29,10 +35,10 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    const { testId, userId } = validation.data
+    const { testId } = validation.data
     const db = getDb()
 
-    // Verificar que el test existe y pertenece al usuario
+    // Verificar que el test existe
     const existingTest = await db
       .select({ id: tests.id, userId: tests.userId, isCompleted: tests.isCompleted })
       .from(tests)
@@ -46,12 +52,9 @@ async function _POST(request: NextRequest) {
       )
     }
 
-    if (existingTest[0].userId !== userId) {
-      return NextResponse.json(
-        { success: false, error: 'No tienes permiso para descartar este test' },
-        { status: 403 }
-      )
-    }
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, existingTest[0].userId)
+    if (!identidad.ok) return identidad.response
+    const userId = existingTest[0].userId
 
     if (existingTest[0].isCompleted) {
       return NextResponse.json(
@@ -69,26 +72,26 @@ async function _POST(request: NextRequest) {
         // Mantenemos is_completed=false pero con completed_at para indicar "descartado"
         // Esto evita que aparezca en pending (porque completed_at no es null)
       })
-      .where(and(
-        eq(tests.id, testId),
-        eq(tests.userId, userId)
-      ))
+      .where(userId ? and(eq(tests.id, testId), eq(tests.userId, userId)) : eq(tests.id, testId))
 
     console.log('✅ [API/exam/discard] Examen descartado:', testId)
 
     // Invalidar cache de pending exams: el test ya no debe aparecer como pendiente.
-    after(async () => {
-      try {
-        const { invalidateMany } = await import('@/lib/cache/redis')
-        await invalidateMany([
-          `exam_pending:${userId}:all:10`,
-          `exam_pending:${userId}:exam:10`,
-          `exam_pending:${userId}:practice:10`,
-        ])
-      } catch {
-        // Si Redis falla, el TTL eventualmente refresca el valor stale
-      }
-    })
+    // Nada que invalidar para un test anónimo (no tiene cache de pending por userId).
+    if (userId) {
+      after(async () => {
+        try {
+          const { invalidateMany } = await import('@/lib/cache/redis')
+          await invalidateMany([
+            `exam_pending:${userId}:all:10`,
+            `exam_pending:${userId}:exam:10`,
+            `exam_pending:${userId}:practice:10`,
+          ])
+        } catch {
+          // Si Redis falla, el TTL eventualmente refresca el valor stale
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,

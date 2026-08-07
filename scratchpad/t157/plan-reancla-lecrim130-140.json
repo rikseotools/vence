@@ -1,0 +1,21 @@
+{
+  "motivo": "T-157 -- LECrim 'art. 130'/'art. 140' son filas mal etiquetadas: su titulo dice literalmente 'Articulo 130 del Codigo Penal'/'Articulo 140 del Codigo Penal' y su contenido es identico (verificado letra a letra) al de CP art.130/140, que ya existen activos y escopados en varias oposiciones reales (policia_nacional T16/T17, ayudante_instituciones_penitenciarias T104/T105, ayudantes_ejecucion_penal_pais_vasco T103/T104, guardia_civil T8). Las 2 filas LECrim son duplicados erroneos, no contenido real de LECrim -- LECrim no tiene articulos 130/140 sobre extincion de responsabilidad criminal/asesinato, eso es materia de Codigo Penal.",
+  "movimientos": [
+    {
+      "preguntas": ["da6c1514-8268-4fc7-9d2f-0dc90ec00c72"],
+      "origenArticuloId": "078b2c7f-1995-453f-84a9-a1db28ac8001",
+      "destinoArticuloId": "9652752f-34bd-43d8-9c89-40879bd58d59",
+      "porQue": "LECrim 'art.130' (title='Articulo 130 del Codigo Penal.') -> CP art.130 real y activo. Contenido identico ('La responsabilidad criminal se extingue: 1. Por la muerte del reo...'), verificado letra a letra. La pregunta ('Cual de las siguientes circunstancias extingue la responsabilidad criminal?') encaja con CP art.130, no con LECrim.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["081da324-c6fe-40e5-88b9-3e4394d62c93"],
+      "origenArticuloId": "9ce9813d-3d28-4da7-bb5a-60f87e52e6bb",
+      "destinoArticuloId": "b531767e-e382-45af-b943-646bd5a41d85",
+      "porQue": "LECrim 'art.140' (title='Articulo 140 del Codigo Penal.') -> CP art.140 real y activo. Contenido identico ('El asesinato sera castigado con pena de prision permanente revisable cuando concurra alguna de las siguientes circunstancias...'), verificado letra a letra. La pregunta ('Ley Organica del Codigo Penal. Cual es una de las circunstancias...') ya cita el Codigo Penal en su propio enunciado.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    }
+  ]
+}

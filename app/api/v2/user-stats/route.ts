@@ -1,37 +1,40 @@
 // app/api/v2/user-stats/route.ts - Stats de usuario optimizadas (reemplaza RPC get_user_public_stats)
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { getUserPublicStats } from '@/lib/api/user-stats/queries'
 import { getOrSet } from '@/lib/cache/redis'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
 export const maxDuration = 30
 
-// Validar que userId sea UUID antes de tocar SQL — sin esta validación,
-// cualquier string corrupto genera HTTP 500 con stack trace SQL
-// (`invalid input syntax for type uuid`, código pg 22P02).
-const userIdSchema = z.string().uuid()
+const ENDPOINT = '/api/v2/user-stats'
 
+// SIN esto la guarda de abajo NO PROTEGE — mismo gotcha que en
+// app/api/tests/[testId]/review/route.ts: un GET sin declarar `dynamic` es candidato a
+// servirse desde la caché de rutas de Next antes de que el código de autenticación corra.
+export const dynamic = 'force-dynamic'
+
+// Hasta [T-565] esto validaba solo que `userId` fuera un UUID y lo usaba TAL CUAL para leer
+// las stats — sin sesión. Cualquiera con el UUID de otra persona (viaja en la URL que mandan
+// las tres pantallas que llaman a este endpoint: UserAvatar, TemaTestPage, la página de tema)
+// le leía la racha, el progreso y la oposición objetivo. La identidad sale SIEMPRE del token;
+// el query param solo se contrasta (y si no coincide, se corta: ningún llamante real necesita
+// pedir las stats de otra persona).
 async function _GET(request: NextRequest) {
   try {
     const rawUserId = request.nextUrl.searchParams.get('userId')
-    const parsed = userIdSchema.safeParse(rawUserId)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'userId inválido o faltante (debe ser UUID)' },
-        { status: 400 }
-      )
-    }
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, rawUserId)
+    if (!identidad.ok) return identidad.response
 
     // Cache server-side compartido (Redis Upstash, TTL 30s).
     // Reduce carga BD ~80% para usuarios que recargan dashboard. Se invalida
     // tras INSERT en test_questions (en /api/v2/answer-and-save) para reflejar
     // cambios al instante. Si Redis falla, cae a BD (graceful degradation).
     const stats = await getOrSet(
-      `user_stats:${parsed.data}`,
+      `user_stats:${identidad.userId}`,
       30,
-      () => getUserPublicStats(parsed.data),
+      () => getUserPublicStats(identidad.userId),
     )
     return NextResponse.json(
       { success: true, ...stats },

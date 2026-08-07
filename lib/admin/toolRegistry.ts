@@ -2362,6 +2362,37 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'informativa con el recuento TOTAL de tablas RLS-sin-política (85 medidas el 05/08), la ' +
       'mayoría bloqueadas a propósito (PII/operativas) y fuera del veredicto.',
   },
+  migraciones_rls_pendientes: {
+    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: aplicarla es manual, y nadie lo comprobaba',
+    ruta: 'scripts/migraciones-rls-pendientes.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/tareas-pendientes.md',
+    notas:
+      '`npm run migraciones:rls-pendientes` (lee `VENCE_LECTOR_URL` de `.env.local`). [T-645]. ' +
+      'Ningún `scripts/deploy-*.sh` ni `.github/workflows/*.yml` menciona `supabase/migrations` ' +
+      '(comprobado por grep): mergear a `main` no aplica nada contra RDS, es un paso manual sin ' +
+      'dueño. Medido el 07/08: `20260805_rls_test_questions_lector.sql` (T-573) y ' +
+      '`20260805_rls_ai_verification_results_lector.sql` (T-038) llevaban 2+ días así, y este ' +
+      'canario destapó dos más al aplicarse a TODO `supabase/migrations/` en vez de a un caso ' +
+      'suelto: dos migraciones de mayo (`20260502_fix_always_true_policies.sql`, ' +
+      '`20260502_security_advisor_fixes.sql`, pre-cutover a RDS) con la misma política ausente. ' +
+      '**Nota de urgencia, medida y no solo señalada:** esas dos son de una familia distinta — ' +
+      'refuerzan el acceso vía `anon`/`authenticated` (rol de PostgREST/Supabase-js), y HOY esos ' +
+      'roles no tienen ni el GRANT de tabla en las 3 tablas afectadas (medido contra ' +
+      '`information_schema.role_table_grants`), así que la política que falta no abre una vía de ' +
+      'acceso que hoy exista — a diferencia de las `flota_lector_lee`, donde el GRANT SÍ estaba y ' +
+      'la tabla parecía vacía en silencio a un rol que SÍ se usa a diario. Reutiliza ' +
+      '`seleccionBloqueadaPorRls` (T-574) para el caso SELECT y lo generaliza a otros `cmd` ' +
+      '(`politicaFalta`) para el caso con política UPDATE (`flota_coordinacion_reclama`), que ese ' +
+      'criterio por sí solo no cubre. **Límite conocido, no un hueco escondido:** solo ve ' +
+      '`CREATE POLICY` — no migraciones de columnas/tablas/funciones, y no ve un ' +
+      '`ALTER TABLE … ENABLE ROW LEVEL SECURITY` que nunca corrió si la migración no declara ' +
+      'ninguna política nueva junto a él (encontrado así, a mano: `user_stats_summary` sigue con ' +
+      '`relrowsecurity=false`, la propia migración de mayo nunca la activó). Núcleo puro ' +
+      '`lib/db/migracionesRlsPendientes.cjs`, con tests contra los ficheros REALES del repo ' +
+      '(`__tests__/db/migracionesRlsPendientes.test.js`), no fixtures inventadas.',
+  },
   flota_gobierno: {
     titulo: 'Gobernar la flota desde el portátil: quién vive, qué hace, darle trabajo — sin entrar en ningún servidor',
     ruta: 'scripts/flota/flota.cjs',
@@ -2403,7 +2434,13 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
-      '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión.',
+      '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión. ' +
+      '**Gotcha corregido (07/08):** la decisión "¿hace falta rematar?" miraba `.local` — "¿quien ' +
+      'llama está en la misma máquina que el trabajador?" — no "¿esa máquina tiene con qué ' +
+      'empujar?". El supervisor systemd corre CON `VENCE_FLOTA_AQUI=flota-1`, así que para él ' +
+      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba, aunque el push de ' +
+      'esa máquina nunca funciona. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una ' +
+      'propiedad DE LA MÁQUINA (`lib/flota/maquinas.cjs`), no de quien pregunta.',
   },
 
   flota_presencia_trabajador: {
@@ -3290,6 +3327,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'cumple. Aplicado 31/07/2026 a 7 (FMI, OMS, OTAN, FAO, EUROJUST, TEDH/TJUE, UE-instituciones, ' +
       '375 preguntas, que se siguen sirviendo igual). Deja traza en observable_events ' +
       '(law_marcada_virtual). Contexto: [T-026].',
+  },
+
+  registrar_fuente_editorial: {
+    titulo: 'Registrar la fuente oficial de un contenedor EDITORIAL del temario (ODM, Agenda 2030, planes de Gobierno Abierto, Protocolos UE…)',
+    ruta: 'scripts/laws/registrar-fuente-editorial.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'node scripts/laws/registrar-fuente-editorial.cjs <plan.json> [--aplicar]. Simula por defecto. ' +
+      'DISTINTO de marcar_contenedor_institucional: aquél exime (is_virtual=true) normas SIN fuente ' +
+      'citable en absoluto; este registra `boe_url` (repurposed) para contenedores que SÍ tienen una ' +
+      'fuente primaria real (ONU/OCDE/DOUE/portal gob.es) pero nunca se buscó ni se guardó, dejando el ' +
+      'Paso 1 del manual bloqueado por "no hay fuente" [T-144]. Núcleo puro y testeado ' +
+      '`lib/laws/fuenteEditorial.js`: el plan exige `paso1Completo` explícito por entrada, y si es ' +
+      '`true` el mensaje tiene que describir una comparación real (verbos "verificado"/"comparado"/' +
+      '"cotejado"), no una frase genérica — evita el falso verde que motivó [T-395] en ' +
+      'lib/laws/completeness.ts. Con `paso1Completo:false` el summary escrito deja `is_ok:false` a ' +
+      'propósito: fuente registrada, verificación completa PENDIENTE. Requiere DATABASE_URL de ' +
+      'escritura de negocio para `--aplicar` (un rol de lectura solo puede simular).',
   },
 
   vigilar_fuentes_legales: {

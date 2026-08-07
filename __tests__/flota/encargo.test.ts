@@ -1019,3 +1019,39 @@ describe('[T-647] a los trabajadores los levanta systemd, y de eso depende el te
     expect(Boolean(MAQ.maquinaDe('l1').systemd)).toBe(false)
   })
 })
+
+describe('[T-495] el método de la casa llega a los DOS encargos, no solo al de trabajar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { encargo, encargoRevision } = require('../../lib/flota/encargo.cjs')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { METODO } = require('../../lib/sessions/recordatorio.cjs')
+  const TAREA = { id: 'T-999', title: 'una tarea cualquiera' }
+
+  it('el de REVISAR lo lleva — y aquí importa MÁS, porque es la vara de medir', () => {
+    // Medido el 07/08 en los encargos VIVOS del VPS: el de trabajar traía el método (8.920
+    // caracteres) y el de revisar no (1.897). Un revisor sin el criterio aprueba lo que un
+    // trabajador CON el criterio no habría escrito, y entonces el método solo rige media vuelta.
+    const r = encargoRevision({ trabajador: 'w2', tarea: TAREA })
+    for (const linea of METODO) expect(r).toContain(linea)
+  })
+
+  it('el de TRABAJAR lo sigue llevando (no se movió de sitio al añadirlo al otro)', () => {
+    const t = encargo({ trabajador: 'w1', tarea: TAREA })
+    for (const linea of METODO) expect(t).toContain(linea)
+  })
+
+  it('y es EL MISMO texto en los dos: se trae de su único sitio, no se reescribe', () => {
+    // Dos copias del método divergen, y entonces cada mitad del ciclo juzga con una regla
+    // distinta — que es exactamente el silo contra el que avisa el propio método.
+    const r = encargoRevision({ trabajador: 'w2', tarea: TAREA })
+    const t = encargo({ trabajador: 'w1', tarea: TAREA })
+    for (const linea of METODO) {
+      expect(r.includes(linea) && t.includes(linea)).toBe(true)
+    }
+  })
+
+  it('el revisor sabe que cada punto que falte ES un hallazgo, no una sugerencia', () => {
+    const r = encargoRevision({ trabajador: 'w2', tarea: TAREA })
+    expect(r).toMatch(/cada punto es un hallazgo si falta/)
+  })
+})

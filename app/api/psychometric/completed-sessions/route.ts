@@ -6,20 +6,24 @@ import { getDb } from '@/db/client'
 import { psychometricTestSessions, psychometricCategories } from '@/db/schema'
 import { eq, and, isNotNull } from 'drizzle-orm'
 import { z } from 'zod/v3'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
+const ENDPOINT = '/api/psychometric/completed-sessions'
+
 const requestSchema = z.object({
-  userId: z.string().uuid('ID de usuario invalido'),
+  userId: z.string().uuid('ID de usuario invalido').optional(),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 })
 
 export const dynamic = 'force-dynamic'
 
+// [T-565]: se leía (aciertos, tiempos, categorías) con solo el UUID de cualquiera.
 async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const parsed = requestSchema.safeParse({
-      userId: searchParams.get('userId'),
+      userId: searchParams.get('userId') || undefined,
       limit: searchParams.get('limit') || 10,
     })
 
@@ -30,7 +34,10 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const { userId, limit } = parsed.data
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, parsed.data.userId)
+    if (!identidad.ok) return identidad.response
+    const userId = identidad.userId
+    const { limit } = parsed.data
     const db = getDb()
 
     const sessions = await db

@@ -1509,6 +1509,44 @@ async function detectarTodo(c, add, marcar, now) {
   }
   marcar('scope_phantom_article', phantom.length);
 
+  // ── CONTENIDO: artículos huérfanos — inactivos Y sin escopar, pero con preguntas activas ──
+  // `scope_phantom_article` (arriba) solo mira lo que el SCOPE pide y no existe/no está activo.
+  // Punto ciego (T-157, cierre de T-139): un artículo puede estar `is_active=false` y no
+  // aparecer en NINGÚN `topic_scope` — y aun así tener preguntas `is_active=true` colgando de
+  // él (`primary_article_id`), invisibles POR PARTIDA DOBLE: ningún tema las pide (nada las
+  // sirve) y ningún detector las cuenta (scope_phantom_article no las ve porque no hay scope
+  // que las reclame). Origen real: T-139 desactivó artículos por discrepancia con el oficial
+  // (LECrim 588 bis/ter/quater, arts. 130/140 rotulados "del Código Penal") sin darse cuenta de
+  // que sus preguntas seguían activas.
+  // CALIBRADO contra ruido (07/08/2026): de 379 artículos inactivos-y-sin-escopar, SOLO 14
+  // tienen preguntas activas — el resto (365) son bajas legítimas sin nada colgando, y
+  // NO se reportan (ver el `HAVING`). Cero falsos positivos medidos en la calibración: los 14
+  // son el defecto real, uno por uno.
+  const huerfanos = (await c.query(`
+    WITH scoped AS (
+      SELECT DISTINCT ts.law_id, ${normArt('trim(an)')} AS art_norm
+      FROM topic_scope ts
+      JOIN topics t ON t.id = ts.topic_id
+      CROSS JOIN LATERAL unnest(ts.article_numbers) AS an
+      WHERE ts.article_numbers IS NOT NULL AND t.is_active = true
+    )
+    SELECT coalesce(l.short_name, l.name) AS ley, a.article_number AS art, count(q.id)::int AS preguntas
+      FROM articles a
+      JOIN laws l ON l.id = a.law_id
+      JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+     WHERE a.is_active = false
+       AND NOT EXISTS (SELECT 1 FROM scoped s WHERE s.law_id = a.law_id AND s.art_norm = ${normArt('a.article_number')})
+     GROUP BY l.short_name, l.name, a.article_number
+     ORDER BY count(q.id) DESC`)).rows;
+  if (huerfanos.length) {
+    const totalPreguntas = huerfanos.reduce((s, h) => s + h.preguntas, 0);
+    const leyes = [...new Set(huerfanos.map(h => h.ley))];
+    add('content', 'warn', null, 'orphan_inactive_article',
+      `${totalPreguntas} pregunta(s) activa(s) en ${huerfanos.length} artículo(s) inactivo(s) y SIN escopar en ${leyes.length} ley(es) — invisibles por partida doble: ningún tema las sirve y scope_phantom_article no las ve. Decidir por artículo: entra en el temario de alguna oposición (escoparlo + reactivar) o jubilar las preguntas.`,
+      { count: huerfanos.length, preguntas: totalPreguntas, laws: leyes.length, sample: huerfanos.slice(0, 25) });
+  }
+  marcar('orphan_inactive_article', huerfanos.length);
+
   // ── Drift del barajado de opciones (verificación robusta) ──
   // Delega en el script tsx que usa el detector REAL (sin copiar la lógica aquí): caza
   // preguntas shuffle_safety='safe' cuya explicación cita letras/posición (regresión/miss)

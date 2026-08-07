@@ -1,0 +1,44 @@
+[
+  {
+    "lawId": "a450177e-d787-4cb3-996d-dbe15cc95c99",
+    "nombre": "Objetivos de Desarrollo del Milenio (2000-2015)",
+    "fuenteUrl": "https://www.un.org/millenniumgoals/",
+    "mensaje": "Portal oficial ONU de los 8 ODM, fetch en vivo 07/08/2026: los 8 títulos coinciden exactos y en el mismo orden con los 8 artículos en BD (Erradicar pobreza extrema.../Fomentar alianza mundial...). Las metas individuales (1a, 1b...) del framework NO se han contrastado línea a línea contra un documento fuente hoy -- pendiente para el Paso 1 completo.",
+    "paso1Completo": false
+  },
+  {
+    "lawId": "466fb9ed-5f90-402f-b15a-885ca1002309",
+    "nombre": "Agenda 2030 para el Desarrollo Sostenible",
+    "fuenteUrl": "https://www.un.org/sustainabledevelopment/es/objetivos-de-desarrollo-sostenible/",
+    "mensaje": "Portal oficial ONU de los 17 ODS, fetch en vivo 07/08/2026: los 17 titulos coinciden con BD (unica diferencia menor: ODS9 en BD dice 'infraestructura' singular, fuente dice 'infraestructuras' plural -- sin corregir, es cosmetico). Meta 1.1 verificada VERBATIM contra https://www.un.org/sustainabledevelopment/es/poverty/ ('Para 2030, erradicar la pobreza extrema para todas las personas en el mundo, actualmente medida por un ingreso por persona inferior a 1,25 dolares al dia' -- coincide letra por letra con articles.content). El resto de las 169 metas NO se ha comparado individualmente -- pendiente para el Paso 1 completo.",
+    "paso1Completo": false
+  },
+  {
+    "lawId": "5b2c4af9-1f71-4b2f-a7e7-2defd46df127",
+    "nombre": "Principios de Gobierno Abierto",
+    "fuenteUrl": "https://transparencia.gob.es/gobierno-abierto/planes-accion",
+    "mensaje": "Contenedor MIXTO, dos fuentes reales: (a) art.1 cita la Recomendacion OCDE sobre Gobierno Abierto de 14/12/2017 (OECD/LEGAL/0438, https://legalinstruments.oecd.org/en/instruments/OECD-LEGAL-0438) -- fetch bloqueado hoy (403/JS), citacion correcta pero NO verificada palabra por palabra; (b) arts 0/2/3/4 son del portal oficial transparencia.gob.es/gobierno-abierto (planes de accion). HALLAZGO SIN RESOLVER: el art.4, titulado 'V Plan de Gobierno Abierto', tiene como contenido el sistema Cl@ve (autenticacion electronica) que NO aparece en el V Plan real -- confirmado en vivo 07/08/2026 que el V Plan aprobado (9 compromisos: participacion, transparencia, integridad, espacio civico, apertura fiscal, derecho a informacion veraz...) no incluye Cl@ve; PDF oficial: https://transparencia.gob.es/content/dam/transparencia_home/gobierno-abierto/vpga/V%20PLAN.pdf. Contenido de ese articulo probablemente mal ubicado -- requiere revision de contenido, no solo de fuente.",
+    "paso1Completo": false
+  },
+  {
+    "lawId": "08229d82-ed33-4307-a31d-f9cbd108f340",
+    "nombre": "IV Plan de Acción de España (2020-2024)",
+    "fuenteUrl": "https://transparencia.gob.es/gobierno-abierto/planes-accion/documentos_ivplan",
+    "mensaje": "Portal oficial del IV Plan de Gobierno Abierto (Ministerio de Politica Territorial / OGP Espana), fetch en vivo 07/08/2026: confirma el IV Plan (2020-2024) como documento real con informe final de autoevaluacion publicado, y los 4 ejes tematicos declarados en la pagina (Transparencia, Participacion, Integridad, Sensibilizacion) coinciden con los 4 ejes guardados en BD, aunque en orden distinto. Los 10 compromisos individuales del plan NO se han comparado uno a uno contra el documento -- pendiente para el Paso 1 completo.",
+    "paso1Completo": false
+  },
+  {
+    "lawId": "4e89916a-b102-4730-97f1-4bb25056e7c0",
+    "nombre": "Protocolo nº 1 sobre el cometido de los Parlamentos nacionales en la Unión Europea",
+    "fuenteUrl": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:12012M/PRO/01",
+    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/01 (Protocolo nº1 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). NO se ha podido verificar el contenido en vivo hoy: probado con la herramienta YA EXISTENTE del propio repo (lib/laws/descargarEurlex.cjs, descargarDocumentoOficial) con los ids 12012M/PRO/01 y 12012M/TXT -- EUR-Lex devuelve 0 bytes (mismo sintoma de cuota-CloudFront documentado en el comentario de esa libreria el 28/07) y Cellar devuelve HTTP 404 para estos ids concretos. Reproducido, no solo sospechado. La cita/URL es la fuente estandar y estable para este Protocolo; el contenido de BD NO se ha comparado articulo a articulo hoy.",
+    "paso1Completo": false
+  },
+  {
+    "lawId": "4f23bf24-998e-4f39-9420-d91393f1b0af",
+    "nombre": "Protocolo nº 2 sobre la aplicación de los principios de subsidiariedad y proporcionalidad",
+    "fuenteUrl": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:12012M/PRO/02",
+    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/02 (Protocolo nº2 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). Mismo bloqueo reproducido que el Protocolo nº1 con la herramienta existente del repo (lib/laws/descargarEurlex.cjs): EUR-Lex 0 bytes, Cellar HTTP 404. La cita/URL es la fuente estandar y estable; el contenido de BD NO se ha comparado articulo a articulo hoy.",
+    "paso1Completo": false
+  }
+]

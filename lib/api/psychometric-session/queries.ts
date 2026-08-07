@@ -185,6 +185,29 @@ export async function getResumedPsychometricSessionData(
 }
 
 /**
+ * Dueño real de una sesión psicotécnica, `null` si no existe. Fuente única para
+ * `requireDuenoDelRecurso` — NUNCA comparar contra un userId que mande el cliente [T-565].
+ *
+ * [T-565, hallazgo de revisión 07/08] `psychometric_test_sessions.user_id` es `NOT NULL`
+ * (no hay sesión anónima legítima): el único `null` real es "no existe". Antes esta función
+ * devolvía ese MISMO `null` cuando la consulta LANZABA (catch → return null), y
+ * `requireDuenoDelRecurso` lee `null` como "pasa cualquiera" — durante un fallo transitorio
+ * de conexión, cualquiera podía completar/descartar la sesión de otra persona. No se atrapa
+ * el error aquí: se deja propagar, y el try/catch que YA envuelve a cada llamante
+ * (`app/api/psychometric/{complete,discard,resume}/route.ts`) lo convierte en 500 —
+ * fail-closed, no fail-open.
+ */
+export async function getSessionOwnerId(sessionId: string): Promise<string | null> {
+  const db = getPsychSessionDb()
+  const [row] = await db
+    .select({ userId: psychometricTestSessions.userId })
+    .from(psychometricTestSessions)
+    .where(eq(psychometricTestSessions.id, sessionId))
+    .limit(1)
+  return row?.userId ?? null
+}
+
+/**
  * Descarta una sesión psicotécnica (marca completed_at sin is_completed).
  */
 export async function discardPsychometricSession(
