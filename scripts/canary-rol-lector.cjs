@@ -60,6 +60,9 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-639] canario de T-450 (cupo vs respuestas reales): sin esto no se puede comparar el cupo
+  // consumido contra las respuestas de verdad. Ver 20260807_rls_daily_question_usage_lector.sql.
+  ['daily_question_usage', 'el cupo diario consumido, para diagnosticar fugas de cupo'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
