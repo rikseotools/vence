@@ -1563,6 +1563,62 @@ en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
 **Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
 ~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
 
+#### Retomado 07/08 (w4): sobrevivió la noche, y salió un CUARTO fallo — relanzar a ciegas monta un crash-loop contra la cuota
+
+**(1) El servicio sobrevivió la noche — MEDIDO, no supuesto.** `systemctl show -p
+ActiveEnterTimestamp,NRestarts`: activo desde **06/08 19:47:03 UTC sin un solo reinicio desde
+entonces** (`NRestarts=2`, pero los dos ocurrieron ANTES de esa marca, durante el propio arranque
+de ayer — cero desde). 11h+ corridas de un tirón, atravesando la noche entera, con pasadas
+periódicas repartiendo tareas reales (`journalctl`: 4, 7, 3, 6 tareas repartidas en distintas
+pasadas). Contesta el punto 1 de "falta".
+
+**(2) Nuevo fallo, DEMOSTRADO con datos reales — el crash-loop de cuota.** Mirando `npm run flota`
+en vivo apareció `w1` con "T-548 COGIDA Y SIN PROCESO" pese al servicio corriendo perfectamente.
+`tmux capture-pane -t w1` mostró el pane repitiendo el mismo bloque una y otra vez, terminando en:
+```
+You've hit your weekly limit · resets 11pm (UTC)
+```
+Contado en `observable_events` (`flota_turno`, `trabajador=w1`, últimas 6h): **27 "retoma" de la
+MISMA tarea T-548 entre las 04:20 y las 07:04**, una cada ~5-13 min (la cadencia del propio bucle),
+CADA UNA fallando en el mismo instante en que arrancaba porque la credencial es buena pero la
+cuota semanal está a cero hasta las 23:00 UTC. La causa NO es sospecha: se reprodujo leyendo el
+pane en vivo y se contó exacto en la serie de eventos — 27, no "varias".
+
+**Por qué pasaba:** la lógica de "retomar turno muerto" (T-617, punto 4 de arriba) relanza a
+CUALQUIER trabajador vivo con tarea cogida y sin proceso, sin distinguir "el proceso anterior
+murió de verdad" de "el proceso ni siquiera pudo arrancar porque no queda cuota". `T-548` nunca
+avanzaba, y cada intento fallido volvía a dejarlo "sin proceso" para que la SIGUIENTE pasada lo
+repitiera — un bucle que solo se habría roto solo a las 23:00 UTC de hoy, ~19h después del primer
+fallo.
+
+**Arreglado (rama `flota/T-617-supervisor-cuota-agotada`, pusheada):**
+- `lib/flota/autenticacion.cjs`: nuevo estado `cuota_agotada` en `clasificar()` (antes cualquier
+  mensaje de límite de cuota caía en `desconocido`, indistinguible de un fallo de red). Detecta
+  "hit your weekly/daily/5-hour/usage limit" y "reached your usage limit", y extrae el "resets…"
+  cuando el mensaje lo trae (sin inventar una hora si no la trae).
+- `scripts/flota/flota.cjs` (`repartir`, bloque de retomar turno muerto): antes de relanzar, lee
+  la cola del log del turno anterior (`tail -c 4000 ~/flota-<w>.log`, **sin gastar cuota** — es un
+  fichero ya en disco, no una llamada nueva a `claude`) y la clasifica. Si `cuota_agotada`, NO
+  relanza — emite un evento `sin_cuota` distinto y sigue. El evento `muerto` se sigue emitiendo
+  SIEMPRE (antes solo salía si el retomar tenía éxito), así que `saludFlota` (que ya anticipaba
+  "cuota" como causa posible del rojo por turnos muertos en serie, `TURNOS_MUERTOS_ROJO=5`) sigue
+  viendo la serie completa.
+- Tests: 7 nuevos en `__tests__/flota/autenticacion.test.ts` (con la cadena real capturada del
+  incidente) + verificado que los 302 tests de `__tests__/flota/` siguen en verde.
+
+**⚠️ NO desplegado — a propósito, fuera de mi alcance como trabajador.** El fix vive en la rama;
+la unidad systemd sigue corriendo el código de ayer hasta que alguien con acceso al VPS haga
+`git pull && systemctl restart vence-flota-supervisor` en `flota-1`. Hasta entonces, el crash-loop
+de `w1`/T-548 sigue activo (se para solo a las 23:00 UTC cuando repone cuota, o antes si se
+despliega el fix). No lo hice yo mismo: reiniciar el supervisor que gobierna a toda la flota en
+mitad de un incidente es justo el tipo de acción que pide ojos humanos antes, no un despliegue de
+rutina.
+
+**(3) l1-l6 (pregunta original de "falta"):** siguen muertos, ahora ~36h (no ~23h: el tiempo pasó).
+Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darles reparto automático
+para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
+Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
+
 ### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
 
 **No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es

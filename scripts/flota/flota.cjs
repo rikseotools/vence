@@ -918,13 +918,36 @@ async function main() {
         if (suya) conTareaYSinProceso.push({ trabajador: f.trabajador, suya })
       }
       let retomadas = 0
+      let sinCuota = 0
       for (const { trabajador, suya } of conTareaYSinProceso) {
         try {
+          // ── ¿MERECE LA PENA RELANZAR? (T-617, 07/08) ────────────────────────────────────
+          // Un turno que murió porque se acabó la cuota va a morir EXACTAMENTE IGUAL la próxima
+          // vez: el proceso ni siquiera llega a intentar el trabajo. Relanzarlo a ciegas no es
+          // optimismo, es gasolina al fuego. Medido en vivo: T-548 (w1) se retomó **27 veces en
+          // 3h** contra el mismo "You've hit your weekly limit", una cada ~6 min (la cadencia del
+          // propio bucle), sin que ninguna avanzase nada — el turno anterior fallaba en el mismo
+          // instante en que arrancaba. Se comprueba leyendo lo que el turno ANTERIOR escribió en
+          // su log, SIN gastar cuota en volver a preguntarlo, que es justo lo que no queda.
+          let salidaPrevia = ''
+          try { salidaPrevia = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+          const auth = AUT.clasificar(salidaPrevia)
+          // El «muerto» se emite SIEMPRE, se relance o no: es un hecho del turno anterior, no una
+          // promesa sobre el siguiente. Antes solo se emitía dentro del `turno` de un retomar que
+          // saliera bien, así que un turno sin cuota (que aquí NO se retoma) habría dejado de
+          // contar para `saludFlota` — justo la serie que hace falta para ver "algo los está
+          // matando en serie (cuota…)" en el panel.
+          emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
+          if (auth.estado === 'cuota_agotada') {
+            emitirTurno(trabajador, 'sin_cuota', { tarea: suya.id, motivo: auth.detalle })
+            console.log(`   ⏸️  ${trabajador}: ${auth.detalle} — no se relanza ${suya.id} hasta que se reponga`)
+            sinCuota++
+            continue
+          }
           const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
           const r = mandarEncargo(trabajador,
             ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }),
             { alDia, turno: () => {
-              emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
               emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' })
             } })
           if (r.ok) { console.log(`   ↻ ${trabajador} retoma ${suya.id}`); retomadas++ }
@@ -935,8 +958,9 @@ async function main() {
       }
 
       if (!libres.length) {
-        console.log(retomadas
-          ? `✅ ${retomadas} turno(s) retomado(s); nadie libre a quien dar tarea nueva.`
+        const sufijoCuota = sinCuota ? ` · ${sinCuota} sin cuota (no relanzado(s))` : ''
+        console.log((retomadas || sinCuota)
+          ? `✅ ${retomadas} turno(s) retomado(s)${sufijoCuota}; nadie libre a quien dar tarea nueva.`
           : `✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
         return 0
       }
