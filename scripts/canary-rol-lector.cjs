@@ -60,6 +60,9 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-530] antifraude por dispositivo (T-372, T-418, T-304): sin esto no se puede medir por qué
+  // la huella de hardware no reconoce la misma máquina. Ver 20260807_rls_user_devices_lector.sql.
+  ['user_devices', 'huella de hardware y etiquetas de dispositivo, para diagnosticar el antifraude'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
