@@ -13477,6 +13477,74 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Cómo:** modelo `exam_cases` (`oposicion_type='administrativo_madrid'`, `case_title`, `is_active`). Anclar a fuente oficial (temario/normativa de la convocatoria de Madrid), nunca inventar. Doble auditoría antes de activar.
 - **Estado:** detectado 13/07 (triaje feedback), 0 supuestos, sin empezar.
 
+---
+
+**🔍 REVISADA el 07/08/2026 — la premisa se confirma contra fuente oficial (no solo contra la ficha),
+pero NO hay fuente de la que transcribir un supuesto real todavía. Sin escritura en BD (rol
+`trabajador`), y con el bloqueo de fondo, no llegué a redactar ningún `exam_case`.**
+
+**Confirmado: 0 `exam_cases` para `administrativo_madrid` hoy** (`SELECT count(*) FROM exam_cases
+WHERE oposicion_type='administrativo_madrid'` → 0), 47 temas activos.
+
+**Confirmado contra la fuente oficial (no contra la ficha) que el 2º ejercicio SÍ es de supuestos
+prácticos, y con más precisión que la ficha:** descargué el `programa_url` vigente
+(`BOCM-20260714-6.PDF`, Orden 1634/2026) y extraje el texto. Cita literal: *"2.2. Segundo
+ejercicio: consistirá en la resolución, en un tiempo máximo de cuarenta y cinco (45) minutos, de
+**dos** supuestos prácticos propuestos por el órgano de selección, **desglosados en 15 preguntas
+cada uno** de ellos. Estos supuestos irán dirigidos a apreciar la capacidad de las personas
+aspirantes para realizar tareas administrativas relacionadas con los contenidos de las materias
+del programa incluidos en los apartados 'Derecho Administrativo General', 'Gestión de Recursos
+Humanos' y 'Gestión Financiera'"*. O sea: el formato objetivo es **2 `exam_cases`, 15 preguntas
+cada uno, ancladas a esos 3 bloques de materia** — más preciso que "crear supuestos prácticos"
+sin más.
+
+**EL BLOQUEO REAL: no existe todavía ningún examen COMPLETO y reciente de este proceso del que
+transcribir un supuesto de verdad — medido, no supuesto:**
+- La convocatoria VIGENTE (2026, `BOCM-20260714-6`) tiene el primer ejercicio en **mayo de 2027**
+  — no ha pasado.
+- La convocatoria ANTERIOR (2025, `BOCM-20250512-2`, en BD como `is_current=false`,
+  `estado_proceso='lista_admitidos'`) verificada en la página oficial
+  (`comunidad.madrid/servicios/empleo/administrativos-c1-2025`): primer ejercicio celebrado
+  **06/06/2026** (ya pasado, con cuestionario + plantilla ya publicados), pero **segundo y tercer
+  ejercicio programados para el 06/09/2026 — todavía NO celebrados** a fecha de hoy (07/08/2026).
+  Ningún supuesto práctico REAL de esta convocatoria existe aún.
+- **Sí hay un documento oficial histórico real y descargable**, de la convocatoria de **2018**
+  (Orden 174/2018), publicado en la misma página oficial:
+  `https://www.comunidad.madrid/docs/assets/2023/07/24/1926-2023_historico_segundo_ejercicio.pdf`
+  (verificado: HTTP 200, 16.007.548 bytes, host `comunidad.madrid`, 14 páginas) — el "Segundo
+  ejercicio y plantilla" de un examen REAL y completo de este mismo cuerpo/proceso. **PROBLEMA:
+  es un PDF ESCANEADO** — extraje texto con `pdf-parse` y de 14 páginas solo salieron **1.778
+  caracteres** (ruido de OCR incrustado, no el contenido real): no se puede transcribir en bloque,
+  necesitaría OCR de verdad o lectura manual página a página.
+
+**Decisión de producto pendiente (dos caminos legítimos, no la resuelvo yo):**
+1. **Usar el histórico de 2018 YA** (transcripción/OCR manual de 14 páginas escaneadas, más lento
+   por página pero disponible hoy) — responde a la usuaria que ya pidió esto sin esperar.
+2. **Esperar al 06/09/2026** (un mes) a que se celebre el 2º ejercicio de la convocatoria 2025 y se
+   publique su plantilla — contenido más reciente y ligado al proceso que la gente está preparando
+   AHORA, pero exige esperar y puede que tampoco venga en texto (mismas administraciones suelen
+   colgar PDFs escaneados de exámenes recién celebrados).
+Dejo la pregunta en el embudo (`preguntar`, no bloqueante) en vez de decidir por mi cuenta: afecta
+a qué se le sirve a una usuaria de pago cero (free) que ya lleva 26 tests hechos y espera esto.
+
+**Cabo de datos, menor, NO bloqueante (confirmado, no afecta a nada en producción hoy):**
+`exam_cases.oposicion_type` tiene una inconsistencia de formato ya existente en el banco —
+`administrativo-seguridad-social`, `auxilio-judicial`, `auxiliar-administrativo-carm`,
+`tramitacion-procesal` usan GUION (formato `oposiciones.slug`), mientras que
+`administrativo_estado`, `auxiliar_administrativo_ayuntamiento_zaragoza`, `administrativo_carm`
+usan GUION BAJO (formato `topics.position_type`). **Medido que NO es un bug funcional:** grep de
+todo el código (`lib/`, `app/`) confirma que el único sitio que lee `exam_cases` lo hace vía
+`questions.exam_case_id = exam_cases.id` (join directo por UUID, en
+`lib/api/official-exams/queries.ts` y `lib/api/test-review/queries.ts`) — ningún query filtra
+`exam_cases` por `oposicion_type`, así que la inconsistencia no esconde contenido a nadie hoy. Vale
+la pena escribirlo aquí solo para que quien cree los de Madrid use `administrativo_madrid` (guion
+bajo, como `topics.position_type`), consistente con la mayoría reciente.
+
+No se ha escrito nada en `exam_cases`/`questions` — todo lo de arriba es lectura
+(`VENCE_LECTOR_URL`) + descarga y verificación directa de las fuentes oficiales citadas (BOCM,
+comunidad.madrid), cero contenido inventado ni tomado de academias/editoriales comerciales (ADAMS
+y similares aparecieron en la búsqueda pero son material con copyright, no fuente oficial).
+
 ### [T-045] 🟡 [VENDIBLE — DEGRADADA tras verificar: es escala tributaria, no administrativo general] Construir Agentes de Tributos de la Agencia Tributaria Canaria (C1)
 - **Qué:** `administrativo-agencia-tributaria-canaria` **catalogada** (⚪ `is_active=false`, 0 temas), plazo de inscripción hasta el **27/07/2026**.
 - **⚠️ CORRECCIÓN tras verificar (20/07) — la ficha inicial la sobrevaloró en dos cosas:**
