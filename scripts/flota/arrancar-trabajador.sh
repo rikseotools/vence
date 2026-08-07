@@ -235,13 +235,26 @@ RestartSec=30
 # atribuible.
 #
 # Los números salen de lo medido, no de una regla general: 0,4 GB en reposo, y los picos legítimos
-# son los `jest`/`typecheck` de dentro del turno (2-3 GB observados). 2 GB de aviso y 3 GB de tope
-# dejan correr lo legítimo y cortan lo desbocado. ⚠️ Cuatro por 3 GB pasan de los 7,7 de la
-# máquina: es sobre-reserva deliberada, porque los picos rara vez coinciden y `MemoryHigh` frena
-# antes. Si los OOM no bajan a cero, lo siguiente NO es subir esto — es bajar `--maxWorkers` de
+# son los `jest`/`typecheck` de dentro del turno (2-3 GB observados).
+#
+# ⚠️ EL AVISO ERA DE 2 GB Y ESE NÚMERO ESTABA MAL — lo desmintió la medición (07/08, 18:07). Se
+# justificaba diciendo que cuatro topes sumaban más que la máquina «porque los picos rara vez
+# coinciden». **Coinciden**: mirando `MemoryCurrent` de los cuatro cgroups a la vez salió
+# `w1 2,16 GB · w2 2,15 GB · w3 2,03 GB` — los TRES por encima de su propio aviso a la vez, 6,3 GB
+# entre tres, sobre 7,7 GB de máquina y con el sistema y el supervisor también dentro. Con la suma
+# de los avisos (8 GB) por encima de la RAM, quien dispara no es el tope de nadie: es el OOM killer
+# del KERNEL, que elige víctima a nivel de máquina y se lleva por delante a un trabajador que se
+# estaba portando bien. Resultado medido: **19 OOM en un día**, con el arreglo ya puesto.
+#
+# 1400 MB × 4 = 5,6 GB, que deja ~2 GB para el sistema, el supervisor y los tmux. Y bajar el AVISO
+# no mata turnos: `MemoryHigh` **no mata**, frena y fuerza reclamo — un turno que necesite más va
+# más lento en vez de morir. `MemoryMax=3G` se queda como tope duro para el desbocado de verdad,
+# porque ahí el kill cae DENTRO de su cgroup, que es la víctima correcta.
+#
+# Si aun así los OOM no bajan a cero, lo siguiente NO es subir esto — es bajar `--maxWorkers` de
 # jest o quitar un trabajador.
 MemoryAccounting=yes
-MemoryHigh=2G
+MemoryHigh=1400M
 MemoryMax=3G
 
 # Que jest no abra un worker por núcleo DENTRO de cada turno: con cuatro turnos a la vez eso
