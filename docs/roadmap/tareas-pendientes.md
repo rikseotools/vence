@@ -998,6 +998,64 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
   - `w3` **aparcado**: se mató su sesión de tmux para que el vigía no siga intentándolo, y **T-562 se liberó** (`claim --force` + `release`) para que no quedara bloqueada 16 h. **Hay que recrear w3 después de las 23:00 UTC** (`flota arrancar w3`).
 - **Capas que pide esto:** núcleo puro para (a) reconocer el mensaje de límite y extraer la hora de reset y (b) decidir si un encargo arrancó, con sus tests; y una simulación que reproduzca el panel con el mensaje dentro, porque el defecto vive justo en lo que hoy no se lee.
 - **Relacionadas:** [T-486] (el piloto de flota que introdujo `mandarEncargo` y el registro de cuentas), y el runbook `docs/runbooks/sistema-sesiones-paralelas.md` §«se observa, no se declara».
+### [T-635] 🟠 [ABIERTO 06/08] El AbortController del proxy de `answer-and-save` puede morir en un 504 sin dejar rastro en `observable_events`
+
+- **De dónde sale:** investigando [T-315] (el techo de 25 s del guardado de respuestas), Manuel pidió reservar ficha propia para este hallazgo si no cabía en la misma: *"un fallo que no deja rastro es el que nadie encuentra"* (pregunta bloqueante #10, respondida 05/08 12:07 UTC).
+- **El mecanismo, demostrado LEYENDO EL CÓDIGO (no medido en frecuencia real — ver más abajo qué falta):**
+  - `app/api/v2/answer-and-save/route.ts` reenvía casi todo el tráfico real al backend (`shouldRouteToBackend('answer-and-save')` es `true` hardcoded desde el 24/05, sin % de rollout). La llamada al proxy va envuelta en un `AbortController` con **25.000 ms** (línea ~98).
+  - El propio fichero declara `export const maxDuration = 30` (línea 25) — el límite de ejecución que Next.js/Vercel le da a la función entera.
+  - Si el proxy agota sus 25 s y falla (`catch (backendError)`, línea ~129), el código cae al camino LOCAL de fallback (antifraude + `validateAndSaveAnswer`), que a su vez tiene **sus propios timeouts de 25.000 ms + 25.000 ms**. Ese fallback arranca como si dispusiera de presupuesto completo, cuando en realidad solo quedan **~5 s** antes de que la plataforma mate la función (30 - 25).
+  - Si la función muere por `maxDuration` (límite de PLATAFORMA), no lo hace vía una excepción de nuestro código: no pasa por ningún `catch` propio, así que **no se emite `request_completed`, no hay `errorRef`, no hay log persistente** — el `withErrorLogging` que envuelve el handler nunca llega a ejecutar su lógica de cierre. El usuario recibe un 504 de la plataforma (o la conexión simplemente se corta) y en `observable_events` no queda absolutamente nada.
+- **Por qué importa:** es justo el escenario en el que MÁS falta el rastro — una petición que ya iba lenta (agotó el proxy) y encima muere sin explicación. Es indistinguible, desde nuestra telemetría, de que la petición nunca hubiera existido. Los indicadores de salud (5xx, latencia) no lo ven porque no hay evento que contar.
+- **Lo que falta para pasar de "demostrado por código" a "medido":** acceso a logs de infraestructura fuera del alcance de un worker — logs de ALB/CloudFront/Vercel (function timeouts) que no pasan por `observable_events`. Sin eso no se puede afirmar la FRECUENCIA real, solo que el mecanismo existe y es reproducible por construcción (25s proxy + 30s maxDuration = únicamente 5s de margen para un fallback que necesita hasta 50s).
+- **Relación con la propuesta de presupuesto único ([T-315], `docs/roadmap/answer-save-presupuesto-unico-timeout.md` §5):** si el fix de T-315 unifica los timeouts del backend bajo un presupuesto único y coherente, el proxy debería propagar el presupuesto RESTANTE al fallback (no reiniciar con 25.000+25.000 ms completos) y `maxDuration` debe quedar siempre por encima del presupuesto total + margen de fallback — no al revés como hoy.
+- **Posibles vías de arreglo (sin decidir, para quien la retome):**
+  1. Que el fallback local reciba el tiempo REAL que queda hasta `maxDuration` (deadline propagado desde `startTime`), no sus propios 25s+25s fijos — mismo patrón de "presupuesto único" que T-315.
+  2. Instrumentar el borde: aunque la función muera por `maxDuration`, ALB/CloudFront sí registran el 504 en sus propios logs — un cron que los ingiera (o una alarma de CloudWatch sobre el ALB) daría la señal que `observable_events` no puede dar desde dentro del proceso que murió.
+  3. Reducir el AbortController del proxy (25s) con margen suficiente respecto a `maxDuration` (30s) para que SIEMPRE quede tiempo de sobra para al menos intentar el fallback y, si también falla, para que el propio código (no la plataforma) devuelva el 503 con su `errorRef` — igual que ya hace `isDbTimeoutError` en el catch de `route.ts`.
+- **Relacionada:** [T-315] (el presupuesto único de timeout del backend, misma familia de causa), [T-312] (el desglose de fases, que tampoco puede ver esto — la función muere antes de emitir nada).
+
+### [T-633] 🔴 [ABIERTO 06/08] `auth_perfil_recuperado`/`auth_alta_sin_perfil` (T-434) llevan 5 días mudos mientras el síntoma que curaban sigue activo — HAY DINERO EN JUEGO, mismo patrón que motivó T-434
+
+- **Encontrado investigando [T-271]** (el `console_error` `UserAvatar: v2 stats error: Usuario no existe`, la MISMA firma que originó T-434). Al comprobar si T-434 (✅ HECHA 05/08) seguía curando, salió esto.
+
+**MEDIDO hoy (06/08), no supuesto:**
+- El código de T-434 (`decidirReintentoPerfil` + reintento en cada rotación de sesión) **SÍ está desplegado en producción ahora mismo**: verificado por ancestría de git, `git merge-base --is-ancestor e6b117b3e 51f96259` → true, y `51f96259` es el deploy de frontend más reciente (`deploy_runs`, terminado hoy 06/08 21:09 UTC).
+- **`auth_perfil_recuperado`** (la métrica de "usuario curado" que T-434 dejó como termómetro del drenaje): **0 eventos desde el 01/08**. Solo hubo 13 el propio día del deploy.
+- **`auth_alta_sin_perfil`** (se emite en CUALQUIER alta/reintento que no consigue perfil): **0 eventos en los últimos 8 días completos**, contando el propio 01/08.
+- Y mientras tanto, el síntoma de cliente que motivó todo esto (`console_error` `UserAvatar: v2 stats error: Usuario no existe`) **sigue activo, sin bajar**: 30-45 usuarios/día y 39-107 eventos/día del 28/07 al 05/08 (10 días de datos consultados con `SELECT date_trunc('day',ts), count(distinct user_id), count(*) FROM observable_events WHERE event_type='console_error' AND severity='error' AND error_message ILIKE '%UserAvatar%Usuario no existe%' GROUP BY 1`), sin ninguna caída visible tras el deploy del 01/08.
+
+**Por qué esto NO es lo mismo que "el reintento falla" (que era el criterio de reapertura que dejó T-434):**
+T-434 dijo explícitamente "reábrela si `auth_alta_sin_perfil` con `enReintento=true` deja de estar a 0 de forma sostenida — es decir, si aparecen usuarios a los que el reintento TAMPOCO cura". Eso describiría intentos que fallan (`alta_sin_perfil` subiendo). Lo que mido es distinto y más raro: **ni `alta_sin_perfil` ni `perfil_recuperado` se mueven — los dos están en silencio absoluto**, como si el camino de reintento no se estuviera ni siquiera intentando para estos usuarios, mientras el síntoma de cliente demuestra que SIGUEN rotos.
+
+**SOSPECHO, sin confirmarlo — tres hipótesis, no descartadas entre sí:**
+1. Los usuarios detrás de `UserAvatar: Usuario no existe` en este momento **no son el mismo tipo de roto que arregló T-434** (perfil nunca resuelto). Podrían ser genuinamente `user_id` **eliminados** (borrado real, el caso que el propio comentario de `/api/v2/user-stats` asume — T-434 midió "0 de 29 en `deleted_users_log`" para SU cohorte del 31/07, pero eso no dice nada de la cohorte de HOY, que no he cruzado contra `deleted_users_log`).
+2. El camino de reintento (`decidirReintentoPerfil` en el callback `jwt`) **no se está ejecutando** para estos usuarios por alguna condición previa (p.ej. si no rotan sesión con la frecuencia esperada, o si algo corta antes de llegar a ese bloque).
+3. La propia emisión (`emitFireAndForget`) de los dos eventos está fallando en silencio — mismo tipo de fallo que otros hallazgos de esta sesión (RLS bloqueando lectura sin error; aquí sería escritura, no confirmado).
+
+**Ninguna de las tres está demostrada.** Confirmar la (1) es lo más barato: cruzar los `user_id` de hoy con `UserAvatar: Usuario no existe` contra `deleted_users_log` — si SON eliminados, esto no es una regresión de T-434 en absoluto, es un caso nuevo y distinto (usuarios borrados de verdad, sesión zombie legítima) que collide con el mismo mensaje de error por coincidencia de texto.
+
+**Por qué es 🔴 y no un hallazgo cualquiera:** T-434 abrió con *"HAY DINERO EN JUEGO AHORA MISMO"* — 85 checkouts rechazados en 7 días de 12 personas. Si el mecanismo que se construyó para pararlo se ha quedado mudo, ese riesgo puede seguir vivo sin que nadie lo vea (exactamente el "falso verde" que T-434 diagnosticó la PRIMERA vez con `auth_sub_reconciliado`/T-245 — la vigilancia decía "drenado" y no lo estaba).
+
+**Cómo seguir (primer paso, barato):**
+```sql
+-- 1. ¿Los rotos de HOY son perfiles borrados de verdad? (user_id no lo tengo por PII — hace
+--    falta cruzar con deleted_users_log usando una sesión con más acceso, o mirar server-side
+--    'auth' warn events del endpoint que sí trae user_id)
+SELECT date_trunc('day', ts)::date d, count(distinct user_id), count(*)
+  FROM observable_events
+ WHERE event_type='auth' AND severity='warn' AND endpoint='/api/v2/user-stats'
+   AND ts > now() - interval '8 days' GROUP BY 1 ORDER BY 1 DESC;
+
+-- 2. ¿Checkouts rechazados por 404/User not found ahora mismo, no solo a finales de julio?
+SELECT date_trunc('day', ts)::date d, count(*)
+  FROM observable_events
+ WHERE endpoint='/api/stripe/create-checkout' AND (error_message ILIKE '%not found%' OR http_status=404)
+   AND ts > now() - interval '8 days' GROUP BY 1 ORDER BY 1 DESC;
+```
+Si (2) sigue habiendo rechazos de pago con esta firma, es urgente de verdad. Si son 0, el riesgo económico concreto que motivó T-434 puede estar contenido aunque la telemetría de reintento esté muda — hay que medirlo, no darlo por hecho en ninguna dirección.
+
+- **Relacionadas:** [T-434] (el fix cuyo termómetro se ha callado), [T-245] (el primer episodio de este mismo patrón, con el mismo "falso verde" de vigilancia), [T-271] (donde se encontró esto, investigando el mismo `console_error`).
 
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
@@ -16276,6 +16334,26 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **Si vuelve a pasar algo parecido:** mirar `observable_events` filtrando por `user_id`, no el endpoint por tu cuenta. `deploy_version` distingue «no le ha llegado el arreglo» de «el arreglo no arregla». Runbook: `docs/runbooks/oferta-precio-personalizada.md` §4-bis.
 
 ### [T-315] 🔴 [ABIERTO 30/07] El techo de 25 s de `answer-and-save` es el TIMEOUT DEL ANTIFRAUDE, no una degradación — y subirlo fue tratar el síntoma
+
+- **🔴 RE-DIAGNOSTICADO 06/08 — TODO LO DE ABAJO APUNTA AL FICHERO EQUIVOCADO. El muro real está en el BACKEND, no en `route.ts`.** `shouldRouteToBackend('answer-and-save')` es `true` **hardcoded desde el 24/05/2026**, sin % de rollout (`lib/api/backend-router.ts:38`) — para casi todo el tráfico real, `app/api/v2/answer-and-save/route.ts` reenvía la petición a `https://api.vence.es` y el código local (antifraude + `validateAndSaveAnswer`, con sus timeouts de 25000/25000) **solo se ejecuta si el proxy FALLA**. Es prácticamente código muerto para el camino feliz. Confirmado por TRES sesiones independientes con cifras casi idénticas en 36h (w2 el 05/08, w4 el 06/08 08:10 UTC, yo mismo el 06/08 ~23:30 UTC):
+  ```sql
+  -- Los timeouts de route.ts NUNCA disparan (14 días, 3 mediciones independientes: 0/0/0)
+  SELECT count(*) FROM observable_events WHERE event_type='http_timeout'
+    AND metadata->>'timeoutMs'='25000' AND ts > now() - interval '14 days';
+  ```
+  | banda de `duration_ms` | eventos (14 días) | % con `http_status=503` |
+  |---|---|---|
+  | 10.000-10.999 ms | 19 | **84%** |
+  | 15.000-15.999 ms | 15 | **80%** |
+  | 25.000-25.999 ms | 46 | 0% (78% con 200 — los que SÍ acaban a tiempo) |
+
+  Ese doble muro (10-11s y 15-16s, no 25s) es la firma exacta del **backend real**: `backend/src/answer-save/answer-save.controller.ts:40-42` — `ANTIFRAUD_TIMEOUT_MS=10_000` y `VALIDATE_AND_SAVE_TIMEOUT_MS=15_000`, aplicados **SECUENCIALMENTE** (antifraude primero, luego validate-and-save), así que el peor caso es la SUMA: **25 s**, y al expirar cualquiera de los dos devuelve **503 vía `serviceSaturatedResponse()` — falla CERRADO**, no 200. El hallazgo #2 de más abajo ("el antifraude falla en abierto, devuelve 200") **tampoco se sostiene ni siquiera en `route.ts`** (su catch final SIEMPRE devuelve 503 vía `isDbTimeoutError`) — la premisa parecía errónea desde el origen, no solo mal atribuida al fichero.
+  - **El backend NO emite NINGÚN evento de observabilidad propio para este endpoint** (ni `request_completed` ni nada — confirmado: cero filas `source='fargate'` para tráfico orgánico de `answer-and-save`, solo el canario sintético `canary-answer-save`). Todo lo de la tabla de arriba viene de `request_completed` que emite el WRAPPER de `route.ts` (mide el viaje completo: proxy + procesamiento del backend), no de instrumentación propia del backend. Su único rastro hoy es `this.logger.warn(...)` — CloudWatch, no consultable, no alertable.
+  - **Por qué esto también corrige [T-312]:** el desglose de fases que se acababa de construir ese mismo día (`answer_save_lento` primero, `answer_save_ruta_lenta` después) instrumenta el código LOCAL de `route.ts` — el que casi nunca se ejecuta. Explica por qué `answer_save_lento` lleva 0 disparos en 7 días con el síntoma intacto: no solo porque su reloj arranca tarde (razón ya documentada en [T-312]), sino porque **el código que envuelve entero rara vez corre**. La instrumentación que de verdad hace falta va en `answer-save.controller.ts`, no en el frontend.
+- **Decisión de Manuel (05/08, pregunta bloqueante #10, respondida 12:07 UTC):** *"Sí a las dos [backend, no frontend; y sí, rediseñar la secuencia] — el arreglo va al BACKEND. Aplicarlo a route.ts habría tocado código casi inerte, que es peor que no hacer nada porque deja la ficha cerrada y el muro intacto. […] Sobre el cómo: PRESUPUESTO ÚNICO, no realinear cuatro números. Cuatro timeouts independientes que solo funcionan si suman bien vuelven a desalinearse en cuanto alguien toca uno […] y 10s+15s SECUENCIALES significa que el peor caso es la SUMA, así que 'realinear' obliga a bajar los dos y a perder margen en el camino que sí importa. […] el antifraude —que es el que puede tardar y no es el que guarda la respuesta del usuario— fuera del camino crítico o con su propio límite que NO se le coma al guardado. NO lo apliques por tu cuenta: es un endpoint keystone y toca el antifraude. Escribe la propuesta […] y ENTRÉGALA."* Propuesta redactada abajo, en `docs/roadmap/answer-save-presupuesto-unico-timeout.md` — sin aplicar, a la espera de decisión.
+- **🚨 Hallazgo aparte, con ficha propia [T-XXX] (reservada por separado, per instrucción de Manuel):** el `AbortController` de `route.ts` (línea ~98) envuelve la llamada AL PROXY con 25 s, y `maxDuration=30` en el mismo fichero. Si el proxy tarda esos 25 s y falla, quedan ~5 s de presupuesto de plataforma antes de que Vercel mate la función — insuficiente para completar (ni siquiera para arrancar del todo) el camino de fallback local, que a su vez tiene sus propios 25 s + 25 s. Ese fallo no pasa por ningún `catch` nuestro: la función muere por el límite de la PLATAFORMA, no por una excepción de nuestro código, así que **no genera ni `request_completed` ni log ni `errorRef`** — un 504 sin ningún rastro en `observable_events`. Mecanismo demostrado leyendo el código (AbortController 25s + `maxDuration=30` + fallback con sus propios timeouts de 25+25), NO medido en frecuencia real — eso necesita logs de ALB/Vercel fuera de mi alcance como worker.
+
+- **⬇️ Todo lo de abajo, hasta la sección "Cómo (medir antes de tocar…)", queda como registro histórico del diagnóstico ORIGINAL (30/07) — apuntaba a `route.ts`, que resultó ser casi inerte para el tráfico real. No es la causa; no aplicar su "fix decidido" tal cual.**
 - **Qué es realmente:** las peticiones que aparecen «a 25 segundos» no se están degradando: están **agotando `ANTIFRAUD_TIMEOUT_MS = 25000`** (`app/api/v2/answer-and-save/route.ts:42`). El propio código lo documenta: *«las 3 RPCs antifraude paralelas pueden tardar **10-20 s bajo carga BD**»* y *«el INSERT a `test_questions` + **27 triggers en cascada** tarda >15 s ocasionalmente»*.
 - **🎯 La prueba: la distribución se amontona contra un muro** (14 días, peticiones de más de 5 s):
 
