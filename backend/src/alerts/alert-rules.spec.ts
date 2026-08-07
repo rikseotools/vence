@@ -2723,3 +2723,38 @@ describe('RULE_IDENTIDAD_AJENA_NO_DRENA (el navegador con DOS identidades — T-
     );
   });
 });
+
+describe('RULE_PASS1_FILA_STALE (el HECHO manda sobre el status — T-295, 06/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_PASS1_FILA_STALE: R, ALERT_RULES } = require('./alert-rules');
+  const fila = (detected: number) => [{ detected }];
+
+  it('dispara con cualquier fila stale detectada', () => {
+    expect(R.shouldFire(fila(1))).toBe(true);
+    expect(R.shouldFire(fila(3))).toBe(true);
+  });
+
+  it('sin filas stale, silencio', () => {
+    expect(R.shouldFire(fila(0))).toBe(false);
+    expect(R.shouldFire([])).toBe(false);
+  });
+
+  it('es `warn`: el perfil ya está en su plan correcto, no hay daño', () => {
+    expect(R.severity).toBe('warn');
+  });
+
+  it('el aviso explica que NO hay fuga activa y qué limpiar', () => {
+    const n = R.buildNotification(fila(2));
+    expect(n.title).toContain('2');
+    expect(n.body).toContain('current_period_end');
+    expect(n.body).toContain('T-295');
+  });
+
+  it('está registrada en ALERT_RULES (si no, la señal nace sin quien la mire)', () => {
+    expect(
+      ALERT_RULES.some(
+        (r: { name: string }) => r.name === 'pass1_fila_stale_sin_conceder',
+      ),
+    ).toBe(true);
+  });
+});

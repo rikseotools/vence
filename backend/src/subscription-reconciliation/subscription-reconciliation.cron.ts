@@ -17,7 +17,7 @@ import { SubscriptionReconciliationService } from './subscription-reconciliation
  *
  * Migrado a backend Fargate scheduler para garantizar ejecución puntual.
  *
- * Emite 2 eventos a observability:
+ * Emite 4 eventos a observability:
  *   1. `subscription_drift` — Pass-1: user_subscriptions OK pero plan_type stale.
  *      Alimentado a RULE_SUBSCRIPTION_DRIFT.
  *   2. `subscription_drift_missing_in_db` — Pass-2: Stripe tiene sub que falta
@@ -27,6 +27,11 @@ import { SubscriptionReconciliationService } from './subscription-reconciliation
  *      contraria, que no vigilaba ninguna de las 8 reglas existentes).
  *      Alimentado a RULE_PREMIUM_SIN_RESPALDO (severity=warn: no hay daño al
  *      usuario, hay dinero escapándose).
+ *   4. `pass1_fila_stale_sin_conceder` — Pass-1 (T-295): filas `active`/`trialing`/
+ *      `past_due` con `current_period_end` ya vencido — el caso que hizo que el propio
+ *      Pass-1 regalara premium hora tras hora sobre datos que él mismo podía ver que
+ *      habían caducado (ver pass1-facts.ts). No se conceden; se avisa para que alguien
+ *      limpie la fila stale. Alimentado a RULE_PASS1_FILA_STALE (severity=warn).
  */
 @Injectable()
 export class SubscriptionReconciliationCron {
@@ -75,6 +80,30 @@ export class SubscriptionReconciliationCron {
           sampleUsers: result.pass1.sample.map((s) => s.user_id),
         },
       });
+
+      // Pass-1 (T-295): filas active/trialing/past_due con el HECHO (current_period_end)
+      // ya vencido — el status quedó congelado y NO se concede premium sobre él. Se avisa
+      // porque es dato stale que alguien debería limpiar en user_subscriptions.
+      if (result.pass1.staleSinVigencia > 0) {
+        this.observability.emitFireAndForget({
+          source: 'fargate',
+          severity: 'warn',
+          eventType: 'pass1_fila_stale_sin_conceder',
+          endpoint: 'subscription-reconciliation',
+          durationMs: Date.now() - startedAt,
+          metadata: {
+            cron: 'subscription-reconciliation',
+            pass: 1,
+            detected: result.pass1.staleSinVigencia,
+            sample: result.pass1.staleSample.map((s) => ({
+              userId: s.user_id,
+              email: s.email,
+              status: s.status,
+              currentPeriodEnd: s.current_period_end,
+            })),
+          },
+        });
+      }
 
       // Pass-2: caso Andrea — Stripe tiene sub OK pero BD vacía.
       // Se emite si hay missing O si alguna cuenta Stripe no se pudo
