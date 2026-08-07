@@ -145,6 +145,28 @@ function sesionViva(trabajador) {
   } catch { return null }
 }
 
+/**
+ * Lo último que escribió el turno de un trabajador en su log. Cadena vacía si no se puede leer.
+ *
+ * ⚠️ EXISTE PORQUE SE LEÍA EN EL HOME EQUIVOCADO, y eso dejaba MUDA la guarda de cuota (T-642,
+ * 07/08). Los tres sitios que miraban el log lo hacían con `~/flota-<w>.log` **sin** el `sudo -u
+ * flota`: en el VPS el supervisor entra como `root`, así que `~` es `/root` y ahí no hay ningún
+ * log. El `tail` fallaba en silencio (`|| true`), devolvía cadena vacía, y `AUT.clasificar('')`
+ * decía «no hay problema» — o sea que la comprobación de cuota de [T-617] **nunca podía dispararse
+ * en el VPS**, que es la única máquina donde importa. Medido en vivo: `w3`, con el mensaje
+ * «You've hit your weekly limit» escrito en su log, recibió encargo igual.
+ *
+ * El log lo ESCRIBE `mandarEncargo` dentro de un `sudo -u flota sh -c`, donde `~` sí es el de
+ * `flota`. Se lee igual que se escribe: es la misma ruta o no es la misma cosa.
+ */
+function logDelTurno(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  const como = m && m.local ? '' : 'sudo -u flota '
+  try {
+    return enMaquina(trabajador, `${como}sh -c 'tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true'`)
+  } catch { return '' }
+}
+
 /** Qué está ejecutando el panel de un trabajador. Cadena vacía si no se puede ver (≠ «nada»). */
 function comandoDelPanel(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
@@ -252,8 +274,7 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   // duplica —lo pone `AUT.clasificar`, el mismo de T-617—: lo que se añade es un segundo
   // llamador, no una segunda regla. Y se lee del log del turno ANTERIOR, sin gastar la cuota que
   // justamente no queda.
-  let salidaPrevia = ''
-  try { salidaPrevia = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+  const salidaPrevia = logDelTurno(trabajador)
   const auth = AUT.clasificar(salidaPrevia)
   if (auth.estado === 'cuota_agotada') {
     return { ok: false, sinCuota: true, motivo: auth.detalle }
@@ -320,8 +341,7 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   try { execFileSync('sleep', [String(VERIFICACION_ARRANQUE_S)]) } catch {}
   const tras = ENC.arrancoDeVerdad(comandoDelPanel(trabajador))
   if (tras.arranco === false) {
-    let salida = ''
-    try { salida = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+    const salida = logDelTurno(trabajador)
     const auth = AUT.clasificar(salida)
     const motivo = auth.estado !== 'desconocido' ? auth.detalle : tras.motivo
     return { ok: false, arranque: false, motivo }
@@ -969,9 +989,20 @@ async function main() {
       // por un hipo de red mataría el turno que estuviera corriendo dentro.
       const sello = new Date().toISOString().slice(11, 19)
       for (const f of delReparto) {
-        const p = ENC.presenciaDelPanel({ sesionExiste: sesionViva(f.trabajador), paneCommand: '', reparte: true })
+        const viva = sesionViva(f.trabajador)
+        // Solo se pregunta por el panel si HAY sesión: preguntarlo siempre gastaba un ssh por
+        // trabajador y por vuelta para nada, y pasarlo vacío hacía que los cuatro salieran
+        // «invisible» — ruido que yo mismo metí al estrenar esto y que se vio en la primera
+        // pasada. Un aviso que sale siempre no avisa de nada.
+        const p = ENC.presenciaDelPanel({
+          sesionExiste: viva,
+          paneCommand: viva === true ? comandoDelPanel(f.trabajador) : '',
+          reparte: true,
+        })
         if (p.accion !== 'resucitar') {
-          if (p.estado === 'invisible') console.log(`   [${sello}] 👁️  ${f.trabajador}: ${p.motivo}`)
+          // Solo se canta la ceguera sobre la SESIÓN (no se pudo ni preguntar si existe). Que el
+          // panel no se deje leer teniendo sesión ya lo dicen las puertas de `mandarEncargo`.
+          if (viva === null) console.log(`   [${sello}] 👁️  ${f.trabajador}: ${p.motivo}`)
           continue
         }
         const m = MAQ.maquinaDe(f.trabajador)
@@ -1025,8 +1056,7 @@ async function main() {
           // propio bucle), sin que ninguna avanzase nada — el turno anterior fallaba en el mismo
           // instante en que arrancaba. Se comprueba leyendo lo que el turno ANTERIOR escribió en
           // su log, SIN gastar cuota en volver a preguntarlo, que es justo lo que no queda.
-          let salidaPrevia = ''
-          try { salidaPrevia = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+          const salidaPrevia = logDelTurno(trabajador)
           const auth = AUT.clasificar(salidaPrevia)
           // El «muerto» se emite SIEMPRE, se relance o no: es un hecho del turno anterior, no una
           // promesa sobre el siguiente. Antes solo se emitía dentro del `turno` de un retomar que
