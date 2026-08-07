@@ -1396,32 +1396,6 @@ sirven es leer los casos, no contar filas. Al tocarlo, mantener la paridad sweep
 **Relacionadas:** [T-253] (la misma familia dentro del TEXTO del artículo, no de la explicación) ·
 memoria `project-detector-notas-auditoria-verde-falso` (ya van tres veces que este detector da verde
 falso: conviene leerla antes de recalibrar).
-### [T-676] 🟠 [ABIERTO 07/08] El RD 486/1997 se sirve sin CUATRO de sus seis anexos, y el primero al 0,7% de su texto — 6 oposiciones, 500 usuarios
-
-- **Lo destapó un usuario, no un detector.** `casterpepe76` (free, Ordenanza del Ayuntamiento de Córdoba) escribió: *«Comparando el tema con el real decreto 486/1997 sacado del BOE veo que faltan anexos y que los anexos que ponéis vosotros están como resumidos. ¿Es correcto el tema 9 que tenéis subido?»*. **Tiene razón, y se queda corto.**
-- **Contrastado contra el BOE consolidado** (`BOE-A-1997-8669`, descargado y medido, no de memoria):
-
-  | Anexo | En el BOE | En nuestra BD |
-  |---|---|---|
-  | I — Condiciones generales de seguridad | **17.320** car. | `AI-suelos`, **129 car.** (solo los suelos) |
-  | II — Orden, limpieza y mantenimiento | 1.779 | `AII`, 1.769 ✅ |
-  | III — Condiciones ambientales | 3.657 | **NO ESTÁ** |
-  | IV — Iluminación | 3.774 | **NO ESTÁ** |
-  | V — Servicios higiénicos y locales de descanso | 6.595 | **NO ESTÁ** |
-  | VI — Material y locales de primeros auxilios | 3.496 | **NO ESTÁ** |
-
-  **Un anexo completo de seis.** Faltan ~34.800 caracteres de temario, y son justo los que se examinan: las cifras concretas (temperaturas, lux, dimensiones, dotación de vestuarios) viven en los anexos, no en los 12 artículos, que son remisiones de dos líneas.
-- **Alcance:** 6 oposiciones (`ordenanza_ayuntamiento_cordoba`, `cuidador_diputacion_cordoba`, `subalterno_gva`, `administrativo_castilla_leon`, `auxiliar_administrativo_cyl`, `agrupacion_profesional_servicios_publicos_carm`), **500 usuarios** con esas oposiciones. El scope es LEY ENTERA (`article_numbers NULL`), así que el temario **promete los anexos** y sirve un hueco.
-- **La consecuencia concreta, y es la que duele:** hay preguntas que EXAMINAN un anexo que no existe como contenido. Ejemplo vivo: *«Según el RD 486/1997 (**Anexo V**), los vestuarios de los lugares de trabajo estarán provistos de…»*, colgada del **art. 9** — el opositor abre el artículo desde la pregunta y lee una remisión, no el texto que se le está preguntando. De 44 preguntas activas de esta norma, **ninguna cuelga de los anexos III-VI** porque no hay dónde colgarlas.
-- **Punto ciego que lo explica:** `articulo_servido_sin_texto` mira artículos escopados **sin texto**; aquí los artículos SÍ tienen texto (correcto y completo) y lo que falta es una **parte de la ley que nunca se importó**. Y `law_unverified_source` / completitud de leyes mira si la ley está verificada contra su fuente — esta norma **no lo estaba**. Es exactamente el hueco que [T-528] describe: contenido servido sin contrastar nunca con el documento del que dice venir.
-- **Qué hacer:** importar VERBATIM del BOE los anexos III, IV, V y VI, y **completar el I** (hoy es un muñón de 129 caracteres que además se llama `AI-suelos`, o sea que ni el nombre es el del anexo). Doble auditoría antes de activar. Después, generar preguntas ancladas a los anexos nuevos y revisar si alguna de las 44 actuales está mal vinculada (la del Anexo V debería colgar del Anexo V, no del art. 9). **NUNCA redactar el anexo de memoria ni resumirlo**: el resumen es precisamente el defecto que el usuario ha detectado.
-- **Comprobar si el patrón se repite:** esta norma se importó con los anexos resumidos; conviene medir en cuántas otras leyes con anexos examinables pasa lo mismo (`AI-…`, `AII`, etc. con longitudes ridículas frente a su fuente). Si sale más de un puñado, es ficha aparte y detector.
-- **Relacionadas:** feedback `94a1d41f` (el usuario que lo encontró), [T-528] (temarios sin contrastar con su fuente), [T-596] (`articulo_servido_sin_texto`, el hermano que no ve este caso).
-
-- **✅ HECHO (07/08, el mismo día).** Importados los seis anexos VERBATIM desde la **API de datos abiertos** del BOE (`/texto/bloque/<id>`), no del HTML: recortar la norma entera por marcadores es justo lo que produce los resúmenes que esto venía a reparar. Resultado: `AI` **129 → 19.087** car. (y de paso deja de llamarse `AI-suelos`, que ni era su nombre), `AII` normalizado, y **AIII, AIV, AV y AVI importados de cero** (3.595 · 3.787 · 6.600 · 3.095 car.). El script **relee de la BD y compara carácter a carácter** con lo descargado: **6/6 coinciden**. Herramienta reutilizable y registrada: `scripts/oposiciones/importar-rd486-anexos.cjs`.
-- **Los dos cabos que dejaba el propio import, cerrados también:** (a) dos scopes de la CARM citaban `AI-suelos`, que tras el renombrado habría quedado como **artículo fantasma** — repuntados a `AI`, comprobado que no queda ninguno; (b) la pregunta *«Según el RD 486/1997 (Anexo V), los vestuarios…»* colgaba del **art. 9** porque el Anexo V no existía — **re-anclada al Anexo V**, así que ahora el opositor abre desde la pregunta el texto que se le está preguntando.
-- **Verificado en PRODUCCIÓN, no en la BD:** `curl` sobre `https://www.vence.es/ordenanza-ayuntamiento-cordoba/temario/tema-9` → los **seis anexos aparecen en el HTML servido**. Es el tema por el que escribió el usuario, y su scope es ley entera, así que los recibe sin tocar nada más.
-- **⚠️ CABO ABIERTO A PROPÓSITO — 5 temas con lista explícita NO reciben los anexos nuevos** (`auxiliar_administrativo_cyl` T28, `administrativo_castilla_leon` T511, `subalterno_gva` T14, y `agrupacion_profesional_servicios_publicos_carm` T10 y T12). **NO se han ampliado, y no es un olvido:** meter los anexos en un scope acotado sin leer su epígrafe es sobre-inclusión, o sea el defecto contrario y el que persigue `scope_over_inclusion_suspect`. Cada uno hay que mirarlo contra su programa oficial; los dos de la CARM son los más sospechosos, porque hoy sirven `AI`+`AII` y nada más.
 ### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
 
 - **Medido el 07/08** al buscar por qué 7 tareas revisadas en verde no tenían su trabajo en `main`:
@@ -8858,6 +8832,33 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-676] ✅ [HECHA 07/08] El RD 486/1997 se sirve sin CUATRO de sus seis anexos, y el primero al 0,7% de su texto — 6 oposiciones, 500 usuarios
+
+- **Lo destapó un usuario, no un detector.** `casterpepe76` (free, Ordenanza del Ayuntamiento de Córdoba) escribió: *«Comparando el tema con el real decreto 486/1997 sacado del BOE veo que faltan anexos y que los anexos que ponéis vosotros están como resumidos. ¿Es correcto el tema 9 que tenéis subido?»*. **Tiene razón, y se queda corto.**
+- **Contrastado contra el BOE consolidado** (`BOE-A-1997-8669`, descargado y medido, no de memoria):
+
+  | Anexo | En el BOE | En nuestra BD |
+  |---|---|---|
+  | I — Condiciones generales de seguridad | **17.320** car. | `AI-suelos`, **129 car.** (solo los suelos) |
+  | II — Orden, limpieza y mantenimiento | 1.779 | `AII`, 1.769 ✅ |
+  | III — Condiciones ambientales | 3.657 | **NO ESTÁ** |
+  | IV — Iluminación | 3.774 | **NO ESTÁ** |
+  | V — Servicios higiénicos y locales de descanso | 6.595 | **NO ESTÁ** |
+  | VI — Material y locales de primeros auxilios | 3.496 | **NO ESTÁ** |
+
+  **Un anexo completo de seis.** Faltan ~34.800 caracteres de temario, y son justo los que se examinan: las cifras concretas (temperaturas, lux, dimensiones, dotación de vestuarios) viven en los anexos, no en los 12 artículos, que son remisiones de dos líneas.
+- **Alcance:** 6 oposiciones (`ordenanza_ayuntamiento_cordoba`, `cuidador_diputacion_cordoba`, `subalterno_gva`, `administrativo_castilla_leon`, `auxiliar_administrativo_cyl`, `agrupacion_profesional_servicios_publicos_carm`), **500 usuarios** con esas oposiciones. El scope es LEY ENTERA (`article_numbers NULL`), así que el temario **promete los anexos** y sirve un hueco.
+- **La consecuencia concreta, y es la que duele:** hay preguntas que EXAMINAN un anexo que no existe como contenido. Ejemplo vivo: *«Según el RD 486/1997 (**Anexo V**), los vestuarios de los lugares de trabajo estarán provistos de…»*, colgada del **art. 9** — el opositor abre el artículo desde la pregunta y lee una remisión, no el texto que se le está preguntando. De 44 preguntas activas de esta norma, **ninguna cuelga de los anexos III-VI** porque no hay dónde colgarlas.
+- **Punto ciego que lo explica:** `articulo_servido_sin_texto` mira artículos escopados **sin texto**; aquí los artículos SÍ tienen texto (correcto y completo) y lo que falta es una **parte de la ley que nunca se importó**. Y `law_unverified_source` / completitud de leyes mira si la ley está verificada contra su fuente — esta norma **no lo estaba**. Es exactamente el hueco que [T-528] describe: contenido servido sin contrastar nunca con el documento del que dice venir.
+- **Qué hacer:** importar VERBATIM del BOE los anexos III, IV, V y VI, y **completar el I** (hoy es un muñón de 129 caracteres que además se llama `AI-suelos`, o sea que ni el nombre es el del anexo). Doble auditoría antes de activar. Después, generar preguntas ancladas a los anexos nuevos y revisar si alguna de las 44 actuales está mal vinculada (la del Anexo V debería colgar del Anexo V, no del art. 9). **NUNCA redactar el anexo de memoria ni resumirlo**: el resumen es precisamente el defecto que el usuario ha detectado.
+- **Comprobar si el patrón se repite:** esta norma se importó con los anexos resumidos; conviene medir en cuántas otras leyes con anexos examinables pasa lo mismo (`AI-…`, `AII`, etc. con longitudes ridículas frente a su fuente). Si sale más de un puñado, es ficha aparte y detector.
+- **Relacionadas:** feedback `94a1d41f` (el usuario que lo encontró), [T-528] (temarios sin contrastar con su fuente), [T-596] (`articulo_servido_sin_texto`, el hermano que no ve este caso).
+
+- **✅ HECHO (07/08, el mismo día).** Importados los seis anexos VERBATIM desde la **API de datos abiertos** del BOE (`/texto/bloque/<id>`), no del HTML: recortar la norma entera por marcadores es justo lo que produce los resúmenes que esto venía a reparar. Resultado: `AI` **129 → 19.087** car. (y de paso deja de llamarse `AI-suelos`, que ni era su nombre), `AII` normalizado, y **AIII, AIV, AV y AVI importados de cero** (3.595 · 3.787 · 6.600 · 3.095 car.). El script **relee de la BD y compara carácter a carácter** con lo descargado: **6/6 coinciden**. Herramienta reutilizable y registrada: `scripts/oposiciones/importar-rd486-anexos.cjs`.
+- **Los dos cabos que dejaba el propio import, cerrados también:** (a) dos scopes de la CARM citaban `AI-suelos`, que tras el renombrado habría quedado como **artículo fantasma** — repuntados a `AI`, comprobado que no queda ninguno; (b) la pregunta *«Según el RD 486/1997 (Anexo V), los vestuarios…»* colgaba del **art. 9** porque el Anexo V no existía — **re-anclada al Anexo V**, así que ahora el opositor abre desde la pregunta el texto que se le está preguntando.
+- **Verificado en PRODUCCIÓN, no en la BD:** `curl` sobre `https://www.vence.es/ordenanza-ayuntamiento-cordoba/temario/tema-9` → los **seis anexos aparecen en el HTML servido**. Es el tema por el que escribió el usuario, y su scope es ley entera, así que los recibe sin tocar nada más.
+- **⚠️ CABO ABIERTO A PROPÓSITO — 5 temas con lista explícita NO reciben los anexos nuevos** (`auxiliar_administrativo_cyl` T28, `administrativo_castilla_leon` T511, `subalterno_gva` T14, y `agrupacion_profesional_servicios_publicos_carm` T10 y T12). **NO se han ampliado, y no es un olvido:** meter los anexos en un scope acotado sin leer su epígrafe es sobre-inclusión, o sea el defecto contrario y el que persigue `scope_over_inclusion_suspect`. Cada uno hay que mirarlo contra su programa oficial; los dos de la CARM son los más sospechosos, porque hoy sirven `AI`+`AII` y nada más.
 
 ### [T-651] ✅ [HECHA 07/08] El antifraude marcaba como bot a nuestro propio canario y lo dejaba clavado en rojo
 
