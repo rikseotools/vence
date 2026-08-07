@@ -1289,6 +1289,27 @@ sirven es leer los casos, no contar filas. Al tocarlo, mantener la paridad sweep
 **Relacionadas:** [T-253] (la misma familia dentro del TEXTO del artículo, no de la explicación) ·
 memoria `project-detector-notas-auditoria-verde-falso` (ya van tres veces que este detector da verde
 falso: conviene leerla antes de recalibrar).
+### [T-676] 🟠 [ABIERTO 07/08] El RD 486/1997 se sirve sin CUATRO de sus seis anexos, y el primero al 0,7% de su texto — 6 oposiciones, 500 usuarios
+
+- **Lo destapó un usuario, no un detector.** `casterpepe76` (free, Ordenanza del Ayuntamiento de Córdoba) escribió: *«Comparando el tema con el real decreto 486/1997 sacado del BOE veo que faltan anexos y que los anexos que ponéis vosotros están como resumidos. ¿Es correcto el tema 9 que tenéis subido?»*. **Tiene razón, y se queda corto.**
+- **Contrastado contra el BOE consolidado** (`BOE-A-1997-8669`, descargado y medido, no de memoria):
+
+  | Anexo | En el BOE | En nuestra BD |
+  |---|---|---|
+  | I — Condiciones generales de seguridad | **17.320** car. | `AI-suelos`, **129 car.** (solo los suelos) |
+  | II — Orden, limpieza y mantenimiento | 1.779 | `AII`, 1.769 ✅ |
+  | III — Condiciones ambientales | 3.657 | **NO ESTÁ** |
+  | IV — Iluminación | 3.774 | **NO ESTÁ** |
+  | V — Servicios higiénicos y locales de descanso | 6.595 | **NO ESTÁ** |
+  | VI — Material y locales de primeros auxilios | 3.496 | **NO ESTÁ** |
+
+  **Un anexo completo de seis.** Faltan ~34.800 caracteres de temario, y son justo los que se examinan: las cifras concretas (temperaturas, lux, dimensiones, dotación de vestuarios) viven en los anexos, no en los 12 artículos, que son remisiones de dos líneas.
+- **Alcance:** 6 oposiciones (`ordenanza_ayuntamiento_cordoba`, `cuidador_diputacion_cordoba`, `subalterno_gva`, `administrativo_castilla_leon`, `auxiliar_administrativo_cyl`, `agrupacion_profesional_servicios_publicos_carm`), **500 usuarios** con esas oposiciones. El scope es LEY ENTERA (`article_numbers NULL`), así que el temario **promete los anexos** y sirve un hueco.
+- **La consecuencia concreta, y es la que duele:** hay preguntas que EXAMINAN un anexo que no existe como contenido. Ejemplo vivo: *«Según el RD 486/1997 (**Anexo V**), los vestuarios de los lugares de trabajo estarán provistos de…»*, colgada del **art. 9** — el opositor abre el artículo desde la pregunta y lee una remisión, no el texto que se le está preguntando. De 44 preguntas activas de esta norma, **ninguna cuelga de los anexos III-VI** porque no hay dónde colgarlas.
+- **Punto ciego que lo explica:** `articulo_servido_sin_texto` mira artículos escopados **sin texto**; aquí los artículos SÍ tienen texto (correcto y completo) y lo que falta es una **parte de la ley que nunca se importó**. Y `law_unverified_source` / completitud de leyes mira si la ley está verificada contra su fuente — esta norma **no lo estaba**. Es exactamente el hueco que [T-528] describe: contenido servido sin contrastar nunca con el documento del que dice venir.
+- **Qué hacer:** importar VERBATIM del BOE los anexos III, IV, V y VI, y **completar el I** (hoy es un muñón de 129 caracteres que además se llama `AI-suelos`, o sea que ni el nombre es el del anexo). Doble auditoría antes de activar. Después, generar preguntas ancladas a los anexos nuevos y revisar si alguna de las 44 actuales está mal vinculada (la del Anexo V debería colgar del Anexo V, no del art. 9). **NUNCA redactar el anexo de memoria ni resumirlo**: el resumen es precisamente el defecto que el usuario ha detectado.
+- **Comprobar si el patrón se repite:** esta norma se importó con los anexos resumidos; conviene medir en cuántas otras leyes con anexos examinables pasa lo mismo (`AI-…`, `AII`, etc. con longitudes ridículas frente a su fuente). Si sale más de un puñado, es ficha aparte y detector.
+- **Relacionadas:** feedback `94a1d41f` (el usuario que lo encontró), [T-528] (temarios sin contrastar con su fuente), [T-596] (`articulo_servido_sin_texto`, el hermano que no ve este caso).
 
 ### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
 

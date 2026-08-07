@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { auth } from '@/lib/auth'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import TestConfigurator from '@/components/TestConfigurator'
 import { buildTestUrl } from '@/lib/test-url/buildTestUrl'
 import type { TestStartConfig } from '@/components/TestConfigurator.types'
@@ -268,7 +269,9 @@ export default function TemaTestPage({
         if (user) {
           setUserStatsLoading(true)
           // Cargar racha global en paralelo con topic data
-          fetch(`/api/v2/user-stats?userId=${user.id}`)
+          // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+          getAuthHeaders()
+            .then(headers => fetch(`/api/v2/user-stats?userId=${user.id}`, { headers }))
             .then(r => r.json())
             .then(d => { if (d.success) setGlobalStreak(d.currentStreak ?? 0) })
             .catch(() => {})

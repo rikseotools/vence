@@ -60,11 +60,12 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
       setLoading(true)
 
       // Solo exámenes legislativos (psicotécnicos son pregunta a pregunta, no modo examen)
+      // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
       const examResponse = await fetch(`/api/exam/pending?${new URLSearchParams({
         userId: user.id,
         testType: 'exam',
         limit: limit.toString()
-      })}`)
+      })}`, { headers: await getAuthHeaders() })
 
       const examData = await examResponse.json()
       setPendingPsychometric([])

@@ -24,16 +24,36 @@ import { execSync } from 'child_process'
 
 const RAIZ = process.cwd()
 
-/** Rutas de API cuya guarda comprueba el dueño del recurso. */
-function rutasConDueno(): string[] {
+/** Rutas de API que aplican una guarda de identidad, por el nombre de la guarda. */
+function rutasConGuarda(guarda: string): string[] {
   const salida = execSync(
-    `grep -rl "requireDuenoDelRecurso" ${path.join(RAIZ, 'app/api')} || true`,
+    `grep -rl "${guarda}" ${path.join(RAIZ, 'app/api')} || true`,
     { encoding: 'utf8' },
   )
   return salida
     .split('\n')
     .filter(Boolean)
     .map((f) => f.replace(path.join(RAIZ, 'app'), '').replace(/\/route\.(ts|js)$/, ''))
+}
+
+/** Rutas de API cuya guarda comprueba el dueño del recurso. */
+function rutasConDueno(): string[] {
+  return rutasConGuarda('requireDuenoDelRecurso')
+}
+
+/**
+ * Rutas que exigen que quien pide SEA el usuario del token ([T-671]).
+ *
+ * Es la GEMELA de la de arriba y hacía falta, porque el mismo descuido tiene dos caras y esta
+ * pasó desapercibida mientras se arreglaba la otra: `requireDuenoDelRecurso` responde **403** a
+ * quien no manda identidad, y `requireUsuarioPropio` responde **401**. Al mirar solo los 403 se vio
+ * `/api/exam/validate` (190 rechazos, 20 personas) y NO se vio el grupo de lectura, que era mucho
+ * mayor: **`/api/v2/user-stats` con 4.114 respuestas 401 sobre 4.329 peticiones —el 95%— y 248
+ * usuarios**, más `/api/exam/pending` (254 usuarios) y `/api/psychometric/completed-sessions`.
+ * Efecto para el usuario: las estadísticas en blanco y los exámenes pendientes desaparecidos.
+ */
+function rutasDeUsuarioPropio(): string[] {
+  return rutasConGuarda('requireUsuarioPropio')
 }
 
 /** Todos los .ts/.tsx del navegador, una sola vez (recorrer con `grep` por shell rompía con la
@@ -85,6 +105,22 @@ describe('[T-669] quien llama a una ruta con dueño manda identidad', () => {
       const src = fs.readFileSync(f, 'utf8')
       // Vale cualquiera de las formas legítimas: el helper canónico, o pasar cabeceras ya
       // construidas por él. Lo que NO vale es no mandar nada.
+      return !/getAuthHeaders|authHeaders|Authorization/.test(src)
+    })
+    expect(fallan).toEqual([])
+  })
+})
+
+describe('[T-671] quien llama a una ruta de usuario propio manda identidad', () => {
+  const rutas = rutasDeUsuarioPropio()
+
+  it('hay rutas con guarda de usuario propio (si no, el cruce no mide nada)', () => {
+    expect(rutas.length).toBeGreaterThan(3)
+  })
+
+  it.each(rutas)('%s: sus clientes de navegador adjuntan el token', (ruta) => {
+    const fallan = clientesQueLlaman(ruta).filter((f) => {
+      const src = fs.readFileSync(f, 'utf8')
       return !/getAuthHeaders|authHeaders|Authorization/.test(src)
     })
     expect(fallan).toEqual([])

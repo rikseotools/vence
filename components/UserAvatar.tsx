@@ -7,6 +7,7 @@ import { resolveOposicionSlugForNav, getOposicion } from '@/lib/config/oposicion
 import { useAuth } from '../contexts/AuthContext'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -90,7 +91,13 @@ export default function UserAvatar() {
 
   async function loadPendingExams(signal?: AbortSignal) {
     try {
-      const examRes = await fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, { signal })
+      // Estos endpoints EXIGEN sesión desde [T-565] (antes leían por el userId de la query, así
+      // que cualquiera con el UUID de otro veía sus datos). Sin el Bearer devuelven 401 — es lo
+      // que dejó a 248 usuarios con las estadísticas a 0 y sin poder corregir exámenes ([T-671]).
+      const examRes = await fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, {
+        signal,
+        headers: await getAuthHeaders(),
+      })
       if (signal?.aborted) return
       const examData = await examRes.json()
       if (examData.success) {
@@ -131,7 +138,9 @@ export default function UserAvatar() {
       try {
         setStatsLoading(true)
 
-        const res = await fetch(`/api/v2/user-stats?userId=${user.id}`)
+        const res = await fetch(`/api/v2/user-stats?userId=${user.id}`, {
+          headers: await getAuthHeaders(),
+        })
         if (cancelled) return
 
         const data: V2StatsResponse = await res.json()
@@ -172,7 +181,8 @@ export default function UserAvatar() {
       console.log('UserAvatar: Refrescando stats despues de examen completado')
       loadPendingExams()
 
-      fetch(`/api/v2/user-stats?userId=${user.id}`)
+      getAuthHeaders()
+        .then(headers => fetch(`/api/v2/user-stats?userId=${user.id}`, { headers }))
         .then(res => res.json())
         .then((data: V2StatsResponse) => {
           if (!data.success) return

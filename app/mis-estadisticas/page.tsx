@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
 import { useOposicionPaths } from '@/hooks/useOposicionPaths' // oposición del usuario (robusto)
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
@@ -467,7 +468,10 @@ function EstadisticasContent() {
         // 🔄 Cargar sesiones psicotécnicas completadas (via API server-side)
         let completedPsychometricSessions = []
         try {
-          const psychoRes = await fetch(`/api/psychometric/completed-sessions?userId=${user.id}&limit=10`)
+          // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
+          const psychoRes = await fetch(`/api/psychometric/completed-sessions?userId=${user.id}&limit=10`, {
+            headers: await getAuthHeaders(),
+          })
           const psychoData = await psychoRes.json()
           if (psychoData.success) {
             completedPsychometricSessions = psychoData.sessions || []
