@@ -89,3 +89,36 @@ describe('cada pasada deja rastro legible', () => {
     expect(t).toMatch(/w1 lleva 120 min/)
   })
 })
+
+// ── T-642 (07/08/2026): la espera crecía con la OCUPACIÓN, no con la calma ──────────────────
+describe('[T-642] siguientePausa — «cero encargos» significaba dos cosas opuestas', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const BUC = require('../../lib/flota/bucle.cjs')
+
+  it('flota LLENA: no se espacia, porque un turno acaba cuando quiere', () => {
+    // El caso medido: tres trabajadores ocupados y la espera subiendo 5 → 8 → 11 → 17 → 25 min.
+    // Al morir sus turnos tardaron media hora en volver. Cuanto mejor iba, más tarde se enteraba.
+    expect(BUC.siguientePausa({ repartidos: 0, ocupados: 3, cada: 600, anterior: 1500 })).toBe(600)
+  })
+
+  it('nadie ocupado y nada repartido: ahí SÍ se espacia (no hay nada que hacer)', () => {
+    const p1 = BUC.siguientePausa({ repartidos: 0, ocupados: 0, cada: 600, anterior: 600 })
+    expect(p1).toBeGreaterThan(600)
+    expect(BUC.siguientePausa({ repartidos: 0, ocupados: 0, cada: 600, anterior: p1 })).toBeGreaterThan(p1)
+  })
+
+  it('con movimiento, ritmo normal, haya quien haya ocupado', () => {
+    expect(BUC.siguientePausa({ repartidos: 2, ocupados: 0, cada: 600, anterior: 3000 })).toBe(600)
+    expect(BUC.siguientePausa({ repartidos: 2, ocupados: 3, cada: 600, anterior: 3000 })).toBe(600)
+  })
+
+  it('sin el dato de ocupados (versión vieja de repartir), se comporta como antes: degrada, no revienta', () => {
+    expect(BUC.siguientePausa({ repartidos: 0, cada: 600, anterior: 600 })).toBeGreaterThan(600)
+  })
+
+  it('el techo sigue en pie: la calma no espacia más de una hora', () => {
+    let p = 600
+    for (let i = 0; i < 30; i++) p = BUC.siguientePausa({ repartidos: 0, ocupados: 0, cada: 600, anterior: p })
+    expect(p).toBeLessThanOrEqual(3600)
+  })
+})

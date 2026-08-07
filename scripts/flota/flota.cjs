@@ -1193,7 +1193,15 @@ async function main() {
         console.log('   se le puede mandar igual con  npm run flota -- encargar <w> --tarea <id>')
       }
 
-      console.log(`\n${n} encargo(s) repartido(s). Míralo con: npm run flota`)
+      // ── POR QUÉ SE PUBLICA CUÁNTOS ESTÁN OCUPADOS (T-642, 07/08) ────────────────────────
+      // El bucle solo leía «N encargos repartidos», y con eso **cero significaba dos cosas
+      // opuestas**: la flota llena (todos trabajando, hay que volver PRONTO porque un turno
+      // acaba cuando quiere) o nada que repartir (ahí sí conviene espaciar). Al confundirlas,
+      // la espera crecía justo cuando más ocupada estaba la flota — medido el 07/08: 5 → 8 →
+      // 11 → 17 → 25 min con los tres trabajando, así que al morir sus turnos tardaban hasta
+      // media hora en volver. Cuanto mejor iba todo, más tarde se enteraba de que dejó de ir.
+      const ocupados = vivos.length - libres.length
+      console.log(`\n${n} encargo(s) repartido(s) · ${ocupados} ocupado(s). Míralo con: npm run flota`)
       return 0
     }
 
@@ -1236,6 +1244,7 @@ async function main() {
       console.log(`🔁 supervisor continuo — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
       while (!parar) {
         let repartidos = 0
+        let ocupados = 0
         let motivoSalto = null
         let atascados = []
         try {
@@ -1260,12 +1269,17 @@ async function main() {
             process.stdout.write(r)
             const m = r.match(/(\d+)\s+encargo\(s\) repartido/)
             repartidos = m ? Number(m[1]) : 0
+            // Cuántos están TRABAJANDO, para no confundir «flota llena» con «nada que hacer»
+            // al decidir la espera (T-642). Si la línea no trae el dato —una versión vieja de
+            // `repartir`—, se queda en 0 y el ritmo es el de antes: degradar, no reventar.
+            const mo = r.match(/·\s*(\d+)\s+ocupado/)
+            ocupados = mo ? Number(mo[1]) : 0
           }
         } catch (e) {
           // Una pasada que falla NO para el bucle: la flota se quedaría parada por un SSH caído.
           motivoSalto = `la pasada falló: ${String(e.message || e).slice(0, 120)}`
         }
-        pausa = BUC.siguientePausa({ repartidos, cada, anterior: pausa })
+        pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa })
         console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
         // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
         // síntoma de un supervisor muerto es justamente que NO PASA NADA.
