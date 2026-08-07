@@ -173,6 +173,48 @@ describe('a quién se le puede mandar un encargo AHORA', () => {
   })
 })
 
+// ── ¿EL ENCARGO ARRANCÓ DE VERDAD? (T-642) ──────────────────────────────────────────────────
+// `tmux send-keys` solo confirma que se escribieron las teclas. Medido el 07/08: con la cuota
+// semanal agotada, `claude -p` moría en <1s y el vigía lo contaba como éxito cada 5 min durante
+// 3h sin que nadie llegara a trabajar — 27 relanzamientos inútiles de la misma tarea.
+describe('¿arrancó de verdad el encargo, o murió al instante? (T-642)', () => {
+  it('si el panel sigue ocupado (claude en marcha), arrancó', () => {
+    const v = ENC.arrancoDeVerdad('claude')
+    expect(v.arranco).toBe(true)
+    expect(v.motivo).toBeNull()
+  })
+
+  it('EL CASO REAL: si volvió a un shell, NO arrancó — se dice, no se declara éxito', () => {
+    const v = ENC.arrancoDeVerdad('bash')
+    expect(v.arranco).toBe(false)
+    expect(v.motivo).toMatch(/casi al instante/)
+  })
+
+  it.each(['bash', 'zsh', '-bash', 'SH', ' fish '])('cualquier shell (%s) cuenta como "volvió", no solo bash', (c) => {
+    expect(ENC.arrancoDeVerdad(c).arranco).toBe(false)
+  })
+
+  // Fail-closed hacia «no se sabe», DISTINTO de fail-closed hacia «murió»: un panel que no se
+  // pudo leer no es lo mismo que uno que se leyó y volvió a un shell — confundirlos habría dado
+  // por muerto a un trabajador que solo estaba en una máquina con SSH lento en ese instante.
+  it.each([null, undefined, '', '   '])('sin dato (%s): no se sabe, ni true ni false', (c) => {
+    const v = ENC.arrancoDeVerdad(c as any)
+    expect(v.arranco).toBeNull()
+    expect(v.motivo).toMatch(/no se pudo ver/)
+  })
+
+  it('usa el MISMO criterio que puedeRecibir, no uno paralelo (T-130)', () => {
+    // Dos preguntas que dependen del mismo estado del panel no pueden tener criterios que
+    // diverjan: es justo el olor de los cinco escritores de seguimiento_url.
+    for (const c of ['claude', 'node', 'bash', '', 'vim']) {
+      const ocupado = !ENC.puedeRecibir(c).libre
+      const noArranco = ENC.arrancoDeVerdad(c).arranco === false
+      // "no arrancó" solo puede ser true cuando "ocupado" es false (volvió a estar libre) Y hay dato.
+      if (noArranco) expect(ocupado).toBe(false)
+    }
+  })
+})
+
 // ── ANALIZAR UNA IMPUGNACIÓN: SÍ. ENVIARLA: NO. ─────────────────────────────────────────────
 // `esApta` las descarta del reparto automático porque acaban en un correo a una persona, y eso
 // sigue impedido por permiso. Lo que cambia es que ahora hay dónde dejar el borrador, y el trabajo
@@ -825,5 +867,155 @@ describe('el turno no termina con contexto libre', () => {
     // Sin esto, «encadena» se leería como «acumula tareas», que es justo lo contrario: dos
     // cogidas a la vez se las quitan a los demás mientras solo se trabaja una.
     expect(texto()).toMatch(/dos\s*\n?\s*tareas cogidas a la vez|dos tareas cogidas a la vez/)
+  })
+})
+
+// ── T-642 (07/08/2026): un trabajador que se cae desaparece en silencio ─────────────────────
+// Los tres casos que se midieron ese día, cada uno con su prueba. No son hipótesis: los tres
+// ocurrieron el mismo día y los tres tenían la misma forma — el supervisor DECLARABA un estado
+// en vez de OBSERVARLO, y como nadie miraba, la flota se paraba sin que constara en ningún sitio.
+describe('[T-642] presenciaDelPanel — sin sesión NO es lo mismo que apagado, ni que invisible', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { presenciaDelPanel, ordenDeArranque } = require('../../lib/flota/encargo.cjs')
+
+  it('sin sesión y DEBERÍA tenerla: se resucita, no se salta', () => {
+    // El fallo literal del 07/08: `w2` y `w4` perdieron su tmux y el bucle los descartó sin una
+    // línea, imprimiendo «todo en marcha, nada que repartir» durante una hora.
+    const p = presenciaDelPanel({ sesionExiste: false, reparte: true })
+    expect(p.estado).toBe('sin_sesion')
+    expect(p.accion).toBe('resucitar')
+    expect(p.libre).toBe(false)
+  })
+
+  it('sin sesión pero su máquina no reparte: está APAGADO, y eso no es una avería', () => {
+    // Los seis del portátil salían 🔴 de forma permanente. Seis rojos fijos enseñan a no mirar el
+    // rojo, y entonces el que sí importa pasa desapercibido.
+    const p = presenciaDelPanel({ sesionExiste: false, reparte: false })
+    expect(p.estado).toBe('apagado')
+    expect(p.accion).toBeNull()
+  })
+
+  it('no se pudo preguntar: ni se actúa ni se da por muerto', () => {
+    // Con `sesionViva` devolviendo `false` ante un ssh caído, la reanimación automática habría
+    // recreado sesiones SANAS —matando el turno de dentro— cada vez que la red hiciera un hipo.
+    const p = presenciaDelPanel({ sesionExiste: null, reparte: true })
+    expect(p.estado).toBe('invisible')
+    expect(p.accion).toBeNull()
+    expect(p.libre).toBe(false)
+  })
+
+  it('con sesión, decide por el panel: shell = libre, otra cosa = trabajando', () => {
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true }).estado).toBe('libre')
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true }).libre).toBe(true)
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'claude', reparte: true }).estado).toBe('trabajando')
+  })
+
+  it('con sesión pero panel ilegible: invisible, NO libre (fail-closed de T-539)', () => {
+    const p = presenciaDelPanel({ sesionExiste: true, paneCommand: '', reparte: true })
+    expect(p.estado).toBe('invisible')
+    expect(p.libre).toBe(false)
+  })
+
+  it('el criterio NO se duplica: se apoya en puedeRecibir', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { puedeRecibir, SHELLS } = require('../../lib/flota/encargo.cjs')
+    for (const sh of SHELLS) {
+      expect(presenciaDelPanel({ sesionExiste: true, paneCommand: sh, reparte: true }).libre)
+        .toBe(puedeRecibir(sh).libre)
+    }
+  })
+})
+
+describe('[T-642] ordenDeArranque — tiene que levantar TAMBIÉN a uno ya «arrancado»', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { ordenDeArranque } = require('../../lib/flota/encargo.cjs')
+
+  it('donde hay unidad usa restart, NUNCA start', () => {
+    // La unidad es de un solo disparo (`active (exited)`): sobre ella `systemctl start` es un
+    // no-op y el comando imprimía ✅ igual. Medido con w2 y w4, que no volvieron.
+    // (El parámetro pasó de `local` a `systemd` en T-647: la condición es «¿hay unidad?», no
+    // «¿está en mi máquina?» — de eso depende en qué cgroup acaban los turnos.)
+    const o = ordenDeArranque({ trabajador: 'w2', systemd: true })
+    expect(o).toContain('systemctl restart vence-flota@w2')
+    expect(o).not.toMatch(/systemctl start/)
+  })
+
+  it('en el portátil no hay unidad: crea la sesión solo si no está', () => {
+    const o = ordenDeArranque({ trabajador: 'l3', systemd: false })
+    expect(o).toContain('tmux -L l3 has-session -t l3')
+    expect(o).toContain('tmux -L l3 new-session -d -s l3')
+    // `-L`: un servidor de tmux POR trabajador. Sin él, tmux comparte uno por usuario y las
+    // cuatro sesiones cuelgan del primero que arrancó — con lo que los cuatro acaban en el mismo
+    // cgroup y los límites de memoria por unidad son decoración (comprobado el 07/08: las
+    // sesiones de w2, w3 y w4 vivían dentro de vence-flota@w1.service).
+    expect(o).not.toMatch(/systemctl/)
+  })
+
+  it('es idempotente por construcción: repetirla sobre uno sano no lo tumba', () => {
+    // `restart` sobre una unidad viva la reinicia (que es lo que se quiere si su tmux murió) y
+    // `has-session ||` no toca la que ya existe. Ninguna de las dos formas mata trabajo ajeno
+    // sin querer, que es la razón de que la reanimación solo dispare con `sesionExiste === false`.
+    expect(ordenDeArranque({ trabajador: 'w1', systemd: true })).toBe(ordenDeArranque({ trabajador: 'w1', systemd: true }))
+    expect(ordenDeArranque({ trabajador: 'l1', systemd: false })).toBe(ordenDeArranque({ trabajador: 'l1', systemd: false }))
+  })
+})
+
+describe('[T-642] un turno HUÉRFANO sigue siendo un turno', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { presenciaDelPanel } = require('../../lib/flota/encargo.cjs')
+
+  it('sin sesión pero CON proceso vivo: NO se resucita ni se le manda nada', () => {
+    // El caso medido dos veces el 07/08: el OOM del VPS se llevó el servidor de tmux y el
+    // `claude -p` de dentro quedó huérfano y siguió trabajando. Al no ver sesión, se creaba una
+    // nueva y se mandaba un SEGUNDO turno: dos procesos escribiendo en el mismo worktree.
+    const p = presenciaDelPanel({ sesionExiste: false, reparte: true, turnosVivos: 1 })
+    expect(p.estado).toBe('trabajando')
+    expect(p.accion).toBeNull()
+    expect(p.libre).toBe(false)
+    expect(p.motivo).toMatch(/huérfano/)
+  })
+
+  it('el PROCESO manda sobre el panel cuando discrepan', () => {
+    // Panel en un shell (parecería libre) pero con un turno vivo: gana el que puede destruir
+    // trabajo. Un falso «ocupado» cuesta una vuelta de reparto; un falso «libre» cuesta el árbol.
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true, turnosVivos: 1 }).libre).toBe(false)
+  })
+
+  it('sin turnos vivos, la decisión es la de siempre', () => {
+    expect(presenciaDelPanel({ sesionExiste: false, reparte: true, turnosVivos: 0 }).accion).toBe('resucitar')
+    expect(presenciaDelPanel({ sesionExiste: true, paneCommand: 'bash', reparte: true, turnosVivos: 0 }).libre).toBe(true)
+  })
+
+  it('y una máquina apagada con turnos a 0 sigue siendo apagado, no avería', () => {
+    expect(presenciaDelPanel({ sesionExiste: false, reparte: false, turnosVivos: 0 }).estado).toBe('apagado')
+  })
+})
+
+describe('[T-647] a los trabajadores los levanta systemd, y de eso depende el techo de memoria', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { ordenDeArranque } = require('../../lib/flota/encargo.cjs')
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const MAQ = require('../../lib/flota/maquinas.cjs')
+
+  it('la máquina de la flota los levanta por unidad, aunque el supervisor esté EN ella', () => {
+    // Se decidía por local/remoto, y en el VPS el supervisor vive en la misma máquina: caía en la
+    // rama de tmux, levantaba las sesiones él y todos los `claude -p` acababan contabilizados en
+    // SU cgroup. Medido: un turno se desbocó a 6,6 GB y el kernel mató al supervisor.
+    const o = ordenDeArranque({ trabajador: 'w2', systemd: true })
+    expect(o).toContain('systemctl restart vence-flota@w2')
+    expect(o).not.toMatch(/tmux new-session/)
+  })
+
+  it('donde NO hay unidad (el portátil de Manuel), se crea la sesión a mano', () => {
+    const o = ordenDeArranque({ trabajador: 'l3', systemd: false })
+    expect(o).toContain('tmux -L l3 new-session -d -s l3')
+    expect(o).not.toMatch(/systemctl/)
+  })
+
+  it('y el registro de máquinas lo DECLARA: la del VPS sí, el portátil no', () => {
+    // Si alguien añade una máquina nueva y olvida declararlo, sus turnos volverían al cgroup del
+    // supervisor sin que nada lo dijera. Esto lo deja escrito donde se lee.
+    expect(MAQ.maquinaDe('w1').systemd).toBe(true)
+    expect(Boolean(MAQ.maquinaDe('l1').systemd)).toBe(false)
   })
 })

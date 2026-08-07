@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 145.2 CE",
+    "texto": "Los Estatutos podrán prever los supuestos, requisitos y términos en que las Comunidades Autónomas podrán celebrar convenios entre sí para la gestión y prestación de servicios propios de las mismas, así como el carácter y efectos de la correspondiente comunicación a las Cortes Generales. En los demás supuestos, los acuerdos de cooperación entre las Comunidades Autónomas necesitarán la autorización de las Cortes Generales."
+  },
+  "options": {
+    "0": "Incorrecta: cuando los Estatutos prevén estos convenios entre Comunidades Autónomas para gestionar y prestar servicios propios, el art. 145.2 CE no exige la autorización del Congreso.",
+    "1": "Incorrecta: por el mismo motivo, tampoco exige la del Senado.",
+    "2": "Correcta: el art. 145.2 CE permite que los Estatutos prevean estos convenios para la gestión y prestación de servicios propios de las Comunidades Autónomas, sin necesidad de autorización.",
+    "3": "Incorrecta: exigir la autorización de las Cortes Generales «en todo caso» contradice el propio artículo, que solo la exige para los convenios de cooperación NO previstos en los Estatutos."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

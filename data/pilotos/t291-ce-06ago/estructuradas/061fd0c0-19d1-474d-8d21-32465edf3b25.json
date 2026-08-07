@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 58 CE",
+    "texto": "La Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia."
+  },
+  "options": {
+    "0": "Correcta: el art. 58 CE reproduce la regla general — ninguna función constitucional, salvo la Regencia.",
+    "1": "Incorrecta: convocar a referéndum es una facultad del Rey (art. 62.c CE), no de la Reina consorte.",
+    "2": "Incorrecta: el Alto Patronazgo de las Reales Academias corresponde al Rey (art. 62.j CE), no a la Reina consorte.",
+    "3": "Incorrecta: contradice directamente el art. 58 CE, que le niega las funciones constitucionales salvo la Regencia."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

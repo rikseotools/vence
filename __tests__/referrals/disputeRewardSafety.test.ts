@@ -104,4 +104,52 @@ describe('maybeRewardResolvedDispute — a prueba de fallos', () => {
     const r = await maybeRewardResolvedDispute({ disputeId: 'd7', userId: 'u1', status: 'resolved', questionType: 'legislative' })
     expect(r).toEqual({ granted: false, reason: 'duplicate' })
   })
+
+  describe('forceRewardable — concesión A MANO [T-388]', () => {
+    it('un motivo subjetivo SÍ paga con forceRewardable (el simétrico de skipRewardReason)', async () => {
+      // El mismo caso que arriba NO pagaba sin forzar («un motivo de valoración personal NO
+      // paga»). Con forceRewardable, sí — es exactamente lo que T-388 pide habilitar.
+      mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'otro' }]))
+      const r = await maybeRewardResolvedDispute({
+        disputeId: 'd10', userId: 'u1', status: 'resolved', questionType: 'legislative', forceRewardable: true,
+      })
+      expect(r).toEqual({ granted: true, amount: 1 })
+      expect(mockCreate).toHaveBeenCalledWith({ userId: 'u1', type: 'impugnacion', disputeId: 'd10' })
+    })
+
+    it('forceRewardable NO abre la puerta a un free: sigue exigiendo premium', async () => {
+      mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'free', source: 'user', dispute_type: 'otro' }]))
+      const r = await maybeRewardResolvedDispute({
+        disputeId: 'd11', userId: 'u1', status: 'resolved', questionType: 'legislative', forceRewardable: true,
+      })
+      expect(r).toEqual({ granted: false, reason: 'not_premium' })
+      expect(mockCreate).not.toHaveBeenCalled()
+    })
+
+    it('forceRewardable NO abre la puerta a una impugnación de la IA (source=ai_auto)', async () => {
+      mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'ai_auto', dispute_type: 'otro' }]))
+      const r = await maybeRewardResolvedDispute({
+        disputeId: 'd12', userId: 'u1', status: 'resolved', questionType: 'legislative', forceRewardable: true,
+      })
+      expect(r).toEqual({ granted: false, reason: 'not_user_source' })
+      expect(mockCreate).not.toHaveBeenCalled()
+    })
+
+    it('forceRewardable sigue respetando el tope mensual — no es una puerta trasera', async () => {
+      mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'otro' }]))
+      mockCreate.mockResolvedValue({ ok: false, reason: 'monthly_cap' })
+      const r = await maybeRewardResolvedDispute({
+        disputeId: 'd13', userId: 'u1', status: 'resolved', questionType: 'legislative', forceRewardable: true,
+      })
+      expect(r).toEqual({ granted: false, reason: 'monthly_cap' })
+    })
+
+    it('un motivo YA rewardable con forceRewardable sigue pagando igual (no cambia nada)', async () => {
+      mockGetReadDb.mockReturnValue(dbWith([{ plan_type: 'premium', source: 'user', dispute_type: 'respuesta_incorrecta' }]))
+      const r = await maybeRewardResolvedDispute({
+        disputeId: 'd14', userId: 'u1', status: 'resolved', questionType: 'legislative', forceRewardable: true,
+      })
+      expect(r).toEqual({ granted: true, amount: 1 })
+    })
+  })
 })

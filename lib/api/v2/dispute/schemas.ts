@@ -112,6 +112,21 @@ export const resolveDisputeRequestSchema = z.object({
   // rastro de POR QUÉ no se pagó, que es justo lo que habrá que releer dentro de tres meses.
   // Se espera algo como «mismo hallazgo que ce143c99: la misma pregunta duplicada».
   skipRewardReason: z.string().min(10, 'Explica por qué esta no lleva recompensa (min. 10 caracteres)').max(500).optional(),
+  /**
+   * CONCEDER el euro A MANO cuando el motivo es subjetivo (`otro`, `explicacion_confusa`,
+   * `explicacion_mejorable`) — el simétrico de `skipRewardReason` [T-388].
+   *
+   * El automatismo se retiró el 28/07 para esos tres motivos (61 % de lo aceptado en 90 días,
+   * una usuaria concentraba 70) precisamente porque "aceptar = mejoramos algo por una opinión"
+   * no es "aceptar = teníamos un error demostrable". Pero lo subjetivo NO se quedó sin premio:
+   * se concede a mano cuando el caso lo merece — y hasta ahora esa vía no existía, así que
+   * conceder dependía de que alguien preguntara caso por caso.
+   *
+   * Solo salta la condición del TIPO. El resto de la política sigue intacta: sigue exigiendo
+   * `resolved`, usuario premium, origen humano, tope mensual y anti-duplicado — o esto sería
+   * la puerta trasera que el 28/07 cerró.
+   */
+  grantRewardReason: z.string().min(10, 'Explica por qué esta SÍ lleva recompensa (min. 10 caracteres)').max(500).optional(),
 
   /**
    * CORREGIR una respuesta ya enviada, sin re-resolver [T-394].
@@ -132,7 +147,12 @@ export const resolveDisputeRequestSchema = z.object({
    * y no un atajo silencioso.
    */
   correccionDeRespuesta: z.string().min(10, 'Explica qué se corrige y por qué (min. 10 caracteres)').max(500).optional(),
-})
+}).refine(
+  (data) => !(data.skipRewardReason && data.grantRewardReason),
+  // No pueden venir los dos: uno pide QUITAR el euro y el otro CONCEDERLO, y aceptar los dos a
+  // la vez obligaría a decidir en silencio cuál gana. Quien cierra tiene que elegir uno.
+  { message: 'No se puede skipRewardReason y grantRewardReason a la vez: elige uno', path: ['grantRewardReason'] },
+)
 
 export type ResolveDisputeRequest = z.infer<typeof resolveDisputeRequestSchema>
 

@@ -126,5 +126,15 @@ export function classifyLawCompleteness(input: LawCompletenessInput): LawComplet
   if (contentMismatch > 0 || titleMismatch > 0) {
     return { state: 'issues', hasSource, missingInDb: missing, isFalseGreen: false, actionable: true }
   }
+  // T-395 (07/08/2026): `is_ok: false` sin `missing_in_db`/`content_mismatch`/`title_mismatch`
+  // NO es un summary de comparación — es una NOTA DE INCIDENCIA (p.ej. `audit_boe_url` cuando
+  // el `boe_url` apunta a otro documento: no llega a comparar nada, deja escrito el porqué en
+  // `message`/`boe_url_erroneo`). Confiar en el ELSE de abajo trataba esa nota como si la ley
+  // se hubiera comparado y hubiera salido limpia — el mismo `false_green` que este módulo nació
+  // para cazar, colado por otra puerta. `is_ok` explícito manda: si el propio summary DICE que
+  // no está bien, no puede acabar en `verified`, aunque no traiga contadores.
+  if (su.is_ok === false) {
+    return { state: 'never_verified', hasSource, missingInDb: missing, isFalseGreen: false, actionable: true }
+  }
   return { state: 'verified', hasSource, missingInDb: missing ?? 0, isFalseGreen: false, actionable: false }
 }

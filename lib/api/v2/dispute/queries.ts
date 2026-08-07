@@ -243,7 +243,7 @@ export async function resolveDispute(
 ): Promise<ResolveDisputeResponse | DisputeError> {
   try {
     const db = getV2DisputeDb()
-    const { disputeId, questionType, status, adminResponse, skipRewardReason } = params
+    const { disputeId, questionType, status, adminResponse, skipRewardReason, grantRewardReason } = params
     // Corrección de una respuesta YA enviada (T-394): no re-resuelve, solo vuelve a escribir.
     const correccion = params.correccionDeRespuesta?.trim() || null
     const trimmedResponse = adminResponse.trim()
@@ -476,6 +476,22 @@ export async function resolveDispute(
           eventType: 'dispute_reward_skipped',
           endpoint: '/api/v2/dispute/resolve',
           metadata: { disputeId, questionType, userId, motivo: skipRewardReason },
+        })
+      } else if (grantRewardReason) {
+        // Simétrico de arriba [T-388]: motivo subjetivo (`otro`, `explicacion_confusa`,
+        // `explicacion_mejorable`) que NO paga solo desde el 28/07, pero quien cierra decide que
+        // el caso lo merece. `forceRewardable` salta SOLO la condición del tipo — plan premium,
+        // origen humano, tope mensual y anti-duplicado siguen aplicando exactamente igual, así
+        // que esto puede seguir sin conceder nada si el usuario no es premium o ya tocó el tope.
+        // Por eso el evento lleva `granted`/`reason`: no es "se pidió", es "qué pasó de verdad".
+        const resultado = await maybeRewardResolvedDispute({ disputeId, userId, status, questionType, forceRewardable: true })
+        console.log(`🎁 [Dispute] ${disputeId} recompensa A MANO: ${grantRewardReason} (granted=${resultado.granted}${resultado.reason ? `, reason=${resultado.reason}` : ''})`)
+        emitFireAndForget({
+          source: 'vercel',
+          severity: 'info',
+          eventType: 'dispute_reward_granted',
+          endpoint: '/api/v2/dispute/resolve',
+          metadata: { disputeId, questionType, userId, motivo: grantRewardReason, granted: resultado.granted, reason: resultado.reason ?? null },
         })
       } else {
         await maybeRewardResolvedDispute({ disputeId, userId, status, questionType })

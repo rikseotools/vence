@@ -410,12 +410,33 @@ async function promoteSignalToConvocatoria(
             if (docId) {
               await db.execute(sql`UPDATE convocatoria_documentos SET oep_id = ${oepId} WHERE id = ${docId}`)
               await db.execute(sql`UPDATE oep SET source_documento_id = ${docId}, doc_key = boletin_doc_key(${srcUrl}) WHERE id = ${oepId}`)
+            } else {
+              // [T-238] La URL SÍ es un boletín reconocido (rec=true) y aun así no salió
+              // documento: `ensure_convocatoria_documento` devolvió NULL sin lanzar. Medido en
+              // producción (06/08): 2 OEP con `fuente_url` de un BOE parseable y CERO documentos
+              // `fuente='oep-radar'` en toda la tabla — este caso pasaba desapercibido porque
+              // antes de esto no dejaba ni un warning que aterrizara en algún sitio consultable.
+              void emit({
+                source: 'vercel',
+                severity: 'warn',
+                eventType: 'oep_f3_clonado_fallido',
+                metadata: { signalId, oposicionId, year: yr, sourceUrl: srcUrl, oepId, causa: 'ensure_convocatoria_documento_null' },
+              })
             }
           }
         }
       }
     } catch (e) {
       console.warn('⚠️ [OepSignals] F3 upsert entidad oep (no bloqueante):', (e as Error).message)
+      // [T-238] Antes esto SOLO llegaba a `console.warn` — invisible fuera de los logs de la
+      // lambda que lo ejecutó. Es la misma clase de hueco de provenance que motivó el emit de
+      // más abajo (`senal_aplicada_sin_documento`, T-221) pero para el upsert de la entidad OEP.
+      void emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'oep_f3_upsert_fallo',
+        metadata: { signalId, oposicionId, year: yr, sourceUrl: srcUrl, error: (e as Error).message },
+      })
     }
   }
 

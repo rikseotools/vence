@@ -116,6 +116,28 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           // dicen lo mismo, y con dos copias volverían a separarse.
           <AvisoTemarioVacio ctaEditor={false} />
         ) : (
+          <>
+            {totalPreguntas > 0 && (
+              // [T-327] Sin este enlace la pantalla de aleatorio era inalcanzable: existía la
+              // ruta pero ningún sitio llevaba a ella (causa raíz de por qué "nadie la echaba en
+              // falta" pese a estar rota — no había enlace que pisar). Va ARRIBA de la lista de
+              // temas porque mezclar varios temas es lo que un temario propio no puede hacer con
+              // los tests por tema de abajo.
+              <Link
+                href={`/oposicion-personalizada/${limpio}/test/aleatorio`}
+                className="mb-4 flex items-center justify-between rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+              >
+                <span>
+                  <span className="block font-semibold text-blue-900 dark:text-blue-100">
+                    🎲 Test aleatorio
+                  </span>
+                  <span className="block text-sm text-blue-700 dark:text-blue-300">
+                    Mezcla preguntas de varios temas a la vez
+                  </span>
+                </span>
+                <span className="text-blue-600 dark:text-blue-400">→</span>
+              </Link>
+            )}
           <ul className="space-y-3">
             {datos.temas.map((t) => {
               const sinPreguntas = Number(t.preguntas) === 0
@@ -159,6 +181,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               )
             })}
           </ul>
+          </>
         )}
       </div>
     </main>

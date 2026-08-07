@@ -14,6 +14,15 @@
 //   npx tsx --env-file=.env.local scripts/audit-served-questions.ts          # TODAS las activas (lento, full audit)
 //
 // Exit 1 si algún topic disponible=true sirve 0 preguntas → apto como gate de CI.
+//
+// ── PUBLICA sus hallazgos (T-455, 07/08/2026) ──────────────────────────────────────────────
+// Hasta hoy este script, como `audit:oposicion` antes de T-455, escribía CERO filas en
+// `content_health_findings`: comprobaba la fuente MÁS autoritativa (la función que sirve de
+// verdad) y el resultado moría en la terminal de quien lo ejecutaba. Mismo kind que
+// `audit:oposicion` (`oposicion_incompleta`, el que ya pinta `/admin/contenido` y tiene su
+// frase-gatillo en el runbook) — son las dos caras de "esta oposición está incompleta", no dos
+// cosas distintas. El DELETE de reemplazo va acotado por `detail->>'origen'` para que las dos
+// herramientas puedan escribir el mismo slug sin borrarse la una a la otra.
 
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
@@ -55,6 +64,8 @@ async function mvTotalForTopic(topicId: string): Promise<number | null> {
   }
 }
 
+type Hallazgo = { severity: 'error' | 'warn'; message: string }
+
 async function auditOposicion(slug: string): Promise<void> {
   const topics = await rows(sql`
     SELECT id, topic_number, title, disponible, position_type
@@ -66,10 +77,12 @@ async function auditOposicion(slug: string): Promise<void> {
     console.log(`\n━━━ ${slug} ━━━`)
     console.log(`  🟡 sin topics activos (¿position_type = '${slug.replace(/-/g, '_')}'?)`)
     warns++
+    await publicarHallazgos(slug, [{ severity: 'warn', message: `sin topics activos (¿position_type = '${slug.replace(/-/g, '_')}'?)` }])
     return
   }
 
   const findings: string[] = []
+  const hallazgos: Hallazgo[] = []
   for (const t of topics) {
     let served = 0
     try {
@@ -77,11 +90,13 @@ async function auditOposicion(slug: string): Promise<void> {
       served = res?.success ? res.totalQuestions ?? 0 : 0
       if (!res?.success) {
         findings.push(`  ❌ T${t.topic_number}: getTopicFullData success=false — ${(res as any)?.error || '?'}`)
+        hallazgos.push({ severity: 'error', message: `T${t.topic_number}: getTopicFullData success=false — ${(res as any)?.error || '?'}` })
         fails++
         continue
       }
     } catch (e: any) {
       findings.push(`  ❌ T${t.topic_number}: getTopicFullData THREW — ${e?.message || e}`)
+      hallazgos.push({ severity: 'error', message: `T${t.topic_number}: getTopicFullData THREW — ${e?.message || e}` })
       fails++
       continue
     }
@@ -92,18 +107,21 @@ async function auditOposicion(slug: string): Promise<void> {
       const mvTotal = await mvTotalForTopic(t.id)
       if (mvTotal === 0) {
         findings.push(`  ❌ T${t.topic_number} sirve ${served}q pero la MV da 0 → saldría "En desarrollo" en el hub. Ejecuta: SELECT public.refresh_topic_question_summary();`)
+        hallazgos.push({ severity: 'error', message: `T${t.topic_number} sirve ${served}q pero la MV da 0 → saldría "En desarrollo" en el hub` })
         fails++
       }
     }
 
     if (served === 0 && t.disponible) {
       findings.push(`  ❌ T${t.topic_number} (disponible=true) sirve 0 preguntas — ${String(t.title).slice(0, 50)}`)
+      hallazgos.push({ severity: 'error', message: `T${t.topic_number} (disponible=true) sirve 0 preguntas — ${String(t.title).slice(0, 50)}` })
       fails++
     } else if (served === 0) {
       findings.push(`  🟡 T${t.topic_number} sirve 0 (disponible=false) — ${String(t.title).slice(0, 50)}`)
       warns++
     } else if (served < LOW) {
       findings.push(`  🟡 T${t.topic_number} solo ${served}q servidas — ${String(t.title).slice(0, 50)}`)
+      hallazgos.push({ severity: 'warn', message: `T${t.topic_number} solo ${served}q servidas — ${String(t.title).slice(0, 50)}` })
       warns++
     }
   }
@@ -113,6 +131,36 @@ async function auditOposicion(slug: string): Promise<void> {
   } else {
     console.log(`\n━━━ ${slug} (${topics.length} topics) ━━━`)
     findings.forEach((f) => console.log(f))
+  }
+  await publicarHallazgos(slug, hallazgos)
+}
+
+/**
+ * Publica lo encontrado donde SE MIRA (mismo destino y mismo patrón que
+ * `audit-oposicion-completa.ts`, kind `oposicion_incompleta`): `content_health_findings`
+ * (pinta `/admin/contenido`) + una traza en `observable_events`. Reemplaza lo anterior de
+ * ESTE slug Y ESTE origen (no acumula, y no borra lo que haya publicado `audit:oposicion` —
+ * ver el comentario de cabecera). Fail-open: un fallo al publicar no cambia `fails`/`warns`.
+ */
+async function publicarHallazgos(slug: string, hallazgos: Hallazgo[]): Promise<void> {
+  try {
+    await db.execute(sql`DELETE FROM content_health_findings WHERE kind = 'oposicion_incompleta' AND oposicion_slug = ${slug} AND detail->>'origen' = 'audit:served'`)
+    for (const h of hallazgos) {
+      await db.execute(sql`
+        INSERT INTO content_health_findings (id, category, severity, oposicion_slug, kind, message, detail, computed_at)
+        VALUES (gen_random_uuid(), 'content', ${h.severity}, ${slug}, 'oposicion_incompleta',
+                ${`${slug}: ${h.message}`}, ${JSON.stringify({ origen: 'audit:served', fase: 'servido' })}::jsonb, NOW())`)
+    }
+    const erroresSlug = hallazgos.filter((h) => h.severity === 'error').length
+    const avisosSlug = hallazgos.filter((h) => h.severity === 'warn').length
+    await db.execute(sql`
+      INSERT INTO observable_events (id, ts, source, severity, event_type, metadata, created_at)
+      VALUES (gen_random_uuid(), NOW(), 'script:audit-served',
+              ${erroresSlug > 0 ? 'error' : avisosSlug > 0 ? 'warn' : 'info'}, 'oposicion_auditada',
+              ${JSON.stringify({ slug, origen: 'audit:served', fails: erroresSlug, warns: avisosSlug })}::jsonb, NOW())`)
+  } catch (e: any) {
+    console.log(`   ⚠️  no se pudieron publicar los hallazgos de ${slug}: ${e?.message || e}`)
+    console.log('   El veredicto del gate NO cambia, pero esta ejecución no deja rastro en el panel.')
   }
 }
 

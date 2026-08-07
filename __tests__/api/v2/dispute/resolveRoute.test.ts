@@ -147,6 +147,63 @@ describe('POST /api/v2/dispute/resolve - validacion del body', () => {
   })
 })
 
+describe('POST /api/v2/dispute/resolve - grantRewardReason [T-388]', () => {
+  it('400 si grantRewardReason tiene menos de 10 caracteres', async () => {
+    adminAuthOk()
+    const res = await POST(buildRequest({
+      disputeId: VALID_DISPUTE_ID,
+      questionType: 'legislative',
+      status: 'resolved',
+      adminResponse: 'ok',
+      grantRewardReason: 'corto',
+    }))
+    expect(res.status).toBe(400)
+    expect(mockResolveDispute).not.toHaveBeenCalled()
+  })
+
+  it('400 si vienen skipRewardReason Y grantRewardReason a la vez: no hay un ganador implícito', async () => {
+    adminAuthOk()
+    const res = await POST(buildRequest({
+      disputeId: VALID_DISPUTE_ID,
+      questionType: 'legislative',
+      status: 'resolved',
+      adminResponse: 'ok',
+      skipRewardReason: 'mismo hallazgo que otra ya pagada',
+      grantRewardReason: 'esta sí encontró un error real',
+    }))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.error).toMatch(/Datos de entrada invalidos/)
+    expect(mockResolveDispute).not.toHaveBeenCalled()
+  })
+
+  it('pasa grantRewardReason a resolveDispute cuando viene solo (válido)', async () => {
+    adminAuthOk()
+    mockResolveDispute.mockResolvedValueOnce({
+      success: true,
+      disputeId: VALID_DISPUTE_ID,
+      status: 'resolved',
+      emailSent: true,
+      emailId: 'em-1',
+      emailError: null,
+      emailSkipReason: null,
+    })
+
+    const res = await POST(buildRequest({
+      disputeId: VALID_DISPUTE_ID,
+      questionType: 'legislative',
+      status: 'resolved',
+      adminResponse: 'Gracias por avisarnos.',
+      grantRewardReason: 'observación correcta aunque el motivo fuera "otro"',
+    }))
+
+    expect(res.status).toBe(200)
+    expect(mockResolveDispute).toHaveBeenCalledWith(expect.objectContaining({
+      grantRewardReason: 'observación correcta aunque el motivo fuera "otro"',
+    }))
+  })
+})
+
 describe('POST /api/v2/dispute/resolve - flujo exitoso', () => {
   it('200 cuando resolveDispute devuelve success con email enviado', async () => {
     adminAuthOk()

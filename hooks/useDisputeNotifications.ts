@@ -1,5 +1,5 @@
 // hooks/useDisputeNotifications.ts
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { z } from 'zod'
@@ -97,8 +97,18 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
   const [notifications, setNotifications] = useState<DisputeNotification[]>([])
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(true)
+  // T-419: un 401 dice que la sesión ya no vale, y reintentar cada minuto no la arregla — antes
+  // el sondeo seguía pidiendo el mismo endpoint indefinidamente (medido: una sola pestaña generó
+  // 308 peticiones en 308 minutos, todas contra la misma sesión muerta, y otra estuvo así 22h).
+  // Este flag lo leen el timer y el listener de visibilidad, que viven en el cuerpo del efecto y
+  // sobreviven a re-renders — por eso es un ref, no un state. Se resetea al arrancar el efecto
+  // (abajo), que es cuando `user` cambia de verdad: una sesión nueva se gana su propio voto de
+  // confianza, no hereda el bloqueo de la anterior.
+  const sessionInvalidRef = useRef(false)
 
   useEffect(() => {
+    sessionInvalidRef.current = false
+
     if (!user) {
       setNotifications([])
       setUnreadCount(0)
@@ -123,6 +133,7 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
     function startPolling() {
       if (pollTimer) return
       pollTimer = setInterval(() => {
+        if (sessionInvalidRef.current) return // T-419: sesión ya confirmada muerta, no insistir
         if (document.visibilityState === 'visible') {
           loadNotifications()
         }
@@ -135,6 +146,7 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
       }
     }
     function handleVisibilityChange() {
+      if (sessionInvalidRef.current) return // T-419: idem — volver al tab no revive la sesión
       if (document.visibilityState === 'visible') {
         loadNotifications() // refresh inmediato al volver al tab
         startPolling()
@@ -161,6 +173,11 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
       // ventana de 30 días + is_read=false aplicada server-side. Fase C1.
       const headers = await getAuthHeaders()
       const res = await fetch('/api/v2/disputes/notifications', { headers })
+      // T-419: un 401 aquí significa que el token que se mandó ya no vale — reintentar el
+      // mismo minuto que viene no lo va a arreglar solo. Se marca la sesión como inválida
+      // (para el sondeo automático) y se deja pasar a `throw` de abajo para que este primer
+      // aviso SÍ quede registrado, como antes; lo que cambia es que no se repite cada minuto.
+      if (res.status === 401) sessionInvalidRef.current = true
       if (!res.ok) throw new Error(`disputes/notifications ${res.status}`)
       const payload = await res.json()
       const disputes = payload.disputes || []

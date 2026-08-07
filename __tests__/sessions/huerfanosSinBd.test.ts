@@ -57,16 +57,22 @@ describe('[T-615] «no lo sé» no puede parecerse a «acaba de latir»', () => 
     expect(c.gravedad).toBe('warn')
   })
 
-  it('lo ANTERIOR daba «en uso» — se deja escrito para que no vuelva', () => {
-    const conElBugViejo = clasificarWorktree({
+  it('lo ANTERIOR daba «en uso» con la entrada mentirosa — hoy NI CON ESA MENTIRA cuela (T-577)', () => {
+    // El 06/08 el fallo estaba en la ENTRADA (minutosSinSenal devolvía 0 en vez de null): con el
+    // criterio de aquel día, minSinSenal=0 + procesos=0 daba "en_uso". T-577 (07/08) encontró el
+    // hueco complementario -- procesos CONFIRMADO en 0 con un latido REAL y fresco (no una mentira
+    // de "sin BD") también colaba como "en_uso" hasta 3 horas -- y lo cerró: ahora un `procesos`
+    // conocido en 0 nunca se deja tapar por el latido, mienta este o no. Doble candado: aunque
+    // `minutosSinSenal` volviera a mentir con un 0, `procesos:0` ya lo intercepta él solo.
+    const conLaEntradaMentirosa = clasificarWorktree({
       slug: 'colas-feedback',
       ficherosUnicos: ['db/schema.ts'],
       commitsAhead: 5,
       commitsUnicos: 5,
-      minSinSenal: 0, // ← lo que se pasaba sin BD
+      minSinSenal: 0, // ← lo que se pasaba sin BD, el bug original de T-615
       procesos: 0,
     })
-    expect(conElBugViejo.veredicto).toBe('en_uso') // el criterio es correcto; la entrada era mentira
+    expect(conLaEntradaMentirosa.veredicto).toBe('contenido_unico')
   })
 
   it('una sesión VIVA sigue exenta aunque no haya BD (procesos dentro mandan)', () => {

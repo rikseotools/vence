@@ -70,6 +70,16 @@ jest.mock('@/db/client', () => ({
   getDb: () => mockGetDb(),
 }))
 
+// Reward [T-388]: mockeado para poder comprobar la LLAMADA (forceRewardable) sin depender de
+// getReadDb, que este fichero no mockea (el flujo real absorbe ese fallo y devuelve
+// granted:false — inofensivo para los tests de email/UPDATE, pero no sirve para comprobar el
+// wiring de grantRewardReason).
+const mockMaybeReward = jest.fn()
+jest.mock('@/lib/referrals/disputeReward', () => ({
+  __esModule: true,
+  maybeRewardResolvedDispute: (...args: unknown[]) => mockMaybeReward(...args),
+}))
+
 jest.mock('@/db/schema', () => ({
   __esModule: true,
   questionDisputes: {
@@ -172,6 +182,9 @@ beforeEach(() => {
   lastUpdateWhereCalled = false
   mockSendEmailV2.mockReset()
   mockEmit.mockClear()
+  mockEmitFireAndForget.mockClear()
+  mockMaybeReward.mockReset()
+  mockMaybeReward.mockResolvedValue({ granted: true, amount: 1 })
 })
 
 describe('resolveDispute - disputa no encontrada o estado invalido', () => {
@@ -558,5 +571,68 @@ describe('puerta de barajado en resolveDispute', () => {
       disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'rejected', adminResponse: 'No procede.',
     } as never)
     expect(r.success).toBe(true)
+  })
+})
+
+describe('resolveDispute - grantRewardReason [T-388]: wiring del simétrico de skipRewardReason', () => {
+  it('con grantRewardReason llama a maybeRewardResolvedDispute con forceRewardable:true', async () => {
+    setupDispute({ status: 'pending' })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Gracias por avisarnos.',
+      grantRewardReason: 'observación correcta aunque el motivo fuera "otro"',
+    } as never)
+    expect(r.success).toBe(true)
+    expect(mockMaybeReward).toHaveBeenCalledWith(expect.objectContaining({
+      disputeId: VALID_DISPUTE_ID, userId: VALID_USER_ID, status: 'resolved', questionType: 'legislative',
+      forceRewardable: true,
+    }))
+  })
+
+  it('emite dispute_reward_granted con el motivo y el resultado real (no solo "se pidió")', async () => {
+    setupDispute({ status: 'pending' })
+    setupUpdateOk()
+    mockMaybeReward.mockResolvedValueOnce({ granted: false, reason: 'not_premium' })
+    await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Gracias.',
+      grantRewardReason: 'motivo subjetivo pero verificable en este caso',
+    } as never)
+    expect(mockEmitFireAndForget).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'dispute_reward_granted',
+      metadata: expect.objectContaining({
+        disputeId: VALID_DISPUTE_ID,
+        motivo: 'motivo subjetivo pero verificable en este caso',
+        granted: false,
+        reason: 'not_premium',
+      }),
+    }))
+  })
+
+  it('sin grantRewardReason ni skipRewardReason, sigue llamando SIN forceRewardable (el camino normal no cambia)', async () => {
+    setupDispute({ status: 'pending' })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Gracias.',
+    } as never)
+    expect(r.success).toBe(true)
+    expect(mockMaybeReward).toHaveBeenCalledWith(expect.objectContaining({
+      disputeId: VALID_DISPUTE_ID, userId: VALID_USER_ID, status: 'resolved', questionType: 'legislative',
+    }))
+    const llamada = mockMaybeReward.mock.calls[0][0]
+    expect(llamada.forceRewardable).toBeUndefined()
+  })
+
+  it('con skipRewardReason NO se llama a maybeRewardResolvedDispute (sigue igual que antes)', async () => {
+    setupDispute({ status: 'pending' })
+    setupUpdateOk()
+    const r = await resolveDispute({
+      disputeId: VALID_DISPUTE_ID, questionType: 'legislative', status: 'resolved', adminResponse: 'Gracias.',
+      skipRewardReason: 'mismo hallazgo que otra impugnación ya pagada',
+    } as never)
+    expect(r.success).toBe(true)
+    expect(mockMaybeReward).not.toHaveBeenCalled()
+    expect(mockEmitFireAndForget).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'dispute_reward_skipped',
+    }))
   })
 })

@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 168.1 CE",
+    "texto": "Cuando se propusiere la revisión total de la Constitución o una parcial que afecte al Título preliminar, al Capítulo segundo, Sección primera del Título I, o al Título II, se procederá a la aprobación del principio por mayoría de dos tercios de cada Cámara, y a la disolución inmediata de las Cortes."
+  },
+  "options": {
+    "0": "Correcta: el art. 168.1 CE exige, en el momento en que se propone la revisión total, la aprobación del principio por mayoría de dos tercios de cada Cámara.",
+    "1": "Incorrecta: la disolución de las Cámaras no llega tras aprobarse el proyecto de reforma, sino inmediatamente después de aprobarse el principio de la revisión (art. 168.1 CE).",
+    "2": "Incorrecta: la aprobación del proyecto por mayoría de dos tercios de cada Cámara es un paso posterior, que corresponde ya a las Cámaras elegidas tras la disolución (art. 168.2 CE), no al momento en que se propone la revisión.",
+    "3": "Incorrecta: el orden es el contrario — el referéndum ratifica el proyecto ya aprobado por las Cortes Generales (art. 168.3 CE), no al revés."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

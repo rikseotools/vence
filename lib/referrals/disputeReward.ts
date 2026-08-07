@@ -47,6 +47,14 @@ export async function maybeRewardResolvedDispute(params: {
   userId: string | null
   status: string
   questionType: 'legislative' | 'psychometric'
+  /**
+   * Concesión A MANO (T-388): el motivo subjetivo (`otro`, `explicacion_confusa`,
+   * `explicacion_mejorable`) no paga solo desde el 28/07, pero SÍ puede pagar cuando
+   * quien cierra decide que el caso lo merece — es el simétrico de `skipRewardReason`.
+   * Solo salta la condición del TIPO: usuario, plan premium, tope mensual y anti-duplicado
+   * siguen exactamente igual, o esto sería la puerta trasera que el 28/07 cerró.
+   */
+  forceRewardable?: boolean
 }): Promise<DisputeRewardResult> {
   try {
     if (params.status !== 'resolved' || !params.userId) return { granted: false, reason: 'not_resolved' }
@@ -70,12 +78,14 @@ export async function maybeRewardResolvedDispute(params: {
     const source = rows[0]?.source ?? 'user'
     const disputeType = rows[0]?.dispute_type ?? null
 
-    if (!shouldRewardResolvedDispute({ status: params.status, source, planType, userId: params.userId, disputeType })) {
+    if (!shouldRewardResolvedDispute({ status: params.status, source, planType, userId: params.userId, disputeType, forceRewardable: params.forceRewardable })) {
       // Distinguir el motivo importa para leer los datos después: `not_rewardable_type` es la
       // política funcionando (motivo subjetivo), no un usuario que se queda sin cobrar por error.
+      // Con `forceRewardable` el tipo ya no puede ser la causa del bloqueo (se saltó esa condición),
+      // así que si no se concede es por plan o por origen — nunca por el motivo subjetivo.
       const reason: DisputeRewardResult['reason'] =
         source !== 'user' ? 'not_user_source'
-        : !disputeTypeIsRewardable(disputeType) ? 'not_rewardable_type'
+        : (!params.forceRewardable && !disputeTypeIsRewardable(disputeType)) ? 'not_rewardable_type'
         : 'not_premium'
       if (reason === 'not_rewardable_type') {
         safeEmit('reward_skipped_subjective_type', {

@@ -52,6 +52,30 @@ describe('recompensa por impugnación aceptada', () => {
     expect(shouldRewardResolvedDispute({ ...base, disputeType: undefined })).toBe(false)
   })
 
+  describe('forceRewardable — concesión A MANO del motivo subjetivo [T-388]', () => {
+    it('un motivo subjetivo SÍ paga con forceRewardable', () => {
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: true })).toBe(true)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'explicacion_confusa', forceRewardable: true })).toBe(true)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'explicacion_mejorable', forceRewardable: true })).toBe(true)
+    })
+
+    it('sin forceRewardable (o en false) el subjetivo sigue sin pagar: no cambia el default', () => {
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro' })).toBe(false)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: false })).toBe(false)
+    })
+
+    it('forceRewardable NO salta las demás condiciones — no es un "paga sí o sí"', () => {
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: true, status: 'rejected' })).toBe(false)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: true, planType: 'free' })).toBe(false)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: true, source: 'ai_auto' })).toBe(false)
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'otro', forceRewardable: true, userId: null })).toBe(false)
+    })
+
+    it('un motivo YA verificable con forceRewardable sigue pagando (no hay efecto doble)', () => {
+      expect(shouldRewardResolvedDispute({ ...base, disputeType: 'respuesta_incorrecta', forceRewardable: true })).toBe(true)
+    })
+  })
+
   describe('tope mensual — es lo único que separa premiar calidad de pagar volumen', () => {
     it('deja pasar por debajo del tope y corta al llegar', () => {
       expect(withinRewardMonthlyCap('impugnacion', 0)).toBe(true)

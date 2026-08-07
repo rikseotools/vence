@@ -187,7 +187,11 @@ export function disputeTypeIsRewardable(disputeType?: string | null): boolean {
  *  · la escribió una PERSONA (`source='user'`; las `ai_auto` no tienen a quién pagar), y
  *  · quien la escribió es PREMIUM (decisión Manuel 28/07: el programa es solo-premium, igual que
  *    el resto de fuentes — un free no cobra aunque su impugnación sea impecable), y
- *  · el TIPO es de los verificables (ver `DISPUTE_REWARD_BY_TYPE`).
+ *  · el TIPO es de los verificables (ver `DISPUTE_REWARD_BY_TYPE`) — SALVO que se conceda A MANO
+ *    (`forceRewardable`, T-388): un motivo subjetivo puede merecer el euro igual, es la política
+ *    quien lo dice, no el sistema. `forceRewardable` NO toca ninguna otra condición: sigue sin
+ *    pagar a un free, a una impugnación `ai_auto` o a una que no está `resolved`. Sin eso, la
+ *    concesión a mano sería la puerta trasera que retiró el automatismo del 28/07.
  * El anti-duplicado por `dispute_id` y el tope mensual NO se deciden aquí: viven en la capa de BD
  * (índice único parcial) y en `withinRewardMonthlyCap`, porque necesitan contar filas.
  */
@@ -197,11 +201,12 @@ export function shouldRewardResolvedDispute(params: {
   planType?: string | null
   userId?: string | null
   disputeType?: string | null
+  forceRewardable?: boolean
 }): boolean {
   if (params.status !== 'resolved') return false
   if (!params.userId) return false
   if ((params.source ?? 'user') !== 'user') return false
-  if (!disputeTypeIsRewardable(params.disputeType)) return false
+  if (!params.forceRewardable && !disputeTypeIsRewardable(params.disputeType)) return false
   return params.planType === 'premium'
 }
 

@@ -58,6 +58,41 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Leer una plantilla oficial de examen sin pdftotext/pdftoppm/magick ────────────────────
+  extraer_pdf_examen_oficial: {
+    titulo: 'Extraer texto + respuesta marcada en color de una plantilla oficial de examen (PDF), sin pdftotext (T-368)',
+    ruta: 'scripts/examenes-oficiales/extraer-pdf-con-respuestas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/importar-examen-oficial-completo.md',
+    notas:
+      'node scripts/examenes-oficiales/extraer-pdf-con-respuestas.cjs <archivo.pdf> [salida.txt]. ' +
+      'SOLO LEE el PDF, no escribe nada de negocio — es la FASE 1-2 del manual de importación ' +
+      '(localizar+extraer), no el import en sí. ' +
+      'NACE porque este entorno (worker de la flota) no tiene `pdftotext`/`pdftoppm`/`magick` ' +
+      'instalados (comprobado: los tres sin resultado en el PATH), que es lo que asume el manual. ' +
+      '`pdfjs-dist` (ya dependencia) da el texto plano bien, pero PIERDE el color — y el Gobierno ' +
+      'de Canarias marca la respuesta correcta en ROJO sobre el texto (verificado en el examen del ' +
+      '08/07/2024: el rojo cae en una única opción por pregunta y varía de posición, no es "la ' +
+      'primera siempre"). Este script interpreta el content stream a mano (vía `pdf-lib`) para no ' +
+      'perder `rg`/`Tf`, decodificando cada fuente por su propio `/ToUnicode`. ' +
+      '⚠️ GOTCHA que costó una transcripción rota (07/08/2026, cazado por contraste contra una ' +
+      'extracción de referencia — sin ese contraste se habría publicado mal): el `codespacerange` ' +
+      'del `/ToUnicode` NO dice cuántos bytes ocupa un carácter en el content stream — eso lo dice ' +
+      'el `Subtype` de la fuente. Una fuente SIMPLE (`/TrueType`, `/Type1`) usa SIEMPRE 1 byte, ' +
+      'aunque su ToUnicode declare `<0000><FFFF>` (habitual, no significa 2 bytes). Solo una ' +
+      'compuesta (`/Type0`) usa el ancho real de su CMap. Al confiar en el codespacerange para una ' +
+      'fuente simple, cada carácter se partía en dos y se perdía la mitad del texto ("CUERPO ' +
+      'AUXILIAR" → "UEO AUXIAR") — el bug ya está arreglado (mira el `Subtype` primero), pero es la ' +
+      'razón de NO confiar nunca en la salida de este script sin contrastarla contra otra fuente ' +
+      '(pdfjs plano, o el propio ojo) antes de dar un examen por verbatim. ' +
+      '⚠️ LÍMITE CONOCIDO: solo detecta la marca de RESPUESTA CORRECTA cuando es color de TEXTO ' +
+      '(rojo). Al menos una institución (Gobierno de Canarias, examen del 14/03/2026) marca con ' +
+      'FONDO amarillo detrás de la línea en vez de texto en color — eso este script NO lo lee (haría ' +
+      'falta correlacionar rectángulos `re f` amarillos con la posición Y del texto, prototipado ' +
+      'pero sin verificar al 100% — ver `data/examenes-oficiales/auxiliar-administrativo-canarias/' +
+      '"26-03-14 ejercicio unico - OEP 2021"/NOTAS-T-368.md`). Sin marca fiable, NO ADIVINAR la ' +
+      'respuesta correcta.',
+  },
   // ── Soltar al que «cree estar dentro» sin soltar al que sí lo está ───────────────────────
   sim_sesion_fantasma: {
     titulo: 'Comprobar que se suelta la sesión fantasma y NO se desloguea al usuario sano (T-434)',
@@ -474,6 +509,34 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'acentuadas como "de palabra", así que un patrón cerrado con `est[aá]\\b` deja de casar "está" ' +
       'seguida de espacio — el límite ya ocurrió entre la "t" y la "á". Se cierra con lookahead ' +
       'explícito (`(?=\\s|$|[.,;:])`) en su lugar; el test que lo demuestra pilló el bug antes de mandar.',
+  },
+  reparar_vinetas_correctas_invertidas: {
+    titulo: 'TERCER marco contradictorio de preguntas NEGATIVO: cabecera "correctas", viñetas dicen "no es correcta"',
+    ruta: 'scripts/reparar-vinetas-correctas-invertidas.cjs',
+    estado: 'vivo',
+    escribe: ['explanation'],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'T-219, 06/08/2026. Hermano de `reparar-marco-incorrecta.cjs` y `reparar-demas-incorrecta.cjs` ' +
+      '(mismo defecto de origen, NO registrados tampoco — mismo patrón de scripts dry-run-por-defecto ' +
+      'de ese lote de T-219), y su INVERSO: ahí la cabecera está mal y las viñetas bien; aquí la ' +
+      'cabecera «Por qué las demás [opciones] son correctas» YA es coherente con el marco negativo, ' +
+      'pero CADA viñeta debajo dice «esta opción no es correcta» — contradice la cabecera que las ' +
+      'agrupa Y el propio artículo (verbatim en la mayoría de los casos). Caso raíz: `8d8b8e01` ' +
+      '(art. 117 EAAnd), que la ficha original de T-219 dejó anotado como «posible explicación ' +
+      'truncada, mirar aparte» — no lo era: es un bug de PLANTILLA («no es correcta PORQUE SÍ está ' +
+      'contemplada», dos afirmaciones opuestas en la misma frase). Núcleo puro ' +
+      '`lib/health/vinetasCorrectasInvertidas.cjs` (14 tests), dry-run por defecto. ' +
+      'Universo medido 06/08: 1.530 preguntas con esa cabecera, **9** con TODAS las viñetas ' +
+      'invertidas (patrón sistemático) — las 9 verificadas UNA A UNA contra el `content` real del ' +
+      'artículo, 9/9 con la clave correcta. Solo actúa si TODAS las viñetas del bloque están ' +
+      'invertidas: 17 casos con mezcla (alguna viñeta ya coherente, típico de un distractor "todas ' +
+      'las anteriores" que es falso por sí mismo) quedan fuera A PROPÓSITO — ampliar a ese universo ' +
+      'sería repetir el error de `cuál … no` insensible a mayúsculas que la ficha original ya midió ' +
+      'que rompía preguntas sanas. NO toca la clave, el enunciado, las opciones, ni el párrafo ' +
+      '«Por qué X es correcta» (que en estos 9 casos tiene OTRO defecto real, distinto: nunca ' +
+      'construye un argumento, solo repite el artículo — verificado en 9/9, no mecanizable sin ' +
+      'lectura caso a caso, queda para una sesión con criterio humano).',
   },
   // ── salud del contenido: teoría servida ───────────────────────────────────────────────────
   audit_tablas_refluidas: {
@@ -895,7 +958,21 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'cruzan las dos caras del MISMO hecho: `identityMismatch` (SERVIDOR, existía desde el ' +
       '07/07 y **no la miraba nadie** — no hubo que construir detector, hubo que mirarla) y ' +
       '`auth_identidad_ajena_descartada` (CLIENTE, el drenaje). Mismatch>0 con CERO descartes = ' +
-      'el arreglo no corre → compruébalo con `npm run sim:sesion-fantasma`, no lo supongas.',
+      'el arreglo no corre → compruébalo con `npm run sim:sesion-fantasma`, no lo supongas. ' +
+      '**QUINTO bloque (06/08, T-633): ¿la UNIÓN de las tres curas cubre a todos?** Los cuatro ' +
+      'bloques de arriba miden cada mecanismo por separado; nadie había comprobado su unión ' +
+      'contra el total de gente que rebota — y esta ficha nació porque `auth_perfil_recuperado`/' +
+      '`auth_alta_sin_perfil` llevaban 5 días mudas mientras «Usuario no existe» seguía activo. ' +
+      'La primera lectura (comparar CONTEOS diarios) parecía dar el visto bueno porque ' +
+      '`auth_identidad_ajena_descartada` tenía un volumen parecido — la misma trampa que ya le ' +
+      'costó cara a esta ficha el 01/08 (contar por DÍA, no por USUARIO). Medido usuario a ' +
+      'usuario: de 49 afectados en 48 h, **29 (59 %) no tenían NINGUNA de las tres señales**. ' +
+      'Núcleo puro `lib/auth/coberturaCuracion.cjs` (`sinNingunaCobertura`, 6 tests, incluida ' +
+      'una regresión nombrada con `140ef91a` — el user_id que motivó la ficha original de T-434 ' +
+      'el 30/07 y que SIGUE sin cobertura). No identifica la causa del hueco, solo lo hace ' +
+      'observable: primeras pistas medidas, mezclan `userIdVerified=true`/`=false` DENTRO de la ' +
+      'misma sesión y algunos traen "Session expired (no access_token)" — un patrón que ninguno ' +
+      'de los tres mecanismos existentes contempla.',
   },
   sesion_fantasma: {
     titulo: 'Comprobar en un navegador real que se suelta la identidad ajena sin desloguear al sano',
@@ -2094,6 +2171,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'panel enseñaba 0, y 4 incidencias de 24 h invisibles (content-health-sweep en `failure` ' +
       'desde el 29/07, refresh-rankings con consulta rota).',
   },
+  temario_pdf_no_render: {
+    titulo: '¿La ruta pública del PDF del temario sigue SIN renderizar en línea? (T-159/T-270)',
+    ruta: 'scripts/canary-temario-pdf-no-render.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      '`npm run canary:temario-pdf-no-render -- --horas N`. Solo lee. Criterio puro en ' +
+      '`lib/temario/pdf/canaryNoRender.cjs` (17 tests). Nace de que la ficha [T-270] exige ' +
+      'verificar EN VIVO que el fix del incidente 2026-07-29 (render en línea en la ruta que ' +
+      'sirve, event-loop bloqueado 215s, answer-and-save caído 18 min) sigue vivo tras el deploy ' +
+      'de la Fase 2 (06/08, commit 9c85535bf) — pero un trabajador de la flota NO tiene ' +
+      'credenciales de usuario premium (sin SUPABASE_JWT_SECRET/AUTH_SECRET) con las que provocar ' +
+      'un miss real y comprobarlo a mano. Dos aserciones sobre lo que el TRÁFICO REAL ya deja en ' +
+      '`observable_events`/`temario_pdf_jobs`: (1) ningún evento `temario_pdf_served` con ' +
+      '`served=\'generated\'` — valor que SOLO el código viejo podía emitir al renderizar en línea, ' +
+      'y que el código actual no puede producir (la firma de `emitServed` en `route.ts` ya no ' +
+      'admite ese valor); un solo caso = regresión (rollback, fork de la ruta). (2) cada miss real ' +
+      '(`served=\'encolado\'`) se cruza con su fila en `temario_pdf_jobs` por `content_hash`: ' +
+      '¿el worker lo completó (`status=\'done\'`) dentro de su cadencia (30 min, 2 vueltas de ' +
+      'margen), o quedó atascado/en error/sin encolar de verdad? Cero misses en la ventana NO es ' +
+      'fallo (falta de tráfico, no del código — mismo principio que `canary-served-rollup.cjs`). ' +
+      'Verificado el 06/08/2026 con `--horas 1` (ventana acotada al deploy, 19:42 UTC): 0 ' +
+      'regresiones, 0 misses — sin evidencia del ciclo completo (ningún usuario premium tocó un ' +
+      'miss real en esa hora), pero confirmado por otra vía que SÍ funciona: el job encolado a ' +
+      'las 14:04 UTC (mismo `temario_pdf_jobs`, mismo worker, camino de temas sobredimensionados ' +
+      'que ya usa esta cola desde el 30/07) quedó `status=\'done\'` en 17 min, `attempts=1`, sin ' +
+      'error. Con `--horas 15` el canario SÍ marca rojo: son los 85 eventos `generated` DE ANTES ' +
+      'del deploy (06:00-18:24 UTC) — comportamiento correcto del canario, no un fallo: una ' +
+      'ventana ancha alrededor de un cambio de código captura también el «antes». Ejecutar con una ' +
+      'ventana corta cuando se compruebe justo tras un deploy.',
+  },
   trabajo_huerfano: {
     titulo: '¿Algún worktree abandonado guarda trabajo que no existe en ningún otro sitio?',
     ruta: 'scripts/sessions/huerfanos.cjs',
@@ -2109,9 +2218,17 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '47 commits de vence-clean, ya arriba por contenido) ∪ lo no commiteado. Medido 31/07: de ' +
       '5 worktrees con «trabajo», 4 eran ruido y 1 llevaba 3 días con 43 líneas perdidas. NACE EN ' +
       'SILENCIO (hoy 0 huérfanos), así que la prueba de que encuentra algo es `npm run ' +
-      'sim:huerfanos`, que reconstruye los 5 casos sobre repos de verdad. NO va al barrido ' +
-      'nocturno: los worktrees son locales y el sweep corre en Fargate. Emite `trabajo_huerfano` ' +
-      'al bus de fricción (T-423).',
+      'sim:huerfanos`, que reconstruye 8 casos sobre repos de verdad (los 5 originales + T-577). ' +
+      'NO va al barrido nocturno: los worktrees son locales y el sweep corre en Fargate. Emite ' +
+      '`trabajo_huerfano` al bus de fricción (T-423). ' +
+      '**T-577 (07/08):** un `procesos` CONFIRMADO en 0 (se pudo mirar /proc y no había nadie) ya ' +
+      'no se deja tapar por un latido fresco — antes «viva» se decidía con `procesos>0 || ' +
+      'latido<3h`, y un turno que acaba de morir (proceso a 0) con latido de minutos salía «en ' +
+      'uso» hasta 3 horas después: la ventana exacta en la que el supervisor entró en el worktree ' +
+      'de otra sesión (`l2`, turno ya terminado) y le hizo `git checkout HEAD -- .`, borrando 6 ' +
+      'ficheros sin commitear de T-518. Ahora el latido SOLO decide cuando `procesos` no se pudo ' +
+      'comprobar (null/undefined, típico de una máquina remota); si se comprobó y dio 0, manda el ' +
+      '0. Caso `l2-recien-muerta` en la simulación reproduce el incidente exacto.',
   },
   reserva_perdida: {
     titulo: 'Avisar a una sesión de que lo que tenía reservado ya lo lleva otra',
@@ -2287,6 +2404,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
       '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión.',
+  },
+
+  flota_presencia_trabajador: {
+    titulo: '¿Está el trabajador en pie? — un solo sitio decide, y «sin sesión» tiene ACCIÓN',
+    ruta: 'lib/flota/encargo.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`presenciaDelPanel` + `ordenDeArranque` (T-642, 07/08/2026). Nacen de TRES fallos del mismo ' +
+      'día y de la misma forma —el supervisor **declaraba** un estado en vez de observarlo—: ' +
+      '(1) `w2` y `w4` perdieron su sesión de tmux y el bucle los descartaba **sin decir nada**, ' +
+      'imprimiendo «todo en marcha, nada que repartir» durante una hora con dos de tres ' +
+      'trabajadores muertos; (2) `flota arrancar` no podía devolverlos porque la unidad del VPS ' +
+      'es de un solo disparo (`active (exited)`) y `systemctl start` sobre ella es un **no-op ' +
+      'silencioso**, con el comando imprimiendo `✅` igual — por eso la orden es `restart`; ' +
+      '(3) los seis del portátil salían 🔴 permanentes por estar apagados a propósito, y seis ' +
+      'rojos fijos enseñan a no mirar el rojo. ' +
+      '⚠️ **La reanimación solo dispara con `sesionExiste === false`, nunca con `null`**: antes ' +
+      '`sesionViva` devolvía `false` tanto si no había sesión como si el ssh se caía, y con eso ' +
+      'un hipo de red habría recreado sesiones SANAS matando el turno de dentro. Por eso se ' +
+      'pregunta de forma que el comando siempre salga bien y responda su salida. ' +
+      'Pruebas: `__tests__/flota/encargo.test.ts` (decisión) + `npm run sim:presencia-flota`, que ' +
+      'reproduce los tres casos **contra tmux de verdad** — un guardarraíl de texto no demuestra ' +
+      'que una sesión vuelva a levantarse.',
   },
 
   flota_clon_al_dia: {

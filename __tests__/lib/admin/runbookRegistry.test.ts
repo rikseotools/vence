@@ -22,7 +22,8 @@ const SWEEP_KINDS = [
   'scope_cross_tema_dup', 'shuffle_safe_regressed', 'shuffle_narrativa_letra_clavada',
   'visual_deixis_no_image', 'enunciado_norma_sin_nombrar', 'cita_no_literal',
   'epigrafe_provenance_no_doc', 'temario_revision_pendiente', 'scope_sin_verificar',
-  'explicacion_yuxtaposicion',
+  'explicacion_yuxtaposicion', 'article_audit_note', 'epigrafe_truncado',
+  'notas_convocatoria_sin_vigilancia',
 ]
 
 describe('runbookRegistry — guardarraíles', () => {

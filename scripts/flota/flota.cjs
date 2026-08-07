@@ -26,6 +26,7 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
+const os = require('os')
 
 const REPO = path.resolve(__dirname, '..', '..')
 const MAQ = require(path.join(REPO, 'lib', 'flota', 'maquinas.cjs'))
@@ -45,6 +46,11 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
 
+// Margen para comprobar que un encargo arrancó de verdad tras el `send-keys` (T-642). Corto a
+// propósito: solo tiene que distinguir "murió al instante" (cuota agotada, credencial mala) de
+// "sigue vivo" — no esperar a que el turno TERMINE.
+const VERIFICACION_ARRANQUE_S = 3
+
 /**
  * Anota las filas del embudo con los casos que citan y ya están cerrados. (T-614)
  *
@@ -56,7 +62,7 @@ async function marcarCasosCerradosEnEmbudo(sql, filas) {
   try {
     const claves = BORRAB.clavesDeCasos(filas)
     if (!claves.length) return filas
-    const estados = await sql.unsafe(BORRAB.sqlEstadoDeCasos(), [claves])
+    const estados = await BORRAB.estadosDeCasos(sql, claves)
     return BORRAB.marcarCasosCerrados(filas, estados)
   } catch { return filas }
 }
@@ -120,14 +126,78 @@ function enMaquina(trabajador, orden, { entrada = null } = {}) {
  * cosas opuestas: al primero se le manda trabajo, al segundo se le levanta.
  *
  * La sesión de tmux es la verdad: si existe, hay a quién mandarle un encargo.
+ *
+ * ⚠️ DEVUELVE `null` CUANDO NO SE PUDO PREGUNTAR, y eso no es un detalle (T-642, 07/08). La
+ * versión anterior hacía `try { has-session } catch { return false }`, así que **un ssh que se
+ * cae daba exactamente la misma respuesta que una sesión que no existe**. Con eso, la reanimación
+ * automática de más abajo mataría y recrearía sesiones sanas cada vez que la red hiciera un
+ * hipo — el remedio peor que la enfermedad. Se pregunta de forma que el comando SIEMPRE salga
+ * bien y sea su SALIDA la que responde: vacío = no se pudo preguntar.
  */
 function sesionViva(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
   const como = m && m.local ? '' : 'sudo -u flota '
   try {
-    enMaquina(trabajador, `${como}tmux has-session -t ${trabajador} 2>/dev/null`)
-    return true
-  } catch { return false }
+    const r = enMaquina(trabajador,
+      `${como}sh -c 'tmux -L ${trabajador} has-session -t ${trabajador} 2>/dev/null && echo SI || echo NO'`).trim()
+    if (r.endsWith('SI')) return true
+    if (r.endsWith('NO')) return false
+    return null
+  } catch { return null }
+}
+
+/**
+ * Lo último que escribió el turno de un trabajador en su log. Cadena vacía si no se puede leer.
+ *
+ * ⚠️ EXISTE PORQUE SE LEÍA EN EL HOME EQUIVOCADO, y eso dejaba MUDA la guarda de cuota (T-642,
+ * 07/08). Los tres sitios que miraban el log lo hacían con `~/flota-<w>.log` **sin** el `sudo -u
+ * flota`: en el VPS el supervisor entra como `root`, así que `~` es `/root` y ahí no hay ningún
+ * log. El `tail` fallaba en silencio (`|| true`), devolvía cadena vacía, y `AUT.clasificar('')`
+ * decía «no hay problema» — o sea que la comprobación de cuota de [T-617] **nunca podía dispararse
+ * en el VPS**, que es la única máquina donde importa. Medido en vivo: `w3`, con el mensaje
+ * «You've hit your weekly limit» escrito en su log, recibió encargo igual.
+ *
+ * El log lo ESCRIBE `mandarEncargo` dentro de un `sudo -u flota sh -c`, donde `~` sí es el de
+ * `flota`. Se lee igual que se escribe: es la misma ruta o no es la misma cosa.
+ */
+function logDelTurno(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  const como = m && m.local ? '' : 'sudo -u flota '
+  try {
+    return enMaquina(trabajador, `${como}sh -c 'tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true'`)
+  } catch { return '' }
+}
+
+/**
+ * ¿Cuántos turnos (`claude -p`) hay VIVOS para este trabajador en su máquina?
+ *
+ * Es la señal que manda sobre el panel, porque es la única que ve un turno HUÉRFANO: cuando el
+ * OOM se lleva el servidor de tmux, el `claude -p` de dentro sobrevive y sigue escribiendo en el
+ * worktree aunque su sesión ya no exista (T-642, 07/08). Se busca por la primera línea del
+ * encargo (`Eres w1,`), que es lo único que identifica al trabajador dentro de la línea de
+ * órdenes — el binario es el mismo para los cuatro.
+ *
+ * Devuelve 0 si no se puede preguntar: aquí el fail-open es el correcto, porque el número solo
+ * se usa para NO dar trabajo, y quedarse sin poder repartir por un ssh caído sería peor. Las
+ * otras dos puertas (`puedeRecibir` y el arranque comprobado) siguen delante.
+ */
+function turnosVivosDe(trabajador) {
+  const w = String(trabajador || '')
+  if (!w) return 0
+  // ⚠️ EL PATRÓN NO PUEDE COINCIDIR CONSIGO MISMO. `pgrep -f 'Eres w1,'` corre dentro de un
+  // `bash -c` cuya línea de órdenes CONTIENE ese texto, así que se cuenta a sí mismo y devuelve
+  // siempre ≥1: estrenado así, el reparto se paró entero diciendo que los cuatro trabajadores
+  // tenían un turno vivo cuando solo lo tenía uno. Medido en la máquina: patrón directo → 2,
+  // con el corchete → 1, turnos reales → 1. El truco del corchete hace que el texto del comando
+  // (`Eres [w]1,`) NO case con la expresión que busca (`Eres w1,`), que es lo mismo que se hace
+  // de toda la vida con `ps | grep [p]atron`.
+  //
+  // Ningún test de texto podía cazar esto: la función era correcta y el sistema estaba mintiendo.
+  const patron = `Eres [${w[0]}]${w.slice(1)},`
+  try {
+    const n = enMaquina(trabajador, `pgrep -fc '${patron}' 2>/dev/null || true`).trim()
+    return Number(n) || 0
+  } catch { return 0 }
 }
 
 /** Qué está ejecutando el panel de un trabajador. Cadena vacía si no se puede ver (≠ «nada»). */
@@ -136,7 +206,7 @@ function comandoDelPanel(trabajador) {
   const como = m && m.local ? '' : 'sudo -u flota '
   try {
     return enMaquina(trabajador,
-      `${como}tmux list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
+      `${como}tmux -L ${trabajador} list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
   } catch { return '' }
 }
 
@@ -224,6 +294,30 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   // ventana el trabajador es invisible para el reparto. La verdad la tiene su panel.
   const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
   if (!ocupacion.libre) return { ok: false, ocupado: true, motivo: ocupacion.motivo }
+  // Y aunque su panel diga que está libre: si queda un `claude -p` suyo VIVO, está trabajando.
+  // El panel puede ser una sesión recién creada mientras el turno anterior sigue corriendo
+  // huérfano —lo que pasa cuando el OOM se lleva el tmux y no al proceso—, y mandarle otro
+  // encargo pone dos turnos a escribir en el mismo worktree (T-642).
+  const vivos = turnosVivosDe(trabajador)
+  if (vivos > 0) return { ok: false, ocupado: true, motivo: `ya tiene ${vivos} turno(s) vivo(s) (huérfano: su sesión murió y el proceso siguió)` }
+
+  // ── SIN CUOTA NO SE MANDA NADA, VENGA POR DONDE VENGA (T-642, 07/08) ──────────────────────
+  // La comprobación de cuota agotada de [T-617] vivía SOLO en el camino de «retomar su tarea».
+  // Medido al estrenar la reanimación de sesiones: `w3` —cuya cuenta está seca hasta las 23:00—
+  // recibió un encargo NUEVO por el camino de reparto, que no pasa por ahí, y habría seguido
+  // recibiéndolo cada 5 minutos durante catorce horas: asignado sobre el papel, sin producir
+  // nada, y con la tarea de revisión retenida por un trabajador que no puede trabajarla.
+  //
+  // Va AQUÍ, en la única puerta por la que sale todo encargo, que es donde el resto del sistema
+  // pone sus impedimentos (principio 8: impedir en el punto de escritura). El CRITERIO no se
+  // duplica —lo pone `AUT.clasificar`, el mismo de T-617—: lo que se añade es un segundo
+  // llamador, no una segunda regla. Y se lee del log del turno ANTERIOR, sin gastar la cuota que
+  // justamente no queda.
+  const salidaPrevia = logDelTurno(trabajador)
+  const auth = AUT.clasificar(salidaPrevia)
+  if (auth.estado === 'cuota_agotada') {
+    return { ok: false, sinCuota: true, motivo: auth.detalle }
+  }
 
   const al = alDia || ponerAlDia(trabajador)
   if (al.linea) console.log(`   ${al.linea}`)
@@ -273,13 +367,46 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
     `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
-    `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
+    `${como}tmux -L ${trabajador} send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
+
+  // ── ¿ARRANCÓ DE VERDAD? (T-642, 07/08) ────────────────────────────────────────────────
+  // `send-keys` solo confirma que las teclas se escribieron, no que el comando siguiera vivo.
+  // Medido: con la cuota semanal agotada, `claude -p` muere en <1s y sin esto se declaraba
+  // {ok:true} igual — el vigía cantó "↻ w1 retoma T-548" cada 5 min durante 3h sin que nadie
+  // llegara a trabajar. El margen es corto a propósito: basta para distinguir "murió al
+  // instante" de "sigue vivo"; no para esperar a que el turno TERMINE (eso puede tardar horas).
+  try { execFileSync('sleep', [String(VERIFICACION_ARRANQUE_S)]) } catch {}
+  const tras = ENC.arrancoDeVerdad(comandoDelPanel(trabajador))
+  if (tras.arranco === false) {
+    const salida = logDelTurno(trabajador)
+    const auth = AUT.clasificar(salida)
+    const motivo = auth.estado !== 'desconocido' ? auth.detalle : tras.motivo
+    return { ok: false, arranque: false, motivo }
+  }
+  // arranco === null (no se pudo ver el panel): no se declara fallo sobre algo que no se pudo
+  // comprobar — se sigue como si hubiera arrancado, igual que antes de este cambio.
+
   // El rastro lo deja la PUERTA, no el llamador. Puesto en cada sitio que manda, se olvida en uno
   // — y de hecho se olvidó en `repartir` al primer intento, así que la serie nacía incompleta.
   if (turno) turno()
   return { ok: true, al }
+}
+
+/**
+ * Por qué `mandarEncargo` devolvió `{ok:false}`, en una frase — sea cual sea la FORMA del
+ * fallo (T-642). Antes cada llamador leía `r.ocupado ? r.motivo : r.al.estado` a mano, así que
+ * al añadir una tercera forma (`arranque:false`, sin `al`) los tres sitios que no distinguían
+ * `ocupado` habrían reventado leyendo `.estado` de `undefined`. UN sitio que conozca las formas.
+ */
+function motivoFallo(r) {
+  if (r.ocupado) return r.motivo
+  // Sin cuota es un «no» con fecha de caducidad, no una avería: se dice distinto para que quien
+  // lea el log sepa que no hay nada que arreglar, solo que esperar (T-642).
+  if (r.sinCuota) return `${r.motivo} — no se le manda nada hasta que reponga`
+  if (r.arranque === false) return r.motivo
+  return r.al ? r.al.estado : 'motivo desconocido'
 }
 
 /**
@@ -568,7 +695,7 @@ async function main() {
         const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w, puedeDesplegar: MAQ.puedeDesplegar(w).puede }),
           { alDia, turno: () => emitirTurno(w, 'encargado', { tipo: 'impugnacion' }) })
         if (!r.ok) {
-          console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          console.error(`❌ ${w}: ${motivoFallo(r)}`)
           return 1
         }
         console.log(`✅ ${w} → analizar una impugnación (cogerá una libre de la cola). Dejará BORRADOR, no enviará nada.`)
@@ -618,12 +745,12 @@ async function main() {
           turno: () => emitirTurno(w, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
       if (!r.ok) {
         console.error(r.ocupado
-          ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
-          : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux -L ${w} attach -t ${w}`
+          : `❌ ${w}: ${motivoFallo(r)}`)
         return 1
       }
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
-      console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
+      console.log(`   míralo con:  npm run flota    (o tmux -L ${w} attach -t ${w} en la máquina)`)
       return 0
     }
 
@@ -791,7 +918,7 @@ async function main() {
         const rama = ramas[0] || '(?)'
         console.log(ok
           ? `   💾 ${w}: ${ramas.length} rama(s) puesta(s) a salvo`
-          : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux attach -t ${w}) · ${salida.trim().slice(-120)}`)
+          : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux -L ${w} attach -t ${w}) · ${salida.trim().slice(-120)}`)
         for (const r of ramas) console.log(`        → ${r}`)
         emitirTurno(w, ok ? 'rescatado' : 'rescate_fallido', { rama, ramas, motivo: ok ? null : 'no se pudo empujar lo que dejó sin salvar' })
         if (ok) n++
@@ -887,9 +1014,51 @@ async function main() {
       // …y que además RECIBAN reparto: el portátil está fuera (`reparte: false`), porque es donde
       // Manuel abre sus consolas y seis autónomos se lo dejaban parado.
       const reciben = new Set(MAQ.trabajadoresQueReciben().map((x) => x.trabajador))
-      const vivos = MAQ.comparar(sesiones)
-        .filter((f) => reciben.has(f.trabajador))
-        .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador))
+      const delReparto = MAQ.comparar(sesiones).filter((f) => reciben.has(f.trabajador))
+
+      // ── UN TRABAJADOR SIN SESIÓN SE LEVANTA; NO SE SALTA EN SILENCIO (T-642, 07/08) ──────
+      // El filtro de abajo descartaba a quien no tuviera sesión de tmux **sin decir nada**, y
+      // entonces la vuelta terminaba imprimiendo «todo en marcha, nada que repartir». Medido ese
+      // día: `w2` y `w4` desaparecieron del mapa y estuvieron una hora sin trabajar con el
+      // supervisor cantando normalidad cada cinco minutos. Un trabajador que se cae es justo lo
+      // que este bucle existe para arreglar, así que el estado «no tiene sesión» tiene ACCIÓN.
+      //
+      // Se resucita solo cuando la máquina dice que NO la tiene (`false`). Si no se pudo
+      // preguntar (`null`, típicamente un ssh caído) NO se toca nada: recrear una sesión sana
+      // por un hipo de red mataría el turno que estuviera corriendo dentro.
+      const sello = new Date().toISOString().slice(11, 19)
+      for (const f of delReparto) {
+        const viva = sesionViva(f.trabajador)
+        // Solo se pregunta por el panel si HAY sesión: preguntarlo siempre gastaba un ssh por
+        // trabajador y por vuelta para nada, y pasarlo vacío hacía que los cuatro salieran
+        // «invisible» — ruido que yo mismo metí al estrenar esto y que se vio en la primera
+        // pasada. Un aviso que sale siempre no avisa de nada.
+        const p = ENC.presenciaDelPanel({
+          sesionExiste: viva,
+          paneCommand: viva === true ? comandoDelPanel(f.trabajador) : '',
+          reparte: true,
+          // Solo hace falta cuando NO hay sesión: es ahí donde vive el turno huérfano que la
+          // reanimación duplicaría. Con sesión, el panel ya responde y sobra el pgrep.
+          turnosVivos: viva === false ? turnosVivosDe(f.trabajador) : 0,
+        })
+        if (p.accion !== 'resucitar') {
+          // Solo se canta la ceguera sobre la SESIÓN (no se pudo ni preguntar si existe). Que el
+          // panel no se deje leer teniendo sesión ya lo dicen las puertas de `mandarEncargo`.
+          if (viva === null) console.log(`   [${sello}] 👁️  ${f.trabajador}: ${p.motivo}`)
+          continue
+        }
+        const m = MAQ.maquinaDe(f.trabajador)
+        try {
+          enMaquina(f.trabajador, ENC.ordenDeArranque({ trabajador: f.trabajador, systemd: !!(m && m.systemd) }))
+          const ok = sesionViva(f.trabajador) === true
+          console.log(`   [${sello}] ${ok ? '🫀' : '❌'} ${f.trabajador}: sin sesión → ${ok ? 'resucitado' : 'NO levanta, requiere una persona'}`)
+        } catch (e) {
+          console.log(`   [${sello}] ❌ ${f.trabajador}: sin sesión y no se pudo resucitar (${String(e.message).slice(0, 60)})`)
+        }
+      }
+
+      const vivos = delReparto
+        .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador) === true)
       const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
       const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
 
@@ -918,25 +1087,48 @@ async function main() {
         if (suya) conTareaYSinProceso.push({ trabajador: f.trabajador, suya })
       }
       let retomadas = 0
+      let sinCuota = 0
       for (const { trabajador, suya } of conTareaYSinProceso) {
         try {
+          // ── ¿MERECE LA PENA RELANZAR? (T-617, 07/08) ────────────────────────────────────
+          // Un turno que murió porque se acabó la cuota va a morir EXACTAMENTE IGUAL la próxima
+          // vez: el proceso ni siquiera llega a intentar el trabajo. Relanzarlo a ciegas no es
+          // optimismo, es gasolina al fuego. Medido en vivo: T-548 (w1) se retomó **27 veces en
+          // 3h** contra el mismo "You've hit your weekly limit", una cada ~6 min (la cadencia del
+          // propio bucle), sin que ninguna avanzase nada — el turno anterior fallaba en el mismo
+          // instante en que arrancaba. Se comprueba leyendo lo que el turno ANTERIOR escribió en
+          // su log, SIN gastar cuota en volver a preguntarlo, que es justo lo que no queda.
+          const salidaPrevia = logDelTurno(trabajador)
+          const auth = AUT.clasificar(salidaPrevia)
+          // El «muerto» se emite SIEMPRE, se relance o no: es un hecho del turno anterior, no una
+          // promesa sobre el siguiente. Antes solo se emitía dentro del `turno` de un retomar que
+          // saliera bien, así que un turno sin cuota (que aquí NO se retoma) habría dejado de
+          // contar para `saludFlota` — justo la serie que hace falta para ver "algo los está
+          // matando en serie (cuota…)" en el panel.
+          emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
+          if (auth.estado === 'cuota_agotada') {
+            emitirTurno(trabajador, 'sin_cuota', { tarea: suya.id, motivo: auth.detalle })
+            console.log(`   ⏸️  ${trabajador}: ${auth.detalle} — no se relanza ${suya.id} hasta que se reponga`)
+            sinCuota++
+            continue
+          }
           const alDia = ponerAlDia(trabajador, { emitir: (v) => { emitirClon(trabajador, v) }, reanuda: true })
           const r = mandarEncargo(trabajador,
             ENC.encargo({ trabajador, tarea: suya, puedeDesplegar: MAQ.puedeDesplegar(trabajador).puede }),
             { alDia, turno: () => {
-              emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
               emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' })
             } })
           if (r.ok) { console.log(`   ↻ ${trabajador} retoma ${suya.id}`); retomadas++ }
-          else console.log(`   ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+          else console.log(`   ⏭️  ${trabajador}: ${motivoFallo(r)}`)
         } catch (e) {
           console.log(`   ❌ ${trabajador}: ${String(e.message || e).slice(0, 70)}`)
         }
       }
 
       if (!libres.length) {
-        console.log(retomadas
-          ? `✅ ${retomadas} turno(s) retomado(s); nadie libre a quien dar tarea nueva.`
+        const sufijoCuota = sinCuota ? ` · ${sinCuota} sin cuota (no relanzado(s))` : ''
+        console.log((retomadas || sinCuota)
+          ? `✅ ${retomadas} turno(s) retomado(s)${sufijoCuota}; nadie libre a quien dar tarea nueva.`
           : `✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
         return 0
       }
@@ -963,7 +1155,7 @@ async function main() {
               ENC.encargoImpugnacion({ trabajador: f.trabajador, puedeDesplegar: false }),
               { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tipo: 'impugnacion' }) })
             if (r.ok) { console.log(`   ✅ ${f.trabajador.padEnd(4)} → una impugnación (no despliega: ${MAQ.puedeDesplegar(f.trabajador).porQueNo})`); n++ }
-            else console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+            else console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
           } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
           continue
         }
@@ -1001,7 +1193,7 @@ async function main() {
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
           // vez de quedarse sin repartir por un problema que no es suyo.
           if (!r.ok) {
-            console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : `no se le encarga (${r.al.estado})`}`)
+            console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
             continue
           }
           dadas.add(tarea.id)
@@ -1043,7 +1235,15 @@ async function main() {
         console.log('   se le puede mandar igual con  npm run flota -- encargar <w> --tarea <id>')
       }
 
-      console.log(`\n${n} encargo(s) repartido(s). Míralo con: npm run flota`)
+      // ── POR QUÉ SE PUBLICA CUÁNTOS ESTÁN OCUPADOS (T-642, 07/08) ────────────────────────
+      // El bucle solo leía «N encargos repartidos», y con eso **cero significaba dos cosas
+      // opuestas**: la flota llena (todos trabajando, hay que volver PRONTO porque un turno
+      // acaba cuando quiere) o nada que repartir (ahí sí conviene espaciar). Al confundirlas,
+      // la espera crecía justo cuando más ocupada estaba la flota — medido el 07/08: 5 → 8 →
+      // 11 → 17 → 25 min con los tres trabajando, así que al morir sus turnos tardaban hasta
+      // media hora en volver. Cuanto mejor iba todo, más tarde se enteraba de que dejó de ir.
+      const ocupados = vivos.length - libres.length
+      console.log(`\n${n} encargo(s) repartido(s) · ${ocupados} ocupado(s). Míralo con: npm run flota`)
       return 0
     }
 
@@ -1083,9 +1283,41 @@ async function main() {
         despertar = () => { clearTimeout(t); resolve() }
       })
 
-      console.log(`🔁 supervisor continuo — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
+      // ── UN SOLO SUPERVISOR (T-642, 07/08) ────────────────────────────────────────────────
+      // Dos procesos del bucle sobre los mismos trabajadores reparten cosas distintas según
+      // quién llegue antes, y no dan error: el síntoma es trabajo repetido que parece normal.
+      // Pasó ese día —el servicio del VPS llevaba horas corriendo mientras se lanzaba otro desde
+      // el portátil— y nada lo dijo. Se mira el RASTRO de las pasadas, que es común a todas las
+      // máquinas; un `flock` habría sido local y no habría visto al de la otra.
+      const yo = process.env.VENCE_FLOTA_AQUI || os.hostname()
+      if (!process.argv.includes('--igualmente')) {
+        let ultima = null
+        try {
+          // ⚠️ LA ÚLTIMA PASADA **DE OTRO**, no la última a secas. Con dos supervisores
+          // alternándose, cada uno vería la SUYA como la más reciente y ninguno bloquearía —
+          // medido al estrenar esto: el guard dejó arrancar un segundo bucle teniendo el
+          // primero vivo. El filtro va en el WHERE, no después.
+          const f = await sql`
+            SELECT ts, metadata FROM public.observable_events
+             WHERE event_type = 'flota_bucle_pasada'
+               AND metadata->>'host' IS DISTINCT FROM ${yo}
+             ORDER BY ts DESC LIMIT 1`
+          if (f[0]) ultima = { host: f[0].metadata?.host, ts: f[0].ts, pausaS: f[0].metadata?.pausaS, parado: f[0].metadata?.parado }
+        } catch { /* sin rastro no se puede juzgar: se sigue, como el resto del andamiaje */ }
+        const otro = BUC.otroSupervisorVivo({ ultima, yo })
+        if (otro.hay) {
+          console.error(`\n⛔ NO ARRANCO — ${otro.motivo}.`)
+          console.error('   Dos supervisores reparten cosas distintas sobre los mismos trabajadores')
+          console.error('   y no da error: se ve como trabajo repetido que parece normal.')
+          console.error('   Párale allí, o arranca este igualmente si sabes lo que haces:')
+          console.error('     node scripts/flota/flota.cjs bucle --igualmente')
+          return 1
+        }
+      }
+      console.log(`🔁 supervisor continuo (${yo}) — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
       while (!parar) {
         let repartidos = 0
+        let ocupados = 0
         let motivoSalto = null
         let atascados = []
         try {
@@ -1110,12 +1342,37 @@ async function main() {
             process.stdout.write(r)
             const m = r.match(/(\d+)\s+encargo\(s\) repartido/)
             repartidos = m ? Number(m[1]) : 0
+            // Cuántos están TRABAJANDO, para no confundir «flota llena» con «nada que hacer»
+            // al decidir la espera (T-642). Si la línea no trae el dato —una versión vieja de
+            // `repartir`—, se queda en 0 y el ritmo es el de antes: degradar, no reventar.
+            const mo = r.match(/·\s*(\d+)\s+ocupado/)
+            ocupados = mo ? Number(mo[1]) : 0
           }
         } catch (e) {
           // Una pasada que falla NO para el bucle: la flota se quedaría parada por un SSH caído.
           motivoSalto = `la pasada falló: ${String(e.message || e).slice(0, 120)}`
         }
-        pausa = BUC.siguientePausa({ repartidos, cada, anterior: pausa })
+        // ── LOS OOM DEJAN DE SER INVISIBLES (T-647) ────────────────────────────────────────
+        // Se encontraron por casualidad, mirando por qué el supervisor había cambiado de PID.
+        // Ahora cada pasada mira el registro del núcleo desde la anterior y lo publica como
+        // cualquier otra señal, para que salga en el panel de salud y no en la terminal de quien
+        // pase por allí. Solo cuenta cuando hay muertes: una señal que se emite siempre no avisa.
+        try {
+          const desde = Math.max(2, Math.round(pausa / 60) + 1)
+          const txt = execFileSync('bash', ['-c',
+            `journalctl --no-pager --since '-${desde}min' 2>/dev/null | grep 'Killed process' || true`],
+          { encoding: 'utf8', timeout: 30_000 })
+          const oom = BUC.muertesPorMemoria(txt)
+          if (oom.muertes > 0) {
+            console.log(`   💀 ${oom.muertes} proceso(s) muertos por falta de memoria: ${JSON.stringify(oom.victimas)}`)
+            await sql`
+              INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+              VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
+                      ${`${oom.muertes} proceso(s) matados por el kernel en los últimos ${desde} min`},
+                      ${sql.json({ host: yo, ...oom })})`
+          }
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
+        pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa })
         console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
         // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
         // síntoma de un supervisor muerto es justamente que NO PASA NADA.
@@ -1131,11 +1388,24 @@ async function main() {
             INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
             VALUES ('fargate', ${motivoSalto ? 'warn' : 'info'}, 'flota_bucle_pasada', 'flota',
                     ${motivoSalto || null},
-                    ${sql.json({ repartidos, atascados, motivoSalto, pausaS: pausa })})`
+                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
         await dormir(pausa)
       }
+      // ── AL PARAR, SE SUELTA EL SITIO (T-642) ─────────────────────────────────────────────
+      // Sin esto, el rastro del que acaba de morir sigue diciendo «estoy repartiendo» hasta que
+      // caduque su ventana, y bloquea al SIGUIENTE — que es el caso normal: reiniciar el
+      // servicio tras un despliegue. Medido al estrenarlo: el supervisor del VPS se quedó 7 min
+      // negándose a arrancar por el rastro de un bucle ya muerto. Un cierre limpio libera al
+      // instante; una muerte SUCIA (kill -9, máquina caída) no escribe nada y ahí sí manda la
+      // caducidad de la ventana, que es justo para lo que está.
+      try {
+        await sql`
+          INSERT INTO public.observable_events (source, severity, event_type, endpoint, metadata)
+          VALUES ('fargate', 'info', 'flota_bucle_pasada', 'flota',
+                  ${sql.json({ host: yo, parado: true, pausaS: 0 })})`
+      } catch { /* la telemetría nunca puede parar al supervisor, tampoco al salir */ }
       console.log('🛑 supervisor continuo detenido')
       return 0
     }
@@ -1228,7 +1498,7 @@ async function main() {
         console.error(String((e.stdout || '') + (e.stderr || '')).trim().slice(-500))
         return 1
       }
-      enMaquina(w, `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c ${wt} /bin/bash`)
+      enMaquina(w, `tmux -L ${w} has-session -t ${w} 2>/dev/null || tmux -L ${w} new-session -d -s ${w} -c ${wt} /bin/bash`)
       console.log(`✅ ${w} en marcha en el portátil (${wt})`)
       console.log(`   dale trabajo:  npm run flota -- encargar ${w}`)
       return 0
@@ -1239,17 +1509,31 @@ async function main() {
       if (!w) { console.error(`Uso: flota.cjs ${cmd} <trabajador>`); return 2 }
       const m = MAQ.maquinaDe(w)
       if (!m) { console.error(`❌ ${w} no está declarado en ninguna máquina`); return 1 }
-      if (m.local) {
-        // En el portátil no hay unidad de systemd que valga: la sesión es tuya, no del sistema.
-        enMaquina(w, cmd === 'arrancar'
-          ? `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c "$HOME/vence-sessions/${w}" /bin/bash`
-          : `tmux kill-session -t ${w} 2>/dev/null || true`)
-      } else {
-        const accion = cmd === 'arrancar' ? 'start' : 'stop'
-        enMaquina(w, `systemctl ${accion} vence-flota@${w} && systemctl is-active vence-flota@${w}`)
+      if (cmd === 'parar') {
+        enMaquina(w, m.local
+          ? `tmux -L ${w} kill-session -t ${w} 2>/dev/null || true`
+          : `systemctl stop vence-flota@${w}`)
+        console.log(`✅ ${w}: parado`)
+        return 0
       }
-      console.log(`✅ ${w}: ${cmd === 'arrancar' ? 'arrancado' : 'parado'}`)
-      return 0
+      // ── ARRANCAR TIENE QUE FUNCIONAR TAMBIÉN SOBRE UNO YA «ARRANCADO» (T-642, 07/08) ─────
+      // La unidad del VPS es de un solo disparo con `RemainAfterExit`: una vez ejecutada se queda
+      // `active (exited)` PARA SIEMPRE, aunque su tmux haya desaparecido. Sobre eso `systemctl
+      // start` es un **no-op silencioso** — medido con `w2` y `w4`, que se dieron por arrancados
+      // sin que volviera ninguna sesión mientras el comando imprimía `✅`. El comando lo decide
+      // `ordenDeArranque` (puro y testeado), no una condición suelta aquí.
+      enMaquina(w, ENC.ordenDeArranque({ trabajador: w, systemd: !!m.systemd }))
+      // Y se COMPRUEBA, que es de lo que iba todo esto: declarar el arranque sin mirar es
+      // exactamente el fallo que esta tarea existe para quitar.
+      const vivaTras = sesionViva(w)
+      if (vivaTras === true) { console.log(`✅ ${w}: arrancado (sesión confirmada)`); return 0 }
+      if (vivaTras === null) {
+        console.log(`⚠️  ${w}: orden de arranque enviada, pero NO se pudo comprobar si levantó`)
+        return 0
+      }
+      console.error(`❌ ${w}: la orden de arranque no ha levantado su sesión — míralo a mano:`)
+      console.error(`   ssh … "${m.systemd ? `systemctl status vence-flota@${w} --no-pager` : 'tmux ls'}"`)
+      return 1
     }
 
     // `bucle` va el PRIMERO de los verbos continuos y se nombra: era el único programador bueno y
