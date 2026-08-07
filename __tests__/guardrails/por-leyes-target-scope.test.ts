@@ -186,4 +186,30 @@ describe('GUARDRAIL: test por leyes acotado a la oposición (opt-in scopeToPosit
     const client = read('lib/observability/client.ts')
     expect(client).toMatch(/'multiley_mixed_inclusion_start'/)
   })
+
+  // ── [T-416] El CSS ":contains(...)" que "ocultaba" oficiales/imprescindibles en
+  // /leyes/[law] era código muerto desde su creación (:contains no existe en CSS, es de
+  // jQuery; los data-testid a los que apuntaba no existen en ningún sitio del árbol). El
+  // ocultamiento real siempre fue — y sigue siendo — el prop hideOfficialQuestions /
+  // hideEssentialArticles resuelto por renderizado condicional en TestConfigurator.tsx.
+
+  it('T-416: el bloque CSS muerto (:contains, data-testid inexistentes) no vuelve a LawTestConfigurator', () => {
+    const cfg = read('app/leyes/[law]/LawTestConfigurator.tsx')
+    expect(cfg).not.toMatch(/:contains\(/)
+    expect(cfg).not.toMatch(/data-testid="official-questions"/)
+    expect(cfg).not.toMatch(/data-testid="essential-articles"/)
+    expect(cfg).not.toMatch(/<style jsx global>/)
+  })
+
+  it('T-416: el ocultamiento real sigue siendo el prop, no CSS — ambos props se pasan y se respetan', () => {
+    const cfg = read('app/leyes/[law]/LawTestConfigurator.tsx')
+    expect(cfg).toMatch(/hideOfficialQuestions=\{true\}/)
+    expect(cfg).toMatch(/hideEssentialArticles=\{true\}/)
+
+    const shared = read('components/TestConfigurator.tsx')
+    // renderizado condicional real (no CSS): la casilla de oficiales solo se pinta si NO
+    // está oculta por prop y hay al menos una oficial que contar.
+    expect(shared).toMatch(/!hideOfficialQuestions && officialCount > 0/)
+    expect(shared).toMatch(/!hideEssentialArticles && officialCount > 0/)
+  })
 })

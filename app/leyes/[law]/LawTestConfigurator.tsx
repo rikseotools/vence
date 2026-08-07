@@ -153,22 +153,14 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }: La
 
   return (
     <div>
-      {/* TestConfigurator con ley preseleccionada */}
+      {/* TestConfigurator con ley preseleccionada.
+          El ocultamiento real de "preguntas oficiales" / "artículos imprescindibles" lo hacen
+          los props hideOfficialQuestions/hideEssentialArticles (renderizado condicional en
+          TestConfigurator.tsx). Hasta [T-416] había aquí un bloque de CSS global con
+          selectores tipo jQuery (inválidos en CSS estándar) apuntando a atributos de test
+          que no existen en ningún sitio del árbol — código muerto desde su creación
+          (17/10/2025, commit a9cb5ff72) que no ocultaba nada. Retirado. */}
       <div className="law-test-configurator">
-        <style jsx global>{`
-          .law-test-configurator [data-testid="official-questions"],
-          .law-test-configurator [data-testid="essential-articles"],
-          .law-test-configurator label:has(span:contains("🏛️")),
-          .law-test-configurator label:has(span:contains("⭐")),
-          .law-test-configurator div:has(span:contains("🏛️")),
-          .law-test-configurator div:has(span:contains("⭐")),
-          .law-test-configurator *:has(> span:contains("🏛️")),
-          .law-test-configurator *:has(> span:contains("⭐")),
-          .law-test-configurator *:has(> *:contains("Preguntas oficiales")),
-          .law-test-configurator *:has(> *:contains("artículos imprescindibles")) {
-            display: none !important;
-          }
-        `}</style>
         <TestConfigurator
           // Explícito desde [T-541]. Antes se heredaba del valor por defecto del componente
           // compartido, así que esta pantalla de LEYES decidía por omisión y en silencio.
