@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { OPOSICIONES } from '../lib/config/oposiciones'
-import { matchesOposicion } from '../lib/utils/searchOposicion'
+import { matchesOposicion, sortByCoverageLevel } from '../lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '../lib/hooks/useOposicionesCatalog'
 import { resolveEscudo } from './CcaaFlag'
 
@@ -30,6 +30,11 @@ export interface OposicionItem {
   categoria: string
   administracion: string
   icon: string
+  // Los dos campos siguientes solo llegan del catálogo real (BD), no del
+  // fallback estático OFFICIAL_OPOSICIONES — por eso opcionales. Ver T-562:
+  // el endpoint ya los devuelve, pero se tiraban al mapear la respuesta.
+  short_name?: string | null
+  coverage_level?: string | null
 }
 
 interface SelectedOposicion {
@@ -2279,9 +2284,12 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     // Lookup de aliases para cada item desde OPOSICIONES config (single source of truth)
     const aliasesById = Object.fromEntries(OPOSICIONES.map(o => [o.id, o.aliases || []]))
 
+    // Más construida primero (T-562): el corte a los primeros 10 resultados
+    // de abajo puede dejar fuera a la construida si una catalogada-vacía la
+    // gana por región/alfabético — mismo bug medido en OposicionChangeModal.
     return {
-      official: sorted.filter(op =>
-        matchesOposicion({ ...op, aliases: aliasesById[op.id] }, term)
+      official: sortByCoverageLevel(
+        sorted.filter(op => matchesOposicion({ ...op, aliases: aliasesById[op.id] }, term))
       ),
       custom: customOposiciones.filter(op =>
         matchesOposicion(op, term)
@@ -2680,7 +2688,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
                         <OposicionIcon id={op.id} icon={op.icon} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {op.nombre}
+                            {/* T-562: nombre corto de UI cuando lo trae el catálogo real */}
+                            {op.short_name || op.nombre}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
                             {op.categoria} · {op.administracion}

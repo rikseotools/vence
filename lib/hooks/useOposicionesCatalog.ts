@@ -77,6 +77,11 @@ function mapApiToOposicionItem(api: ApiOposicionEntry): OposicionItem {
     categoria: api.categoria ?? '',
     administracion: api.administracion,
     icon: inferIconFromAdmin(api.administracion),
+    // El endpoint YA los manda (route.ts los selecciona); antes se tiraban
+    // aquí y ningún selector podía mostrar el nombre corto ni ordenar por
+    // madurez (T-562).
+    short_name: api.short_name,
+    coverage_level: api.coverage_level,
   }
 }
 
