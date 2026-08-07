@@ -981,6 +981,69 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-650] 🔴 [ABIERTO 07/08] El scroll con el dedo sobre la barra de meta diaria la ARRASTRA: acaba flotando sobre el contenido y se come los toques
+
+**Lo reporta una usuaria, no una alerta.** Feedback `247449ed` (Sara B, premium de Badajoz, 07/08):
+*«cuando voy hacer test del tema 1 le doy para hacerlo por artículo pero no se abre la pantalla»* y
+*«ayer al darle me aparecía pero se me movía por la pantalla, no se quedaba quieta en un sitio como antes»*.
+Ella lo cuenta como DOS fallos. Es uno.
+
+#### El mecanismo, reproducido en producción (no deducido)
+1. `components/DailyGoalBanner.tsx` ponía `touch-action: none` en **toda la pastilla**, porque es lo
+   que hace falta para poder arrastrarla. Eso significa que el navegador **NO hace scroll** cuando el
+   dedo empieza ahí: convierte el gesto en arrastre.
+2. La barra queda donde el dedo la suelte, con **`z-index: 50`**, flotando sobre el contenido.
+3. Lo que haya debajo **deja de recibir toques**: van a la barra. Verificado montando su posición
+   guardada — la pastilla (157×24 px) acaba a media pantalla y `elementsFromPoint` en su centro
+   devuelve la barra, no lo que hay debajo.
+
+**Sus propios eventos lo demuestran** (`daily_goal_banner_action`, action=`drag`): desplazamientos de
+**y=1433, 948, 707, 607, 432**. Nadie coloca así una pastilla de 24 px de alto.
+
+**Alcance medido (30 días):** 129 arrastres de 22 usuarios; **59 (11 usuarios) con más de 200 px** de
+desplazamiento vertical, que es la firma del scroll y no de una colocación. **El 75% desde móvil**
+(97 de 129, 14 usuarios).
+
+#### El arreglo (y por qué NO es una pulsación mantenida)
+- **Asa de arrastre visible** (`⠿`): es la ÚNICA que lleva `touch-action: none`. El resto de la barra
+  hace scroll como cualquier otra cosa, así que el arrastre accidental **no puede ocurrir por
+  construcción** — no porque un umbral o un temporizador lo adivinen. Se descartó la pulsación
+  mantenida: es una heurística con reloj, choca con el gesto del sistema y **es invisible** (nadie
+  sabía que la barra se arrastraba; se enteraban cuando se les movía sola).
+- **Rescate automático** (`necesitaRescate` en `lib/ui/arrastrable.ts`, el núcleo COMPARTIDO con los
+  controles del examen — no una copia): al cargar, una posición con más de 200 px de desplazamiento
+  vertical se descarta y la barra vuelve a su sitio, **sin pedirle nada al usuario**. Pedirle que lo
+  arregle en su perfil sería pedir el esfuerzo justo a quien peor lo tiene: puede tener la barra
+  encima del control que necesita pulsar. Deja evento (`action: 'rescatada'`).
+- El umbral de 200 px **no es a ojo**: sale de la medición de arriba.
+
+#### La capa que faltaba, y es lo que explica que nadie lo cazara
+**vence-sim solo corría en ESCRITORIO**, donde este fallo NO EXISTE (con ratón no hay gesto de scroll
+que capturar) — y la mayoría de nuestros usuarios estudia desde el móvil. Se añade `device: 'movil'`
+al contrato del journey (`lib/sim/journey.ts` + runner), que trae viewport, user-agent **y táctil**.
+Con eso, el journey `barra-meta-no-se-arrastra-con-scroll` reproduce el gesto real.
+
+- **Verificado contra producción ANTES del arreglo: ROJO** — *«el gesto de scroll movió la barra
+  (transform=matrix(1,0,0,1,0,-132), posiciones guardadas=1)»*. Es la prueba de que el journey
+  distingue; queda como regresión permanente.
+- Capas: 6 unitarios del rescate (con los valores REALES de sus eventos) + el journey de móvil.
+  El invariante se juzga por lo que queda ESCRITO (transform / posición guardada) y no por píxeles en
+  pantalla: al hacer scroll la barra cambia de sitio en el viewport aunque no se haya arrastrado, y
+  confundir las dos cosas daría un rojo falso.
+
+#### ⚠️ Lo que NO se ha podido reproducir, y no se le vende como resuelto
+Su *«no se abre la pantalla»* del filtro por artículos **no reproduce en limpio**: en su misma
+oposición y en móvil, el filtro abre bien (39 casillas, API 200). Encaja con que fuera la barra
+tapando el control —solo pasa con la posición guardada en SU dispositivo—, pero no está demostrado.
+**Aviso de método:** persiguiendo esto di dos falsos positivos («el botón no acepta el toque») que
+eran de mi medición, no de la app: el punto del toque se calculaba en un sistema de coordenadas y el
+navegador lo aplicaba en otro. Lo que sí apareció de camino: **la página se desborda horizontalmente
+en móvil** (`scrollWidth` 421 vs 393 de pantalla) — defecto real, sin ficha todavía.
+
+#### Pendiente
+- Desplegar frontend y **volver a correr el journey**: tiene que pasar a VERDE.
+- Contestar a Sara (borrador con OK de Manuel), sin prometer lo que no está demostrado.
+
 ### [T-648] 🟠 [ABIERTO 07/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
 
 - **Medido hoy** al mirar por qué el canario de la cola de PDFs gritaba «219 en DLQ» cada 15 minutos: los **220 jobs fallidos comparten UNA sola causa** (`oposicion_desconocida`), y **192 de ellos son de oposiciones `personalizada_*`** — las que el propio usuario se monta. Afectan a **54 oposiciones distintas**; las tres mayores acumulan 89, 30 y 7 jobs. Hay **7 usuarios** con una personalizada elegida ahora mismo.

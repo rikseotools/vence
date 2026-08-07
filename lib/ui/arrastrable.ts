@@ -77,6 +77,39 @@ export function esArrastre(dx: number, dy: number, umbral = UMBRAL_ARRASTRE_PX):
   return Math.hypot(dx, dy) >= umbral
 }
 
+/**
+ * A partir de qué desplazamiento vertical una posición guardada deja de parecer una colocación
+ * y pasa a ser el rastro de un SCROLL capturado por error.
+ *
+ * No es un número a ojo: medido sobre `daily_goal_banner_action` (30 días, 129 arrastres de 22
+ * usuarios), **59 de 129 arrastres (11 usuarios) superan los 200 px** de desplazamiento
+ * vertical, con casos de 707, 948 y 1.433 px. Nadie coloca una pastilla de 24 px de alto
+ * arrastrándola 1.433 px: eso es un dedo haciendo scroll sobre ella. Por debajo de ese corte
+ * se respeta lo que el usuario hizo — mover algo de sitio es su derecho.
+ */
+export const DESPLAZAMIENTO_SOSPECHOSO_PX = 200
+
+/**
+ * ¿Esta posición guardada hay que RESCATARLA (devolver el elemento a su sitio)?
+ *
+ * Nace del caso de Sara (feedback `247449ed`, 07/08/2026): la barra de meta diaria llevaba
+ * `touch-action: none`, así que un dedo que empezaba el scroll encima de ella no hacía scroll,
+ * la ARRASTRABA. Y donde quedaba se quedaba, con `z-index: 50`, flotando sobre el contenido:
+ * lo que hubiera debajo dejaba de recibir toques. Ella lo reportó como dos fallos distintos
+ * («se me movía por la pantalla» y «le doy y no se abre»), y era el mismo.
+ *
+ * El asa de arrastre impide que vuelva a pasar; esto rescata a quien YA la tiene descolocada,
+ * **sin pedirle nada**: si tuviera que ir a su perfil a arreglarlo, le estaríamos pidiendo el
+ * esfuerzo justo a quien peor lo tiene (puede tener la barra encima del propio control).
+ */
+export function necesitaRescate(
+  pos: { x: number; y: number } | null | undefined,
+  umbral = DESPLAZAMIENTO_SOSPECHOSO_PX,
+): boolean {
+  if (!pos) return false
+  return Math.abs(pos.y) > umbral
+}
+
 /** Lee una posición absoluta persistida. Tolera basura en localStorage sin romper el render. */
 export function parsearPosAbsoluta(raw: string | null | undefined): { left: number; top: number } | null {
   if (!raw) return null
