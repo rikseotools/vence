@@ -624,6 +624,9 @@ async function detectarTodo(c, add, marcar, now) {
     const missing = nn(su.missing_in_db) ?? (boe != null && db != null ? Math.max(0, boe - db) : null);
     if (missing != null && missing > 0) return 'incomplete';
     if ((nn(su.content_mismatch) ?? 0) > 0 || (nn(su.title_mismatch) ?? 0) > 0) return 'issues';
+    // T-395: is_ok:false sin contadores es una NOTA DE INCIDENCIA (audit_boe_url), no una
+    // comparación limpia — mismo mirror que lib/laws/completeness.ts, MANTENER EN SYNC.
+    if (su.is_ok === false) return 'never_verified';
     return null;
   };
   // ── Hitos que anuncian un evento con la fecha YA PASADA ────────────────────────────────

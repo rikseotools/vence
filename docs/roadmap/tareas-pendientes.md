@@ -5117,7 +5117,7 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **De dónde sale:** inventario real de [T-377].
 - **Relacionada:** [T-377], [T-374] (las 7.202 placeholder, otra decisión tuya del mismo tipo).
 
-### [T-395] 🟠 [ABIERTO 31/07] 9 leyes con `is_ok:false` se publican como VERIFICADAS: el criterio de completitud ignora el veredicto del propio summary
+### [T-395] 🟠 [ABIERTO 31/07] 🙋 CÓDIGO LISTO, falta aplicar la migración — 9 leyes con `is_ok:false` se publican como VERIFICADAS: el criterio de completitud ignora el veredicto del propio summary
 
 - **El caso, medido el 31/07:** hay 9 leyes cuyo `last_verification_summary` dice literalmente **`"is_ok": false`** y a las que el sistema asigna el estado **`verified`**, que es el más favorable posible. Y no son leyes muertas: **OPCAT (114 preguntas activas)**, Convenio Schengen (25), Orden 22/07/1987 (20), Convención Apátridas (6), RD 1087/2010 (3), Tratado Prüm (2), Convenio Prevención Tortura (1), Orden HFP/147/2022 (1), Protocolo Sedes UE (0).
 - **Por qué pasa, que es lo interesante:** esos summaries **no son verificaciones, son NOTAS DE INCIDENCIA**. Las escribió el detector `audit_boe_url` el 16/07/2026 y dicen cosas como *«boe_url ERRÓNEO: apuntaba a BOE-A-1994-9268 = "Real Decreto 643/1994… por el que se nombra Decano"»* — es decir, **la fuente contra la que habría que verificar apuntaba a otro documento**. Como el campo se usó de bitácora, la nota ocupa el sitio de la evidencia.
@@ -5129,6 +5129,77 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Cabo asociado:** hay que decidir **si `last_verification_summary` puede seguir usándose de bitácora**. Si el detector de URLs necesita dejar rastro, que sea en su propio campo o con una clave que el criterio entienda — no ocupando el sitio de la evidencia.
 - **De dónde sale:** de `lawCompletenessConsistency` en el inventario real de [T-377]. El test señalaba **otra** discrepancia (1 ley), y esta apareció al mirar por qué.
 - **Relacionada:** [T-377], frase-gatillo *"revisa la completitud de las leyes"* → `docs/runbooks/completitud-leyes.md`, memoria `project-completitud-leyes-vs-fuente`.
+
+> **✅ ARREGLADO Y REPRODUCIDO EN LOS 4 SITIOS (07/08, w4) — falta SOLO aplicar la migración
+> SQL, que no puedo hacer yo (sin escritura de negocio).**
+>
+> **Remedido contra RDS, no confié en el "9" de la ficha:** mi primer filtro simple (`is_ok:false`
+> y no exento) daba **10**, con `RGGIT` (22 preguntas activas) de más — pero al REPRODUCIR
+> ejecutando la función real `classifyLawCompleteness` contra las 13 filas con `is_ok:false`,
+> RGGIT sale `incomplete` (tiene `missing_in_db>0`, que manda antes de llegar al `is_ok`), no es
+> parte del bug. **El "9" de la ficha era exacto** — apuntado aquí porque mi primer intento
+> habría mandado a alguien en la dirección equivocada si no llego a verificar con la función de
+> verdad en vez de mi propio filtro.
+>
+> **Arreglado en los 4 sitios que pedía la ficha:**
+> 1. `lib/laws/completeness.ts` (fuente única): tras las exenciones y los chequeos de
+>    `missing_in_db`/`content_mismatch`/`title_mismatch` (que siguen mandando si están
+>    presentes), `if (su.is_ok === false) return { state: 'never_verified', ... actionable: true }`.
+> 2. Mirror `scripts/health-sweep.cjs` — misma comprobación, mismo orden.
+> 3. Mirror `scripts/audit-law-completeness.cjs` — misma comprobación, mismo orden.
+> 4. `supabase/migrations/20260807_law_verification_effective_is_ok.sql` — mismo `CASE` en SQL
+>    (`WHEN ((...->>'is_ok')::boolean) IS FALSE THEN 'never_verified'`), **NO APLICADA** (soy
+>    lectura de negocio, sin privilegio de DDL).
+>
+> **REPRODUCIDO antes/después, no solo argumentado:** ejecuté `classifyLawCompleteness` real
+> contra las 13 filas reales de RDS. Antes del fix: 9 daban `verified/actionable:false` (el bug
+> exacto), 3 exentas (`Ley 7/2014 Galicia`, `Decreto 326/2024`, `Reglamento Órganos
+> Territoriales Zaragoza` vía `deliberate_subset`) daban `verified` correctamente, y `RGGIT`
+> daba `incomplete` correctamente. Después del fix: las 9 pasan a `never_verified/actionable:true`
+> y **las 3 exentas + RGGIT NO CAMBIAN** — confirma que el orden del chequeo (después de
+> `missing_in_db` y de las exenciones) es el correcto y no rompe nada que ya funcionaba.
+>
+> **Impacto medido, tal como pedía la ficha antes de tocar el criterio:** 727 leyes traen `is_ok`
+> en su summary; **solo 13 son `false`**, de las que 9 son el bug (el resto de las 714 con
+> `is_ok:true` no las toca el cambio — el chequeo nuevo solo dispara con `=== false` exacto, ni
+> `true` ni ausente). El badge no se enciende de golpe: sube en 9, con causa conocida cada una.
+>
+> **Guardarraíl de paridad NUEVO** (`__tests__/guardrails/lawCompletenessIsOkParidad.guardrail.test.ts`,
+> 10 tests): comprueba por texto que las 3 copias JS/TS + la migración SQL declaran el mismo
+> chequeo, y en el mismo ORDEN relativo (después de `missing_in_db`, después de
+> `deliberate_subset`). **Verificado que SÍ caza la regresión**: comenté la línea del fix en
+> `health-sweep.cjs` a propósito, el guardarraíl falló (3 tests), restaurada la línea vuelve a
+> verde. No pude hacer un test de comportamiento real entre los tres ficheros porque
+> `health-sweep.cjs`/`audit-law-completeness.cjs` corren su `main()`/IIFE sin guarda al
+> `require()` (dispararía una conexión real a BD) — es el mismo patrón de paridad-por-texto que
+> ya usa `content-sweep-parity.test.ts` para los `kind` del barrido.
+>
+> **`lawCompletenessConsistency.integration.test.ts` (vista SQL ↔ módulo TS) queda EN ROJO A
+> PROPÓSITO hasta que se aplique la migración** — lo comprobé corriéndolo contra RDS con
+> `VENCE_LECTOR_URL`: da exactamente 9 discrepancias, los mismos 9 `law_id` del bug (`TS=never_verified
+> SQL=verified`). Es la prueba de que el fix es preciso y de que la vista SIGUE desactualizada —
+> no una regresión mía. Se pondrá verde solo cuando alguien con DDL aplique
+> `20260807_law_verification_effective_is_ok.sql`.
+>
+> **17 tests nuevos/actualizados en `__tests__/lib/laws/completeness.test.ts`**, incluida la
+> fixture verbatim del caso real OPCAT (el mensaje de `audit_boe_url` tal cual está en BD) y
+> regresiones explícitas para RGGIT (`missing_in_db` manda) y `deliberate_subset` (la exención
+> manda). Typecheck limpio, 1022 tests en verde en `__tests__/lib/laws/` +
+> `lawCompletenessIsOkParidad`.
+>
+> **NO TOCADO — el "cabo asociado" de arriba** (si `last_verification_summary` puede seguir
+> usándose de bitácora): sigue siendo una decisión de diseño más grande, fuera del alcance de
+> este arreglo puntual. Lo dejo señalado, no resuelto.
+>
+> **NO APLICADA la migración** — fuera de mi permiso (nada de BD de negocio) y sin credencial de
+> escritura de todas formas. ⚠️ Comprobado `scripts/run-migration.cjs`: NO es un runner
+> genérico, tiene una ruta de fichero HARDCODEADA a otra migración vieja — no sirve tal cual
+> para esta. Alguien con DDL sobre RDS y el proceso real que se use para aplicar migraciones
+> (`psql -f supabase/migrations/20260807_law_verification_effective_is_ok.sql` contra RDS, o el
+> que corresponda) debe aplicarla, y luego confirmar que
+> `lawCompletenessConsistency.integration.test.ts` pasa a verde (hoy da 9 discrepancias exactas)
+> y que el audit/health-sweep ya no cuentan las 9 como `verified`.
+
 ### [T-398] 🔴 [ABIERTO 31/07] Cola de atención al cerrar la sesión: 1 feedback esperando respuesta y 7 impugnaciones, con el contexto de cada una
 
 - **Por qué esta ficha existe:** la sesión del 31/07 cerró 13 impugnaciones y 5 feedbacks y se acabó con el worktree borrado. Lo que queda vivo no puede depender de que alguien reconstruya el contexto desde cero. **Empezar SIEMPRE por el runbook** `docs/maintenance/impugnaciones-claude-code.md` y coger con `node scripts/impugnaciones/cola.cjs next` (hace el claim atómico).
