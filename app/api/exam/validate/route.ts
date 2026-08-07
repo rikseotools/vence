@@ -21,7 +21,9 @@ import {
   indexDbRowsByQuestionId,
   scoreDivergence,
   type DbAnswerRow,
+  type ExamQuestionResult,
 } from '@/lib/api/exam/reconcile'
+import { optionOrdersFromMetadata, orderForQuestion, displayedLetterToOriginal } from '@/lib/shuffle/examOrder'
 // Trazo anti-cosecha (auditoría 27/07/2026). Este endpoint revela clave +
 // explicación de cualquier questionId, y cuando la llamada NO trae testId no
 // persiste nada → hasta ahora una cosecha por aquí no dejaba NINGÚN rastro.
@@ -111,10 +113,35 @@ async function markTestAsCompleted(testId: string, score: number, totalQuestions
 // La pérdida de filas degradaría solo el detalle por-pregunta de /revisar.
 type ValidatedResult = {
   questionId: string
+  // T-277: estos 4 campos son los que ve el CLIENTE, en coordenadas MOSTRADAS —
+  // las mismas en las que están `question.option_a..e` que el cliente ya tiene en
+  // memoria desde que se sirvió el examen. Si el examen no se barajó, mostrada =
+  // original y esto es exactamente el comportamiento de siempre.
   userAnswer: string | null
   correctAnswer: string
   correctIndex: number
   isCorrect: boolean
+  explanation: string | null
+  // Para PERSISTENCIA (persistExamQuestions → test_questions), siempre en
+  // coordenadas ORIGINALES del banco — igual que hoy sin barajado, y coherente
+  // con lo que escribe /api/exam/answer. Nunca se devuelven al cliente.
+  userAnswerOriginal: string | null
+  correctAnswerOriginal: string
+}
+
+/**
+ * Quita los campos internos (*Original) antes de mandar un resultado al cliente.
+ *
+ * Se llama tanto sobre `ValidatedResult` (los declara) como sobre lo que devuelve
+ * `overlayResultsWithDb` (tipado `ExamQuestionResult`, SIN esos campos a nivel de tipo,
+ * pero que en tiempo de ejecución los sigue llevando encima porque `overlayResultsWithDb`
+ * hace `{...r, …}` sobre el `ValidatedResult` original) — de ahí el `as` explícito: es
+ * exactamente el mismo objeto en runtime, solo que TS ya "olvidó" el tipo ancho por el
+ * paso intermedio.
+ */
+function toPublicResult(r: ExamQuestionResult) {
+  const { userAnswerOriginal: _uo, correctAnswerOriginal: _co, ...pub } = r as ValidatedResult
+  return pub
 }
 type QuestionMeta = {
   correct: number
@@ -150,7 +177,11 @@ async function persistExamQuestions(
         if (!meta) return null
         // Campos de enriquecimiento del cliente (additivos); fallback al servidor.
         const clientAnswer = answers[i]
-        const answered = r.userAnswer != null && r.userAnswer !== ''
+        // T-277: en BLANCO se decide por la coordenada ORIGINAL (lo que de verdad se
+        // guarda), no por la mostrada — las dos son igual de "vacío o no" salvo que el
+        // valor mostrado sea un residuo de un shuffle antiguo con el original ya vacío,
+        // caso que no debería darse pero por el que se prefiere la fuente de verdad.
+        const answered = r.userAnswerOriginal != null && r.userAnswerOriginal !== ''
         return {
           testId,
           userId,
@@ -158,8 +189,9 @@ async function persistExamQuestions(
           articleId: clientAnswer?.articleId ?? meta.primaryArticleId ?? null,
           questionOrder: clientAnswer?.questionOrder ?? i + 1,
           questionText: clientAnswer?.questionText || meta.questionText || '',
-          userAnswer: r.userAnswer ?? '',
-          correctAnswer: r.correctAnswer,
+          // ORIGINAL, no mostrada: test_questions vive siempre en coordenadas del banco.
+          userAnswer: r.userAnswerOriginal ?? '',
+          correctAnswer: r.correctAnswerOriginal,
           isCorrect: r.isCorrect,
           articleNumber: clientAnswer?.articleNumber ?? null,
           lawName: clientAnswer?.lawName ?? null,
@@ -228,7 +260,11 @@ async function persistExamQuestions(
 // FUNCIÓN DE VALIDACIÓN
 // ============================================
 
-async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
+// export SOLO para poder testear la lógica de corrección (incluida la traducción de
+// coordenadas de T-277) sin levantar el handler HTTP entero (rate limit, captcha,
+// device-limit...). No cambia el comportamiento de producción: sigue siendo una función
+// interna del módulo de la ruta, no una API pública.
+export async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
   try {
     const db = getDb()
 
@@ -276,40 +312,70 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
       })
     }
 
+    // T-277: si el examen se sirvió barajado, `answer.userAnswer` llega en coordenadas de
+    // lo MOSTRADO. Se lee el orden de `tests.questions_metadata` (el SERVIDOR es la única
+    // autoridad, nunca el cliente) y se traduce a coordenadas ORIGINALES antes de comparar
+    // y de persistir — igual que hace `/api/exam/answer`. Sin `testId` (examen anónimo) o
+    // sin metadata.option_orders (examen histórico o sin shuffle) → identidad, retrocompatible.
+    let optionOrders: Record<string, number[]> = {}
+    if (testId) {
+      const testRow = await db
+        .select({ questionsMetadata: tests.questionsMetadata })
+        .from(tests)
+        .where(eq(tests.id, testId))
+        .limit(1)
+      optionOrders = optionOrdersFromMetadata(testRow[0]?.questionsMetadata)
+    }
+
     // Validar cada respuesta
-    const results: Array<{
-      questionId: string
-      userAnswer: string | null
-      correctAnswer: string
-      correctIndex: number
-      isCorrect: boolean
-      explanation: string | null
-    }> = []
+    const results: ValidatedResult[] = []
 
     let totalCorrect = 0
     let totalAnswered = 0
 
     for (const answer of answers) {
+      // T-277: si esta pregunta se sirvió barajada, `order` traduce mostrada↔original.
+      // `answer.userAnswer` (lo que mandó el cliente) YA está en coordenadas mostradas —
+      // eso NO se toca, porque es lo que el cliente necesita para pintar su propia UI de
+      // revisión (sus `option_a..e` están en ese mismo orden). Solo se traduce una copia
+      // aparte para comparar/persistir.
+      const order = orderForQuestion(optionOrders, answer.questionId)
+      const userAnswerOriginal = order
+        ? displayedLetterToOriginal(order, answer.userAnswer)
+        : answer.userAnswer
+
       const questionData = correctAnswersMap.get(answer.questionId)
 
       if (!questionData) {
-        // Pregunta no encontrada - marcar como incorrecta
+        // Pregunta no encontrada - marcar como incorrecta. correctIndex=-1 hace que
+        // persistExamQuestions descarte esta fila, así que userAnswerOriginal/
+        // correctAnswerOriginal aquí no llegan a usarse para nada.
         results.push({
           questionId: answer.questionId,
           userAnswer: answer.userAnswer,
           correctAnswer: '?',
           correctIndex: -1,
           isCorrect: false,
-          explanation: null
+          explanation: null,
+          userAnswerOriginal,
+          correctAnswerOriginal: '?',
         })
         continue
       }
 
-      const correctIndex = questionData.correct
-      const correctLetter = String.fromCharCode(97 + correctIndex) // 0='a', 1='b', etc.
-      const isCorrect = answer.userAnswer?.toLowerCase() === correctLetter
+      const correctIndexOriginal = questionData.correct
+      const correctLetterOriginal = String.fromCharCode(97 + correctIndexOriginal) // 0='a', 1='b', etc.
+      const isCorrect = userAnswerOriginal?.toLowerCase() === correctLetterOriginal
 
-      if (answer.userAnswer) {
+      // De vuelta a coordenadas MOSTRADAS para el cliente: dónde cae la opción correcta
+      // en el orden que el cliente tiene delante ahora mismo. Sin orden (no barajada):
+      // mostrada = original, igual que siempre.
+      const correctIndexDisplayed = order ? order.indexOf(correctIndexOriginal) : correctIndexOriginal
+      const correctLetterDisplayed = String.fromCharCode(
+        97 + (correctIndexDisplayed === -1 ? correctIndexOriginal : correctIndexDisplayed)
+      )
+
+      if (userAnswerOriginal) {
         totalAnswered++
       }
 
@@ -320,10 +386,12 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
       results.push({
         questionId: answer.questionId,
         userAnswer: answer.userAnswer,
-        correctAnswer: correctLetter,
-        correctIndex: correctIndex,
+        correctAnswer: correctLetterDisplayed,
+        correctIndex: correctIndexDisplayed === -1 ? correctIndexOriginal : correctIndexDisplayed,
         isCorrect,
-        explanation: questionData.explanation
+        explanation: questionData.explanation,
+        userAnswerOriginal,
+        correctAnswerOriginal: correctLetterOriginal,
       })
     }
 
@@ -396,7 +464,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
         .map(r => ({ questionId: r.questionId, userAnswer: r.userAnswer ?? '', isCorrect: !!r.isCorrect }))
 
       const authSummary = summarizeDbScore(dbRows, totalQuestions)
-      const authResults = overlayResultsWithDb(results, indexDbRowsByQuestionId(dbRows))
+      const authResults = overlayResultsWithDb(results, indexDbRowsByQuestionId(dbRows), optionOrders)
       const divergence = scoreDivergence(totalCorrect, authSummary.totalCorrect)
 
       const completed = await markTestAsCompleted(testId, authSummary.totalCorrect, totalQuestions)
@@ -432,7 +500,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
 
       return {
         success: true,
-        results: authResults,
+        results: authResults.map((r) => toPublicResult(r)),
         summary: {
           totalQuestions: authSummary.totalQuestions,
           totalAnswered: authSummary.totalAnswered,
@@ -447,7 +515,7 @@ async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
     // validación del batch tal cual (comportamiento previo).
     return {
       success: true,
-      results,
+      results: results.map((r) => toPublicResult(r)),
       summary: {
         totalQuestions,
         totalAnswered,

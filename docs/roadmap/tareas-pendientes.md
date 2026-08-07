@@ -5966,7 +5966,7 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   4. **Avisar al usuario que la pidió** — Chema (feedback `e5151a19`), que preguntó expresamente por el temario y los tests y ya echó la instancia. Su feedback sigue abierto a propósito.
   5. Opcional tras el go-live: campaña de captación (FASE 8 del manual). El plazo de inscripción cerraba ~3/08/2026, así que el público objetivo ya está inscrito y estudiando.
 
-### [T-277] 🟠 [ABIERTO 29/07] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
+### [T-277] 🟠 [ABIERTO 29/07 — implementado y probado el 06/08, falta verificación en producción] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
 
 - **Qué falta:** el simulacro y el modo examen del temario (`ExamLayout` ← `TestExamenPage`) deben servir las opciones barajadas y, en las oposiciones que examinan con 3, recortadas — su razón de ser es parecerse al examen que el opositor va a hacer (decisión Manuel, 29/07). Los tests de práctica ya lo hacen desde [T-267]; el examen no.
 - **NO confundir con el examen oficial REPRODUCIDO** (`/[oposicion]/test/examen-oficial?fecha=…`, servido por `/api/v2/official-exams/questions` y armado por tags + `question_official_exams`): ese es el documento tal como cayó y **no se toca nunca**, ni orden ni opciones.
@@ -5977,6 +5977,20 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Condiciones heredadas de [T-267]** (no repetirlas mal): solo preguntas elegibles (`shuffle_safety='safe'` o explicación estructurada), nunca las que citan al conjunto ("todas las anteriores"), la correcta siempre incluida, y el nº de opciones sale de `examen_config` — nunca hardcodeado.
 - **Relacionadas:** [T-267] (fase 1, hecha), [T-235] (piloto del motor), [T-262] (explicaciones que clavan la letra).
 - **Origen:** feedback `ed09cf73` de Pilar Martín + decisión de Manuel del 29/07.
+
+- **✅ IMPLEMENTADO (06/08, sesión w2) — construido de extremo a extremo, con capas. Falta la verificación en producción real, que un trabajador no puede hacer.**
+  - **Diseño (distinto del de T-267 a propósito): el SERVIDOR es la única autoridad del orden, nunca el cliente.** T-267 funciona porque servir y responder son la MISMA visita (el cliente ECOA el `option_order` recibido). El examen tiene un tercer momento —reanudar— que T-267 no tiene, así que aquí el orden se graba UNA vez, al crear el test (`tests.questions_metadata.option_orders`, junto a `question_ids`), y `/api/exam/{answer,validate,resume}` lo LEEN de la BD por `testId`+`questionId`. El cliente nunca tiene que devolverlo ni se confía en que lo haga bien — elimina de raíz la clase de fallo "el cliente mintió sobre el orden".
+  - **`test_questions.user_answer`/`correct_answer` siguen SIEMPRE en coordenadas ORIGINALES del banco** (0=A), exactamente igual que hoy sin barajado. El barajado es una traducción que ocurre SOLO en el borde de la petición/respuesta — nada que ya lea `test_questions` (stats, analítica, `/revisar`) tiene que enterarse de que hubo shuffle.
+  - **Dónde se traduce, y en qué sentido** (núcleo puro `lib/shuffle/examOrder.ts`, 20 tests):
+    1. `TestExamenPage` pide `shuffleOptions: true` a `/api/questions/filtered` (igual que T-267) y ahora también arrastra `option_order` en cada pregunta servida.
+    2. `createDetailedTestSession` (`utils/testSession.ts`) lo graba UNA vez en `questions_metadata.option_orders` — solo en modo examen, solo si algo se barajó de verdad (un examen sin shuffle no arrastra `{}` colgando para siempre).
+    3. `/api/exam/answer` (`saveAnswer`) lee el orden de `tests.questions_metadata` por `testId`, traduce `userAnswer` (mostrada → original) ANTES de comparar/guardar — el resto de la función no se entera de que hubo barajado.
+    4. `/api/exam/validate` hace lo mismo por lote, y devuelve al cliente `userAnswer`/`correctAnswer`/`correctIndex` en coordenadas MOSTRADAS (no originales) — **la parte que casi se hace mal**: la pantalla de revisión (`ExamLayout.tsx:1583/1630`) resalta el botón comparando contra `option_a..e`, que están en el orden que el cliente YA tiene en memoria. Devolver coordenadas originales ahí habría dejado la nota bien pero el botón resaltado MAL. `overlayResultsWithDb` (BD gana sobre el batch desalineado, T-235/caso Isabel) también traduce: sin eso, la respuesta "autoritativa" de la BD (original) se habría colado sin traducir sobre el resultado ya traducido.
+    5. `/api/exam/resume` reconstruye `option_a..d` en el orden PERSISTIDO (no natural) y traduce `savedAnswers` de original a mostrada — es el escenario que da nombre a la ficha, verificado con un test dedicado.
+  - **GOTCHA real, no hipotético: al primer intento devolví coordenadas ORIGINALES en la respuesta de `/api/exam/validate`.** Habría dejado la NOTA correcta (isCorrect se computa server-side, no depende de esto) pero el usuario habría visto resaltada una opción DISTINTA de la que clicó en la pantalla de revisión — un bug visual, no de datos, pero exactamente el tipo de fallo silencioso que un test end-to-end (no solo unitario) tenía que cazar. Lo encontré leyendo el CONSUMIDOR (`ExamLayout.tsx`) antes de escribir el test, no después.
+  - **Capas, todas verdes:** núcleo puro `examOrder.ts` (20 tests) · `reconcile.ts` (`overlayResultsWithDb` con el 3er parámetro de traducción, 4 tests nuevos + 13 existentes intactos) · `saveAnswer` (4 tests de integración con DB mockeada, incluye mutation-check: sin la traducción, la comparación cae en coordenadas equivocadas) · `/api/exam/resume` (3 tests de integración sobre el ROUTE real, incluye el escenario completo servir→responder→dejar a medias→reanudar) · `utils/testSession.ts` (4 tests). **1332 tests relacionados en verde** (todo `__tests__/api/exam`, `__tests__/lib/exam`, `__tests__/lib/shuffle`, `ExamLayout.test.ts`, `__tests__/lib/api/exam`, `__tests__/utils`, `__tests__/lib/api/v2/tests`, `__tests__/api/official-exams` — cero regresión, incluida la reproducción de examen oficial, que no toca nada de esto). Typecheck limpio.
+  - **Verificado que hay demanda REAL para el camino de recorte (3 opciones), no solo el de barajado:** `SELECT slug, examen_config FROM oposiciones WHERE examen_config IS NOT NULL` (VENCE_LECTOR_URL) da varias oposiciones activas con `opciones:3` — `auxiliar-administrativo-ayuntamiento-madrid` (la del feedback original de Pilar/T-267), `policia-nacional`, `auxiliar-administrativo-ayuntamiento-marbella` — así que el camino `subsetOrderFor` se va a ejercitar de verdad, no solo en teoría.
+  - **⏳ LO QUE FALTA, y no lo puede hacer un trabajador:** verificación EN VIVO tras desplegar — hacer un examen real de una oposición con `opciones:3` o con shuffle activo, dejarlo a medias, reanudarlo, y confirmar visualmente que las opciones y la respuesta ya dada coinciden; y una pasada de `vence-sim` (Playwright) si se decide automatizarlo. El diseño y la implementación están completos y probados a nivel de lógica; falta el visto bueno de extremo a extremo contra la app real.
 
 ### [T-271] 🟠 [ABIERTO 29/07] Los `console_error` crónicos del cliente: respuestas que se quedan sin token, timeouts de 15 s y logins que no cuajan
 
@@ -11138,6 +11152,18 @@ y eso solo ocurre donde las dos se sirven.
 
 ### [T-291] 🟠 [ABIERTO 30/07] Reparar preguntas a escala: tres escalones (deterministas → modelos baratos → cuota de agentes)
 
+> **🔍 REVISADA el 06/08/2026 (w2) — la campaña sigue avanzando (otra sesión activa), pero la cola por
+> exposición de esta ficha (`ORDER BY servidas DESC` contra `test_questions`) hoy es INSERVIBLE para
+> quien tenga solo `vence_lector`: `test_questions` da 0 filas SIEMPRE por el mismo bloqueo RLS de
+> [T-573]/[T-038] (migraciones ya en `main`, sin aplicar en RDS — confirmado de nuevo hoy, ya
+> triado ahí como "no urge, decisión de Manuel"; no se duplica ficha). Medido con `explanation_data
+> IS NOT NULL AND is_active`: **7.863** (vs. la foto de esta ficha del 30/07, 7.207/7.073) — la campaña
+> avanza, solo que sin registrarlo aquí. La cola de `data/pilotos/t291-escalon2-30jul/triaje-sin-cita.json`
+> (50 ids) está **YA HECHA** (las 50 tienen `explanation_data`, comprobado una a una) — no reusar como
+> pendiente. No se ha tocado contenido esta sesión: sin acceso a `test_questions` no hay forma honesta
+> de elegir candidatos por exposición real, y trabajar "a mano" sin esa cola es justo el modo que la
+> propia ficha desaconseja como estrategia principal. Se suelta para quien la retome CON el rol
+> desbloqueado o con acceso directo a la cola compartida.**
 - **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
 - **🎯 Pero NO hay que reparar 133.000, y este es el dato que decide la estrategia.** **82.591 de ellas no las ha visto NADIE** (cero apariciones), y la exposición está muy concentrada:
 
