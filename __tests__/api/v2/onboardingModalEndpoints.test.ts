@@ -20,6 +20,10 @@ jest.mock('@/db/client', () => ({
 jest.mock('@/lib/api/withErrorLogging', () => ({
   withErrorLogging: (_p: string, h: unknown) => h,
 }))
+jest.mock('@/lib/observability/emit', () => ({
+  emit: jest.fn(),
+  emitFireAndForget: jest.fn(),
+}))
 
 import { POST as SAVE_FIELD } from '@/app/api/v2/onboarding/save-field/route'
 import { GET as POPULAR } from '@/app/api/v2/custom-oposiciones/popular/route'
@@ -63,6 +67,56 @@ describe('POST /api/v2/onboarding/save-field', () => {
     mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
     await SAVE_FIELD(reqBody({ field: 'target_oposicion_data', value: { id: 'x', tipo: 'custom' } }))
     expect(JSON.stringify(mockExecute.mock.calls[0][0])).toContain('jsonb')
+  })
+
+  test('target_oposicion catálogo (no personalizada): no consulta temas, guarda directo', async () => {
+    mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+    const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: 'administrativo-madrid' }))
+    expect(res.status).toBe(200)
+    expect(mockExecute).toHaveBeenCalledTimes(1) // solo el UPDATE, sin la consulta de temas
+  })
+
+  /**
+   * [T-339] SEGUNDA puerta del mismo criterio que `/api/profile/target` [T-508]. Sin esto, el
+   * onboarding fijaba como objetivo una personalizada sin un solo tema — medido el 07/08: las 10
+   * "más populares" que el propio `get_popular_custom_oposiciones` ofrece tienen las 10 cero
+   * temas activos.
+   */
+  test('target_oposicion personalizada SIN temas: 409, NO guarda', async () => {
+    mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+    // `buscarPersonalizada` (lib/api/oposicionPersonalizada/consultas.ts) trata el resultado de
+    // `execute()` como ARRAY directo (`filas[0]`), igual que el resto de consultas de ese
+    // fichero (misOposiciones, cargarOposicion) — no como `{ rows: [...] }`.
+    mockExecute.mockResolvedValueOnce([{ nombre: 'Subalterno', created_by_username: null, temas: 0 }])
+    const res = await SAVE_FIELD(
+      reqBody({ field: 'target_oposicion', value: 'personalizada_abc123' }),
+    )
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ success: false, error: 'personalizada_sin_temario' }),
+    )
+    expect(mockExecute).toHaveBeenCalledTimes(1) // solo la consulta de temas, ningún UPDATE
+  })
+
+  test('target_oposicion personalizada CON temas: guarda con éxito', async () => {
+    mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+    mockExecute.mockResolvedValueOnce([{ nombre: 'Mi ley', created_by_username: null, temas: 4 }])
+    mockExecute.mockResolvedValueOnce([])
+    const res = await SAVE_FIELD(
+      reqBody({ field: 'target_oposicion', value: 'personalizada_abc123' }),
+    )
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true })
+    expect(mockExecute).toHaveBeenCalledTimes(2) // consulta de temas + UPDATE
+  })
+
+  test('personalizada que no existe/no es tuya: fail-open, guarda igual', async () => {
+    mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+    mockExecute.mockResolvedValueOnce([]) // buscarPersonalizada no encuentra fila
+    const res = await SAVE_FIELD(
+      reqBody({ field: 'target_oposicion', value: 'personalizada_abc123' }),
+    )
+    expect(res.status).toBe(200)
   })
 })
 
