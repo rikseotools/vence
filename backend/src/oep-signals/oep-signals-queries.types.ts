@@ -58,23 +58,9 @@ export interface CreateSignalInput {
   adminNotes?: string | null;
 }
 
-export interface DetectionSourceForScan {
-  id: string;
-  sourceType: string;
-  regionName: string;
-  boletinName: string | null;
-  listingUrl: string;
-  searchKeywords: string[] | null;
-  positionGroups: string[] | null;
-  isActive: boolean;
-  notes: string | null;
-  lastChecked: string | null;
-  lastHash: string | null;
-  lastSuccessAt: string | null;
-  lastError: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+// `DetectionSourceForScan` (sensor detect-regional-oeps) se eliminó en T-347
+// (07/08/2026): el sensor está retirado desde el 01/06/2026 y este tipo se
+// quedó sin ningún consumidor. Ver la nota en oep-signals-queries.service.ts.
 
 export interface OposicionForMatch {
   id: string;

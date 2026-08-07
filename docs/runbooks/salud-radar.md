@@ -81,6 +81,7 @@ señales reportando `success`): aquí produce *a medias*, que es el más fácil 
 | sensor | estado | por qué |
 |---|---|---|
 | **`hash_change`** | **JUBILADO a propósito** (26/06, commit `73417467`) | Emitía una señal por cada hash distinto y las páginas cambian solas (timestamps, banners): **130+ señales por re-baseline, 0 con dato extraído, todas descartadas en triaje**, y el badge OEP inflado a «99+» sin valor. Y era REDUNDANTE: el cambio ya queda en `oposiciones.seguimiento_change_status='changed'` y se revisa en `/admin/seguimiento-convocatorias`, con su propio badge. **NO lo resucites**: `check-seguimiento` sigue corriendo y detectando (101 cambios de 469 fuentes el 16/07) — lo que se quitó fue la SEÑAL, no la detección. |
+| **`regional_scan`** (`detect-regional-oeps`) | **RETIRADO a propósito** (01/06, código borrado) | Escaneaba webs de entidad con 56% error y falsos positivos. Sustituido por `detect-boletines` (lee sumarios de boletín, estables). Su tabla `detection_sources` (101 en error, 99 sin éxito jamás) es una FOTO CONGELADA de antes de retirarse — nada la toca desde entonces (T-347, 07/08). **NO la "arregles"**: ver el aviso completo en §2. |
 | **`generic_source`** | reparado 16/07 | Ver abajo. |
 
 **El 16/07 reporté `hash_change` como avería y estuve a punto de devolver 130 señales basura al día
@@ -207,6 +208,20 @@ SELECT count(*)::int total,
 > boletín** (estables, con API/XML) y tienen 2 boletines documentados como inviables con su motivo.
 > **Al arreglar una fuente rota, pregúntate primero si esa fuente debería existir**: si su contenido
 > ya lo cubre el boletín, se retira en vez de resucitarla.
+>
+> 🛑 **Esta consulta va a dar SIEMPRE ~101 en error / ~99 sin éxito jamás, y NO es una avería
+> activa — es una foto CONGELADA (T-347, 07/08/2026).** `detection_sources` era la tabla del
+> sensor `detect-regional-oeps`, **retirado el 01/06/2026** (56% error, falsos positivos sobre
+> webs institucionales — ver `docs/maintenance/oeps-convocatorias-seguimiento.md` §10/§14.4). Su
+> código se borró ese día y con él los DOS únicos escritores que existían
+> (`getActiveSources()`/`updateSourceCheckResult()`, backend y frontend): **confirmado con grep
+> exhaustivo sobre TODO el repo — cero llamadores en ninguno de los dos**, así que la tabla no
+> puede cambiar aunque pasen meses. Este mismo hallazgo se re-diagnosticó como "avería" el 16/07 y
+> otra vez el 31/07 con la foto idéntica, porque el runbook no lo dejaba escrito aquí — no lo
+> vuelvas a investigar como si fuera nuevo. **Qué SÍ hacer con esto:** decidir si alguna de las
+> ~167 fuentes merece darse de alta en `generic_source_checks` bajo el modelo nuevo (§10 del
+> manual de seguimiento) — eso es trabajo real y pendiente; releer `last_error` de la tabla vieja
+> no lo es.
 
 ### 3. ¿Ve el radar lo que debería? (cobertura)
 

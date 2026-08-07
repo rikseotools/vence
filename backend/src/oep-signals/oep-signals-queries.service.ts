@@ -4,13 +4,11 @@ import { DRIZZLE, type DrizzleDB } from '../db/database.module';
 import { pickBestMatch } from './oep-match';
 import {
   convocatoriaHitos,
-  detectionSources,
   oepDetectionSignals,
   oposiciones,
 } from './oep-signals.schema';
 import type {
   CreateSignalInput,
-  DetectionSourceForScan,
   OposicionForMatch,
   OposicionToScan,
   TimelineSilenceCandidate,
@@ -423,36 +421,20 @@ export class OepSignalsQueriesService {
   }
 
   // ============================================
-  // DETECTION SOURCES (Sensor detect-regional-oeps)
+  // DETECTION SOURCES (Sensor detect-regional-oeps) — ELIMINADO (T-347, 07/08/2026)
   // ============================================
-
-  async getActiveSources(): Promise<DetectionSourceForScan[]> {
-    const rows = await this.db
-      .select()
-      .from(detectionSources)
-      .where(eq(detectionSources.isActive, true))
-      .orderBy(detectionSources.sourceType, detectionSources.regionName);
-
-    return rows as DetectionSourceForScan[];
-  }
-
-  async updateSourceCheckResult(params: {
-    sourceId: string;
-    newHash: string | null;
-    error: string | null;
-  }): Promise<void> {
-    const now = new Date().toISOString();
-    await this.db
-      .update(detectionSources)
-      .set({
-        lastChecked: now,
-        ...(params.newHash !== null ? { lastHash: params.newHash } : {}),
-        ...(params.error === null ? { lastSuccessAt: now } : {}),
-        lastError: params.error,
-        updatedAt: now,
-      })
-      .where(eq(detectionSources.id, params.sourceId));
-  }
+  // `getActiveSources()`/`updateSourceCheckResult()` (y su gemelo del frontend,
+  // `lib/api/oep-signals/sources.ts`) alimentaban `detect-regional-oeps`, RETIRADO el
+  // 01/06/2026 (56% error, falsos positivos sobre webs institucionales — ver
+  // `docs/maintenance/oeps-convocatorias-seguimiento.md` §10/§14.4). El cron y su
+  // módulo se borraron ese día; estos dos métodos se quedaron sin NINGÚN llamador
+  // (confirmado con grep exhaustivo sobre todo `backend/src` y `app`/`lib` del
+  // frontend — cero resultados en ambos) y la tabla `detection_sources` (167-173
+  // filas) quedó DORMIDA: nada la lee ni la escribe desde entonces. Sus «101 en
+  // error, 99 sin éxito jamás» (T-347) no son una avería en curso — son una foto
+  // congelada de antes de la retirada. Se elimina en vez de dejarla tras un flag:
+  // código muerto que alguien puede volver a llamar es una factura esperando. La
+  // TABLA no se toca (dato histórico; decidir su destino es aparte, T-347).
 
   // ============================================
   // GENERIC SOURCE CHECKS (Sensor detect-generic-sources)
