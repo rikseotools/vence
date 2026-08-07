@@ -50,6 +50,99 @@ describe('parseBoeSections — estructura de leyes del BOE', () => {
     expect(secciones.map((s) => s.num)).toEqual(['Preliminar', 'I'])
   })
 
+  // CASO REAL (T-140, 07/08/2026): Estatuto de Autonomía de Cantabria (BOE-A-1982-635).
+  // Su índice oficial (API datosabiertos, texto/indice) trae un bloque real con id `tdos` y
+  // rúbrica «TÍTULO DOS» — cardinal, no ordinal — INTERCALADO con `tprimero` (ordinal) y `tii`
+  // (romano) en el MISMO documento. Verificado descargando el índice real: `tdos` (fecha
+  // 19820111, la redacción de 1982) va justo antes de `tii` (fecha 19981231, la vigente) — es
+  // el bloque VIEJO de "Título II" que el BOE conserva junto al nuevo, mismo patrón que ya
+  // tiene esta ley para los Títulos III-VI (dos bloques por número, uno viejo y uno vigente).
+  // Sin reconocer `tdos`, sus artículos NO desaparecían con un error: se leían en silencio como
+  // parte del título anterior (tprimero), alargando el rango de "Título I" con artículos que no
+  // son suyos.
+  it('EL CASO REAL: cardinal "tdos" (Estatuto de Cantabria) ya no se traga en el título anterior', () => {
+    const { secciones } = parseBoeSections([
+      { id: 'tprimero', label: 'TÍTULO I' },
+      { id: 'a7', label: 'Artículo 7' },
+      { id: 'a21', label: 'Artículo 21' },
+      { id: 'tdos', label: 'TÍTULO DOS' },
+      { id: 'a22', label: 'Artículo 22' },
+      { id: 'a23', label: 'Artículo 23' },
+      { id: 'tii', label: 'TÍTULO II' },
+      { id: 'a24', label: 'Artículo 24' },
+      { id: 'a31', label: 'Artículo 31' },
+    ])
+    // Antes del arreglo, tdos no partía nada: Título I habría llegado hasta el 23 (se comía los
+    // artículos del "Título Dos" derogado) y solo habría salido una sección "II" (tii).
+    expect(secciones).toEqual([
+      { num: 'I', blockId: 'tprimero', from: 7, to: 21 },
+      { num: 'II', blockId: 'tdos', from: 22, to: 23 },
+      { num: 'II', blockId: 'tii', from: 24, to: 31 },
+    ])
+  })
+
+  it('cardinales de "uno" a "quince" mapean al mismo romano que su ordinal (tres = III = tercero)', () => {
+    const conCardinal = parseBoeSections([
+      { id: 'ttres', label: 'TÍTULO TRES' },
+      { id: 'a1', label: 'Artículo 1' },
+    ])
+    const conOrdinal = parseBoeSections([
+      { id: 'ttercero', label: 'TÍTULO TERCERO' },
+      { id: 'a1', label: 'Artículo 1' },
+    ])
+    expect(conCardinal.secciones[0].num).toBe('III')
+    expect(conCardinal.secciones[0].num).toBe(conOrdinal.secciones[0].num)
+  })
+
+  // CASO REAL (T-140, 07/08/2026): Orden de 1/2/1996 de operatoria contable del Estado
+  // (BOE-A-1996-2627, 115 unidades). No numera por "Artículo": numera por "Regla" —
+  // id `regla1`/`regla2`… y label «Regla 1», «Regla 2»… «Regla 5 bis». Verificado contra el
+  // índice real (API datosabiertos): 3 capítulos + preliminar, CERO ids que empiecen por
+  // "a"/"art". `articles.article_number` ya tiene esta ley importada como número puro ("1",
+  // "5 bis", sin la palabra "Regla"), así que el hueco estaba solo en reconocer el bloque
+  // como artículo — antes esos capítulos daban 0 artículos cada uno y la ley se rechazaba
+  // `sin_secciones` con su estructura de capítulos perfectamente marcada en el BOE.
+  it('EL CASO REAL: numeración por "Regla N" (Orden 1/2/1996, no numera por Artículo)', () => {
+    const { tipo, secciones } = parseBoeSections([
+      { id: 'cpreliminar', label: 'CAPITULO PRELIMINAR' },
+      { id: 'regla1', label: 'Regla 1' },
+      { id: 'regla2', label: 'Regla 2' },
+      { id: 'ci', label: 'CAPITULO I' },
+      { id: 'regla3', label: 'Regla 3' },
+      { id: 's1', label: 'SECCIÓN 1' },
+      { id: 'regla4', label: 'Regla 4' },
+      { id: 'regla5', label: 'Regla 5' },
+      { id: 'regla5bis', label: 'Regla 5 bis' },
+    ])
+    expect(tipo).toBe('capitulo')
+    expect(secciones).toEqual([
+      { num: 'Preliminar', blockId: 'cpreliminar', from: 1, to: 2 },
+      // El bloque "SECCIÓN 1" no es título ni capítulo (nivel no modelado): su Regla 4 se
+      // cuenta para el capítulo que la contiene, igual que ya pasa con los capítulos
+      // anidados dentro de un título en el resto de esta suite.
+      { num: 'I', blockId: 'ci', from: 3, to: 5 },
+    ])
+  })
+
+  it('"Regla N bis" se numera por el entero, igual que "Artículo N bis" (no se pierde el sufijo del contrato)', () => {
+    const { secciones } = parseBoeSections([
+      { id: 'ci', label: 'CAPITULO I' },
+      { id: 'regla5', label: 'Regla 5' },
+      { id: 'regla5bis', label: 'Regla 5 bis' },
+      { id: 'regla6', label: 'Regla 6' },
+    ])
+    expect(secciones[0]).toEqual({ num: 'I', blockId: 'ci', from: 5, to: 6 })
+  })
+
+  it('un bloque "regla" sin el label "Regla N" no se confunde con artículo (guarda por id Y por label)', () => {
+    // Mismo criterio que ya protege el ANEXO: el id solo no basta.
+    const { secciones } = parseBoeSections([
+      { id: 'ci', label: 'CAPITULO I' },
+      { id: 'reglamento', label: 'Reglamento de desarrollo' },
+    ])
+    expect(secciones).toEqual([])
+  })
+
   it('anidamiento título>capítulo: el artículo va al capítulo, y como hay títulos usa TÍTULOS', () => {
     // cuando hay títulos, el nivel es título; los capítulos internos no son sección propia
     // pero SUS artículos cuentan para el rango del título que los contiene
