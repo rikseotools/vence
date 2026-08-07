@@ -240,6 +240,25 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   const ocupacion = ENC.puedeRecibir(comandoDelPanel(trabajador))
   if (!ocupacion.libre) return { ok: false, ocupado: true, motivo: ocupacion.motivo }
 
+  // ── SIN CUOTA NO SE MANDA NADA, VENGA POR DONDE VENGA (T-642, 07/08) ──────────────────────
+  // La comprobación de cuota agotada de [T-617] vivía SOLO en el camino de «retomar su tarea».
+  // Medido al estrenar la reanimación de sesiones: `w3` —cuya cuenta está seca hasta las 23:00—
+  // recibió un encargo NUEVO por el camino de reparto, que no pasa por ahí, y habría seguido
+  // recibiéndolo cada 5 minutos durante catorce horas: asignado sobre el papel, sin producir
+  // nada, y con la tarea de revisión retenida por un trabajador que no puede trabajarla.
+  //
+  // Va AQUÍ, en la única puerta por la que sale todo encargo, que es donde el resto del sistema
+  // pone sus impedimentos (principio 8: impedir en el punto de escritura). El CRITERIO no se
+  // duplica —lo pone `AUT.clasificar`, el mismo de T-617—: lo que se añade es un segundo
+  // llamador, no una segunda regla. Y se lee del log del turno ANTERIOR, sin gastar la cuota que
+  // justamente no queda.
+  let salidaPrevia = ''
+  try { salidaPrevia = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+  const auth = AUT.clasificar(salidaPrevia)
+  if (auth.estado === 'cuota_agotada') {
+    return { ok: false, sinCuota: true, motivo: auth.detalle }
+  }
+
   const al = alDia || ponerAlDia(trabajador)
   if (al.linea) console.log(`   ${al.linea}`)
   if (!al.puedeEncargar) return { ok: false, al }
@@ -324,6 +343,9 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
  */
 function motivoFallo(r) {
   if (r.ocupado) return r.motivo
+  // Sin cuota es un «no» con fecha de caducidad, no una avería: se dice distinto para que quien
+  // lea el log sepa que no hay nada que arreglar, solo que esperar (T-642).
+  if (r.sinCuota) return `${r.motivo} — no se le manda nada hasta que reponga`
   if (r.arranque === false) return r.motivo
   return r.al ? r.al.estado : 'motivo desconocido'
 }
