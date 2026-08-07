@@ -45,6 +45,7 @@ const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.
 const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
+const { ARTICLE_AUDIT_NOTE_RE_SRC_SQL } = require('../lib/health/articleAuditNote.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
@@ -512,6 +513,21 @@ async function detectarTodo(c, add, marcar, now) {
     `${anRows.length}${anRows.length >= 50 ? '+' : ''} pregunta(s) visibles con la explicación = nota de auditoría de un pase IA (reescribir o needs_human)`,
     { count: anRows.length, sample: anRows.slice(0, 15).map(r => r.id) });
   marcar('audit_note_explanation', anRows.length);
+
+  // ── CONTENIDO: la prosa de auditoría también está DENTRO del temario (T-253) ──
+  // Hermano de audit_note_explanation, un escalón más grave: aquí la nota está en el
+  // ARTÍCULO (la teoría que el opositor lee directamente en /temario y de la que cuelgan
+  // las preguntas), no en la explicación de una pregunta suelta. Ver el núcleo
+  // (lib/health/articleAuditNote.cjs) para la calibración y el falso positivo descartado
+  // (Access 365: "también es incorrecta" es una trampa de examen explicada, no una nota).
+  const aanRows = (await c.query(
+    `SELECT a.id FROM articles a JOIN laws l ON l.id = a.law_id
+      WHERE a.is_active AND l.is_active AND a.content ~* $1 LIMIT 50`,
+    [ARTICLE_AUDIT_NOTE_RE_SRC_SQL])).rows;
+  if (aanRows.length) add('content', 'warn', null, 'article_audit_note',
+    `${aanRows.length}${aanRows.length >= 50 ? '+' : ''} artículo(s) activos con la nota de auditoría incrustada en la TEORÍA (contrastar con la fuente oficial y revisar las preguntas del artículo)`,
+    { count: aanRows.length, sample: aanRows.slice(0, 15).map(r => r.id) });
+  marcar('article_audit_note', aanRows.length);
 
   // ── CONTENIDO: integridad de los PSICOTÉCNICOS ──
   // Hueco encontrado al inventariar las suites del job de integración (T-384): el barrido de salud

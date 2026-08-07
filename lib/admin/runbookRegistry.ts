@@ -307,6 +307,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/salud-contenido.md',
     claudeHace: 'localiza las preguntas visibles cuya "explicación" es en realidad la crítica de un pase IA anterior ("La explicación debería…", "posible errata", "Nota técnica:", "Esta pregunta debería anularse"), verifica la clave contra la ley/fuente y reescribe la explicación (o la manda a needs_human si hay defecto de fondo) con el flujo de `docs/maintenance/revisar-preguntas-con-agente.md`.',
   },
+  article_audit_note: {
+    title: 'La prosa de auditoría también está DENTRO del temario (no solo en la explicación)',
+    triggerPhrase: 'revisa la prosa de auditoría del temario',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace: 'localiza artículos ACTIVOS cuyo `content` —la TEORÍA que el opositor lee en /temario, no la explicación de una pregunta— lleva incrustada la nota de un pase de auditoría anterior (patrón: "esa/esta/dicha/tal afirmación es/resulta incorrecta", con o sin negrita markdown). Por cada hallazgo: contrastar el punto con la FUENTE OFICIAL (nunca reescribir de memoria), reescribir el párrafo afirmando lo que dice la fuente, y revisar las preguntas que cuelgan de ese artículo por si heredaron la confusión — si una pregunta se generó del párrafo confuso, la pregunta también estará mal. Ojo al volumen en los bloques mega-chunk (Correos): el arreglo es de PÁRRAFO, no de artículo entero. NUNCA inventar el dato: si la fuente no lo aclara, quitar la afirmación en vez de adivinarla.',
+  },
   law_unverified_source: {
     title: 'Ley sin verificar contra su fuente (falso verde / importada a medias)',
     triggerPhrase: 'revisa la completitud de las leyes',
