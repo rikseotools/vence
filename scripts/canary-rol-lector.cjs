@@ -60,6 +60,10 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-638] fuente única de verdad del audit trail de lifecycle (CLAUDE.md) — sin esto un
+  // worker no puede COMPROBAR que una transición pasó de verdad, solo fiarse de la prosa de
+  // otra sesión. Ver 20260807_rls_question_lifecycle_history_lector.sql.
+  ['question_lifecycle_history', 'el audit trail de transiciones de estado de las preguntas'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
