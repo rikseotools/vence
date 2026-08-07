@@ -31,14 +31,14 @@
     "lawId": "4e89916a-b102-4730-97f1-4bb25056e7c0",
     "nombre": "Protocolo nº 1 sobre el cometido de los Parlamentos nacionales en la Unión Europea",
     "fuenteUrl": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:12012M/PRO/01",
-    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/01 (Protocolo nº1 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). NO se ha podido verificar el contenido en vivo hoy: EUR-Lex devuelve HTTP 202 vacio a fetch automatizado, probado 4 veces (WebFetch directo, WebFetch PDF, curl con y sin user-agent de navegador) -- bloqueo tecnico de bot-detection, no evidencia de que la fuente sea incorrecta. La cita/URL es la fuente estandar y estable para este Protocolo; el contenido de BD NO se ha comparado articulo a articulo hoy.",
+    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/01 (Protocolo nº1 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). NO se ha podido verificar el contenido en vivo hoy: probado con la herramienta YA EXISTENTE del propio repo (lib/laws/descargarEurlex.cjs, descargarDocumentoOficial) con los ids 12012M/PRO/01 y 12012M/TXT -- EUR-Lex devuelve 0 bytes (mismo sintoma de cuota-CloudFront documentado en el comentario de esa libreria el 28/07) y Cellar devuelve HTTP 404 para estos ids concretos. Reproducido, no solo sospechado. La cita/URL es la fuente estandar y estable para este Protocolo; el contenido de BD NO se ha comparado articulo a articulo hoy.",
     "paso1Completo": false
   },
   {
     "lawId": "4f23bf24-998e-4f39-9420-d91393f1b0af",
     "nombre": "Protocolo nº 2 sobre la aplicación de los principios de subsidiariedad y proporcionalidad",
     "fuenteUrl": "https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:12012M/PRO/02",
-    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/02 (Protocolo nº2 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). Mismo bloqueo tecnico que el Protocolo nº1: EUR-Lex no sirvio contenido a fetch automatizado hoy (HTTP 202 vacio, 4 intentos). La cita/URL es la fuente estandar y estable; el contenido de BD NO se ha comparado articulo a articulo hoy.",
+    "mensaje": "Fuente correcta es EUR-Lex, CELEX 12012M/PRO/02 (Protocolo nº2 anexo al TUE/TFUE, version consolidada DOUE C 326 de 26/10/2012). Mismo bloqueo reproducido que el Protocolo nº1 con la herramienta existente del repo (lib/laws/descargarEurlex.cjs): EUR-Lex 0 bytes, Cellar HTTP 404. La cita/URL es la fuente estandar y estable; el contenido de BD NO se ha comparado articulo a articulo hoy.",
     "paso1Completo": false
   }
 ]

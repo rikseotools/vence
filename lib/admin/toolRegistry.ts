@@ -3292,6 +3292,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(law_marcada_virtual). Contexto: [T-026].',
   },
 
+  registrar_fuente_editorial: {
+    titulo: 'Registrar la fuente oficial de un contenedor EDITORIAL del temario (ODM, Agenda 2030, planes de Gobierno Abierto, Protocolos UE…)',
+    ruta: 'scripts/laws/registrar-fuente-editorial.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'node scripts/laws/registrar-fuente-editorial.cjs <plan.json> [--aplicar]. Simula por defecto. ' +
+      'DISTINTO de marcar_contenedor_institucional: aquél exime (is_virtual=true) normas SIN fuente ' +
+      'citable en absoluto; este registra `boe_url` (repurposed) para contenedores que SÍ tienen una ' +
+      'fuente primaria real (ONU/OCDE/DOUE/portal gob.es) pero nunca se buscó ni se guardó, dejando el ' +
+      'Paso 1 del manual bloqueado por "no hay fuente" [T-144]. Núcleo puro y testeado ' +
+      '`lib/laws/fuenteEditorial.js`: el plan exige `paso1Completo` explícito por entrada, y si es ' +
+      '`true` el mensaje tiene que describir una comparación real (verbos "verificado"/"comparado"/' +
+      '"cotejado"), no una frase genérica — evita el falso verde que motivó [T-395] en ' +
+      'lib/laws/completeness.ts. Con `paso1Completo:false` el summary escrito deja `is_ok:false` a ' +
+      'propósito: fuente registrada, verificación completa PENDIENTE. Requiere DATABASE_URL de ' +
+      'escritura de negocio para `--aplicar` (un rol de lectura solo puede simular).',
+  },
+
   vigilar_fuentes_legales: {
     titulo: 'Vigilar por hash las fuentes legales que el cron del BOE no cubre (avisa si la norma cambió)',
     ruta: 'scripts/laws/vigilar-fuentes-legales.cjs',
