@@ -2564,7 +2564,7 @@ sus tests — y ahí apareció lo que los unit no podían ver:
 - **QUEDA** lo que `w3` dejó abierto: el punto 2 (el `--igualmente` del guard de reserva saltándose
   un claim vivo) y el punto 3 (la ráfaga de escapes sin aviso).
 
-### [T-607] 🟡 [ABIERTO 06/08] No se puede afirmar que haya fuga de scope: medir servidas del pasado contra el scope de HOY no distingue una fuga de un re-vínculo posterior
+### [T-607] 🟡 [ABIERTO 06/08] 🙋 ENTREGADA 07/08 (parcial, ver abajo) — No se puede afirmar que haya fuga de scope: medir servidas del pasado contra el scope de HOY no distingue una fuga de un re-vínculo posterior
 
 **Qué es esto.** El intento de diagnosticar [T-583] (*«Test Rápido sirve preguntas fuera de
 `topic_scope`»*). El resultado es que **el diagnóstico no se puede cerrar con los datos que hay**, y
@@ -2678,6 +2678,42 @@ con esa medición como aval): la usuaria tenía razón, y el «no debería volve
 **La causa de que nada de esto se pueda demostrar hacia atrás, y es barata de arreglar:**
 **`topic_scope` no tiene `updated_at`.** Sin esa columna, un recorte no deja rastro y la siguiente
 sesión repetirá estas dos horas por tercera vez. Añadirla es una migración additiva.
+
+#### 🚧 ENTREGADO 07/08 — la sonda continua, en el MODO GLOBAL (falta el resto)
+
+- **`topic_scope.updated_at` (la causa raíz de arriba):** migración additiva
+  `supabase/migrations/20260807_topic_scope_updated_at.sql` (columna + backfill desde `created_at`
+  + trigger `BEFORE UPDATE`). **NO APLICADA** — este worker no tiene escritura de negocio; alguien
+  con permiso tiene que correrla (o el proceso de deploy que las aplica) antes de que sirva de
+  algo. `db/schema.ts` ya la refleja.
+- **`registrarScopeServido`** (hermana de `registrarBarajadoServido`, `lib/api/filtered-questions/queries.ts`):
+  comprobación INDEPENDIENTE en memoria (`fueraDeScope`, el mismo núcleo puro de `sim-scope-servido.ts`)
+  contra el `scope` del mismo instante en que se sirve — no re-mide hacia atrás, así que no repite
+  el error de T-583. Envoltorio transparente y fire-and-forget, igual que su hermana.
+- **Cableada SOLO en modo global** (`getFilteredQuestions`, el camino de `/test/rapido` que
+  T-583 señalaba): se pide el `topic_scope` de la oposición EN PARALELO a la query que sirve
+  (`Promise.all`, sin latencia añadida) y se compara. **NO está en modo tema ni en `content_scope`** —
+  el modo tema ya fija la ley en el `WHERE` (verificado arriba: "una pregunta de otra ley no puede
+  salir por ahí"), así que es el de menor prioridad; `content_scope` queda como follow-on.
+- **Alerta nueva:** `question_served_out_of_topic_scope` (severity `error`) →
+  `RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED` en `backend/src/alerts/alert-rules.ts`, umbral **≥1**
+  a propósito (si el `EXISTS` está bien esto nunca debería disparar; no es ruido de fondo que
+  absorber con un umbral alto).
+- **Capas:** `registrarScopeServido.test.ts` (7, incluida la forma exacta del incidente CE-134:
+  una ley con SOLO parte de sus artículos en scope) + 6 tests de la regla en `alert-rules.spec.ts`.
+  Suite completa de `filtered-questions`/`shuffle`/`topicScopeSql`: **638 verdes**. `tsc --noEmit`
+  limpio en frontend y backend.
+- **Lo que NO se hizo, y por qué queda anotado en vez de fingido:** una integración contra RDS real
+  con una oposición de scope parcial de verdad (lo que `sim-scope-servido.ts` hace bajo demanda) —
+  el unit test cubre la MISMA forma del bug (ley con parte de sus artículos dentro), pero no es lo
+  mismo que verlo disparar contra datos vivos tras el deploy. Y el modo tema/`content_scope` se
+  quedan sin la sonda.
+- **Rama:** `flota/T-607-sonda-scope-servido` (commit `ecf8aa89c`), pusheada, no mergeada.
+- **➡️ Para cerrar del todo:** aplicar la migración → desplegar → esperar unos días con tráfico real →
+  si `question_served_out_of_topic_scope` nunca dispara, el modo global queda confirmado limpio de
+  verdad (no solo "verificado a mano una vez"); si dispara, hay una regresión real que investigar con
+  los `ids` del evento. Extender a modo tema/`content_scope` si se decide que vale la pena la misma
+  redundancia allí.
 
 ### [T-605] 🟡 [ABIERTO 06/08] No hay forma de reescribir la explicación de una psicotécnica: las cinco herramientas de explicaciones son solo del banco legislativo
 

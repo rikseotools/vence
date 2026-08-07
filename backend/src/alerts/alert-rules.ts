@@ -6596,7 +6596,60 @@ export const RULE_PAGO_FALLIDO_FALSA_ALARMA: AlertRule<{
   cooldownMin: 720,
 };
 
+/**
+ * Sonda continua de scope (T-607): `question_served_out_of_topic_scope` es una comprobación EN
+ * MEMORIA (`fueraDeScope`), independiente del `EXISTS` SQL que ya filtra al servir — una segunda
+ * opinión sobre el MISMO criterio, tomada en el instante de servir para no repetir el error de
+ * medida de T-583 (comparar servidas del pasado contra el scope de hoy, que confunde una fuga
+ * real con un re-vínculo posterior).
+ *
+ * Si el `EXISTS` está bien, esto nunca dispara — y de hecho no ha disparado nunca en las
+ * mediciones manuales de T-607. Por eso el umbral es bajo (≥1 en la ventana): cualquier disparo
+ * es un desacuerdo entre el SQL y el criterio puro, y eso es justo lo que hay que ver, no algo
+ * que absorber con un umbral alto pensado para ruido de fondo.
+ */
+export const RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED: AlertRule<{
+  positionType: string | null;
+  n: number;
+  fuera: number;
+}> = {
+  name: 'question_out_of_topic_scope_served',
+  severity: 'error',
+  query: sql`
+    SELECT metadata->>'positionType' AS "positionType",
+           COUNT(*)::int AS n,
+           SUM(COALESCE((metadata->>'fuera')::int, 0))::int AS fuera
+    FROM observable_events
+    WHERE event_type = 'question_served_out_of_topic_scope'
+      AND ts > NOW() - INTERVAL '30 minutes'
+    GROUP BY metadata->>'positionType'
+    HAVING COUNT(*) >= 1
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const lines = rows.map(
+      (r) => `  - ${r.positionType ?? '(desconocida)'}: ${r.fuera} pregunta(s) fuera de temario en ${r.n} petición(es)`,
+    );
+    return {
+      title: `🎯 Test Rápido sirvió preguntas fuera de topic_scope en ${rows.length} oposición(es)`,
+      body:
+        `El filtro SQL (\`articleInPositionScopeExists\`) debería impedir esto por construcción. ` +
+        `Si esto dispara, hay un desacuerdo real entre lo que el SQL dejó pasar y lo que \`fueraDeScope\` ` +
+        `(el mismo criterio, en memoria) dice — no es ruido de fondo, es una regresión.\n\n${lines.join('\n')}\n\n` +
+        `Los ids concretos van en metadata.ids de cada evento (observable_events). Investigar: ¿cambió el ` +
+        `EXISTS?, ¿hay un camino de servir que no pasa por getFilteredQuestions modo global?, ¿topic_scope ` +
+        `cambió entre que se leyó y se sirvió (race)?`,
+      metadata: { oposiciones: rows.length },
+      fingerprint: 'question_out_of_topic_scope_served',
+    };
+  },
+  cooldownMin: 120,
+};
+
 export const ALERT_RULES: AlertRule[] = [
+  // Sonda continua de scope (T-607): el EXISTS de SQL ya filtra, esto es la segunda comprobación
+  // en memoria del MISMO criterio — si discrepan, es una regresión real, no ruido.
+  RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED as AlertRule,
   // Trinquete de T-594: nadie vuelve a recibir «problema con el pago» mientras paga bien. Mira la
   // BD y no los eventos: un camino nuevo que se salte el núcleo tampoco emitiría la omisión.
   RULE_PAGO_FALLIDO_FALSA_ALARMA as AlertRule,
