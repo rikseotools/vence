@@ -120,6 +120,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL_REPLICA }}
         run: npm run audit:coherencia:gate
 
+      # Una migración de `supabase/migrations/*.sql` mergeada a `main` NO llega sola a RDS:
+      # aplicarla es manual y ningún paso de deploy lo hace. Medido el 07/08: cinco políticas RLS
+      # llevaban días en `main` sin aplicar y el rol de la flota recibía CERO filas de
+      # `test_questions`, `ai_verification_results`, `oep_detection_signals`, `detection_sources`
+      # y `question_lifecycle_history` — sin error, así que ningún canario que solo mire
+      # "¿lanzó excepción?" lo veía. El detector existía desde T-645 y no corría en NINGÚN sitio:
+      # esa es la parte que esto arregla. Núcleo puro con tests: lib/db/migracionesRlsPendientes.cjs
+      - name: Gate — migraciones RLS mergeadas y sin aplicar
+        id: rlspend
+        if: steps.preflight.outcome == 'success'
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_REPLICA }}
+        run: npm run migraciones:rls-pendientes
+
       # ── Que el rojo SE NOTE ───────────────────────────────────────────────────────
       # Este job lleva `continue-on-error: true` a nivel de JOB, y esa es exactamente la
       # razón de que pudiera estar roto ≥5 días sin que nadie se enterara: con él, su
@@ -133,7 +148,7 @@ jobs:
       # a propósito: aquella alerta dice «nadie puede commitear ni desplegar», y eso aquí
       # es MENTIRA — este job no bloquea nada, y una alerta que exagera se acaba ignorando.
       - name: Avisar si la categoría quedó en rojo
-        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure') }}
+        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure' || steps.rlspend.outcome == 'failure') }}
         env:
           INGEST_SECRET: ${{ secrets.OBSERVABILITY_INGEST_SECRET }}
         run: |
@@ -143,9 +158,12 @@ jobs:
           elif [ "${{ steps.tests.outcome }}" = "failure" ]; then
             CAUSA="tests_en_rojo"
             MSG="El gate de integración/perf/seguridad corrió con BD y tiene tests en rojo"
-          else
+          elif [ "${{ steps.landings.outcome }}" = "failure" ]; then
             CAUSA="landings_incoherentes"
             MSG="El gate de coherencia de landings publicadas falló"
+          else
+            CAUSA="migraciones_rls_sin_aplicar"
+            MSG="Hay migraciones RLS mergeadas a main y sin aplicar contra RDS (el rol de la flota lee 0 filas sin error)"
           fi
 
           PAYLOAD=$(jq -n \
@@ -181,7 +199,7 @@ jobs:
       # VA EL ÚLTIMO a propósito: si cortara antes, se llevaría por delante los pasos que
       # aún tienen algo que decir — que es la misma forma de ceguera que arregla esta tarea.
       - name: Reflejar el rojo en el job
-        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure') }}
+        if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure' || steps.rlspend.outcome == 'failure') }}
         run: exit 1
 
   lint:

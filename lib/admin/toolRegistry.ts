@@ -2408,13 +2408,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mayoría bloqueadas a propósito (PII/operativas) y fuera del veredicto.',
   },
   migraciones_rls_pendientes: {
-    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: aplicarla es manual, y nadie lo comprobaba',
+    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: detectar Y aplicar, en la misma herramienta',
     ruta: 'scripts/migraciones-rls-pendientes.cjs',
     estado: 'vivo',
-    escribe: [],
+    escribe: ['pg_policies'],
     runbook: 'docs/runbooks/tareas-pendientes.md',
     notas:
-      '`npm run migraciones:rls-pendientes` (lee `VENCE_LECTOR_URL` de `.env.local`). [T-645]. ' +
+      '**[T-658] Ahora también APLICA (`-- --aplicar <f.sql>`) y CORRE EN CI.** Detectar y aplicar ' +
+      'van juntos a propósito: tenerlos separados es lo que produjo el hueco — el canario decía ' +
+      '«pendiente» y el paso siguiente era una consola a mano que nadie daba, así que el detector ' +
+      'existía desde el 07/08 y no corría en NINGÚN sitio. Dos puertas antes de escribir: el ' +
+      'fichero tiene que estar entre las pendientes recién calculadas Y pasar una LISTA BLANCA de ' +
+      'sentencias (`esAplicableSinRiesgo`, núcleo puro con tests) — `20260502_security_advisor_' +
+      'fixes.sql` se rechaza por su `REVOKE`, aunque el propio canario lo liste. Cada fichero en su ' +
+      'transacción y, al terminar, el pendiente se RECALCULA contra el catálogo (verificar, no ' +
+      'declarar). El veredicto (exit 1 → gate de CI en `test.yml`) lo fijan SOLO las de roles ' +
+      '`vence_*`; las de la era Supabase (`authenticated`) se imprimen pero no lo tiñen — un gate ' +
+      'rojo a diario se deja de mirar ([T-659] decide qué hacer con ellas). Aplicadas el 07/08 las ' +
+      '4 que dejaban 6 tablas ciegas: canario del rol lector 20/25 → **25/25**. ' +
+      'Lee `VENCE_LECTOR_URL` o, en su defecto, `DATABASE_URL` (la consulta es de catálogo). [T-645]. ' +
       'Ningún `scripts/deploy-*.sh` ni `.github/workflows/*.yml` menciona `supabase/migrations` ' +
       '(comprobado por grep): mergear a `main` no aplica nada contra RDS, es un paso manual sin ' +
       'dueño. Medido el 07/08: `20260805_rls_test_questions_lector.sql` (T-573) y ' +
