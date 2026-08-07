@@ -10651,7 +10651,7 @@ y eso solo ocurre donde las dos se sirven.
 - **Y de paso, la pregunta grande:** si el EBEP está mal, ¿cuántas leyes más? Merece un barrido comparando `law_sections` con el índice del BOE de cada ley con `boe_url`. Es precondición de **[T-333]**, que se apoyaría en esa tabla.
 - **Relacionada:** [T-333].
 
-### [T-333] 🟠 [ABIERTO 30/07] El detector de frontera de scope solo entiende TÍTULOS: los epígrafes que nombran secciones se le escapan enteros
+### [T-333] ✅ [HECHA 07/08] El detector de frontera de scope solo entiende TÍTULOS: los epígrafes que nombran secciones se le escapan enteros
 - **El hueco, en una frase:** `lib/laws/scopeTitleBoundary.js` mapea artículo → **título** de la ley. Cuando el programa oficial no enumera títulos sino **capítulos, secciones o subsecciones**, el runner responde *«epígrafe no mapeable a títulos»* y **se calla**. Ese silencio se lee como verde.
 - **Cuánto se calla:** corrido sobre `auxiliar_administrativo_sms` el 30/07 → *«24 temas · 22 scopes evaluados · **22 con epígrafe no mapeable a títulos** · ✅ Sin overflow»*. Es decir: opinó sobre **0**. CLAUDE.md ya avisa de que a nivel de banco el 91% de los scopes cae en esa zona muerta.
 - **Los tres casos que se le escaparon el mismo día**, todos en esa oposición y todos reales (sirven para fixtures):
