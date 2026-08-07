@@ -475,6 +475,34 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'seguida de espacio — el límite ya ocurrió entre la "t" y la "á". Se cierra con lookahead ' +
       'explícito (`(?=\\s|$|[.,;:])`) en su lugar; el test que lo demuestra pilló el bug antes de mandar.',
   },
+  reparar_vinetas_correctas_invertidas: {
+    titulo: 'TERCER marco contradictorio de preguntas NEGATIVO: cabecera "correctas", viñetas dicen "no es correcta"',
+    ruta: 'scripts/reparar-vinetas-correctas-invertidas.cjs',
+    estado: 'vivo',
+    escribe: ['explanation'],
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'T-219, 06/08/2026. Hermano de `reparar-marco-incorrecta.cjs` y `reparar-demas-incorrecta.cjs` ' +
+      '(mismo defecto de origen, NO registrados tampoco — mismo patrón de scripts dry-run-por-defecto ' +
+      'de ese lote de T-219), y su INVERSO: ahí la cabecera está mal y las viñetas bien; aquí la ' +
+      'cabecera «Por qué las demás [opciones] son correctas» YA es coherente con el marco negativo, ' +
+      'pero CADA viñeta debajo dice «esta opción no es correcta» — contradice la cabecera que las ' +
+      'agrupa Y el propio artículo (verbatim en la mayoría de los casos). Caso raíz: `8d8b8e01` ' +
+      '(art. 117 EAAnd), que la ficha original de T-219 dejó anotado como «posible explicación ' +
+      'truncada, mirar aparte» — no lo era: es un bug de PLANTILLA («no es correcta PORQUE SÍ está ' +
+      'contemplada», dos afirmaciones opuestas en la misma frase). Núcleo puro ' +
+      '`lib/health/vinetasCorrectasInvertidas.cjs` (14 tests), dry-run por defecto. ' +
+      'Universo medido 06/08: 1.530 preguntas con esa cabecera, **9** con TODAS las viñetas ' +
+      'invertidas (patrón sistemático) — las 9 verificadas UNA A UNA contra el `content` real del ' +
+      'artículo, 9/9 con la clave correcta. Solo actúa si TODAS las viñetas del bloque están ' +
+      'invertidas: 17 casos con mezcla (alguna viñeta ya coherente, típico de un distractor "todas ' +
+      'las anteriores" que es falso por sí mismo) quedan fuera A PROPÓSITO — ampliar a ese universo ' +
+      'sería repetir el error de `cuál … no` insensible a mayúsculas que la ficha original ya midió ' +
+      'que rompía preguntas sanas. NO toca la clave, el enunciado, las opciones, ni el párrafo ' +
+      '«Por qué X es correcta» (que en estos 9 casos tiene OTRO defecto real, distinto: nunca ' +
+      'construye un argumento, solo repite el artículo — verificado en 9/9, no mecanizable sin ' +
+      'lectura caso a caso, queda para una sesión con criterio humano).',
+  },
   // ── salud del contenido: teoría servida ───────────────────────────────────────────────────
   audit_tablas_refluidas: {
     titulo: 'Tablas de boletín que se sirven como párrafo corrido (el punto ciego de detectFlattenedTable)',
