@@ -21,17 +21,20 @@
  * (huecos reales que ningún finding dispara) también sale. `--deuda` sigue existiendo
  * para pedir la deuda completa SIN acotar a una oposición.
  */
-const fs = require('fs')
 const path = require('path')
 const pg = require('postgres')
 const plan = require(path.join(__dirname, '..', 'lib', 'generacion', 'huerfanosPlan'))
+// [T-115/T-624] Este script SOLO LEE (topics/topic_scope/articles/questions); leía
+// DATABASE_URL directo de .env.local, así que un trabajador con DATABASE_URL restringido
+// a las 4 tablas de coordinación (T-539) no podía usarlo aunque tuviera VENCE_LECTOR_URL
+// exportado. `urlLecturaNegocio()` ya resuelve esto en un único sitio (T-624).
+const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const argv = process.argv.slice(2)
 const flag = (n) => argv.indexOf(n)
 const valor = (n) => (flag(n) >= 0 ? argv[flag(n) + 1] : null)
 
-const envPath = path.join(__dirname, '..', '.env.local')
-const url = fs.readFileSync(envPath, 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
+const url = urlLecturaNegocio()
 const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
 
 const SQL = `
@@ -83,10 +86,20 @@ const tabla = (filas) => { console.table(filas); return filas }
   // Demanda real por oposición: el alcance dice en cuántos sitios sale el hueco,
   // no a cuánta gente llega, y no es lo mismo (26/07: dos leyes con idéntico
   // rendimiento por artículo, 3.130 vs 733 opositores detrás).
-  const demRows = await s.unsafe(
-    `SELECT target_oposicion AS pt, count(*)::int usuarios FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`,
-  )
-  const demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+  // [T-115] `user_profiles` tiene datos personales y el rol de lectura de un trabajador
+  // (`vence_lector`) lo tiene explícitamente denegado (CLAUDE.md). Sin este intento el
+  // script entero moría con "permission denied" y se perdía TODO el plan de huérfanos
+  // por una columna que solo aporta una métrica secundaria — degrada a demanda vacía
+  // (el plan sigue siendo útil por alcance/nº de oposiciones) en vez de reventar.
+  let demanda = {}
+  try {
+    const demRows = await s.unsafe(
+      `SELECT target_oposicion AS pt, count(*)::int usuarios FROM user_profiles WHERE target_oposicion IS NOT NULL GROUP BY 1`,
+    )
+    demanda = Object.fromEntries(demRows.map((d) => [d.pt, d.usuarios]))
+  } catch (e) {
+    console.warn(`⚠️  Sin acceso a user_profiles (${e.message.split('\n')[0]}) — demanda por usuarios queda a 0, el resto del plan sigue.`)
+  }
 
   // Leyes con batch generado en las últimas 24h por CUALQUIER sesión. Nace de la
   // colisión del 26/07: dos sesiones sobre los mismos 5 artículos de la LPRL con
@@ -153,6 +166,11 @@ const tabla = (filas) => { console.table(filas); return filas }
 
   // --ley <slug> · --deuda · --oposicion <slug>
   // Acepta el slug con guiones (como en la URL) o el position_type con guiones bajos.
+  // [T-115] `ley` no estaba declarada: cualquier invocación SIN --ley/--oposicion/--deuda
+  // (el caso "estado + siguiente lote propuesto" de la cabecera del fichero, el uso más
+  // básico del comando) moría con `ReferenceError: ley is not defined` en cuanto llegaba
+  // aquí. Reproducido antes del fix: `node scripts/huerfanos-plan.cjs` sin argumentos.
+  const ley = valor('--ley')
   const opoArg = valor('--oposicion')
   const oposicion = opoArg ? opoArg.replace(/-/g, '_') : null
   // `--oposicion` implica DEUDA COMPLETA por defecto (T-543): pregunta "qué le falta a

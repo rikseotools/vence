@@ -1822,12 +1822,81 @@ anterior), así un «10.» que aparece antes de que toque el 10 no puede confund
 cualquier boletín que no parsee: los temarios están llenos de «Windows 10», «Office 2021»,
 «R.D. 822/2021».
 
+#### ✅ PASO 2 HECHO PARA 16 DE LOS 18 TEMAS RESTANTES (06/08, w3) — pipeline `verify:scope`, 2 agentes + juez, anclado a BOE
+
+**MEDIDO, no de la ficha: el estado real de Paso 2 antes de empezar** (`topic_scope_verification`,
+consultado contra RDS con `VENCE_LECTOR_URL`) NO era «18 sin Paso 1» — eso ya lo cerró la sesión
+de esta misma noche (bloque de arriba). Era: **T2 y T5 `verified_correct`** (pipeline real); **T1 y
+T3 `stale`** (el propio recorte del Tema 3 invalidó su verificación anterior por trigger); **T4
+`needs_human`**; y **T6-T21 (16 temas) `never_verified`**, degradados por [T-518] al descubrir que
+su sello `verified_correct` no venía del pipeline real (`verified_by='claude_direct'` o
+`agent_run_id` vacío/`--run'`) — es decir, un verde que no respaldaba nada.
+
+**Corrida la doble verificación (`verify-scope-oposicion`, analista+escéptico independientes +
+juez si discrepan, ambos anclados al BOE consolidado vía WebSearch/WebFetch) sobre los 16 temas
+verificables contra el BOE** (T19/T20/T21 quedan fuera a propósito: son leyes editoriales de
+informática, no del BOE — el pipeline las declara `na_editorial` por diseño, ver [T-634] para lo
+que SÍ encontré mirándolas). **33 agentes, 0 errores, ~385s.** Resultado: **10 de 16 ya estaban
+correctos** (T6, T7, T9, T10, T12, T13, T14, T15, T16, T17 — sin quitar ni añadir, algunos
+descartando explícitamente el pre-filtro de sobre-inclusión como falso positivo tras mapear el
+epígrafe a títulos con cifras exactas, p.ej. T17 con 4 fuentes independientes). **6 con cambios**,
+llevados por `verify:scope plan` (umbral impacto 150) a **6 auto_safe / 0 en puerta de juicio**:
+
+| Tema | Ley | Quitar | Añadir | Impacto (preg. que dejan de servirse) | Confianza |
+|---|---|---|---|---|---|
+| T1 | Ley 39/2015 | 127,128,129 (Título VI, potestad reglamentaria — el epígrafe solo pide Títulos I-V) | — | 47 | media |
+| T3 | LO 3/2007 | 1,2 (Título Preliminar — el epígrafe empieza literalmente en "Título I") | — | 23 | media |
+| T4 | LO 3/2018 | 1,2,3 (Título I — el epígrafe solo pide Título II y III) | — | 82 | alta |
+| T8 | LOSU | 29,30 (Título VII, internacionalización — el epígrafe pide Títulos V/VIII/IX) | — | 2 | alta |
+| T11 | Títulos Propios ULE | — | 6,7,8,14,15,16 (secciones que faltaban de la norma completa) | 0 (solo gana) | media* |
+| T18 | Presupuesto ULE | — | 1-74 completo (scope estaba en NULL="toda la ley" sin materializar) | 0 (solo gana) | media* |
+
+**\*T11 y T18 con caveat explícito, no lo escondo:** el PDF fuente primario de ambas (transparencia/
+normativa de la ULE) está bloqueado por un anti-bot (Anubis) — ni los 2 agentes ni yo pudimos leerlo
+directo. T11 se apoya en dos reproducciones íntegras coincidentes de CSIF (no es el BOCYL original,
+es una fuente sindical que lo reproduce). T18 tuvo DISCREPANCIA real entre los dos verificadores
+(uno decía cierre en el art. 74, otro en el 86) y el juez falló por el 74 con 2 fuentes secundarias
+independientes apuntando al mismo cierre — pero él mismo recomienda «verificar el índice exacto
+contra el PDF oficial antes de dar el scope por definitivamente cerrado». Mecánicamente son seguras
+de aplicar (`impacto=0`: al ser solo `añadir`, no le quitan nada a nadie que ya se sirva hoy), pero
+la lista exacta de qué se añade descansa en fuente secundaria — dejo la duda escrita, no vestida de
+certeza.
+- **⚠️ Y una comprobación de fondo que hice explícitamente por el gotcha ya documentado en este
+  mismo pipeline (comentario en `verify-topic-scope.cjs`, incidente real del 26/07 con 1.271
+  preguntas perdidas en 8 recortes que pasaron el gate como inocuos):** el scope de T18
+  (`Presupuesto ULE`) está en **`article_numbers=NULL`** (="toda la ley", NO vacío — la trampa
+  exacta que ese incidente destapó). El cálculo de `impacto` de `enrichChange` YA distingue esto
+  (`sirve(sRow.arts === null ? null : cur)`), así que el "0 preg" de la tabla de arriba es de
+  fiar: no hay ARTÍCULOS que la ley sirva hoy con preguntas reales fuera del 1-74 propuesto.
+- **Corroboración cruzada con una investigación previa E INDEPENDIENTE:** el veredicto de T1
+  (quitar 127-129) coincide EXACTO con un hallazgo ya registrado en `topic_scope_verification` del
+  04/08 (`impugnacion 0b9d9f56`, sesión distinta, mismo dato: `sobra_titulo_vi:["127","128","129"]`)
+  que nunca se había llegado a aplicar. Dos investigaciones separadas, mismo resultado.
+- **Artefactos guardados (no solo en la ficha):**
+  `scratchpad/verify-scope-auxiliar_administrativo_universidad_leon-propuestas-06ago.json`
+  (las 16 verificaciones completas con su razonamiento y cita BOE) y
+  `-plan-06ago.json` (el plan ya enriquecido con impacto/clasificación, listo para `apply`).
+- **⏭️ NO APLICADO — fuera de mi alcance como trabajador de la flota:** `verify:scope apply` escribe
+  en `topic_scope` (tabla de negocio); mi `DATABASE_URL` es de coordinación (4 tablas) y
+  `VENCE_LECTOR_URL` es solo lectura — permission denied garantizado, y aunque no lo fuera, la regla
+  de este turno es no escribir en negocio. **Para aplicar:**
+  ```
+  node scripts/verify-topic-scope.cjs apply auxiliar_administrativo_universidad_leon --dry-run
+  node scripts/verify-topic-scope.cjs apply auxiliar_administrativo_universidad_leon
+  ```
+  (usa el plan ya generado en `/tmp` o regenéralo con `plan` desde el propuestas.json de
+  `scratchpad/`; `apply` hace recache MV + purga rutas + `record_topic_verification` solo, todo en
+  una transacción). Antes de aplicar T11/T18 con `--include-gate` no hace falta — quedaron
+  `auto_safe`, no en la puerta — pero SÍ merece un vistazo humano a la fuente antes de darlos por
+  cerrados, por el caveat de arriba.
+
 #### Lo que queda, y por qué es una ficha y no un apartado del cierre
 
-**18 de los 21 temas de esta oposición siguen en `never_sourced`.** O sea: lo arreglado es el tema
-por el que alguien se quejó, y los otros 18 están exactamente igual de sin contrastar que estaba
-éste. Con un scope «ley entera» como el que había, cada uno es un candidato a servir materia fuera
-de programa — y solo nos enteramos cuando un usuario lo nota.
+**18 de los 21 temas de esta oposición seguían en `never_sourced` cuando se abrió esta ficha; 16
+ya tienen Paso 2 hecho (arriba). Quedan T19/T20/T21** (informática/ofimática, fuera del pipeline
+por diseño — T20 SÍ tiene un defecto real, pero de otra clase: ver [T-634]) **y aplicar el plan de
+arriba**, que no puedo hacer yo. Con eso, el ciclo completo de esta oposición (Paso 1 + Paso 2)
+queda cerrado.
 
 **Esto ya pasó aquí:** [T-556] (05/08, HECHA) arregló el defecto CONTRARIO en esta MISMA oposición
 — allí FALTABAN los arts. 2-4 de la Ley 19/2013 (15 preguntas sin servir) — y su propia ficha dejó
@@ -1839,7 +1908,8 @@ identificado y es uno solo para toda la oposición), y después Paso 2 del scope
 automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia a mano del Anexo II.
 
 **Relacionadas:** [T-556] (misma oposición, defecto contrario, misma causa raíz), [T-518] (el Paso 2
-sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente).
+sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente), [T-634] (defecto
+distinto encontrado de paso en el Tema 20 al hacer el Paso 2).
 
 ### [T-628] 🔴 [ABIERTO 06/08] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
 
@@ -2089,17 +2159,38 @@ va con esfuerzo `sesion_propia` y no como higiene.
   opción + cita literal del BOE). No era trámite del gate: dos de ellas se resuelven por un matiz que
   la explicación vieja no explicaba (art. 30, *«promover la convocatoria»* ≠ *«convocar»*; art. 48,
   *«aguas interiores»* frente a exteriores).
-
-#### ⏳ LO QUE FALTA
-
-1. **El Paso 2 (recorte) por el PIPELINE, no a mano.** `verify:scope dump` → los 2 agentes + juez →
-   `plan` → `apply`. Es de **impacto alto** (92 artículos fuera, ~51 dentro, 29 preguntas dejan de
-   servirse ahí), así que el clasificador lo mandará a **puerta de juicio** y necesita OK explícito.
-   ⚠️ **Nada se borra:** las 29 preguntas siguen en el banco, solo dejan de servirse en ESE tema.
-2. **Generar las preguntas de los arts. 89-139**, que es lo que el programa pide y hoy tiene **0**.
-   Ojo al mapeo fino: el epígrafe no pide el Título IV entero sino **los capítulos I, III, IV, VI y
-   VII**, así que hay que bajar la estructura por capítulos del BOE antes de escopar (regla del manual:
-   casar por RÚBRICA, no por el número a ojo).
+- **Paso 2 (recorte) PREPARADO por el pipeline, pendiente de `apply` con criterio humano (06/08,
+  sesión w1).** El mapeo fino de capítulos —lo que este mismo ítem pedía como pendiente— está HECHO y
+  **verificado por triplicado contra `BOE-A-2007-5825`**: mi propia lectura del índice del BOE, el
+  agente ANALISTA y el agente ESCÉPTICO (2 agentes independientes, cada uno con WebFetch propio al
+  BOE, sin verse entre sí) llegaron **exactamente** a los mismos rangos:
+  - Título III (organización territorial): **89-98**.
+  - Título IV, solo capítulos I (**100-107**), III (**117-118**), IV (**119-123**), VI (**128-132**)
+    y VII (**133-139**) — se excluyen a propósito el art. 99 (introductorio del título, sin capítulo),
+    el capítulo II 108-116 («La Junta de Andalucía») y el capítulo V 124-127 («La Administración de la
+    Junta de Andalucía»), que el epígrafe NO cita.
+  - Total scope correcto: **37 artículos** (89-98, 100-107, 117-123, 128-139) — **no 51**: la cifra
+    «~51» de arriba era la estimación ANTES de filtrar por capítulo (Título III + Título IV entero =
+    10+41=51); con el filtro fino son 14 menos (art. 99 + cap. II + cap. V).
+  - `node scripts/verify-topic-scope.cjs dump auxiliar_administrativo_ayuntamiento_sevilla` →
+    `plan auxiliar_administrativo_ayuntamiento_sevilla <propuestas.json>` (propuestas = consenso de
+    los 2 agentes) da: **quitar 92 / añadir 37, impacto 51 preguntas** (activas hoy en T4 que dejan de
+    servirse ahí — no se borran, ver arriba), `deltaValid: true`, `category: judgment_gate`
+    (`flags: ['epigrafe_no_localizable']` — heurística conservadora esperada: el epígrafe dice «el
+    Estatuto de Autonomía para Andalucía», no «LO 2/2007», así que el localizador automático no casa
+    el segmento; NO es un dato sospechoso, es el propio diseño del clasificador pidiendo ojos humanos).
+  - **NO se ha aplicado**: además de la puerta de juicio, este rol (trabajador, `VENCE_LECTOR_URL`
+    de solo lectura) no tiene permiso de escritura en tablas de negocio. `dump`/`plan` corrieron
+    sustituyendo `DATABASE_URL` por `VENCE_LECTOR_URL` (son solo `SELECT`); `apply` necesita el
+    `DATABASE_URL` real (`vence_coordinacion` tampoco sirve: sin acceso a `topic_scope`).
+  - **Para aplicar** (sesión/persona con `DATABASE_URL` de escritura): re-generar `dump` y `plan` en
+    fresco (el dump lee `topic_scope` EN VIVO, no reutilizar el de esta sesión) con la misma
+    `propuestas.json` (los rangos de arriba), revisar la tabla que imprime `plan`, y
+    `apply auxiliar_administrativo_ayuntamiento_sevilla plan.json --include-gate` (el `--include-gate`
+    es obligatorio: sin él `apply` solo tocaría los `auto_safe`, que aquí son 0).
+2. **Generar las preguntas de los arts. 89-139** (el subconjunto real: 89-98, 100-107, 117-123,
+   128-139 — ver mapeo de arriba), que es lo que el programa pide y hoy tiene **0**. Ya no falta
+   mapeo: los rangos exactos están arriba, verificados.
 3. **Los otros 25 temas de la oposición siguen en `never_sourced`** (Paso 1 sin hacer). No bloquea las
    respuestas ya dadas, pero la próxima queja de temario de Sevilla volverá a parar en la puerta.
    El literal de los 26 temas está **entero en el mismo documento del hub** — es clonar, no investigar.
@@ -4111,7 +4202,50 @@ generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin r
 - **🔲 PUNTOS 1 y 2 — NO abordados, y por qué no es evasión.** El punto 1 (disciplina: el supervisor no opera en árbol ajeno) no es codeable — es una instrucción de comportamiento, y ya está escrita en varios sitios (comentarios de `lib/flota/actualizacion.cjs`, esta misma ficha) sin que evitara el incidente. El punto 2 (protección real contra un `checkout`/`reset`/`clean` manual desde una sesión con Bash arbitrario) sigue siendo, tal como lo deja la ficha original, "a decidir": interceptar `git` en sí (un wrapper que rechace verbos destructivos fuera del árbol propio) es una intervención de mucho más alcance —afecta a TODO uso de git en la máquina, no solo al de la flota— y con riesgo real de romper flujos legítimos; no es del tamaño de "esfuerzo: rato" y merece su propia ficha con diseño discutido, no una decisión unilateral de un worker. Candidato a ficha propia si Manuel quiere que se aborde.
 - **Relacionada añadida:** [T-615] (el mismo criterio, el hueco gemelo que dejó sin cerrar: aquel arregló "sin BD", este arregla "con BD, latido real, proceso confirmado en 0").
 
-### [T-572] 🔴 [ABIERTO 05/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
+> **✅ RESPUESTA (07/08, w4).** El diagnóstico ya estaba hecho por otra sesión (l2) y fusionado a
+> `main` (`cbcd1c01d`, 06/08 11:29) + desplegado (`15656eef`, 06/08 11:37): raíz = un worktree local
+> apuntando a la RDS de producción (`.env.local`, patrón documentado en CLAUDE.md) escribía
+> `request_completed` con `host=localhost:3210` y `httpStatus=500` directamente en la tabla que
+> alimenta el panel — 89 eventos en 4 minutos, mientras `validation_error_logs` (la fuente real del
+> indicador 1) estaba en CERO en esa ventana. Arreglo: `shouldSkipObservabilityPersistence()`
+> (`lib/observability/runtimeGate.ts`, `NODE_ENV!=='production'`) usado ahora por LAS DOS puertas
+> que escriben observabilidad (`withErrorLogging.ts` y `validation-error-log/queries.ts`), que antes
+> solo la tenía una.
+>
+> **Verificado EN VIVO por mí contra RDS (lo que quedaba pendiente de la ficha), no dando el deploy
+> por bueno de oídas:**
+> - `/api/auth/token` desde el deploy (15h): **0 eventos 5xx** (5.797×401 + 1.147×200). Antes eran 89
+>   en 4 minutos.
+> - Tráfico `host=localhost` desde el deploy: 1.589 eventos, **todos 200**, y son tráfico interno
+>   legítimo (1.565 `/api/health/db-ready` en `localhost:3000` — healthcheck del propio contenedor
+>   Fargate — + 12 `/api/internal/isr-apply` en `127.0.0.1:3000`). No es el worktree roto volviendo:
+>   puerto distinto (3000 del contenedor vs 3210 del worktree) y sin un solo error.
+> - 5xx reales desde el deploy (`host=www.vence.es`): **13**, todos con `synthetic=null` (no
+>   canary) y mensajes de fallo genuino («Database operation exceeded 8000ms timeout», «Servicio
+>   saturado momentáneamente») — la «cola larga» que la ficha original ya distinguía del bug
+>   (`answer-and-save`×3, `laws-configurator`×2, `stats`×2, `medals`/`profile`/`user-stats`/
+>   `pdf`/`random-test/availability`×1). Nada de esto es T-572; una parte encaja con [T-315].
+>
+> **HALLAZGO NUEVO al intentar cerrar el segundo punto pendiente** («que el indicador 1 cuadre con
+> `validation_error_logs`»): **no se puede verificar con esta credencial — mismo patrón sistémico de
+> RLS que [T-573]/[T-574].** `validation_error_logs` tiene `relrowsecurity=true` con **una sola
+> política**, `service_role_all` (`roles={service_role}`), y ninguna para `vence_lector` — el GRANT
+> de tabla existe (`has_table_privilege=true`) pero sin política el motor filtra en silencio:
+> `SELECT count(*) FROM validation_error_logs` (sin `WHERE`) da **0**, siempre, aunque la tabla esté
+> llena. Los 13 eventos de arriba deberían tener su espejo en VLE (el código de `withErrorLogging.ts`
+> los escribe con `await` para 5xx no-sintéticos, sin excepción que aplique a ninguno de los 13) y no
+> pude comprobarlo. **No estaba en el catálogo `DEBE_LEER`/`NO_DEBE_LEER` de
+> `scripts/canary-rol-lector.cjs`** — cae en el mismo hueco de catalogación que T-573 ya señala para
+> otras tablas. No abro ficha nueva a propósito (sería la 4ª de la misma familia esta semana);
+> queda anotado aquí y en el `Relacionadas` de abajo para quien retome T-573/T-574.
+>
+> **Veredicto: el bug que motivó la ficha está arreglado y verificado con datos reales, no con la
+> palabra del deploy.** Lo que queda («cuadra VLE con obs_events») es un problema de ACCESO de
+> lectura, no del propio fix.
+
+**Relacionadas:** [T-573], [T-574] (mismo bloqueo RLS de `vence_lector`, ahora también en
+`validation_error_logs`) · [T-315] (parte de la «cola larga» de 5xx reales sí es su timeout de
+antifraude).
 
 - **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
   - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
@@ -4209,6 +4343,12 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Medir antes de tocar cada una:** cuántas llamadas reales recibe y desde dónde (`observable_events`), igual que se hizo en [T-482] — ahí se vio que `/api/tests/[testId]/review` recibía ~200 eventos muestreados en 30 días **todos con `user_id` nulo**, que es precisamente la firma de un endpoint que no sabe quién le pregunta.
 - **🎯 POR AQUÍ SE EMPIEZA — ya hay un caso CONFIRMADO por otra sesión, no una sospecha:** `/api/v2/user-stats` **coge el `userId` del query string y no llama a `verifyAuth`**, así que cualquiera lee las estadísticas de cualquier usuario pasándole su id. Lo dejó anotado la sesión de [T-434] en su nota de retomar (*«CABO SUELTO DE SEGURIDAD, dicho y no tocado […] encaja con T-482»*) y no llegó a tocarlo porque T-482 tenía lease vivo de otra sesión. Está en la lista congelada, así que el trinquete ya lo cubre contra empeorar — pero **sigue abierto en producción**. Es el mismo patrón exacto que T-482 (identidad que pone el cliente) y se arregla con la misma pieza, `requireUsuarioPropio`.
 - **Relacionadas:** [T-482] (de donde sale, y de donde salen las capas), [T-434] (que encontró el caso de `user-stats` de arriba), la memoria `project-admin-endpoints-sin-auth` (el mismo fallo en otra familia de rutas, ya cerrado), y `__tests__/security/crossUserIsolationC3.test.ts` (el gemelo conductual para la familia que sí usa `` sql`` ``).
+- **✅ SESIÓN 07/08 — 16/76 arregladas (exam/\*, psychometric/\*, user-stats) y UNA regresión propia encontrada y cerrada en la misma sesión.** `requireDuenoDelRecurso` + `getTestOwnerId`/`getSessionOwnerId` (`lib/api/shared/auth.ts`, `lib/api/exam/queries.ts`, `lib/api/psychometric-session/queries.ts`) reemplazan el viejo `verifyTestOwnership` (comparaba contra un `userId` que ponía el CLIENTE, y encima opcional) por: identidad SIEMPRE del token (`verifyAuthOptional`) contrastada contra el dueño REAL leído de BD. Cablea las 7 `exam/*` + 6 `psychometric/*` + 3 `user-stats` de la lista congelada.
+  - **HALLAZGO DE REVISIÓN (verificado leyendo el código, no sospecha):** `getTestOwnerId`/`getSessionOwnerId` atrapaban el error de la consulta y devolvían `null` en el catch — el MISMO `null` que `requireDuenoDelRecurso` lee como "recurso anónimo, pasa cualquiera". Durante un fallo transitorio de conexión a BD, cualquiera podía leer/responder/completar/descartar el test o la sesión de OTRA persona: es la regresión exacta que esta tarea vino a cerrar, reabierta por un borde no cubierto por ningún test (`resumeRoute.test.ts` solo mockeaba `mockResolvedValue`, nunca `mockRejectedValue`). Es además regresión respecto al `verifyTestOwnership` viejo, que en su catch devolvía `false` → 403 (fail-closed); el código nuevo fail-abría.
+  - **Arreglo:** se deja PROPAGAR la excepción en vez de tragarla. No hizo falta tocar ninguna ruta — las 7+6 ya envuelven la llamada en su propio try/catch (o caen en el de `withErrorLogging`), que convierte cualquier throw en 500. `psychometric_test_sessions.user_id` es `NOT NULL` (comprobado en `db/schema.ts`): ahí el único `null` legítimo es "no existe", nunca "anónimo" — para `tests.user_id` (que SÍ admite examen anónimo real) la distinción "no existe/anónimo" vs "la consulta falló" era exactamente lo que faltaba.
+  - **Capas:** `__tests__/lib/api/ownerQueriesFailClosed.test.ts` (nuevo, 6 tests: fija la propagación directamente sobre las dos funciones, sin pasar por mock de ruta) + test nuevo en `resumeRoute.test.ts` (getTestOwnerId rechazada → 500, nunca llega a leer el examen) + `__tests__/api/psychometric/ownershipFailClosed.test.ts` (nuevo, 4 tests: mismo contrato para `resume`/`complete`/`discard`, que no tenían NINGÚN test de ruta hasta ahora). Suite completa re-verificada tras el fix: `__tests__/security/` 330/339 (9 skip por credencial, normal), `__tests__/api/exam` + `__tests__/api/psychometric` 200/200, typecheck y eslint limpios.
+  - **Revisado también (no vulnerable, confirmado leyendo el código):** el fallback `sessionOwnerId ?? parsed.data.userId` en `psychometric/{discard,complete}` — parece el mismo patrón que esta tarea elimina, pero `discardPsychometricSession`/`completePsychometricSession` re-verifican `session.userId !== userId` contra la fila REAL antes de escribir, así que ese fallback nunca puede colar una identidad ajena (solo se activa cuando la sesión no existe, y ahí la función interna corta antes de comparar nada). Se deja como está: tocarlo sería alcance de más sin cerrar ningún agujero real.
+  - **Rama:** `flota/T-565-ownership-exam-psychometric` (commits `fea6e9cb5` w1 + `410faec5b`/`9a7246025` w2). Sigue esperando revisión humana antes de mergear — quedan 60/76 rutas de la lista sin triar.
 ### [T-564] 🟠 [ABIERTO 05/08] 19 oposiciones ACTIVAS tienen el seguimiento de convocatorias en `error` y ningún detector lo mira
 
 - **Cómo apareció:** al hacer el rollover de `auxiliar-biblioteca-estado` a la OEP 2026 ([T-562] de contexto), quedó un cabo: las plazas de la Sección Bibliotecas las fijará la **convocatoria**, que aún no se ha publicado. Al comprobar quién vigilaría esa publicación → `seguimiento_change_status = 'error'`. El cron mira todos los días (`seguimiento_last_checked` = ayer) y **falla todos los días**.
@@ -4282,6 +4422,12 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Por qué importa más que en el barrido:** el barrido alimenta un badge que se tría; esta columna la lee una persona para decidir dónde generar preguntas. Un tema que sale «cubierto» porque su única ley no se cuenta manda el esfuerzo al sitio equivocado, y no hay forma de notarlo desde la pantalla.
 - **Qué hacer:** aplicar el mismo arreglo que [T-451] (contar la ley entera cuando `article_numbers IS NULL`, en vez de perderla en el `unnest`), **medir el antes y el después** de la columna en las oposiciones grandes, y comprobar en el panel que los números se mueven. No es cambiar tres `JOIN`: es decidir qué significa «cobertura» cuando el tema pide una ley completa, que es lo que [T-451] ya resolvió aguas arriba — conviene copiar su criterio, no inventar otro.
 - **Capa que lo mantiene:** un guardarraíl que exija que toda consulta que haga `unnest(ts.article_numbers)` declare qué hace con el `NULL` (guarda explícita o rama que lo cuente). El patrón ya ha mordido **tres veces**: `articleInScope()`, `huerfanos-plan` ([T-451]) y ahora el panel.
+- **✅ ARREGLADO (06/08, sesión `w1`, trabajador de la flota).** Las tres consultas de `lib/api/admin-contenido/queries.ts` (CTE `cov`, la `qual` y el drill-down de `getArticleCoverageDetail`) sustituyen el `JOIN LATERAL unnest(ts.article_numbers) + JOIN articles ON a.article_number = an.num` por `JOIN articles a ON a.law_id = ts.law_id AND articleInScope(a.article_number, ts.article_numbers)` — el helper canónico de `lib/api/_shared/topicScopeSql.ts` (T-551), en vez de reimplementar el `IS NULL OR = ANY` a mano por cuarta vez.
+  - **MEDIDO antes/después contra RDS (no estimado):** con la condición vieja, `temas_sin_cobertura=701` y `arts_sin_preguntas=7091`; con la nueva, **`temas_sin_cobertura=920` (+219, +31%)** y **`arts_sin_preguntas=11399` (+4.308, +61%)**. Son 219 temas que la columna del panel daba por completos (su única ley "no contaba") y que en realidad tienen huecos reales — justo el desvío de esfuerzo que describía la ficha.
+  - **La capa que faltaba, ampliada en el sitio correcto:** `__tests__/integration/topicScopeHelperUsage.test.ts` ya escaneaba `lib/` buscando `= ANY(...articleNumbers)` sin guarda `IS NULL`, pero esa forma (`unnest(...)` + JOIN por `an.num`, SIN ningún `= ANY(`) es sintácticamente distinta y **no la detectaba** — por eso mordió tres veces sin que el guardarraíl existente saltara. Añadido un segundo `it()` al mismo fichero (no uno nuevo — nada de silos) que escanea `unnest\(...article_?numbers` y exige que la ventana de líneas cercana declare `IS NULL`, `IS NOT NULL` (la exclusión legítima del detector de artículos fantasma) o `articleInScope`. Verificado que SÍ dispara reproduciendo el bug original en un fichero de prueba fuera del repo (offender detectado en la línea exacta) antes de confirmar que el repo real queda en verde.
+  - **NO tocado a propósito:** `scripts/health-sweep.cjs` y `backend/src/content-health-sweep/content-health-sweep.service.ts` ya llevaban el criterio correcto desde [T-451] (comentario `article_numbers IS NULL OR …`, no usan `articleInScope` porque son CJS/NestJS sin acceso al módulo TS del frontend). El `unnest(...) WHERE ts.article_numbers IS NOT NULL` del detector de artículos fantasma (línea 2966 del backend) es la exclusión LEGÍTIMA que la propia ficha señala como correcta — no se ha tocado.
+  - **Capas:** `npx tsc --noEmit` limpio (import nuevo de `articleInScope`) · las 24 pruebas existentes de `__tests__/lib/admin-contenido` + `__tests__/lib/api/admin-contenido` + `__tests__/unit/topicScopeSql.test.ts` en verde · guardarraíl ampliado (2/2 en verde, con reproducción del bug verificada).
+  - **Entregado, rama `flota/w1`, push hecho.**
 
 ### [T-558] 🟡 [ABIERTO 05/08] La explicación analiza opción por opción y se salta la meta-opción, que es justo la que el usuario elige
 
@@ -5451,6 +5597,15 @@ ponerse a verificar una por una.
 - **Es una REGRESIÓN, no algo nuevo:** [T-173] cerró exactamente este fenómeno el 27/07 y dejó escrito un pendiente —*«queda por confirmar con varios ticks que `materialized_stats_stale` también se cura; un solo tick no es prueba»*— dentro de una ficha que se cerró. Nadie volvió. Por eso esto nace como ficha propia y no como nota en la cerrada.
 - **Verificación honesta:** no vale que deje de fallar una vez. El motor evalúa cada ~5 min, así que **varios ticks limpios** seguidos, y `alert_rule_failing` sin mencionarla.
 
+- **✅ CAUSA REPRODUCIDA Y MIGRACIÓN LISTA (07/08, w3) — mismo patrón que la gemela, sin adivinar.**
+  - **Medido primero, sin dar el índice por sospechoso a priori:** `EXPLAIN (ANALYZE, BUFFERS)` de la consulta REAL de la regla contra RDS (vía `VENCE_LECTOR_URL`, hoy mismo). Resultado: **`Seq Scan` completo en las DOS tablas grandes** — `user_question_history_v2` (1.506.049 filas, 256 MB): 1.267.543 filas leídas, 32.710 buffers de disco, **1.620 ms**; `user_article_stats` (742.867 filas, 97 MB): 579.592 filas, 10.116 buffers, **767 ms**. Las otras 4 (10-40 k filas) también hacen `Seq Scan` pero son baratas hoy (<25 ms cada una).
+  - **Confirmado con `pg_indexes`, no supuesto:** consulté los índices de las 6 tablas — **ninguna tiene UN SOLO índice que cubra `updated_at`** (todos son por `user_id`, compuestos con `day`/`hour`/`article_id`, o `success_rate`). `MAX(updated_at)` sin índice no tiene otra vía que barrer la tabla entera.
+  - **Por qué el statement_timeout de 20s (réplica) a veces aguanta y a veces no, y por qué eso NO significa que esté resuelto:** medido HOY en aislamiento, la consulta entera tarda **1,8 s** — muy por debajo del límite. Pero los **10 fallos reales, todos el 01/08 entre 14:01 y 20:11**, y ninguno desde entonces, encajan con un Seq Scan que es rápido en vacío y se dispara bajo contención real de disco (docenas de queries compitiendo por el mismo caché de buffers) — exactamente el perfil de una bomba de relojería, no un problema resuelto solo. La causa ESTRUCTURAL (cero índice, sigue confirmada hoy) no ha cambiado; lo que cambió es la carga del momento.
+  - **Arreglo:** `supabase/migrations/20260807_materialized_stats_stale_updated_at_index.sql` — `CREATE INDEX CONCURRENTLY` sobre `updated_at` en las 6 tablas (mismo patrón `CONCURRENTLY` que la migración gemela, porque están en el camino de escritura de cada respuesta guardada). Deja que el planificador resuelva `MAX(updated_at)` con `Index Scan Backward … LIMIT 1` en vez de `Seq Scan`.
+  - **⚠️ NO APLICADA — este trabajador no tiene credenciales de escritura sobre RDS** (`VENCE_LECTOR_URL` es solo lectura; `DATABASE_URL` es solo coordinación). La migración gemela (`20260801_cron_covering_incluye_severity.sql`) la aplicó directamente una sesión con permisos distintos a los míos; ésta se entrega igual — lista, medida, sin aplicar.
+  - **Verificación pendiente tras aplicar (la que pide la propia ficha):** confirmar el plan cambia a `Index Scan Backward` con `EXPLAIN`, y sobre todo — **varios ticks limpios seguidos** de `alert_rule_failing` sin mencionar `materialized_stats_stale` (un solo tick no basta, lección ya escrita en [T-173]).
+  - **No hay capa de test que añadir**: es una migración de índice (no tocó `RUTAS_PRODUCCION` del guardarraíl de robustez — `supabase/migrations/` no cuenta como código de producción, mismo patrón que la gemela, que tampoco llevó test).
+
 ### [T-476] 🟠 [ABIERTO 01/08] Cuatro alertas de salud del 01/08 quedaron sin triar
 
 - **Esfuerzo: rato.** Son cuatro triajes cortos; ninguno está diagnosticado.
@@ -5973,6 +6128,82 @@ pero eso hay que comprobarlo, no suponerlo.
   - Camino: comprobar que su documento está en `convocatoria_documentos` (si no, clonar con `backend/scripts/clonar-documento.ts`) y luego `sanear-referencia-publicada.cjs --slug <slug> --referencia "…" --cita "…" --verificado --apply`.
 - **Cabo aparte, decisión de producto:** el hero pinta la referencia ENTERA, y con la convención actual eso son párrafos de hasta 858 caracteres en 119 landings. No es un defecto de datos y no se toca sin decidirlo.
 - **Relacionadas:** [T-427] (misma sesión), frases-gatillo *«revisa las plazas sin documento»* y *«revisa los enlaces de convocatoria»*.
+
+> **✅ LAS 3 FILAS DE "QUEDA", MEDIDAS DE NUEVO (07/08) — otra sesión ya las tocó, y ahora quedan
+> VERIFICADAS contra la fuente primaria, no solo limpias de texto.**
+>
+> **CLM (327 y 24): las dos cifras se CONFIRMAN correctas, no solo la nota desaparecida.** Abrí el
+> documento clonado en el hub (`convocatoria_documentos` id `88998c52…`, DOCM nº 240 12/12/2025,
+> `2025_9540.pdf`, 28.314 caracteres extraídos) y busqué las filas exactas de la tabla del Anexo I:
+> - `C2 Cuerpo Auxiliar 305 9 13 327` → coincide EXACTO con lo publicado en `auxiliar-administrativo-clm`
+>   («cupo general 305 · reserva discapacidad 9 + 13 · TOTAL 327»).
+> - `C1 Cuerpo Ejecutivo Administrativa 23 1 – 24` (aparece dos veces en el documento) → coincide
+>   EXACTO con `administrativo-castilla-la-mancha` («cupo general 23 · reserva discapacidad 1 ·
+>   TOTAL 24»).
+> - **El «140 plazas» que preocupaba a la nota vieja NO es la cifra de ningún cuerpo**: el propio
+>   documento dice *«en el anexo I se prevén 140 plazas de personal funcionario de Administración
+>   General»* — es el subconjunto acogido a la tasa EXTRAORDINARIA de reducción de temporalidad (Ley
+>   20/2021), y el total real de «personal funcionario de Administración General» en la misma tabla
+>   es **669**, no 140. Quien escribió la nota original confundió esa cifra parcial con el total de
+>   un cuerpo — el MISMO tipo de error que el caso original del Celador (mirar el número equivocado
+>   del mismo documento). **No hace falta tocar nada aquí: las dos filas ya publican el dato correcto.**
+>
+> **Cantabria: el marcador ya no está (verificado sobre el HTML servido), pero apareció un
+> problema DISTINTO al que describía la nota — de PROVENANCIA, no de cifra.** El texto actual
+> («Decreto 51/2025, OEP 2025 (BOC nº 161)… Bases: 30 plazas, de las que 2 se reservan a
+> discapacidad») es internamente coherente y el "30 plazas (2 Discapacidad)" SÍ está confirmado
+> palabra por palabra en el documento del hub «bases oficial de Administrativo del Gobierno de
+> Cantabria» (`convocatoria_documentos` id `3c032337…`) — **pero ese documento es de la
+> convocatoria 2024/21 (22/10/2024), NO del Decreto 51/2025/OEP 2025 que la misma frase cita como
+> fuente.** La OEP 2025 (documento `723e15e7…`, BOC nº 161, clonado y leído) solo desglosa por
+> SUBGRUPO —confirmado, ningún cuerpo aparece con cifra propia—, así que la cita actual mezcla dos
+> ciclos distintos bajo una sola atribución. Y hay un TERCER ciclo ya en la propia fila
+> (`oep_decreto`): OEP 2026 (Decreto 23/2026, BOC-2026-3453, 35 plazas) marcado *«pendiente de
+> convocatoria»* — ese documento **no está en el hub todavía**, no lo he verificado.
+> **Esto es un hallazgo NUEVO y de otra familia** (cita que mezcla ciclos, no nota interna con
+> marcador) — no lo he tocado ni propuesto texto de sustitución: requiere una redacción que
+> distinga honestamente los tres ciclos, que es una decisión editorial, no una comprobación
+> binaria. Candidato a ficha propia si alguien lo retoma; no lo fiché aparte por presupuesto de
+> este turno — queda escrito aquí con las citas exactas para no repetir la investigación.
+>
+> **🆕 HALLAZGO NUEVO, mismo patrón exacto de esta ficha: `auxiliar-biblioteca-estado`.** Correr
+> el detector real (`clasificarLote` de `lib/convocatoria/notaInternaPublicada.cjs`) contra
+> `oposiciones_ssot` COMPLETA (137 filas) da hoy **1 sola** fila «publicada» — confirmado también
+> en el HTML servido (`curl https://www.vence.es/auxiliar-biblioteca-estado`, la cadena aparece
+> tal cual, dos veces, en el `<h3>` del hero). El campo `boe_reference` lleva un `⚠️` a mitad de
+> frase seguido de razonamiento de analista con jerga interna («ESCALA 5431 COMPLETA», «Sección
+> Bibliotecas (5431J)», «recibió 26 de las 68 de acceso libre») — la misma forma del defecto
+> original, no una nota corta. Corrida la herramienta REAL en simulación (sin `--apply`, solo
+> lectura vía `VENCE_LECTOR_URL`):
+> ```
+> limpio (se conserva): "OEP 2026: Real Decreto 387/2026, de 6 de mayo (BOE núm. 111, de
+>   07/05/2026, BOE-A-2026-9946), Anexo I «Nuevo ingreso» — Escalas de Organismos Autónomos:
+>   «5431 AUXILIAR ARCHIVOS, BIBLIOTECAS Y MUSEOS OO.AA. DEL MCU. 79 7 86» (cupo general 79 +
+>   reserva discapacidad 7 = 86 total)."
+> nota (se muda a needs_human): "⚠️ Esas 86 son de la ESCALA 5431 COMPLETA (Archivos +
+>   Bibliotecas + Museos); el reparto por sección lo fija la convocatoria, no la OEP. En el
+>   ciclo anterior la Sección Bibliotecas (5431J) recibió 26 de las 68 de acceso libre. Por eso
+>   las plazas de esta oposición quedan SIN FIJAR hasta que se publique la convocatoria: publicar
+>   86 diría a un opositor de Bibliotecas algo que la OEP no dice."
+> ```
+> El corte es limpio (la parte que se conserva es una cita factual correcta, ya verificada por
+> otra sesión contra el BOE) y la nota mudada a `needs_human` no se pierde — sigue consultable.
+> **NO PUDE aplicarlo**: `sanear-referencia-publicada.cjs --apply` escribe en `convocatorias`/
+> `oposiciones`, y mi credencial de flota (`DATABASE_URL`, coordinación) no tiene permiso de
+> escritura sobre tablas de negocio — es la regla dura de este turno, no un bloqueo técnico
+> rodeable. **Comando listo para quien tenga la credencial completa:**
+> ```
+> node scripts/convocatoria/sanear-referencia-publicada.cjs --slug auxiliar-biblioteca-estado --apply
+> ```
+> (el corte es automático — no hace falta `--referencia`/`--cita`/`--verificado`, ya hay texto
+> publicable delante del marcador. Después: invalidar caché `landing` + `oposiciones-catalog`.)
+>
+> **Confirmación de que el pipeline sigue vivo, no solo el saneo puntual:** el kind
+> `nota_interna_publicada` SÍ está wireado en `scripts/health-sweep.cjs` (línea ~973) y en el
+> `@Cron` real del backend (línea ~2736) — comprobado leyendo el código, no asumido. Este hallazgo
+> nuevo es exactamente lo que el badge existe para seguir cazando cuando alguien vuelve a escribir
+> una nota de analista en el campo equivocado; no es una regresión del pipeline, es el pipeline
+> haciendo su trabajo con contenido nuevo que nadie había triado todavía.
 
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
 
@@ -6556,6 +6787,26 @@ esas preguntas no le habrían salido nunca.
 > sesión estuvo a punto de enchufar el detector al barrido nocturno como `error`, sin ver que el runner
 > declara a propósito que NO pinga badge (una alerta sin remediación construida enseña a ignorar el
 > buzón entero).
+
+> **07/08 — el hilo del "borrado silencioso" se cierra: NO aplicar el commit `466d247f8`, ya está redundante.**
+> La revisión de w4 dejó dicho "extrae solo `app/perfil/page.tsx` + el test nuevo del commit de rescate
+> `466d247f8` sobre `main` limpio". Antes de hacerlo, comprobé qué hay HOY en `origin/main` en esas
+> mismas líneas: **el fix ya está ahí, el mismo mecanismo, vía [T-569]**
+> (`app/perfil/page.tsx:1948-2201`, comentarios `[T-569] target_oposicion NO entra aquí…`) — `saveProfile()`
+> ya no manda `targetOposicion`/`targetOposicionData` al API, `hasRealChanges` ya no los compara, y hay
+> guardarraíl propio (`__tests__/guardrails/perfilTargetOposicionUnEscritor.guardrail.test.ts`, **8/8 verde
+> corrido ahora mismo contra `origin/main`**) que cita el MISMO síntoma que esta ficha investigaba ("11
+> cuentas con `target_oposicion=''`" ≈ los "8 perfiles con `target_oposicion=''`" del §01/08 de arriba).
+> T-569 encontró y arregló el mismo bug por su cuenta, en paralelo a esta ficha, sin que ninguna se
+> enterara de la otra hasta hoy.
+> - **Aplicar `466d247f8` tal cual habría sido un downgrade, no una mejora**: además de redundante,
+>   revertiría el `emitClientEvent('perfil_target_oposicion_invalido', …)` que T-569 añadió — el commit
+>   de rescate es de antes de que ese evento existiera, así que un `git checkout 466d247f8 -- app/perfil/page.tsx`
+>   sobre el `main` de hoy habría BORRADO observabilidad ya viva, no añadido nada nuevo. No se toca el
+>   código: nada que extraer.
+> - **Lo que SIGUE abierto de T-397 no es código, son las tres decisiones de producto de la cabecera**
+>   (¿se puede seguir eligiendo una oposición sin temario?, qué se hace con los 3-4 premium, ¿se construye
+>   `agente_hacienda`?) — ésas no las toca ni T-569 ni el commit rescatado.
 
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
@@ -7982,6 +8233,64 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-572] ✅ [HECHA 07/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
+
+> **✅ RESPUESTA (07/08, w4).** El diagnóstico ya estaba hecho por otra sesión (l2) y fusionado a
+> `main` (`cbcd1c01d`, 06/08 11:29) + desplegado (`15656eef`, 06/08 11:37): raíz = un worktree local
+> apuntando a la RDS de producción (`.env.local`, patrón documentado en CLAUDE.md) escribía
+> `request_completed` con `host=localhost:3210` y `httpStatus=500` directamente en la tabla que
+> alimenta el panel — 89 eventos en 4 minutos, mientras `validation_error_logs` (la fuente real del
+> indicador 1) estaba en CERO en esa ventana. Arreglo: `shouldSkipObservabilityPersistence()`
+> (`lib/observability/runtimeGate.ts`, `NODE_ENV!=='production'`) usado ahora por LAS DOS puertas
+> que escriben observabilidad (`withErrorLogging.ts` y `validation-error-log/queries.ts`), que antes
+> solo la tenía una.
+>
+> **Verificado EN VIVO por mí contra RDS (lo que quedaba pendiente de la ficha), no dando el deploy
+> por bueno de oídas:**
+> - `/api/auth/token` desde el deploy (15h): **0 eventos 5xx** (5.797×401 + 1.147×200). Antes eran 89
+>   en 4 minutos.
+> - Tráfico `host=localhost` desde el deploy: 1.589 eventos, **todos 200**, y son tráfico interno
+>   legítimo (1.565 `/api/health/db-ready` en `localhost:3000` — healthcheck del propio contenedor
+>   Fargate — + 12 `/api/internal/isr-apply` en `127.0.0.1:3000`). No es el worktree roto volviendo:
+>   puerto distinto (3000 del contenedor vs 3210 del worktree) y sin un solo error.
+> - 5xx reales desde el deploy (`host=www.vence.es`): **13**, todos con `synthetic=null` (no
+>   canary) y mensajes de fallo genuino («Database operation exceeded 8000ms timeout», «Servicio
+>   saturado momentáneamente») — la «cola larga» que la ficha original ya distinguía del bug
+>   (`answer-and-save`×3, `laws-configurator`×2, `stats`×2, `medals`/`profile`/`user-stats`/
+>   `pdf`/`random-test/availability`×1). Nada de esto es T-572; una parte encaja con [T-315].
+>
+> **HALLAZGO NUEVO al intentar cerrar el segundo punto pendiente** («que el indicador 1 cuadre con
+> `validation_error_logs`»): **no se puede verificar con esta credencial — mismo patrón sistémico de
+> RLS que [T-573]/[T-574].** `validation_error_logs` tiene `relrowsecurity=true` con **una sola
+> política**, `service_role_all` (`roles={service_role}`), y ninguna para `vence_lector` — el GRANT
+> de tabla existe (`has_table_privilege=true`) pero sin política el motor filtra en silencio:
+> `SELECT count(*) FROM validation_error_logs` (sin `WHERE`) da **0**, siempre, aunque la tabla esté
+> llena. Los 13 eventos de arriba deberían tener su espejo en VLE (el código de `withErrorLogging.ts`
+> los escribe con `await` para 5xx no-sintéticos, sin excepción que aplique a ninguno de los 13) y no
+> pude comprobarlo. **No estaba en el catálogo `DEBE_LEER`/`NO_DEBE_LEER` de
+> `scripts/canary-rol-lector.cjs`** — cae en el mismo hueco de catalogación que T-573 ya señala para
+> otras tablas. No abro ficha nueva a propósito (sería la 4ª de la misma familia esta semana);
+> queda anotado aquí y en el `Relacionadas` de abajo para quien retome T-573/T-574.
+>
+> **Veredicto: el bug que motivó la ficha está arreglado y verificado con datos reales, no con la
+> palabra del deploy.** Lo que queda («cuadra VLE con obs_events») es un problema de ACCESO de
+> lectura, no del propio fix.
+
+**Relacionadas:** [T-573], [T-574] (mismo bloqueo RLS de `vence_lector`, ahora también en
+`validation_error_logs`) · [T-315] (parte de la «cola larga» de 5xx reales sí es su timeout de
+antifraude).
+
+- **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
+  - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
+  - **89 de ellos son `/api/auth/token`** (último a las 09:40 UTC). El resto es cola larga: 6 en `/api/v2/answer-and-save`, 2 en `laws-configurator`, 2 en `random-test/availability`, 2 en `referrals/badge`.
+- **No se queda en un contador: le está costando datos a usuarios.** En la misma ventana hay **193 `console_error` con el texto `❌ [answerSaveQueue] Sin token (intento #1…)`** — la cola que persiste las respuestas de los tests se queda sin token y no puede llamar a `/api/v2/answer-and-save`. El usuario ve su respuesta corregida al instante (validación en cliente), así que **el fallo es invisible para él**, pero el registro en `test_questions`, el score autoritativo y el antifraude se los pierde el servidor. Es exactamente el modo de fallo que el runbook avisa: *«el servidor puede decir 0 5xx y el panel verde mientras los clientes sufren — p.ej. 502 de `/api/auth/token`, que es un error de EDGE»*.
+- **Qué hay que averiguar primero (no está determinado):** si los 89 son 502 de edge (infraestructura, delante de la app) o 500 de la propia ruta. La distinción cambia por completo el arreglo y **no se puede deducir del contador**: hay que mirar el `error_message`/`metadata` de esos eventos y los logs de Fargate/edge de esa franja.
+- **Relación con la cola de respuestas:** comprobar si los 193 «Sin token» caen en las MISMAS franjas que los 89 5xx. Si correlan, es un solo fallo con dos síntomas; si no, son dos.
+- **NO confundir con [T-315]** (el techo de 25 s de `answer-and-save`): ahí el problema es el presupuesto de tiempo del backend, aquí es que no hay token con el que llamar. Los 6 `answer-and-save` de esta ventana sí pueden ser de T-315.
+- **Ruido que NO es esto:** los 1.305 + 604 `console_error` de `[GSI_LOGGER] FedCM …` son del inicio de sesión con Google en el navegador y dominan el volumen; hay que descartarlos antes de mirar nada, o tapan la señal.
+- **Contexto de la medición:** también hay 96 `canary_pdf_queue_failed` (crónico conocido, cola de PDFs sin consumidor) y 85 `ci_integracion_rojo` (es [T-370], ya dormida esperando los secrets de GitHub).
+- **Esfuerzo: rato** (diagnóstico; el arreglo puede ser mayor y saldrá de lo que diga el diagnóstico).
 
 ### [T-649] ✅ [HECHA 07/08] El dossier de feedback no mira el rastro de errores del usuario: por eso se atribuyó el cuelgue de Lourdes al bug que teníamos en la mano
 
@@ -12246,6 +12555,17 @@ y eso solo ocurre donde las dos se sirven.
 - **Lo caro NO es el material, son las PREGUNTAS.** Los 10 temas nuevos parten de cero y cada uno necesita generación + doble auditoría ciega. Por eso [T-330] (la newsletter del último día) se cerró sin enviar: el plazo moría el 31/07 y una landing con 10 temas a cero es justo lo que el gate pre-envío prohíbe.
 
 ### [T-326] 🟠 [ABIERTO 30/07] El filtro de preguntas oficiales no existe en el test por leyes: el interruptor está, pero nunca se pinta
+
+- **🔁 RE-VERIFICADO EN VIVO HOY (06/08, w3) — cinco días después, sigue correcto, cero regresión.** No me fié de la ficha de 01/08 (podía haber cambiado el banco o haber vuelto una regresión); repetí las comprobaciones contra producción, con `VENCE_LECTOR_URL`/HTTP directo, no contra BD de coordinación:
+  - `GET /api/v2/test-config/estimate?positionType=auxiliar_administrativo_estado&selectedLaws=Ley 39/2015` → `{"success":true,"count":3087}` (antes 3042/3090 según el día — el total sube según se genera contenido, es el conteo general, no el que importa).
+  - Con `&onlyOfficialQuestions=true` → **16**, igual que el 01/08.
+  - Mismo caso pero `positionType=agente_hacienda` (la oposición de Sergio, el usuario que lo pidió) → **0**, confirma que su caso sigue sin oficiales propias (motivo por el que [T-411] existe aparte).
+  - `GET /api/v2/test-config/articles` para la misma ley: **157 sin `scopeToPosition`, 128 con él** — idéntico a lo medido el 01/08, el selector sigue respetando el temario.
+  - Las tres respuestas llevan `x-served-by: vence-backend`, confirmando que van por el camino que SÍ ejecuta producción (el bug del 01/08 — el arreglo vivía en el camino que el backend no usaba — sigue sin reaparecer).
+  - **Y comprobé la pieza que la ficha no había mirado hasta ahora: el CÓDIGO del frontend que enciende la casilla.** `components/TestConfigurator.tsx:1744` — `{!hideOfficialQuestions && officialCount > 0 && (` — es la condición de render, y `officialCount` (línea 607) resuelve a `officialCountForLaws` cuando `tema` es null (modo "por leyes"), que a su vez viene de un fetch al MISMO endpoint de estimación forzando `onlyOfficialQuestions:true` (líneas 565-604), reactivo a `selectedLaws`/artículos. `app/test/por-leyes/page.tsx:410` sigue pasando `hideOfficialQuestions={false}`. Con los números de arriba (16>0), la condición de render se cumple: la casilla SÍ debería pintarse hoy en `/test/por-leyes` para un usuario de `auxiliar_administrativo_estado` con Ley 39/2015 seleccionada.
+  - **Lo que NO pude comprobar, y por qué no lo intenté:** cómo se VE en pantalla — necesita una sesión de usuario autenticada (cookie de login) y esta sesión no tiene `AUTH_SECRET` ni credenciales para acuñar una (el rol de trabajador es deliberadamente de solo lectura, ver `lib/sessions/aprobacion.cjs`). No hay atajo honesto: o se mira con ojos humanos, o no se mira. Confirma lo que ya decía la ficha — esto no es «falta comprobar», es «falta que Manuel mire la pantalla».
+  - **Entregado vía `revision --entrega`** (verbo que no existía el 01/08 — nace de [T-539] el 04/08 — y es exactamente el hueco que las notas de esa fecha señalaban: «verificado por la máquina, pendiente del ojo humano», sin verbo para expresarlo entonces).
+
 - **✅ VERIFICADO EN PRODUCCIÓN (01/08, sesión `t115-huerfanos`) tras desplegar el backend (`eb6616d6`). Los tres puntos pasan. FALTA SOLO LA REVISIÓN VISUAL DE MANUEL.**
   | qué pedía la ficha | en producción |
   |---|---|
@@ -14494,14 +14814,17 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 ### [T-156] 🟡 [ABIERTO 26/07 · APARCADA AL FINAL por decisión de Manuel: es liosa] Dos convocatorias SIMULTÁNEAS de la misma oposición y el modelo solo sabe representar una
 - **Qué pasa (caso real, EN VIVO):** `auxiliar-administrativo-madrid` tiene **dos procesos selectivos corriendo a la vez** — y no es un error de datos, es la realidad: la Comunidad de Madrid mantiene abiertos los dos.
   - **Orden 264/2026** (BOCM 41, 18/02/2026): 645 plazas turno libre + 20 promoción interna, 46 de reserva. Plazo cerrado el 20/03; lista provisional de admitidos el 04/06; **examen el 15/10/2026**. Es el que están preparando quienes ya se inscribieron.
-  - **Orden 1628/2026, de 25 de junio** (BOCM 165, 13/07/2026): **673 plazas** turno libre + **10** promoción interna, **47 de reserva DENTRO** del turno libre y 1 dentro de promoción interna, OEP 2026 (Decreto 54/2026). Plazo de 20 días hábiles desde el 14/07 → **10/08/2026**. **Con el plazo ABIERTO ahora mismo.**
+  - **Orden 1628/2026, de 25 de junio** (BOCM 165, 13/07/2026): **673 plazas** turno libre + **10** promoción interna, **47 de reserva DENTRO** del turno libre y 1 dentro de promoción interna, OEP 2026 (Decreto 54/2026). Plazo original de 20 días hábiles desde el 14/07 → 10/08/2026, **pero AMPLIADO dos veces — el plazo real hoy es 25/08/2026** (ver sesión 07/08 abajo). **Con el plazo ABIERTO ahora mismo.**
 - **Por qué no se arregla escribiendo datos:** el índice `convocatorias_una_vigente_por_oposicion` es `UNIQUE (oposicion_id) WHERE (is_current AND archived_at IS NULL)` → **solo cabe UNA vigente por oposición**. Poner la de julio obliga a archivar la de febrero, que sigue viva. Así que esto **no es una divergencia de dual-write ni un rollover: es una limitación del modelo**, y tocarlo pide esquema + render (¿dos tarjetas?, ¿cuál manda en `oposiciones_ssot`?, ¿qué temario/tests se sirven?) y criterio de producto sobre a qué audiencia sirve la landing. De ahí que se aparque al final.
-- **Coste de no hacerlo (para calibrar la prioridad):** hoy la landing sirve la de FEBRERO, con el plazo cerrado. Quien llegue buscando la convocatoria abierta no se entera de que puede presentarse, y **el plazo vence el 10/08/2026**. La ventana se cierra sola, así que si se decide después de esa fecha, el caso deja de ser urgente y se convierte en deuda de modelo (volverá a pasar: la Comunidad de Madrid encadena OEP).
+- **Coste de no hacerlo (para calibrar la prioridad — CORREGIDO 07/08, ver abajo):** hoy la landing sirve la de FEBRERO, con el plazo cerrado. Quien llegue buscando la convocatoria abierta no se entera de que puede presentarse, y **el plazo real vence el 25/08/2026** (no el 10/08 que decía esta ficha — se amplió dos veces). La ventana se cierra sola, así que si se decide después de esa fecha, el caso deja de ser urgente y se convierte en deuda de modelo (volverá a pasar: la Comunidad de Madrid encadena OEP).
 - **✅ YA HECHO y verificado, no hay que repetirlo:**
   - La Orden 1628/2026 está **confirmada en fuente primaria**: PDF del BOCM descargado y leído (`https://www.bocm.es/boletin/CM_Orden_BOCM/2026/07/13/BOCM-20260713-2.PDF`), con las bases Primera.1 (las 673 + 10), Primera.2 (las 47 + 1 de reserva, «del total de las convocadas») y Cuarta.5 (los 20 días hábiles).
   - Los **3 hitos de julio llevaban `origen='registro'` sin URL, sin cita literal y sin documento** — o sea, afirmaban venir de un registro oficial sin ninguna prueba (creados el 15/07 y el 18/07 a las 04:33, con pinta de proceso automático). **Corregido:** los tres tienen ya la URL del BOCM y su cita literal.
-  - ⚠️ **Ojo con la ampliación de plazo:** varias academias dicen que se amplió al **11/08** por una incidencia técnica. **NO está confirmado en boletín** — antes de publicar esa fecha hay que encontrar la Orden que la amplíe.
-  - ⚠️ La primera comprobación dio un **falso negativo**: la página oficial `comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-2026` **no menciona** la Orden 1628/2026 porque el proceso nuevo tiene **su propia página** (`.../empleo/auxiliares-administracion-general-c2-16282026`). Con dos procesos vivos, una sola URL de seguimiento no basta — que es otra cara del mismo problema de modelo.
+- **🔍 SESIÓN 07/08 — la fecha límite de esta ficha estaba DESACTUALIZADA (verificado en fuente primaria, no en academias):**
+  - **El plazo NO es el 10/08 que decía esta ficha: es el 25/08/2026.** Dos ampliaciones encadenadas. (1) Una ampliación puntual de esta convocatoria por incidencia técnica, 10/08→11/08 (confirmada en la página oficial de la convocatoria, no encontré el documento BOCM específico de esta primera — puede ser un aviso de sede electrónica sin Orden propia). (2) **`ACUERDO de 29 de julio de 2026, del Consejo de Gobierno`** (BOCM núm. 180, 30/07/2026: `https://www.bocm.es/boletin/CM_Orden_BOCM/2026/07/30/BOCM-20260730-12.PDF`, descargado y leído completo) — **ampliación GENERAL de 10 días de TODOS los procedimientos administrativos de la Comunidad de Madrid** (no específica de esta convocatoria) por los **incendios forestales de la Sierra Oeste iniciados el 22/07/2026**, que cortaron luz y telecomunicaciones y llevaron a declarar emergencia de interés nacional (Orden INT/748/2026). El resultado combinado (11/08 + la ampliación general) lo publica la propia **página oficial de la convocatoria**: *"El plazo se ha ampliado hasta 25 de agosto de 2026 (inclusive)"* — 3 fuentes independientes coinciden (búsqueda web, página oficial, y el Acuerdo BOCM que yo mismo descargué), aunque no pude aislar el documento primario exacto de la ampliación intermedia (10/08→11/08) — probablemente un aviso de sede electrónica sin Orden BOCM propia.
+  - **La URL de seguimiento que anotaba esta ficha estaba MAL — arreglada:** `comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-16282026` da **404**. La correcta (comprobada, responde y tiene el contenido) es **sin el segmento `/servicios/`**: `https://www.comunidad.madrid/empleo/auxiliares-administracion-general-c2-16282026`.
+  - **Por qué importa para la prioridad:** con el plazo real en 25/08 (18 días desde hoy 07/08, no 3 como parecía), la urgencia de cuenta-atrás que justificaría saltarse el aparcamiento de Manuel **ya no aplica con la misma fuerza** — hay más margen para decidir el diseño con calma. No cambia el fondo: mientras no se resuelva, la landing sigue sin representar una convocatoria real y abierta.
+  - **No hice ningún cambio de schema, landing ni datos** — la fila de `convocatorias` para 2026 en BD sigue siendo solo la de febrero (comprobado: `select … from convocatorias where oposicion_id=…` da una sola fila 2026, `is_current=true`, la de la Orden 264/2026). Insertar la de julio como fila NO-current no resuelve nada visible (nada la lee) y decidir cuál manda es justo la parte "liosa" que Manuel aparcó.
 - **🎨 Diseño — pregunta de Manuel: ¿pestañas en la landing? Recomendación: NO.** Una pestaña esconde una de las dos tras un clic y **obliga al visitante a saber a cuál pertenece**, cuando quien llega nuevo ni sabe que hay dos. Y sugiere dos productos distintos, que no lo son: mismo cuerpo C2, **mismo temario y mismos tests**; lo único que cambia es la cabecera de convocatoria.
   - El desempate es que **no son igual de accionables**: la de julio tiene plazo abierto (urgencia con cuenta atrás, hay algo que HACER) y la de febrero tiene examen el 15/10 (información para quien ya está dentro, no hay nada que decidir). Ponerlas en pie de igualdad penaliza a la urgente.
   - **Propuesta:** hero primario con la convocatoria ABIERTA («673 plazas · te quedan X días para solicitar») y, debajo pero **visible sin clic**, una banda secundaria del proceso en marcha («¿te presentaste en febrero? Tu examen es el 15 de octubre»). Cada una se identifica por su llamada a la acción; temario y tests siguen siendo únicos más abajo.
@@ -14792,6 +15115,35 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - ⚠️ **Matiz honesto sobre el «sigue en 4» que decía la nota de la pausa:** los 4 HIGH que medí son bandas del clasificador sobre TODOS los scopes; el sweep además **excluye los adjudicados `ok`**, y los 4 lo están. Por eso en producción lo correcto es **0 hallazgos emitidos**, no 4. Las dos cifras son ciertas y miden cosas distintas; conviene no confundirlas al releer esto.
   - **Y un error de método propio, el tercero de la misma familia en la sesión:** el primer vigilante informó de «0 kinds emitidos» porque salía en cuanto veía la PRIMERA fila de la pasada, y el barrido escribe durante ~2 minutos. **Medir mientras el productor sigue escribiendo da un cero falso.** El barrido no estaba mudo: lo estaba mirando demasiado pronto.
 - **⏭️ QUEDA lo que era el objeto original de la ficha:** adjudicar el caso de `oficial_de_gestion_parlamento_de_andalucia` T12 (Ley 22/2009 entera, 66 arts, para un epígrafe de tres materias; el recorte natural sería 1-24, Títulos Preliminar-I-II) y triar los ~116 candidatos nuevos de la banda MEDIA, de los que 88 vienen marcados `anomalia` por el consenso del banco. Es trabajo de JUICIO contra el BOE, no de detector.
+- **✅ ADJUDICADO (05/08, trabajador de flota `l4`) — Parlamento de Andalucía T12 · Ley 22/2009: CONFIRMADO `over_inclusion`, recorte a 1-24.** Es el objeto original de la ficha, resuelto por fin: verificado contra BOE-A-2009-20375 en vivo (fetch directo a `boe.es/buscar/act.php`, no caché), estructura por `<h4 class="titulo_num/titulo_tit">`: Tít. Preliminar *Objeto de la Ley* (1) · Tít. I *El Sistema de Financiación de las CCAA* (2-21) · Tít. II *Los Fondos de Convergencia Autonómica* (22-24) · Tít. III *Cesión de tributos del Estado a las CCAA* (25-64) · Tít. IV *Órganos de coordinación de la gestión tributaria* (65-66) — coincide exactamente con lo que ya apuntaba la ficha.
+  - **El dato que decide, y que nadie había mirado:** de las **24 preguntas activas** hoy ancladas a esta ley en este tema, **0 están en arts. 1-24** (el "modelo de financiación" que anuncia la 3ª cláusula del epígrafe) y **las 24 están en arts. 25-66** (cesión/gestión tributaria delegada). El tema sirve HOY el 100% de contenido AJENO a lo que promete su propio epígrafe y 0% de lo que sí pide.
+  - **Sin riesgo de huérfanas:** la misma Ley 22/2009 está escopada en `administrativo_agencia_tributaria_canaria` **T201/T221** exactamente en arts. 25-45+54-61, bajo un epígrafe propio y mejor ajustado (*"La cesión de tributos... Competencias en materia de gestión, liquidación, inspección, recaudación y revisión"*). El propio banco de temarios ya trata cesión/gestión como materia AUTÓNOMA del modelo de financiación — recortar aquí no deja las 24 preguntas actuales sin servirse en ningún sitio.
+  - **Por qué esta vez SÍ y no como `auxiliar_administrativo_madrid` T12 (comparación que frenó el recorte el 26/07):** aquel caso era la Ley 5/2025 CM Hacienda con una cláusula de epígrafe que pide EXPLÍCITAMENTE *"Estructura y principios generales"* de la ley — el mapa completo. Aquí la 3ª cláusula pide una sub-materia concreta y nombrada (*"el actual modelo de financiación… de régimen común"*), no la estructura entera de la Ley 22/2009; y los Títulos III-IV son mecánica de gestión DELEGADA, no el modelo en sí. No es el mismo patrón.
+  - **LOFCA (LO 8/1980), también `article_numbers=NULL` en este mismo tema — revisada, NO tocada:** estructura oficial BOE-A-1980-21166 (fetch en vivo): Cap. I *Principios generales* (1-3) · Cap. II *Recursos de las CCAA* (4-16) · Cap. III *Competencias* (17-22) · Cap. IV *Resolución de conflictos* (23-24). Es una ley corta (24 arts.) y sus 4 capítulos mapean limpiamente a las 3 cláusulas del MISMO epígrafe (generalidades → Cap. I; modelo de financiación/recursos → Cap. II; atribución/delimitación de competencias → Cap. III-IV). Parece un caso legítimo de "ley entera" análogo al patrón de leyes pequeñas y monotemáticas (`Ley 6/1986 CM ILP`, adjudicada `ok`). No se ha verificado con el mismo rigor adversarial que Ley 22/2009 — queda como observación, no como hallazgo.
+  - **⛔ NO APLICADO A LA BD — regla dura de trabajador de flota (no escribir en BD de negocio).** El veredicto está VERIFICADO y listo, pero `--record` escribe en `scope_over_inclusion_adjudications` (tabla de negocio) y el recorte real en `topic_scope.article_numbers` requiere `verify:scope apply --include-gate`, ambos fuera de lo que un trabajador puede tocar. JSON listo en el formato exacto que espera `scope-over-inclusion.cjs --record` (mismo schema que emite el workflow `adjudicar-sobre-inclusion`):
+    ```json
+    [
+      {
+        "topic_id": "88a0145a-da76-4d94-a9ef-ae6c9994e771",
+        "law_id": "506af531-70fd-46d0-a999-b6e6ccb02f82",
+        "content_hash": "68433d32afe86a93c9eaaa0822b2600c",
+        "band": "MEDIUM",
+        "verdict": "over_inclusion",
+        "titulos_excluidos": [
+          { "titulo": "Título III — Cesión de tributos del Estado a las Comunidades Autónomas", "arts": "25-64", "materia": "Tributos cedidos, alcance de la cesión y puntos de conexión impuesto por impuesto, alcance de las competencias normativas, delegación de competencias de gestión/recaudación/inspección/revisión, colaboración entre Administraciones tributarias. Es la maquinaria de GESTIÓN de los tributos ya cedidos, no el modelo de financiación en sí (que regulan los Títulos I-II)." },
+          { "titulo": "Título IV — Órganos de coordinación de la gestión tributaria", "arts": "65-66", "materia": "Consejo Superior y Consejos Territoriales para la Dirección y Coordinación de la Gestión Tributaria: órganos de coordinación de la GESTIÓN tributaria, no del modelo de financiación." }
+        ],
+        "arts_correctos": "1-24 (Título Preliminar art.1 Objeto de la Ley; Título I arts.2-21 El Sistema de Financiación de las CCAA; Título II arts.22-24 Los Fondos de Convergencia Autonómica) — es literalmente 'el actual modelo de financiación de las comunidades autónomas de régimen común' que pide la 3ª cláusula del epígrafe.",
+        "razon": "Fuente oficial: BOE-A-2009-20375, fetch directo a boe.es/buscar/act.php el 05/08/2026. Ver detalle en el bullet de arriba (dato de las 24 preguntas + corroboración con administrativo_agencia_tributaria_canaria T201/T221).",
+        "confianza": "alta",
+        "verificado": true
+      }
+    ]
+    ```
+    **Para aplicar (una sesión con permisos, no un trabajador):**
+    1. `node scripts/scope-over-inclusion.cjs --record <fichero-con-el-json-de-arriba>` (upsert de la adjudicación + `observable_event scope_adjudication_recorded`).
+    2. Esto la deja en la cola de `--pendientes`; aplicar el recorte real con el pipeline `verify:scope` (`dump` → confirma que sigue vigente → `apply --include-gate`) o, si se prefiere ir directo, un `UPDATE topic_scope SET article_numbers = ARRAY['1'..'24'] WHERE topic_id='88a0145a-da76-4d94-a9ef-ae6c9994e771' AND law_id='506af531-70fd-46d0-a999-b6e6ccb02f82'` seguido de recache MV + purge + revalidate, como en las tandas anteriores de esta misma ficha.
+  - **QUEDA sin tocar, y es una campaña aparte, no un remate de tarde:** triar los ~116 candidatos nuevos de la banda MEDIA (88 marcados `anomalia` por el consenso del banco) que dejó la 2ª brecha del punto-separador. Es volumen de juicio uno-a-uno contra BOE — no cabe en el margen de este turno y no se ha intentado. Si se retoma, empezar por `node scripts/scope-over-inclusion.cjs --suspects --only-new` para la lista actual.
 ### [T-135] ✅ [HECHA 05/08 — verificado estable 9 días seguidos] Reactivado `check-seguimiento` como TELEMETRÍA — el detector ya no vivirá de evidencia congelada
 - **Decisión tomada (Manuel, 26/07):** de las tres opciones, la **1** — reactivar el bucle de fetch como pura telemetría. La señal ruidosa que motivó retirarlo (`hash_change`, 4% de acierto) **ya estaba borrada del código** desde el 26/06, así que hoy el cron solo refresca `http_status` / `content_preview` / `checked_url` de las ~490 fuentes: justo la evidencia de la que vive `seguimiento_fuente_ciega`.
 - **✅ HECHO Y VERIFICADO EN PROD:** task def `vence-backend:104` con `CHECK_SEGUIMIENTO_ENABLED=true`, y el log de arranque confirma `[HeartbeatRegistry] Cron 'check-seguimiento' registrado: threshold=345600s grace=120s` (antes decía `RETIRADO`). Al re-registrarse vuelve a vigilarlo `cron_overdue`: si deja de correr, se notará a los 4 días en vez de callarse.
@@ -14871,7 +15223,6 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **7) Límite conocido y TESTEADO de la exención por materia** (`epigrafeNamesRubrica`): *"Delitos contra la Administración de Justicia"* se sigue eximiendo en un epígrafe que solo nombra *"Delitos contra la Administración Pública"*, porque comparten la frase entera menos el sustantivo final. Es un **falso negativo aceptado**; está fijado en un test para que nadie lo lea como cubierto. Y **no volver a la regla del último token**: la probé, y la medición cazó que rompía el Estatuto de CyL (19 artículos que el epígrafe SÍ pide).
 - **8) Método que sí funciona, en orden:** `--suspects` (mira `consenso_banco`) → `--peers` (¿hay hermano verificado con epígrafe parecido?) → si no lo hay, `arbol-ley-boe.cjs "<short_name>" --rubricas` y mapear el epígrafe a bloques → `verify:scope plan/apply`. **NUNCA** recortar por rango numérico ni por cercanía, y **NUNCA** teclear el id del BOE de memoria (existen DOS "LO 14/2007").
 
-### [T-148] 🟠 [ABIERTO 26/07 · 12 de 25 temas · CERO sospechosos sin adjudicar] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
 
 > **🔍 REVISADA el 06/08/2026 — plan verificado contra RDS cifra a cifra, listo para aplicar.**
 > El scope actual del **T3 (LPRL)** tiene 36 artículos: incluye el **Cap. V entero (33-40)**, que el
@@ -14886,6 +15237,7 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 > **Queda** aplicarlo con `verify-topic-scope.cjs plan/apply` desde una sesión con escritura. Cambia
 > lo que se sirve, así que conviene mirar el impacto por tema antes de darle.
 
+### [T-148] 🟠 [ABIERTO 26/07 · 06/08 plan T3+T4+T10 listo] 🙋 ESPERANDO SESIÓN CON PERMISO DE ESCRITURA — Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
 - **Qué se descubrió (26/07):** los 25 epígrafes de `guardia_civil` están **`verified_literal`** contra el temario oficial (`TEMARIO_INGRESO_GC_ACTUALIZADO_2024`, clonado en el hub con `content_hash`), y ese temario enumera **libro › título › capítulo** con mucho detalle. Pero **58 de los 64 `topic_scope` tienen `article_numbers = NULL` (= la ley ENTERA)**. O sea: el epígrafe es quirúrgico y el scope es la norma completa.
 - **Cómo salió a la luz:** no lo cazó ningún badge. Salió al preguntar por un detalle de 6 preguntas del Tema 9 y tirar del hilo hacia el temario oficial, que **ya estaba en el sistema** (hub de documentos + `topic_epigrafe_verification`), no había que pedírselo a nadie.
 - **✅ HECHOS 4 temas · 5 leyes · −2.149 preguntas fuera de programa** (nada borrado: siguen en BD y vuelven con una orden):
@@ -14931,7 +15283,22 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - **T5 · TFUE — recortado, y es el mayor de la oposición: 776 → 202 preguntas (−574).** El temario pide la PRIMERA, SEGUNDA y CUARTA PARTE enteras y, de la TERCERA, solo los Títulos I, II, IV, V, XX y XXIII. 359 → 94 artículos. **Las 574 siguen sirviéndose ÍNTEGRAMENTE en otras oposiciones** (Castilla-La Mancha y La Rioja tienen el TFUE entero), así que no sale nada del banco: solo deja de servirse fuera de programa aquí.
 - **🇪🇺 El TFUE necesitó una vía de extracción PROPIA y conviene reutilizarla:** no está en la API del BOE consolidado (es DOUE), así que se parseó el **espejo del BOE** `DOUE-Z-2010-70002`. Tres cosas que hay que saber: (a) ese documento trae **el TUE y el TFUE juntos** y con el **índice repetido antes del cuerpo**, así que hay que acotar el tramo o se parsea el índice; (b) los **títulos REINICIAN por PARTE** igual que reinician por libro en las leyes-código — buscar "TÍTULO I" en todo el cuerpo devuelve el de la Primera Parte («Categorías y ámbitos de competencias») cuando se pide el de la Tercera («Mercado interior»), y **eso lo cazó la guarda de rúbrica, no yo**; (c) la guarda de cobertura (el parseo debe cubrir los 358 artículos sin huecos) es lo que permite fiarse del resultado.
 - **🧵 CABOS DE ESTA TAREA:** (a) los **15 temas `stale` y 46 scopes NULL** que quedan **ya no los señala ningún detector** — hay que leer el temario oficial tema a tema, como se hizo con el RD 806/2014; (b) el **pseudo-artículo `'0'` de la LECrim con 64 preguntas** (más el de la LO 3/2007 con 9 y el de la Ley 42/2007 con 4) va a **T-139**, se RE-ANCLA, no se reactiva; (c) tras el recorte de la LECrim quedan **156 preguntas sin escopar en ninguna oposición** (88 en huecos parciales de títulos) que son ya territorio de `scope_titulo_huerfano` — **es el efecto esperado de todo recorte grande**, no una regresión.
-- **⏳ QUEDA de `guardia_civil`:** 15 temas con scope `stale` y 46 scopes NULL. Ya no hay candidatos señalados por ningún detector: lo que queda exige leer el temario oficial tema a tema, como se hizo con el RD 806/2014. Y **fuera de `guardia_civil`**: los 12 scopes con epígrafe sin verificar (pasan por el gate de arriba) y los 2 de la Ley 39/2015 en Asturias y Univ. León, que también están sin verificar.
+- **🤖 06/08/2026 (sesión w4, TRABAJADOR de la flota — sin permiso de escritura en la BD de negocio):** se leyeron los 15 temas `stale` uno a uno contra el temario oficial y, para cada ley con scope NULL o parcial, contra su estructura REAL en el BOE (índice de títulos/capítulos, contrastado también con el contenido de los artículos ya en BD — no solo la rúbrica del epígrafe). Resultado: **3 bugs concretos y verificados** (T3, T4, T10) y **12 temas confirmados correctos tal cual** (sin trabajo de scope pendiente). No se ha escrito nada en la BD de negocio — un trabajador de la flota tiene prohibido hacerlo por regla dura — así que queda como **PLAN LISTO PARA APLICAR** por una sesión con `DATABASE_URL` de escritura.
+  - **✅ T3 · Ley 31/1995 (PRL) — DOBLE ERROR, no solo sobre-inclusión.** El epígrafe pide Cap. I, II, III, VI y VII (excluye IV y V). El scope actual (36 arts) además de colarse el Cap. V entero (33-40, **128 preguntas fuera de programa**) **le faltan enteros los Cap. VI-VII** (41-54, **82 preguntas que SÍ son temario** y no se sirven) y el art. 3 (Cap. I). Verificado contra BOE-A-1995-24292 y contra el contenido real (`art.30`="Protección y prevención de riesgos profesionales" abre Cap IV, `art.33`="Consulta de los trabajadores" abre Cap V, `art.41`="Obligaciones de los fabricantes…" abre Cap VI, coincide letra a letra con la rúbrica del epígrafe).
+  - **✅ T4 · LO 3/1981 (Defensor del Pueblo) — sobre-inclusión clásica.** El epígrafe nombra Títulos I, II, III + Disposición Final Única; la ley tiene un **Título IV** ("Medios personales y materiales", arts 34-37) que el epígrafe NO pide y el scope (NULL = ley entera) sirve igualmente: **6 preguntas fuera de programa**. Verificado contra BOE-A-1981-10325 (4 títulos, arts 1-8/9-27/28-33/34-37).
+  - **⚠️ T10 · Ley 40/2015 (LRJSP) — BUG DISTINTO AL PATRÓN DE ESTA TAREA, salió al hacer Paso 2.** No es "toda la ley de más": el scope actual (65 arts: 1-46 + 140-158) YA excluye correctamente el Título II (Sector Público Institucional, que el epígrafe tampoco pide) pero **se queda corto en el propio Título Preliminar** (llega a 46, la ley se extiende hasta el 53) **y OMITE POR COMPLETO el Título I (Administración General del Estado, arts 54-80)**, que el epígrafe SÍ pide expresamente ("TÍTULO I. Administración General del Estado"), más la Disposición Final 3ª. **534 preguntas que SÍ son temario se le niegan al usuario** en los tests de este tema — el mayor hallazgo de esta sesión, y va en la dirección contraria a la que da nombre a la tarea. Verificado contra BOE-A-2015-10566 y contra el contenido real (`art.54` abre Tít. I "AGE", `art.81` abre Tít. II "Sector Público Institucional", `art.140` abre Tít. III "Relaciones interadministrativas" — límites exactos).
+  - **Plan validado mecánicamente (solo lectura, sin escribir nada):** `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/verify-topic-scope.cjs plan guardia_civil scripts/scope/propuestas-guardia_civil-T148-t3-t4-t10.json` clasifica T4 y T10 como `auto_safe` (delta válido, sin errores) y **T3 como `judgment_gate`** (flag `epigrafe_tematico` — el propio clasificador desconfía de exenciones por materia, así que aunque aquí la verificación es sólida y está contrastada contra el BOE y contra el contenido real artículo a artículo, hay que confirmarlo con criterio humano antes de `--include-gate`, tal y como pide la doctrina de este runbook).
+  - **Para aplicar (necesita sesión con permiso de escritura en negocio):**
+    ```
+    node scripts/verify-topic-scope.cjs plan guardia_civil scripts/scope/propuestas-guardia_civil-T148-t3-t4-t10.json
+    node scripts/verify-topic-scope.cjs apply guardia_civil --dry-run   # revisar T4+T10 (auto_safe)
+    node scripts/verify-topic-scope.cjs apply guardia_civil            # aplica T4+T10
+    # T3 exige revisión humana antes de --include-gate (criterio ya escrito en la razón del cambio)
+    ```
+  - **🧵 CABO SUELTO nuevo — T23 · Reglamento (UE) nº 952/2013 (Código Aduanero) NO se puede arreglar por scope.** El epígrafe es selectivo (Títulos I, III, VI, VII con capítulos concretos, excluye II, IV, V y partes de otros) pero en BD **todo el reglamento vive en UN SOLO artículo-contenedor** (`article_number='0'`, 32.764 caracteres, **104 preguntas activas**) sin trocear por título/capítulo — no hay nada que `topic_scope` pueda recortar (recortar el scope no cambia qué preguntas existen si todas cuelgan del mismo contenedor). Haría falta trocear el contenido en artículos reales antes de que este tema sea recortable; queda anotado para quien continúe, no se ha tocado.
+  - **✅ Los 12 temas `stale` restantes (T1, T6, T12, T14, T17-RD4/2010, T18, T19, T20, T21, T22, T23-LO12/1995+RD1649/1998) se leyeron uno a uno y son CORRECTOS TAL CUAL — no hay narrowing que hacer.** Todos son "bloque único"/documento entero sin que el epígrafe acote a títulos o capítulos concretos (p.ej. T1 Derechos Humanos: 11 instrumentos internacionales citados enteros, sin ningún "Título X" que los recorte). **Deliberadamente NO se han sellado como `verified_correct`**: hacerlo sin correr el pipeline real de 2 agentes (`verify-scope-oposicion`) sería exactamente el antipatrón `claude_direct` que este mismo runbook lleva 711 temas denunciando como verde que no respalda nada. Quedan `stale` en BD a propósito, con esta lectura manual como pre-análisis para acelerar el Paso 2 real de quien lo corra.
+  - **Fichero de propuestas en el repo** (rama `sesion/w4`): `scripts/scope/propuestas-guardia_civil-T148-t3-t4-t10.json` — formato compatible con `verify-topic-scope.cjs plan`, cada cambio lleva su `razon` con la cita del BOE y el contraste contra el contenido real.
+- **⏳ QUEDA de `guardia_civil`:** aplicar el plan de arriba (T3 con revisión humana, T4+T10 auto_safe) y luego correr el pipeline real de 2 agentes sobre los 12 temas confirmados a mano para sellarlos `verified_correct` con provenance de verdad. Y **fuera de `guardia_civil`**: los 12 scopes con epígrafe sin verificar (pasan por el gate de arriba) y los 2 de la Ley 39/2015 en Asturias y Univ. León, que también están sin verificar.
 - **MÉTODO (el que funcionó, replicable):** temario oficial del hub → árbol libro›título›capítulo del índice del BOE → **rúbrica VIGENTE de cada bloque verificada** contra el temario (el script ABORTA si una no casa) → guarda de exención por materia sobre los títulos NO pedidos, **salvo los que el temario nombra acotando capítulos** (ahí manda la selección; sin esa excepción el CP recuperaba enteros los Títulos V y XII y se colaban "las costas procesales") → `verify:scope plan/apply`.
 - **NUNCA** recortar por rango numérico ni por cercanía: se recorta por **pertenencia al bloque**, con la rúbrica confirmada en el BOE. Y **NUNCA** teclear a mano el id del BOE de una ley: usar `laws.boe_url`. Me costó una falsa alarma esta misma noche (tecleé el id de la LO 14/2007 *biomédica* creyendo diagnosticar el Estatuto de CyL, que es la otra LO 14/2007).
 
@@ -15079,6 +15446,16 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **⚠️ PERO el recorte NO elimina el trabajo de generación, y conviene no repetir mi error de expectativa:** los huérfanos del RGPD **siguen siendo 54**. Solo **2** de los 49 temas que escopan la ley seguían al 100% (`auxiliar_administrativo_ayuntamiento_marbella` T13 y `auxiliar_administrativo_ayuntamiento_valladolid` T28 — este último escopa los 99 arts para un tema de **transparencia**); los otros 46 ya estaban acotados, así que esos artículos huérfanos **sí están en programa** y hay que escribirlos. **El RGPD vuelve a ser candidato de generación**, con 2.344 usuarios detrás.
 - **Cabos que dejó la medición:** (a) los 2 temas de arriba siguen al 100% y el detector NO los marca (sus epígrafes no llevan marcador de acotación; el de Valladolid habla de transparencia) → adjudicar a mano; (b) **10 temas escopan el RGPD con `article_numbers` VACÍO** (0 arts) — el caso de fila rota que ya documenta CLAUDE.md; (c) el `boe_url` de la ley apunta a EUR-Lex y no al espejo DOUE, como 15 leyes UE más (ya registrado en la campaña de completitud, no se abre ficha nueva).
 - **Ya cubierto, no repetir:** RDL 2/2004 arts 43, 90, 91, 183, 192 (31/07) · Ley 9/2017 arts 137, 138, 140, 142, 146, 148 (31/07) · LO 3/2018 arts 26, 53 bis, 61, 62 (31/07) · LPRL arts 10, 11, 12, 32, 39 · TREBEP (RDL 5/2015) arts 47, 51, 72, 99 · y hay batches de la otra sesión sobre Ley 7/1985 y Ley 9/2017. **Siguientes por ratio con demanda real:** Ley 16/1985 (4 arts · 733 usuarios), Ley 55/2003 (14 · 103), Ley 53/1984 (4 · 304). **Ley 38/2003** (0,57 · 779 usuarios) **es SEGURA pese a aparecer duplicada**: medido el 26/07, su segunda fila (`ley-38-2003-subvenciones`, ya marcada `[DUP-retirado]`) tiene **0 temas y 0 preguntas** → es inerte y no parte nada. (Un aviso anterior de esta ficha decía lo contrario; estaba escrito sin medir. Las duplicadas que SÍ parten trabajo están listadas en **T-127**.)
+- **✅ PRIMER LOTE EN PRODUCCIÓN (05/08, sesión con escritura).** `gen_lo12004_t115_2026-08-05_l1`: **11 preguntas** de LO 1/2004 arts. 33-38 insertadas, aprobadas y **activas**, alcanzando **23 temas** de oposiciones activas. Con **Paso 7 y Paso 9 registrados** en `ai_verification_results` (el trabajador `l1` los había hecho pero no podía escribirlos). Comprobado VIVO: `npm run batch:servido` da **5/5 temas sirviendo el número correcto**.
+  - **Lo que se verificó a mano antes de aprobar, y por qué ahí:** las claves con números de regla, que es el trasplante fácil entre estos preceptos — el art. 33 exige `reglas 1.ª, 2.ª y 5.ª` (TRES) y el art. 35 `reglas 1.ª y 2.ª` (DOS). Contrastadas contra `articles.content`: no se produjo. Una re-verificación adversarial independiente sobre lo ya insertado dio **11/11 limpias** y confirmó ese punto.
+  - **GOTCHA de cierre que cuesta media hora si no se sabe:** cuando `batch:servido` dice «falta propagar», su mensaje manda a *«invalida tags con /api/admin/revalidate»* y **para este endpoint eso no hace nada**. `/api/topics/[numero]` NO usa tags: cachea en Redis con clave propia (`topic_data:<oposicion>:<tema>:<user>`) y **ventana fresca de 5 minutos** (`FRESH_WINDOW_MS`). La MV ya estaba correcta desde el primer refresco. Ocho rondas de invalidación de tags no cambiaron nada; lo único que hacía falta era esperar. **El texto de ayuda del verificador manda a la caché equivocada** y quien lo siga concluirá que el lote está roto.
+- **Quedan 98** de los 104 hallazgos huérfanos originales tras este lote.
+- **Ya cubierto, no repetir:** RDL 2/2004 arts 43, 90, 91, 183, 192 (31/07) · Ley 9/2017 arts 137, 138, 140, 142, 146, 148 (31/07) · LO 3/2018 arts 26, 53 bis, 61, 62 (31/07) · LPRL arts 10, 11, 12, 32, 39 · TREBEP (RDL 5/2015) arts 47, 51, 72, 99 · **LO 1/2004 arts 33-38 (05/08, ver progreso abajo)** · y hay batches de la otra sesión sobre Ley 7/1985 y Ley 9/2017. **Siguientes por ratio con demanda real:** Ley 16/1985 (4 arts · 733 usuarios), Ley 55/2003 (14 · 103), Ley 53/1984 (4 · 304). **Ley 38/2003** (0,57 · 779 usuarios) **es SEGURA pese a aparecer duplicada**: medido el 26/07, su segunda fila (`ley-38-2003-subvenciones`, ya marcada `[DUP-retirado]`) tiene **0 temas y 0 preguntas** → es inerte y no parte nada. (Un aviso anterior de esta ficha decía lo contrario; estaba escrito sin medir. Las duplicadas que SÍ parten trabajo están listadas en **T-127**.)
+
+> **Progreso 05/08 (sesión `l1`) — lote `gen_lo12004_t115_2026-08-05_l1` CERRADO Y VIVO: 11 preguntas, LO 1/2004 arts. 33-38.** Verificado 6/6 contra el BOE vigente, simulación 0 bloqueantes, doble auditoría ciega, `batch:servido` 5/5 temas sirviendo lo esperado en producción (confirmado por revisión independiente, w2-vence-flota, 06/08).
+> - **Corrección de cifra (revisión 06/08): son 23 oposiciones activas, no 26/27.** Las 27 filas tema/oposición que escopan estos artículos son correctas por `topic_scope`+`topics`, pero 4 no cuentan como alcance real hoy: `auxiliar_museos_estado` está `disponible=false`, y **`celador_ics`, `celador_ibsalut` y `administrativo_agencia_tributaria_canaria` no tienen fila en `oposiciones`** (mismo patrón que T-643: `topic_scope` sin la fila ancla). Usar siempre `oposiciones_ssot` (CLAUDE.md: "los lectores leen de aquí, no de `oposiciones` directo"), no `topic_scope`+`topics` a solas, para contar alcance activo.
+> - **La inserción NO la hizo un trabajador — no puede** (confirmado con `has_table_privilege`, T-643): la sesión `l1` dejó el borrador auditado en `scratchpad/t115-l1/` con la nota explícita "Pendiente de inserción (fuera de alcance del rol de trabajador)". Alguien con escritura lo aplicó después. **Vale como patrón a repetir**: un trabajador prepara+audita el borrador, no lo inserta.
+> - **07/08 — resto del diff de `l1` (rama `sesion/l1`, commit `502c2950c`) revisado y su parte de código migrada a `main`:** el test `negocioSoloLectura.test.ts` que la revisión daba por roto **ya estaba arreglado, mejor de lo que `l1` lo dejó, vía [T-624]** (helper puro `lib/db/negocioSoloLectura.cjs` con `resolver()` inyectable — no hacía falta reescribir nada, solo comprobarlo: 10/10 tests verdes contra `origin/main`). Lo que SÍ seguía roto y no cubría T-624: **`huerfanos-plan.cjs`, `verificar-articulos-vs-boe.cjs` y `simular-batch-preinsercion.cjs`** (las tres herramientas que de verdad usa esta campaña) seguían leyendo `DATABASE_URL` a pelo — migradas ahora a `urlLecturaNegocio()`, con smoke test en vivo contra RDS confirmando que un trabajador con solo `VENCE_LECTOR_URL` ya puede planificar/verificar/simular sin permission denied. `huerfanos-plan.cjs` degrada sin `user_profiles` (PII) en vez de morir. **Cabo de plataforma cazado de paso:** `huerfanos-plan.cjs` tenía un `ReferenceError: ley is not defined` en su camino por defecto (`node scripts/huerfanos-plan.cjs` sin flags) — reproducido contra `origin/main` sin tocar nada, `const ley = valor('--ley')` nunca se declaraba. Arreglado. El fix de `.husky/pre-commit` que `l1` traía **ya estaba en `main` vía T-566** (mismo patrón que T-624): no se toca dos veces. `CP` añadido a `siglasSinDesarrollar.js` (Código Penal, se coló sin desarrollar en un lote de la campaña).
 
 ### [T-112] 🟠 [ABIERTO 25/07] Bajar a cero el badge de `/admin/contenido` — campaña de triaje de `content_health_findings`
 - **Qué:** el badge de Salud del contenido está en **210 hallazgos** (tras cerrar 7 el 25/07). NO se baja en una pasada: el 68% (142) es generación de contenido o adjudicación fila-a-fila que no se puede acelerar ni fingir. Esta ficha es el **mapa de campaña** para que cualquier sesión aislada sepa por dónde entrar y con qué runbook. Recordatorio de mecánica: `content_health_findings` es **proyección pura** del sweep nocturno (07:30 UTC, `content-health-sweep.service.ts` hace `TRUNCATE`+rebuild; NO hay columna `status`) → arreglar el dato + verificar que el detector ya no dispara + borrar la fila del finding (el sweep no la re-añade). Todos los detectores → runbook en `lib/admin/runbookRegistry.ts`.

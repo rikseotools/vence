@@ -19,15 +19,12 @@
  *
  * exit 0 = todos coinciden · exit 2 = alguno diverge o no existe en el BOE.
  */
+const fs = require('fs')
 const path = require('path')
 const pg = require('postgres')
-const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', 'lib', 'laws', 'boeBloqueVigente'))
-const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', 'lib', 'laws', 'eurlexConsolidado'))
-const { descargarDocumentoOficial } = require(path.join(__dirname, '..', 'lib', 'laws', 'descargarEurlex.cjs'))
-// [T-115/T-624] Solo LEE articles/laws; leía DATABASE_URL directo de .env.local, así que
-// un trabajador con DATABASE_URL restringido a coordinación (T-539) no podía usarlo aunque
-// tuviera VENCE_LECTOR_URL exportado. Resolución única en lib/db/negocioSoloLectura.cjs (T-624).
-const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib', 'db', 'negocioSoloLectura.cjs'))
+const { bloqueVigente, comparaConBd, mapaBloquesPorArticulo, bloqueDeArticulo, articuloDeDocumento, normalizar } = require(path.join(__dirname, '..', '..', 'lib', 'laws', 'boeBloqueVigente'))
+const { articuloDeEurLex, esIdEurLex, esCelexNoConsolidado } = require(path.join(__dirname, '..', '..', 'lib', 'laws', 'eurlexConsolidado'))
+const { descargarDocumentoOficial } = require(path.join(__dirname, '..', '..', 'lib', 'laws', 'descargarEurlex.cjs'))
 
 const [SLUG, BOE_ID, ...ARTS] = process.argv.slice(2)
 if (!SLUG || !BOE_ID) {
@@ -35,7 +32,8 @@ if (!SLUG || !BOE_ID) {
   process.exit(1)
 }
 
-const url = urlLecturaNegocio()
+const envPath = path.join(__dirname, '..', '..', '.env.local')
+const url = fs.readFileSync(envPath, 'utf8').match(/^VENCE_LECTOR_URL=(.*)$/m)[1].trim()
 const s = pg(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 60 })
 
 const API = 'https://www.boe.es/datosabiertos/api/legislacion-consolidada/id'
