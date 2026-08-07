@@ -29,4 +29,5 @@ export {
   discardPsychometricSession,
   createPsychometricSession,
   completePsychometricSession,
+  getSessionOwnerId,
 } from './queries'

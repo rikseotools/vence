@@ -3,10 +3,17 @@ import { NextResponse } from 'next/server'
 import {
   validateCompleteExamRequest,
   completeExam,
-  verifyTestOwnership
+  getTestOwnerId,
 } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+
+const ENDPOINT = '/api/exam/complete'
+
+// [T-565]: la comprobación era opcional y comparaba contra el `userId` del BODY (lo
+// pone el cliente) — con solo el testId (y opcionalmente el propio id de la víctima,
+// que no es secreto) cualquiera podía finalizar el examen de otra persona.
 async function _POST(request) {
   try {
     const body = await request.json()
@@ -26,16 +33,9 @@ async function _POST(request) {
       )
     }
 
-    // Si se proporciona userId, verificar propiedad del test
-    if (body.userId) {
-      const isOwner = await verifyTestOwnership(data.testId, body.userId)
-      if (!isOwner) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este test' },
-          { status: 403 }
-        )
-      }
-    }
+    const testOwnerId = await getTestOwnerId(data.testId)
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, testOwnerId)
+    if (!identidad.ok) return identidad.response
 
     // Completar el examen
     const result = await completeExam(data.testId, data.force)

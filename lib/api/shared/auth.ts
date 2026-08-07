@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { eq } from 'drizzle-orm'
-import { verifyAuth } from '@/lib/api/auth/verifyAuth'
+import { verifyAuth, verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { emitFireAndForget } from '@/lib/observability/emit'
 
@@ -213,6 +213,58 @@ export async function requireUsuarioPropio(
     email: auth.email,
     impersonadoPor: auth.impersonadoPor ?? null,
   }
+}
+
+// ============================================
+// Propiedad de un recurso que puede ser ANÓNIMO (examen/psicotécnico sin sesión)
+// ============================================
+// [T-565]: la familia de exam/* y psychometric/* comprobaba propiedad así:
+// `if (body.userId) { isOwner = await verifyTestOwnership(testId, body.userId) }`.
+// Dos fallos, no uno: (a) la comprobación era OPCIONAL — bastaba con OMITIR userId
+// para saltársela entera (y varios llamantes reales, como /exam/resume y
+// /exam/progress, YA lo omiten siempre: la comprobación nunca corría); (b) el id
+// contra el que se comparaba lo ponía el CLIENTE, así que aunque se mandara, poner
+// el userId de la VÍCTIMA (no secreto: es su propio id, visible en cualquier
+// pantalla suya) la hacía pasar igual. Con solo el UUID del test se leían las
+// respuestas de otra persona, se completaba su examen o se le cambiaba el cupo.
+//
+// Aquí la identidad sale SIEMPRE de `verifyAuthOptional` (el token, o `null` si de
+// verdad no hay sesión — el examen admite tomarse sin cuenta). Se deja pasar si el
+// recurso no tiene dueño (examen anónimo) o si el dueño coincide con quien pide.
+
+export type PropiedadRecursoResult =
+  | { ok: true; callerUserId: string | null }
+  | { ok: false; response: NextResponse }
+
+/**
+ * @param duenoReal El id del dueño tal como está en BD (no el que afirme el cliente),
+ *   o `null` si el recurso no tiene dueño (anónimo).
+ */
+export async function requireDuenoDelRecurso(
+  request: NextRequest,
+  endpoint: string,
+  duenoReal: string | null,
+): Promise<PropiedadRecursoResult> {
+  const auth = await verifyAuthOptional(request, endpoint)
+  const callerUserId = auth?.userId ?? null
+
+  if (duenoReal !== null && duenoReal !== callerUserId) {
+    console.warn(`🔒 [auth] ${endpoint}: recurso ajeno — bloqueado`)
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'warn',
+      eventType: 'auth_identidad_ajena_rechazada',
+      endpoint,
+      userId: callerUserId ?? undefined,
+      metadata: { duenoReal, motivo: 'recurso_ajeno' },
+    })
+    return {
+      ok: false,
+      response: NextResponse.json({ success: false, error: 'No tienes acceso a este recurso' }, { status: 403 }),
+    }
+  }
+
+  return { ok: true, callerUserId }
 }
 
 // ============================================

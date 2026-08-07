@@ -107,6 +107,11 @@ export type SaveAnswerParams = {
   difficulty?: string | null
   timeSpentSeconds?: number
   confidenceLevel?: string | null
+  /**
+   * Identidad de quien firma la petición (del TOKEN, `null` si es anónimo). Se contrasta
+   * contra el dueño real del test — nunca se toma del cliente. Ver [T-565].
+   */
+  callerUserId?: string | null
 }
 
 export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerResponse> {
@@ -143,6 +148,13 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
       .limit(1)
 
     const testUserId = testInfo[0]?.userId ?? null
+
+    // El test tiene dueño y no es quien firma la petición: bloquear. [T-565] — hasta hoy
+    // esta comprobación vivía en la ruta y era OPCIONAL, comparando contra un userId que
+    // ponía el CLIENTE; bastaba con omitirlo (o con poner el id de la víctima) para saltarla.
+    if (testUserId && testUserId !== (params.callerUserId ?? null)) {
+      return { success: false, error: 'No tienes acceso a este test', reason: 'not_owner' }
+    }
 
     // Si no hay temaNumber, intentar resolverlo
     if (temaNumber == null && (params.questionId || params.articleId)) {
@@ -594,27 +606,32 @@ export async function completeExam(
 // ============================================
 // VERIFICAR PROPIEDAD DEL TEST
 // ============================================
+// `verifyTestOwnership(testId, userId)` vivió aquí hasta [T-565]: tomaba un `userId` que
+// SIEMPRE ponía el llamante, así que solo era tan de fiar como el sitio que lo llamaba —
+// y los cuatro sitios que lo llamaban lo hacían con el `userId` del CLIENTE (body/query),
+// no del token. Se retiró en vez de dejarla muerta: una función con esa forma es una
+// invitación a repetir el mismo agujero. `getTestOwnerId` de abajo es su reemplazo — no
+// devuelve un booleano que alguien pueda comparar mal, devuelve el dueño REAL para que
+// `requireDuenoDelRecurso` lo contraste contra el token.
 
-export async function verifyTestOwnership(
-  testId: string,
-  userId: string
-): Promise<boolean> {
+/**
+ * Dueño real de un test, tal como está en BD — `null` si no existe o es anónimo.
+ * Fuente única para `requireDuenoDelRecurso` en toda la familia `exam/*`: NUNCA
+ * comparar contra un userId que mande el cliente (ver el comentario en
+ * `lib/api/shared/auth.ts`).
+ */
+export async function getTestOwnerId(testId: string): Promise<string | null> {
   try {
     const db = getExamDb()
-
     const result = await db
-      .select({ id: tests.id })
+      .select({ userId: tests.userId })
       .from(tests)
-      .where(and(
-        eq(tests.id, testId),
-        eq(tests.userId, userId)
-      ))
+      .where(eq(tests.id, testId))
       .limit(1)
-
-    return result.length > 0
+    return result[0]?.userId ?? null
   } catch (error) {
-    console.error('Error verificando propiedad:', error)
-    return false
+    console.error('Error obteniendo dueño del test:', error)
+    return null
   }
 }
 

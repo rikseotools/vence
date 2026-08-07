@@ -185,6 +185,26 @@ export async function getResumedPsychometricSessionData(
 }
 
 /**
+ * Dueño real de una sesión psicotécnica, `null` si no existe o es anónima. Fuente
+ * única para `requireDuenoDelRecurso` — NUNCA comparar contra un userId que mande
+ * el cliente [T-565].
+ */
+export async function getSessionOwnerId(sessionId: string): Promise<string | null> {
+  try {
+    const db = getPsychSessionDb()
+    const [row] = await db
+      .select({ userId: psychometricTestSessions.userId })
+      .from(psychometricTestSessions)
+      .where(eq(psychometricTestSessions.id, sessionId))
+      .limit(1)
+    return row?.userId ?? null
+  } catch (error) {
+    console.error('Error obteniendo dueño de la sesión psicotécnica:', error)
+    return null
+  }
+}
+
+/**
  * Descarta una sesión psicotécnica (marca completed_at sin is_completed).
  */
 export async function discardPsychometricSession(

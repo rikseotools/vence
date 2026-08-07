@@ -3,16 +3,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   safeParseResumeExamRequest,
   getResumedExamData,
-  verifyTestOwnership,
+  getTestOwnerId,
 } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import { getAdminDb } from '@/db/client'
 import { questions, articles, laws } from '@/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 
+const ENDPOINT = '/api/exam/resume'
+
+// SIN esto la guarda de abajo NO PROTEGE — mismo gotcha que en
+// app/api/tests/[testId]/review/route.ts: un GET sin declarar `dynamic` es candidato a
+// servirse desde la caché de rutas de Next antes de que el código de autenticación corra.
+export const dynamic = 'force-dynamic'
+
 /**
- * GET /api/exam/resume?testId=...&userId=...
+ * GET /api/exam/resume?testId=...
  *
  * Obtiene datos completos para reanudar un examen.
  * Lee question_ids de tests.questionsMetadata (path nuevo) o
@@ -20,22 +28,25 @@ import { withErrorLogging } from '@/lib/api/withErrorLogging'
  *
  * Query params:
  * - testId: string (UUID, requerido)
- * - userId: string (UUID, opcional para verificar ownership)
  *
  * Returns:
  * - success: boolean
  * - testId, temaNumber, totalQuestions, answeredCount
  * - questions: preguntas completas (sin correct_option)
- * - savedAnswers: { [index]: answer } para respuestas ya dadas
+ * - savedAnswers: { [index]: answer } para respuestas ya dadas — LAS DEL DUEÑO DEL TEST
+ *
+ * [T-565]: hasta hoy la propiedad solo se comprobaba si la query traía `userId` — y su
+ * ÚNICO llamante real (TestExamenPage) nunca lo manda, así que la comprobación NUNCA
+ * corría en producción. Con solo el UUID del test (viaja en la URL) se leían el examen
+ * entero y las respuestas YA DADAS de cualquiera.
  */
 async function _GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const testId = searchParams.get('testId')
-    const userId = searchParams.get('userId')
 
     // Validar con Zod
-    const parseResult = safeParseResumeExamRequest({ testId, userId: userId || undefined })
+    const parseResult = safeParseResumeExamRequest({ testId })
 
     if (!parseResult.success) {
       return NextResponse.json(
@@ -47,18 +58,11 @@ async function _GET(request: NextRequest) {
       )
     }
 
-    const { testId: validTestId, userId: validUserId } = parseResult.data
+    const { testId: validTestId } = parseResult.data
 
-    // Si se proporciona userId, verificar propiedad
-    if (validUserId) {
-      const isOwner = await verifyTestOwnership(validTestId, validUserId)
-      if (!isOwner) {
-        return NextResponse.json(
-          { success: false, error: 'No tienes acceso a este examen' },
-          { status: 403 }
-        )
-      }
-    }
+    const testOwnerId = await getTestOwnerId(validTestId)
+    const identidad = await requireDuenoDelRecurso(request, ENDPOINT, testOwnerId)
+    if (!identidad.ok) return identidad.response
 
     // Obtener datos del examen (metadata o legacy)
     const examData = await getResumedExamData(validTestId)

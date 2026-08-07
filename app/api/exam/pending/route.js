@@ -2,32 +2,30 @@
 import { NextResponse } from 'next/server'
 import { getPendingExams } from '@/lib/api/exam'
 import { getOrSet } from '@/lib/cache/redis'
+import { requireUsuarioPropio } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 export const maxDuration = 30
 
+const ENDPOINT = '/api/exam/pending'
+
+// SIN esto la guarda de abajo NO PROTEGE — mismo gotcha que en
+// app/api/tests/[testId]/review/route.ts.
+export const dynamic = 'force-dynamic'
+
+// [T-565]: la lista de exámenes pendientes (con temaNumber, progreso…) se leía con
+// solo el UUID de cualquiera en la query, sin sesión. Los tres llamantes reales
+// (UserAvatar, Header, PendingExams) siempre piden la lista propia.
 async function _GET(request) {
   const startTime = Date.now()
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const rawUserId = searchParams.get('userId')
     const testType = searchParams.get('testType')
     const limitParam = searchParams.get('limit')
 
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'userId es requerido' },
-        { status: 400 }
-      )
-    }
-
-    // Validar UUID básico
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(userId)) {
-      return NextResponse.json(
-        { success: false, error: 'userId inválido' },
-        { status: 400 }
-      )
-    }
+    const identidad = await requireUsuarioPropio(request, ENDPOINT, rawUserId)
+    if (!identidad.ok) return identidad.response
+    const userId = identidad.userId
 
     // Validar testType si se proporciona
     if (testType && testType !== 'exam' && testType !== 'practice') {

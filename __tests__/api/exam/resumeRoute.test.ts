@@ -7,7 +7,14 @@
 jest.mock('@/lib/api/exam', () => ({
   safeParseResumeExamRequest: jest.fn(),
   getResumedExamData: jest.fn(),
-  verifyTestOwnership: jest.fn(),
+  getTestOwnerId: jest.fn(),
+}))
+
+// [T-565]: la propiedad se comprueba con `requireDuenoDelRecurso` (dueño real de BD,
+// vía `getTestOwnerId` arriba, contra la identidad del TOKEN — nunca contra un userId
+// que mande el cliente). Se mockea para controlar el veredicto por test.
+jest.mock('@/lib/api/shared/auth', () => ({
+  requireDuenoDelRecurso: jest.fn(),
 }))
 
 // El route fue migrado a Drizzle: getAdminDb().select({...}).from(questions)
@@ -86,8 +93,9 @@ import { GET } from '@/app/api/exam/resume/route'
 import {
   safeParseResumeExamRequest,
   getResumedExamData,
-  verifyTestOwnership,
+  getTestOwnerId,
 } from '@/lib/api/exam'
+import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import type { NextRequest } from 'next/server'
 
 const TEST_ID = '11111111-1111-1111-1111-111111111111'
@@ -106,6 +114,9 @@ function createRequest(params: Record<string, string>): NextRequest {
 describe('/api/exam/resume', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    // Por defecto, dueño → identidad ok. Los tests de Auth lo sobrescriben.
+    ;(getTestOwnerId as jest.Mock).mockResolvedValue(null)
+    ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({ ok: true, callerUserId: null })
   })
 
   describe('Validación', () => {
@@ -159,26 +170,54 @@ describe('/api/exam/resume', () => {
   })
 
   describe('Auth', () => {
-    it('userId que no es owner retorna 403', async () => {
+    it('quien no es el dueño del test recibe 403', async () => {
       ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({
         success: true,
-        data: { testId: TEST_ID, userId: USER_ID },
+        data: { testId: TEST_ID },
       })
-      ;(verifyTestOwnership as jest.Mock).mockResolvedValue(false)
+      ;(getTestOwnerId as jest.Mock).mockResolvedValue(USER_ID)
+      ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({
+        ok: false,
+        response: { status: 403, json: async () => ({ success: false, error: 'No tienes acceso a este recurso' }) },
+      })
 
-      const res = await GET(createRequest({ testId: TEST_ID, userId: USER_ID }))
+      const res = await GET(createRequest({ testId: TEST_ID }))
       const data = await res.json()
 
       expect(res.status).toBe(403)
       expect(data.success).toBe(false)
     })
 
-    it('owner tiene acceso', async () => {
+    // [T-565] — regresión del agujero real: hasta el arreglo, `resume` solo comprobaba
+    // propiedad si la QUERY traía `userId`, y su único llamante real (TestExamenPage)
+    // nunca lo manda — la comprobación no corría NUNCA en producción. Aquí se simula
+    // exactamente eso: sin userId en la query, con un test que SÍ tiene dueño real, y
+    // `requireDuenoDelRecurso` (que ya no depende de la query) sigue cortando.
+    it('sin userId en la query, un test con dueño sigue exigiendo identidad', async () => {
       ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({
         success: true,
-        data: { testId: TEST_ID, userId: USER_ID },
+        data: { testId: TEST_ID },
       })
-      ;(verifyTestOwnership as jest.Mock).mockResolvedValue(true)
+      ;(getTestOwnerId as jest.Mock).mockResolvedValue(USER_ID)
+      ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({
+        ok: false,
+        response: { status: 403, json: async () => ({ success: false, error: 'No tienes acceso a este recurso' }) },
+      })
+
+      const res = await GET(createRequest({ testId: TEST_ID }))
+
+      expect(res.status).toBe(403)
+      expect(getTestOwnerId).toHaveBeenCalledWith(TEST_ID)
+      expect(requireDuenoDelRecurso).toHaveBeenCalledWith(expect.anything(), '/api/exam/resume', USER_ID)
+    })
+
+    it('el dueño tiene acceso', async () => {
+      ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({
+        success: true,
+        data: { testId: TEST_ID },
+      })
+      ;(getTestOwnerId as jest.Mock).mockResolvedValue(USER_ID)
+      ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({ ok: true, callerUserId: USER_ID })
       ;(getResumedExamData as jest.Mock).mockResolvedValue({
         success: true,
         testId: TEST_ID,
@@ -190,7 +229,31 @@ describe('/api/exam/resume', () => {
         ],
       })
 
-      const res = await GET(createRequest({ testId: TEST_ID, userId: USER_ID }))
+      const res = await GET(createRequest({ testId: TEST_ID }))
+      const data = await res.json()
+
+      expect(data.success).toBe(true)
+    })
+
+    it('un examen anónimo (sin dueño) se puede reanudar sin sesión', async () => {
+      ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({
+        success: true,
+        data: { testId: TEST_ID },
+      })
+      ;(getTestOwnerId as jest.Mock).mockResolvedValue(null)
+      ;(requireDuenoDelRecurso as jest.Mock).mockResolvedValue({ ok: true, callerUserId: null })
+      ;(getResumedExamData as jest.Mock).mockResolvedValue({
+        success: true,
+        testId: TEST_ID,
+        temaNumber: 1,
+        totalQuestions: 1,
+        answeredCount: 0,
+        questions: [
+          { questionOrder: 1, questionId: Q1_ID, userAnswer: null, correctAnswer: '', questionText: '' },
+        ],
+      })
+
+      const res = await GET(createRequest({ testId: TEST_ID }))
       const data = await res.json()
 
       expect(data.success).toBe(true)
