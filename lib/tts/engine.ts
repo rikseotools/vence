@@ -65,6 +65,27 @@ const VOICES_LOAD_TIMEOUT_MS = 3_000
  */
 const MAX_CONSECUTIVE_CHUNK_ERRORS = 5
 
+/**
+ * `window.speechSynthesis.getVoices()` sin blindar — [T-161]. Medido: los 15/15
+ * `react_error_boundary` con `Object.getPrototypeOf(voice)` desde 14/07 a 05/08 son
+ * TODOS Brave (su protección anti-fingerprinting sustituye `getVoices()` por un shim
+ * propio, `makeFakeVoiceFromVoice`, que a veces lanza por su cuenta — bug del shim,
+ * no nuestro). El throw viajaba sin atrapar hasta el commit de React y tumbaba el
+ * árbol entero por el error boundary de la página. Degradar a "sin voces" (estado ya
+ * manejado en todo el engine) es el lado seguro: una extensión de terceros rota no
+ * puede dejar la pantalla en blanco.
+ */
+export function safeGetVoices(): SpeechSynthesisVoice[] {
+  try {
+    return window.speechSynthesis.getVoices()
+  } catch (error) {
+    ttsTelemetry.voicesApiThrew({
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return []
+  }
+}
+
 export interface TTSLastError {
   errorType: string
   atChunkIdx: number
@@ -296,7 +317,7 @@ export class TTSEngine {
       this.sessionErrorEmitted = false
       this.sessionStartTime = Date.now()
 
-      const voices = window.speechSynthesis.getVoices()
+      const voices = safeGetVoices()
       const esVoices = voices.filter((v) => v.lang.startsWith('es'))
       if (esVoices.length === 0) {
         this.handleNoVoicesAtPlay(voices.length === 0)
@@ -330,7 +351,7 @@ export class TTSEngine {
     this.sessionErrorEmitted = false
     this.sessionStartTime = Date.now()
 
-    const voices = window.speechSynthesis.getVoices()
+    const voices = safeGetVoices()
     const esVoices = voices.filter((v) => v.lang.startsWith('es'))
     if (esVoices.length === 0) {
       this.handleNoVoicesAtPlay(voices.length === 0)
@@ -444,7 +465,7 @@ export class TTSEngine {
       return
     }
     // Hay voces pero ninguna en español → telemetría y volver a idle
-    const total = window.speechSynthesis.getVoices().length
+    const total = safeGetVoices().length
     ttsTelemetry.noVoices({
       totalVoices: total,
       spanishVoices: 0,
@@ -807,7 +828,7 @@ export class TTSEngine {
         window.speechSynthesis.removeEventListener('voiceschanged', handler)
         return
       }
-      const voices = window.speechSynthesis.getVoices()
+      const voices = safeGetVoices()
       const esVoices = voices.filter((v) => v.lang.startsWith('es'))
       if (esVoices.length > 0) {
         window.speechSynthesis.removeEventListener('voiceschanged', handler)
@@ -847,7 +868,7 @@ export class TTSEngine {
       window.speechSynthesis.removeEventListener('voiceschanged', handler)
       ttsTelemetry.voicesLoadTimeout({ waitedMs: Date.now() - startedAt })
       // Última oportunidad: leemos getVoices() por si el evento nunca disparó
-      const voices = window.speechSynthesis.getVoices()
+      const voices = safeGetVoices()
       const esVoices = voices.filter((v) => v.lang.startsWith('es'))
       if (esVoices.length > 0) {
         if (!this.transitionTo({ type: 'VOICES_LOADED' })) return
@@ -872,7 +893,7 @@ export class TTSEngine {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return null
     }
-    const voices = window.speechSynthesis.getVoices()
+    const voices = safeGetVoices()
     if (this.voiceURI) {
       const found = voices.find((v) => v.voiceURI === this.voiceURI)
       if (found) return found

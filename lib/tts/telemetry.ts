@@ -237,6 +237,21 @@ export const ttsTelemetry = {
     })
   },
 
+  // [T-161] `speechSynthesis.getVoices()` LANZANDO, no devolviendo vacío — la API
+  // está presente pero un shim de terceros (medido: Brave, anti-fingerprinting)
+  // la sustituye por una versión rota. Evento propio y no `unsupported()` a
+  // propósito: son causas distintas (API ausente vs. API presente pero rota) y
+  // conflatarlas escondería la señal de que esto es un problema de terceros, no
+  // de soporte de navegador.
+  voicesApiThrew(meta: { message: string }): void {
+    emitClientEvent({
+      severity: 'warn',
+      eventType: 'tts_voices_api_threw',
+      errorMessage: meta.message,
+      metadata: enrichMeta({}),
+    })
+  },
+
   userAction(meta: TTSUserActionMeta): void {
     emitClientEvent({
       severity: 'debug',
