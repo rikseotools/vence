@@ -981,6 +981,20 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-647] 🟠 [ABIERTO 07/08] El VPS de la flota se queda sin memoria: 20 OOM en 6 h matando turnos de trabajadores y al propio supervisor
+
+- **ES LA CAUSA DE FONDO DE TODA LA MAÑANA DEL 07/08**, y no la encontró ninguno de los arreglos de [T-642] — la encontró mirar por qué el supervisor había cambiado de PID. `journalctl` en `flota-1`: **20 eventos OOM en 6 horas**, matando `claude.exe` (los turnos de los trabajadores) y `node` (el propio supervisor, con `Failed with result 'oom-kill'` a las 10:28:57).
+- **Qué explica, que es casi todo lo de esa mañana:** los trabajadores «perdían su sesión de tmux» y desaparecían del mapa cada pocos minutos; el supervisor moría y volvía solo. Se atribuyó a fallos de andamiaje —y esos fallos EXISTÍAN y están arreglados—, pero **lo que mataba a los procesos era el núcleo por falta de memoria**. Sin esto, la flota seguirá cayéndose por más resiliente que sea el supervisor: lo que hay ahora es una máquina que se recupera bien de algo que no debería pasar.
+- **La máquina:** Hetzner cx33, 4 núcleos, **7,7 GB de RAM y CERO swap** (`swapon --show` vacío). Corre **4 trabajadores** de Claude Code a la vez, y cada turno abre además `jest` con varios workers. En reposo se ve holgada (2,5 GB usados, 5,1 disponibles): **el problema son los PICOS**, no la media — por eso no se ve mirando el panel, solo en el registro del núcleo.
+- **⚠️ NO se resuelve subiendo la resiliencia del supervisor.** `Restart=always` y la reanimación de sesiones de [T-642] hacen que todo VUELVA, y son correctos; pero cada muerte se lleva por delante el turno en curso —trabajo sin commitear incluido— y eso no lo repara ningún reinicio.
+- **Tres caminos, y la decisión de cuál es de Manuel** (toca su servidor y, dos de ellos, la factura):
+  1. **Swap** (4-8 GB en fichero). Gratis, reversible en un comando, absorbe los picos sin tocar nada más. Es lo que hace cualquier máquina con esta forma de carga. **Recomendado como primer paso** porque no cambia el reparto ni el coste.
+  2. **Bajar a 3 trabajadores concurrentes.** Gratis y seguro, pero baja el rendimiento de la flota un 25 %.
+  3. **Subir la máquina** (cx43: 8 núcleos, 16 GB). Resuelve de raíz y cuesta dinero.
+- **Y una cuarta, acumulable con cualquiera:** acotar `jest` dentro de los turnos (`--maxWorkers`). Un `npm run test:unit` con los workers por defecto abre uno por núcleo y multiplica el pico justo cuando hay cuatro turnos a la vez. Es la fuente de pico más probable y la más barata de acotar.
+- **Cómo re-medirlo sin adivinar:** `journalctl --since '-6h' | grep -ciE 'out of memory|oom-kill'` en `flota-1` (cuántos), y `journalctl … | grep -oE 'Killed process [0-9]+ \(([^)]+)\)'` (a quién). Si tras el arreglo elegido eso baja a 0 durante un día entero de flota, está resuelto; si no, no.
+- **Relacionadas:** [T-642] (los fallos de observación que esto disfrazaba de averías del andamiaje), [T-486] (el piloto de flota y la máquina).
+
 ### [T-642] 🟠 [ABIERTO 07/08] El vigía canta «↻ retoma» aunque el turno muera al instante: nadie mira si el trabajador llegó a arrancar, y una cuenta con el límite semanal agotado es invisible
 
 - **MEDIDO HOY (07/08, 06:40-07:05 UTC), no supuesto.** `w1` y `w3` llevaban **3 horas** con su tarea cogida (T-548, T-562) y sin hacer nada, mientras el vigía imprimía cada 5 minutos `↻ w1 retoma T-548` y `↻ w3 retoma T-562` como si el relanzamiento hubiera funcionado. Al mirar el panel con `tmux capture-pane` aparecía la causa, repetida una vez por cada intento: **`You've hit your weekly limit · resets 11pm (UTC)`**. El proceso moría en menos de un segundo y el supervisor lo contaba como éxito.
