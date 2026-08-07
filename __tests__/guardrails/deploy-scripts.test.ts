@@ -647,40 +647,58 @@ describe('backlog — el despertar no depende del worktree de quien despliega (T
 })
 
 /**
- * «No despliegues desde donde trabajas» (T-365, 31/07/2026).
+ * «No despliegues desde donde trabajas» (T-365, 31/07/2026) EXISTIÓ hasta T-385 F3 y ya no existe
+ * en NINGUNO de los tres caminos de despliegue. Se deja escrito aquí en vez de borrarlo sin más,
+ * porque la diferencia importa: **no se relajó, se volvió innecesaria**.
  *
- * Todo camino de despliegue mueve el árbol en el que corre. Si se lanza desde el worktree en el que
- * alguien está programando, le cambia los ficheros debajo — y el lanzador, además, le deja la rama
- * en el commit que hubiera al hacer el `fetch`.
+ * La guarda (`scripts/lib/guardia-worktree.sh`, BORRADO en T-385 F3) protegía el árbol de quien
+ * lanzaba el deploy de un `git reset --hard origin/main` que este mismo script ejecutaba encima.
+ * Con los tres caminos de solo lectura sobre el git local —los dos scripts de deploy construyen en
+ * un árbol efímero propio (F1/F2) y `deploy-cuando-verde.sh` lee `origin/main` con `git rev-parse`
+ * en vez de resetear (F3)— no hay ningún árbol que proteger: se puede lanzar CUALQUIERA de los tres
+ * desde CUALQUIER worktree, incluido uno con trabajo sin commitear.
  *
- * Este test existe porque el arreglo se hizo DOS veces mal antes de quedar bien, y las dos son
- * fáciles de repetir:
- *   1. la comprobación miraba una RUTA (`~/vence-sessions/*`) y se le escapaba `session-start.sh`,
- *      que crea los worktrees en `.claude/worktrees/`;
- *   2. y se coló dentro de un `[ -f ./.env.local ] && { … }`, así que solo corría a veces.
- * Por eso aquí se exige lo concreto: que TODO script de despliegue cargue la guarda compartida.
+ * Con ella cayeron TAMBIÉN dos guardas que solo existían para no perder trabajo en ese mismo reset:
+ * el aborto por árbol sucio y `lib/deploy/commitsSinEmpujar.cjs` (árbol limpio con commits sin
+ * empujar, T-443 punto 6) — las dos vivían SOLO en `deploy-cuando-verde.sh`, y con él ambas se
+ * volvieron igual de innecesarias. Su simulación (`sim-reset-commits.cjs`) y su test dedicado
+ * (`guardiaWorktreePrincipalInservible.test.ts`, T-436/T-437) se borraron con ellas: probaban un
+ * comportamiento que ya no existe en ningún sitio, no un caso menos frecuente.
  */
-describe('guardia de worktree en los caminos de despliegue', () => {
+describe('deploy — el árbol del lanzador ya no importa para NADA (T-385 F3)', () => {
   const CAMINOS = ['deploy-frontend.sh', 'deploy-backend.sh', 'deploy-cuando-verde.sh']
+  // Sin comentarios: el propio fichero EXPLICA la historia citando `git reset --hard`, `árbol
+  // SUCIO`, etc. — lo que no puede quedar es el CÓDIGO, no la palabra.
+  const cuandoVerde = readFileSync(join(ROOT, 'scripts/deploy-cuando-verde.sh'), 'utf-8')
+    .split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
 
-  it.each(CAMINOS)('%s carga la guarda compartida', (nombre) => {
+  it.each(CAMINOS)('%s: sin la guarda de worktree ni el fichero que la implementaba', (nombre) => {
     const src = readFileSync(join(ROOT, 'scripts', nombre), 'utf-8')
-    expect(src).toContain('lib/guardia-worktree.sh')
-    expect(src).toMatch(/guardia_worktree +"/)
+    expect(src).not.toContain('lib/guardia-worktree.sh')
+    expect(src).not.toMatch(/guardia_worktree/)
   })
 
-  it('la guarda decide por GIT, no por una ruta (una ruta se esquiva moviendo la carpeta)', () => {
-    const g = readFileSync(join(ROOT, 'scripts/lib/guardia-worktree.sh'), 'utf-8')
-    expect(g).toContain('--git-common-dir')
-    // Lo que se prohíbe es DECIDIR por la ruta, no nombrarla: el comentario que explica por qué la
-    // primera versión (que miraba `~/vence-sessions/*`) estaba mal es justo lo que hay que conservar.
-    expect(g).not.toMatch(/case\s+"\$PWD/)
-    expect(g).not.toMatch(/\$HOME\/vence-sessions/)
+  it('el fichero de la guarda ya no existe en el repo (no solo se dejó de invocar)', () => {
+    const todosLosScripts = readdirSync(join(ROOT, 'scripts/lib'))
+    expect(todosLosScripts).not.toContain('guardia-worktree.sh')
   })
 
-  it('ningún script de despliegue nuevo se queda sin ella', () => {
-    const todos = readdirSync(join(ROOT, 'scripts')).filter((f) => /^deploy-.*\.sh$/.test(f))
-    const sinGuarda = todos.filter((f) => !readFileSync(join(ROOT, 'scripts', f), 'utf-8').includes('guardia-worktree.sh'))
-    expect(sinGuarda).toEqual([])
+  it('deploy-cuando-verde.sh: sin `reset --hard`, sin el aborto por árbol sucio, sin commitsSinEmpujar', () => {
+    expect(cuandoVerde).not.toMatch(/git reset --hard/)
+    expect(cuandoVerde).not.toMatch(/árbol SUCIO/)
+    expect(cuandoVerde).not.toMatch(/status --porcelain --untracked-files=no/)
+    expect(cuandoVerde).not.toMatch(/commitsSinEmpujar/)
+    expect(cuandoVerde).not.toMatch(/DEPLOY_RESET_OK/)
+  })
+
+  it('deploy-cuando-verde.sh: el SHA de origin/main se LEE, no se materializa en el árbol', () => {
+    expect(cuandoVerde).toMatch(/SHA=\$\(git rev-parse origin\/main\)/)
+  })
+
+  it('ni commitsSinEmpujar.cjs ni su simulación siguen en el repo (protegían un reset que ya no existe)', () => {
+    const libDeploy = readdirSync(join(ROOT, 'lib/deploy'))
+    expect(libDeploy).not.toContain('commitsSinEmpujar.cjs')
+    const scriptsDeploy = readdirSync(join(ROOT, 'scripts/deploy'))
+    expect(scriptsDeploy).not.toContain('sim-reset-commits.cjs')
   })
 })
