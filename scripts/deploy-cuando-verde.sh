@@ -46,31 +46,18 @@ VUELTAS="${2:-12}"
 # que la acota de verdad es que el bucle para en el primer verde, no el número.
 VENTANA_VERDE="${VENTANA_VERDE:-150}"
 
-# ── DÓNDE se lanza esto IMPORTA (T-364, 31/07/2026) ───────────────────────────────────────
-# Este script hace `git reset --hard origin/main` en el árbol desde el que se ejecuta, y lo hace
-# EN CADA VUELTA (hasta 12), porque despliega exactamente el SHA cuyo CI ha verificado. Eso está
-# bien para su trabajo y mal para el tuyo si lo lanzas desde el worktree en el que estás
-# programando: **te mueve el HEAD debajo de los pies**, aparecen y desaparecen ficheros según la
-# vuelta, y los commits locales que no hayas pusheado se descartan de la rama (quedan en el reflog,
-# pero hay que saber ir a buscarlos).
+# ── DÓNDE se lanza esto (T-364, 31/07/2026 → retirado en T-385 F3) ────────────────────────
+# Hasta T-385 F3 este script hacía `git reset --hard origin/main` EN CADA VUELTA sobre el árbol
+# desde el que se ejecutaba —te movía el HEAD debajo de los pies, y los commits locales sin
+# empujar se descartaban de la rama (quedaban en el reflog, pero había que saber ir a buscarlos)—,
+# así que necesitaba lanzarse desde un árbol sin trabajo en curso (el repo principal) y negarse a
+# correr si estaba sucio.
 #
-# Lo que NO hace, para que nadie lo suponga: no se lleva por delante cambios sin commitear — se
-# niega a correr con el árbol sucio, unas líneas más abajo. El daño es el otro.
-#
-# Y ojo, que PUSHEAR NO TE PROTEGE EL PUNTERO: `fetch` y `reset` son dos pasos, así que un push que
-# entre entre medias deja el reset apuntando a la referencia recién traída —un commit anterior— y tu
-# rama se queda ahí. El trabajo está a salvo en el remoto; lo que se mueve es tu árbol. Reconstruido
-# con el reflog el 31/07: `reset: moving to origin/main` justo detrás del commit ya pusheado.
-#
-# Caso real: una sesión lanzó el deploy desde su propio worktree, siguió trabajando, y a la vuelta
-# 4 se encontró la rama en un commit anterior y un fichero recién creado «desaparecido». No se
-# perdió nada porque ya estaba pusheado, pero el susto y el rato de investigación sí.
-#
-# Por eso: se despliega desde el REPO PRINCIPAL, que no tiene trabajo en curso. El script sigue a
-# `origin/main` de todas formas, así que tu rama no pinta nada aquí.
-ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
-. "$(dirname "$0")/lib/guardia-worktree.sh"
-guardia_worktree "hace 'git reset --hard origin/main' en CADA vuelta y dejaría tu rama en el commit que hubiera al hacer el fetch"
+# Ya no: el SHA de `origin/main` se lee con `git rev-parse` (dos líneas más abajo), sin tocar el
+# working tree para nada. El script entero, de aquí en adelante, es de SOLO LECTURA sobre el git
+# local (`fetch`, `rev-list`, `merge-base`, `cat-file`) — puede lanzarse desde CUALQUIER worktree,
+# incluido uno con trabajo sin commitear, porque no hay nada que resetear ni árbol que ensuciar.
+# Ver `deploy-scripts.test.ts` (describe "guardia de worktree — retirada").
 case "$QUE" in
   backend|frontend) SCRIPT="scripts/deploy-${QUE}.sh" ;;
   *) echo "uso: $0 backend|frontend [vueltas]"; exit 2 ;;
@@ -145,41 +132,12 @@ ya_esta_vivo() {  # $1=sha objetivo -> 0 si el vivo ya lo contiene
 
 for v in $(seq 1 "$VUELTAS"); do
   git fetch origin -q
-  # SOLO lo trackeado (T-366). Lo que este bucle puede destruir es trabajo sin commitear de
-  # ficheros YA trackeados, porque acto seguido hace `reset --hard`: eso sí hay que proteger.
-  # Los ficheros SIN trackear sobreviven intactos a un `reset --hard` —los borraría un `git clean`,
-  # que aquí no se usa— y `deploy-{frontend,backend}.sh` ya los tolera con este mismo flag. Con
-  # 2-10 sesiones compartiendo checkout, el scratch ajeno (`scratchpad/tNNN/`, ajustes locales)
-  # está SIEMPRE ahí, así que contarlo dejaba el lanzador inservible justo cuando más falta hace:
-  # cuando hay trabajo de varias sesiones esperando un deploy.
-  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    echo "❌ árbol SUCIO: el build usa el working tree, así que no toco nada. Commitea o descarta y reintenta."
-    git status --short --untracked-files=no | head -5
-    exit 1
-  fi
-  # Y el hermano que faltaba (T-443 punto 6): un árbol LIMPIO puede tener commits que aún no
-  # están en origin/main. `git status` sale impecable y el `reset --hard` de abajo se los lleva
-  # EN SILENCIO. Pasó dos veces el 05/08/2026 en el checkout compartido —la segunda con el
-  # lanzador de otra sesión, arrancado 97 s antes—: basta con commitear mientras alguien
-  # despliega. Criterio puro y testeado en lib/deploy/commitsSinEmpujar.cjs.
-  POR_DELANTE=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "")
-  RESUMEN=$(git log --oneline origin/main..HEAD 2>/dev/null | head -5)
-  VEREDICTO=$(POR_DELANTE="$POR_DELANTE" RESUMEN="$RESUMEN" node -e '
-    const { puedeResetear } = require("./lib/deploy/commitsSinEmpujar.cjs");
-    const n = process.env.POR_DELANTE === "" ? null : Number(process.env.POR_DELANTE);
-    const r = puedeResetear({
-      commitsPorDelante: n,
-      resumenCommits: (process.env.RESUMEN || "").split("\n").filter(Boolean),
-      escape: process.env.DEPLOY_RESET_OK || "",
-    });
-    process.stdout.write((r.permite ? "OK" : "STOP") + "\n" + r.mensaje);
-  ' 2>/dev/null) || VEREDICTO="OK"     # fail-open si node no arranca: no es este el guardián del deploy
-  [ -n "${VEREDICTO#OK}" ] && printf '%s\n' "${VEREDICTO#OK}" | sed '/^$/d'
-  case "$VEREDICTO" in
-    STOP*) exit 1 ;;
-  esac
-  git reset --hard origin/main -q
-  SHA=$(git rev-parse HEAD)
+  # T-385 F3: antes, aquí se hacía `git reset --hard origin/main` sobre el árbol del lanzador, así
+  # que hacían falta DOS guardas para no destruir trabajo ajeno — árbol sucio (ficheros trackeados
+  # con cambios) y árbol limpio con commits sin empujar (T-443 punto 6, `commitsSinEmpujar.cjs`).
+  # Sin reset no hay nada que destruir: se lee el SHA de `origin/main` directamente, de solo
+  # lectura, y el estado del working tree de quien lanza esto deja de importarle a este script.
+  SHA=$(git rev-parse origin/main)
   echo "══ vuelta $v/$VUELTAS — siguiendo ${SHA:0:9}"
 
   # Antes de gastar una vuelta: ¿lo ha desplegado ya otra sesión? (T-386)

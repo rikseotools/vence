@@ -18,14 +18,11 @@
 #             --task-definition vence-frontend:<N> --profile vence --region eu-west-2
 set -euo pipefail
 
-# No despliegues desde donde trabajas (T-365). Va AQUÍ, lo primero y fuera de cualquier
-# condicional: el primer intento se coló dentro de un `[ -f ./.env.local ] && { … }`, así que la
-# guarda dependía de que existiera ese fichero y corría después de cargar el entorno. Una guarda
-# que se ejecuta a veces no es una guarda.
-ARGS_ORIGINALES="$*"   # para que el mensaje de la guarda sugiera el comando de verdad
-. "$(dirname "$0")/lib/guardia-worktree.sh"
+# La guarda «no despliegues desde donde trabajas» (T-365) vivió AQUÍ hasta T-385 F3: existía
+# porque este script resincronizaba TU árbol con `origin/main`. Desde que construye en un árbol
+# PROPIO y efímero (dos líneas más abajo) ya no toca el tuyo — no se relajó, dejó de tener objeto.
+# Ver `deploy-scripts.test.ts` (describe "guardia de worktree — retirada").
 . "$(dirname "$0")/lib/comprobar-secretos-permitidos.sh"
-guardia_worktree "resincroniza tu árbol con origin/main cuando va por detrás"
 # Construir en un árbol PROPIO y efímero, sin tocar el de nadie (T-385).
 . "$(dirname "$0")/lib/deploy-worktree.sh"
 cd "$(dirname "$0")/.."

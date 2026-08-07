@@ -24,15 +24,15 @@ git fetch origin && git rebase origin/main   # 1) reconciliar sobre lo último  
 git push origin HEAD:main                    # 2) publicar (dispara CI); si lo rechaza por no-ff → repite el paso 1
 npm run deploy:pendiente                     # 3) ¿toca desplegar, o se sigue agrupando?
 
-# 4) SOLO si toca, y OJO: desde el REPO PRINCIPAL, no desde tu worktree (ver aviso más abajo).
-cd <repo-principal> && scripts/deploy-cuando-verde.sh <superficie>
+# 4) SOLO si toca. Desde T-385 F3 da igual desde dónde: el lanzador ya no toca tu árbol.
+scripts/deploy-cuando-verde.sh <superficie>
 ```
 
-> **Los pasos 1-3 son en TU worktree; el 4 NO.** El lanzador hace `git reset --hard origin/main` en
-> el árbol desde el que corre, así que desplegar desde donde programas te mueve el HEAD debajo de
-> los pies. Desde el 31/07 el script **se niega** a arrancar en un worktree (detecta que `--git-dir`
-> y `--git-common-dir` difieren, así que da igual dónde esté el directorio). Detalle y caso real en
-> el aviso del TL;DR.
+> **Los cuatro pasos pueden correr en TU worktree, incluido el 4.** Hasta T-385 F3 el lanzador hacía
+> `git reset --hard origin/main` en el árbol desde el que corría, así que desplegar desde donde
+> programas te movía el HEAD debajo de los pies — de ahí que se exigiera el repo principal. Ya no:
+> el SHA de `origin/main` se **lee** (`git rev-parse`), no se materializa en ningún árbol. Detalle y
+> el incidente que lo motivó, abajo en el TL;DR (queda como historia, no como instrucción vigente).
 
 ## ⚠️ POLÍTICA DE DESPLIEGUE: AGRUPAR (decisión de Manuel, 29/07/2026)
 
@@ -114,22 +114,32 @@ scripts/deploy-frontend.sh   # Next.js (OpenNext) → ECS Fargate + assets a S3
 scripts/deploy-backend.sh    # NestJS → ECS Fargate
 
 # Con VARIAS SESIONES pusheando, usa mejor el lanzador: espera a que el CI verdee y despliega solo.
-# ⚠️ LÁNZALO DESDE EL REPO PRINCIPAL, no desde tu worktree de sesión (ver justo abajo).
 scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 ```
 
-> ## ⚠️ El deploy se lanza desde el REPO PRINCIPAL, no desde tu worktree
+> ## ✅ Desde T-385 F3: el deploy ya NO exige un árbol dedicado — historia de por qué antes sí
 >
-> `deploy-cuando-verde.sh` hace **`git reset --hard origin/main` en el árbol desde el que se
-> ejecuta**, y lo repite **en cada vuelta** (hasta 12), porque despliega exactamente el SHA cuyo CI
-> ha verificado. Si lo lanzas desde el worktree en el que estás programando:
+> Hasta T-385 F3, `deploy-cuando-verde.sh` hacía **`git reset --hard origin/main` en el árbol desde
+> el que se ejecutaba**, en cada vuelta (hasta 12), porque despliega exactamente el SHA cuyo CI ha
+> verificado. Lanzarlo desde el worktree en el que estabas programando te movía el HEAD debajo de
+> los pies y podía descartar de la rama commits locales sin empujar (quedaban en el reflog, pero
+> había que saber ir a buscarlos). Por eso el runbook exigía el repo principal, con una guarda
+> (`scripts/lib/guardia-worktree.sh`) que se negaba a arrancar en cualquier otro worktree.
 >
-> - **te mueve el HEAD debajo de los pies** — aparecen y desaparecen ficheros según la vuelta;
-> - **descarta los commits de tu rama que no hayas pusheado** (quedan en el reflog, pero hay que
->   saber ir a buscarlos).
+> **Ya no.** El lanzador lee el SHA de `origin/main` con `git rev-parse` — de solo lectura, sin
+> tocar el working tree para nada — y los tres scripts de deploy (`deploy-frontend.sh`,
+> `deploy-backend.sh`, `deploy-cuando-verde.sh`) construyen/leen desde ahí sin rozar el árbol de
+> quien los lanza. La guarda y el requisito del repo principal se **retiraron** (no se relajaron:
+> dejaron de tener objeto). Se puede lanzar el deploy desde **cualquier worktree**, incluido uno con
+> trabajo sin commitear.
 >
-> Lo que **NO** hace, para que nadie lo suponga al revés: no se lleva por delante los cambios sin
-> commitear — se **niega a correr** con el árbol sucio. El daño es el otro.
+> **Lo que sigue siendo cierto e importante, sin cambios:** el **build** de `deploy-{frontend,backend}.sh`
+> usa un árbol EFÍMERO propio (no el tuyo, no el principal) construido desde `origin/main`, así que
+> lo que se despliega es siempre el código de `origin/main`, nunca lo que tengas a medias en tu
+> worktree.
+>
+> <details>
+> <summary>Historia — por qué existía la restricción (incidentes de antes de T-385 F3, ya no reproducibles)</summary>
 >
 > **Y pushear NO te protege el puntero de la rama.** `fetch` y `reset` son dos pasos: si tu push
 > entra entre ellos, el reset apunta a la referencia recién traída (un commit anterior) y tu rama se
@@ -140,21 +150,14 @@ scripts/deploy-cuando-verde.sh backend      # o: frontend [vueltas]
 > **Caso real (31/07/2026):** una sesión lanzó el deploy desde su propio worktree y siguió
 > trabajando. En la vuelta 4 se encontró la rama en un commit anterior y un fichero recién escrito
 > «desaparecido». No se perdió nada porque ya estaba pusheado, pero costó el susto y un rato de
-> investigación. Desde entonces **el script se niega** a arrancar dentro de `~/vence-sessions/*`
-> (escape consciente: `DEPLOY_DESDE_WORKTREE=1`).
+> investigación. Desde entonces (hasta T-385 F3) **el script se negaba** a arrancar dentro de
+> `~/vence-sessions/*` (escape consciente que ya no existe: `DEPLOY_DESDE_WORKTREE=1`).
 >
-> Tu rama no pinta nada en un deploy: el script sigue a `origin/main`. Por eso el sitio correcto es
-> **un árbol donde nadie esté trabajando**.
->
-> **Y ese árbol NO siempre es el principal.** El 31/07, al ir a desplegar allí, el principal tenía
-> trabajo sin commitear de otra sesión (`scratchpad/t115`, `t115b`) — y los scripts se niegan con el
-> árbol sucio, así que habría fallado igual. `scratchpad/` **no se puede ignorar**: tiene ficheros
-> trackeados, otras sesiones commitean ahí. Por eso la guarda **comprueba si el principal está
-> limpio** antes de mandarte a él, y si no lo está te ofrece las dos salidas reales:
->
-> 1. que la sesión dueña de esos ficheros los commitee o los limpie, o
-> 2. desplegar desde un **árbol dedicado a desplegar** —uno donde nadie programe— con
->    `DEPLOY_DESDE_WORKTREE=1`. Es lo que se hizo ese día para sacar los dos despliegues.
+> **Y el árbol dedicado NO siempre era el principal.** El 31/07, al ir a desplegar allí, el
+> principal tenía trabajo sin commitear de otra sesión (`scratchpad/t115`, `t115b`) — y los scripts
+> se negaban con el árbol sucio, así que habría fallado igual. `scratchpad/` no se podía ignorar:
+> tiene ficheros trackeados, otras sesiones commitean ahí.
+> </details>
 
 > **¿Por qué un lanzador y no ejecutar el script a pelo?** Los guardarraíles de abajo son correctos
 > uno a uno, pero exigen que coincidan CUATRO cosas: árbol limpio, al día con `origin/main`, lock de
@@ -220,25 +223,32 @@ nada del pintado. Detalle y frontera agnóstica: `docs/runbooks/vence-sim.md`.
 - **Con koigrid**: su script exporta `VERIFY_BASE_URL` + `SIM_AUTH_SECRET` + `SMOKE_USER_ID` y
   llama al MISMO verificador. Lo que sabe de AWS se queda en `deploy-frontend.sh`.
 
-## Pre-deploy: árbol limpio + commit pusheado + CI verde (guardarraíles del script)
+## Pre-deploy: CI verde del commit que se despliega (guardarraíl del script)
 
-Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueban dos cosas y **abortan** si no se cumplen:
+Desde 07-08/07/2026 los scripts NO despliegan a ciegas. Antes del build comprueban esto y **abortan** si no se cumple:
 
-1. **Árbol de trabajo LIMPIO** (`git status --porcelain`). El build usa el **WORKING TREE** (podman `COPY . .`), así que un árbol sucio desplegaría cambios a medias — **muy peligroso con sesiones paralelas editando** (ver abajo). Override deliberado: `ALLOW_DIRTY=1`.
-2. **CI VERDE en GHA para el SHA de HEAD** (`[gate CI]`). Consulta los check-runs de GitHub Actions del commit y aborta si:
-   - **no hay runs** → el commit NO está pusheado (el CI corre en push a `main`; mensaje *"¿Has hecho git push?"*).
-   - **algún check de CÓDIGO en ROJO** (unit / typecheck / lint). `integration` **NO** bloquea (señal aparte, ver abajo).
-   - **algún check de CÓDIGO aún EN CURSO** → espera a que acabe y reintenta.
-   Override: `SKIP_CI_GATE=1` (necesita `GITHUB_PAT` en `.env.local` + `jq`).
+- **CI VERDE en GHA para el SHA que se va a desplegar** (`[gate CI]`). Consulta los check-runs de GitHub Actions del commit y aborta si:
+  - **no hay runs** → el commit NO está pusheado (el CI corre en push a `main`; mensaje *"¿Has hecho git push?"*).
+  - **algún check de CÓDIGO en ROJO** (unit / typecheck / lint). `integration` **NO** bloquea (señal aparte, ver abajo).
+  - **algún check de CÓDIGO aún EN CURSO** → espera a que acabe y reintenta.
+  Override: `SKIP_CI_GATE=1` (necesita `GITHUB_PAT` en `.env.local` + `jq`).
+
+> **Ya NO hay comprobación de «árbol de trabajo limpio» (T-385 F1/F2, 31/07/2026).** Hasta entonces el
+> build usaba el WORKING TREE (`podman COPY . .`) de quien lanzaba el script, así que un árbol sucio
+> desplegaba cambios a medias — de ahí el aborto y su escape `ALLOW_DIRTY=1`, los dos retirados.
+> Ahora el build se hace en un **árbol EFÍMERO propio**, creado desde `origin/main` justo para ese
+> deploy y borrado al terminar (`scripts/lib/deploy-worktree.sh`): lo que tengas sin commitear en tu
+> worktree —o lo sucio que esté el checkout desde el que lances el script— **no se despliega nunca**,
+> así que ya no hay nada que abortar por eso.
 
 **Flujo canónico, por tanto:**
 ```bash
-git add -A && git commit -m "..."     # TODO lo que quieras desplegar (build = working tree)
+git add -A && git commit -m "..."     # lo que quieras desplegar tiene que estar en origin/main
 git push origin main                  # dispara el CI en GHA
 # esperar a que el CI de CÓDIGO (unit+typecheck+lint) esté VERDE
-scripts/deploy-frontend.sh            # el gate confirma verde y despliega
+scripts/deploy-frontend.sh            # construye origin/main en un árbol efímero, el gate confirma verde y despliega
 ```
-Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs). Es intencional: no desplegar código que no pasó CI.
+Un commit local **sin pushear NO se puede desplegar** (el gate no encuentra runs, y tampoco existe en el árbol efímero: solo se construye lo que ya está en `origin/main`). Es intencional: no desplegar código que no pasó CI.
 
 ### El typecheck se comprueba ANTES de pushear (hook `pre-push`, T-225 — 28/07/2026)
 
@@ -321,23 +331,14 @@ git stash push -u && npm run test:unit; git stash pop
 
 > ⚠️ **Sincronía script ↔ origin (gotcha real 09/07):** el gate solo-código vive en el **script** `deploy-{frontend,backend}.sh`. Si despliegas desde un checkout de `origin/main` cuyo script sea una versión ANTERIOR (gate "exige todo"), toparás con `integration` roja y el deploy abortará. En ese caso: verifica a mano que unit+typecheck+lint están verdes (GH API del SHA) y usa `SKIP_CI_GATE=1` de forma consciente. Y sincroniza script+manual en origin para que no vuelva a pasar.
 
-### Auto-sincronización con `origin/main` (27/07/2026)
+### Auto-sincronización con `origin/main` (27/07/2026 → RETIRADA en T-385 F1/F2)
 
-Los scripts **se resincronizan solos** antes del gate de CI cuando no hay nada que perder:
-árbol limpio y `HEAD` ya contenido en `origin/main`. Es el caso habitual de un deploy con
-varias sesiones activas — otra pushea mientras tu gate verifica el CI — y antes obligaba a
-hacer `fetch` + `reset --hard` + reintentar **a mano**: tres abortos seguidos ese día, además
-de otros tres por el bug de `cancelled`.
-
-Va **antes** del gate a propósito, para que los checks se verifiquen sobre el SHA que de
-verdad se construye, y **recalcula `SHA`/`FULL_SHA`** — si no, el build se pinearía al commit
-viejo y el anti-clobber del final daría un falso positivo.
-
-**No auto-sincroniza** (y el anti-stale aborta como siempre) en los dos casos donde perder
-trabajo es posible: **árbol sucio**, o **`HEAD` con commits propios sin pushear**. Desactivar:
-`NO_AUTO_SYNC=1`. Lo fija `__tests__/guardrails/deploy-scripts.test.ts`; probado en un repo de
-laboratorio con los cuatro casos (limpio-atrasado → resincroniza · sucio → no toca · commits
-propios → no toca · al día → silencio).
+Existió un auto-sync que resincronizaba el árbol del lanzador (`fetch` + `reset --hard` con dos
+guardas — árbol sucio y commits propios sin pushear, escape `NO_AUTO_SYNC=1`) cuando el CI se
+verificaba sobre un SHA distinto del que había al lanzar. Servía para que el WORKING TREE, que era
+lo que se construía, se pareciera a `origin/main`. **Ya no existe ni hace falta**: la sección de
+abajo («construye `origin/main` aparte») es lo que la sustituyó — un árbol efímero que se lee
+directo de `origin/main`, sin nada que sincronizar en el árbol de quien lanza el script.
 
 ## El BACKEND ya no construye tu árbol: construye `origin/main` aparte (T-385, fase 1)
 
