@@ -56,7 +56,9 @@ import PremiumFeatureModal from '@/components/premium/PremiumFeatureModal'
 import { buildRepasoFallosUrl } from '@/lib/nav/repasoFallosUrl'
 // validateAnswer ya no se usa — validación es client-side
 import { completeTestOnServer } from '@/lib/api/v2/complete-test/client'
-import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain } from '@/utils/answerSaveQueue'
+import { enqueueAnswer, purgeSessionAnswers, waitForQueueDrain, getPendingCount } from '@/utils/answerSaveQueue'
+import { emitClientEvent } from '@/lib/observability/client'
+import { ESPERA_DRENADO_MS, avisoDeCierre } from '@/lib/tests/cierreDeTest'
 // Núcleo puro del payload de respuesta (incluye la permutación del barajado, dato del que depende
 // que una respuesta se corrija bien). Extraído del componente para poder testear el ida y vuelta.
 import { buildAnswerPayload, normalizeOptionOrder, type QuestionForPayload } from '@/lib/answers/buildAnswerPayload'
@@ -325,6 +327,10 @@ export default function TestLayout({
   const [currentTestSession, setCurrentTestSession] = useState<TestSession | null>(null)
   const [userSession, setUserSession] = useState<UserSession | null>(null)
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null)
+  // Cierre del test en el servidor, guardado para poder REINTENTARLO desde la
+  // pantalla de resultados. Sin esto, un cierre fallido deja a la persona sin
+  // confirmación, sin los botones de repaso y sin nada que pulsar ([T-315]).
+  const reintentarCierreRef = useRef<(() => Promise<void>) | null>(null)
 
   // Resultado del intento actual para <QuestionEvolution>. MEMOIZADO a propósito:
   // antes se pasaba como objeto literal nuevo en cada render, lo que hacía que el
@@ -1214,13 +1220,19 @@ export default function TestLayout({
         // de /answer-and-save drene antes de completar el test. Si no drena,
         // el server tiene un safety-net que rellena test_questions, pero
         // esperar aquí reduce la carga de ese safety-net al caso común.
-        ;(async () => {
+        const cerrarTestEnServidor = async () => {
           try {
-            // Dar hasta 20s para que la cola drene. Si timeout, seguimos
-            // igualmente — el server safety-net se encargará del resto.
-            const drained = await waitForQueueDrain(session.id, 20000)
-            if (!drained) {
-              console.warn(`⚠️ [TestLayout] Cola no drenó en 20s, el server usará safety-net para test ${session.id.slice(0, 8)}`)
+            // Espera CORTA (antes 20 s). Las respuestas no dependen de esto para
+            // estar a salvo —localStorage + reintentos + safety-net del servidor—,
+            // así que esperar más solo retrasa las acciones que la persona espera
+            // aquí («Revisar fallos», «Practicar mis fallos») justo el día que el
+            // servidor va mal. Ver lib/tests/cierreDeTest.ts [T-315].
+            const drained = await waitForQueueDrain(session.id, ESPERA_DRENADO_MS)
+            const aviso = avisoDeCierre(drained, getPendingCount(session.id), ESPERA_DRENADO_MS)
+            if (aviso) {
+              console.warn(`⚠️ [TestLayout] ${aviso.errorMessage} — el server usará safety-net para test ${session.id.slice(0, 8)}`)
+              // Y que quede CONTADO, no solo escrito en la consola de quien lo sufre.
+              emitClientEvent(aviso)
             }
 
             const deviceInfo = getDeviceInfo() as {
@@ -1307,7 +1319,12 @@ export default function TestLayout({
             console.error('❌ Error en finalización de test (server-side):', err)
             setSaveStatus('error')
           }
-        })()
+        }
+        // Guardado para poder REINTENTAR desde la pantalla de resultados: si el
+        // cierre falla, sin esto la persona se queda sin confirmación y sin los
+        // botones, y sin nada que pulsar para salir de ahí.
+        reintentarCierreRef.current = cerrarTestEnServidor
+        void cerrarTestEnServidor()
       }
     }
     if (questionIndex >= effectiveQuestions.length - 1) {
@@ -2536,6 +2553,28 @@ export default function TestLayout({
                             <div className="text-sm text-green-600 dark:text-green-400 mb-4 flex items-center justify-center space-x-2">
                               <span>✅</span>
                               <span>Progreso guardado en tu perfil</span>
+                            </div>
+                          )}
+
+                          {/* Salida cuando el cierre falla ([T-315]). Antes aquí no aparecía NADA:
+                              ni confirmación, ni los botones de repaso, ni forma de reintentar —
+                              la persona se quedaba mirando una pantalla que no ofrecía nada. Sus
+                              respuestas SÍ están a salvo (localStorage + reintentos + safety-net
+                              del servidor), así que lo que faltaba era decírselo y dar una salida. */}
+                          {saveStatus === 'error' && (
+                            <div className="text-sm mb-4 flex flex-col items-center space-y-2">
+                              <span className="text-amber-600 dark:text-amber-400">
+                                No hemos podido confirmar el guardado. Tus respuestas están a salvo y se guardarán solas.
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setSaveStatus('saving')
+                                  void reintentarCierreRef.current?.()
+                                }}
+                                className="px-4 py-2 rounded-lg font-medium text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Reintentar
+                              </button>
                             </div>
                           )}
                           
