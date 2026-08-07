@@ -125,14 +125,24 @@ function enMaquina(trabajador, orden, { entrada = null } = {}) {
  * cosas opuestas: al primero se le manda trabajo, al segundo se le levanta.
  *
  * La sesión de tmux es la verdad: si existe, hay a quién mandarle un encargo.
+ *
+ * ⚠️ DEVUELVE `null` CUANDO NO SE PUDO PREGUNTAR, y eso no es un detalle (T-642, 07/08). La
+ * versión anterior hacía `try { has-session } catch { return false }`, así que **un ssh que se
+ * cae daba exactamente la misma respuesta que una sesión que no existe**. Con eso, la reanimación
+ * automática de más abajo mataría y recrearía sesiones sanas cada vez que la red hiciera un
+ * hipo — el remedio peor que la enfermedad. Se pregunta de forma que el comando SIEMPRE salga
+ * bien y sea su SALIDA la que responde: vacío = no se pudo preguntar.
  */
 function sesionViva(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
   const como = m && m.local ? '' : 'sudo -u flota '
   try {
-    enMaquina(trabajador, `${como}tmux has-session -t ${trabajador} 2>/dev/null`)
-    return true
-  } catch { return false }
+    const r = enMaquina(trabajador,
+      `${como}sh -c 'tmux has-session -t ${trabajador} 2>/dev/null && echo SI || echo NO'`).trim()
+    if (r.endsWith('SI')) return true
+    if (r.endsWith('NO')) return false
+    return null
+  } catch { return null }
 }
 
 /** Qué está ejecutando el panel de un trabajador. Cadena vacía si no se puede ver (≠ «nada»). */
@@ -923,9 +933,37 @@ async function main() {
       // …y que además RECIBAN reparto: el portátil está fuera (`reparte: false`), porque es donde
       // Manuel abre sus consolas y seis autónomos se lo dejaban parado.
       const reciben = new Set(MAQ.trabajadoresQueReciben().map((x) => x.trabajador))
-      const vivos = MAQ.comparar(sesiones)
-        .filter((f) => reciben.has(f.trabajador))
-        .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador))
+      const delReparto = MAQ.comparar(sesiones).filter((f) => reciben.has(f.trabajador))
+
+      // ── UN TRABAJADOR SIN SESIÓN SE LEVANTA; NO SE SALTA EN SILENCIO (T-642, 07/08) ──────
+      // El filtro de abajo descartaba a quien no tuviera sesión de tmux **sin decir nada**, y
+      // entonces la vuelta terminaba imprimiendo «todo en marcha, nada que repartir». Medido ese
+      // día: `w2` y `w4` desaparecieron del mapa y estuvieron una hora sin trabajar con el
+      // supervisor cantando normalidad cada cinco minutos. Un trabajador que se cae es justo lo
+      // que este bucle existe para arreglar, así que el estado «no tiene sesión» tiene ACCIÓN.
+      //
+      // Se resucita solo cuando la máquina dice que NO la tiene (`false`). Si no se pudo
+      // preguntar (`null`, típicamente un ssh caído) NO se toca nada: recrear una sesión sana
+      // por un hipo de red mataría el turno que estuviera corriendo dentro.
+      const sello = new Date().toISOString().slice(11, 19)
+      for (const f of delReparto) {
+        const p = ENC.presenciaDelPanel({ sesionExiste: sesionViva(f.trabajador), paneCommand: '', reparte: true })
+        if (p.accion !== 'resucitar') {
+          if (p.estado === 'invisible') console.log(`   [${sello}] 👁️  ${f.trabajador}: ${p.motivo}`)
+          continue
+        }
+        const m = MAQ.maquinaDe(f.trabajador)
+        try {
+          enMaquina(f.trabajador, ENC.ordenDeArranque({ trabajador: f.trabajador, local: !!(m && m.local) }))
+          const ok = sesionViva(f.trabajador) === true
+          console.log(`   [${sello}] ${ok ? '🫀' : '❌'} ${f.trabajador}: sin sesión → ${ok ? 'resucitado' : 'NO levanta, requiere una persona'}`)
+        } catch (e) {
+          console.log(`   [${sello}] ❌ ${f.trabajador}: sin sesión y no se pudo resucitar (${String(e.message).slice(0, 60)})`)
+        }
+      }
+
+      const vivos = delReparto
+        .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador) === true)
       const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
       const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
 
@@ -1299,17 +1337,31 @@ async function main() {
       if (!w) { console.error(`Uso: flota.cjs ${cmd} <trabajador>`); return 2 }
       const m = MAQ.maquinaDe(w)
       if (!m) { console.error(`❌ ${w} no está declarado en ninguna máquina`); return 1 }
-      if (m.local) {
-        // En el portátil no hay unidad de systemd que valga: la sesión es tuya, no del sistema.
-        enMaquina(w, cmd === 'arrancar'
-          ? `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c "$HOME/vence-sessions/${w}" /bin/bash`
-          : `tmux kill-session -t ${w} 2>/dev/null || true`)
-      } else {
-        const accion = cmd === 'arrancar' ? 'start' : 'stop'
-        enMaquina(w, `systemctl ${accion} vence-flota@${w} && systemctl is-active vence-flota@${w}`)
+      if (cmd === 'parar') {
+        enMaquina(w, m.local
+          ? `tmux kill-session -t ${w} 2>/dev/null || true`
+          : `systemctl stop vence-flota@${w}`)
+        console.log(`✅ ${w}: parado`)
+        return 0
       }
-      console.log(`✅ ${w}: ${cmd === 'arrancar' ? 'arrancado' : 'parado'}`)
-      return 0
+      // ── ARRANCAR TIENE QUE FUNCIONAR TAMBIÉN SOBRE UNO YA «ARRANCADO» (T-642, 07/08) ─────
+      // La unidad del VPS es de un solo disparo con `RemainAfterExit`: una vez ejecutada se queda
+      // `active (exited)` PARA SIEMPRE, aunque su tmux haya desaparecido. Sobre eso `systemctl
+      // start` es un **no-op silencioso** — medido con `w2` y `w4`, que se dieron por arrancados
+      // sin que volviera ninguna sesión mientras el comando imprimía `✅`. El comando lo decide
+      // `ordenDeArranque` (puro y testeado), no una condición suelta aquí.
+      enMaquina(w, ENC.ordenDeArranque({ trabajador: w, local: !!m.local }))
+      // Y se COMPRUEBA, que es de lo que iba todo esto: declarar el arranque sin mirar es
+      // exactamente el fallo que esta tarea existe para quitar.
+      const vivaTras = sesionViva(w)
+      if (vivaTras === true) { console.log(`✅ ${w}: arrancado (sesión confirmada)`); return 0 }
+      if (vivaTras === null) {
+        console.log(`⚠️  ${w}: orden de arranque enviada, pero NO se pudo comprobar si levantó`)
+        return 0
+      }
+      console.error(`❌ ${w}: la orden de arranque no ha levantado su sesión — míralo a mano:`)
+      console.error(`   ssh … "${m.local ? 'tmux ls' : `systemctl status vence-flota@${w} --no-pager`}"`)
+      return 1
     }
 
     // `bucle` va el PRIMERO de los verbos continuos y se nombra: era el único programador bueno y

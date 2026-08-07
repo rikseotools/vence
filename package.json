@@ -181,6 +181,7 @@
     "sim:modal-tocable": "tsx --env-file=.env.local scripts/sim/sim-modal-tocable.ts",
     "sim:estimate-servido": "npx tsx --env-file=.env.local scripts/sim/sim-estimate-servido.ts",
     "sim:rescate-flota": "node scripts/flota/sim-rescate.cjs",
+    "sim:presencia-flota": "node scripts/flota/sim-presencia.cjs",
     "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs",
     "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs"
   },

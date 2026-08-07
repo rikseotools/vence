@@ -2289,6 +2289,31 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión.',
   },
 
+  flota_presencia_trabajador: {
+    titulo: '¿Está el trabajador en pie? — un solo sitio decide, y «sin sesión» tiene ACCIÓN',
+    ruta: 'lib/flota/encargo.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`presenciaDelPanel` + `ordenDeArranque` (T-642, 07/08/2026). Nacen de TRES fallos del mismo ' +
+      'día y de la misma forma —el supervisor **declaraba** un estado en vez de observarlo—: ' +
+      '(1) `w2` y `w4` perdieron su sesión de tmux y el bucle los descartaba **sin decir nada**, ' +
+      'imprimiendo «todo en marcha, nada que repartir» durante una hora con dos de tres ' +
+      'trabajadores muertos; (2) `flota arrancar` no podía devolverlos porque la unidad del VPS ' +
+      'es de un solo disparo (`active (exited)`) y `systemctl start` sobre ella es un **no-op ' +
+      'silencioso**, con el comando imprimiendo `✅` igual — por eso la orden es `restart`; ' +
+      '(3) los seis del portátil salían 🔴 permanentes por estar apagados a propósito, y seis ' +
+      'rojos fijos enseñan a no mirar el rojo. ' +
+      '⚠️ **La reanimación solo dispara con `sesionExiste === false`, nunca con `null`**: antes ' +
+      '`sesionViva` devolvía `false` tanto si no había sesión como si el ssh se caía, y con eso ' +
+      'un hipo de red habría recreado sesiones SANAS matando el turno de dentro. Por eso se ' +
+      'pregunta de forma que el comando siempre salga bien y responda su salida. ' +
+      'Pruebas: `__tests__/flota/encargo.test.ts` (decisión) + `npm run sim:presencia-flota`, que ' +
+      'reproduce los tres casos **contra tmux de verdad** — un guardarraíl de texto no demuestra ' +
+      'que una sesión vuelva a levantarse.',
+  },
+
   flota_clon_al_dia: {
     titulo: 'El clon de un trabajador, al día ANTES de cada encargo — si no se puede, no se le da trabajo',
     ruta: 'lib/flota/actualizacion.cjs',
