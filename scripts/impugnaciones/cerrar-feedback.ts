@@ -23,6 +23,7 @@ import { readFileSync } from 'fs'
 import { config } from 'dotenv'
 import { identidadDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
+import { comprobarVivo, anunciarVivo } from './lib/puerta-vivo'
 const { exigirPersona } = require('../../lib/sessions/aprobacion.cjs')
 
 config({ path: '.env.local' })
@@ -44,6 +45,8 @@ export function parsearArgs(argv: string[]) {
     estado: valor('--estado') || 'resolved',
     // Escape de la puerta de reserva (T-474), con motivo obligatorio para poder revisarlo después.
     igualmente: valor('--igualmente'),
+    // Escape de la puerta de «está vivo» (T-678): exige contar CÓMO se comprobó.
+    vivoIgualmente: valor('--vivo-igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -73,7 +76,16 @@ async function main() {
   // El feedback lo necesita MÁS: era donde peor estaba (52 % de los cerrados en 14 días no había
   // pasado por reserva, frente al 17 % de las impugnaciones).
   const veredicto = await comprobarReserva({ tabla: 'user_feedback', id: a.feedbackId, igualmente: a.igualmente })
-  const sePuede = anunciar(veredicto, { aplicar: a.aplicar })
+  const sePuedeReserva = anunciar(veredicto, { aplicar: a.aplicar })
+
+  // Puerta de «ESTÁ VIVO» (T-678). Aquí es donde salió el correo que la motiva: a Esther se le
+  // dijo «ya está corregido» con el arreglo en `main` y sin desplegar. Se comprueba también en
+  // dry-run — enterarte después de redactar y aprobar no sirve de nada.
+  const sePuedeVivo = cuerpo.message
+    ? anunciarVivo(await comprobarVivo(a.feedbackId!, String(cuerpo.message)), { igualmente: a.vivoIgualmente })
+    : true
+
+  const sePuede = sePuedeReserva && sePuedeVivo
 
   if (!a.aplicar) {
     console.log(sePuede ? '\n(dry-run — repite con --aplicar)\n' : '\n(dry-run — con --aplicar esto se habría abortado)\n')

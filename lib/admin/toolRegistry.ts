@@ -2857,6 +2857,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'un caso: trabajar ES la señal. Hay versión SQL además de JS porque la decisión tiene que ' +
       'ir DENTRO del UPDATE atómico; su paridad está testeada. 12 tests.',
   },
+  puerta_vivo_en_produccion: {
+    titulo: 'El cierre no deja decirle a nadie que su problema «ya está arreglado» si el arreglo no está VIVO',
+    ruta: 'lib/impugnaciones/promesaDeArreglo.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '[T-678] Núcleo puro + puerta IO (`scripts/impugnaciones/lib/puerta-vivo.ts`) en los DOS ' +
+      'cierres (`cerrar.ts`, `cerrar-feedback.ts`). Nace del caso Esther (`e523eabc`, 07/08/2026): ' +
+      'se le envió «ya está corregido… no debería volver a pasarte» con el arreglo en `main` y sin ' +
+      'desplegar (`/api/health` servía `76404f1d`). NO inventa criterio: reutiliza el verificador ' +
+      'de [T-392] y `lib/deploy/shaVivo.cjs` — dos lectores de «¿está vivo?» se contradirían. ' +
+      'Mira los commits que CITAN el caso, no «cualquier cosa sin desplegar»: medido sobre 569 ' +
+      'mensajes reales de 30 días, **134 (23,6%) afirman un arreglo**, y la mayoría son de ' +
+      'CONTENIDO (BD, sin deploy) donde decir «ya está» es cierto. Fail-open sin sha vivo (hay una ' +
+      'persona esperando). Escape `--vivo-igualmente "<cómo lo comprobaste>"`, contado en el bus ' +
+      'de fricción. Calibración: `npm run sim:promesa-arreglo [-- --ver]`. 19 unitarios anclados ' +
+      'al texto exacto que se envió. **Al construirla salió un hueco de [T-392]:** `importadoEn` ' +
+      'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
+      'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
+  },
   dossier_rastro_errores: {
     titulo: 'El dossier de feedback pone delante el RASTRO DE ERRORES del usuario (antes / después de su mensaje)',
     ruta: 'lib/impugnaciones/rastroDeErrores.cjs',
