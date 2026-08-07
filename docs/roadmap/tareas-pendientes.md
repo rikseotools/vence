@@ -981,6 +981,24 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-654] 🔴 [ABIERTO 07/08] El corpus documental de Aux. Administrativo de la Diputación de Cádiz es de OTRA oposición: 44 plazas publicadas sin un solo documento que las respalde — 171 usuarios
+
+- **Es la de MÁS usuarios de toda la cola de plazas sin declarar: 171**, cuatro veces la siguiente. Salió al triar los hallazgos `plazas_reserva_sin_declarar` con `npm run reserva:declarar -- --proponer`, que ordena por usuarios afectados.
+- **Lo medido, y no es una sospecha:** la convocatoria vigente de `auxiliar-administrativo-diputacion-cadiz` (**Auxiliar Administrativo, subgrupo C2**) tiene **8 documentos clonados**, y contando ocurrencias en su texto extraído:
+  - **«Auxiliar Administrativ…»: CERO** en los ocho.
+  - **«Administrativo/a»: 30** repartidas en los ocho.
+  Son las bases, boletines y listas de admitidos del proceso de **Administrativo (C1)**, que es **otro cuerpo**.
+- **Y lo que dicen esas bases no es lo que publicamos:** *«Aprobar la convocatoria … de **18 plazas vacantes de Administrativo/a (2 reservadas a personas con discapacidad)**»*, acumulando las OEP de 2021, 2022 y 2023. Nuestra convocatoria dice `plazas_libres=37` y `plazas_discapacidad=7` → la landing publica **44**.
+- **Por qué el detector no podía decir esto:** `plazas_afirmadas_sin_documento` pregunta si la cifra aparece en algún documento, y `plazas_reserva_sin_declarar` si el cupo está declarado. **Ninguno comprueba que los documentos sean DE ESA OPOSICIÓN.** Aquí los dos hallazgos son ciertos y su causa común es otra: el corpus está mal enganchado.
+- **Las dos lecturas posibles, y hay que decidir cuál antes de tocar nada:**
+  1. **Los documentos están mal enganchados** (se clonaron en la convocatoria equivocada) y las cifras 37/7 vienen de otra fuente que hay que encontrar.
+  2. **Las cifras están mal** y son en realidad las del proceso de Administrativo, mal copiadas.
+  En cualquiera de los dos casos **hoy estamos publicando 44 plazas que ningún documento de nuestro corpus sostiene**, a 171 personas que deciden con ese dato si se presentan.
+- **NO tocar la cifra por analogía.** El caso Sevilla (51 publicadas frente a 46 reales) y el de la UNED (60 frente a 54) empezaron igual. Hay que abrir el boletín del proceso de **Auxiliar** de esa diputación y ver qué convoca de verdad; si no existe tal proceso vivo, el problema es mayor que una cifra.
+- **Cómo re-medirlo en un comando:** contar `Auxiliar Administrativ` vs `Administrativo/a` en el `extracted_text` de los documentos de esa convocatoria. Si sigue dando 0 y 30, el corpus sigue siendo ajeno.
+- **Y merece un detector propio, porque esto no es un caso aislado que se vea a ojo:** *«¿el corpus documental de una convocatoria habla de la oposición que dice?»*. Barato (comparar el nombre del cuerpo contra el texto ya clonado) y cubre el punto ciego de los dos detectores de plazas. Antes de construirlo, `npm run tools:buscar -- corpus` por si algo ya lo mira.
+- **Relacionadas:** los otros 19 hallazgos de plazas (`plazas_afirmadas_sin_documento` ×8, `plazas_reserva_sin_declarar` ×12), runbook `provenance-convocatorias.md` §7.
+
 ### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
 
 **De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
