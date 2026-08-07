@@ -1,0 +1,17 @@
+{
+  "motivo": "T-105 — 2 de las 5 divergencias DIVERGENTE restantes (07/08, w2)",
+  "decisiones": [
+    {
+      "slug": "agrupacion-profesional-servicios-publicos-carm",
+      "campo": "plazas_discapacidad",
+      "gana": "legacy",
+      "porQue": "BORM nº292 (19/12/2025, Decreto 233/2025, NPE A-191225-6156) pág.34125, tabla AGRUPACION PROFESIONAL: Turno Libre=39, Turno Reserva discapacidad GENERAL=3, Turno Reserva discapacidad INTELECTUAL=8, Total=50. Verificado descargando y extrayendo el PDF oficial directo (https://www.borm.es/services/anuncio/ano/2025/numero/6156/pdf). El campo estructurado de convocatorias solo capturo la reserva 'general' (3) y omitio la 'intelectual' (8); legacy=11=3+8 es el total correcto de AMBAS reservas de discapacidad. Aritmetica: 39+3=42 != 50 (total oficial); 39+11=50 SI cuadra."
+    },
+    {
+      "slug": "auxiliar-administrativo-cyl",
+      "campo": "plazas_discapacidad",
+      "gana": "convocatoria",
+      "porQue": "BOCYL num.7 (13/01/2026, BOCYL-D-13012026-7-5) pag.36, tabla CUERPO AUXILIAR (extraida con pdfjs-dist preservando coordenadas x/y para evitar la ambiguedad de pdf-parse en tablas con numeros pegados): Acuerdo 112/2024=135|15|150, Acuerdo 52/2025=192|20|212, fila Total (columnas propias, no una suma naive)=317|45|362. El valor oficial publicado en la fila Total, columna 'Cupo de personas con discapacidad', es 45 -- coincide con el que ya tenia convocatorias. La legacy (35) coincide exactamente con la SUMA simple de los dos Acuerdos (15+20=35), que no es como el boletin calcula su propia fila Total (45, no 35) -- probablemente asi es como se poblo la legacy, sumando en vez de leer el total oficial."
+    }
+  ]
+}
