@@ -996,6 +996,44 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
   3. **Un canario que detecte migraciones sin aplicar** — más barato que (2) si (2) no es prioritario: comparar los ficheros de `supabase/migrations/` con nombres de política/columna/tabla que cada uno declara, contra el catálogo real, y avisar cuando diverjan. Parecido en espíritu a `lib/db/rlsSelectBlocked.cjs`, que ya destapó esto de rebote.
 - **Se aprovecha lo ya construido, no se reinventa:** el propio `canary:rol-lector` YA avisa de dos de los tres casos (por eso se encontraron) — lo que falta es que alguien lo mire y sepa que la causa es "falta aplicar una migración", y un mecanismo que no dependa de que alguien vuelva a tropezar con ello investigando otra tarea.
 - **Origen:** medido investigando [T-108] (07/08) — al escribir una migración de RLS nueva (`20260807_rls_oep_detection_signals_lector.sql`), correr el canario reveló que dos migraciones HERMANAS de dos días antes tampoco estaban aplicadas.
+
+> **✅ CONSTRUIDO (07/08, w1) — el camino 3 de arriba: un canario que lo detecta SOLO, no dos casos que alguien tropieza.**
+> `npm run migraciones:rls-pendientes` (lee `VENCE_LECTOR_URL`). Parsea CADA `.sql` de
+> `supabase/migrations/` que declare `CREATE POLICY` (núcleo puro
+> `lib/db/migracionesRlsPendientes.cjs`, con tests contra los ficheros REALES del repo, no
+> fixtures inventadas: `__tests__/db/migracionesRlsPendientes.test.js`, 15/15) y contrasta lo
+> que cada una PROMETE contra el catálogo vivo, reutilizando `seleccionBloqueadaPorRls` (T-574)
+> para el caso SELECT y generalizándolo (`politicaFalta`) al caso con política `UPDATE`
+> (`flota_coordinacion_reclama`, que ese criterio por sí solo no cubre).
+>
+> **Corrido contra RDS real, no simulado — y encontró MÁS de lo que decía esta ficha:** no 3
+> migraciones inertes, sino **5**. A las dos ya confirmadas arriba (T-573, T-038) se suman
+> `20260806_rls_convocatoria_seguimiento_checks_lector.sql` ([T-220], ya sabida por otra vía) y
+> **dos nuevas que nadie había visto**: `20260502_fix_always_true_policies.sql` y
+> `20260502_security_advisor_fixes.sql` (pre-cutover a RDS, 04/07), cuya política sobre
+> `user_test_favorites`/`user_learning_analytics`/`user_interactions_archive` para los roles
+> `anon`/`authenticated` tampoco se aplicó nunca.
+>
+> **Distinción de urgencia MEDIDA, no supuesta — no son igual de graves:** las tres primeras
+> bloquean a un rol que la flota usa A DIARIO (`vence_lector`) y el GRANT de tabla SÍ existe, así
+> que la tabla se ve pero lee 0 filas en silencio — el mismo mecanismo que rompió T-476/T-573.
+> Las dos de mayo son distintas: comprobé `information_schema.role_table_grants` para
+> `anon`/`authenticated` en las 3 tablas afectadas y **el GRANT en sí está VACÍO hoy** — ningún
+> rol de PostgREST tiene ni permiso de tabla, así que la política ausente no abre un acceso que
+> hoy exista (consistente con que la app dejó de hablar con RDS vía PostgREST/supabase-js tras
+> la migración a Auth.js RS256 del 03/07). Son "defensa en profundidad prometida y nunca
+> entregada", no una fuga activa — vale la pena aplicarlas, pero no con la misma urgencia.
+>
+> **Límite del canario, encontrado a mano investigando el mismo lote y NO escondido:** solo ve
+> `CREATE POLICY`. La migración de mayo (`20260502_security_advisor_fixes.sql`) también hace
+> `ALTER TABLE user_stats_summary ENABLE ROW LEVEL SECURITY` — y esa tabla sigue con
+> `relrowsecurity=false` en RDS (comprobado contra `pg_class`), o sea que ese paso TAMPOCO se
+> aplicó, y el canario actual no lo puede ver porque esa migración no declara ninguna política
+> nueva para esa tabla en concreto. Queda anotado como hueco conocido, no oculto.
+>
+> Registrado en `lib/admin/toolRegistry.ts` (`migraciones_rls_pendientes`). **No aplica ninguna
+> migración** (DDL de producción, fuera del permiso de un trabajador) — solo las señala. Aplicar
+> las 5 sigue pendiente de una persona con la credencial adecuada.
 - **Relacionada:** [T-108] (donde salió), [T-573]/[T-038] (las migraciones concretas que están inertes).
 
 ### [T-642] 🟠 [ABIERTO 07/08] El vigía canta «↻ retoma» aunque el turno muera al instante: nadie mira si el trabajador llegó a arrancar, y una cuenta con el límite semanal agotado es invisible
