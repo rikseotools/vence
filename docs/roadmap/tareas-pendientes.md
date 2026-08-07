@@ -1606,6 +1606,60 @@ del repo. Es exactamente lo que se hizo a mano esta noche, ahora automático.
   Hay que correrlo con ellos parados: montar una rama de prueba con un commit en el VPS,
   `npm run flota -- rescatar w1`, ver la segunda fase empujar, y borrar la rama de prueba.
 
+#### 07/08 (w4) — BUG REAL encontrado antes de la prueba en vivo: `.local` no es lo mismo que "esta máquina tiene credenciales"
+
+**Al ir a preparar la prueba en vivo, medí primero qué decidiría `necesitaSegundaFase` en el
+contexto REAL del supervisor — y la respuesta era la equivocada.** `necesitaSegundaFase` miraba
+`maquina.local`, que responde *"¿quien llama está en la misma máquina que el trabajador?"* — una
+pregunta sobre el LLAMADOR, no sobre la máquina. Esa pregunta coincide con *"¿esta máquina tiene
+con qué empujar?"* en el portátil (quien llama ahí SIEMPRE tiene sus credenciales), pero **no
+coincide en el VPS**: el supervisor systemd corre con `VENCE_FLOTA_AQUI=flota-1` (T-617, valor
+real leído de `/etc/vence-flota/supervisor.env`), así que para él `MAQ.maquinaDe('w1').local` da
+`true` — y con el criterio viejo, "local" bastaba para decidir *"no hace falta rematar, su propio
+push vale"*, cuando ese push en esa máquina NUNCA vale. Es la premisa entera de esta ficha.
+
+**Medido, no supuesto** — reproducido llamando al código real con el `VENCE_FLOTA_AQUI` real de
+producción:
+```
+VENCE_FLOTA_AQUI=flota-1 node -e "
+  const MAQ = require('./lib/flota/maquinas.cjs');
+  console.log(MAQ.maquinaDe('w1').local)  // → true
+"
+```
+Y con eso, `necesitaSegundaFase(MAQ.maquinaDe('w1'), {salvado:2, pares:[...]})` devolvía
+`{hace_falta:false, motivo:'máquina local: su propio push es el bueno'}` — con 2 commits
+confirmados fuera de todo remoto. **No era un fallo silencioso que mintiera** (`ok` sigue siendo
+`false` y el reporte final dice honestamente "NO se pudo poner a salvo"), pero la SEGUNDA FASE
+—la automatización entera que esta ficha vino a construir— nunca llegaba a intentarse en el
+contexto donde más importa: cualquiera que siga la convención de T-617 y declare
+`VENCE_FLOTA_AQUI=flota-1` al trabajar DESDE el VPS (el supervisor, o un trabajador que lo haga
+a mano) desactiva sin saberlo la única pieza que este `T-628` añadió.
+
+**Arreglado:** nueva propiedad **de la máquina**, no del llamador —
+`MAQUINAS['flota-1'].tieneCredencialesGit = false` / `MAQUINAS.portatil.tieneCredencialesGit =
+true`, con su accesor `MAQ.tieneCredencialesGit(w)` (mismo patrón que `puedeDesplegar`)—.
+`necesitaSegundaFase` ahora mira `maquina.tieneCredencialesGit` en vez de `maquina.local`. Con el
+mismo `VENCE_FLOTA_AQUI=flota-1` de arriba, la llamada real ahora da `hace_falta:true`.
+
+**Límite honesto de lo que este arreglo consigue — no hace la prueba en vivo innecesaria, la
+redefine:** ni el trabajador de hoy ni el propio supervisor systemd tienen la clave
+`~/.ssh/koigrid_runner` (comprobado: no existe en `/home/flota/.ssh/` de ningún usuario de esta
+máquina) — es DELIBERADO, es el límite de permiso que separa a un trabajador de quien gobierna la
+flota. Así que aunque `necesitaSegundaFase` ahora decide bien, el intento real de SSH+push desde
+ESTA máquina fallaría igual, solo que ahora con un error honesto (permiso de la llave) en vez de
+un "no hace falta" engañoso. **La prueba en vivo que pedía esta ficha solo la puede completar
+alguien con la clave — el portátil.** Lo que este hallazgo cambia es que, cuando se haga esa
+prueba desde el portátil, no tropiece con esta lógica si alguna vez se invoca con
+`VENCE_FLOTA_AQUI` puesto (p.ej. probando desde una sesión SSH abierta al VPS).
+
+**Capas:** `MAQ.maquinaDe('w1')`/`necesitaSegundaFase` ejercitados con el `VENCE_FLOTA_AQUI` REAL
+de producción (no un mock) en 3 tests nuevos de `__tests__/flota/rescateSegundaFase.test.ts`
+—incluida la reproducción exacta del bug y la confirmación de que el portátil (l1, con
+`tieneCredencialesGit:true`) sigue diciendo que no hace falta—, más los 12 tests existentes
+actualizados a la fixture correcta. `npm run sim:rescate-flota` (8/8, mecánica de `ordenRescate`
+sin tocar) y `npx tsc --noEmit` limpios. 587 tests de `__tests__/flota/` + `__tests__/sessions/`
+en verde.
+
 ### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
 
 - **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
