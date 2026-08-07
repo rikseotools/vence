@@ -142,12 +142,22 @@ async function _POST(request) {
     if (decision.forceChallenge) {
       const deviceId = headersList.get('x-device-id')
       const subjectKeys = [authUserId, deviceId ? `device:${deviceId}` : null].filter(Boolean)
-      markForcedChallenge(subjectKeys).catch(() => {})
-      emitFireAndForget({
-        source: 'vercel', severity: 'warn', eventType: 'scraping_force_challenge_set',
-        endpoint: '/api/fraud/report', userId: authUserId,
-        metadata: { score, severity, deviceId: deviceId ?? null, subjectKeys },
-      })
+      // La exención de las cuentas sintéticas la decide `markForcedChallenge` (punto de
+      // escritura), no este llamante: ver el porqué en forceChallenge.ts. Aquí solo se deja
+      // constancia de lo que hizo — una exención silenciosa no se distingue de un marcado
+      // que nunca ocurrió, y fue así como un canary se quedó clavado en rojo.
+      markForcedChallenge(subjectKeys, { userId: authUserId })
+        .then((res) => {
+          emitFireAndForget({
+            source: 'vercel',
+            severity: res.marcado ? 'warn' : 'info',
+            eventType: res.marcado ? 'scraping_force_challenge_set' : 'scraping_force_challenge_exento',
+            endpoint: '/api/fraud/report',
+            userId: authUserId,
+            metadata: { score, severity, deviceId: deviceId ?? null, subjectKeys, motivo: res.motivo ?? null },
+          })
+        })
+        .catch(() => {})
     }
 
     // Lo que NO llega a expediente NO se pierde: queda como evento de
