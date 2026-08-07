@@ -3329,202 +3329,6 @@ Contexto: es un proceso de 196 plazas (98 libre + 98 promoción interna), grupo 
 > home/SEO/banner el día en que el plazo cierra — justo cuando alguien podría estar decidiendo
 > apuntarse en el último momento y no encuentra la convocatoria. Pregunto con `--bloquea` para que
 > se vea arriba.
-### [T-617] 🔴 [ABIERTO 06/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
-
-**Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
-estaban rotos: los cuatro servicios `vence-flota@w*` activos, tmux en pie, `NRestarts=0`. Los
-últimos encargos se escribieron a las **10:45–11:17**. Simplemente **nadie repartía**.
-
-**Por qué.** El turno de un trabajador es un `claude -p` que muere al terminar; quien lanza el
-siguiente es el supervisor. Y el supervisor era un proceso **en primer plano en el portátil de
-Manuel** que alguien tenía que arrancar a mano y mantener vivo. No hay unidad systemd, ni timer, ni
-cron, ni script npm, ni una línea de documentación de cómo mantenerlo vivo — comprobado en el VPS
-(`systemctl list-timers`: ningún timer de flota) y en el portátil (ningún proceso, ninguna unidad).
-
-**Y había DOS programadores, no uno:**
-- `vigilar` (05/08 16:22) — bucle propio, con su copia de la regla de reparto por capacidad.
-- `bucle` (06/08 11:35) — el bueno: no reimplementa la criba, lanza `flota.cjs repartir` como hijo,
-  aísla el fallo de una pasada y detecta turnos atascados.
-
-Dos repartidores con criterios propios entregan cosas distintas según quién corra — el olor de los
-cinco escritores de `seguimiento_url` [T-130], dentro del propio supervisor. **Y el bueno era
-invisible**: la línea de ayuda ofrecía `vigilar` y no mencionaba `bucle` en ningún sitio. La flota
-se quedó parada teniendo el arreglo escrito **18 minutos antes** de que se escribiera el último
-encargo.
-
-#### Lo que se hizo
-
-1. **`local` deja de ser una constante y pasa a ser una pregunta** (`lib/flota/maquinas.cjs`:
-   `esLocal`, `inalcanzable`; resuelto dentro de `maquinaDe`, en UN sitio, para que los once puntos
-   que leen `m.local` no se enteren). Lo declara quien arranca el proceso —`VENCE_FLOTA_AQUI`—,
-   igual que `VENCE_SESSION_ROLE`/`HOME` [T-539]. **Sin declarar, el comportamiento es idéntico al
-   de antes.** Se probó por `hostname` y NO sirve: en un contenedor devuelve un id efímero
-   (`32351262e6ed`), así que el portátil se habría declarado remoto a sí mismo.
-2. **Unidad de systemd** (`scripts/flota/vence-flota-supervisor.service`) para que el supervisor
-   viva **en el VPS**, no en el portátil: un supervisor que solo existe mientras Manuel tiene la
-   tapa abierta reproduce exactamente el fallo que viene a arreglar.
-3. **Un solo programador.** `vigilar` pasa a ser alias de `bucle` y su implementación (113 líneas)
-   se borra. La ayuda nombra `bucle` el primero.
-4. **⚠️ Y al fusionarlos se perdía una capacidad, en silencio: `repartir` NO relanzaba los turnos
-   muertos** — eso vivía SOLO en `vigilar`. Un turno que muere con la tarea cogida la deja
-   bloqueada para todos (el claim la protege) y el sistema entero se para por un trabajador. **Lo
-   cazaron sus propios tests de paridad**, que es justo para lo que estaban. Se llevó a `repartir`,
-   que es donde debe vivir ahora: así el comportamiento es el mismo se llegue por el bucle o por un
-   `repartir` a mano. Se le devuelve SU tarea, nunca otra [T-577].
-
-#### Hallazgo aparte: una cicatriz de merge en `main`
-
-El bloque anti-duplicados de `repartir` (`repartidasHacePoco`) había quedado **fuera de todo
-`if (cmd === …)`**, en el cuerpo principal del `try`, con el comentario de «LANZAR UN TRABAJADOR»
-huérfano encima. Seguía funcionando para el reparto —quedaba en ámbito— pero **lanzaba su consulta
-a `observable_events` en CADA invocación de `flota.cjs`** (`estado`, `lanzar`, `parar`…). Es
-sintácticamente válido, así que `node --check`, el typecheck y los 23.888 tests pasaban: una
-cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
-
-**Capas:** `__tests__/flota/maquinaLocal.test.ts` (nuevo, 20 tests) + los de paridad de
-`encargo.test.ts` actualizados a una sola puerta. **278 en verde** en `__tests__/flota/`.
-
-**Verificado en vivo, no declarado:** `node scripts/flota/flota.cjs repartir` tras el cambio →
-**4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
-clones desfasados (w4 iba 11 commits por detrás).
-
-#### INSTALADO Y CORRIENDO (06/08 18:43) — y arrancarlo de verdad destapó tres fallos más
-
-`vence-flota-supervisor.service` está **activo en el VPS**, repartiendo cada 8 min. Comprobado en
-`journalctl` y en `npm run flota`: tres de los cuatro trabajadores ejecutando, el cuarto recogido
-en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
-
-1. **`ficheroEntorno` deducía la ruta de `m.local`.** Accidentalmente correcto mientras «local»
-   solo podía ser el portátil; en cuanto el supervisor corre EN el VPS, sus trabajadores pasan a
-   ser locales y la deducción manda a buscar `w1.env` a `$HOME/.vence-flota` cuando está en
-   `/etc/vence-flota`. El supervisor no habría encontrado el entorno de nadie, ni el turno vivo
-   (`ficheroEncargo` deriva de esta). La ruta es una convención **de la máquina** → `dirEntorno`,
-   al lado de `arbol`, que ya lo era.
-2. **La telemetría paraba el reparto.** El rol `vence_coordinacion` no tenía GRANT sobre
-   `observable_events`, así que cada pasada moría con «permission denied»: **el supervisor corría
-   y la flota seguía parada**. Los emisores del bus ya fallaban abiertos; la LECTURA de
-   `repartidasHacePoco` no. Arreglado el GRANT (SELECT, INSERT) y, sobre todo, la lectura: avisa y
-   sigue. Una avería de la telemetría no puede impedir GOBERNAR la flota (§9).
-3. **`systemctl restart` tardaba 120 s y acababa en SIGKILL.** Poner `parar = true` no basta: el
-   bucle pasa casi todo su tiempo dormido y no mira la bandera hasta despertar. Y matarlo a media
-   pasada deja un `repartir` huérfano lanzando encargos que ya no vigila nadie — justo lo que la
-   salida limpia existía para evitar. Con la espera cancelable: **2 min → 45 ms**, medido.
-
-**Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
-~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
-
-#### Retomado 07/08 (w4): sobrevivió la noche, y salió un CUARTO fallo — relanzar a ciegas monta un crash-loop contra la cuota
-
-**(1) El servicio sobrevivió la noche — MEDIDO, no supuesto.** `systemctl show -p
-ActiveEnterTimestamp,NRestarts`: activo desde **06/08 19:47:03 UTC sin un solo reinicio desde
-entonces** (`NRestarts=2`, pero los dos ocurrieron ANTES de esa marca, durante el propio arranque
-de ayer — cero desde). 11h+ corridas de un tirón, atravesando la noche entera, con pasadas
-periódicas repartiendo tareas reales (`journalctl`: 4, 7, 3, 6 tareas repartidas en distintas
-pasadas). Contesta el punto 1 de "falta".
-
-**(2) Nuevo fallo, DEMOSTRADO con datos reales — el crash-loop de cuota.** Mirando `npm run flota`
-en vivo apareció `w1` con "T-548 COGIDA Y SIN PROCESO" pese al servicio corriendo perfectamente.
-`tmux capture-pane -t w1` mostró el pane repitiendo el mismo bloque una y otra vez, terminando en:
-```
-You've hit your weekly limit · resets 11pm (UTC)
-```
-Contado en `observable_events` (`flota_turno`, `trabajador=w1`, últimas 6h): **27 "retoma" de la
-MISMA tarea T-548 entre las 04:20 y las 07:04**, una cada ~5-13 min (la cadencia del propio bucle),
-CADA UNA fallando en el mismo instante en que arrancaba porque la credencial es buena pero la
-cuota semanal está a cero hasta las 23:00 UTC. La causa NO es sospecha: se reprodujo leyendo el
-pane en vivo y se contó exacto en la serie de eventos — 27, no "varias".
-
-**Por qué pasaba:** la lógica de "retomar turno muerto" (T-617, punto 4 de arriba) relanza a
-CUALQUIER trabajador vivo con tarea cogida y sin proceso, sin distinguir "el proceso anterior
-murió de verdad" de "el proceso ni siquiera pudo arrancar porque no queda cuota". `T-548` nunca
-avanzaba, y cada intento fallido volvía a dejarlo "sin proceso" para que la SIGUIENTE pasada lo
-repitiera — un bucle que solo se habría roto solo a las 23:00 UTC de hoy, ~19h después del primer
-fallo.
-
-**Arreglado (rama `flota/T-617-supervisor-cuota-agotada`, pusheada):**
-- `lib/flota/autenticacion.cjs`: nuevo estado `cuota_agotada` en `clasificar()` (antes cualquier
-  mensaje de límite de cuota caía en `desconocido`, indistinguible de un fallo de red). Detecta
-  "hit your weekly/daily/5-hour/usage limit" y "reached your usage limit", y extrae el "resets…"
-  cuando el mensaje lo trae (sin inventar una hora si no la trae).
-- `scripts/flota/flota.cjs` (`repartir`, bloque de retomar turno muerto): antes de relanzar, lee
-  la cola del log del turno anterior (`tail -c 4000 ~/flota-<w>.log`, **sin gastar cuota** — es un
-  fichero ya en disco, no una llamada nueva a `claude`) y la clasifica. Si `cuota_agotada`, NO
-  relanza — emite un evento `sin_cuota` distinto y sigue. El evento `muerto` se sigue emitiendo
-  SIEMPRE (antes solo salía si el retomar tenía éxito), así que `saludFlota` (que ya anticipaba
-  "cuota" como causa posible del rojo por turnos muertos en serie, `TURNOS_MUERTOS_ROJO=5`) sigue
-  viendo la serie completa.
-- Tests: 7 nuevos en `__tests__/flota/autenticacion.test.ts` (con la cadena real capturada del
-  incidente) + verificado que los 302 tests de `__tests__/flota/` siguen en verde.
-
-**⚠️ NO desplegado — a propósito, fuera de mi alcance como trabajador.** El fix vive en la rama;
-la unidad systemd sigue corriendo el código de ayer hasta que alguien con acceso al VPS haga
-`git pull && systemctl restart vence-flota-supervisor` en `flota-1`. Hasta entonces, el crash-loop
-de `w1`/T-548 sigue activo (se para solo a las 23:00 UTC cuando repone cuota, o antes si se
-despliega el fix). No lo hice yo mismo: reiniciar el supervisor que gobierna a toda la flota en
-mitad de un incidente es justo el tipo de acción que pide ojos humanos antes, no un despliegue de
-rutina.
-
-**(3) l1-l6 (pregunta original de "falta"):** siguen muertos, ahora ~36h (no ~23h: el tiempo pasó).
-Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darles reparto automático
-para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
-Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
-
-#### Retomado 07/08 (w3): la capa que la revisión encontró que faltaba
-
-**Veredicto de la revisión sobre `cb34e9b4b` (ya mergeado a main): "problemas" — no por un defecto
-en el código, sino por una capa ausente.** El propio revisor lo verificó y confirmó que el fix del
-crash-loop es correcto (27 eventos reproducidos, 323/323 tests verdes), y aun así encontró que
-`grep -rn 'cuota_agotada|sinCuota|logDelTurno' __tests__/flota/` (salvo `autenticacion.test.ts`) daba
-**CERO** — ningún test ejercitaba el CABLEADO real (`mandarEncargo` bloqueando de verdad,
-`logDelTurno` construyendo el comando con `sudo`), solo `AUT.clasificar()` en aislamiento o el TEXTO
-fuente con `grep`. Los dos bugs reales que llegaron a producción (T-642) eran precisamente del tipo
-que esa capa habría cazado.
-
-**Lo que hacía falta para poder testear el cableado, y por qué no existía:** `scripts/flota/flota.cjs`
-no tenía `module.exports` ni guard de `require.main === module` — `main()` se invocaba sin condición
-en la última línea, así que cualquier `require()` del fichero disparaba el CLI entero (conexión a
-RDS incluida). Confirmado que NINGÚN test previo lo requería nunca como módulo: los dos que lo tocan
-(`encargo.test.ts`, `actualizacion.test.ts`) lo leen con `fs.readFileSync` como TEXTO, no con
-`require()` — es la misma causa que explica por qué el grep daba cero.
-
-**Cambio mínimo, sin tocar lógica:** añadido `module.exports = { enMaquina, logDelTurno,
-mandarEncargo, comandoDelPanel, turnosVivosDe }` + `if (require.main === module) { main()... }`
-envolviendo la única línea que antes se ejecutaba sin condición. Verificado que el CLI queda
-IDÉNTICO: `node --check` limpio, y `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/flota/flota.cjs
-estado` corrido de verdad tras el cambio, mismo comportamiento que antes.
-
-**Tests nuevos, `__tests__/flota/mandarEncargoWiring.test.ts` (6), mockeando `child_process.execFileSync`
-— el único punto de E/S real — y usando trabajadores YA REGISTRADOS (`l1`=portátil/local,
-`w1`=VPS/remoto) en vez de mockear `lib/flota/maquinas.cjs`, para no fingir una forma de máquina que
-el registro no tiene:**
-- `logDelTurno('l1')` → el `tail` va SIN `sudo -u flota`, por `bash` (no ssh).
-- `logDelTurno('w1')` → el `tail` va CON `sudo -u flota`, por `ssh` — el bug real de T-642.
-- `logDelTurno` con `execFileSync` lanzando → devuelve `''`, nunca propaga.
-- `mandarEncargo('w1', …)` con panel libre + 0 turnos vivos + log anterior con el mensaje real de
-  cuota (`"You've hit your weekly limit · resets 11pm (UTC)"`, el mismo texto del incidente) →
-  `{ok:false, sinCuota:true}`, **y se comprueba que NO hubo `send-keys` ni `mkdir -p`** (la prueba de
-  que bloqueó DE VERDAD antes de mandar nada, no que casualmente devolvió el valor correcto).
-- el `motivo` devuelto es literalmente `AUT.clasificar(...).detalle` (misma fuente, no reimplementado
-  en el test).
-- panel ocupado → bloquea ANTES de leer el log (no gasta esa llamada de más).
-
-**Mutación verificada, no solo "el test pasa":** para confirmar que el test de bloqueo cazaría una
-regresión de verdad (y no es un tautología que pasa pase lo que pase), se desactivó a propósito el
-`if (auth.estado === 'cuota_agotada')` (`if (false && ...)`) y se re-corrió — **2 de los 6 tests
-fallan exactamente como se espera** (`sinCuota` deja de estar, `motivo` queda `undefined`). Revertido
-el cambio, `node --check` limpio, y confirmado de nuevo en verde.
-
-**Capas:** `__tests__/flota/mandarEncargoWiring.test.ts` (nuevo, 6 tests) + `__tests__/flota/`
-completo sigue en verde: **374/374** (13 suites; antes 373, contando el resto de tests de flota que
-ya existían más los 6 nuevos). No se tocó ninguna lógica de negocio, solo se hizo testeable lo que ya
-funcionaba.
-
-**Rama `flota/T-617-wiring-tests`, pusheada. Sin desplegar** (no aplica: no hay cambio de
-comportamiento del supervisor, solo de testabilidad — nada que instalar en el VPS). Cierro vía
-`revision`, no `done`: es código que gobierna la flota entera y el crash-loop de cuota real seguía
-activo en vivo cuando se revisó por última vez; que alguien con más contexto del incidente en curso
-confirme antes de dar la tarea por cerrada del todo.
-
 ### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
 
 **No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es
@@ -9091,6 +8895,205 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-617] ✅ [HECHA 08/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
+
+**Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
+estaban rotos: los cuatro servicios `vence-flota@w*` activos, tmux en pie, `NRestarts=0`. Los
+últimos encargos se escribieron a las **10:45–11:17**. Simplemente **nadie repartía**.
+
+**Por qué.** El turno de un trabajador es un `claude -p` que muere al terminar; quien lanza el
+siguiente es el supervisor. Y el supervisor era un proceso **en primer plano en el portátil de
+Manuel** que alguien tenía que arrancar a mano y mantener vivo. No hay unidad systemd, ni timer, ni
+cron, ni script npm, ni una línea de documentación de cómo mantenerlo vivo — comprobado en el VPS
+(`systemctl list-timers`: ningún timer de flota) y en el portátil (ningún proceso, ninguna unidad).
+
+**Y había DOS programadores, no uno:**
+- `vigilar` (05/08 16:22) — bucle propio, con su copia de la regla de reparto por capacidad.
+- `bucle` (06/08 11:35) — el bueno: no reimplementa la criba, lanza `flota.cjs repartir` como hijo,
+  aísla el fallo de una pasada y detecta turnos atascados.
+
+Dos repartidores con criterios propios entregan cosas distintas según quién corra — el olor de los
+cinco escritores de `seguimiento_url` [T-130], dentro del propio supervisor. **Y el bueno era
+invisible**: la línea de ayuda ofrecía `vigilar` y no mencionaba `bucle` en ningún sitio. La flota
+se quedó parada teniendo el arreglo escrito **18 minutos antes** de que se escribiera el último
+encargo.
+
+#### Lo que se hizo
+
+1. **`local` deja de ser una constante y pasa a ser una pregunta** (`lib/flota/maquinas.cjs`:
+   `esLocal`, `inalcanzable`; resuelto dentro de `maquinaDe`, en UN sitio, para que los once puntos
+   que leen `m.local` no se enteren). Lo declara quien arranca el proceso —`VENCE_FLOTA_AQUI`—,
+   igual que `VENCE_SESSION_ROLE`/`HOME` [T-539]. **Sin declarar, el comportamiento es idéntico al
+   de antes.** Se probó por `hostname` y NO sirve: en un contenedor devuelve un id efímero
+   (`32351262e6ed`), así que el portátil se habría declarado remoto a sí mismo.
+2. **Unidad de systemd** (`scripts/flota/vence-flota-supervisor.service`) para que el supervisor
+   viva **en el VPS**, no en el portátil: un supervisor que solo existe mientras Manuel tiene la
+   tapa abierta reproduce exactamente el fallo que viene a arreglar.
+3. **Un solo programador.** `vigilar` pasa a ser alias de `bucle` y su implementación (113 líneas)
+   se borra. La ayuda nombra `bucle` el primero.
+4. **⚠️ Y al fusionarlos se perdía una capacidad, en silencio: `repartir` NO relanzaba los turnos
+   muertos** — eso vivía SOLO en `vigilar`. Un turno que muere con la tarea cogida la deja
+   bloqueada para todos (el claim la protege) y el sistema entero se para por un trabajador. **Lo
+   cazaron sus propios tests de paridad**, que es justo para lo que estaban. Se llevó a `repartir`,
+   que es donde debe vivir ahora: así el comportamiento es el mismo se llegue por el bucle o por un
+   `repartir` a mano. Se le devuelve SU tarea, nunca otra [T-577].
+
+#### Hallazgo aparte: una cicatriz de merge en `main`
+
+El bloque anti-duplicados de `repartir` (`repartidasHacePoco`) había quedado **fuera de todo
+`if (cmd === …)`**, en el cuerpo principal del `try`, con el comentario de «LANZAR UN TRABAJADOR»
+huérfano encima. Seguía funcionando para el reparto —quedaba en ámbito— pero **lanzaba su consulta
+a `observable_events` en CADA invocación de `flota.cjs`** (`estado`, `lanzar`, `parar`…). Es
+sintácticamente válido, así que `node --check`, el typecheck y los 23.888 tests pasaban: una
+cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
+
+**Capas:** `__tests__/flota/maquinaLocal.test.ts` (nuevo, 20 tests) + los de paridad de
+`encargo.test.ts` actualizados a una sola puerta. **278 en verde** en `__tests__/flota/`.
+
+**Verificado en vivo, no declarado:** `node scripts/flota/flota.cjs repartir` tras el cambio →
+**4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
+clones desfasados (w4 iba 11 commits por detrás).
+
+#### INSTALADO Y CORRIENDO (06/08 18:43) — y arrancarlo de verdad destapó tres fallos más
+
+`vence-flota-supervisor.service` está **activo en el VPS**, repartiendo cada 8 min. Comprobado en
+`journalctl` y en `npm run flota`: tres de los cuatro trabajadores ejecutando, el cuarto recogido
+en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
+
+1. **`ficheroEntorno` deducía la ruta de `m.local`.** Accidentalmente correcto mientras «local»
+   solo podía ser el portátil; en cuanto el supervisor corre EN el VPS, sus trabajadores pasan a
+   ser locales y la deducción manda a buscar `w1.env` a `$HOME/.vence-flota` cuando está en
+   `/etc/vence-flota`. El supervisor no habría encontrado el entorno de nadie, ni el turno vivo
+   (`ficheroEncargo` deriva de esta). La ruta es una convención **de la máquina** → `dirEntorno`,
+   al lado de `arbol`, que ya lo era.
+2. **La telemetría paraba el reparto.** El rol `vence_coordinacion` no tenía GRANT sobre
+   `observable_events`, así que cada pasada moría con «permission denied»: **el supervisor corría
+   y la flota seguía parada**. Los emisores del bus ya fallaban abiertos; la LECTURA de
+   `repartidasHacePoco` no. Arreglado el GRANT (SELECT, INSERT) y, sobre todo, la lectura: avisa y
+   sigue. Una avería de la telemetría no puede impedir GOBERNAR la flota (§9).
+3. **`systemctl restart` tardaba 120 s y acababa en SIGKILL.** Poner `parar = true` no basta: el
+   bucle pasa casi todo su tiempo dormido y no mira la bandera hasta despertar. Y matarlo a media
+   pasada deja un `repartir` huérfano lanzando encargos que ya no vigila nadie — justo lo que la
+   salida limpia existía para evitar. Con la espera cancelable: **2 min → 45 ms**, medido.
+
+**Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
+~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
+
+#### Retomado 07/08 (w4): sobrevivió la noche, y salió un CUARTO fallo — relanzar a ciegas monta un crash-loop contra la cuota
+
+**(1) El servicio sobrevivió la noche — MEDIDO, no supuesto.** `systemctl show -p
+ActiveEnterTimestamp,NRestarts`: activo desde **06/08 19:47:03 UTC sin un solo reinicio desde
+entonces** (`NRestarts=2`, pero los dos ocurrieron ANTES de esa marca, durante el propio arranque
+de ayer — cero desde). 11h+ corridas de un tirón, atravesando la noche entera, con pasadas
+periódicas repartiendo tareas reales (`journalctl`: 4, 7, 3, 6 tareas repartidas en distintas
+pasadas). Contesta el punto 1 de "falta".
+
+**(2) Nuevo fallo, DEMOSTRADO con datos reales — el crash-loop de cuota.** Mirando `npm run flota`
+en vivo apareció `w1` con "T-548 COGIDA Y SIN PROCESO" pese al servicio corriendo perfectamente.
+`tmux capture-pane -t w1` mostró el pane repitiendo el mismo bloque una y otra vez, terminando en:
+```
+You've hit your weekly limit · resets 11pm (UTC)
+```
+Contado en `observable_events` (`flota_turno`, `trabajador=w1`, últimas 6h): **27 "retoma" de la
+MISMA tarea T-548 entre las 04:20 y las 07:04**, una cada ~5-13 min (la cadencia del propio bucle),
+CADA UNA fallando en el mismo instante en que arrancaba porque la credencial es buena pero la
+cuota semanal está a cero hasta las 23:00 UTC. La causa NO es sospecha: se reprodujo leyendo el
+pane en vivo y se contó exacto en la serie de eventos — 27, no "varias".
+
+**Por qué pasaba:** la lógica de "retomar turno muerto" (T-617, punto 4 de arriba) relanza a
+CUALQUIER trabajador vivo con tarea cogida y sin proceso, sin distinguir "el proceso anterior
+murió de verdad" de "el proceso ni siquiera pudo arrancar porque no queda cuota". `T-548` nunca
+avanzaba, y cada intento fallido volvía a dejarlo "sin proceso" para que la SIGUIENTE pasada lo
+repitiera — un bucle que solo se habría roto solo a las 23:00 UTC de hoy, ~19h después del primer
+fallo.
+
+**Arreglado (rama `flota/T-617-supervisor-cuota-agotada`, pusheada):**
+- `lib/flota/autenticacion.cjs`: nuevo estado `cuota_agotada` en `clasificar()` (antes cualquier
+  mensaje de límite de cuota caía en `desconocido`, indistinguible de un fallo de red). Detecta
+  "hit your weekly/daily/5-hour/usage limit" y "reached your usage limit", y extrae el "resets…"
+  cuando el mensaje lo trae (sin inventar una hora si no la trae).
+- `scripts/flota/flota.cjs` (`repartir`, bloque de retomar turno muerto): antes de relanzar, lee
+  la cola del log del turno anterior (`tail -c 4000 ~/flota-<w>.log`, **sin gastar cuota** — es un
+  fichero ya en disco, no una llamada nueva a `claude`) y la clasifica. Si `cuota_agotada`, NO
+  relanza — emite un evento `sin_cuota` distinto y sigue. El evento `muerto` se sigue emitiendo
+  SIEMPRE (antes solo salía si el retomar tenía éxito), así que `saludFlota` (que ya anticipaba
+  "cuota" como causa posible del rojo por turnos muertos en serie, `TURNOS_MUERTOS_ROJO=5`) sigue
+  viendo la serie completa.
+- Tests: 7 nuevos en `__tests__/flota/autenticacion.test.ts` (con la cadena real capturada del
+  incidente) + verificado que los 302 tests de `__tests__/flota/` siguen en verde.
+
+**⚠️ NO desplegado — a propósito, fuera de mi alcance como trabajador.** El fix vive en la rama;
+la unidad systemd sigue corriendo el código de ayer hasta que alguien con acceso al VPS haga
+`git pull && systemctl restart vence-flota-supervisor` en `flota-1`. Hasta entonces, el crash-loop
+de `w1`/T-548 sigue activo (se para solo a las 23:00 UTC cuando repone cuota, o antes si se
+despliega el fix). No lo hice yo mismo: reiniciar el supervisor que gobierna a toda la flota en
+mitad de un incidente es justo el tipo de acción que pide ojos humanos antes, no un despliegue de
+rutina.
+
+**(3) l1-l6 (pregunta original de "falta"):** siguen muertos, ahora ~36h (no ~23h: el tiempo pasó).
+Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darles reparto automático
+para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
+Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
+
+#### Retomado 07/08 (w3): la capa que la revisión encontró que faltaba
+
+**Veredicto de la revisión sobre `cb34e9b4b` (ya mergeado a main): "problemas" — no por un defecto
+en el código, sino por una capa ausente.** El propio revisor lo verificó y confirmó que el fix del
+crash-loop es correcto (27 eventos reproducidos, 323/323 tests verdes), y aun así encontró que
+`grep -rn 'cuota_agotada|sinCuota|logDelTurno' __tests__/flota/` (salvo `autenticacion.test.ts`) daba
+**CERO** — ningún test ejercitaba el CABLEADO real (`mandarEncargo` bloqueando de verdad,
+`logDelTurno` construyendo el comando con `sudo`), solo `AUT.clasificar()` en aislamiento o el TEXTO
+fuente con `grep`. Los dos bugs reales que llegaron a producción (T-642) eran precisamente del tipo
+que esa capa habría cazado.
+
+**Lo que hacía falta para poder testear el cableado, y por qué no existía:** `scripts/flota/flota.cjs`
+no tenía `module.exports` ni guard de `require.main === module` — `main()` se invocaba sin condición
+en la última línea, así que cualquier `require()` del fichero disparaba el CLI entero (conexión a
+RDS incluida). Confirmado que NINGÚN test previo lo requería nunca como módulo: los dos que lo tocan
+(`encargo.test.ts`, `actualizacion.test.ts`) lo leen con `fs.readFileSync` como TEXTO, no con
+`require()` — es la misma causa que explica por qué el grep daba cero.
+
+**Cambio mínimo, sin tocar lógica:** añadido `module.exports = { enMaquina, logDelTurno,
+mandarEncargo, comandoDelPanel, turnosVivosDe }` + `if (require.main === module) { main()... }`
+envolviendo la única línea que antes se ejecutaba sin condición. Verificado que el CLI queda
+IDÉNTICO: `node --check` limpio, y `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/flota/flota.cjs
+estado` corrido de verdad tras el cambio, mismo comportamiento que antes.
+
+**Tests nuevos, `__tests__/flota/mandarEncargoWiring.test.ts` (6), mockeando `child_process.execFileSync`
+— el único punto de E/S real — y usando trabajadores YA REGISTRADOS (`l1`=portátil/local,
+`w1`=VPS/remoto) en vez de mockear `lib/flota/maquinas.cjs`, para no fingir una forma de máquina que
+el registro no tiene:**
+- `logDelTurno('l1')` → el `tail` va SIN `sudo -u flota`, por `bash` (no ssh).
+- `logDelTurno('w1')` → el `tail` va CON `sudo -u flota`, por `ssh` — el bug real de T-642.
+- `logDelTurno` con `execFileSync` lanzando → devuelve `''`, nunca propaga.
+- `mandarEncargo('w1', …)` con panel libre + 0 turnos vivos + log anterior con el mensaje real de
+  cuota (`"You've hit your weekly limit · resets 11pm (UTC)"`, el mismo texto del incidente) →
+  `{ok:false, sinCuota:true}`, **y se comprueba que NO hubo `send-keys` ni `mkdir -p`** (la prueba de
+  que bloqueó DE VERDAD antes de mandar nada, no que casualmente devolvió el valor correcto).
+- el `motivo` devuelto es literalmente `AUT.clasificar(...).detalle` (misma fuente, no reimplementado
+  en el test).
+- panel ocupado → bloquea ANTES de leer el log (no gasta esa llamada de más).
+
+**Mutación verificada, no solo "el test pasa":** para confirmar que el test de bloqueo cazaría una
+regresión de verdad (y no es un tautología que pasa pase lo que pase), se desactivó a propósito el
+`if (auth.estado === 'cuota_agotada')` (`if (false && ...)`) y se re-corrió — **2 de los 6 tests
+fallan exactamente como se espera** (`sinCuota` deja de estar, `motivo` queda `undefined`). Revertido
+el cambio, `node --check` limpio, y confirmado de nuevo en verde.
+
+**Capas:** `__tests__/flota/mandarEncargoWiring.test.ts` (nuevo, 6 tests) + `__tests__/flota/`
+completo sigue en verde: **374/374** (13 suites; antes 373, contando el resto de tests de flota que
+ya existían más los 6 nuevos). No se tocó ninguna lógica de negocio, solo se hizo testeable lo que ya
+funcionaba.
+
+**Rama `flota/T-617-wiring-tests`, pusheada. Sin desplegar** (no aplica: no hay cambio de
+comportamiento del supervisor, solo de testabilidad — nada que instalar en el VPS). Cierro vía
+`revision`, no `done`: es código que gobierna la flota entera y el crash-loop de cuota real seguía
+activo en vivo cuando se revisó por última vez; que alguien con más contexto del incidente en curso
+confirme antes de dar la tarea por cerrada del todo.
+
+- **✅ VERIFICADO lo único que no se podía comprobar el mismo día (08/08, 00:45).** El supervisor **ha aguantado la noche repartiendo solo**: activo de forma continua desde las **18:02:54 UTC del 07/08**, con **cero reinicios** del servicio (`NRestarts=0`) y **15 encargos repartidos en 6 horas**, los últimos a w3 y w4 minutos antes de mirar. No solo sobrevivió: siguió trabajando **sin que nadie lo empujara**, que era justo la razón de la ficha — existía por duplicado y no corría en ningún sitio, así que la flota se paraba en cuanto nadie miraba.
+- **El otro punto que citaba (l1-l6 muertos en el portátil) dejó de ser cuestión de esta ficha:** Manuel decidió el 05/08 que el portátil **no reparte automáticamente** (`reparte: false` en el registro de máquinas), así que estar apagados es su estado CORRECTO y no una avería.
 
 ### [T-648] ✅ [HECHA 08/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
 
