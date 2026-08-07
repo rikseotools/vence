@@ -1780,6 +1780,74 @@ texto.
 `audit:instrumento-derivado`, que son dos casos particulares de esta misma premisa y conviene mirar
 antes de construir nada.
 
+> **📌 SESIÓN 07/08 (w1) — pasos 1 y 2 hechos: medido sin sesgo, muestra leída, DOS patrones
+> distintos encontrados. Sin tocar nada (pasos 3-4 quedan para quien retome).**
+>
+> **Herramienta:** `npm run audit:literalidad-clave` — reutiliza `esExaminable`/`recall` de
+> `lib/health/vinculoArticuloVecino.cjs` (no un cuarto tokenizador), con el bucketing del
+> histograma en `lib/health/bandasLiteralidad.cjs` (6 tests) aparte del script para poder
+> testearlo sin la conexión a Postgres. Registrada en `toolRegistry.ts`.
+>
+> **✅ Paso 1 — medido sin sesgo, corrido de verdad contra RDS (`VENCE_LECTOR_URL`), no supuesto.**
+> Universo: preguntas activas ancladas a un artículo activo de una ley REAL (`laws.boe_url IS NOT
+> NULL`, mismo filtro que `audit:vinculo-vecino` — excluye psicotécnicos, que viven en otra tabla,
+> y contenedores editoriales sin BOE como los de T-144). **34.571 preguntas examinables** (de un
+> universo bruto de 62.749; **25.980 excluidas**: 7.430 por enunciado de negación, 2.120 por
+> meta-opción, **16.430 por opción demasiado corta** — este último bucket es mucho más grande que
+> en `vinculo-vecino`, esperable porque ahí no importa la longitud de la opción y aquí si la
+> opción es corta el recall no mide nada). Distribución completa:
+>
+> | Banda de recall | Preguntas |
+> |---|---|
+> | 0-10% | 918 |
+> | 10-25% | 464 |
+> | 25-40% | 561 |
+> | 40-55% | 894 |
+> | 55-70% | 1.100 |
+> | 70-85% | 2.452 |
+> | 85-100% | **28.182 (81,5 %)** |
+>
+> El banco, en conjunto, ES mayormente literal — la banda alta domina de largo, que es la
+> comprobación de cordura antes de mirar la cola baja. **1.382 preguntas (4 %) caen bajo el 25 %**
+> (el mismo umbral ya calibrado en `vinculoArticuloVecino.cjs` como «el propio artículo no
+> responde»).
+>
+> **✅ Paso 2 — muestra leída a mano, y la ficha tenía razón en avisar: aparecen DOS patrones, no
+> uno.** Filtrando los candidatos <25% que NO citan explícitamente su propio artículo como
+> respuesta (146 de 1.382 en una muestra de 4 leyes grandes — CE, Ley 39/2015, Ley 40/2015, Ley
+> 7/1985 — el resto sí lo hace, ver abajo), leídos a mano contra la lógica de la pregunta:
+>
+> - **Patrón A — FALSO POSITIVO recurrente, preguntas de ESTRUCTURA.** *"El derecho de huelga… se
+>   reconoce en la Constitución dentro de: → Derechos fundamentales y libertades públicas"*
+>   (CE art.28, 304 exp., 38% fallo). No pregunta por el CONTENIDO del artículo, pregunta por su
+>   UBICACIÓN dentro de la estructura de la ley (sección/título/capítulo) — verificable y correcto,
+>   pero el recall de palabras es bajo porque esa ubicación no está escrita LITERALMENTE dentro del
+>   propio artículo (hay que conocer el índice de la CE, no solo leer el art. 28). Mismo patrón en
+>   *"¿En qué Título del TREBEP está regulado…?"* (RDL 5/2015 art.52) y varias más. **No es lo que
+>   describe la premisa** (no es doctrina ajena ni ambigüedad): es un tipo de pregunta que el
+>   recall de contenido no puede medir bien, y probablemente necesite su propia exención, como
+>   `RE_NEGATIVA`/`RE_META` en su día.
+> - **Patrón B — SÍ encaja con la premisa, mismo mecanismo que `dbc5b602`.** *"…el derecho a la
+>   protección de la salud contemplado en el artículo 43: → Sólo podrá ser alegado ante la
+>   Jurisdicción ordinaria de acuerdo con lo que dispongan las leyes que lo desarrollen"*
+>   (CE art.43, **368 exp., 57% fallo**). La clave es doctrina CORRECTA (la regla de
+>   justiciabilidad limitada de los derechos del Capítulo III) pero es el contenido del
+>   **art. 53.3 CE**, no del art. 43 al que la pregunta cuelga — el opositor que abre el art. 43
+>   nunca encuentra esa frase. Exactamente el mecanismo de Patricia, en un artículo distinto.
+>
+> **No se ha calibrado la proporción exacta entre los dos patrones** (146 leídas de 1.382, no
+> las 1.382) ni se ha confirmado ninguna más allá de estas — **SOSPECHO que el Patrón A es más
+> frecuente de lo que una muestra de 15-20 sugiere, pero no lo he contado**. Falta, antes de tocar
+> nada: (a) clasificar sistemáticamente cuántos de los 1.382 son Patrón A (con una exención
+> nueva, tipo `RE_ESTRUCTURA`, calibrada como las otras dos) vs Patrón B; (b) para los del Patrón
+> B, verificar cada uno contra el BOE antes de decidir reformular/desactivar — **nada de esto se
+> ha tocado, ni una clave, ni una explicación**, consistente con que un trabajador no tiene
+> escritura de negocio de todas formas.
+>
+> **Volcado completo** (los 1.382, ordenados por daño = exposición × %fallo) en
+> `scratchpad/t672/candidatos-recall-bajo25.json`, para que la siguiente sesión no repita la
+> query — es la MISMA que corre `audit:literalidad-clave`, no una copia derivada a mano.
+
 ### [T-668] 🟡 [ABIERTO 07/08] El detector de notas de auditoría no ve la confesión en PROSA: se sirvió una explicación que decía «la pregunta es imprecisa y el artículo vinculado es incorrecto»
 
 **Lo destapa una impugnación, no el barrido.** Ángela P. (premium, `5c4458fb`) impugnó una pregunta

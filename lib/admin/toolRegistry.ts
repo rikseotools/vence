@@ -625,6 +625,32 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  audit_literalidad_clave: {
+    titulo: 'Bajo la premisa de literalidad (Manuel, §7.3.PREMISA): ¿el artículo vinculado responde la clave, sin ambigüedad?',
+    ruta: 'scripts/audit-literalidad-clave.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run audit:literalidad-clave [-- --ley <texto>] [--banda lo-hi] [--out fichero.json] [--json]`. ' +
+      'SOLO LEE. [T-672]. Da un HISTOGRAMA de `recall(clave, artículo propio)` sobre todo el banco activo ' +
+      'anclado a ley real (`laws.boe_url IS NOT NULL`), no una lista de arreglos — la ficha exige medir ' +
+      'sin sesgo y leer muestra de cada banda ANTES de fijar un corte, precisamente para no repetir los ' +
+      '173 falsos positivos de una medida anterior. **HERMANO de `audit:vinculo-vecino`/' +
+      '`audit:instrumento-derivado`, reutiliza sus primitivas** (`esExaminable`/`recall` de ' +
+      '`lib/health/vinculoArticuloVecino.cjs`, 34 tests) en vez de un cuarto tokenizador — la diferencia ' +
+      'es que aquí NO se busca vecino ni instrumento: la pregunta es más simple y más general (¿el ' +
+      'PROPIO artículo responde, sí o no?). Bucketing en `lib/health/bandasLiteralidad.cjs` (6 tests), ' +
+      'aparte del script para poder testearlo sin la conexión a Postgres. **Medido 07/08/2026: 34.571 ' +
+      'preguntas examinables (25.980 excluidas: negación/meta-opción/opción-corta), 1.382 (4%) con ' +
+      'recall <25%, el 81,5% en 85-100%.** Muestra leída a mano: de 146 candidatos sin patrón obvio, ' +
+      'aparecen mezclados un FALSO POSITIVO recurrente (preguntas de ESTRUCTURA — "¿en qué título/' +
+      'sección se recoge?" — verificables pero cuyo recall de contenido es bajo porque la respuesta es ' +
+      'sobre UBICACIÓN, no sobre TEXTO) y casos que SÍ encajan con la premisa (CE art.43/53: la clave es ' +
+      'doctrina real pero del art.53.3, no del art.43 vinculado — mismo patrón que la impugnación ' +
+      '`dbc5b602` que originó esta ficha). **Precisión NO calibrada del todo — no pinga el badge, mismo ' +
+      'criterio que sus hermanos.** NUNCA cambiar la clave para que encaje; la adjudicación ' +
+      '(reformular/desactivar) es de una persona contra la fuente oficial.',
+  },
   limpiar_dlq_pdf: {
     titulo: 'Retirar de la DLQ de PDFs los fallos de un defecto YA arreglado, con la prueba delante',
     ruta: 'scripts/temario/limpiar-dlq-pdf.cjs',
