@@ -138,6 +138,8 @@
     "sim:perfil-roto-se-cura": "tsx --env-file=.env.local scripts/sim/sim-perfil-roto-se-cura.ts",
     "sim:sesion-fantasma": "tsx --env-file=.env.local scripts/sim/sim-sesion-fantasma.ts",
     "sim:contexto-guard": "node scripts/backlog/sim-contexto-guard.cjs",
+    "sim:contexto-guard-ficheros": "node scripts/backlog/sim-contexto-guard-ficheros.cjs",
+    "sim:migrar-fichas": "node scripts/backlog/migrar-a-ficheros.cjs",
     "parte": "node scripts/sessions/parte.cjs",
     "sim:rutas": "npx tsx scripts/sim/barrido-rutas.ts",
     "sim:identidad-maquina": "node scripts/sim/sim-identidad-maquina.cjs",

@@ -205,3 +205,42 @@ describe('el id de la cabecera es el primero, como en parseMarkdown', () => {
     expect(parseBacklogMarkdown(CITA).map((t: any) => t.id)).toEqual(idsDeFichas([CITA]))
   })
 })
+
+// ── validarFichaNueva — el modelo «una ficha = un fichero» (T-532) ──────────────────────────
+describe('validarFichaNueva', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { validarFichaNueva } = require('@/lib/backlog/insertarFicha.cjs')
+
+  it('acepta una ficha bien formada y devuelve el texto con salto final', () => {
+    const r = validarFichaNueva('T-001', '### [T-001] 🟠 Título\n\ncuerpo', false)
+    expect(r.ok).toBe(true)
+    expect(r.texto).toBe('### [T-001] 🟠 Título\n\ncuerpo\n')
+  })
+
+  it('rechaza id con forma inválida', () => {
+    expect(validarFichaNueva('42', '### [42] x', false).motivo).toBe('id_invalido')
+  })
+
+  it('rechaza ficha vacía', () => {
+    expect(validarFichaNueva('T-001', '', false).motivo).toBe('ficha_vacia')
+  })
+
+  it('rechaza cabecera ausente', () => {
+    expect(validarFichaNueva('T-001', 'sin cabecera de ningún tipo', false).motivo).toBe('sin_cabecera')
+  })
+
+  it('rechaza cabecera con OTRO id (el gotcha del título que cita otra tarea)', () => {
+    const r = validarFichaNueva('T-532', '### [T-532] cita a [T-400]\ncuerpo', false)
+    expect(r.ok).toBe(true) // el PRIMER id es el correcto — no confundir con el siguiente caso
+    const r2 = validarFichaNueva('T-400', '### [T-532] cita a [T-400]\ncuerpo', false)
+    expect(r2.motivo).toBe('id_no_coincide')
+  })
+
+  it('rechaza una ficha que nace cerrada (✅ en la cabecera)', () => {
+    expect(validarFichaNueva('T-001', '### [T-001] ✅ Ya hecha\ncuerpo', false).motivo).toBe('nace_cerrada')
+  })
+
+  it('rechaza si ya existe (yaExiste=true) — lo decide el llamador leyendo disco', () => {
+    expect(validarFichaNueva('T-001', '### [T-001] x\ncuerpo', true).motivo).toBe('id_duplicado')
+  })
+})

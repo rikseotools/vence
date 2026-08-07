@@ -197,6 +197,35 @@ describe('evaluatePush — push que solo toca el markdown de fichas', () => {
     const r = evaluatePush({ referencedIds: ['T-214'], tasksById: zombi, sid: SID, changedFiles: [MD], now: AHORA })
     expect(r.allowed).toBe(true)
   })
+
+  // T-532: «una ficha = un fichero» — el mismo papeleo, en un fichero propio por ficha.
+  it('PERMITE si el push SOLO toca el fichero de UNA ficha (docs/roadmap/tareas/T-nnn.md)', () => {
+    const r = evaluatePush({ referencedIds: ['T-377'], tasksById: libre, sid: SID, changedFiles: ['docs/roadmap/tareas/T-377.md'], now: AHORA })
+    expect(r.allowed).toBe(true)
+  })
+
+  it('PERMITE si toca el índice Y el fichero de la ficha juntos (el flujo normal de `ficha`)', () => {
+    const r = evaluatePush({
+      referencedIds: ['T-377'], tasksById: libre, sid: SID,
+      changedFiles: [MD, 'docs/roadmap/tareas/T-377.md'], now: AHORA,
+    })
+    expect(r.allowed).toBe(true)
+  })
+
+  it('BLOQUEA si el fichero de ficha va acompañado de código', () => {
+    const r = evaluatePush({
+      referencedIds: ['T-377'], tasksById: libre, sid: SID,
+      changedFiles: ['docs/roadmap/tareas/T-377.md', 'lib/api/pagos.ts'], now: AHORA,
+    })
+    expect(r.allowed).toBe(false)
+  })
+
+  it('NO confunde un fichero de OTRO id con «solo papeleo de fichas» (defensa de forma estrecha)', () => {
+    // docs/roadmap/tareas/T-377.md.orig o cualquier cosa que no case EXACTO no debe colarse.
+    const { esSoloFichas } = require('@/lib/backlog/pushGuard.cjs')
+    expect(esSoloFichas(['docs/roadmap/tareas/T-377.md.bak'])).toBe(false)
+    expect(esSoloFichas(['docs/roadmap/tareas/T-377.md'])).toBe(true)
+  })
 })
 
 // ────────────────────────────────────────────────────────────────────────────────────────────
