@@ -625,6 +625,22 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  limpiar_dlq_pdf: {
+    titulo: 'Retirar de la DLQ de PDFs los fallos de un defecto YA arreglado, con la prueba delante',
+    ruta: 'scripts/temario/limpiar-dlq-pdf.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      '`node scripts/temario/limpiar-dlq-pdf.cjs --motivo <texto> --desde "<fecha del arreglo>" ' +
+      '[--aplicar]`. Simula por defecto. **La puerta es lo que lo hace seguro:** ABORTA si hay un ' +
+      'solo fallo de ese motivo POSTERIOR a la fecha declarada — si el defecto sigue vivo, esas ' +
+      'filas son una avería y borrarlas destruiría la prueba de que sigue pasando. Estrenado en ' +
+      '[T-648] con 112 `oposicion_desconocida` (31/07–06/08, cero tras el arreglo), que tenían el ' +
+      'canario de la cola en crítico cada 15 min por una avería que ya no existía. **NO se usa ' +
+      'para callar fallos vivos:** los `tema_no_encontrado` (personalizada sin temas) NO se ' +
+      'borran — para que no paginen está `lib/temario/pdf/dlqTriage.cjs`, que los separa sin ' +
+      'esconderlos.',
+  },
   candado_typecheck: {
     titulo: 'Un `tsc --noEmit` a la vez por MÁQUINA (el peaje que ahogaba el VPS de la flota)',
     ruta: 'lib/hooks/candadoTypecheck.cjs',
