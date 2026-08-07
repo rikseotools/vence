@@ -981,6 +981,22 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-636] 🟡 [ABIERTO 07/08] La cita de plazas de `administrativo-cantabria` mezcla dos ciclos: atribuye 30 plazas al Decreto 51/2025 cuando el dato viene de la convocatoria 2024/21
+
+- **Esfuerzo: rato.** El documento correcto puede que ya esté en el hub para el ciclo viejo; falta clonar el nuevo (OEP 2026, Decreto 23/2026) y decidir la redacción.
+- **De dónde sale:** investigando [T-435] (notas internas publicadas), verificando las 3 filas que quedaban pendientes, encontré esto de pasada — no es el mismo defecto (no hay marcador de nota interna, el texto es coherente a primera vista), así que se ficha aparte en vez de forzarlo dentro de T-435.
+- **Qué pasa.** `boe_reference` de `administrativo-cantabria` dice hoy: *«Convocatoria del Cuerpo Administrativo (Subgrupo C1) de Cantabria — Decreto 51/2025, OEP 2025 (BOC nº 161, de 22/08/2025). Bases: 30 plazas, de las que 2 se reservan a personas con discapacidad»*. Suena a una sola fuente, pero son DOS:
+  - El **«30 plazas (2 Discapacidad)»** está confirmado palabra por palabra en el documento `convocatoria_documentos` id `3c032337-d284-48a3-9ef7-65fb7e207cf4` («bases oficial de Administrativo del Gobierno de Cantabria», ya clonado), que dice literal: *«Convocatoria: 2024/21… Fecha: 22 de octubre de 2024. NÚMERO PLAZAS CONVOCADAS: 30 plazas (2 Discapacidad)»*. **Es la convocatoria de 2024, no la de 2025.**
+  - El **Decreto 51/2025 (OEP 2025, BOC nº 161)** — documento `convocatoria_documentos` id `723e15e7-063c-4b43-86ea-db95848b6048`, también clonado, 21.744 caracteres leídos — **no tiene ninguna cifra específica de «Cuerpo Administrativo»**: desglosa solo por SUBGRUPO, no por cuerpo. Es decir, el documento que la frase cita como fuente de las 30 plazas NO CONTIENE esa cifra.
+  - Y hay un TERCER ciclo ya escrito en la misma fila (`oep_decreto`): **OEP 2026 (Decreto 23/2026, BOC-2026-3453), 35 plazas**, marcado *«pendiente de convocatoria»*. Ese documento **no está clonado en el hub todavía** — no verificado.
+- **Por qué importa:** el usuario lee «Decreto 51/2025, OEP 2025… Bases: 30 plazas» como si las 30 plazas vinieran de ese decreto de 2025. En realidad vienen de un proceso YA CERRADO de 2024 (hay listas de admitidos/excluidos en el hub para esa convocatoria) y no dicen nada sobre si la OEP 2025 o la OEP 2026 convocarán el mismo número. No es una cifra falsa — es una cita que promete una fuente que no la contiene.
+- **Qué hacer:**
+  1. Clonar el Decreto 23/2026 (OEP 2026, BOC-2026-3453) al hub con `backend/scripts/clonar-documento.ts` — hoy no hay forma de confirmar el «35 plazas… pendiente de convocatoria» que ya está escrito en `oep_decreto`.
+  2. Decidir la redacción: lo honesto es distinguir los tres ciclos en vez de fundirlos en una sola cita — algo como *«Última convocatoria conocida (2024/21): 30 plazas (2 discapacidad). La OEP 2025 (Decreto 51/2025) no desglosa por cuerpo. La OEP 2026 (Decreto 23/2026) prevé 35 plazas, pendiente de convocatoria»* — pero esto es una decisión EDITORIAL (cuánto detalle cabe en el hero, qué prioriza el opositor), no una comprobación binaria: no proponer un texto final sin que alguien con criterio de producto lo revise.
+  3. Aplicar con `scripts/convocatoria/sanear-referencia-publicada.cjs --slug administrativo-cantabria --referencia "…" --cita "…" --verificado --apply` una vez decidida la redacción — el flag `--verificado` ya exige contrastar la cita contra el documento clonado, así que fuerza a que el nuevo texto tenga provenance real.
+- **NUNCA:** inventar la cifra de 2026, ni dejar que la cita siga sugiriendo que las 30 plazas vienen del decreto de 2025.
+- **Relacionada:** [T-435] (de donde salió), `docs/runbooks/provenance-convocatorias.md` (mismo tipo de problema: cita sin la fuente que promete).
+
 ### [T-634] 🟡 [ABIERTO 06/08] Tema 20 de `auxiliar_administrativo_universidad_leon` enseña Office 365 donde el BOE (Paso 1 verified_literal) pide Office 2021
 
 - **De dónde sale.** Investigando T-631 (scope de la ULE), al excluir los temas de informática/ofimática del pipeline `verify-scope-oposicion` (regla de la casa: son leyes editoriales, no BOE — no se verifican con el mismo criterio) leí su contenido directamente en vez de descartarlos sin mirar, y apareció esto.
