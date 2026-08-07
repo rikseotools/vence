@@ -2956,7 +2956,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     titulo: '¿Servimos alguna ley que el BOE da por DEROGADA ENTERA?',
     ruta: 'scripts/laws/auditar-derogadas.cjs',
     estado: 'vivo',
-    escribe: ['content_health_findings', 'observable_events'],
+    escribe: ['is_derogated', 'content_health_findings', 'observable_events'],
     runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
     notas:
       'Simula por defecto; `--escribe` publica los hallazgos (kind `ley_derogada_servida`) y emite ' +

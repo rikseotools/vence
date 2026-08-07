@@ -1480,6 +1480,44 @@ regresión con el texto REAL del BOE**.
 **La de REx lleva derogada desde el 20/05/2025**: más de un año sirviendo 75 preguntas de una norma
 que no existe.
 
+#### 🔬 Lo que apareció al TRIAR (07/08) — dos hallazgos que valen más que las 9 leyes
+Al mirar la fila de la ley salieron dos cosas que cambian el diagnóstico de «era un punto ciego»:
+
+1. **La señal SÍ existía, pero no es accionable.** El monitor del BOE había marcado la Ley 8/2015
+   como `change_status='changed'` **ese mismo día a las 08:00**. El problema es que «changed» dice
+   que el texto del BOE se movió y **NO dice qué se movió**: para saber si te afecta hay que
+   diffear la ley entera a mano. Por eso nadie lo tría — **9 leyes activas en ese estado, la más
+   vieja desde el 26/07** (hasta 12 días). Triadas las 9 el 07/08: **ninguna de las otras 8 está
+   derogada** (dos son de la misma reforma canaria: la Ley 3/2026 también tocó la Ley 14/1990); el
+   resto son sentencias del TC de 2012-2024, desarrollos reglamentarios y correcciones de errores.
+   - **Cómo se ve una revisión BIEN hecha** (Ley 4/2021 FPV, 24/07): *«Re-consolidación BOE
+     02/07/2026 (falsa alarma). Art 8 texto 100% coincide con BOE vigente. Art 11 suprimido por Ley
+     6/2024, ya inactivo en BD (0 preguntas). Sin cambio de contenido servido.»* Eso es triar; lo
+     demás es dejar el flag puesto.
+2. **Una verificación sin caducidad se convierte en falso verde sola.** El
+   `last_verification_summary` de la ley de Cabildos dice `is_ok: true`, **157 de 157 artículos
+   coincidiendo**… con fecha **26/05**. Era CIERTO ese día: la ley se derogó un mes después. Es el
+   mismo patrón que el `verified_correct` del scope ([T-518]) en otra tabla — un verde que nadie
+   vuelve a mirar envejece hasta mentir.
+
+**Corregido de raíz en el barrido:** `laws:derogadas --escribe` ya marca **`is_derogated = true`**
+(las 5, verificado leyendo la fila después de escribir) además de publicar el hallazgo. Sin eso
+estaría añadiendo una TERCERA señal al lado de dos que ya se ignoran. El escritor está declarado en
+`toolRegistry` (`escribe: ['is_derogated', …]`).
+
+#### 🇮🇨 Canarias — lo verificado para re-anclar (07/08)
+- **La norma nueva es `Ley 3/2026, de 16 de junio, de cabildos insulares`** (BOE-A-2026-17189):
+  **128 artículos** en cinco títulos (Preliminar 1-4 · I Competencias 5-48 · II Organización 49-81 ·
+  III Régimen jurídico 82-96 · IV Potestad reglamentaria 97-109 · V Relaciones interadministrativas
+  110-128). **Deroga íntegramente la 8/2015** y preceptos de la Ley 14/1990.
+- **NO deroga la Ley 7/2015 de Municipios**, así que esa mitad del tema 7 se queda como está.
+- **El epígrafe del tema 7 NOMBRA la ley derogada por su nombre** (*«La Ley 8/2015, de 1 de abril,
+  de cabildos insulares: naturaleza de los Cabildos Insulares y competencias»*), así que quitarla
+  sin sustituirla dejaría el tema mudo. Lo que pide el epígrafe se corresponde con el **Título
+  Preliminar (naturaleza) + Título I (competencias)** de la nueva, es decir **arts. 1-48**.
+- Scope actual del tema 7 sobre la vieja: arts. 1-47 (coherente con «naturaleza y competencias»).
+  Preguntas activas colgando de la ley vieja: **17**.
+
 #### Pendiente (el trabajo de contenido, que es lo caro)
 Por cada una: importar la norma que la sustituye y **RE-ANCLAR** el temario. **NUNCA quitar la ley
 sin más** — el programa oficial suele decir que las referencias se entienden hechas a la norma que

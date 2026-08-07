@@ -108,6 +108,19 @@ async function analisisDe(boeId) {
              '(docs/runbooks/leyes-anuales-caducadas.md).',
          })])
     }
+    // Y MARCAR LA LEY, que es lo que el resto del sistema puede leer. La columna `is_derogated`
+    // existía desde antes (26 leyes marcadas) y nadie la rellenaba: publicar solo un hallazgo
+    // habría sido añadir una TERCERA señal al lado de dos que ya se ignoran (`change_status`
+    // lleva 9 leyes en 'changed' sin triar, la más vieja desde el 26/07).
+    for (const h of hallazgos) {
+      await c.query('UPDATE laws SET is_derogated = true WHERE id = $1 AND is_derogated = false', [h.id])
+    }
+    const { rows: sinMarcar } = await c.query(
+      'SELECT short_name FROM laws WHERE id = ANY($1::uuid[]) AND is_derogated = false',
+      [hallazgos.map((h) => h.id)])
+    if (sinMarcar.length) throw new Error('no se marcaron como derogadas: ' + sinMarcar.map((l) => l.short_name).join(', '))
+    if (hallazgos.length) console.log(`   ▶ ${hallazgos.length} ley(es) marcada(s) is_derogated=true`)
+
     await c.query(`
       INSERT INTO observable_events (source, severity, event_type, endpoint, metadata)
       VALUES ('gha', $1, 'leyes_derogadas_auditadas', 'auditar-derogadas', $2::jsonb)`,
