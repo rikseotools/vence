@@ -24,6 +24,7 @@
  */
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
 const { execSync } = require('child_process')
 const fs = require('fs')
 const os = require('os')
@@ -143,7 +144,7 @@ function pistas(texto) {
 }
 
 async function main() {
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const rows = (await c.query(`
     SELECT o.slug, cv.id cv_id, cv."año" anio, cv.plazas_libres l, cv.plazas_discapacidad d,

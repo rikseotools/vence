@@ -47,7 +47,8 @@ function linea(ok: boolean, texto: string) {
 }
 
 async function main() {
-  const c = new Client({ connectionString: process.env.DATABASE_URL!.split('?')[0], ssl: { rejectUnauthorized: false } })
+  const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   // Una afectada real: quedó en la cuenta antigua, hoy en free, con cliente en Stripe.

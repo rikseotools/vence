@@ -4254,16 +4254,6 @@ ponerse a verificar una por una.
 - **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
 - **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
 
-### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
-
-- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
-- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
-- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
-- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
-- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
-- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
-- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
-
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
@@ -6454,6 +6444,52 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-492] ✅ [HECHA 07/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
+
+- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
+- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
+- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
+- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
+- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
+- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
+
+**✅ CIERRE (07/08): drenados los 27, `TECHO_RECETA_A_MANO` a 0.**
+
+Migrados los 27 ficheros (17 `.cjs` vía `require('../…/lib/db/pgSsl.cjs')`, 10 `.ts` vía
+`await import('../…/lib/db/pgSsl.cjs')` — el mismo patrón que ya usaba
+`scripts/sim/sim-perfil-roto-se-cura.ts`) a `new Client(pgConfig(process.env.DATABASE_URL))` /
+`new Pool({ ...pgConfig(...), ...opciones })`, incluidos los dos prioritarios
+(`clonar-documento.ts`, `sweep-shuffle-safety-drift.ts`).
+
+**Verificado, en capas (sin escribir a producción):**
+- Guardarraíl `pgConfigUnico.guardrail.test.ts`: **0/0** infractores (era 27), `TECHO_RECETA_A_MANO`
+  bajado a 0. Trinquete cerrado: un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- Los 17 `.cjs`: `node --check` (sintaxis) + resolución real de la ruta relativa a `pgSsl.cjs`
+  (`fs.existsSync` sobre la ruta calculada) — las 17, correctas.
+- Los 10 `.ts`: la misma resolución de ruta sobre el `await import(...)` — las 11 ocurrencias (10
+  ficheros + las 2 de `admin-token.ts`), correctas. `tsc --noEmit` de proyecto completo revienta por
+  OOM (no es de esta tarea); comprobado archivo a archivo con flags mínimas — los únicos errores que
+  salen son de líneas que esta tarea NO tocó (imports `@/lib/shuffle/...` sin resolver por faltar el
+  `tsconfig.json` del proyecto en el check aislado, y un `@ts-expect-error` preexistente en otra
+  línea), confirmado comparando número de línea contra el diff.
+- **Dos smokes de conexión REAL contra RDS** (con `VENCE_LECTOR_URL`, sin escribir nada):
+  `sweep-shuffle-safety-drift.ts --json` conectó limpio y devolvió su JSON (`{"regressions":0,…}`,
+  sin error de certificado — el bug exacto que esto arregla); `canary-cobertura-dispositivos.cjs`
+  conectó (pasó la capa TLS) y solo entonces topó con `permission denied for table user_profiles`
+  — un hueco de GRANT/RLS de mi credencial de flota restringida, **no** un fallo de esta migración
+  (misma familia que [T-573]/[T-574], fuera de este alcance).
+- Suite `__tests__/guardrails` completa: **125/127 en verde, 2 skip** (sin `DATABASE_URL`) — sin
+  regresión. Un fallo de `shuffleRoundtripBD.test.ts` visto de pasada con `DATABASE_URL` puesta al
+  rol de coordinación (4 tablas) es el mismo hueco de permisos, en un fichero que esta tarea no toca.
+
+**NO hecho, a propósito (fuera de alcance de esta ficha):** no se ha EJECUTADO la lógica de negocio
+completa de los 27 (muchos exigen argumentos concretos, otros escriben, y mi credencial de flota es
+más estrecha que la de un run real) — solo se ha verificado que la CAPA DE CONEXIÓN (el bug que
+[T-377] diagnosticó) queda arreglada en los 27, con dos pruebas end-to-end reales de que el patrón
+funciona. Ejecutar cada script con sus argumentos reales, si hace falta, es trabajo de quien lo use.
+
 
 ### [T-377] ✅ [HECHA 07/08] El job de integración estaba rojo y NADIE sabía por qué: dos tercios era una conexión rota, no contenido
 
