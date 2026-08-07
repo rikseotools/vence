@@ -1021,63 +1021,6 @@ qué (no borrarlos en silencio) y que el detector deje de arrastrarlos; si algun
 la parte de políticas por separado y dejar el resto documentado. NUNCA aplicar el fichero ancho
 entero solo para que el canario calle.
 
-### [T-658] 🟡 [ABIERTO 07/08] Aplicadas las 4 migraciones RLS que llevaban días en `main` sin llegar a RDS, y el detector de [T-645] pasa a correr en CI
-
-**De dónde sale:** revisando uno a uno los tres commits apartados al mergear las entregas en verde
-(T-450, T-237, T-410). Los dos primeros estaban **superados** por `main`, pero apuntaban a algo que
-sí era cierto y nadie había comprobado: **si esas políticas están APLICADAS en producción**.
-
-#### Lo medido (07/08, catálogo de RDS)
-
-**Seis tablas seguían ciegas para `vence_lector`** — RLS activo y **cero** políticas para ese rol,
-así que el motor devolvía **0 filas sin error**: `test_questions`, `tests`,
-`ai_verification_results`, `oep_detection_signals`, `detection_sources` y
-`question_lifecycle_history`. Sus migraciones llevaban días en `main`. Canario del rol con la
-credencial REAL: **20/25**.
-
-**La causa no es que faltara el detector, es que el detector no corría en ningún sitio.** [T-645]
-construyó `scripts/migraciones-rls-pendientes.cjs` el mismo día y quedó como comando manual: ningún
-`deploy-*.sh` ni workflow lo invocaba, y sin `VENCE_LECTOR_URL` se saltaba en silencio.
-
-#### ✅ Hecho
-
-1. **Aplicadas las 4** (`20260805_rls_test_questions_lector`, `…ai_verification_results…`,
-   `20260807_rls_question_lifecycle_history…`, `20260807_rls_oep_detection_signals…`), cada una en
-   su transacción. Canario después: **25/25**, y las guardas de lo que NO debe ver (PII, pagos,
-   sesiones) y de que no pueda escribir **siguen en verde** — no se abrió nada de más.
-2. **Detectar y aplicar viven ya en la MISMA herramienta** (`-- --aplicar <f.sql>`). Separarlos es
-   lo que produjo el hueco. Dos puertas antes de escribir: (a) el fichero tiene que estar entre las
-   pendientes **recién calculadas** —no se repite DDL que el catálogo dice que ya está—, y (b) tiene
-   que pasar una **lista blanca de sentencias** (`esAplicableSinRiesgo`): solo `CREATE/DROP POLICY`,
-   `ENABLE ROW LEVEL SECURITY` y el bloque `DO $$` de guarda. Probado contra un fichero real ancho:
-   `20260502_security_advisor_fixes.sql` se **rechaza** por su `REVOKE` aunque el canario lo liste.
-3. **Al terminar, recalcula el pendiente contra el catálogo** en vez de dar por bueno que el comando
-   no lanzó — verificar, no declarar.
-4. **Corre en CI**: gate nuevo en `.github/workflows/test.yml` (job de integración, con
-   `DATABASE_URL_REPLICA`), cableado al aviso existente con causa propia
-   (`migraciones_rls_sin_aplicar`) y al step que refleja el rojo. Se calca el patrón del gate de
-   landings, no se inventa uno.
-5. **El veredicto solo lo fijan las accionables** (`vence_*`). Las dos de la era Supabase (rol
-   `authenticated`) se siguen **imprimiendo** pero no tiñen el gate: decidirlas es [T-659], y un gate
-   rojo todos los días se deja de mirar (misma lección que T-047/T-113/T-179). Ocultarlas sería peor,
-   por eso salen.
-
-#### Capas
-
-- **24 unitarios** del núcleo (`__tests__/db/migracionesRlsPendientes.test.js`): la lista blanca se
-  prueba **contra los ficheros reales del repo** (los 4 pasan, el ancho se rechaza), incluye el caso
-  del `UPDATE` colado entre políticas y el del SQL de ejemplo **dentro de un comentario** (estas
-  migraciones documentan mucho en su cabecera y eso da falsos rechazos).
-- **La puerta se probó ejecutándola**, no leyéndola: rechazo real de `20260502_security_advisor_fixes.sql`.
-- **Canario de extremo a extremo** antes y después con la credencial del rol (SSM), que es la única
-  medida que vale: el bloqueo es POR ROL, medirlo con la credencial de admin no mide nada.
-
-#### Lo que NO cubre
-
-`user_interactions` sigue ciega: su migración vive en `flota/T-613-…`, rama **sin revisar**. Y esto
-sigue sin ser un ledger genérico de migraciones — se acota a políticas RLS, que es lo verificable
-sin escribir nada.
-
 ### [T-655] 🟠 [ABIERTO 07/08] Nadie comprueba que el corpus documental de una convocatoria hable de SU oposición — el punto ciego que dejó publicar 44 plazas de otro cuerpo
 
 - **Nace de [T-654], medido el 07/08:** `auxiliar-administrativo-diputacion-cadiz` (Auxiliar, **C2**) tiene **8 documentos clonados** con **CERO menciones a «Auxiliar Administrativ»** y **30 a «Administrativo/a»** — son las bases del proceso de **Administrativo (C1)**, otro cuerpo. Sus bases dicen *«18 plazas (2 reservadas)»* y la landing publica **44**, a **171 usuarios**.
@@ -8385,6 +8328,63 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-658] ✅ [HECHA 07/08] Aplicadas las 4 migraciones RLS que llevaban días en `main` sin llegar a RDS, y el detector de [T-645] pasa a correr en CI
+
+**De dónde sale:** revisando uno a uno los tres commits apartados al mergear las entregas en verde
+(T-450, T-237, T-410). Los dos primeros estaban **superados** por `main`, pero apuntaban a algo que
+sí era cierto y nadie había comprobado: **si esas políticas están APLICADAS en producción**.
+
+#### Lo medido (07/08, catálogo de RDS)
+
+**Seis tablas seguían ciegas para `vence_lector`** — RLS activo y **cero** políticas para ese rol,
+así que el motor devolvía **0 filas sin error**: `test_questions`, `tests`,
+`ai_verification_results`, `oep_detection_signals`, `detection_sources` y
+`question_lifecycle_history`. Sus migraciones llevaban días en `main`. Canario del rol con la
+credencial REAL: **20/25**.
+
+**La causa no es que faltara el detector, es que el detector no corría en ningún sitio.** [T-645]
+construyó `scripts/migraciones-rls-pendientes.cjs` el mismo día y quedó como comando manual: ningún
+`deploy-*.sh` ni workflow lo invocaba, y sin `VENCE_LECTOR_URL` se saltaba en silencio.
+
+#### ✅ Hecho
+
+1. **Aplicadas las 4** (`20260805_rls_test_questions_lector`, `…ai_verification_results…`,
+   `20260807_rls_question_lifecycle_history…`, `20260807_rls_oep_detection_signals…`), cada una en
+   su transacción. Canario después: **25/25**, y las guardas de lo que NO debe ver (PII, pagos,
+   sesiones) y de que no pueda escribir **siguen en verde** — no se abrió nada de más.
+2. **Detectar y aplicar viven ya en la MISMA herramienta** (`-- --aplicar <f.sql>`). Separarlos es
+   lo que produjo el hueco. Dos puertas antes de escribir: (a) el fichero tiene que estar entre las
+   pendientes **recién calculadas** —no se repite DDL que el catálogo dice que ya está—, y (b) tiene
+   que pasar una **lista blanca de sentencias** (`esAplicableSinRiesgo`): solo `CREATE/DROP POLICY`,
+   `ENABLE ROW LEVEL SECURITY` y el bloque `DO $$` de guarda. Probado contra un fichero real ancho:
+   `20260502_security_advisor_fixes.sql` se **rechaza** por su `REVOKE` aunque el canario lo liste.
+3. **Al terminar, recalcula el pendiente contra el catálogo** en vez de dar por bueno que el comando
+   no lanzó — verificar, no declarar.
+4. **Corre en CI**: gate nuevo en `.github/workflows/test.yml` (job de integración, con
+   `DATABASE_URL_REPLICA`), cableado al aviso existente con causa propia
+   (`migraciones_rls_sin_aplicar`) y al step que refleja el rojo. Se calca el patrón del gate de
+   landings, no se inventa uno.
+5. **El veredicto solo lo fijan las accionables** (`vence_*`). Las dos de la era Supabase (rol
+   `authenticated`) se siguen **imprimiendo** pero no tiñen el gate: decidirlas es [T-659], y un gate
+   rojo todos los días se deja de mirar (misma lección que T-047/T-113/T-179). Ocultarlas sería peor,
+   por eso salen.
+
+#### Capas
+
+- **24 unitarios** del núcleo (`__tests__/db/migracionesRlsPendientes.test.js`): la lista blanca se
+  prueba **contra los ficheros reales del repo** (los 4 pasan, el ancho se rechaza), incluye el caso
+  del `UPDATE` colado entre políticas y el del SQL de ejemplo **dentro de un comentario** (estas
+  migraciones documentan mucho en su cabecera y eso da falsos rechazos).
+- **La puerta se probó ejecutándola**, no leyéndola: rechazo real de `20260502_security_advisor_fixes.sql`.
+- **Canario de extremo a extremo** antes y después con la credencial del rol (SSM), que es la única
+  medida que vale: el bloqueo es POR ROL, medirlo con la credencial de admin no mide nada.
+
+#### Lo que NO cubre
+
+`user_interactions` sigue ciega: su migración vive en `flota/T-613-…`, rama **sin revisar**. Y esto
+sigue sin ser un ledger genérico de migraciones — se acota a políticas RLS, que es lo verificable
+sin escribir nada.
 
 ### [T-572] ✅ [HECHA 07/08] 89 de los 101 errores 5xx de 24h son `/api/auth/token`, y arrastran respuestas de usuarios sin guardar
 
