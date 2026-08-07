@@ -981,6 +981,19 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
+
+- **Medido el 07/08** al buscar por qué 7 tareas revisadas en verde no tenían su trabajo en `main`:
+  · `origin/flota/w3` → **111 commits** propios, 87 ficheros de diferencia
+  · `origin/flota/w4` → **21 commits**, 2 ficheros
+  · `origin/flota/w1` → **17 commits**, 15 ficheros
+- **Por qué nadie los veía:** el inventario de merge busca ramas **`flota/T-nnn-…`**, una por tarea. Las ramas por **TRABAJADOR** (`flota/w1`, `flota/w3`, `flota/w4`) no encajan en ese patrón, así que quedaban fuera del barrido **sin que nada lo dijera**. Un revisor lo había escrito en su veredicto —*«la rama flota/w3 diverge de origin/main en 421 ficheros (historia normal de una rama larga sin mergear)»*— y nadie lo recogió: el dato estaba, el que lo leyera no.
+- **Lo ya rescatado (07/08):** los **7 commits que SÍ estaban revisados en verde** se trajeron a `main` en cherry-pick quirúrgico (T-206, T-208, T-214, T-223, T-232, T-237, T-298). **NO se mergearon las ramas enteras**: de los 149 commits, solo 7 habían pasado revisión, y meter las ramas completas habría colado **142 sin revisar** por la puerta de atrás — justo lo contrario del reparto que se montó ese día (la flota revisa, el supervisor mergea).
+- **Lo que queda, y NO es «mergear las ramas»:** averiguar qué hay en esos 142 y si algo merece pasar por revisión. Puede haber trabajo bueno, trabajo ya rehecho por otra vía, y ruido. El criterio no cambia: **a `main` solo entra lo revisado**.
+- **Y el arreglo de fondo, que es lo que evita que se repita:** el inventario de merge tiene que mirar **también** las ramas por trabajador, o —mejor— dejar de depender del NOMBRE de la rama y preguntar por lo que de verdad importa: *«¿esta entrega revisada tiene su trabajo en `main`?»*. Hoy se responde buscando `flota/T-nnn`, y por eso una entrega hecha en una rama compartida parece mergeada cuando no lo está.
+- **⚠️ Cuidado al limpiarlo:** una rama compartida de trabajador puede ser lo ÚNICO que guarde ese trabajo (`npm run sesiones:huerfanos` existe por eso). No borrar ninguna sin comprobar qué se perdería.
+- **Relacionadas:** [T-431] (worktrees abandonados con trabajo dentro), [T-628] (el rescate empuja las ramas de los trabajadores), y el reparto revisar/mergear de la sesión del 07/08.
+
 ### [T-655] 🟠 [ABIERTO 07/08] Nadie comprueba que el corpus documental de una convocatoria hable de SU oposición — el punto ciego que dejó publicar 44 plazas de otro cuerpo
 
 - **Nace de [T-654], medido el 07/08:** `auxiliar-administrativo-diputacion-cadiz` (Auxiliar, **C2**) tiene **8 documentos clonados** con **CERO menciones a «Auxiliar Administrativ»** y **30 a «Administrativo/a»** — son las bases del proceso de **Administrativo (C1)**, otro cuerpo. Sus bases dicen *«18 plazas (2 reservadas)»* y la landing publica **44**, a **171 usuarios**.
