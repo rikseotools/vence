@@ -14067,7 +14067,7 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 >    antes de `apply --include-gate`, no un auto_safe.
 > - **✅ T3 · Ley 12/2001 LOSCAM — plan `auto_safe`, listo para aplicar.** El epígrafe (compartido
 >   por 4 leyes del mismo tema, ver el cluster de abajo) cita para ESTA ley tres materias que
->   coinciden LITERALMENTE con rúbricas del BOE (BOE-A-2001-24837, vía `arbol-ley-boe.cjs
+>   coinciden LITERALMENTE con rúbricas del BOE (BOE-A-2002-4375, vía `arbol-ley-boe.cjs
 >   --rubricas`): *"Las áreas Sanitarias. Red Sanitaria Única de Utilización Pública"* → Título II
 >   (arts 3-21), *"Derechos y deberes de los ciudadanos"* → Título IV (arts 26-39, coincidencia
 >   literal exacta con la rúbrica), *"El Servicio Madrileño de Salud"* → Título VII (arts 58-77,
