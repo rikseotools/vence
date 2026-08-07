@@ -2759,6 +2759,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'un caso: trabajar ES la señal. Hay versión SQL además de JS porque la decisión tiene que ' +
       'ir DENTRO del UPDATE atómico; su paridad está testeada. 12 tests.',
   },
+  dossier_rastro_errores: {
+    titulo: 'El dossier de feedback pone delante el RASTRO DE ERRORES del usuario (antes / después de su mensaje)',
+    ruta: 'lib/impugnaciones/rastroDeErrores.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      'Núcleo puro que consume `revisar-feedback.cjs`; simulación `npm run sim:rastro-errores` ' +
+      '(solo lee). Nace del caso Lourdes (`e790c7bf`, 07/08/2026): el dossier volcaba solo los ' +
+      'CLICS (`user_interactions`) y nunca `observable_events`, así que la causa se elegía por ' +
+      'parecido con la avería abierta ese día — se le contestó [T-623] usando dos 494 que eran ' +
+      'POSTERIORES a su mensaje, mientras el error del momento que describía ' +
+      '(`answerSaveQueue`/`answer-and-save`, [T-315]) llevaba 40 min en su rastro; replicó. La ' +
+      'separación ANTES/DESPUÉS no es cosmética: medido sobre 59 feedbacks bug/other de 14 días, ' +
+      '40 tienen rastro previo (evidencia utilizable), 11 ninguno y **8 SOLO posterior** — esos ' +
+      '8 son la trampa exacta. Si la ventana sale vacía lo dice con todas las letras: un bloque ' +
+      'que desaparece se lee como «no miré». 15 unitarios + guardarraíl estático + simulación ' +
+      'anclada al caso real.',
+  },
   cola_puerta_cierre: {
     titulo: 'Exigir tener el caso RESERVADO para poder cerrarlo (la reserva deja de ser decorativa)',
     ruta: 'lib/impugnaciones/puertaCierre.cjs',

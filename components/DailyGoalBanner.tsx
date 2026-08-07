@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useDailyGoal } from '../hooks/useDailyGoal'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { emitClientEvent } from '../lib/observability/client'
-import { clampOffsetArrastre } from '../lib/ui/arrastrable'
+import { clampOffsetArrastre, necesitaRescate } from '../lib/ui/arrastrable'
 
 // ============================================================================
 // Helpers puros (testeados en __tests__/components/DailyGoalBanner.test.ts).
@@ -86,7 +86,24 @@ export default function DailyGoalBanner() {
     if (!user?.id) return
     try {
       const raw = localStorage.getItem(`daily_goal_pos:${user.id}`)
-      setPos(raw ? JSON.parse(raw) : null)
+      const guardada = raw ? JSON.parse(raw) : null
+      // RESCATE (T-315 / feedback `247449ed`): una posición que solo puede venir de un scroll
+      // capturado por error deja la barra sobre el contenido, comiéndose sus toques. Se
+      // devuelve a su sitio SOLA, sin pedirle nada al usuario: si tuviera que ir a su perfil a
+      // arreglarlo, le pediríamos el esfuerzo justo a quien peor lo tiene (puede tener la barra
+      // encima del propio control que necesita pulsar). El asa impide que vuelva a pasar;
+      // esto arregla a quien ya lo sufre.
+      if (necesitaRescate(guardada)) {
+        localStorage.removeItem(`daily_goal_pos:${user.id}`)
+        setPos(null)
+        emitClientEvent({
+          severity: 'info',
+          eventType: 'daily_goal_banner_action',
+          metadata: { action: 'rescatada', y: guardada?.y ?? null, x: guardada?.x ?? null },
+        })
+        return
+      }
+      setPos(guardada)
     } catch { /* ignore */ }
   }, [user?.id])
 
@@ -211,8 +228,17 @@ export default function DailyGoalBanner() {
     }
   }
 
-  // Arrastre (pointer events → mouse + touch). Distingue click de drag por umbral (6px)
-  // para no romper la apertura del dropdown. Clampea al viewport: nunca se pierde fuera.
+  // Arrastre (pointer events → mouse + touch). Clampea al viewport: nunca se pierde fuera.
+  //
+  // ⚠️ SOLO SE ENGANCHA AL ASA, nunca a la pastilla entera ([T-315]/feedback `247449ed`).
+  // Cuando colgaba de la pastilla, ésta llevaba `touch-action: none` para poder arrastrar, y
+  // eso significa que el navegador NO hace scroll cuando el dedo empieza ahí: lo convierte en
+  // arrastre. Medido en 30 días: 59 de 129 arrastres (11 usuarios) con desplazamientos de más
+  // de 200 px —hasta 1.433— que nadie hace a propósito con una pastilla de 24 px de alto.
+  // La barra acababa en mitad de la pantalla con `z-index: 50`, tapando el contenido y
+  // comiéndose sus toques. Con el asa el accidente es imposible POR CONSTRUCCIÓN, no porque
+  // un umbral o un temporizador lo adivinen — y además se ve, que es lo que no pasaba: la
+  // gente no sabía que la barra se arrastraba, se enteraba cuando se le movía sola.
   const onPillPointerDown = (e: React.PointerEvent) => {
     if (e.button && e.button !== 0) return
     const wrapper = dropdownRef.current
@@ -287,15 +313,26 @@ export default function DailyGoalBanner() {
       >
         ×
       </button>
-      {/* Pill: siempre barra de progreso. Arrastrable para moverla de sitio. */}
+      {/* Asa: el ÚNICO punto por el que se arrastra. Es la que lleva `touch-action: none`, así
+          que el scroll con el dedo sobre la barra sigue siendo scroll y el arrastre accidental
+          no puede ocurrir. Visible a propósito: antes nadie sabía que la barra se movía. */}
+      <span
+        onPointerDown={onPillPointerDown}
+        style={{ touchAction: 'none' }}
+        className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 w-4 h-5 flex items-center justify-center rounded text-gray-400 dark:text-gray-500 text-[10px] leading-none cursor-grab active:cursor-grabbing select-none hover:text-gray-600 dark:hover:text-gray-300"
+        aria-label="Mover la meta diaria"
+        title="Arrastra desde aquí para mover la meta diaria"
+        role="button"
+      >
+        ⠿
+      </span>
+      {/* Pill: siempre barra de progreso. Ya NO es arrastrable (ver onPillPointerDown). */}
       <button
         ref={buttonRef}
-        onPointerDown={onPillPointerDown}
         onClick={() => {
           if (movedRef.current) { movedRef.current = false; return }
           setShowDropdown(!showDropdown)
         }}
-        style={{ touchAction: 'none' }}
         className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-colors bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-grab active:cursor-grabbing select-none"
         title={`Meta diaria: ${questionsToday}/${studyGoal} preguntas (${Math.round(progress)}%) · arrastra para mover`}
       >

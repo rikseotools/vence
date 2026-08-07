@@ -21,7 +21,7 @@ import { join } from 'node:path'
 // El runner corre fuera de Next → carga .env.local para DATABASE_URL (emisión de
 // observabilidad). No pisa variables ya presentes en el entorno.
 if (existsSync('.env.local')) loadEnv({ path: '.env.local' })
-import { chromium, type BrowserContext, type Page } from '@playwright/test'
+import { chromium, devices, type BrowserContext, type Page } from '@playwright/test'
 import postgres from 'postgres'
 import { mintOwnAuthCookie, cookieForPlaywright } from '../../lib/sim/session'
 import { faultHandler } from '../../lib/sim/faults'
@@ -193,11 +193,20 @@ async function runJourney(journey: Journey): Promise<SimResult> {
   // delante no se puede resolver). Sin secreto NO se manda nada: el journey se pondrá rojo con
   // el reto, que es preferible a abrir un agujero para poder testear.
   const secretoCanary = process.env.CANARY_SECRET || process.env.CRON_SECRET || ''
-  const ctxPw = await browser.newContext(
-    secretoCanary.length >= 16
+  // Dispositivo del journey (por defecto escritorio). El móvil no es "la misma prueba en una
+  // pantalla estrecha": trae TÁCTIL, que es lo único con lo que se pueden ver los fallos de
+  // gesto (scroll capturado como arrastre, controles que no reciben el toque). Ver el campo
+  // `device` del contrato en lib/sim/journey.ts.
+  const perfilDispositivo =
+    journey.device === 'movil'
+      ? { ...devices['Pixel 5'], hasTouch: true, isMobile: true }
+      : {}
+  const ctxPw = await browser.newContext({
+    ...perfilDispositivo,
+    ...(secretoCanary.length >= 16
       ? { extraHTTPHeaders: { 'x-vence-canary': '1', 'x-vence-canary-secret': secretoCanary } }
-      : undefined,
-  )
+      : {}),
+  })
   // El runner corre bajo `tsx` (esbuild con keepNames): esbuild reescribe las funciones con
   // nombre insertando una llamada al helper `__name`. Cuando un journey serializa una función
   // para el navegador (`page.evaluate`), ese helper viaja con ella pero NO existe allí, y el

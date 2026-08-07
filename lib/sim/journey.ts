@@ -43,6 +43,22 @@ export interface Journey {
    * proveedor de nube para que la lista no se mude al cambiar de casa (AWS → koigrid).
    */
   postDeploy?: boolean
+  /**
+   * Dispositivo con el que correr el escenario. Por defecto, escritorio.
+   *
+   * ⚠️ EL PUNTO CIEGO QUE ESTO CIERRA ([T-315] / feedback `247449ed`, 07/08/2026): hasta hoy
+   * TODOS los journeys corrían en escritorio, así que vence-sim no podía ver un fallo de
+   * TÁCTIL — y la mayoría de nuestros usuarios estudia desde el móvil. El caso: la barra de
+   * meta diaria llevaba `touch-action: none`, de modo que un dedo que empezaba el scroll
+   * encima de ella la ARRASTRABA (59 de 129 arrastres medidos en 30 días, 11 usuarios), y
+   * quedaba flotando sobre el contenido comiéndose sus toques. En escritorio con ratón eso
+   * no pasa ni se puede reproducir: no hay gesto de scroll que capturar.
+   *
+   * `'movil'` = viewport y user-agent de móvil CON táctil (los gestos son la razón de existir
+   * de esta opción; sin `hasTouch` se seguiría probando con ratón en una pantalla pequeña,
+   * que es otra cosa).
+   */
+  device?: 'escritorio' | 'movil'
   /** ejecuta el escenario y devuelve las invariantes evaluadas. */
   run(ctx: JourneyCtx): Promise<InvariantResult[]>
 }

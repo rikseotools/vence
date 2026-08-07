@@ -155,6 +155,26 @@ const ago = (d) => {
     }
     if (dupWarn) console.log('    → 🔴 POSIBLE DUPLICADO YA EN EL HILO (2+ ADMIN seguidos). Revisar antes de tocar nada.');
 
+    // --- 🩺 RASTRO DE ERRORES DEL USUARIO (T-649) ---
+    // Va ANTES del journey a propósito: los clics dicen por dónde pasó, y los errores dicen qué
+    // se le rompió. Con solo los clics delante, la causa se elige por parecido con la avería que
+    // uno tiene abierta ese día — que es exactamente lo que pasó con Lourdes (`e790c7bf`): se le
+    // atribuyó el cuelgue a [T-623] usando dos 494 que eran POSTERIORES a su mensaje, mientras el
+    // error del momento que ella describía (`answerSaveQueue`) llevaba 40 minutos en su rastro.
+    // NO se envuelve en try/catch: tragarse el error aquí devolvería un «sin rastro» falso, que
+    // es el mismo modo de fallo que documenta la cabecera de este fichero.
+    const { ventanaRastro, agruparRastro, lineasRastro } =
+      require(require('path').join(__dirname, '..', '..', 'lib', 'impugnaciones', 'rastroDeErrores.cjs'));
+    const { desde, hasta } = ventanaRastro(fb.created_at);
+    const eventos = await s`
+      SELECT created_at, event_type, severity, endpoint, http_status, metadata
+        FROM observable_events
+       WHERE user_id=${fb.user_id}
+         AND severity IN ('error','warn')
+         AND created_at BETWEEN ${desde} AND ${hasta}
+       ORDER BY created_at LIMIT 500`;
+    console.log(lineasRastro(agruparRastro(eventos, fb.created_at), { creado: fb.created_at }).join('\n'));
+
     // --- ENFORCEMENT scope/epígrafe (Regla previa OBLIGATORIA): si el feedback va de temario ---
     // Mira el mensaje original + TODOS los mensajes del usuario (la duda de scope puede venir en un follow-up).
     const userText = [fb.message, ...allMsgs.filter((m) => !m.is_admin).map((m) => m.message)].join(' ');
@@ -200,6 +220,8 @@ const ago = (d) => {
     console.log('  [ ] 1. He LEÍDO la conversación entera (arriba), no solo el 1er mensaje.');
     console.log('  [ ] 2. Si el último mensaje es del USUARIO, respondo a ESE (no re-envío lo anterior).');
     console.log('  [ ] 3. Journey/historial mirados (la intención real ≠ texto literal).');
+    console.log('  [ ] 3.bis NO nombro una causa que no salga en su RASTRO **antes** del mensaje,');
+    console.log('        y NO le cuento lo que él hizo («si deseleccionas lo que traías…») sin medirlo.');
     console.log('  [ ] 4. Si tiene MÁS hilos abiertos, un borrador por hilo (no junto asuntos).');
     console.log('  [ ] 5. Borrador con OK de Manuel ANTES de enviar (nunca envío directo).');
     console.log('  [ ] 6. Cierro vía /api/v2/feedback/respond (message = responder; sin message = cierre silencioso).');

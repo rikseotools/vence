@@ -1626,6 +1626,40 @@ Los feedbacks de usuarios usan un sistema de **3 tablas** diferente a las impugn
 | `feedback_conversations` | Conversación asociada (puede haber varias por feedback) |
 | `feedback_messages` | Mensajes individuales de la conversación |
 
+### 14.1.bis 🩺 LA CAUSA SALE DE SU RASTRO, NO DE LA AVERÍA QUE TENGAS EN LA MANO (T-649, 07/08/2026)
+
+**Caso que lo motiva — `e790c7bf` (Lourdes, premium).** Escribió: *«se me queda colgada… me
+ocurre cuando termino un test y quiero hacer otro»*. Se le contestó que era el configurador de
+artículos ([T-623], abierto ese mismo día) y **replicó**: *«en ningún momento he configurado un
+test con muchos artículos»*. La causa real era otra ([T-315], `answer-and-save` saturado).
+
+**La contraprueba ya estaba en su cuenta cuando respondimos** (todo en UTC del 06/08):
+
+| Hora | Qué | Vale como evidencia |
+|---|---|---|
+| 17:05 | `client_error` · `answerSaveQueue syncOne network` + `http_network_error` · `/api/v2/answer-and-save`, en `/test/tema/11/test-personalizado` | ✅ **sí** — es el momento que ella describe |
+| 17:45 | escribe el feedback | — |
+| 17:50 y 17:55 | `http_4xx 494` · `/api/v2/test-config/estimate` (esto sí es [T-623]) | ❌ **no** — es POSTERIOR a su mensaje |
+| 20:13 | le respondemos con [T-623] | |
+
+**Las tres reglas que salen de ahí:**
+
+1. **Solo lo ANTERIOR a su mensaje puede explicar lo que cuenta.** Mezclados en una lista por
+   fecha, el evento que encaja con la ficha abierta se lee igual de bien que el que encaja con sus
+   palabras. Medido sobre 59 feedbacks `bug`/`other` de 14 días: 40 tienen rastro previo, 11
+   ninguno y **8 solo posterior** — uno de cada siete cae en esta trampa.
+2. **NO le cuentes lo que él hizo.** *«si deseleccionas lo que traías del anterior…»* da por
+   supuesta una conducta que nunca medimos, y por eso la réplica empieza con «siento decirte que
+   en ningún momento…». Un diagnóstico incompleto se corrige; una conducta atribuida ofende.
+3. **«No vemos nada que lo explique» es una respuesta legítima.** Si su rastro sale vacío, se dice
+   —y se le pregunta— en vez de adjudicarle la avería de moda.
+
+**Cómo se hace cumplir (no depende de acordarse):** `revisar-feedback.cjs` imprime el bloque
+**🩺 RASTRO DE ERRORES** con los `observable_events` de esa persona en la ventana −3 h / +30 min,
+agrupados y **separados en ANTES / DESPUÉS**, y la checklist lleva el punto 3.bis. Núcleo puro
+`lib/impugnaciones/rastroDeErrores.cjs`; comprobable con **`npm run sim:rastro-errores`** (solo
+lee: reproduce el caso ancla contra RDS y calibra la cola reciente).
+
 ### 14.2 Ver Feedbacks Pendientes
 
 ```javascript

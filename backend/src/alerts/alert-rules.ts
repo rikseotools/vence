@@ -1632,7 +1632,7 @@ export const RULE_CI_INTEGRACION_ROJO: AlertRule<{
     const sinBd = r?.causa === 'sin_base_de_datos';
     const landings = r?.causa === 'landings_incoherentes';
     const explicacion = sinBd
-      ? `El job corrió SIN base de datos: el secret \`DATABASE_URL_READONLY\` no existe o está ` +
+      ? `El job corrió SIN base de datos: el secret \`DATABASE_URL_REPLICA\` no existe o está ` +
         `vacío, así que la categoría entera pasó de largo sin comprobar nada.\n\n` +
         `Se repone en Settings → Secrets and variables → Actions.\n\n`
       : landings

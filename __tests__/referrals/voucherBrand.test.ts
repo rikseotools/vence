@@ -30,6 +30,17 @@ describe('brandForVoucher — la marca se deriva, no se supone', () => {
     expect(brandForVoucher('nike-spain', 'amazon_giftcard').label).toBe('Nike España')
   })
 
+  it('Zalando se reconoce por marca aunque su enlace no esté verificado (nunca se inventa)', () => {
+    // 07/08/2026: zalando.es da 403 a fetch Y a navegador real desde nuestra IP, así que la URL de
+    // canje no se pudo abrir. Registrar la marca SIN enlace es correcto; heredar el de Amazon no.
+    for (const b of [brandForVoucher('zalando-spain', null), brandForVoucher(null, 'zalando_giftcard')]) {
+      expect(b.label).toBe('Zalando España')
+      expect(b.redeemUrl).toBeNull()
+      expect(b.redeemCta).toBeNull()
+      expect(b.redeemHint).toMatch(/tarjetas regalo/i)
+    }
+  })
+
   it('una marca DESCONOCIDA no hereda el enlace de Amazon — se queda sin destino', () => {
     const b = brandForVoucher('decathlon-spain', 'decathlon_giftcard')
     expect(b.redeemUrl).toBeNull()

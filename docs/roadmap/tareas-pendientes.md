@@ -981,6 +981,121 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-650] 🔴 [ABIERTO 07/08] El scroll con el dedo sobre la barra de meta diaria la ARRASTRA: acaba flotando sobre el contenido y se come los toques
+
+**Lo reporta una usuaria, no una alerta.** Feedback `247449ed` (Sara B, premium de Badajoz, 07/08):
+*«cuando voy hacer test del tema 1 le doy para hacerlo por artículo pero no se abre la pantalla»* y
+*«ayer al darle me aparecía pero se me movía por la pantalla, no se quedaba quieta en un sitio como antes»*.
+Ella lo cuenta como DOS fallos. Es uno.
+
+#### El mecanismo, reproducido en producción (no deducido)
+1. `components/DailyGoalBanner.tsx` ponía `touch-action: none` en **toda la pastilla**, porque es lo
+   que hace falta para poder arrastrarla. Eso significa que el navegador **NO hace scroll** cuando el
+   dedo empieza ahí: convierte el gesto en arrastre.
+2. La barra queda donde el dedo la suelte, con **`z-index: 50`**, flotando sobre el contenido.
+3. Lo que haya debajo **deja de recibir toques**: van a la barra. Verificado montando su posición
+   guardada — la pastilla (157×24 px) acaba a media pantalla y `elementsFromPoint` en su centro
+   devuelve la barra, no lo que hay debajo.
+
+**Sus propios eventos lo demuestran** (`daily_goal_banner_action`, action=`drag`): desplazamientos de
+**y=1433, 948, 707, 607, 432**. Nadie coloca así una pastilla de 24 px de alto.
+
+**Alcance medido (30 días):** 129 arrastres de 22 usuarios; **59 (11 usuarios) con más de 200 px** de
+desplazamiento vertical, que es la firma del scroll y no de una colocación. **El 75% desde móvil**
+(97 de 129, 14 usuarios).
+
+#### El arreglo (y por qué NO es una pulsación mantenida)
+- **Asa de arrastre visible** (`⠿`): es la ÚNICA que lleva `touch-action: none`. El resto de la barra
+  hace scroll como cualquier otra cosa, así que el arrastre accidental **no puede ocurrir por
+  construcción** — no porque un umbral o un temporizador lo adivinen. Se descartó la pulsación
+  mantenida: es una heurística con reloj, choca con el gesto del sistema y **es invisible** (nadie
+  sabía que la barra se arrastraba; se enteraban cuando se les movía sola).
+- **Rescate automático** (`necesitaRescate` en `lib/ui/arrastrable.ts`, el núcleo COMPARTIDO con los
+  controles del examen — no una copia): al cargar, una posición con más de 200 px de desplazamiento
+  vertical se descarta y la barra vuelve a su sitio, **sin pedirle nada al usuario**. Pedirle que lo
+  arregle en su perfil sería pedir el esfuerzo justo a quien peor lo tiene: puede tener la barra
+  encima del control que necesita pulsar. Deja evento (`action: 'rescatada'`).
+- El umbral de 200 px **no es a ojo**: sale de la medición de arriba.
+
+#### La capa que faltaba, y es lo que explica que nadie lo cazara
+**vence-sim solo corría en ESCRITORIO**, donde este fallo NO EXISTE (con ratón no hay gesto de scroll
+que capturar) — y la mayoría de nuestros usuarios estudia desde el móvil. Se añade `device: 'movil'`
+al contrato del journey (`lib/sim/journey.ts` + runner), que trae viewport, user-agent **y táctil**.
+Con eso, el journey `barra-meta-no-se-arrastra-con-scroll` reproduce el gesto real.
+
+- **Verificado contra producción ANTES del arreglo: ROJO** — *«el gesto de scroll movió la barra
+  (transform=matrix(1,0,0,1,0,-132), posiciones guardadas=1)»*. Es la prueba de que el journey
+  distingue; queda como regresión permanente.
+- Capas: 6 unitarios del rescate (con los valores REALES de sus eventos) + el journey de móvil.
+  El invariante se juzga por lo que queda ESCRITO (transform / posición guardada) y no por píxeles en
+  pantalla: al hacer scroll la barra cambia de sitio en el viewport aunque no se haya arrastrado, y
+  confundir las dos cosas daría un rojo falso.
+
+#### ⚠️ Lo que NO se ha podido reproducir, y no se le vende como resuelto
+Su *«no se abre la pantalla»* del filtro por artículos **no reproduce en limpio**: en su misma
+oposición y en móvil, el filtro abre bien (39 casillas, API 200). Encaja con que fuera la barra
+tapando el control —solo pasa con la posición guardada en SU dispositivo—, pero no está demostrado.
+**Aviso de método:** persiguiendo esto di dos falsos positivos («el botón no acepta el toque») que
+eran de mi medición, no de la app: el punto del toque se calculaba en un sistema de coordenadas y el
+navegador lo aplicaba en otro. Lo que sí apareció de camino: **la página se desborda horizontalmente
+en móvil** (`scrollWidth` 421 vs 393 de pantalla) — defecto real, sin ficha todavía.
+
+#### Pendiente
+- Desplegar frontend y **volver a correr el journey**: tiene que pasar a VERDE.
+- Contestar a Sara (borrador con OK de Manuel), sin prometer lo que no está demostrado.
+### [T-651] 🟡 [ABIERTO 07/08] El antifraude marcaba como bot a nuestro propio canario y lo dejaba clavado en rojo
+
+**Qué pasaba.** Nuestros canaries navegan con un navegador AUTOMATIZADO y con la cuenta
+`smoke@vence.es`. BotD (cliente → `/api/fraud/report`) los reconoce como automatización —
+correctamente, lo son — y con score alto el endpoint llamaba a `markForcedChallenge`, que pega en
+Redis una marca de «retar siempre» (`captcha:force:<sujeto>`, TTL 24 h) sobre el usuario y su
+dispositivo. A partir de ahí el gate de `/api/questions/filtered` reta a ese sujeto **sin mirar el
+volumen**.
+
+**Medido el 07/08:** a las 13:41 se puso la marca sobre `127063e1…` (= `smoke@vence.es`, score 175,
+`severity: critical`). Desde entonces el canario `canary-questions-gate` recibía `challenge` con
+`reason: 'bot_flag'` y `served: 1, tripped: false, threshold: 500` — o sea, **1 pregunta servida de
+500** y aun así retado. Resultado: `canary_questions_gate_failed` (critical) disparando en bucle.
+
+**Por qué importa más de lo que parece.** No es que un canario moleste: es que **un canario que no
+puede volver a verde deja de ser una señal**. El que se apagó vigila precisamente que el gate
+anti-scraping no le cierre la puerta a un usuario normal — la avería más cara que puede tener ese
+subsistema — y estaba clavado en rojo por otra pieza nuestra. En 7 días la marca se puso 9 veces,
+7 de ellas sobre cuentas reales y 2 sobre la sintética.
+
+**Arreglo (hecho, pendiente de desplegar).** La exención vive en el **punto de escritura**
+(`lib/security/challengePolicy/forceChallenge.ts`), no en el llamante: `markForcedChallenge`
+consulta `user_profiles.is_synthetic` — la fuente central que ya existía desde la migración
+`20260720_synthetic_user_central` y que el ranking ya usa para no premiar a los canaries — y no
+marca si la cuenta es sintética. Si viviera en el llamante, el próximo sitio que marque un reto
+nacería sin ella, que es exactamente cómo se pierden las protecciones (T-130).
+
+- Decisión pura y exportada (`decidirMarcadoForzado`) + lector con **fail-open hacia MARCAR**: si la
+  BD no contesta no se puede afirmar que la cuenta sea nuestra, y la defensa anti-scraping no debe
+  caerse porque falle una consulta auxiliar.
+- **La exención no es silenciosa:** emite `scraping_force_challenge_exento` (info) con el motivo. Una
+  exención que no deja rastro es indistinguible de un marcado que nunca ocurrió.
+- ⚠️ **NO confundir con `esCanaryDeConfianza`** (`lib/api/syntheticTrust.ts`): aquello exime a una
+  PETICIÓN que demuestra con un secreto ser interna, y el canario del gate no lo usa a propósito
+  (su cometido es pasar por el gate como un usuario normal). Esto decide sobre la CUENTA, que es un
+  dato del servidor y nadie puede afirmar desde fuera.
+
+**Capas:** 8 unit (`__tests__/security/forceChallengeSintetica.test.ts`, núcleo puro + puerta con el
+lector mockeado) y guardarraíl `__tests__/guardrails/retoForzadoPuertaUnica.guardrail.test.ts`, que
+exige que nadie construya `captcha:force:` fuera de la puerta y que todo llamante pase el `userId`
+(sin él la exención es imposible). Los 43 tests de seguridad ya existentes siguen verdes.
+
+**Qué falta:** verificar en producción tras el deploy que (a) el canario `canary-questions-gate`
+vuelve a verde y (b) aparece algún `scraping_force_challenge_exento` cuando el canario de navegador
+se autoreporte. La marca viva caduca sola por TTL (24 h desde el 07/08 13:41), pero **se rearma en
+cada pasada del canario de navegador** mientras el arreglo no esté desplegado.
+
+**Cabos sueltos que deja a la vista (NO son esta tarea):**
+- No hay forma de **levantar una marca** de reto forzado sobre un usuario REAL mal marcado: hoy solo
+  se puede esperar el TTL de 24 h. El 07/08 seis premium recibieron el captcha (575-1.200 servidas en
+  2 días; una lo vio 33 veces) — si alguno fuera falso positivo, no tenemos herramienta.
+- Si el umbral de 500/día es el correcto para premium es decisión de producto, sin tocar aquí.
+
 ### [T-648] 🟠 [ABIERTO 07/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
 
 - **Medido hoy** al mirar por qué el canario de la cola de PDFs gritaba «219 en DLQ» cada 15 minutos: los **220 jobs fallidos comparten UNA sola causa** (`oposicion_desconocida`), y **192 de ellos son de oposiciones `personalizada_*`** — las que el propio usuario se monta. Afectan a **54 oposiciones distintas**; las tres mayores acumulan 89, 30 y 7 jobs. Hay **7 usuarios** con una personalizada elegida ahora mismo.
@@ -6630,6 +6745,11 @@ esas preguntas no le habrían salido nunca.
 >   - **O sea: reponer SOLO `DATABASE_URL_READONLY` con el valor YA EXISTENTE de `DATABASE_URL_REPLICA` (secret real, en uso en `frontend-deploy.yml` y `deploy-backend.sh`, apuntando a la réplica RDS ya provisionada) desbloquea el gate ENTERO hoy mismo, sin crear ningún rol nuevo, sin migración, sin tocar código.** Es la opción (a) de la pregunta #14, y la razón por la que Manuel la descartó no se sostiene.
 > - **Lo que la opción (a) NO resuelve, y sigue siendo un punto legítimo:** con `INTEGRATION_DB_WRITABLE` sin poner en ningún workflow, esas 11 suites (7 de escritura + las de arriba) **NUNCA se ejecutan en CI, ni hoy ni con el secret puesto** — 0 cobertura automática del circuito de referidos (dinero), el borrado GDPR y el ciclo de convocatoria, indefinidamente. Eso sí seguiría necesitando la opción (c) (segundo secret + rol de escritura acotado, patrón `20260805_rol_lector_flota.sql`) — pero es una mejora APARTE, no lo que tiene el gate en rojo 7 días.
 > - **No construí la migración del rol nuevo a propósito:** hacerlo ahora, sin que Manuel sepa que el desbloqueo inmediato ya no la necesita, sería construir infraestructura para una decisión tomada con un dato incorrecto. Dejo la pregunta corregida (dato: los 2 valores a pegar están documentados arriba) para que decida con la premisa buena.
+> **07/08 — DECISIÓN DE MANUEL (#107): usar `DATABASE_URL_REPLICA` directamente en el workflow, NO duplicar el secret.** Confirmó que la réplica basta (mi medición se sostiene: las suites de escritura hacen `describe.skip` limpio, `familiaSchemaContract.test.ts` pasa igual) y que es el criterio de la casa: no se mete una credencial nueva, se acota/reusa la que ya existe. Copiar el VALOR a un secret con otro NOMBRE (`DATABASE_URL_READONLY`) habría dejado dos nombres para la MISMA credencial — el día que se rote una, la otra queda vieja y el gate vuelve a rojo sin que nadie lo relacione (mismo olor que los cinco escritores de `seguimiento_url`).
+> - **Hecho:** `.github/workflows/test.yml` (líneas 82/103/120, el mensaje de error de la 85 y el de la 142) ahora usa `secrets.DATABASE_URL_REPLICA` en vez de `DATABASE_URL_READONLY`. Actualizados también los DOS sitios que Manuel avisó que nombraban el secret viejo: `backend/src/alerts/alert-rules.ts:1483` (mensaje de la alerta `RULE_CI_INTEGRACION_ROJO`) y su test `backend/src/alerts/alert-rules.spec.ts:928`, que ya lo cantaba correctamente al correrlo (343/343 verde tras el cambio). YAML validado con `python3 -c "import yaml; yaml.safe_load(...)"`.
+> - **No hace falta crear NINGÚN secret nuevo** — `DATABASE_URL_REPLICA` ya existe y está en uso (`frontend-deploy.yml`, `deploy-backend.sh`). Con este cambio en `main`, el gate debería quedar verde-de-verdad en el primer run tras el merge… pero **esto NO despliega solo**: es un workflow de GitHub Actions, corre en cuanto el commit llegue a `main` (no necesita el deploy de la app). Verificar tras el merge: `curl -s "https://api.github.com/repos/rikseotools/vence/actions/workflows/test.yml/runs?per_page=1"` → el job `Integration / perf / security` debería dejar de emitir `ci_integracion_rojo` con `causa=sin_base_de_datos`.
+> - **Ficha nueva abierta con lo más grave, que Manuel pidió NO enterrar aquí:** [T-644] — las 9 suites que SÍ escriben (referidos, borrado GDPR, ciclo de convocatoria, scope/temario) siguen sin correr NUNCA en CI, con esta o cualquier otra opción de secret único: están detrás de `INTEGRATION_DB_WRITABLE=1`, que ningún workflow pone. No están rojas: están mudas. Esa decisión (credencial de escritura acotada como segundo secret, o BD efímera) sigue pendiente y es aparte de este desbloqueo.
+
 ### [T-391] 🟠 [ABIERTO 31/07] etgoa está PUBLICADA con el 17% del temario, y es grupo A: no toca construirla
 
 - **La pregunta correcta no era «cuántos temas faltan», era «esta oposición entra en la estrategia».** No entra. **Regla de producto (Manuel, 31/07): Vence construye contenido de D, C1 y C2. A1 y A2 no** — demasiados temas para las plazas y usuarios que mueven. **Catalogarlas SÍ** (el objetivo es tener la mayor base de datos de oposiciones de España), **construirles el contenido no, por ahora.**
@@ -7636,6 +7756,86 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-649] ✅ [HECHA 07/08] El dossier de feedback no mira el rastro de errores del usuario: por eso se atribuyó el cuelgue de Lourdes al bug que teníamos en la mano
+
+**Lo destapa una réplica, no una alerta.** Lourdes (feedback `e790c7bf`, premium) escribió el 06/08:
+*«la plataforma se me queda colgada con mucha frecuencia… me ocurre cuando termino un test y quiero
+hacer otro»*. Se le contestó que era el configurador de artículos ([T-623], abierto ese mismo día) y
+**replicó** a la mañana siguiente: *«en ningún momento he configurado un test con muchos artículos»*.
+La causa real era otra ([T-315]: `answer-and-save` saturado; el arreglo de cliente vive en su ficha).
+
+#### La contraprueba ya estaba en su cuenta cuando respondimos (UTC del 06/08)
+
+| Hora | Qué dice su rastro | ¿Explica su aviso? |
+|---|---|---|
+| 17:05 | `client_error` · `answerSaveQueue syncOne network` + `http_network_error` · `/api/v2/answer-and-save`, en `/test/tema/11/test-personalizado` | ✅ sí — es **el momento que ella describe** |
+| 17:45 | escribe el feedback | — |
+| 17:50 y 17:55 | `http_4xx 494` · `/api/v2/test-config/estimate` — esto **sí** es [T-623] | ❌ no — es **POSTERIOR** a su mensaje |
+| 20:13 | le respondemos atribuyéndolo a [T-623] | |
+
+#### Los tres fallos, en orden de gravedad
+
+1. **Se atribuyó a la avería que teníamos en la mano.** De las dos señales de su rastro se eligió la
+   que encajaba con una ficha recién abierta, no la que encajaba con **sus palabras**.
+2. **Se le contó lo que ella había hecho** (*«si deseleccionas lo que traías del anterior…»*), una
+   conducta que nunca se midió. Por eso la réplica empieza con «siento decirte que en ningún
+   momento…»: un diagnóstico incompleto se corrige, una conducta atribuida ofende.
+3. **Certeza absoluta** (*«Ya sabemos por qué te pasa»*) sobre una hipótesis, contra la regla de no
+   ser categóricos.
+
+#### La causa de fondo: la herramienta no ponía la evidencia delante
+
+`scripts/impugnaciones/revisar-feedback.cjs` volcaba **solo `user_interactions`** (12 clics) y **no
+consultaba `observable_events` ni una vez**. La regla ya estaba escrita —`gestionar-feedback-bug.md`
+§1 exige *«diagnosticar a ciencia cierta… usa `observable_events`»*—, pero **dependía de acordarse**,
+que es como se pierden todas. Mismo patrón que ya obligó a enforzar el claim y la puerta de temario.
+
+#### ✅ Resuelto (07/08)
+
+- **Núcleo puro `lib/impugnaciones/rastroDeErrores.cjs`**: agrupa los `observable_events` de esa
+  persona (severidad `error`/`warn`) en la ventana **−3 h / +30 min** y los separa en **ANTES** y
+  **DESPUÉS** de su mensaje. La firma del grupo es el `component` de `metadata` cuando lo hay (dice
+  mucho más que `client_error`) y si no el endpoint + status.
+- **La separación no es cosmética, está MEDIDA:** sobre los 59 feedbacks `bug`/`other` de los
+  últimos 14 días, **40** tienen rastro previo (evidencia utilizable), **11** ninguno y **8 SOLO
+  posterior** — esos 8 son exactamente la trampa en la que se cayó. Mezclados en una lista por
+  fecha, el evento que encaja con la ficha abierta se lee igual de bien que el que encaja con lo
+  que la persona cuenta.
+- **Si la ventana sale vacía lo dice con todas las letras** («SIN RASTRO… no es un permiso para
+  suponer»). Un bloque que desaparece cuando no hay datos es indistinguible de uno que nadie miró,
+  y es ahí donde vuelve la suposición. *(«No lo sé» tiene que poder decirse.)*
+- **Sin `try/catch` a propósito:** tragarse el error de esa consulta daría un «sin rastro» FALSO, que
+  es peor que no tener el bloque — y es el mismo modo de fallo que ya costó un mensaje duplicado a
+  un usuario (cabecera de ese mismo fichero).
+- **Checklist del dossier, punto 3.bis:** *no nombro una causa que no salga en su rastro **antes** del
+  mensaje, y no le cuento lo que él hizo sin medirlo*.
+
+#### Capas
+
+- **15 unitarios** del núcleo (`__tests__/impugnaciones/rastroDeErrores.test.js`), anclados a los
+  eventos REALES del caso: el `answerSaveQueue` tiene que caer en ANTES y el 494 en DESPUÉS.
+- **Guardarraíl estático** (`__tests__/guardrails/dossierRastroErrores.guardrail.test.ts`, 6): el
+  dossier consulta `observable_events`, usa la ventana del núcleo (no un `interval '3 hour'` escrito
+  a mano, que sería una segunda definición del criterio), no reimplementa el agrupado y **no se traga
+  el error**. Lo que esto vigila es una **ausencia**, que no enrojece ningún test por sí sola.
+- **Simulación contra RDS real** — `npm run sim:rastro-errores` (solo lee): reproduce el caso ancla y
+  calibra la cola reciente; se pone en rojo si el ancla deja de repartirse como debe o si ningún
+  feedback reciente tiene rastro previo (señal de que la ventana se quedó corta).
+- **Verificado EJECUTANDO el dossier**, no leyendo el fuente: el bloque sale en pantalla en un caso
+  real (`b24b1aee`). Suites relacionadas: 296/296.
+
+#### Integrado (no es un silo)
+
+Registrado en `lib/admin/toolRegistry.ts` (`dossier_rastro_errores`) y documentado donde se busca:
+**`impugnaciones-claude-code.md` §14.1.bis** (la regla, la tabla del caso y el enforcement) y
+**`gestionar-feedback-bug.md`** (caso de referencia, junto a los de Alfonso / MariSol / Querino).
+
+#### Lo que NO cubre
+
+Solo el dossier de **feedback**. El gemelo de impugnaciones (`revisar-impugnacion.cjs`) no lo lleva:
+allí el caso llega anclado a una pregunta concreta y la evidencia que manda es el artículo, no el
+rastro. El núcleo está listo para cablearlo el día que haga falta.
 
 ### [T-485] ✅ [HECHA 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
 

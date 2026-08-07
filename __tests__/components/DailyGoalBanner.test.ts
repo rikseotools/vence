@@ -20,6 +20,7 @@ import {
   nextBannerVisible,
   clampBannerOffset,
 } from '@/components/DailyGoalBanner'
+import { necesitaRescate, DESPLAZAMIENTO_SOSPECHOSO_PX } from '@/lib/ui/arrastrable'
 
 describe('effectiveBannerVisible — default visible salvo flag explícito false', () => {
   it('true → visible', () => {
@@ -134,5 +135,56 @@ describe('clampBannerOffset — la barra nunca se pierde fuera del viewport', ()
     expect(absLeft + natural.width).toBeLessThanOrEqual(natural.viewportWidth - 4)
     expect(absTop).toBeGreaterThanOrEqual(4)
     expect(absTop + natural.height).toBeLessThanOrEqual(natural.viewportHeight - 4)
+  })
+})
+
+// ============================================================================
+// [T-315] / feedback `247449ed` (Sara, premium de Badajoz) — el arrastre accidental
+//
+// La barra llevaba `touch-action: none` en TODA la pastilla para poder arrastrarla. Eso
+// significa que el navegador no hace scroll cuando el dedo empieza ahí: lo convierte en
+// arrastre. La barra acababa en mitad de la pantalla con `z-index: 50`, sobre el contenido,
+// y los toques de lo que hubiera debajo iban a parar a ella. Sara lo reportó como dos
+// fallos («se me movía por la pantalla» y «le doy y no se abre») y era el mismo.
+//
+// El arreglo estructural es el ASA (solo ella arrastra), que no se puede testear aquí sin
+// montar React — de eso se encarga el guardarraíl de fuente y el journey de móvil. Lo que
+// sí es puro, y va aquí, es el RESCATE de quien ya la tiene descolocada.
+// ============================================================================
+describe('necesitaRescate — devolver la barra a su sitio sola', () => {
+  it('rescata los desplazamientos que solo pueden venir de un scroll capturado', () => {
+    // Valores REALES de los eventos de Sara (06/08/2026).
+    expect(necesitaRescate({ x: 54, y: 1433 })).toBe(true)
+    expect(necesitaRescate({ x: 28, y: 948 })).toBe(true)
+    expect(necesitaRescate({ x: 61, y: 607 })).toBe(true)
+  })
+
+  it('RESPETA una colocación deliberada: mover algo de sitio es su derecho', () => {
+    expect(necesitaRescate({ x: -244, y: -47 })).toBe(false)
+    expect(necesitaRescate({ x: 34, y: 6 })).toBe(false)
+    expect(necesitaRescate({ x: 46, y: -1 })).toBe(false)
+    expect(necesitaRescate({ x: 63, y: 139 })).toBe(false)
+  })
+
+  it('el corte va por el desplazamiento VERTICAL, que es el eje del scroll', () => {
+    // Un desplazamiento horizontal grande no es scroll: en móvil la página no se desplaza
+    // de lado, así que arrastrar en horizontal solo puede ser intencionado.
+    expect(necesitaRescate({ x: 2000, y: 10 })).toBe(false)
+    expect(necesitaRescate({ x: 0, y: -1433 })).toBe(true) // scroll hacia el otro lado
+  })
+
+  it('sin posición guardada no hay nada que rescatar', () => {
+    expect(necesitaRescate(null)).toBe(false)
+    expect(necesitaRescate(undefined)).toBe(false)
+  })
+
+  it('el umbral es configurable, para poder recalibrarlo con más datos sin tocar el código', () => {
+    expect(necesitaRescate({ x: 0, y: 150 }, 100)).toBe(true)
+    expect(necesitaRescate({ x: 0, y: 150 })).toBe(false)
+  })
+
+  it('el umbral por defecto es el MEDIDO, no uno redondo inventado', () => {
+    // 59 de 129 arrastres (11 usuarios) en 30 días superan este corte.
+    expect(DESPLAZAMIENTO_SOSPECHOSO_PX).toBe(200)
   })
 })
