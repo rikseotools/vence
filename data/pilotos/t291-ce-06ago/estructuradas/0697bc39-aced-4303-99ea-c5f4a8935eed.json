@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 62.a) CE",
+    "texto": "Corresponde al Rey: a) Sancionar y promulgar las leyes."
+  },
+  "options": {
+    "0": "Incorrecta: el artículo atribuye esta función al Rey, no al Senado.",
+    "1": "Correcta: el art. 62.a) CE establece que corresponde al Rey sancionar y promulgar las leyes.",
+    "2": "Incorrecta: el artículo atribuye esta función al Rey, no al Presidente del Gobierno.",
+    "3": "Incorrecta: el artículo atribuye esta función al Rey, no al Congreso de los Diputados."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

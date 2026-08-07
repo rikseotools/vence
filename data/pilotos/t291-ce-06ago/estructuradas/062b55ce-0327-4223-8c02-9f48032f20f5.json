@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "bloque": "1. Los derechos reconocidos en los artículos 17, 18, apartados 2 y 3, artículos 19, 20, apartados 1, a) y d), y 5, artículos 21, 28, apartado 2, y artículo 37, apartado 2, podrán ser suspendidos cuando se acuerde la declaración del estado de excepción o de sitio en los términos previstos en la Constitución."
+  },
+  "options": {
+    "0": "Correcta: el art. 55.1 CE incluye el derecho de huelga (art. 28, apartado 2 CE) entre los que pueden suspenderse al declarar el estado de excepción.",
+    "1": "Incorrecta: el derecho de asociación (art. 22 CE) no figura entre los derechos suspendibles que enumera el art. 55.1 CE.",
+    "2": "Incorrecta: el derecho a la propiedad privada (art. 33 CE) tampoco figura en esa enumeración.",
+    "3": "Incorrecta: de los apartados del art. 20.1 CE, el art. 55.1 CE solo permite suspender los apartados a) y d) — no el c), que es la libertad de cátedra."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

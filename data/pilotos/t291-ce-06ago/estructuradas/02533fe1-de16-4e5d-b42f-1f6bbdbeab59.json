@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 100 CE",
+    "texto": "Los demás miembros del Gobierno serán nombrados y separados por el Rey, a propuesta de su Presidente."
+  },
+  "options": {
+    "0": "Incorrecta: la Constitución no atribuye al propio Rey la propuesta de nombramiento de los ministros; actúa siempre a propuesta ajena.",
+    "1": "Correcta: el art. 100 CE establece que los demás miembros del Gobierno son nombrados y separados por el Rey a propuesta de su Presidente.",
+    "2": "Incorrecta: el Presidente del Congreso no interviene en el nombramiento de los ministros.",
+    "3": "Incorrecta: no existe la figura del «Presidente de las Cortes»; el Congreso y el Senado tienen presidentes distintos, y ninguno propone a los ministros."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

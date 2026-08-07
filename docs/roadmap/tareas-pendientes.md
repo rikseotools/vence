@@ -11043,6 +11043,23 @@ y eso solo ocurre donde las dos se sirven.
 
 ### [T-302] 🟠 [ABIERTO 30/07] Los contenedores de Office 2016 y los clínicos TCAE están vacíos: 3.203 preguntas activas cuelgan de artículos 20-40 veces más delgados que los enriquecidos
 
+> **📦 PRIMERA TANDA DEL BLOQUE CLÍNICO (06/08/2026, w2) — entregada sin aplicar, este worker no
+> tiene escritura en la BD de negocio.** Contenido en `data/pilotos/t302-clinicos-06ago/`
+> (rama `flota/T-302-clinicos-w2`), medido con `medir-cobertura.cjs` (gemelo de solo-lectura del
+> `aplicar-articulo.cjs` de [T-291]): **Farmacologia TCAE art.3** (8/9→8/9, la que falta es
+> meta-opción), **art.4** (36/52→51/52), **Funciones del TCAE art.2** (7/16→14/16), **art.3**
+> (3/4→4/4). Hechos añadidos con fuente citada en el propio markdown: precauciones con
+> anticoagulantes orales (Sintrom), furosemida fotosensible, agujas de insulina de un solo uso,
+> manejo de blísteres con caducidad en el borde, colirios (1 mes tras abrir), protocolo de rotura
+> de cadena de frío, tipos de equipo inter/intradisciplinar, fases del PAE, Educación para la
+> Salud (OMS), Atención Primaria y salud pública (Ley 14/1986 + RD 1030/2006). **Detalle y
+> siguiente paso en el README de esa carpeta.** Medido también: los 4 artículos `.1` de los 4
+> contenedores (562+465+746+360 ≈ 2.133 preguntas activas, la mayoría del bloque clínico) son
+> "cajones de sastre" que mezclan materias muy dispares bajo un solo epígrafe (p. ej.
+> `Comunicacion sanitaria` art.1 mete psicología clínica, duelo, mecanismos de defensa
+> freudianos y teorías del aprendizaje bajo el título "concepto y tipos de comunicación") — antes
+> de escribirlos, alguien debería decidir si hace falta PARTIRLOS, no solo engordarlos.
+
 - **Cómo salió a la luz:** revisando con agentes las 500 preguntas nunca verificadas más vistas ([T-291] escalón 2), **219 de 500 salieron `article_ok=false`** — una tasa altísima que al abrirla NO era un problema de vinculación pregunta→artículo. **216 de esas 219 cuelgan de contenedores VIRTUALES** y solo 3 de leyes reales. Los agentes lo dijeron por separado, lote a lote, con las mismas palabras: *«el contenedor es un resumen muy corto que no cubre literalmente el supuesto»*.
 - **El dato que lo prueba** (medido en RDS, media de caracteres por artículo activo):
 
@@ -11164,6 +11181,25 @@ y eso solo ocurre donde las dos se sirven.
 > de elegir candidatos por exposición real, y trabajar "a mano" sin esa cola es justo el modo que la
 > propia ficha desaconseja como estrategia principal. Se suelta para quien la retome CON el rol
 > desbloqueado o con acceso directo a la cola compartida.**
+
+> **📦 SEGUNDA VUELTA (06/08/2026, w2) — se demuestra que SÍ se puede avanzar sin la cola, con
+> un proxy y lotes pequeños de escalón 2.** El bloqueo RLS de arriba **sigue exactamente igual**
+> (`test_questions`/`ai_verification_results` dan 0 filas, re-confirmado). Ante eso, en vez de
+> soltar otra vez, se usó un proxy verificable: `is_official_exam=true` (valor intrínseco, no
+> hace falta exposición para saber que importan) concentrado en **una sola ley** para amortizar
+> la lectura de artículos — **CE, la que más candidatas tiene (838 de 6.146 oficiales sin
+> estructurar)**. Lote de **12 preguntas** en `data/pilotos/t291-ce-06ago/`: cada una verificada
+> leyendo el artículo ENTERO vinculado en BD (una, `014e50cc`/art.124, necesitó además leer los
+> arts. 117/123/127 que sus opciones citan sin estar vinculada a ellos), escrita en
+> `explanation_data` estructurado, y **validada contra los 4 gates REALES de la campaña,
+> importados sin reimplementar** (`isStructuredExplanation`, `structuredNarrativeStaleLetters`,
+> `explanationReferencesLetters`, `citaNoLiteral`) con `data/pilotos/t291-ce-06ago/validar.ts`:
+> **12/12 en verde**. Comprobación extra hecha a mano: la opción que cada explicación marca como
+> correcta coincide EXACTAMENTE con `questions.correct_option` en las 12 — ninguna clave se tocó.
+> **No aplicado** (mismo motivo que siempre: sin `DATABASE_URL` de escritura). Detalle, y los dos
+> casos con matices (art. 124 multi-artículo; art. 107 Consejo de Estado con una función que la
+> CE no dice literalmente pero sí su ley orgánica) en el README de esa carpeta.
+
 - **El problema, medido:** de **139.478 preguntas activas solo 6.338 (4,5%) tienen explicación estructurada**. Sin ella la pregunta **no puede barajar sus opciones** y su explicación se sirve tal cual está. Quedan **133.140 con texto y sin estructura**, con **1,6 millones de exposiciones**.
 - **🎯 Pero NO hay que reparar 133.000, y este es el dato que decide la estrategia.** **82.591 de ellas no las ha visto NADIE** (cero apariciones), y la exposición está muy concentrada:
 
