@@ -991,6 +991,41 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 - **La capa que impide la próxima vez:** `__tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts` **cruza servidor y cliente**: por cada ruta con `requireDuenoDelRecurso`, quien la llame desde el navegador tiene que mandar identidad. Es el cruce que ningún test de un solo lado puede ver — añadir la guarda a una ruta nueva es fácil, acordarse de sus clientes no. **Se ganó el sitio al escribirlo: encontró el quinto sitio que yo no había visto.** Y su primera versión acusaba a un fichero sano porque `/api/psychometric/complete` casaba dentro de `/api/psychometric/completed-sessions` (otra ruta, sin guarda): ahora exige que la ruta termine ahí.
 - **Verificado:** typecheck limpio y **24.090 tests en verde**; dos tests nuevos comprueban que la cabecera **sale de verdad** y que se **añade** al `Content-Type` en vez de sustituirlo.
 - **Relacionadas:** [T-565] (la guarda, correcta), [T-210] (por qué el token se pide desde un solo sitio), [T-572].
+### [T-673] 🟡 [ABIERTO 07/08] En móvil la página se desborda 28 px en horizontal: se puede arrastrar de lado y ningún detector lo mira
+
+**De dónde sale:** apareció midiendo el bug de Sara ([T-650], feedback `247449ed`) en un navegador
+Android real contra producción. No es lo que ella reportó — es lo que se vio de camino.
+
+**Medido** en `/auxiliar-administrativo-estado/test/tema/1` con viewport de Pixel 5 (393 px):
+
+| medida | valor |
+|---|---|
+| `document.documentElement.clientWidth` | **393** (la pantalla) |
+| `document.documentElement.scrollWidth` | **421** |
+| `window.innerWidth` | **421** |
+| desbordamiento | **28 px** |
+
+O sea: la página es 28 px más ancha que el móvil y se puede arrastrar de lado. El `meta viewport`
+es correcto (`width=device-width, initial-scale=1`) y no hay zoom (`visualViewport.scale = 1`), así
+que es contenido que se sale, no un problema de escala.
+
+**Por qué importa más de lo que parece:** con desbordamiento horizontal, **las coordenadas del
+layout y las del viewport dejan de coincidir**. Eso me costó tiempo real en la propia investigación
+de T-650: un toque calculado sobre `getBoundingClientRect` aterrizaba ~7 % más abajo de lo previsto
+y me hizo dar por reproducido un fallo que no existía (dos veces). Si eso le pasa a una medición,
+le puede pasar a un dedo.
+
+**Lo que NO se ha hecho:** localizar el elemento culpable. Se sabe que la página desborda, no
+**qué** la desborda. Antes de tocar CSS a ciegas hay que medirlo (recorrer el DOM buscando el
+elemento cuyo `getBoundingClientRect().right` supera el `clientWidth`).
+
+**Y el hueco de vigilancia, que es lo que lo hace ficha y no un arreglo suelto:** ningún detector
+mira esto. **vence-sim solo corría en escritorio hasta hoy** ([T-650] estrena `device: 'movil'` en
+el contrato del journey), y en escritorio este defecto no existe. Con el modo móvil ya disponible,
+un journey que afirme «ninguna página desborda en horizontal» es barato y cubre la clase entera,
+no esta ruta.
+
+**Relacionadas:** [T-650] (de donde sale, y que trajo el modo móvil al harness).
 
 ### [T-667] 🟠 [ABIERTO 07/08] El supervisor elige un sid arbitrario cuando hay historial: gana la fila más antigua y el reparto se decide sobre ella
 
