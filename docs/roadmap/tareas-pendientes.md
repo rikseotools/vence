@@ -981,6 +981,94 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
+
+**De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
+Manuel, 07/08). **Sí les llega** —verificado EJECUTANDO `ENC.encargo()` y `ENC.encargoRevision()`, no
+leyendo el código: los dos llevan el bloque «EL MÉTODO DE LA CASA» desde la constante única
+`lib/sessions/recordatorio.cjs` → `METODO`, y el de revisión además manda juzgar contra él («¿le falta
+alguna capa?»)—. Lo que apareció al mirar los logs de verdad son **tres huecos de observabilidad**.
+
+#### Los tres huecos, medidos en el VPS (no supuestos)
+1. **No se ve qué hace un trabajador MIENTRAS trabaja.** `npm run flota` dice *«🟢 ejecutando T-168 ·
+   hace 137 min»* y eso **no distingue trabajando de atascado**. El dato existe: el transcript del
+   turno en curso se escribe EN VIVO
+   (`~/.claude/projects/-home-flota-vence-sessions-w1/*.jsonl`) — leída su última entrada el 07/08,
+   se veía exactamente en qué estaba (esperando un `tsc` en segundo plano). El supervisor **solo lee
+   su TAMAÑO** (`SES.lineaSesion({ tamanoBytes })`), nunca su contenido.
+2. **El log del turno está a 0 bytes hasta que el turno acaba.** Comprobado en w1, w2 y w4 a la vez:
+   `flota-w*.log` en 0 y solo los `.anterior` con contenido (413, 1.616 y 889 bytes). Es efecto de
+   `claude -p`, que escribe al terminar. Mientras dura el turno, el log no sirve de rastro.
+3. **Se guarda el informe del trabajador, NO el encargo que se le dio.** Así que cuando una entrega
+   sale mal no se puede distinguir **«se le explicó mal»** de **«no hizo caso»** — y con 18
+   «problemas» de 63 revisiones en un día (07/08), esa distinción es justo la que decide si hay que
+   arreglar el encargo o al trabajador.
+
+#### El arreglo (por valor/esfuerzo, y sin construir nada nuevo)
+1. **«Qué está haciendo ahora» en `npm run flota`**: una línea por trabajador desde la última entrada
+   de su transcript. Se lee un fichero que ya existe y se pinta en la pantalla que ya se usa — nada
+   de panel aparte.
+2. **Volcar el encargo al log antes de lanzarlo** (`mandarEncargo`): una línea, y cada entrega pasa a
+   ser auditable contra lo que se le pidió.
+3. **Salida en streaming de `claude -p`** para que el log deje de ser un post-mortem.
+
+#### Aviso de tamaño
+Esto es observabilidad de NUESTRA herramienta, no del producto: va **detrás** de la cola de usuarios y
+del merge, que es lo que tiene gente esperando. Encaja bien como encargo de flota (acotado, medible,
+no toca nada que sirva a un usuario).
+
+**Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
+ceguera).
+### [T-652] 🟡 [ABIERTO 07/08] El TREBEP se sirve con CAPÍTULOS PARTIDOS en 24 temas más: el hueco cae dentro de un título que sí está escopado, y ningún detector lo ve
+
+**Lo destapa una usuaria, no una alerta.** María G. (feedback `b24b1aee`, premium de Madrid, 07/08):
+*«en el tema del TREBEP veo que faltan algunos artículos, como por ejemplo el 32 y consecutivos.
+Quería saber si es que eso significa que no entran en el examen»*. No entraban: el T10 de
+`auxiliar_administrativo_madrid` servía **96 de los 100** artículos y los que faltaban eran
+**32, 33, 34, 35, 45 y 51** — cinco del Capítulo IV del Título III (*«Derecho a la negociación
+colectiva, representación y participación institucional. Derecho de reunión»*, arts. 31-46) y uno
+del Capítulo V (*«Derecho a la jornada de trabajo, permisos y vacaciones»*, arts. 47-51). Los dos
+capítulos estaban servidos **enteros salvo por esos seis**, así que no era criterio de programa:
+era un hueco. Rúbricas verificadas por `curl` contra `BOE-A-2015-11719`.
+
+**Ya arreglado para ella** (`verify:scope apply`, 96→102 arts) y para
+`auxiliar_administrativo_madrid_2027`, que tiene el epígrafe **idéntico** y el hueco **idéntico**.
+Comprobado sobre el HTML servido, no sobre la BD: los seis salen ya en
+`/auxiliar-administrativo-madrid/temario/tema-10`. Pasan a servirse **17 preguntas activas**.
+
+#### Lo que queda, medido
+
+De los **191 temas activos que escopan el TREBEP**, **26 tienen un capítulo partido**; dos eran los
+de Madrid. Los **24 restantes NO se pueden arreglar en bloque**, porque «partido» solo es defecto si
+el epígrafe pide esa materia:
+
+- **Mismo defecto casi seguro** — `auxiliar_administrativo_cyl` **T15**, cuyo epígrafe es
+  literalmente *«El Estatuto Básico del Empleado Público.»* (la ley entera) y al que le faltan los
+  mismos seis: 32,33,34,35,45,51. Misma huella que Madrid → apunta a un scope copiado.
+- **Probablemente legítimo** — `auxiliar_administrativo_cyl` **T17** (*«El derecho de sindicación y
+  de huelga. Régimen de incompatibilidades»*, 12 arts) o
+  `auxiliar_administrativo_ayuntamiento_sevilla` **T16** (32 arts): epígrafes acotados que no piden
+  el capítulo entero.
+- **El resto, a leer uno a uno**: estado T13/T14, andalucía T11, murcia T10, cantabria T8, carm T8,
+  la_rioja T18, sms T14, iipp T8, país vasco T9/T10, celador murcia T4, etgoa T11.
+
+#### Por qué ningún detector lo veía (esto es lo que hay que cerrar)
+
+- **`scope_titulo_huerfano`** busca un **título** con 0 artículos escopados y flanqueado por otros
+  que sí lo están. Aquí el Título III **está escopado** (85 de sus 91 artículos): el hueco vive
+  *dentro* de un capítulo, un nivel por debajo de donde mira el detector.
+- **`article_no_coverage`** cuenta artículos escopados con 0 preguntas; estos ni siquiera están
+  escopados, así que no existen para él.
+- **La sobre-inclusión** mira lo contrario (scope MÁS ancho que el epígrafe).
+- Y el Paso 2 los daba por buenos: los dos temas de Madrid estaban **`verified_correct`** — el
+  pipeline razona por materia y rangos, no por pertenencia artículo↔capítulo.
+
+**Punto de partida:** la huella es barata de calcular (`scratchpad/sistemico-trebep.cjs` de esta
+sesión, generalizable): para cada tema que escopa una ley, contrastar el scope contra los rangos de
+capítulo y marcar los **parcialmente** cubiertos. Lo que decide si es defecto es el epígrafe, así
+que la salida es una **cola de adjudicación**, no un badge. Si sale barato generalizarlo más allá
+del TREBEP, mirar primero las leyes que más temas comparten.
+
 ### [T-650] 🔴 [ABIERTO 07/08] El scroll con el dedo sobre la barra de meta diaria la ARRASTRA: acaba flotando sobre el contenido y se come los toques
 
 **Lo reporta una usuaria, no una alerta.** Feedback `247449ed` (Sara B, premium de Badajoz, 07/08):
