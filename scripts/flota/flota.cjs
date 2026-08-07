@@ -56,7 +56,7 @@ async function marcarCasosCerradosEnEmbudo(sql, filas) {
   try {
     const claves = BORRAB.clavesDeCasos(filas)
     if (!claves.length) return filas
-    const estados = await sql.unsafe(BORRAB.sqlEstadoDeCasos(), [claves])
+    const estados = await BORRAB.estadosDeCasos(sql, claves)
     return BORRAB.marcarCasosCerrados(filas, estados)
   } catch { return filas }
 }
