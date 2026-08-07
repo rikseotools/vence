@@ -5667,127 +5667,6 @@ esas preguntas no le habrían salido nunca.
 - **NO tocar el baseline del trinquete.** Subirlo a 7.202 para que CI pase sería exactamente lo que el trinquete existe para impedir.
 - **Relacionadas:** [T-370] (por qué el rojo no se oyó), [T-377] (el resto del job), memoria `project-placeholder-temario-backlog` (la campaña de 2026-06 que lo dejó en 0).
 
-### [T-377] 🟠 [ABIERTO 31/07] El job de integración estaba rojo y NADIE sabía por qué: dos tercios era una conexión rota, no contenido
-
-- **Cómo salió:** cerrando [T-336] (3 suites rojas de referidos + `correct_option`, ya arregladas). Con esas verdes, se corrió el job **entero** contra RDS real —lo que nadie había hecho— y salieron **24 tests rojos en 22 suites más**, de 2.023.
-- **NO es el mismo problema que T-336.** Allí el código de producción cambió a propósito y los tests se quedaron viejos. Aquí, en la muestra que se abrió, **el test tiene razón y los datos no**: `configDbIntegrity` falla porque la config declara **120 temas** para la Escala Técnica de Gestión de OO.AA. (Sanidad y Consumo) y en la BD hay **20**. Eso no se arregla tocando el test — es una oposición a medio construir que el job estaba cantando y nadie escuchaba.
-- **Tampoco es lo mismo que [T-370]** (el gate se quedó sin BD en CI). Son las dos mitades del mismo silencio: sin BD, el job muere antes de poder decir esto; con BD, dice esto. **Arreglar T-370 sin mirar esto llenará el CI de rojo real** — conviene leerlas juntas.
-- **Las 22 suites** (todas contra RDS): `configDbIntegrity`, `convocatoriaCiclo`, `convocatoriaVerification`, `deleteUserIndexCoverage`, `examCaseExclusion`, `familiaClassification`, `lawCompletenessConsistency`, `lawSlugFailureModes`, `legislativeImageBase64Pipeline`, `placeholderTemarioGuard`, `positionTypeIntegrity`, `questionArticleMismatch`, `schemaColumnDrift`, `seguimientoFuentesCiegas`, `temarioDataQuality`, `temarioEpigrafeIntegrity`, `temarioVersions`, `topicEpigrafeVerification`, `topicScopeIntegrity`, `topicScopeVerification`, `userStatsSummary`, `deviceFingerprintV2`.
-- **Cómo atacarlo (y cómo NO):** una a una, y **la pregunta primero es siempre «¿tiene razón el test?»**. Por la muestra, muchas parecen hallazgos de contenido reales que ya tienen su frase-gatillo y su runbook (temario/scope/convocatorias). Ajustar la aserción para que pase sería borrar el hallazgo, que es justo lo que lleva meses pasando por otra vía.
-- **Reproducir:** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config` (~9 min).
-
-
-- **⚠️ LA PREMISA DE ARRIBA ERA MEDIA VERDAD (medido el 31/07).** Corriendo el job entero en un entorno limpio salían **579 tests rojos en 32 suites**, no 24 en 22. La diferencia NO era contenido: **51 de los 80 bloques de fallo (64%) eran `self-signed certificate in certificate chain`** — 14 suites que **no llegaban a conectar** con RDS y llevaban meses contadas como "rojo de contenido". Cuántas cosas de las que este backlog da por vigiladas dependían de esas 14, es la parte que asusta.
-- **La causa, con nombre y apellidos:** desde el cutover a RDS (04/07) la URL lleva `sslmode=require`; **en node-postgres ese `sslmode` PISA la opción `ssl` que le pases**, y el certificado de RDS lo firma una CA privada de AWS. Así que la forma que estaba copiada por todas partes —`new Client({ connectionString: DB_URL })`— no conecta… **y la "cura" evidente tampoco**:
-
-  | forma | resultado |
-  |---|---|
-  | `{ connectionString: <url con sslmode>, ssl:{rejectUnauthorized:false} }` | ❌ self-signed certificate |
-  | `{ connectionString: <url SIN sslmode>, ssl:{rejectUnauthorized:false} }` | ✅ conecta |
-
-  Por eso convivían suites que funcionaban con otras que no sin patrón aparente: quien había dado con quitar el `sslmode` funcionaba, y quien solo añadió `ssl` seguía roto creyendo que lo había arreglado. **`postgres` (porsager) NO sufre esto**, lo que explica que los scripts que lo usan estuvieran bien.
-- **Arreglado así (no parcheando 36 sitios):** núcleo único `lib/db/pgSsl.cjs` (`sinSslMode` + `pgConfig`), del que cuelgan **tanto los tests** (`__tests__/helpers/db.ts` → `testDbConfig/openTestClient/openTestPool`) **como los scripts**. 36 ficheros de test migrados. Capas: 7 tests unitarios del núcleo + guardarraíl `testDbHelper.guardrail.test.ts` que **no acepta el "ya lleva un ssl"** (era justo la cura falsa) y obliga a pasar por la puerta única.
-- **Resultado medido, mismo job, mismo entorno:**
-
-  | | antes | después |
-  |---|---|---|
-  | tests rojos | 579 | **24** |
-  | suites rojas | 32 | **22** |
-  | errores de certificado | 1.126 | **0** |
-  | duración | 1.276 s | **122 s** (10×) |
-
-  Los 24 que quedan coinciden **exactamente** con el inventario original de esta ficha: eso es la deriva de contenido de verdad, ahora sin ruido encima y con el job corriendo en 2 minutos en vez de 21.
-- **Efecto colateral que valía la tarea sola: 3 canarios no podían mirar la BD** — `canary-familia`, `canary-renewal-reminders` y `canary-landing-vs-bd` (este último es el que vigila que las cifras publicadas de una landing cuadren con la BD, la red de seguridad de [T-142]). Fallaban ruidosamente (`exit 1`), pero con un error de infraestructura que nadie tradujo a *"esto no está comprobando nada"*. Arreglados y comprobados en vivo: dos en verde y **`canary-familia` en rojo por un defecto REAL que estaba tapado — cobertura de familia 41% frente al umbral de 80%** (el mismo que canta la suite `familiaClassification`).
-- **Cola pendiente de esta ficha — el rojo REAL, corrido como lo corre CI:** empezó en `11 suites · 16 tests` y va por **`8 suites · ~11 tests`** de 2.095 (arregladas `familiaClassification`, `temarioVersions` y `schemaColumnDrift`; el resto abajo). **Ni un fallo de entorno: los 11 son de DATOS.** (Los 8 de `deviceFingerprintV2` y los 7 de `warmCache`/`resolveAlias` que aparecían antes eran artefacto del comando de reproducción, ver arriba — no había nada que arreglar en ellos.)
-
-  | suite | qué dice |
-  |---|---|
-  | `configDbIntegrity` | ETGOA promete 120 temas y sirve 20 *(ver abajo)* |
-  | `placeholderTemarioGuard` | trinquete de preguntas sobre artículos vacíos — **es [T-374]** |
-  | ~~`familiaClassification`~~ | ✅ **ARREGLADA 31/07**: 141 filas reclasificadas, 0 degradadas *(ver abajo)* |
-  | `temarioDataQuality` | **RESUELTA su causa: es ETGOA otra vez** — el bloque «Área de Consumo» declarado sin un solo tema activo. 5 de sus 6 pruebas pasan |
-  | ~~`temarioVersions`~~ | ✅ **ARREGLADA 31/07**: era 1 fila (`auxiliar-administrativo-diputacion-cadiz`). La causa no era el dato sino la herramienta: `backfill-temario-versions.cjs` apuntaba la convocatoria **solo al CREAR la versión**, así que una convocatoria nacida después (rollover) se quedaba a NULL para siempre y ninguna herramienta la curaba. Arreglado el hueco + aplicado. Suite en verde |
-  | `temarioEpigrafeIntegrity` | 4 fallos, todos trinquetes desbordados: **791** temas sin descripción (techo 500), 64 `descripcion_corta`, título↔epígrafe, y 12 bloques sin temas (uno es ETGOA). **Ficha propia: [T-390]** |
-  | `topicScopeIntegrity` / `topicScopeVerification` | scope |
-  | ~~`lawCompletenessConsistency`~~ | ✅ **ARREGLADA 31/07**: la vista hacía `COALESCE(db_count,0)`, o sea convertía «no sé cuántos artículos tenemos» en «tenemos CERO» y daba 182 faltantes donde la verificación dice 155/182 exactos. Alineada al módulo TS por migración. **Y al mirar por qué, salió [T-395]: 9 leyes con `is_ok:false` publicadas como verificadas** |
-  | `seguimientoFuentesCiegas` | fuentes de seguimiento que no vigilan nada |
-  | ~~`schemaColumnDrift`~~ | ✅ **ARREGLADA 31/07**: 18 columnas vivas en RDS que `db/schema.ts` —la fuente de verdad declarada— no tenía. `backlog_tasks` (12: las cuatro esperas + el plazo externo), `user_profiles` (3: `premium_granted_at/by/reason`) y `fraud_confirmations` (3: evidencia + caducidad RGPD). Con capa que fija **por qué** importan, no solo que estén |
-  | `positionTypeIntegrity` | **no era un detalle de config**: son 50 temas publicados que sirven 0 preguntas, con 3 usuarios apuntados. **Ficha propia: [T-393]** |
-  | `userStatsSummary` | el resumen precomputado no cuadra con `count(*)` de un usuario pesado |
-
-  Cada una tiene ya su frase-gatillo y su runbook en CLAUDE.md: **no se atacan desde aquí a lo bruto**, se atacan por su puerta. Lo que esta ficha aporta es que ahora se VEN.
-- **Familia, ya medido y con herramienta lista (31/07):** la cobertura del banner personalizado está al **41%** entre las catalogadas con plazo abierto hoy (13 de 22 sin familia útil), y el clasificador discrepa de la BD en **16 de 300** — casos como *«Maestros - Comunidad de Madrid»* guardado como `otros`. Es la forma conocida: **el criterio mejoró y nadie recalculó**. `scripts/backfill-familia.cjs` **ya tiene `--dry-run`** (no lo tenía: o no lo corrías o lo corrías a ciegas sobre 2.658 filas) y dice exactamente esto: **147 cambiarían**, de las cuales **111 ganan** familia concreta y **6 la PIERDEN** (`social→otros` ×3, `sanidad→otros`, `administracion_general→otros`, `tecnica→otros`) — esas 6 son correcciones a mano que la pasada completa destruiría. Por eso el script **ya no degrada**: `otros` es el comodín del clasificador y no puede pisar una decisión concreta. **EJECUTADO el 31/07 con OK de Manuel**, y verificado contra el volcado previo (`~/vence-backups/t377-familia-previa.json`, 2.658 filas): **141 cambiadas, 141 ganan detalle, 0 pierden**. Suite y canario en verde.
-  - **Salió un conflicto de diseño que había que resolver, no esquivar:** la comprobación de consistencia exigía que clasificador y BD coincidieran SIEMPRE, o sea exigía **borrar** las 2 filas que el backfill protege a propósito. La regla buena es la del backfill (a un humano que arregló una fila no se le pisa con un «no sé»), así que la exención se enseñó a los **tres** sitios —backfill, test y canario— **desde el mismo núcleo puro**, con guardarraíl de paridad que falla si alguno se hace su copia. Y la exención **se imprime** (`2 protegidas`), no calla.
-- **Sobre ETGOA, ya medido para que nadie lo repita:** `etgoa-sanidad-consumo` está **activa** y su config promete **120 temas**; en BD hay **120 filas pero solo 20 activas** (la parte común 1-20) y los **100 específicos (101-200) están inactivos y con 0 `topic_scope`**. Son 4 usuarios, 1 premium. El home publica *"120 temas"* (`app/page.tsx`). **Es la ÚNICA oposición del catálogo con esa brecha** (128 en config, 1 con hueco), así que no es campaña: es una decisión. **Y OJO con la salida fácil:** poner `comingSoon: true` NO arregla nada — esa bandera **solo la lee este test** (0 oposiciones la usan, nadie más la consulta), así que serviría para callar el rojo dejando al usuario viendo exactamente lo mismo. O se construye la parte específica, o se deja de prometer 120.
-- **⚠️ EL COMANDO DE REPRODUCIR DE ESTA FICHA FABRICABA ROJOS FANTASMA (31/07).** El `--setupFiles dotenv/config` **NO se añade a la configuración: la SUSTITUYE**, así que desactiva `jest.setup.js` y con él los dobles globales (`global.fetch = jest.fn()`, `localStorage`…). Resultado: 7 de los "24 fallos" eran `TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')` — el test pidiendo un mock que ese comando acababa de quitar. Corridas con el comando bueno, **`lawSlugFailureModes` da 14/14 en verde**. No había nada que arreglar ahí.
-- **Reproducir COMO LO HACE CI** (que es lo único que cuenta; CI inyecta `DATABASE_URL` en el step, ver `.github/workflows/test.yml`):
-  ```bash
-  export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
-  npm run test:integration
-  ```
-
-
----
-
-**📌 ESTADO AL CERRAR LA SESIÓN (31/07, worktree `centro-abajo` eliminado)**
-
-**Todo lo de esta ficha está en `origin/main`.** No queda nada en el worktree.
-
-**Dónde está el rojo hoy** (`8 suites → 6`; empezó en 32 suites / 579 tests):
-
-| suite | quién la tiene |
-|---|---|
-| `configDbIntegrity` · `temarioDataQuality` | **[T-396]** — decisión de Manuel (ETGOA). Las dos caen con la misma decisión |
-| `placeholderTemarioGuard` | **[T-374]** — decisión de Manuel (7.202 placeholder) |
-| `temarioEpigrafeIntegrity` | **[T-390]** — 791 temas sin descripción |
-| `positionTypeIntegrity` | **[T-393]** — oposición de Madrid a medias, 3 usuarios |
-| `seguimientoFuentesCiegas` | ⚠️ **LA ÚNICA SIN MIRAR.** Falla su invariante *«nada marcado como ciego tiene contenido de sobra»*. No se ha diagnosticado: puede ser dato o umbral |
-
-**Arregladas y verificadas en esta sesión:** `familiaClassification` · `temarioVersions` · `schemaColumnDrift` · `lawCompletenessConsistency` (+ las 14 suites que ni conectaban).
-
-**Fichas que nacieron de aquí, todas con su contexto:** [T-381] (canary `served-rollup` rojo, envenena el ratio anti-cosecha) · [T-390] · [T-393] · [T-395] (9 leyes `is_ok:false` publicadas como verificadas) · [T-396].
-
-**Escrituras a producción hechas hoy, con su vuelta atrás:**
-- `oposiciones.familia`: 141 filas reclasificadas. **Estado previo completo en `~/vence-backups/t377-familia-previa.json`** (2.658 filas, FUERA del repo a propósito → sobrevive al borrado del worktree).
-- `convocatorias.temario_version_id`: 1 fila (Diputación de Cádiz), vía la propia herramienta.
-- Vista `law_verification_effective`: redefinida por migración `20260731_law_verification_effective_db_count_desconocido.sql`.
-
-**Cómo retomar, en dos comandos:**
-```bash
-export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
-npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de arriba
-```
-
-**Lo que NO hay que volver a descubrir:**
-- El comando con `--setupFiles dotenv/config` **fabrica 15 rojos fantasma**. El bueno es `npm run test:integration` con `DATABASE_URL` exportada, que es lo que corre CI.
-- Con `pg` contra RDS hay que **quitar el `sslmode` de la URL**; poner `ssl` no basta. Usar `pgConfig()` de `lib/db/pgSsl.cjs` (tests: `testDbConfig()`). Guardarraíl puesto.
-- Un helper de conexión **no debe cargar `dotenv` al importarse**: despierta suites dormidas a propósito y tiñe el pre-commit de todo el mundo.
-- CI sigue **ciego** por el secreto `DATABASE_URL_READONLY` que falta (**[T-370]**, necesita a Manuel). Mientras no vuelva, este rojo solo se ve corriéndolo en local.
-
-**✅ CIERRE (07/08): la última sin mirar, mirada — no era dato ni umbral, era la MISMA familia de conexión rota.**
-
-`seguimientoFuentesCiegas` da `filas.length === 0`: la query del detector (`oposiciones` JOIN LATERAL
-`convocatoria_seguimiento_checks`) devuelve 0 filas con el rol de lectura. Medido contra RDS
-(`VENCE_LECTOR_URL`, vía `pgConfig()`, sin escribir nada):
-- `pg_stat_user_tables.n_live_tup` para `convocatoria_seguimiento_checks` = **31.410** filas vivas,
-  `last_autoanalyze` 06/08 — la tabla está viva y el cron escribe.
-- `SELECT count(*)` con `vence_lector` = **0**. Sin error: `relrowsecurity=true` y **CERO** filas en
-  `pg_policies` para ese rol (`pg_policies WHERE tablename='convocatoria_seguimiento_checks'` → `[]`).
-
-Es el MISMO mecanismo que esta ficha ya vino a cazar (SSL), un nivel más abajo: no es la conexión
-la que se rompe, es el permiso — un `GRANT` de tabla no vale nada si la tabla tiene RLS y cero
-políticas, y el motor filtra en silencio (0 filas, no excepción) en vez de avisar. Ya diagnosticado
-y con migración a medio aplicar para dos tablas hermanas en **[T-573]** (que a su vez sigue la
-plantilla de **[T-574]**); esta tabla no estaba en su lista y ya se ha añadido ahí (addendum
-07/08) en vez de abrir una ficha duplicada — `reserve` la bloqueó por parecido y tenía razón.
-Ni [T-573] ni [T-574] las puede aplicar un worker de coordinación (falta privilegio `CREATE
-POLICY`): sigue pendiente de quien aplicó las migraciones RLS del 05/08.
-
-**Con esto, el inventario completo de esta ficha queda cerrado:** las 5 suites de la tabla de
-arriba tienen TODAS dueño (4 fichas de contenido/decisión + esta, ahora plegada en [T-573]).
-`.env.local` no se ha tocado en el repo — el swap de credencial usado para medir fue local y
-revertido antes de escribir nada.
-
 ### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
 
 - **Lo pide un premium y se le ha PROMETIDO** (feedback `e90d5ee3`, Iván, 31/07): *«¿por qué no suben preguntas y exámenes de las últimas convocatorias de auxiliar administrativo del Gobierno de Canarias? Creo que sería lo lógico para practicar»*. Se le respondió que estamos en ello y que estarán próximamente, así que esto ya no es una mejora opcional.
@@ -6575,6 +6454,128 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-377] ✅ [HECHA 07/08] El job de integración estaba rojo y NADIE sabía por qué: dos tercios era una conexión rota, no contenido
+
+- **Cómo salió:** cerrando [T-336] (3 suites rojas de referidos + `correct_option`, ya arregladas). Con esas verdes, se corrió el job **entero** contra RDS real —lo que nadie había hecho— y salieron **24 tests rojos en 22 suites más**, de 2.023.
+- **NO es el mismo problema que T-336.** Allí el código de producción cambió a propósito y los tests se quedaron viejos. Aquí, en la muestra que se abrió, **el test tiene razón y los datos no**: `configDbIntegrity` falla porque la config declara **120 temas** para la Escala Técnica de Gestión de OO.AA. (Sanidad y Consumo) y en la BD hay **20**. Eso no se arregla tocando el test — es una oposición a medio construir que el job estaba cantando y nadie escuchaba.
+- **Tampoco es lo mismo que [T-370]** (el gate se quedó sin BD en CI). Son las dos mitades del mismo silencio: sin BD, el job muere antes de poder decir esto; con BD, dice esto. **Arreglar T-370 sin mirar esto llenará el CI de rojo real** — conviene leerlas juntas.
+- **Las 22 suites** (todas contra RDS): `configDbIntegrity`, `convocatoriaCiclo`, `convocatoriaVerification`, `deleteUserIndexCoverage`, `examCaseExclusion`, `familiaClassification`, `lawCompletenessConsistency`, `lawSlugFailureModes`, `legislativeImageBase64Pipeline`, `placeholderTemarioGuard`, `positionTypeIntegrity`, `questionArticleMismatch`, `schemaColumnDrift`, `seguimientoFuentesCiegas`, `temarioDataQuality`, `temarioEpigrafeIntegrity`, `temarioVersions`, `topicEpigrafeVerification`, `topicScopeIntegrity`, `topicScopeVerification`, `userStatsSummary`, `deviceFingerprintV2`.
+- **Cómo atacarlo (y cómo NO):** una a una, y **la pregunta primero es siempre «¿tiene razón el test?»**. Por la muestra, muchas parecen hallazgos de contenido reales que ya tienen su frase-gatillo y su runbook (temario/scope/convocatorias). Ajustar la aserción para que pase sería borrar el hallazgo, que es justo lo que lleva meses pasando por otra vía.
+- **Reproducir:** `DOTENV_CONFIG_PATH=.env.local npx jest --testPathPattern='__tests__/(integration|perf|security|scraping|api/user-stats)' --setupFiles dotenv/config` (~9 min).
+
+
+- **⚠️ LA PREMISA DE ARRIBA ERA MEDIA VERDAD (medido el 31/07).** Corriendo el job entero en un entorno limpio salían **579 tests rojos en 32 suites**, no 24 en 22. La diferencia NO era contenido: **51 de los 80 bloques de fallo (64%) eran `self-signed certificate in certificate chain`** — 14 suites que **no llegaban a conectar** con RDS y llevaban meses contadas como "rojo de contenido". Cuántas cosas de las que este backlog da por vigiladas dependían de esas 14, es la parte que asusta.
+- **La causa, con nombre y apellidos:** desde el cutover a RDS (04/07) la URL lleva `sslmode=require`; **en node-postgres ese `sslmode` PISA la opción `ssl` que le pases**, y el certificado de RDS lo firma una CA privada de AWS. Así que la forma que estaba copiada por todas partes —`new Client({ connectionString: DB_URL })`— no conecta… **y la "cura" evidente tampoco**:
+
+  | forma | resultado |
+  |---|---|
+  | `{ connectionString: <url con sslmode>, ssl:{rejectUnauthorized:false} }` | ❌ self-signed certificate |
+  | `{ connectionString: <url SIN sslmode>, ssl:{rejectUnauthorized:false} }` | ✅ conecta |
+
+  Por eso convivían suites que funcionaban con otras que no sin patrón aparente: quien había dado con quitar el `sslmode` funcionaba, y quien solo añadió `ssl` seguía roto creyendo que lo había arreglado. **`postgres` (porsager) NO sufre esto**, lo que explica que los scripts que lo usan estuvieran bien.
+- **Arreglado así (no parcheando 36 sitios):** núcleo único `lib/db/pgSsl.cjs` (`sinSslMode` + `pgConfig`), del que cuelgan **tanto los tests** (`__tests__/helpers/db.ts` → `testDbConfig/openTestClient/openTestPool`) **como los scripts**. 36 ficheros de test migrados. Capas: 7 tests unitarios del núcleo + guardarraíl `testDbHelper.guardrail.test.ts` que **no acepta el "ya lleva un ssl"** (era justo la cura falsa) y obliga a pasar por la puerta única.
+- **Resultado medido, mismo job, mismo entorno:**
+
+  | | antes | después |
+  |---|---|---|
+  | tests rojos | 579 | **24** |
+  | suites rojas | 32 | **22** |
+  | errores de certificado | 1.126 | **0** |
+  | duración | 1.276 s | **122 s** (10×) |
+
+  Los 24 que quedan coinciden **exactamente** con el inventario original de esta ficha: eso es la deriva de contenido de verdad, ahora sin ruido encima y con el job corriendo en 2 minutos en vez de 21.
+- **Efecto colateral que valía la tarea sola: 3 canarios no podían mirar la BD** — `canary-familia`, `canary-renewal-reminders` y `canary-landing-vs-bd` (este último es el que vigila que las cifras publicadas de una landing cuadren con la BD, la red de seguridad de [T-142]). Fallaban ruidosamente (`exit 1`), pero con un error de infraestructura que nadie tradujo a *"esto no está comprobando nada"*. Arreglados y comprobados en vivo: dos en verde y **`canary-familia` en rojo por un defecto REAL que estaba tapado — cobertura de familia 41% frente al umbral de 80%** (el mismo que canta la suite `familiaClassification`).
+- **Cola pendiente de esta ficha — el rojo REAL, corrido como lo corre CI:** empezó en `11 suites · 16 tests` y va por **`8 suites · ~11 tests`** de 2.095 (arregladas `familiaClassification`, `temarioVersions` y `schemaColumnDrift`; el resto abajo). **Ni un fallo de entorno: los 11 son de DATOS.** (Los 8 de `deviceFingerprintV2` y los 7 de `warmCache`/`resolveAlias` que aparecían antes eran artefacto del comando de reproducción, ver arriba — no había nada que arreglar en ellos.)
+
+  | suite | qué dice |
+  |---|---|
+  | `configDbIntegrity` | ETGOA promete 120 temas y sirve 20 *(ver abajo)* |
+  | `placeholderTemarioGuard` | trinquete de preguntas sobre artículos vacíos — **es [T-374]** |
+  | ~~`familiaClassification`~~ | ✅ **ARREGLADA 31/07**: 141 filas reclasificadas, 0 degradadas *(ver abajo)* |
+  | `temarioDataQuality` | **RESUELTA su causa: es ETGOA otra vez** — el bloque «Área de Consumo» declarado sin un solo tema activo. 5 de sus 6 pruebas pasan |
+  | ~~`temarioVersions`~~ | ✅ **ARREGLADA 31/07**: era 1 fila (`auxiliar-administrativo-diputacion-cadiz`). La causa no era el dato sino la herramienta: `backfill-temario-versions.cjs` apuntaba la convocatoria **solo al CREAR la versión**, así que una convocatoria nacida después (rollover) se quedaba a NULL para siempre y ninguna herramienta la curaba. Arreglado el hueco + aplicado. Suite en verde |
+  | `temarioEpigrafeIntegrity` | 4 fallos, todos trinquetes desbordados: **791** temas sin descripción (techo 500), 64 `descripcion_corta`, título↔epígrafe, y 12 bloques sin temas (uno es ETGOA). **Ficha propia: [T-390]** |
+  | `topicScopeIntegrity` / `topicScopeVerification` | scope |
+  | ~~`lawCompletenessConsistency`~~ | ✅ **ARREGLADA 31/07**: la vista hacía `COALESCE(db_count,0)`, o sea convertía «no sé cuántos artículos tenemos» en «tenemos CERO» y daba 182 faltantes donde la verificación dice 155/182 exactos. Alineada al módulo TS por migración. **Y al mirar por qué, salió [T-395]: 9 leyes con `is_ok:false` publicadas como verificadas** |
+  | `seguimientoFuentesCiegas` | fuentes de seguimiento que no vigilan nada |
+  | ~~`schemaColumnDrift`~~ | ✅ **ARREGLADA 31/07**: 18 columnas vivas en RDS que `db/schema.ts` —la fuente de verdad declarada— no tenía. `backlog_tasks` (12: las cuatro esperas + el plazo externo), `user_profiles` (3: `premium_granted_at/by/reason`) y `fraud_confirmations` (3: evidencia + caducidad RGPD). Con capa que fija **por qué** importan, no solo que estén |
+  | `positionTypeIntegrity` | **no era un detalle de config**: son 50 temas publicados que sirven 0 preguntas, con 3 usuarios apuntados. **Ficha propia: [T-393]** |
+  | `userStatsSummary` | el resumen precomputado no cuadra con `count(*)` de un usuario pesado |
+
+  Cada una tiene ya su frase-gatillo y su runbook en CLAUDE.md: **no se atacan desde aquí a lo bruto**, se atacan por su puerta. Lo que esta ficha aporta es que ahora se VEN.
+- **Familia, ya medido y con herramienta lista (31/07):** la cobertura del banner personalizado está al **41%** entre las catalogadas con plazo abierto hoy (13 de 22 sin familia útil), y el clasificador discrepa de la BD en **16 de 300** — casos como *«Maestros - Comunidad de Madrid»* guardado como `otros`. Es la forma conocida: **el criterio mejoró y nadie recalculó**. `scripts/backfill-familia.cjs` **ya tiene `--dry-run`** (no lo tenía: o no lo corrías o lo corrías a ciegas sobre 2.658 filas) y dice exactamente esto: **147 cambiarían**, de las cuales **111 ganan** familia concreta y **6 la PIERDEN** (`social→otros` ×3, `sanidad→otros`, `administracion_general→otros`, `tecnica→otros`) — esas 6 son correcciones a mano que la pasada completa destruiría. Por eso el script **ya no degrada**: `otros` es el comodín del clasificador y no puede pisar una decisión concreta. **EJECUTADO el 31/07 con OK de Manuel**, y verificado contra el volcado previo (`~/vence-backups/t377-familia-previa.json`, 2.658 filas): **141 cambiadas, 141 ganan detalle, 0 pierden**. Suite y canario en verde.
+  - **Salió un conflicto de diseño que había que resolver, no esquivar:** la comprobación de consistencia exigía que clasificador y BD coincidieran SIEMPRE, o sea exigía **borrar** las 2 filas que el backfill protege a propósito. La regla buena es la del backfill (a un humano que arregló una fila no se le pisa con un «no sé»), así que la exención se enseñó a los **tres** sitios —backfill, test y canario— **desde el mismo núcleo puro**, con guardarraíl de paridad que falla si alguno se hace su copia. Y la exención **se imprime** (`2 protegidas`), no calla.
+- **Sobre ETGOA, ya medido para que nadie lo repita:** `etgoa-sanidad-consumo` está **activa** y su config promete **120 temas**; en BD hay **120 filas pero solo 20 activas** (la parte común 1-20) y los **100 específicos (101-200) están inactivos y con 0 `topic_scope`**. Son 4 usuarios, 1 premium. El home publica *"120 temas"* (`app/page.tsx`). **Es la ÚNICA oposición del catálogo con esa brecha** (128 en config, 1 con hueco), así que no es campaña: es una decisión. **Y OJO con la salida fácil:** poner `comingSoon: true` NO arregla nada — esa bandera **solo la lee este test** (0 oposiciones la usan, nadie más la consulta), así que serviría para callar el rojo dejando al usuario viendo exactamente lo mismo. O se construye la parte específica, o se deja de prometer 120.
+- **⚠️ EL COMANDO DE REPRODUCIR DE ESTA FICHA FABRICABA ROJOS FANTASMA (31/07).** El `--setupFiles dotenv/config` **NO se añade a la configuración: la SUSTITUYE**, así que desactiva `jest.setup.js` y con él los dobles globales (`global.fetch = jest.fn()`, `localStorage`…). Resultado: 7 de los "24 fallos" eran `TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')` — el test pidiendo un mock que ese comando acababa de quitar. Corridas con el comando bueno, **`lawSlugFailureModes` da 14/14 en verde**. No había nada que arreglar ahí.
+- **Reproducir COMO LO HACE CI** (que es lo único que cuenta; CI inyecta `DATABASE_URL` en el step, ver `.github/workflows/test.yml`):
+  ```bash
+  export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
+  npm run test:integration
+  ```
+
+
+---
+
+**📌 ESTADO AL CERRAR LA SESIÓN (31/07, worktree `centro-abajo` eliminado)**
+
+**Todo lo de esta ficha está en `origin/main`.** No queda nada en el worktree.
+
+**Dónde está el rojo hoy** (`8 suites → 6`; empezó en 32 suites / 579 tests):
+
+| suite | quién la tiene |
+|---|---|
+| `configDbIntegrity` · `temarioDataQuality` | **[T-396]** — decisión de Manuel (ETGOA). Las dos caen con la misma decisión |
+| `placeholderTemarioGuard` | **[T-374]** — decisión de Manuel (7.202 placeholder) |
+| `temarioEpigrafeIntegrity` | **[T-390]** — 791 temas sin descripción |
+| `positionTypeIntegrity` | **[T-393]** — oposición de Madrid a medias, 3 usuarios |
+| `seguimientoFuentesCiegas` | ⚠️ **LA ÚNICA SIN MIRAR.** Falla su invariante *«nada marcado como ciego tiene contenido de sobra»*. No se ha diagnosticado: puede ser dato o umbral |
+
+**Arregladas y verificadas en esta sesión:** `familiaClassification` · `temarioVersions` · `schemaColumnDrift` · `lawCompletenessConsistency` (+ las 14 suites que ni conectaban).
+
+**Fichas que nacieron de aquí, todas con su contexto:** [T-381] (canary `served-rollup` rojo, envenena el ratio anti-cosecha) · [T-390] · [T-393] · [T-395] (9 leyes `is_ok:false` publicadas como verificadas) · [T-396].
+
+**Escrituras a producción hechas hoy, con su vuelta atrás:**
+- `oposiciones.familia`: 141 filas reclasificadas. **Estado previo completo en `~/vence-backups/t377-familia-previa.json`** (2.658 filas, FUERA del repo a propósito → sobrevive al borrado del worktree).
+- `convocatorias.temario_version_id`: 1 fila (Diputación de Cádiz), vía la propia herramienta.
+- Vista `law_verification_effective`: redefinida por migración `20260731_law_verification_effective_db_count_desconocido.sql`.
+
+**Cómo retomar, en dos comandos:**
+```bash
+export DATABASE_URL=$(grep '^DATABASE_URL=' .env.local | cut -d= -f2- | tr -d '"')
+npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de arriba
+```
+
+**Lo que NO hay que volver a descubrir:**
+- El comando con `--setupFiles dotenv/config` **fabrica 15 rojos fantasma**. El bueno es `npm run test:integration` con `DATABASE_URL` exportada, que es lo que corre CI.
+- Con `pg` contra RDS hay que **quitar el `sslmode` de la URL**; poner `ssl` no basta. Usar `pgConfig()` de `lib/db/pgSsl.cjs` (tests: `testDbConfig()`). Guardarraíl puesto.
+- Un helper de conexión **no debe cargar `dotenv` al importarse**: despierta suites dormidas a propósito y tiñe el pre-commit de todo el mundo.
+- CI sigue **ciego** por el secreto `DATABASE_URL_READONLY` que falta (**[T-370]**, necesita a Manuel). Mientras no vuelva, este rojo solo se ve corriéndolo en local.
+
+**✅ CIERRE (07/08): la última sin mirar, mirada — no era dato ni umbral, era la MISMA familia de conexión rota.**
+
+`seguimientoFuentesCiegas` da `filas.length === 0`: la query del detector (`oposiciones` JOIN LATERAL
+`convocatoria_seguimiento_checks`) devuelve 0 filas con el rol de lectura. Medido contra RDS
+(`VENCE_LECTOR_URL`, vía `pgConfig()`, sin escribir nada):
+- `pg_stat_user_tables.n_live_tup` para `convocatoria_seguimiento_checks` = **31.410** filas vivas,
+  `last_autoanalyze` 06/08 — la tabla está viva y el cron escribe.
+- `SELECT count(*)` con `vence_lector` = **0**. Sin error: `relrowsecurity=true` y **CERO** filas en
+  `pg_policies` para ese rol (`pg_policies WHERE tablename='convocatoria_seguimiento_checks'` → `[]`).
+
+Es el MISMO mecanismo que esta ficha ya vino a cazar (SSL), un nivel más abajo: no es la conexión
+la que se rompe, es el permiso — un `GRANT` de tabla no vale nada si la tabla tiene RLS y cero
+políticas, y el motor filtra en silencio (0 filas, no excepción) en vez de avisar. Ya diagnosticado
+y con migración a medio aplicar para dos tablas hermanas en **[T-573]** (que a su vez sigue la
+plantilla de **[T-574]**); esta tabla no estaba en su lista y ya se ha añadido ahí (addendum
+07/08) en vez de abrir una ficha duplicada — `reserve` la bloqueó por parecido y tenía razón.
+Ni [T-573] ni [T-574] las puede aplicar un worker de coordinación (falta privilegio `CREATE
+POLICY`): sigue pendiente de quien aplicó las migraciones RLS del 05/08.
+
+**Con esto, el inventario completo de esta ficha queda cerrado:** las 5 suites de la tabla de
+arriba tienen TODAS dueño (4 fichas de contenido/decisión + esta, ahora plegada en [T-573]).
+`.env.local` no se ha tocado en el repo — el swap de credencial usado para medir fue local y
+revertido antes de escribir nada.
+
 
 ### [T-240] ✅ [HECHA 06/08] El detector de completitud de leyes cuenta artículos pero no compara el TEXTO: da verde a una ley entera parafraseada
 
