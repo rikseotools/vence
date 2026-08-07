@@ -111,4 +111,32 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.observableEventsDeleted).toBe(120_000);
     expect(res.remaining.observable_events).toBe(0);
   });
+
+  /**
+   * Reproducido en producción el 07/08: `VACUUM (ANALYZE) observable_events` justo
+   * después de borrar ~2,6 M filas superó el `statement_timeout` de 30 s del pool y
+   * tiró TODO `run()` — `remaining` se calcula DESPUÉS del VACUUM, así que el cron
+   * reportó `status: 'failure'` sin rastro de que el borrado (lo que importa) había
+   * funcionado. `filasAfectadas`/`batches` estaban bien: este es un fallo DISTINTO.
+   */
+  it('un VACUUM que falla NO tira el resultado: el borrado y el atraso se reportan igual', async () => {
+    const db = fakeDb({ observable_events: 1_000_000, validation_error_logs: 0 });
+    const original = db.execute;
+    db.execute = jest.fn(async (q: unknown) => {
+      if (JSON.stringify(q).includes('VACUUM')) {
+        throw new Error(
+          'Failed query: VACUUM (ANALYZE) observable_events\nparams: ',
+        );
+      }
+      return original(q);
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    // Lo que de verdad importa (el borrado) llegó intacto pese al VACUUM roto.
+    expect(res.observableEventsDeleted).toBe(1_000_000);
+    expect(res.remaining.observable_events).toBe(0);
+    expect(res.vacuumFailed).toEqual(['observable_events']);
+  });
 });

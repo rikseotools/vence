@@ -2234,13 +2234,15 @@ export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
 
   const salida: DrenajeDiagnostico[] = [];
   for (const [endpoint, lista] of porEndpoint) {
-    // `ts` NO siempre llega como Date: el driver lo entrega como CADENA según la columna y el
-    // camino por el que venga, y `b.ts.getTime()` explotaba con «b.ts.getTime is not a function».
-    // Medido: la regla llevaba desde el 06/08 22:30 fallando en CADA evaluación —201 veces— así
-    // que el drenaje se quedó sin vigilancia justo después del deploy que la estrenó, y encima
-    // ensuciaba `alert_rule_failed` tapando cualquier otra regla que fallara de verdad.
-    // Mismo criterio que ya usa `latenciaSostenida` diez líneas más arriba (línea ~1014): no se
-    // asume el tipo, se normaliza.
+    // `ts` NO siempre llega como Date, y la causa es concreta: `db.execute(sql`…`)` de Drizzle
+    // —a diferencia de llamar a postgres-js directamente— NO aplica los parsers de tipo del
+    // driver, así que un `timestamptz` vuelve como CADENA ('2026-08-07 06:18:49.668061+00').
+    // `b.ts.getTime()` explotaba con «b.ts.getTime is not a function» y mató esta regla justo la
+    // noche en que más falta hacía. Medido: 201 evaluaciones seguidas fallando desde el 06/08
+    // 22:30, o sea que el drenaje se quedó sin vigilancia nada más estrenarla, y encima ensuciaba
+    // `alert_rule_failed` tapando cualquier otra regla que fallara de verdad.
+    // Mismo criterio que ya usan `kindsSinEvaluarBackend` (~1014) y `normalizarFecha`/`asDate`
+    // (231, 566): no se asume el tipo, se normaliza — con el helper `msDe` de este módulo.
     const ordenadas = [...lista].sort((a, b) => msDe(b.ts) - msDe(a.ts));
     const ultima = ordenadas[0];
     // Sin `remaining` no se puede juzgar: es una versión anterior al deploy de
