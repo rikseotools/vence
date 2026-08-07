@@ -55,7 +55,7 @@ import {
   recordServedForSubjects,
 } from '@/lib/security/challengePolicy/questionsServed'
 import { anyForcedChallenge } from '@/lib/security/challengePolicy/forceChallenge'
-import { esCanaryDeConfianza, secretoCanaryEsperado } from '@/lib/api/syntheticTrust'
+import { esCanaryDeConfianza, esCanaryParaMetricas, secretoCanaryEsperado } from '@/lib/api/syntheticTrust'
 import { getDeviceIdFromRequest } from '@/lib/api/deviceLimit'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { getUserPlanType } from '@/lib/referrals/queries'
@@ -288,7 +288,13 @@ async function _POST(request: NextRequest) {
     // producción, una petición anónima con esa línea recibía las preguntas saltándose el
     // Turnstile. `x-vence-canary` se queda para lo suyo (no ensuciar el log de errores);
     // conceder algo requiere `x-vence-canary-secret`. Ver lib/api/syntheticTrust.ts.
-    const canaryDeConfianza = esCanaryDeConfianza(request, secretoCanaryEsperado(process.env))
+    const secretoCanary = secretoCanaryEsperado(process.env)
+    const canaryDeConfianza = esCanaryDeConfianza(request, secretoCanary)
+    // T-381: exención SEPARADA (más laxa) para las métricas anti-cosecha — ver
+    // lib/api/syntheticTrust.ts. `canary-questions-gate` necesita demostrar que es un canario
+    // SIN eximirse del reto (está probando justo que el reto no le salta), así que la cabecera
+    // que exime del reto (canaryDeConfianza, justo abajo) tiene que seguir sin mandarse ahí.
+    const canaryParaMetricas = esCanaryParaMetricas(request, secretoCanary)
     if (isCaptchaEnabled() && !canaryDeConfianza) {
       // Volumen (Capa A) + señal de bot (Capa C-fácil), en paralelo.
       const [gateEval, botFlag] = await Promise.all([
@@ -410,10 +416,17 @@ async function _POST(request: NextRequest) {
       // levantado un `harvest_no_answer` crítico contra nuestro propio canario.
       // El gate ya exime lo sintético más arriba; el contador tenía que hacerlo
       // también o la medición nace envenenada por nuestra propia monitorización.
-      // Mismo criterio que el gate: solo NO cuenta lo que demuestra ser canary. Este
-      // contador alimenta el propio gate, así que dejarlo con el header sin secreto permitía
-      // servir preguntas sin sumar nunca al volumen — o sea, evadir el gate por acumulación.
-      if (result.questions?.length && !canaryDeConfianza) {
+      // Criterio DELIBERADAMENTE MÁS LAXO que el del reto (canaryParaMetricas, no
+      // canaryDeConfianza; T-381, 07/08/2026): este contador NO concede nada — a diferencia
+      // del reto, que si se salta abre el banco — así que puede eximir a un canario que solo
+      // demuestra que lo es (CABECERA_CANARY_METRICAS_SECRETO) sin demostrar además que no
+      // debe ser retado. Falta justo esta distinción se media en `daily_questions_served` como
+      // tráfico real: la sonda "real" de `canary-questions-gate` (T-280) manda `x-vence-canary`
+      // A PROPÓSITO sin el secreto del reto —porque está probando que el reto NO le salta—, y
+      // sin esta cabecera aparte no tenía forma de demostrar quién es sin invalidar su propia
+      // prueba. Sigue sin bastar con solo `x-vence-canary`: eso sería el mismo agujero
+      // falsificable de antes del 29/07, solo que en el contador en vez de en el reto.
+      if (result.questions?.length && !canaryParaMetricas) {
         recordServedForSubjects(gateSubs, result.questions.length).catch(() => {})
       }
 
