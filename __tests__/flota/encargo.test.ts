@@ -173,6 +173,48 @@ describe('a quién se le puede mandar un encargo AHORA', () => {
   })
 })
 
+// ── ¿EL ENCARGO ARRANCÓ DE VERDAD? (T-642) ──────────────────────────────────────────────────
+// `tmux send-keys` solo confirma que se escribieron las teclas. Medido el 07/08: con la cuota
+// semanal agotada, `claude -p` moría en <1s y el vigía lo contaba como éxito cada 5 min durante
+// 3h sin que nadie llegara a trabajar — 27 relanzamientos inútiles de la misma tarea.
+describe('¿arrancó de verdad el encargo, o murió al instante? (T-642)', () => {
+  it('si el panel sigue ocupado (claude en marcha), arrancó', () => {
+    const v = ENC.arrancoDeVerdad('claude')
+    expect(v.arranco).toBe(true)
+    expect(v.motivo).toBeNull()
+  })
+
+  it('EL CASO REAL: si volvió a un shell, NO arrancó — se dice, no se declara éxito', () => {
+    const v = ENC.arrancoDeVerdad('bash')
+    expect(v.arranco).toBe(false)
+    expect(v.motivo).toMatch(/casi al instante/)
+  })
+
+  it.each(['bash', 'zsh', '-bash', 'SH', ' fish '])('cualquier shell (%s) cuenta como "volvió", no solo bash', (c) => {
+    expect(ENC.arrancoDeVerdad(c).arranco).toBe(false)
+  })
+
+  // Fail-closed hacia «no se sabe», DISTINTO de fail-closed hacia «murió»: un panel que no se
+  // pudo leer no es lo mismo que uno que se leyó y volvió a un shell — confundirlos habría dado
+  // por muerto a un trabajador que solo estaba en una máquina con SSH lento en ese instante.
+  it.each([null, undefined, '', '   '])('sin dato (%s): no se sabe, ni true ni false', (c) => {
+    const v = ENC.arrancoDeVerdad(c as any)
+    expect(v.arranco).toBeNull()
+    expect(v.motivo).toMatch(/no se pudo ver/)
+  })
+
+  it('usa el MISMO criterio que puedeRecibir, no uno paralelo (T-130)', () => {
+    // Dos preguntas que dependen del mismo estado del panel no pueden tener criterios que
+    // diverjan: es justo el olor de los cinco escritores de seguimiento_url.
+    for (const c of ['claude', 'node', 'bash', '', 'vim']) {
+      const ocupado = !ENC.puedeRecibir(c).libre
+      const noArranco = ENC.arrancoDeVerdad(c).arranco === false
+      // "no arrancó" solo puede ser true cuando "ocupado" es false (volvió a estar libre) Y hay dato.
+      if (noArranco) expect(ocupado).toBe(false)
+    }
+  })
+})
+
 // ── ANALIZAR UNA IMPUGNACIÓN: SÍ. ENVIARLA: NO. ─────────────────────────────────────────────
 // `esApta` las descarta del reparto automático porque acaban en un correo a una persona, y eso
 // sigue impedido por permiso. Lo que cambia es que ahora hay dónde dejar el borrador, y el trabajo

@@ -999,6 +999,57 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 - **Capas que pide esto:** núcleo puro para (a) reconocer el mensaje de límite y extraer la hora de reset y (b) decidir si un encargo arrancó, con sus tests; y una simulación que reproduzca el panel con el mensaje dentro, porque el defecto vive justo en lo que hoy no se lee.
 - **Relacionadas:** [T-486] (el piloto de flota que introdujo `mandarEncargo` y el registro de cuentas), y el runbook `docs/runbooks/sistema-sesiones-paralelas.md` §«se observa, no se declara».
 
+#### Hecho 07/08 (w4): pieza 1 (verificar arranque) construida y probada; pieza 2 ya estaba en T-617; pieza 3 aparcada por fragilidad
+
+Rama `flota/T-642-verificar-arranque-encargo`, pusheada — **independiente de la rama de T-617
+(cada una funciona sola; se complementan al fusionarse, no dependen una de otra)**.
+
+**Pieza (b) — ¿arrancó de verdad?** Nuevo `arrancoDeVerdad(paneCommandTrasEsperar)` en
+`lib/flota/encargo.cjs`, hermano de `puedeRecibir` (mismo criterio, pregunta al revés: si el
+panel VOLVIÓ a un shell tras esperar, no arrancó). **Devuelve `arranco:null` — no `false` —
+cuando no se pudo leer el panel**, distinto a propósito de "murió": un SSH lento en ese
+instante no es lo mismo que un turno muerto, y confundirlos habría dado por rotos a
+trabajadores sanos. 6 tests nuevos, incluido el caso real.
+
+**Wiring en `mandarEncargo` (`scripts/flota/flota.cjs`):** tras el `send-keys`, espera
+`VERIFICACION_ARRANQUE_S=3` segundos (corto a propósito: solo para distinguir "murió al
+instante" de "sigue vivo", no para esperar a que el turno TERMINE) y vuelve a mirar el panel.
+Si no arrancó, lee la cola del log y la clasifica con `AUT.clasificar` (la misma función que
+[T-617] extendió con `cuota_agotada` — en ESTA rama sola cae a `desconocido` con un motivo
+genérico, y al fusionar con T-617 empieza a dar el motivo específico; ninguna de las dos ramas
+depende de la otra para funcionar) y devuelve `{ok:false, arranque:false, motivo}` en vez de
+`{ok:true}`.
+
+**Gotcha real que este cambio destapó y hubo que arreglar en el mismo commit:** los 5 sitios
+que leen el resultado de `mandarEncargo` hacían `r.ocupado ? r.motivo : r.al.estado` a mano —
+con una TERCERA forma de fallo (`arranque:false`, sin `al`), 3 de esos 5 sitios habrían
+reventado leyendo `.estado` de `undefined` la primera vez que un encargo muriera al instante.
+Extraído a `motivoFallo(r)`, UN sitio que conoce las tres formas — mismo principio que evitó
+[T-130] (dos puertas con criterios que divergen).
+
+**No hecho — pieza 3 (decir la CUENTA, no solo el trabajador), aparcada a propósito:**
+`cuentaDe(trabajador, disponibles)` en `lib/flota/cuentas.cjs` es una función DETERMINISTA (hash
+del nombre), y **hoy w1 está movido a mano a la cuenta secundaria** (edición directa de
+`/etc/vence-flota/w1.env`, documentado arriba en esta misma ficha) — llamar a `cuentaDe('w1', …)`
+diría "principal", que sería **falso** para el estado real. Reportar la cuenta bien exige leer el
+`VENCE_FLOTA_CUENTA` real del `.env` de cada máquina, no derivarlo del hash; es plumbing nuevo y
+con el riesgo de informar mal justo en el caso (un override manual) que más importa acertar.
+Queda para quien tenga margen para hacerlo bien (leer el `.env` real, no derivarlo).
+
+- **Capas construidas:** `arrancoDeVerdad` con 6 tests en
+  `__tests__/flota/encargo.test.ts` (incluye "usa el MISMO criterio que `puedeRecibir`, no uno
+  paralelo") + `node --check` limpio + 307/307 en `__tests__/flota/` (suite completa, no solo
+  la tocada).
+- **No construido — "una simulación que reproduzca el panel con el mensaje dentro"** (lo que
+  pedía la propia ficha): los tests cubren la función PURA, pero no hay un harness que fabrique
+  un tmux/log de mentira y ejercite `mandarEncargo` entero. Coste real para quien lo retome: el
+  resto del fichero no está pensado para inyección de dependencias (usa `execFileSync`/`enMaquina`
+  directos), así que haría falta refactorizar antes de poder simularlo de verdad.
+- **Falta:** desplegar (git pull + reiniciar `vence-flota-supervisor` en el VPS) — igual que
+  [T-617], no lo hago yo mismo como trabajador. Verificar en vivo: provocar un turno que muera al
+  instante (o esperar a que una cuenta agote cuota) y comprobar que el vigía dice "no arrancó: …"
+  en vez de cantar retoma.
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):

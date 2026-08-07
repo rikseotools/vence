@@ -45,6 +45,11 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
 
+// Margen para comprobar que un encargo arrancó de verdad tras el `send-keys` (T-642). Corto a
+// propósito: solo tiene que distinguir "murió al instante" (cuota agotada, credencial mala) de
+// "sigue vivo" — no esperar a que el turno TERMINE.
+const VERIFICACION_ARRANQUE_S = 3
+
 /**
  * Anota las filas del embudo con los casos que citan y ya están cerrados. (T-614)
  *
@@ -276,10 +281,41 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
     `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
+
+  // ── ¿ARRANCÓ DE VERDAD? (T-642, 07/08) ────────────────────────────────────────────────
+  // `send-keys` solo confirma que las teclas se escribieron, no que el comando siguiera vivo.
+  // Medido: con la cuota semanal agotada, `claude -p` muere en <1s y sin esto se declaraba
+  // {ok:true} igual — el vigía cantó "↻ w1 retoma T-548" cada 5 min durante 3h sin que nadie
+  // llegara a trabajar. El margen es corto a propósito: basta para distinguir "murió al
+  // instante" de "sigue vivo"; no para esperar a que el turno TERMINE (eso puede tardar horas).
+  try { execFileSync('sleep', [String(VERIFICACION_ARRANQUE_S)]) } catch {}
+  const tras = ENC.arrancoDeVerdad(comandoDelPanel(trabajador))
+  if (tras.arranco === false) {
+    let salida = ''
+    try { salida = enMaquina(trabajador, `tail -c 4000 ~/flota-${trabajador}.log 2>/dev/null || true`) } catch {}
+    const auth = AUT.clasificar(salida)
+    const motivo = auth.estado !== 'desconocido' ? auth.detalle : tras.motivo
+    return { ok: false, arranque: false, motivo }
+  }
+  // arranco === null (no se pudo ver el panel): no se declara fallo sobre algo que no se pudo
+  // comprobar — se sigue como si hubiera arrancado, igual que antes de este cambio.
+
   // El rastro lo deja la PUERTA, no el llamador. Puesto en cada sitio que manda, se olvida en uno
   // — y de hecho se olvidó en `repartir` al primer intento, así que la serie nacía incompleta.
   if (turno) turno()
   return { ok: true, al }
+}
+
+/**
+ * Por qué `mandarEncargo` devolvió `{ok:false}`, en una frase — sea cual sea la FORMA del
+ * fallo (T-642). Antes cada llamador leía `r.ocupado ? r.motivo : r.al.estado` a mano, así que
+ * al añadir una tercera forma (`arranque:false`, sin `al`) los tres sitios que no distinguían
+ * `ocupado` habrían reventado leyendo `.estado` de `undefined`. UN sitio que conozca las formas.
+ */
+function motivoFallo(r) {
+  if (r.ocupado) return r.motivo
+  if (r.arranque === false) return r.motivo
+  return r.al ? r.al.estado : 'motivo desconocido'
 }
 
 /**
@@ -568,7 +604,7 @@ async function main() {
         const r = mandarEncargo(w, ENC.encargoImpugnacion({ trabajador: w, puedeDesplegar: MAQ.puedeDesplegar(w).puede }),
           { alDia, turno: () => emitirTurno(w, 'encargado', { tipo: 'impugnacion' }) })
         if (!r.ok) {
-          console.error(r.ocupado ? `❌ ${w} ${r.motivo}` : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          console.error(`❌ ${w}: ${motivoFallo(r)}`)
           return 1
         }
         console.log(`✅ ${w} → analizar una impugnación (cogerá una libre de la cola). Dejará BORRADOR, no enviará nada.`)
@@ -619,7 +655,7 @@ async function main() {
       if (!r.ok) {
         console.error(r.ocupado
           ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
-          : `❌ no se le manda encargo a ${w} hasta resolver eso.`)
+          : `❌ ${w}: ${motivoFallo(r)}`)
         return 1
       }
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
@@ -928,7 +964,7 @@ async function main() {
               emitirTurno(trabajador, 'encargado', { tarea: suya.id, tipo: 'retoma' })
             } })
           if (r.ok) { console.log(`   ↻ ${trabajador} retoma ${suya.id}`); retomadas++ }
-          else console.log(`   ⏭️  ${trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+          else console.log(`   ⏭️  ${trabajador}: ${motivoFallo(r)}`)
         } catch (e) {
           console.log(`   ❌ ${trabajador}: ${String(e.message || e).slice(0, 70)}`)
         }
@@ -963,7 +999,7 @@ async function main() {
               ENC.encargoImpugnacion({ trabajador: f.trabajador, puedeDesplegar: false }),
               { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tipo: 'impugnacion' }) })
             if (r.ok) { console.log(`   ✅ ${f.trabajador.padEnd(4)} → una impugnación (no despliega: ${MAQ.puedeDesplegar(f.trabajador).porQueNo})`); n++ }
-            else console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : r.al.estado}`)
+            else console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
           } catch (e) { console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
           continue
         }
@@ -1001,7 +1037,7 @@ async function main() {
           // Si no se le pudo mandar, la tarea NO se marca como dada: se la lleva el siguiente en
           // vez de quedarse sin repartir por un problema que no es suyo.
           if (!r.ok) {
-            console.log(`   ⏭️  ${f.trabajador}: ${r.ocupado ? r.motivo : `no se le encarga (${r.al.estado})`}`)
+            console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
             continue
           }
           dadas.add(tarea.id)
