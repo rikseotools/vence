@@ -127,4 +127,43 @@ describe('PoolCapacitySamplerCron — contrato', () => {
   it('registrado en HeartbeatRegistry con nombre estable', () => {
     expect(content).toMatch(/heartbeatRegistry\.register\(\s*'pool-capacity-sampler'/);
   });
+  // ── LA FORMA QUE DEVUELVE EL DRIVER, QUE ES LO QUE MATÓ ESTE CRON 28 DÍAS ────────────────
+  // `db.execute()` unas veces da la lista de filas y otras un `{ rows: [...] }`. Con la segunda,
+  // `rows.length` es `undefined`, así que la guarda de «0 filas» no saltaba (`undefined === 0` es
+  // falso) y reventaba en la línea siguiente con «Cannot read properties of undefined (reading
+  // 'sample_at')». Medido: fallando así desde el 10/07 — 28 días sin muestrear el pool.
+  //
+  // Todos los casos de arriba pasan un ARRAY, así que la suite daba verde con el cron muerto.
+  describe('acepta las dos formas del driver', () => {
+    const fila = {
+      sample_at: '2026-06-01T10:00:00.000Z',
+      total_conns: 25,
+      active_conns: 3,
+      idle_in_tx_over_5s: 0,
+      hung_clientread_over_10s: 0,
+      frontend_active_conns: 2,
+      inserted: true,
+    };
+
+    it('la forma { rows: [...] } se parsea igual que el array', () => {
+      const r = parseSampleResult({ rows: [fila] });
+      expect(r.totalConns).toBe(25);
+      expect(r.sampleAt.toISOString()).toBe('2026-06-01T10:00:00.000Z');
+    });
+
+    it('{ rows: [] } da el error CLARO de 0 filas, no un TypeError críptico', () => {
+      expect(() => parseSampleResult({ rows: [] })).toThrow(/0 filas/);
+    });
+
+    // El caso exacto que se veía en producción: un objeto sin `rows` utilizable. Antes daba
+    // «Cannot read properties of undefined», que no dice nada de la causa.
+    it('un objeto sin filas dentro tampoco produce un TypeError', () => {
+      expect(() => parseSampleResult({} as never)).toThrow(/0 filas/);
+    });
+
+    it('null/undefined siguen dando el mismo error claro', () => {
+      expect(() => parseSampleResult(null)).toThrow(/0 filas/);
+      expect(() => parseSampleResult(undefined)).toThrow(/0 filas/);
+    });
+  });
 });

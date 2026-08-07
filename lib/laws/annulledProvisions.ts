@@ -171,6 +171,25 @@ export function boeBlockRetainsAnnulment(blockText: string | null | undefined): 
   return false
 }
 
+/**
+ * ¿La anulación del TC lo fue de la «redacción original» del artículo? (T-208, FP conocido:
+ * art. 335 CP / STC 101/2012, "inconstitucional y nulo, en la redacción original, el art.
+ * 335" — verificado contra la API BOE datosabiertos el 06/08/2026). Si es así, y el artículo
+ * ha sido reformado desde entonces (caso normal: el BOE consolidado ya no trae esa redacción),
+ * marcarlo como hallazgo es un falso positivo — no estamos sirviendo el texto anulado, estamos
+ * sirviendo una redacción posterior que ni siquiera existía cuando se dictó la sentencia.
+ *
+ * Es un descarte DELIBERADAMENTE conservador (solo el marcador textual explícito, no una
+ * comparación de fechas STC↔reforma): cubre el caso donde el propio BOE ya lo dice, sin
+ * arriesgar a callar una anulación que sí sigue vigente. El caso hermano —art. 607 CP / STC
+ * 235/2007, sin este marcador pero con el inciso retirado en la reforma de 2015— NO lo
+ * cubre esta función; necesita comparar la fecha de la STC contra reformas posteriores del
+ * artículo, que queda como trabajo pendiente (ver ficha T-208).
+ */
+export function annulmentAppliesToOriginalWordingOnly(texto: string): boolean {
+  return /redacci[oó]n\s+original/i.test(texto || '')
+}
+
 export interface AnnulmentFinding {
   articleNumber: string
   sentencia: string | null
@@ -189,6 +208,7 @@ export function assessLawAnnulments(
 ): AnnulmentFinding[] {
   const findings: AnnulmentFinding[] = []
   for (const a of annulments) {
+    if (annulmentAppliesToOriginalWordingOnly(a.texto)) continue // T-208: FP conocido (art. 335 CP)
     for (const artNum of a.articles) {
       const content = articlesByNumber.get(artNum)
       if (content === undefined) continue // no servimos ese artículo → no es nuestro problema

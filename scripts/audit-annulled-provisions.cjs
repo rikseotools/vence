@@ -71,6 +71,11 @@ function articleCarriesVigenciaNote(content, vigenciaNotes) {
   if (/declarad[oa]s?\b[\s\S]{0,60}\b(?:inconstitucional|nul)[\s\S]{0,80}\b(?:STC|Sentencia)\s+\d+\/\d{4}/i.test(t)) return true
   return false
 }
+// T-208: FP conocido (art. 335 CP / STC 101/2012 — "inconstitucional y nulo, en la redacción
+// original, el art. 335"). Espejo de lib/laws/annulledProvisions.ts#annulmentAppliesToOriginalWordingOnly.
+function annulmentAppliesToOriginalWordingOnly(texto) {
+  return /redacci[oó]n\s+original/i.test(texto || '')
+}
 // v2: ¿el bloque del consolidado BOE RETIENE la anulación? T-169: el BOE la marca de TRES
 // formas y v2 solo conocía la primera, así que descartaba hallazgos reales como "artículo
 // ya reformado" — el falso verde de la Ley 38/2003 (arts. 7 y 16), servida en 24 temas.
@@ -155,7 +160,7 @@ async function main() {
     `SELECT l.id, l.short_name, l.boe_url FROM laws l WHERE ${where} ORDER BY l.short_name ${LIMIT ? 'LIMIT ' + LIMIT : ''}`, params)
 
   const findings = []
-  let scanned = 0, withAnnul = 0, noAnalisis = 0
+  let scanned = 0, withAnnul = 0, noAnalisis = 0, skippedRedaccionOriginal = 0
   for (const l of laws) {
     const boeId = boeIdFromUrl(l.boe_url)
     if (!boeId) continue
@@ -172,6 +177,9 @@ async function main() {
     const blockMap = V2 ? await fetchArticleBlockMap(boeId) : null
     const blockCache = new Map()
     for (const a of annuls) {
+      // T-208: la STC anuló solo la REDACCIÓN ORIGINAL del artículo (el BOE ya lo dice) — no
+      // silencioso, se cuenta para que el hueco no vuelva a quedar invisible como el gate viejo.
+      if (annulmentAppliesToOriginalWordingOnly(a.texto)) { skippedRedaccionOriginal++; continue }
       for (const artNum of a.articles) {
         if (!byNum.has(artNum)) continue // no servimos ese artículo
         const row = byNum.get(artNum)
@@ -200,10 +208,10 @@ async function main() {
   }
 
   if (JSON_OUT) {
-    console.log(JSON.stringify({ scanned, withAnnul, noAnalisis, findings }))
+    console.log(JSON.stringify({ scanned, withAnnul, noAnalisis, skippedRedaccionOriginal, findings }))
   } else {
     console.log(`\n=== Incisos anulados por el TC no marcados ===`)
-    console.log(`Leyes escaneadas: ${scanned} · con anulación TC en BOE: ${withAnnul} · sin análisis: ${noAnalisis}`)
+    console.log(`Leyes escaneadas: ${scanned} · con anulación TC en BOE: ${withAnnul} · sin análisis: ${noAnalisis} · descartadas por "redacción original" (T-208): ${skippedRedaccionOriginal}`)
     console.log(`🚩 HALLAZGOS (servimos el artículo SIN nota de vigencia): ${findings.length}${EMIT ? ' (emitidos)' : ''}\n`)
     for (const f of findings) {
       console.log(`  • ${f.law} — art. ${f.article} · ${f.sentencia || f.id_norma}`)
@@ -223,4 +231,4 @@ if (require.main === module) {
 // pueda correr esta copia y la de `lib/laws/annulledProvisions.ts` sobre el mismo fixture y
 // exigir el mismo veredicto. Sin esto, el espejo solo se podía comprobar leyéndolo — que es
 // como se quedó atrás y produjo el falso verde de T-169.
-module.exports = { parseAnnulledArticles, extractTcAnnulments, articleCarriesVigenciaNote, boeBlockRetainsAnnulment }
+module.exports = { parseAnnulledArticles, extractTcAnnulments, articleCarriesVigenciaNote, boeBlockRetainsAnnulment, annulmentAppliesToOriginalWordingOnly }
