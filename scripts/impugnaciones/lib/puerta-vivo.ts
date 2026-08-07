@@ -93,12 +93,6 @@ export async function comprobarVivo(idCaso: string, texto: string): Promise<Vere
     return { bloquea: false, aviso: null }
   }
 
-  // ¿Alguno toca superficie SERVIDA? (mismo criterio que T-392: por línea de import, no por
-  // comentario.) Si solo son docs, decir «ya está» no depende de ningún deploy.
-  const ficheros: string[] = VERIF.ficherosDe(commits)
-  const servidos = ficheros.filter((f: string) => (VERIF.importadoEn(f) || []).length > 0)
-  if (!servidos.length) return { bloquea: false, aviso: null }
-
   let vivo: string | null = null
   try {
     vivo = await VERIF.shaVivo('frontend')
@@ -106,7 +100,27 @@ export async function comprobarVivo(idCaso: string, texto: string): Promise<Vere
     vivo = null
   }
 
-  const pendientes = vivo ? VERIF.noContenidos(vivo, commits) : commits
+  // La pregunta es POR COMMIT: ¿hay alguno SIN DESPLEGAR que ADEMÁS toque superficie servida?
+  //
+  // Cruzar los dos conjuntos por separado —«¿hay ficheros servidos en alguna parte?» y «¿hay algo
+  // sin desplegar en alguna parte?»— da falsos positivos, y se vio en cuanto se probó en vivo: con
+  // el arreglo YA desplegado, la puerta seguía bloqueando por el commit que construyó la propia
+  // puerta, que nombra el caso en su mensaje y no toca nada servido. Un guardarraíl que sigue
+  // gritando cuando el problema ya está resuelto se aprende a ignorar (misma lección que los
+  // detectores que se calibran para no matar su badge).
+  const sinDesplegar: string[] = vivo ? VERIF.noContenidos(vivo, commits) : commits
+  const servidos: string[] = []
+  const culpables: string[] = []
+  for (const sha of sinDesplegar) {
+    const suyos = VERIF.ficherosDe([sha]).filter((f: string) => (VERIF.importadoEn(f) || []).length > 0)
+    if (suyos.length) {
+      culpables.push(sha)
+      servidos.push(...suyos)
+    }
+  }
+  if (!culpables.length) return { bloquea: false, aviso: null }
+
+  const pendientes = culpables
   const v = puedeAfirmarse({ texto, shaVivo: vivo, commitsPendientes: pendientes })
 
   if (!v.bloquea) {
