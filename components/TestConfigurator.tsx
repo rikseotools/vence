@@ -130,6 +130,11 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   
   // Estados adicionales
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false);
+  // 🆕 [T-411] Solo tiene efecto en modo "por leyes" (sin tema): pide también las
+  // oficiales de OTRAS oposiciones sobre la misma ley, en vez de solo las propias.
+  // Quien estudia por leyes (sin temario propio construido) es justo la población que
+  // esto desbloquea — ver Sergio en la ficha. Se resetea junto con onlyOfficialQuestions.
+  const [includeSharedOfficials, setIncludeSharedOfficials] = useState(false);
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false);
   // 🔄 Excluir preguntas respondidas en los últimos N días (backend ya cableado; faltaba la UI)
   const [excludeRecent, setExcludeRecent] = useState(false);
@@ -476,7 +481,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   // Devolver el OBJETO y no la query es lo que quita el techo de raíz: el cuerpo de un POST no
   // tiene ese límite, y una selección no puede volver a romper por ser grande.
   const buildEstimateBody = useCallback(
-    (overrides?: { onlyOfficialQuestions?: boolean }) => {
+    (overrides?: { onlyOfficialQuestions?: boolean; includeSharedOfficials?: boolean }) => {
       const body: Record<string, unknown> = {
         positionType,
         onlyOfficialQuestions: overrides?.onlyOfficialQuestions ?? onlyOfficialQuestions,
@@ -486,6 +491,11 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       if (tema) body.topicNumber = Number(tema);
       // Sin tema, el acotado a la oposición decide si se cuenta el temario o la ley entera.
       if (!tema && scopeToPosition) body.scopeToPosition = true;
+      // 🆕 [T-411] Solo aplica sin tema — ver estado `includeSharedOfficials` arriba.
+      if (!tema) {
+        const shared = overrides?.includeSharedOfficials ?? includeSharedOfficials;
+        if (shared) body.includeSharedOfficials = true;
+      }
 
       const selectedLawsArray = Array.from(selectedLaws);
       if (selectedLawsArray.length > 0) body.selectedLaws = selectedLawsArray;
@@ -506,7 +516,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       return body;
     },
     [tema, positionType, onlyOfficialQuestions, focusEssentialArticles, difficultyMode,
-     selectedLaws, selectedArticlesByLaw, selectedSectionFilters, scopeToPosition],
+     selectedLaws, selectedArticlesByLaw, selectedSectionFilters, scopeToPosition,
+     includeSharedOfficials],
   );
 
   // 🆕 Fetch estimación de preguntas disponibles desde v2 API (fuente única de verdad)
@@ -601,6 +612,53 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       controller.abort();
     };
   }, [tema, hideOfficialQuestions, selectedLaws, buildEstimateBody]);
+
+  // 🆕 [T-411] ¿Merece la pena ofrecer "incluir oficiales de otras oposiciones"?
+  //
+  // Solo se pregunta cuando la selección se queda a CERO oficiales propias — "en vez de
+  // un cero mudo", que es exactamente lo que pide la ficha. Con propias > 0 no se hace
+  // esta llamada extra: el contador de arriba ya reacciona si el usuario activa el
+  // checkbox, y no hace falta saber el número de antemano para decidir si mostrarlo.
+  const [sharedOfficialCountForLaws, setSharedOfficialCountForLaws] = useState<number | null>(null);
+  const sharedOfficialCountAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (tema || hideOfficialQuestions) return;
+    if (selectedLaws.size === 0 || officialCountForLaws !== 0) {
+      setSharedOfficialCountForLaws(null);
+      return;
+    }
+
+    if (sharedOfficialCountAbortRef.current) sharedOfficialCountAbortRef.current.abort();
+    const controller = new AbortController();
+    sharedOfficialCountAbortRef.current = controller;
+
+    const fetchSharedCount = async () => {
+      try {
+        const res = await fetch('/api/v2/test-config/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildEstimateBody({ onlyOfficialQuestions: true, includeSharedOfficials: true })),
+          signal: controller.signal,
+        });
+        const data = await leerJson(res);
+        if (data.success) {
+          setSharedOfficialCountForLaws(data.count ?? 0);
+        } else {
+          console.warn('⚠️ Error contando oficiales compartidas (por leyes):', data.error);
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('❌ Error contando oficiales compartidas (por leyes):', error);
+        }
+      }
+    };
+
+    const timer = setTimeout(fetchSharedCount, 150);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [tema, hideOfficialQuestions, selectedLaws, officialCountForLaws, buildEstimateBody]);
 
   // Conteo efectivo de oficiales: por prop en modo tema, del endpoint en modo por leyes.
   const officialCount = tema ? officialQuestionsCount : (officialCountForLaws ?? 0);
@@ -1214,6 +1272,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
       difficultyMode: difficultyMode,
       // customDifficulty eliminado
       onlyOfficialQuestions: onlyOfficialQuestions,
+      // 🆕 [T-411] Solo tiene efecto real sin tema (modo "por leyes") — ver estado arriba.
+      includeSharedOfficials: includeSharedOfficials,
       focusEssentialArticles: focusEssentialArticles,
       excludeRecent: excludeRecent, // 🔄 toggle del configurador
       recentDays: recentDays,
@@ -1740,7 +1800,10 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
             
             {/* Solo preguntas oficiales - CON CONTEO CORREGIDO POR TEMA */}
-            {!hideOfficialQuestions && officialCount > 0 && (
+            {/* [T-411] En modo "por leyes" (sin tema), también se muestra con propias=0 si
+                hay compartidas de otras oposiciones — si no, la sección desaparecía entera
+                y Sergio nunca llegaba a ver que existía la opción ("cero mudo"). */}
+            {!hideOfficialQuestions && (officialCount > 0 || (!tema && (sharedOfficialCountForLaws ?? 0) > 0)) && (
             <div>
               <label className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -1750,17 +1813,22 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     onChange={(e) => {
                       const checked = e.target.checked;
                       setOnlyOfficialQuestions(checked);
-                      
+
                       // 🔄 Si se activa, desactivar artículos imprescindibles
                       if (checked && focusEssentialArticles) {
                         setFocusEssentialArticles(false);
                         console.log('🔄 Desactivando artículos imprescindibles al activar preguntas oficiales');
                       }
-                      
+
                       // 🎯 Si se activa, resetear dificultad a aleatoria (preguntas oficiales tienen su dificultad natural)
                       if (checked && difficultyMode !== 'random') {
                         setDifficultyMode('random');
                         console.log('🎯 Reseteando dificultad a aleatoria para preguntas oficiales');
+                      }
+
+                      // [T-411] Sin "solo oficiales" no tiene sentido pedir compartidas.
+                      if (!checked && includeSharedOfficials) {
+                        setIncludeSharedOfficials(false);
                       }
                     }}
                     disabled={focusEssentialArticles}
@@ -1771,7 +1839,11 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                   <span className={`text-sm font-medium ${
                     focusEssentialArticles ? 'text-gray-400' : 'text-gray-700'
                   }`}>
-                    🏛️ Preguntas oficiales de <strong>{getOposicionName(positionType)}</strong>
+                    {!tema && includeSharedOfficials ? (
+                      <>🏛️ Preguntas oficiales <span className="italic">(incluye otras oposiciones)</span></>
+                    ) : (
+                      <>🏛️ Preguntas oficiales de <strong>{getOposicionName(positionType)}</strong></>
+                    )}
                     <span className="text-xs text-red-600 ml-1">
                       ({officialCount})
                     </span>
@@ -1832,8 +1904,38 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
                     </div>
                   )}
 
-                  {/* ❌ AVISO: Sin preguntas oficiales en base de datos */}
-                  {onlyOfficialQuestions && officialCount === 0 && (
+                  {/* 🏛️ [T-411] AVISO: sin propias, pero SÍ hay de exámenes reales de OTRAS
+                      oposiciones sobre esta ley — la alternativa a un "cero mudo". Solo en
+                      modo "por leyes" (sin tema): por tema no se ofrece cruzar oposiciones. */}
+                  {onlyOfficialQuestions && officialCount === 0 && !tema && (sharedOfficialCountForLaws ?? 0) > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-blue-600 text-lg">🏛️</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-blue-800">
+                            Sin preguntas oficiales propias, pero hay {sharedOfficialCountForLaws} de otras oposiciones
+                          </p>
+                          <p className="text-xs text-blue-700 mb-2">
+                            De exámenes reales de otras oposiciones sobre esta ley.
+                          </p>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={includeSharedOfficials}
+                              onChange={(e) => setIncludeSharedOfficials(e.target.checked)}
+                              className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-xs text-blue-800">
+                              Incluir preguntas de exámenes reales de otras oposiciones sobre esta ley
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ❌ AVISO: Sin preguntas oficiales en base de datos (ni propias ni compartidas) */}
+                  {onlyOfficialQuestions && officialCount === 0 && !(!tema && (sharedOfficialCountForLaws ?? 0) > 0) && (
                     <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <span className="text-gray-600 text-lg">📭</span>

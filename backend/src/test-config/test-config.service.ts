@@ -288,6 +288,7 @@ export class TestConfigService {
       onlyOfficialQuestions,
       difficultyMode,
       scopeToPosition,
+      includeSharedOfficials,
     } = params;
 
     // Sin leyes seleccionadas no hay nada que contar (el configurador aún no ha elegido).
@@ -299,8 +300,14 @@ export class TestConfigService {
       ? getValidExamPositions(positionType)
       : [];
     // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → no tiene oficiales propias.
-    // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría.
-    if (onlyOfficialQuestions && validPositions.length === 0) {
+    // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría — SALVO que
+    // `includeSharedOfficials` las pida a propósito ([T-411]): ahí no hay "propias" que
+    // exigir, así que este corte no aplica. Gemelo del mismo cambio en el frontend.
+    if (
+      onlyOfficialQuestions &&
+      !includeSharedOfficials &&
+      validPositions.length === 0
+    ) {
       return { success: true, count: 0, byLaw: {} };
     }
 
@@ -403,7 +410,11 @@ export class TestConfigService {
 
       if (onlyOfficialQuestions) {
         conditions.push(eq(questions.isOfficialExam, true));
-        conditions.push(inArray(questions.examPosition, validPositions));
+        // [T-411] Gemelo del mismo corte en el frontend: con includeSharedOfficials no
+        // se restringe por exam_position, el filtro de ley/artículo ya acota a ESTA ley.
+        if (!includeSharedOfficials) {
+          conditions.push(inArray(questions.examPosition, validPositions));
+        }
       }
 
       if (

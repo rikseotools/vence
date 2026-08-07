@@ -78,6 +78,10 @@ export interface EstimateQuestionsRequest {
   // Con tema, el scope ya lo impone el topic_scope. Opcional porque el contrato del
   // frontend le da `default(false)` y las llamadas viejas no lo mandan.
   scopeToPosition?: boolean;
+  // 🆕 [T-411] Gemelo del mismo campo en el frontend (lib/api/test-config/schemas.ts):
+  // cuenta también las oficiales de OTRAS oposiciones sobre la ley seleccionada, en vez
+  // de restringir a las propias. Opcional por el mismo motivo que scopeToPosition.
+  includeSharedOfficials?: boolean;
 }
 
 export interface EstimateQuestionsResponse {

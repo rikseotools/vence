@@ -83,6 +83,9 @@ export interface TestStartConfig {
   numQuestions: number
   difficultyMode: DifficultyMode | string
   onlyOfficialQuestions: boolean
+  // [T-411] Solo tiene efecto sin `tema` (modo "por leyes"): incluye oficiales de OTRAS
+  // oposiciones sobre la misma ley, en vez de solo las propias.
+  includeSharedOfficials?: boolean
   focusEssentialArticles: boolean
   excludeRecent: boolean
   recentDays: number

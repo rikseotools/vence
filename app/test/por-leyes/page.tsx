@@ -151,6 +151,11 @@ function TestConfiguradorContent() {
       params.set('only_official', 'true')
     }
 
+    // [T-411] Oficiales de otras oposiciones sobre la misma ley
+    if (config.includeSharedOfficials) {
+      params.set('include_shared_officials', 'true')
+    }
+
     // Artículos imprescindibles
     if (config.focusEssentialArticles) {
       params.set('focus_essential', 'true')
