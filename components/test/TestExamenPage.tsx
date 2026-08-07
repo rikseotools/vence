@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ExamLayout from '@/components/ExamLayout'
 import { getOposicion } from '@/lib/config/oposiciones'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface TestExamenPageProps {
   oposicionSlug: string
@@ -65,7 +66,7 @@ function TestExamenContent({ oposicionSlug, params, positionTypeOverride, basePa
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`)
+      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`, { headers: await getAuthHeaders() })
       const data = await response.json()
       if (!response.ok || !data.success) throw new Error(data.error || 'Error obteniendo datos del examen')
       setQuestions(data.questions)

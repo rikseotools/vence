@@ -1,5 +1,24 @@
 // lib/api/exam/client.ts — Client-side validateExam()
+//
+// ⚠️ ESTAS LLAMADAS VAN **CON** `Authorization: Bearer`, Y NO ES OPCIONAL (T-669, 07/08/2026).
+// `apiFetch` no adjunta credenciales por su cuenta: manda `Content-Type` y lo que se le pase. Eso
+// fue inofensivo mientras `/api/exam/validate` no miraba de quién era el examen — y dejó de serlo
+// el mismo día en que [T-565] le puso (con razón) una guarda de propiedad: sin token el servidor
+// no ve identidad, `callerUserId` sale `null`, el examen SÍ tiene dueño, y la guarda **bloquea al
+// propio dueño** con un 403 «No tienes acceso a este recurso».
+//
+// Lo que vio el usuario: termina el examen, pulsa corregir y la app dice que no hay conexión.
+// Medido: **190 rechazos en `/api/exam/validate` en 24 h, 191 de 222 sin identidad del que pide**,
+// 20 personas distintas, y **cuatro usuarias premium escribiendo el mismo día**. Cero en los 10
+// días anteriores.
+//
+// El arreglo NO es relajar la guarda —cerraba un agujero real: con solo el UUID del test se leían
+// las respuestas de otra persona— sino mandar la identidad, que es lo que el resto de la API ya
+// hace. Por eso se reutiliza `getAuthHeaders()` en vez de construir la cabecera aquí: el token lo
+// sirve un solo sitio (`auth.getAccessToken()`), y una segunda forma de pedirlo es exactamente lo
+// que causó T-210.
 import { apiFetch } from '../client'
+import { getAuthHeaders } from '../authHeaders'
 import {
   validatedResultsSchema,
   validatedPsychometricResultsSchema,
@@ -51,7 +70,8 @@ export async function validateExam(
       timeoutMs: 30000,
       retries: 2,
       retryDelayMs: 1000,
-      responseSchema: validatedResultsSchema
+      responseSchema: validatedResultsSchema,
+      headers: await getAuthHeaders(),
     }
   )
 }
@@ -80,6 +100,7 @@ export async function validateExamPsychometric(
       retries: 2,
       retryDelayMs: 1000,
       responseSchema: validatedPsychometricResultsSchema,
+      headers: await getAuthHeaders(),
     }
   )
 }

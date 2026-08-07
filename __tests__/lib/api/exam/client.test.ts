@@ -9,6 +9,13 @@ import {
   ApiValidationError
 } from '@/lib/api/client'
 
+// [T-669] `validateExam` ahora manda identidad (sin ella el servidor bloquea al propio dueño con
+// un 403). `getAuthHeaders` habla con el puerto de auth y con la huella de dispositivo, que en un
+// test unitario ni existen: se sustituye por un doble, y aparte se comprueba que la cabecera SALE.
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer token-de-prueba' }),
+}))
+
 // ============================================
 // MOCK DE FETCH
 // ============================================
@@ -355,5 +362,25 @@ describe('validateExam — type contract', () => {
     for (const r of result.results) {
       expect(typeof r.isCorrect).toBe('boolean')
     }
+  })
+})
+
+describe('[T-669] validateExam manda la identidad del usuario', () => {
+  it('adjunta Authorization: Bearer — sin ella el servidor bloquea al PROPIO dueño', async () => {
+    // Es el incidente del 07/08: la guarda de propiedad de [T-565] es correcta, pero esta llamada
+    // no mandaba token, así que el servidor veía un anónimo y devolvía 403 «No tienes acceso a
+    // este recurso» a quien acababa de hacer el examen. 190 rechazos en 24 h y cuatro usuarias
+    // premium escribiendo el mismo día. Este test es lo que impide que vuelva a salir sin token.
+    mockFetch.mockReturnValue(mockOk(validExamResponse(1)))
+    await validateExam('test-1', [{ questionId: 'q1', userAnswer: 'A' }])
+    const [, init] = mockFetch.mock.calls[0]
+    expect(init.headers).toMatchObject({ Authorization: 'Bearer token-de-prueba' })
+  })
+
+  it('sigue mandando el Content-Type: la identidad se AÑADE, no sustituye', async () => {
+    mockFetch.mockReturnValue(mockOk(validExamResponse(1)))
+    await validateExam('test-1', [{ questionId: 'q1', userAnswer: 'A' }])
+    const [, init] = mockFetch.mock.calls[0]
+    expect(init.headers['Content-Type']).toBe('application/json')
   })
 })

@@ -10,6 +10,13 @@
 import { validateExamPsychometric } from '@/lib/api/exam/client'
 import { ApiHttpError, ApiNetworkError } from '@/lib/api/client'
 
+// [T-669] `validateExamPsychometric` ahora manda identidad (sin ella el servidor bloquea al propio
+// dueño con un 403). `getAuthHeaders` habla con el puerto de auth y con la huella de dispositivo,
+// que en un test unitario ni existen: se sustituye por un doble.
+jest.mock('@/lib/api/authHeaders', () => ({
+  getAuthHeaders: jest.fn().mockResolvedValue({ Authorization: 'Bearer token-de-prueba' }),
+}))
+
 const mockFetch = jest.fn()
 const originalFetch = global.fetch
 

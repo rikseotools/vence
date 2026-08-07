@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface PendingExam {
   id: string
@@ -140,7 +141,9 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
       const response = await fetch('/api/exam/discard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // Identidad OBLIGATORIA: la ruta comprueba de quién es el examen (T-565); sin token el
+        // servidor ve un anónimo y bloquea al propio dueño con un 403 (T-669).
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ testId: examId, userId: user.id })
       })
 
@@ -169,7 +172,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
       const response = await fetch('/api/psychometric/discard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
         body: JSON.stringify({ sessionId, userId: user.id })
       })
 

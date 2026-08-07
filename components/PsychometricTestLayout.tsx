@@ -29,6 +29,7 @@ import UpgradeLimitModal from './UpgradeLimitModal'
 import DeviceLimitModal from './DeviceLimitModal'
 import { useDeviceLimitModal } from '@/hooks/useDeviceLimitModal'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 // ============================================
 // TIPOS
@@ -429,7 +430,9 @@ export default function PsychometricTestLayout({
       try {
         const response = await fetch('/api/psychometric/complete', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // Identidad OBLIGATORIA: la ruta comprueba de quién es la sesión (T-565); sin token el
+          // servidor ve un anónimo y bloquea al propio dueño con un 403 (T-669).
+          headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
           body: JSON.stringify({
             sessionId: testSession.id,
             userId: user.id,

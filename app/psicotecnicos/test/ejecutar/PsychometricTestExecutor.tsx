@@ -9,6 +9,7 @@ import type {
   PsychometricQuestion as ApiQuestion,
   GetPsychometricQuestionsResponse,
 } from '@/lib/api/psychometric-test-data/schemas'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 const PsychometricTestLayout = dynamic(() => import('@/components/PsychometricTestLayout'), {
   ssr: false,
@@ -79,7 +80,7 @@ function MultipleCategoriesPsychometricTestContent() {
         const params = new URLSearchParams({ sessionId })
         if (user?.id) params.set('userId', user.id)
 
-        const res = await fetch(`/api/psychometric/resume?${params.toString()}`)
+        const res = await fetch(`/api/psychometric/resume?${params.toString()}`, { headers: await getAuthHeaders() })
         const data = await res.json()
 
         if (!data.success) {
