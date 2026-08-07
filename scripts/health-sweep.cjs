@@ -46,6 +46,10 @@ const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
+// Criterio del banco duplicado ENTERO (distinto de opciones_duplicadas: aquí se repite la
+// PREGUNTA, no una opción dentro de ella). Compartido con scripts/calidad/duplicados-exactos.cjs
+// para que el barrido nocturno y la herramienta manual de jubilar nunca discrepen. Ver T-408.
+const { bandaGrupo: bandaDuplicado, decidirSuperviviente: decidirSupervivienteDup } = require('../lib/calidad/duplicados.js');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
@@ -573,6 +577,83 @@ async function detectarTodo(c, add, marcar, now) {
       `${avisos.length} pregunta(s) activas con dos distractores idénticos: se quedan en tres opciones sin decirlo`,
       { count: avisos.length, banda: 'distractores', sample: muestra(avisos) });
     marcar('opciones_duplicadas', opcRows.length);
+  }
+
+  // ── CONTENIDO: la MISMA pregunta duplicada dentro del banco (T-408) ──
+  // Distinto de opciones_duplicadas (arriba): allí se repite una OPCIÓN dentro de una pregunta;
+  // aquí se repite la PREGUNTA ENTERA — mismo artículo, mismo enunciado normalizado y las
+  // mismas 4 opciones. El opositor la ve dos veces, y si las copias discrepan en la clave no
+  // hay forma de saber cuál vale. Lo destapó una usuaria ACORDÁNDOSE de haber visto la pregunta
+  // antes (impugnación 32b0d55e) — la peor forma posible de detectarlo.
+  //
+  // Corte ESTRICTO a propósito, el mismo que usa la herramienta de jubilar
+  // (scripts/calidad/duplicados-exactos.cjs, T-321): un umbral de parecido ya se probó y dio
+  // 3.230 pares cuyos peores casos eran SUPUESTOS PRÁCTICOS (comparten preámbulo por diseño).
+  // El corte borroso (T-425/T-519) sigue siendo bajo demanda, no al badge — necesita
+  // calibración humana que este barrido determinista no puede dar.
+  //
+  // Dos bandas, con el MISMO criterio que opciones_duplicadas: `error` = las gemelas dan
+  // respuestas DISTINTAS (irresoluble para el opositor) · `warn` = misma respuesta, solo
+  // repetición. La banda compara el TEXTO de la opción correcta, NUNCA `correct_option`: las
+  // copias vienen barajadas entre sí, así que el índice difiere de forma legítima.
+  //
+  // Se excluyen los supuestos prácticos (`exam_case_id IS NULL`) — comparten enunciado del
+  // caso POR DISEÑO — y las preguntas sin artículo (agrupar por NULL uniría cosas sin relación).
+  const SQL_DUPLICADOS = `
+    with base as (
+      select q.id, q.question_text, q.correct_option, q.created_at, q.is_official_exam,
+             q.explanation, q.primary_article_id, q.lifecycle_state,
+             q.option_a, q.option_b, q.option_c, q.option_d,
+             lower(regexp_replace(q.question_text, '\\s+', ' ', 'g')) as norm,
+             (select string_agg(x, '|' order by x) from unnest(array[
+                lower(trim(q.option_a)), lower(trim(q.option_b)),
+                lower(trim(q.option_c)), lower(trim(q.option_d))]) x) as ops,
+             (select count(*)::int from test_questions t where t.question_id = q.id) as servida
+        from questions q
+       where q.is_active
+         and q.primary_article_id is not null
+         and q.exam_case_id is null
+    )
+    select norm, primary_article_id, ops, count(*)::int n,
+           json_agg(json_build_object(
+             'id', id, 'oficial', is_official_exam, 'servida', servida,
+             'expl', coalesce(length(explanation), 0), 'alta', created_at, 'estado', lifecycle_state,
+             'correct_option', correct_option,
+             'option_a', option_a, 'option_b', option_b, 'option_c', option_c, 'option_d', option_d
+           ) order by created_at) as miembros
+      from base
+     group by 1, 2, 3
+    having count(*) > 1`;
+  const dupGrupos = (await c.query(SQL_DUPLICADOS)).rows;
+  {
+    // El universo EVALUADO (no solo el defectuoso) es lo que se pasa a `marcar`: un 0 en
+    // `dupGrupos` significaría lo mismo si el detector no llegó a correr — el mismo hueco que
+    // T-529 vino a cerrar para el resto de kinds.
+    const dupUniverso = (await c.query(
+      `select count(*)::int n from questions
+        where is_active and primary_article_id is not null and exam_case_id is null`)).rows[0].n;
+    const opts = (m) => [m.option_a, m.option_b, m.option_c, m.option_d];
+    let erroresGrupos = 0, erroresPreguntas = 0, avisosGrupos = 0, avisosPreguntas = 0;
+    const muestraError = [], muestraAviso = [];
+    for (const g of dupGrupos) {
+      const miembros = g.miembros.map((m) => ({ ...m, textoCorrecta: opts(m)[m.correct_option] }));
+      const banda = bandaDuplicado(miembros);
+      const ids = miembros.map((m) => m.id);
+      if (banda === 'error') {
+        erroresGrupos++; erroresPreguntas += g.n;
+        if (muestraError.length < 15) muestraError.push(ids.join('='));
+      } else {
+        avisosGrupos++; avisosPreguntas += g.n;
+        if (muestraAviso.length < 15) muestraAviso.push(ids.join('='));
+      }
+    }
+    if (erroresGrupos) add('content', 'error', null, 'pregunta_duplicada',
+      `${erroresGrupos} grupo(s) de preguntas DUPLICADAS con clave CONTRADICTORIA (${erroresPreguntas} activas): el opositor no puede saber cuál vale`,
+      { grupos: erroresGrupos, preguntas: erroresPreguntas, banda: 'clave_contradictoria', sample: muestraError });
+    if (avisosGrupos) add('content', 'warn', null, 'pregunta_duplicada',
+      `${avisosGrupos} grupo(s) de preguntas duplicadas literalmente (${avisosPreguntas} activas), misma clave: repetición, no contradicción`,
+      { grupos: avisosGrupos, preguntas: avisosPreguntas, banda: 'repeticion', sample: muestraAviso });
+    marcar('pregunta_duplicada', dupUniverso);
   }
 
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──

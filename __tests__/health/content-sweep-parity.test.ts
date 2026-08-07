@@ -678,3 +678,63 @@ describe('barrido — los detectores globales NO viven dentro del bucle por opos
     expect(dentroDelBucle(BACKEND, "'temas_card'")).toBe(true)
   })
 })
+
+describe('mirror del detector pregunta_duplicada (núcleo ↔ backend @Cron) [T-408]', () => {
+  const core = require('@/lib/calidad/duplicados.js')
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia de bandaGrupo)', () => {
+    expect(SCRIPT).toContain("require('../lib/calidad/duplicados.js')")
+    expect(SCRIPT).not.toMatch(/function bandaGrupo/)
+  })
+
+  it('los dos gemelos emiten el kind, en las dos bandas', () => {
+    expect(hasKind(SCRIPT, 'pregunta_duplicada')).toBe(true)
+    expect(hasKind(BACKEND, 'pregunta_duplicada')).toBe(true)
+    expect(SCRIPT).toContain("'error', null, 'pregunta_duplicada'")
+    expect(SCRIPT).toContain("'warn', null, 'pregunta_duplicada'")
+    expect(BACKEND).toContain("'error',\n          null,\n          'pregunta_duplicada'")
+    expect(BACKEND).toContain("'warn',\n          null,\n          'pregunta_duplicada'")
+  })
+
+  /**
+   * El backend no puede `require('lib/calidad/duplicados.js')` (build NestJS separado), así que
+   * `normalizarDup` va replicada INLINE en TS. Comprobar que el TEXTO de las dos versiones es
+   * idéntico no basta —el backend usa un rango Unicode LITERAL para las tildes (mismo patrón que
+   * `aplastarInline`, ya en este fichero) donde el núcleo usa el escape `̀-ͯ`; son el
+   * MISMO rango de códigos escrito de dos formas— así que la prueba real es de COMPORTAMIENTO:
+   * extraer la función del fuente TS, quitarle las anotaciones de tipo (lo único que `new
+   * Function` no puede parsear) y ejecutar las dos contra la MISMA batería de entradas.
+   */
+  function extraerNormalizarDup(): (texto: string | null) => string {
+    const m = BACKEND.match(/const normalizarDup = \(texto: string \| null\): string => \{([\s\S]*?)\n {6}\};/)
+    if (!m) throw new Error('no se encontró normalizarDup en el backend')
+    // eslint-disable-next-line no-new-func
+    return new Function('texto', m[1]) as (texto: string | null) => string
+  }
+
+  it('normalizarDup (backend) se comporta IGUAL que normalizar() (núcleo) en cada entrada', () => {
+    const normalizarDup = extraerNormalizarDup()
+    const casos = [
+      'Windows 10', 'windows   10', '<b>Windows</b> 10', 'Año 2026', 'año 2026',
+      'Ñoño', 'ñoño', 'Sé prudente, José', 'ACCESO', 'acceso.', '¿Qué opción es correcta?',
+      '', null, '   espacios   sueltos   ', 'Café, plátano y niño',
+    ]
+    for (const c of casos) {
+      expect(normalizarDup(c as string | null)).toBe(core.normalizar(c))
+    }
+  })
+
+  it('la banda se decide por el TEXTO de la respuesta correcta en los dos gemelos, nunca por correct_option', () => {
+    // El propio criterio (bandaGrupo) es el mismo import en el CLI; en el backend se comprueba
+    // que la comparación pasa por `normalizarDup(opts(m)[m.correct_option])` — es decir, el
+    // ÍNDICE solo sirve para RECUPERAR el texto, la igualdad se decide sobre el texto.
+    expect(BACKEND).toContain('normalizarDup(opts(m)[m.correct_option]')
+    expect(BACKEND).not.toMatch(/m\.correct_option\s*===?\s*m2?\.correct_option/)
+  })
+
+  it('el corte es ESTRICTO en los dos gemelos: excluye supuestos prácticos y exige artículo', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/primary_article_id is not null[\s\S]{0,60}exam_case_id is null/)
+    }
+  })
+})

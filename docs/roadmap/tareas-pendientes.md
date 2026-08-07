@@ -5126,6 +5126,38 @@ pero eso hay que comprobarlo, no suponerlo.
 > por `sqlNormalizar()` (ya exportada por el módulo, con su gemela en JS testeada) y se acabó la
 > asimetría. Si no se hace, esto es lo que volverá a divergir.
 
+> **✅ EL KIND AL BADGE, HECHO (07/08) — era lo único que quedaba vivo de esta ficha.** `pregunta_duplicada`
+> ya corre en `scripts/health-sweep.cjs` y su gemelo `backend/.../content-health-sweep.service.ts`
+> (guardarraíl `content-sweep-parity` en verde), reutilizando el MISMO núcleo (`lib/calidad/duplicados.js`,
+> `bandaGrupo`) que ya jubilaba a mano — el mismo corte ESTRICTO, no el borroso (T-425/T-519 siguen bajo
+> demanda a propósito, sin calibración para el badge).
+>
+> **MEDIDO fresco contra RDS (VENCE_LECTOR_URL, 07/08), no contra las cifras de esta ficha —han bajado
+> mucho desde el 31/07 por el trabajo de otras sesiones:**
+> - universo evaluado (activas con artículo, sin supuesto): **137.816**
+> - grupos duplicados exactos: **215** (vs. 959 medidos el 31/07 — la mayoría ya se trió)
+> - banda `error` (clave contradictoria): **0 grupos / 0 preguntas** — confirma que el «PASO 1 HECHO»
+>   de arriba se sostiene y nace en VERDE, tal como se pedía
+> - banda `warn` (repetición, misma clave): **215 grupos / 431 preguntas activas**
+>
+> Verificado con la query REAL extraída del propio fichero (no una recreación a mano) — reproducido,
+> no solo leído.
+>
+> **Capas:** 5 tests nuevos de paridad núcleo↔backend en `content-sweep-parity.test.ts`, incluida una
+> prueba de COMPORTAMIENTO (no solo de texto): extrae la función `normalizarDup` del TypeScript del
+> backend, le quita las anotaciones de tipo y la ejecuta contra la misma batería de entradas que
+> `normalizar()` del núcleo — hacía falta porque el backend usa un rango Unicode LITERAL para las
+> tildes (mismo patrón que `aplastarInline`, ya en ese fichero) donde el núcleo usa el escape
+> `̀-ͯ`: mismo rango de códigos, dos formas de escribirlo, y una comparación de texto a
+> secas los habría marcado como "distintos" sin serlo. + entrada en `runbookRegistry.ts`
+> (`pregunta_duplicada`) y frase-gatillo **"revisa las preguntas duplicadas"** en CLAUDE.md, con el
+> `marcar()` sobre el universo EVALUADO (no solo el defectuoso) para que un 0 futuro no se confunda
+> con "el detector no corrió" (mismo criterio que T-529 fijó para el resto de kinds).
+>
+> **Lo que sigue igual de vivo, sin tocar en esta pasada:** la banda `warn` (215/431) se tría por
+> exposición con `duplicados-exactos.cjs` cuando alguien tenga el rato; el corte borroso sigue
+> bajo demanda; y el cabo de la normalización asimétrica de arriba sigue sin medir.
+
 ### [T-410] 🟡 [ABIERTO 31/07] Psicotécnicas duplicadas con el enunciado PARAFRASEADO: 40 grupos que la deduplicación de mayo no podía ver
 
 > **La herramienta ya está construida, probada y pusheada (commit `10355860d`). Lo que queda es
