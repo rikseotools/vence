@@ -2579,22 +2579,6 @@ hasta que esté vivo.
 **Lo que NO se ha tocado, a propósito:** qué hacer con quien SÍ abandona el 3DS y deja la suscripción
 `incomplete`. Hoy no recibe nada y con este cambio sigue igual. Avisarle es otra decisión (otro correo,
 otro momento) y mezclarla habría hecho este cambio más difícil de revisar en un camino de cobros.
-### [T-598] 🟠 [ABIERTO 05/08] Preguntas que remiten a una imagen que no existe: el barrido que el caso de la Xunta deja abierto
-
-- **Esfuerzo: rato.** El detector ya existe; lo que falta es correr el barrido y triar lo que salga.
-- **ORIGEN:** impugnación `bdf4a132` de Laura Simar (premium). La pregunta `90011643` (LibreOffice Writer, Tema 17 Xunta de Galicia) decía *«tal como se ve en la imagen de la izquierda (figura. 1), y queremos que quede tal cual está en la imagen de la derecha (figura.2)»* y **no tenía imagen ninguna**: `image_url` NULL y `content_data` vacío. Sin las figuras no se puede saber qué cambio se pide — no es una pregunta difícil, es **irresoluble**. Retirada el 05/08 (`retired_irreparable`, `admin_image_unavailable`).
-- **POR QUÉ ES FICHA Y NO UN CASO CERRADO:** esto es el kind `visual_deixis_no_image`, que ya está documentado en el mapa de salud del contenido *(«revisa las preguntas sin imagen»)*. El caso de Laura salió por una impugnación, no por el barrido — o sea que **lo estamos encontrando por donde más caro es**: un usuario premium topándose con ella en un test.
-- **LO QUE HAY QUE HACER:**
-  1. Correr el detector sobre el banco activo y contar cuántas quedan.
-  2. Triar cada una por el criterio del runbook, que NO es «retirar todas»: si el enunciado ya describe el visual, la pregunta es autocontenida y se deja; si necesita la imagen y existe fuente, se reconstruye; solo si no hay fuente se jubila.
-  3. Mirar **de dónde vinieron**. Ésta es de un examen de la Xunta, y si el lote entero se importó sin las figuras habrá más de la misma tanda: el arreglo barato es por ORIGEN, no una a una.
-- **GOTCHA que documenta el runbook y conviene no repetir:** el re-verificador por LLM razona solo sobre TEXTO, así que puede **revertir** un `needs_human` correcto dándolo por falso positivo — ya pasó con un icono de Outlook, marcado dos veces y re-aprobado el 10/07. Estas no las juzga un pase de texto.
-- **NUNCA** inventar la imagen ni fijar la clave a ciegas.
-- **Relacionadas:** [T-594] no existe (se citó por error un id no reservado en el veredicto sistémico de `bdf4a132`; la ficha buena es ésta).
-
-- **✅ BARRIDO CORRIDO (07/08, w2) — 0 preguntas activas para triar, MEDIDO contra RDS en vivo, no supuesto.** Ejecuté la MISMA query que `scripts/health-sweep.cjs` (kind `visual_deixis_no_image`, núcleo `lib/health/visualDeixis.cjs`) directo contra `VENCE_LECTOR_URL`: **0 filas**. Corroborado por una segunda fuente independiente — `content_health_findings` no tiene NINGUNA fila reciente de ese `kind` (el sweep solo inserta cuando `count>0`, así que su ausencia es coherente con el 0 medido). El paso 2 (triar) y el 3 (mirar el origen del lote) quedan **sin objeto**: no hay nada que triar porque no hay nada activo que lo dispare. Con Laura (05/08) retirada y sin nuevas apariciones, el kind vuelve a estar en verde — igual que estaba diseñado para nacer («0 a propósito», ver los kinds hermanos de la casa).
-  - **Cabo encontrado de paso, NO es lo que esta ficha pedía pero sí importa — nueva ficha [T-638] (reservada):** al intentar corroborar el detalle de la retirada de Laura (`question_lifecycle_history`, `reason_code='admin_image_unavailable'`), la tabla me devolvió **0 filas TOTALES, siempre**, para cualquier filtro. **DEMOSTRADO, no supuesto:** `pg_class.relrowsecurity=true` para `question_lifecycle_history` y `pg_policies` no tiene NINGUNA política para ella — mismo mecanismo exacto que [T-573]/[T-574] (RLS activo + GRANT de tabla sin política = 0 filas SIN error, indistinguible de "tabla vacía"). La tabla es "fuente única de verdad" del audit trail de lifecycle (CLAUDE.md) y la citan **11 fichas distintas de este mismo fichero** como dónde verificar transiciones — y ningún worker de la flota puede leerla hoy. No tiene columnas de PII (`question_id`, `from_state`, `to_state`, `reason_code`, `changed_by`, `notes` — mismo perfil de riesgo que `test_questions`/`tests`, que SÍ se concedieron en T-573). Detalle y migración propuesta en [T-638].
-
 ### [T-596] 🔴 [ABIERTO 05/08] El temario sirve el artículo VACÍO cuando `articles.title` es NULL, aunque tenga contenido
 
 **Lo reporta un premium (feedback `38b93ac3`, manolo garcia, Aux. Diputación de Córdoba):** *«Por qué no
@@ -6442,6 +6426,22 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+### [T-598] ✅ [HECHA 07/08] Preguntas que remiten a una imagen que no existe: el barrido que el caso de la Xunta deja abierto
+
+- **Esfuerzo: rato.** El detector ya existe; lo que falta es correr el barrido y triar lo que salga.
+- **ORIGEN:** impugnación `bdf4a132` de Laura Simar (premium). La pregunta `90011643` (LibreOffice Writer, Tema 17 Xunta de Galicia) decía *«tal como se ve en la imagen de la izquierda (figura. 1), y queremos que quede tal cual está en la imagen de la derecha (figura.2)»* y **no tenía imagen ninguna**: `image_url` NULL y `content_data` vacío. Sin las figuras no se puede saber qué cambio se pide — no es una pregunta difícil, es **irresoluble**. Retirada el 05/08 (`retired_irreparable`, `admin_image_unavailable`).
+- **POR QUÉ ES FICHA Y NO UN CASO CERRADO:** esto es el kind `visual_deixis_no_image`, que ya está documentado en el mapa de salud del contenido *(«revisa las preguntas sin imagen»)*. El caso de Laura salió por una impugnación, no por el barrido — o sea que **lo estamos encontrando por donde más caro es**: un usuario premium topándose con ella en un test.
+- **LO QUE HAY QUE HACER:**
+  1. Correr el detector sobre el banco activo y contar cuántas quedan.
+  2. Triar cada una por el criterio del runbook, que NO es «retirar todas»: si el enunciado ya describe el visual, la pregunta es autocontenida y se deja; si necesita la imagen y existe fuente, se reconstruye; solo si no hay fuente se jubila.
+  3. Mirar **de dónde vinieron**. Ésta es de un examen de la Xunta, y si el lote entero se importó sin las figuras habrá más de la misma tanda: el arreglo barato es por ORIGEN, no una a una.
+- **GOTCHA que documenta el runbook y conviene no repetir:** el re-verificador por LLM razona solo sobre TEXTO, así que puede **revertir** un `needs_human` correcto dándolo por falso positivo — ya pasó con un icono de Outlook, marcado dos veces y re-aprobado el 10/07. Estas no las juzga un pase de texto.
+- **NUNCA** inventar la imagen ni fijar la clave a ciegas.
+- **Relacionadas:** [T-594] no existe (se citó por error un id no reservado en el veredicto sistémico de `bdf4a132`; la ficha buena es ésta).
+
+- **✅ BARRIDO CORRIDO (07/08, w2) — 0 preguntas activas para triar, MEDIDO contra RDS en vivo, no supuesto.** Ejecuté la MISMA query que `scripts/health-sweep.cjs` (kind `visual_deixis_no_image`, núcleo `lib/health/visualDeixis.cjs`) directo contra `VENCE_LECTOR_URL`: **0 filas**. Corroborado por una segunda fuente independiente — `content_health_findings` no tiene NINGUNA fila reciente de ese `kind` (el sweep solo inserta cuando `count>0`, así que su ausencia es coherente con el 0 medido). El paso 2 (triar) y el 3 (mirar el origen del lote) quedan **sin objeto**: no hay nada que triar porque no hay nada activo que lo dispare. Con Laura (05/08) retirada y sin nuevas apariciones, el kind vuelve a estar en verde — igual que estaba diseñado para nacer («0 a propósito», ver los kinds hermanos de la casa).
+  - **Cabo encontrado de paso, NO es lo que esta ficha pedía pero sí importa — nueva ficha [T-638] (reservada):** al intentar corroborar el detalle de la retirada de Laura (`question_lifecycle_history`, `reason_code='admin_image_unavailable'`), la tabla me devolvió **0 filas TOTALES, siempre**, para cualquier filtro. **DEMOSTRADO, no supuesto:** `pg_class.relrowsecurity=true` para `question_lifecycle_history` y `pg_policies` no tiene NINGUNA política para ella — mismo mecanismo exacto que [T-573]/[T-574] (RLS activo + GRANT de tabla sin política = 0 filas SIN error, indistinguible de "tabla vacía"). La tabla es "fuente única de verdad" del audit trail de lifecycle (CLAUDE.md) y la citan **11 fichas distintas de este mismo fichero** como dónde verificar transiciones — y ningún worker de la flota puede leerla hoy. No tiene columnas de PII (`question_id`, `from_state`, `to_state`, `reason_code`, `changed_by`, `notes` — mismo perfil de riesgo que `test_questions`/`tests`, que SÍ se concedieron en T-573). Detalle y migración propuesta en [T-638].
+
 
 ### [T-485] ✅ [HECHA 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
 
