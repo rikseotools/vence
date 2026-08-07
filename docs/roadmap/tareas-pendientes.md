@@ -981,6 +981,21 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-655] 🟠 [ABIERTO 07/08] Nadie comprueba que el corpus documental de una convocatoria hable de SU oposición — el punto ciego que dejó publicar 44 plazas de otro cuerpo
+
+- **Nace de [T-654], medido el 07/08:** `auxiliar-administrativo-diputacion-cadiz` (Auxiliar, **C2**) tiene **8 documentos clonados** con **CERO menciones a «Auxiliar Administrativ»** y **30 a «Administrativo/a»** — son las bases del proceso de **Administrativo (C1)**, otro cuerpo. Sus bases dicen *«18 plazas (2 reservadas)»* y la landing publica **44**, a **171 usuarios**.
+- **Por qué hace falta un detector NUEVO y no ampliar uno de los que hay.** Los dos que miran plazas funcionaban y los dos dieron la alarma:
+  · `plazas_afirmadas_sin_documento` pregunta *«¿la cifra está en algún documento?»* → no. Correcto.
+  · `plazas_reserva_sin_declarar` pregunta *«¿está declarado el cupo?»* → no. Correcto.
+  **Ninguno pregunta de QUIÉN son los documentos**, así que los dos señalaban el síntoma y la causa —el corpus está mal enganchado— no la miraba nadie. Meterlo dentro de cualquiera de ellos mezclaría dos preguntas distintas en un solo hallazgo, y entonces el arreglo de una taparía la otra.
+- **La pregunta que hace, y una sola:** ¿el texto de los documentos de una convocatoria menciona el CUERPO que esa convocatoria dice convocar? Determinista, sin LLM y sin red: el texto ya está clonado en `convocatoria_documentos.extracted_text`.
+- **⚠️ LA LECCIÓN QUE YA APRENDIÓ SU HERMANA, y hay que reusar, no repetir:** `lib/convocatoria/tipoDocumento.cjs` clasifica el TIPO de documento **por su CABECERA, no por el texto entero**, porque mirarlo entero *«daba falsos positivos por menciones de pasada»*. Aquí pasa igual y peor: unas bases de Auxiliar pueden nombrar «Administrativo» al citar la escala, y unas de Administrativo pueden nombrar «Auxiliar» al listar otras plazas de la misma OEP. **El criterio no puede ser «aparece», tiene que ser «predomina» o «está en la cabecera»** — en el caso de Cádiz la diferencia era 0 contra 30, o sea que un umbral honesto lo caza sin inventar precisión.
+- **Cuidado al calibrar, o nace gritando:** una OEP acumulada convoca varios cuerpos en el mismo documento y es LEGÍTIMO que los nombre todos. Antes de encender el badge hay que **medirlo sobre las ~124 activas** y ver cuántas saltan; si son decenas, la banda está mal y hay que apretar el criterio, no subir el umbral para que calle. Mismo método que `notaInternaPublicada` (que decidió NO marcar la referencia larga porque daría 60-90 hallazgos y mataría el badge).
+- **GOTCHA de dónde mirar:** sobre `oposiciones_ssot`, no sobre `oposiciones` — los documentos cuelgan de `convocatorias` y la vista resuelve desde ahí. Es el mismo tropiezo que costó un barrido en falso en [T-435].
+- **Qué hace Claude cuando salta** (para el registro de runbooks): NO cambiar la cifra por analogía. Abrir el boletín del proceso de esa oposición y decidir cuál de las dos cosas falla — los documentos están en la convocatoria equivocada, o las cifras se copiaron del proceso vecino. Si no existe tal proceso vivo, el problema es mayor que una cifra.
+- **Capas:** núcleo puro con sus tests (el criterio de predominio, los casos de OEP multi-cuerpo y el de Cádiz como caso real), mirror en los dos gemelos del barrido (`scripts/health-sweep.cjs` y el `@Cron` del backend), entrada en `lib/admin/runbookRegistry.ts` con su frase-gatillo, y registro en `lib/admin/toolRegistry.ts`.
+- **Relacionadas:** [T-654] (el caso que lo destapa), `lib/convocatoria/tipoDocumento.cjs` (la hermana de la que se reusa el criterio de cabecera), runbook `provenance-convocatorias.md`.
+
 ### [T-654] 🔴 [ABIERTO 07/08] El corpus documental de Aux. Administrativo de la Diputación de Cádiz es de OTRA oposición: 44 plazas publicadas sin un solo documento que las respalde — 171 usuarios
 
 - **Es la de MÁS usuarios de toda la cola de plazas sin declarar: 171**, cuatro veces la siguiente. Salió al triar los hallazgos `plazas_reserva_sin_declarar` con `npm run reserva:declarar -- --proponer`, que ordena por usuarios afectados.
