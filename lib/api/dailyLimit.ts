@@ -178,21 +178,27 @@ export async function checkAndIncrementDailyLimit(
 export async function checkDeviceDailyUsage(
   deviceId: string | null | undefined,
   fingerprint?: string | null,
+  ip?: string | null,
 ): Promise<{ allowed: boolean; deviceTotal: number } | null> {
   // Con huella v2 basta: es la que sobrevive a borrar `localStorage`, que es justo el gesto que
   // hacía inútil el `device_id`. Sin ninguna de las dos no se opina (fail-open).
   const fpV2 = typeof fingerprint === 'string' && fingerprint.startsWith('fp2_') ? fingerprint : null
   if (!deviceId && !fpV2) return null
 
+  // La IP entra en la clave: es parte del criterio de agrupación desde [T-657], así que dos
+  // peticiones con la misma huella y distinta línea NO pueden compartir respuesta cacheada.
+  const ipCorroborante = typeof ip === 'string' && ip.trim() !== '' ? ip.trim() : null
+
   return getOrSet<{ allowed: boolean; deviceTotal: number } | null>(
-    `device_daily:${deviceId ?? '-'}:${fpV2 ?? '-'}`,
+    `device_daily:${deviceId ?? '-'}:${fpV2 ?? '-'}:${ipCorroborante ?? '-'}`,
     30,
     async () => {
       try {
-        // v2 agrupa por device_id UNIÓN huella v2 — nunca cuenta menos que la anterior
-        // (verificado sobre 200 dispositivos reales: 0 regresiones).
+        // v3 ([T-657]): agrupa por device_id siempre, y por huella v2 SOLO si la corrobora una IP
+        // compartida. La huella sola identifica el modelo de móvil, no el aparato — medido: 125
+        // huellas compartidas por 369 cuentas, la peor con 18 cuentas de 15 ciudades distintas.
         const devRes = await getAdminDb().execute(
-          sql`SELECT get_device_daily_usage_v2(${deviceId ?? null}, ${fpV2}) AS total`,
+          sql`SELECT get_device_daily_usage_v3(${deviceId ?? null}, ${fpV2}, ${ipCorroborante}) AS total`,
         )
         const total = Number(rowsOf(devRes)[0]?.total) || 0
 

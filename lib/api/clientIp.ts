@@ -156,3 +156,23 @@ export function resolveClientIp(
 export function getClientIp(request: { headers: HeaderReader }): string {
   return resolveClientIp(request.headers).ip;
 }
+
+/**
+ * La IP **solo si sirve para decidir**, o `null`.
+ *
+ * Para eso está el `trust` que advierte `getClientIp` justo arriba, y aquí se aplica de verdad:
+ * la corroboración por IP del límite por dispositivo ([T-657]) AGRUPA cuentas, así que una IP
+ * falsificable la puede esquivar quien quiera —basta con mandar un `x-forwarded-for` distinto por
+ * cuenta— y el límite se vuelve decorativo. Solo cuenta la que pone el borde.
+ *
+ * Y descarta el `'unknown'` que devuelve `resolveClientIp` cuando no hay ninguna cabecera: pasarlo
+ * como si fuera una IP agruparía entre sí a todos los desconocidos, que es el error contrario y
+ * peor (cortarle el cupo a gente que no tiene nada que ver, que es justo lo que se está
+ * arreglando).
+ */
+export function ipDeConfianza(request: { headers: HeaderReader }): string | null {
+  const r = resolveClientIp(request.headers);
+  if (r.trust !== 'trusted') return null;
+  if (!r.ip || r.ip === 'unknown') return null;
+  return r.ip;
+}

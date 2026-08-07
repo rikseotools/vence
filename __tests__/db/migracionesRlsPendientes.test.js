@@ -236,3 +236,100 @@ describe('politicaFalta — generalización de seleccionBloqueadaPorRls a cmd ar
     expect(politicaFalta('UPDATE', 'vence_coordinacion', true, [{ cmd: 'ALL', roles: ['vence_coordinacion'] }])).toBe(false)
   })
 })
+
+// ── La puerta de APLICACIÓN (T-658) ────────────────────────────────────────────────────────
+// El detector lista como pendiente CUALQUIER fichero cuyas políticas no estén en el catálogo, y
+// entre ellos hay ficheros antiguos y ANCHOS (`20260502_security_advisor_fixes.sql` toca además
+// funciones y vistas). El que DETECTA no puede arrastrar al que ESCRIBE: solo se aplica lo que se
+// limita a la familia RLS por política, y lo demás se manda a mano a propósito.
+describe('esAplicableSinRiesgo — qué se puede aplicar desde la herramienta', () => {
+  const { esAplicableSinRiesgo } = require('../../lib/db/migracionesRlsPendientes.cjs')
+  const fs2 = require('fs')
+  const path2 = require('path')
+  const DIR = path2.join(__dirname, '..', '..', 'supabase', 'migrations')
+  const leer = (f) => fs2.readFileSync(path2.join(DIR, f), 'utf8')
+
+  it('deja pasar las migraciones RLS de la flota (ficheros REALES del repo)', () => {
+    for (const f of [
+      '20260805_rls_test_questions_lector.sql',
+      '20260805_rls_ai_verification_results_lector.sql',
+      '20260807_rls_question_lifecycle_history_lector.sql',
+      '20260807_rls_oep_detection_signals_lector.sql',
+    ]) {
+      expect({ f, ...esAplicableSinRiesgo(leer(f)) }).toMatchObject({ f, ok: true })
+    }
+  })
+
+  it('RECHAZA un fichero ancho que además de políticas toca funciones o vistas', () => {
+    const r = esAplicableSinRiesgo(leer('20260502_security_advisor_fixes.sql'))
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/fuera de la familia RLS/)
+  })
+
+  it('RECHAZA cualquier escritura de datos colada entre políticas', () => {
+    const r = esAplicableSinRiesgo(
+      'ALTER TABLE public.x ENABLE ROW LEVEL SECURITY;\n' +
+      'CREATE POLICY p ON public.x FOR SELECT TO vence_lector USING (true);\n' +
+      'UPDATE public.x SET y = 1;\n'
+    )
+    expect(r.ok).toBe(false)
+    expect(r.motivo).toMatch(/UPDATE/i)
+  })
+
+  it('no se deja engañar por SQL de EJEMPLO dentro de un comentario', () => {
+    // Estas migraciones documentan mucho en la cabecera; un `DROP TABLE` citado en un comentario
+    // no es una sentencia y no puede tumbar el fichero.
+    const r = esAplicableSinRiesgo(
+      '-- ejemplo de lo que NO hacemos: DROP TABLE public.x;\n' +
+      '/* tampoco: UPDATE public.x SET y = 1; */\n' +
+      'CREATE POLICY p ON public.x FOR SELECT TO vence_lector USING (true);\n'
+    )
+    expect(r.ok).toBe(true)
+  })
+
+  it('un fichero sin sentencias no es «aplicable»: no hay nada que aplicar', () => {
+    expect(esAplicableSinRiesgo('-- solo comentarios\n').ok).toBe(false)
+  })
+})
+
+// ── Accionable vs legacy (T-658) ───────────────────────────────────────────────────────────
+// El veredicto del gate de CI lo fijan SOLO las migraciones de los roles propios (`vence_*`).
+// Las de la era Supabase (`authenticated`) se siguen imprimiendo pero no lo tiñen de rojo: un
+// gate rojo todos los días se deja de mirar, y con él se deja de ver el rojo de verdad.
+describe('partirPorAccionabilidad', () => {
+  const { partirPorAccionabilidad } = require('../../lib/db/migracionesRlsPendientes.cjs')
+
+  it('las de rol vence_* son accionables', () => {
+    const { accionables, legacy } = partirPorAccionabilidad([
+      { archivo: 'a.sql', faltan: [{ table: 'tests', role: 'vence_lector', motivo: 'x' }] },
+    ])
+    expect(accionables).toHaveLength(1)
+    expect(legacy).toHaveLength(0)
+  })
+
+  it('las de `authenticated` NO fijan el veredicto, pero SIGUEN saliendo', () => {
+    const { accionables, legacy } = partirPorAccionabilidad([
+      { archivo: '20260502_security_advisor_fixes.sql', faltan: [{ table: 'x', role: 'authenticated', motivo: 'y' }] },
+    ])
+    expect(accionables).toHaveLength(0)
+    expect(legacy).toHaveLength(1) // ← lo que impide que esto sea «ocultar»
+  })
+
+  it('un fichero con las DOS clases aparece en los dos cubos, cada uno con lo suyo', () => {
+    const { accionables, legacy } = partirPorAccionabilidad([
+      {
+        archivo: 'mixta.sql',
+        faltan: [
+          { table: 'tests', role: 'vence_lector', motivo: 'a' },
+          { table: 'x', role: 'authenticated', motivo: 'b' },
+        ],
+      },
+    ])
+    expect(accionables[0].faltan.map((f) => f.role)).toEqual(['vence_lector'])
+    expect(legacy[0].faltan.map((f) => f.role)).toEqual(['authenticated'])
+  })
+
+  it('sin pendientes, los dos cubos vacíos', () => {
+    expect(partirPorAccionabilidad([])).toEqual({ accionables: [], legacy: [] })
+  })
+})

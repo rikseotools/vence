@@ -1,0 +1,365 @@
+[
+  {
+    "primary_article_id": "2843837c-5c47-4b7c-960b-9067774a5431",
+    "primary_article_number": "33",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 33 LO 1/2004",
+    "question_text": "Según el artículo 33 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), que da nueva redacción al párrafo segundo de la regla 6.ª del apartado 1 del artículo 83 del Código Penal (CP), cuando se trate de delitos relacionados con la violencia de género, ¿al cumplimiento de qué obligaciones o deberes de ese apartado condicionará en todo caso el Juez o Tribunal la suspensión de la pena?",
+    "option_a": "Las obligaciones o deberes previstos en las reglas 1.ª, 3.ª y 4.ª de este apartado.",
+    "option_b": "Las obligaciones o deberes previstos en las reglas 2.ª, 3.ª y 5.ª de este apartado.",
+    "option_c": "Las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª de este apartado.",
+    "option_d": "Las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 4.ª de este apartado.",
+    "options": [
+      "Las obligaciones o deberes previstos en las reglas 1.ª, 3.ª y 4.ª de este apartado.",
+      "Las obligaciones o deberes previstos en las reglas 2.ª, 3.ª y 5.ª de este apartado.",
+      "Las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª de este apartado.",
+      "Las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 4.ª de este apartado."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 33 LO 1/2004 (nueva redacción del art. 83.1, regla 6.ª CP)",
+        "texto": "Si se tratase de delitos relacionados con la violencia de género, el Juez o Tribunal condicionará en todo caso la suspensión al cumplimiento de las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª de este apartado."
+      },
+      "options": {
+        "0": "El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 1.ª, 3.ª y 4.ª.",
+        "1": "El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 2.ª, 3.ª y 5.ª.",
+        "2": "Es la previsión literal del artículo: el Juez o Tribunal condiciona en todo caso la suspensión al cumplimiento de las obligaciones de las reglas 1.ª, 2.ª y 5.ª del apartado 1 del artículo 83 del CP.",
+        "3": "El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 1.ª, 2.ª y 4.ª."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 33 LO 1/2004 (nueva redacción del art. 83.1, regla 6.ª CP)**\n> \"Si se tratase de delitos relacionados con la violencia de género, el Juez o Tribunal condicionará en todo caso la suspensión al cumplimiento de las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª de este apartado.\"\n\n**Por qué C es correcta:** Es la previsión literal del artículo: el Juez o Tribunal condiciona en todo caso la suspensión al cumplimiento de las obligaciones de las reglas 1.ª, 2.ª y 5.ª del apartado 1 del artículo 83 del CP.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 1.ª, 3.ª y 4.ª.\n- **B)** El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 2.ª, 3.ª y 5.ª.\n- **D)** El artículo exige las reglas 1.ª, 2.ª y 5.ª, no la combinación 1.ª, 2.ª y 4.ª."
+  },
+  {
+    "primary_article_id": "fbaa8764-a98a-44a7-bd1d-7c84158b7a7d",
+    "primary_article_number": "34",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 34 LO 1/2004",
+    "question_text": "Según el artículo 34 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), que da nueva redacción al artículo 84.3 del Código Penal (CP), cuando la pena suspendida fuera de prisión por la comisión de delitos relacionados con la violencia de género, ¿qué determina el incumplimiento por parte del reo de las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª del apartado 1 del artículo 83 CP?",
+    "option_a": "La revocación de la suspensión de la ejecución de la pena.",
+    "option_b": "La imposición de una pena de multa adicional a la ya impuesta.",
+    "option_c": "La sustitución de la pena por trabajos en beneficio de la comunidad.",
+    "option_d": "El archivo del procedimiento por falta de habilitación legal.",
+    "options": [
+      "La revocación de la suspensión de la ejecución de la pena.",
+      "La imposición de una pena de multa adicional a la ya impuesta.",
+      "La sustitución de la pena por trabajos en beneficio de la comunidad.",
+      "El archivo del procedimiento por falta de habilitación legal."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 34 LO 1/2004 (nueva redacción del art. 84.3 CP)",
+        "texto": "En el supuesto de que la pena suspendida fuera de prisión por la comisión de delitos relacionados con la violencia de género, el incumplimiento por parte del reo de las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª del apartado 1 del artículo 83 determinará la revocación de la suspensión de la ejecución de la pena."
+      },
+      "options": {
+        "0": "Es la consecuencia literal que fija el precepto: el incumplimiento de esas obligaciones determina la revocación de la suspensión de la ejecución de la pena.",
+        "1": "El artículo 84.3 CP no prevé una multa adicional; la consecuencia es la revocación de la suspensión.",
+        "2": "La sustitución por trabajos en beneficio de la comunidad es una medida distinta (art. 88 CP), no la consecuencia del incumplimiento aquí regulado.",
+        "3": "El artículo no contempla el archivo del procedimiento; la consecuencia expresa es la revocación de la suspensión."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 34 LO 1/2004 (nueva redacción del art. 84.3 CP)**\n> \"En el supuesto de que la pena suspendida fuera de prisión por la comisión de delitos relacionados con la violencia de género, el incumplimiento por parte del reo de las obligaciones o deberes previstos en las reglas 1.ª, 2.ª y 5.ª del apartado 1 del artículo 83 determinará la revocación de la suspensión de la ejecución de la pena.\"\n\n**Por qué A es correcta:** Es la consecuencia literal que fija el precepto: el incumplimiento de esas obligaciones determina la revocación de la suspensión de la ejecución de la pena.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo 84.3 CP no prevé una multa adicional; la consecuencia es la revocación de la suspensión.\n- **C)** La sustitución por trabajos en beneficio de la comunidad es una medida distinta (art. 88 CP), no la consecuencia del incumplimiento aquí regulado.\n- **D)** El artículo no contempla el archivo del procedimiento; la consecuencia expresa es la revocación de la suspensión."
+  },
+  {
+    "primary_article_id": "5b895604-9a5d-49ee-a7c5-923b4f9d21ea",
+    "primary_article_number": "35",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 35 LO 1/2004 (a)",
+    "question_text": "Según el artículo 35 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), que da nueva redacción al artículo 88.1 del Código Penal (CP), cuando el reo hubiera sido condenado por un delito relacionado con la violencia de género, ¿por qué otra pena podrá sustituirse la pena de prisión?",
+    "option_a": "La pena de prisión sólo podrá ser sustituida por la de multa proporcional al perjuicio causado.",
+    "option_b": "La pena de prisión podrá ser sustituida indistintamente por la de multa o por la de trabajos en beneficio de la comunidad.",
+    "option_c": "La pena de prisión sólo podrá ser sustituida por la de localización permanente.",
+    "option_d": "La pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad.",
+    "options": [
+      "La pena de prisión sólo podrá ser sustituida por la de multa proporcional al perjuicio causado.",
+      "La pena de prisión podrá ser sustituida indistintamente por la de multa o por la de trabajos en beneficio de la comunidad.",
+      "La pena de prisión sólo podrá ser sustituida por la de localización permanente.",
+      "La pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 35 LO 1/2004 (nueva redacción del art. 88.1, párrafo 3.º CP)",
+        "texto": "En el caso de que el reo hubiera sido condenado por un delito relacionado con la violencia de género, la pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad."
+      },
+      "options": {
+        "0": "El precepto no admite la multa como sustitutivo en estos casos; solo permite los trabajos en beneficio de la comunidad.",
+        "1": "El artículo no deja la sustitución a elección indistinta: excluye la multa y solo admite los trabajos en beneficio de la comunidad.",
+        "2": "El artículo no prevé la localización permanente como sustitutivo; el único posible son los trabajos en beneficio de la comunidad.",
+        "3": "Es la previsión literal: en estos supuestos la pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 35 LO 1/2004 (nueva redacción del art. 88.1, párrafo 3.º CP)**\n> \"En el caso de que el reo hubiera sido condenado por un delito relacionado con la violencia de género, la pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad.\"\n\n**Por qué D es correcta:** Es la previsión literal: en estos supuestos la pena de prisión sólo podrá ser sustituida por la de trabajos en beneficio de la comunidad.\n\n**Por qué las demás son incorrectas:**\n- **A)** El precepto no admite la multa como sustitutivo en estos casos; solo permite los trabajos en beneficio de la comunidad.\n- **B)** El artículo no deja la sustitución a elección indistinta: excluye la multa y solo admite los trabajos en beneficio de la comunidad.\n- **C)** El artículo no prevé la localización permanente como sustitutivo; el único posible son los trabajos en beneficio de la comunidad."
+  },
+  {
+    "primary_article_id": "5b895604-9a5d-49ee-a7c5-923b4f9d21ea",
+    "primary_article_number": "35",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 35 LO 1/2004 (b)",
+    "question_text": "Según el artículo 35 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), que da nueva redacción al artículo 88.1 del Código Penal (CP), en los supuestos de sustitución de la pena de prisión de un condenado por un delito relacionado con la violencia de género, ¿qué debe imponer adicionalmente el Juez o Tribunal, además de la sujeción a programas específicos de reeducación y tratamiento psicológico?",
+    "option_a": "La observancia de las obligaciones o deberes previstos en las reglas 3.ª y 4.ª, del apartado 1 del artículo 83 de este Código.",
+    "option_b": "La observancia de las obligaciones o deberes previstos en las reglas 1.ª y 2.ª, del apartado 1 del artículo 83 de este Código.",
+    "option_c": "La observancia de las obligaciones o deberes previstos en las reglas 2.ª y 5.ª, del apartado 1 del artículo 83 de este Código.",
+    "option_d": "La observancia de las obligaciones o deberes previstos en las reglas 1.ª y 5.ª, del apartado 1 del artículo 83 de este Código.",
+    "options": [
+      "La observancia de las obligaciones o deberes previstos en las reglas 3.ª y 4.ª, del apartado 1 del artículo 83 de este Código.",
+      "La observancia de las obligaciones o deberes previstos en las reglas 1.ª y 2.ª, del apartado 1 del artículo 83 de este Código.",
+      "La observancia de las obligaciones o deberes previstos en las reglas 2.ª y 5.ª, del apartado 1 del artículo 83 de este Código.",
+      "La observancia de las obligaciones o deberes previstos en las reglas 1.ª y 5.ª, del apartado 1 del artículo 83 de este Código."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 35 LO 1/2004 (nueva redacción del art. 88.1, párrafo 3.º CP)",
+        "texto": "En estos supuestos, el Juez o Tribunal impondrá adicionalmente, además de la sujeción a programas específicos de reeducación y tratamiento psicológico, la observancia de las obligaciones o deberes previstos en las reglas 1.ª y 2.ª, del apartado 1 del artículo 83 de este Código."
+      },
+      "options": {
+        "0": "El artículo exige las reglas 1.ª y 2.ª, no la combinación 3.ª y 4.ª.",
+        "1": "Es la previsión literal: además de los programas de reeducación y tratamiento psicológico, se impone la observancia de las reglas 1.ª y 2.ª del apartado 1 del artículo 83 del CP.",
+        "2": "El artículo exige las reglas 1.ª y 2.ª, no la combinación 2.ª y 5.ª.",
+        "3": "El artículo exige las reglas 1.ª y 2.ª, no la combinación 1.ª y 5.ª."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 35 LO 1/2004 (nueva redacción del art. 88.1, párrafo 3.º CP)**\n> \"En estos supuestos, el Juez o Tribunal impondrá adicionalmente, además de la sujeción a programas específicos de reeducación y tratamiento psicológico, la observancia de las obligaciones o deberes previstos en las reglas 1.ª y 2.ª, del apartado 1 del artículo 83 de este Código.\"\n\n**Por qué B es correcta:** Es la previsión literal: además de los programas de reeducación y tratamiento psicológico, se impone la observancia de las reglas 1.ª y 2.ª del apartado 1 del artículo 83 del CP.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo exige las reglas 1.ª y 2.ª, no la combinación 3.ª y 4.ª.\n- **C)** El artículo exige las reglas 1.ª y 2.ª, no la combinación 2.ª y 5.ª.\n- **D)** El artículo exige las reglas 1.ª y 2.ª, no la combinación 1.ª y 5.ª."
+  },
+  {
+    "primary_article_id": "8292e67d-7e6b-411a-955c-3cad54010610",
+    "primary_article_number": "36",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 36 LO 1/2004 (a)",
+    "question_text": "Según el artículo 36 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), que da nueva redacción al artículo 148 del Código Penal (CP), atendiendo al resultado causado o riesgo producido, ¿entre qué límites de prisión pueden castigarse las lesiones del apartado 1 del artículo 147 CP cuando concurra alguna de las circunstancias que enumera el artículo 148 CP?",
+    "option_a": "Con la pena de prisión de dos a cinco años.",
+    "option_b": "Con la pena de prisión de uno a tres años.",
+    "option_c": "Con la pena de prisión de tres a seis años.",
+    "option_d": "Con la pena de prisión de dos a cuatro años.",
+    "options": [
+      "Con la pena de prisión de dos a cinco años.",
+      "Con la pena de prisión de uno a tres años.",
+      "Con la pena de prisión de tres a seis años.",
+      "Con la pena de prisión de dos a cuatro años."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 36 LO 1/2004 (nueva redacción del art. 148 CP)",
+        "texto": "Las lesiones previstas en el apartado 1 del artículo anterior podrán ser castigadas con la pena de prisión de dos a cinco años, atendiendo al resultado causado o riesgo producido"
+      },
+      "options": {
+        "0": "Es el marco literal de pena que fija el artículo: prisión de dos a cinco años.",
+        "1": "El artículo no prevé el marco de uno a tres años; fija de dos a cinco años.",
+        "2": "El artículo no prevé el marco de tres a seis años; fija de dos a cinco años.",
+        "3": "El artículo no prevé el marco de dos a cuatro años; fija de dos a cinco años."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 36 LO 1/2004 (nueva redacción del art. 148 CP)**\n> \"Las lesiones previstas en el apartado 1 del artículo anterior podrán ser castigadas con la pena de prisión de dos a cinco años, atendiendo al resultado causado o riesgo producido\"\n\n**Por qué A es correcta:** Es el marco literal de pena que fija el artículo: prisión de dos a cinco años.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo no prevé el marco de uno a tres años; fija de dos a cinco años.\n- **C)** El artículo no prevé el marco de tres a seis años; fija de dos a cinco años.\n- **D)** El artículo no prevé el marco de dos a cuatro años; fija de dos a cinco años."
+  },
+  {
+    "primary_article_id": "8292e67d-7e6b-411a-955c-3cad54010610",
+    "primary_article_number": "36",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 36 LO 1/2004 (b)",
+    "question_text": "Según el artículo 148.4.º del Código Penal (CP), en la redacción dada por el artículo 36 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), ¿en qué supuesto concurre una de las circunstancias que permiten imponer la pena agravada de lesiones del artículo 148 CP?",
+    "option_a": "Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, siempre que exista convivencia actual.",
+    "option_b": "Si la víctima fuere el cónyuge o excónyuge del autor, exclusivamente mientras dure la convivencia efectiva en el domicilio común.",
+    "option_c": "Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, aun sin convivencia.",
+    "option_d": "Si la víctima fuera ascendiente o descendiente del autor, con independencia de que exista o no relación de convivencia.",
+    "options": [
+      "Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, siempre que exista convivencia actual.",
+      "Si la víctima fuere el cónyuge o excónyuge del autor, exclusivamente mientras dure la convivencia efectiva en el domicilio común.",
+      "Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, aun sin convivencia.",
+      "Si la víctima fuera ascendiente o descendiente del autor, con independencia de que exista o no relación de convivencia."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 36 LO 1/2004 (nueva redacción del art. 148.4.º CP)",
+        "texto": "Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, aun sin convivencia."
+      },
+      "options": {
+        "0": "El artículo no condiciona la agravante a la convivencia en ningún sentido: se aplica tanto si existe convivencia como si no («aun sin convivencia» significa que la convivencia no es un requisito, no que su ausencia lo sea); exigirla como condición es una restricción que el precepto no contempla.",
+        "1": "El artículo no limita la agravante a que exista convivencia efectiva; expresamente se aplica aun sin convivencia.",
+        "2": "Es la circunstancia 4.ª literal del artículo 148 CP, que agrava las lesiones cuando la víctima es o ha sido esposa o pareja del autor, aun sin convivencia.",
+        "3": "El artículo 148.4.º CP se refiere a la esposa o mujer ligada por análoga relación de afectividad, no a ascendientes o descendientes."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 36 LO 1/2004 (nueva redacción del art. 148.4.º CP)**\n> \"Si la víctima fuere o hubiere sido esposa, o mujer que estuviere o hubiere estado ligada al autor por una análoga relación de afectividad, aun sin convivencia.\"\n\n**Por qué C es correcta:** Es la circunstancia 4.ª literal del artículo 148 CP, que agrava las lesiones cuando la víctima es o ha sido esposa o pareja del autor, aun sin convivencia.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo no condiciona la agravante a la convivencia en ningún sentido: se aplica tanto si existe convivencia como si no («aun sin convivencia» significa que la convivencia no es un requisito, no que su ausencia lo sea); exigirla como condición es una restricción que el precepto no contempla.\n- **B)** El artículo no limita la agravante a que exista convivencia efectiva; expresamente se aplica aun sin convivencia.\n- **D)** El artículo 148.4.º CP se refiere a la esposa o mujer ligada por análoga relación de afectividad, no a ascendientes o descendientes."
+  },
+  {
+    "primary_article_id": "51d88ca9-a377-4564-a6a1-f25de2953dcf",
+    "primary_article_number": "37",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 37 LO 1/2004 (a)",
+    "question_text": "Según el artículo 153.1 del Código Penal (CP), en la redacción dada por el artículo 37 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), cuando la ofendida sea o haya sido esposa, o mujer que esté o haya estado ligada al autor por una análoga relación de afectividad aun sin convivencia, y el autor le cause menoscabo psíquico o una lesión no definida como delito, o la golpee o maltrate de obra sin causarle lesión, ¿qué pena prevé el precepto en todo caso (dejando aparte la inhabilitación facultativa para el ejercicio de la patria potestad, tutela, curatela, guarda o acogimiento)?",
+    "option_a": "La pena de prisión de tres meses a un año o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años.",
+    "option_b": "La pena de prisión de seis meses a un año o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años.",
+    "option_c": "La pena de prisión de seis meses a dos años o de trabajos en beneficio de la comunidad de sesenta a cien días y, en todo caso, privación del derecho a la tenencia y porte de armas de dos a cuatro años.",
+    "option_d": "La pena de prisión de un año a dieciocho meses o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de seis meses a dos años.",
+    "options": [
+      "La pena de prisión de tres meses a un año o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años.",
+      "La pena de prisión de seis meses a un año o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años.",
+      "La pena de prisión de seis meses a dos años o de trabajos en beneficio de la comunidad de sesenta a cien días y, en todo caso, privación del derecho a la tenencia y porte de armas de dos a cuatro años.",
+      "La pena de prisión de un año a dieciocho meses o de trabajos en beneficio de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de seis meses a dos años."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 37 LO 1/2004 (nueva redacción del art. 153.1 CP)",
+        "texto": "El que por cualquier medio o procedimiento causare a otro menoscabo psíquico o una lesión no definidos como delito en este Código, o golpeare o maltratare de obra a otro sin causarle lesión, cuando la ofendida sea o haya sido esposa, o mujer que esté o haya estado ligada a él por una análoga relación de afectividad aun sin convivencia, o persona especialmente vulnerable que conviva con el autor, será castigado con la pena de prisión de seis meses a un año o de trabajos en beneficios de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años"
+      },
+      "options": {
+        "0": "El apartado 1 castiga con prisión de seis meses a un año, no de tres meses a un año — ese marco de prisión corresponde al apartado 2, para un círculo distinto de víctimas.",
+        "1": "Es la pena literal del apartado 1: prisión de seis meses a un año o trabajos en beneficio de la comunidad de treinta y uno a ochenta días, y en todo caso privación de armas de un año y un día a tres años.",
+        "2": "El artículo no prevé prisión de seis meses a dos años ni privación de armas de dos a cuatro años para este supuesto.",
+        "3": "El artículo no prevé prisión de un año a dieciocho meses ni privación de armas de seis meses a dos años para este supuesto."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 37 LO 1/2004 (nueva redacción del art. 153.1 CP)**\n> \"El que por cualquier medio o procedimiento causare a otro menoscabo psíquico o una lesión no definidos como delito en este Código, o golpeare o maltratare de obra a otro sin causarle lesión, cuando la ofendida sea o haya sido esposa, o mujer que esté o haya estado ligada a él por una análoga relación de afectividad aun sin convivencia, o persona especialmente vulnerable que conviva con el autor, será castigado con la pena de prisión de seis meses a un año o de trabajos en beneficios de la comunidad de treinta y uno a ochenta días y, en todo caso, privación del derecho a la tenencia y porte de armas de un año y un día a tres años\"\n\n**Por qué B es correcta:** Es la pena literal del apartado 1: prisión de seis meses a un año o trabajos en beneficio de la comunidad de treinta y uno a ochenta días, y en todo caso privación de armas de un año y un día a tres años.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 1 castiga con prisión de seis meses a un año, no de tres meses a un año — ese marco de prisión corresponde al apartado 2, para un círculo distinto de víctimas.\n- **C)** El artículo no prevé prisión de seis meses a dos años ni privación de armas de dos a cuatro años para este supuesto.\n- **D)** El artículo no prevé prisión de un año a dieciocho meses ni privación de armas de seis meses a dos años para este supuesto."
+  },
+  {
+    "primary_article_id": "51d88ca9-a377-4564-a6a1-f25de2953dcf",
+    "primary_article_number": "37",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 37 LO 1/2004 (b)",
+    "question_text": "Según el artículo 153.3 del Código Penal (CP), en la redacción dada por el artículo 37 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), ¿en qué mitad se impondrán las penas previstas en los apartados 1 y 2 cuando el delito se perpetre en presencia de menores, utilizando armas, en el domicilio común o en el domicilio de la víctima, o quebrantando una pena o medida cautelar o de seguridad de la misma naturaleza?",
+    "option_a": "En su mitad inferior.",
+    "option_b": "En su grado máximo.",
+    "option_c": "En su grado mínimo.",
+    "option_d": "En su mitad superior.",
+    "options": [
+      "En su mitad inferior.",
+      "En su grado máximo.",
+      "En su grado mínimo.",
+      "En su mitad superior."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 37 LO 1/2004 (nueva redacción del art. 153.3 CP)",
+        "texto": "Las penas previstas en los apartados 1 y 2 se impondrán en su mitad superior cuando el delito se perpetre en presencia de menores, o utilizando armas, o tenga lugar en el domicilio común o en el domicilio de la víctima, o se realice quebrantando una pena de las contempladas en el artículo 48 de este Código o una medida cautelar o de seguridad de la misma naturaleza."
+      },
+      "options": {
+        "0": "El artículo agrava, no atenúa, en estos supuestos: se impone la mitad superior, no la inferior.",
+        "1": "El precepto habla de mitad, no de grado; no prevé imponer el grado máximo.",
+        "2": "El precepto habla de mitad, no de grado, y agrava — no atenúa — la pena; no prevé el grado mínimo.",
+        "3": "Es la consecuencia literal: en esos supuestos las penas se imponen en su mitad superior."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 37 LO 1/2004 (nueva redacción del art. 153.3 CP)**\n> \"Las penas previstas en los apartados 1 y 2 se impondrán en su mitad superior cuando el delito se perpetre en presencia de menores, o utilizando armas, o tenga lugar en el domicilio común o en el domicilio de la víctima, o se realice quebrantando una pena de las contempladas en el artículo 48 de este Código o una medida cautelar o de seguridad de la misma naturaleza.\"\n\n**Por qué D es correcta:** Es la consecuencia literal: en esos supuestos las penas se imponen en su mitad superior.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo agrava, no atenúa, en estos supuestos: se impone la mitad superior, no la inferior.\n- **B)** El precepto habla de mitad, no de grado; no prevé imponer el grado máximo.\n- **C)** El precepto habla de mitad, no de grado, y agrava — no atenúa — la pena; no prevé el grado mínimo."
+  },
+  {
+    "primary_article_id": "51d88ca9-a377-4564-a6a1-f25de2953dcf",
+    "primary_article_number": "37",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 37 LO 1/2004 (c)",
+    "question_text": "Según el artículo 153.4 del Código Penal (CP), en la redacción dada por el artículo 37 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), no obstante lo previsto en los apartados anteriores, ¿qué puede hacer el Juez o Tribunal, razonándolo en sentencia, en atención a las circunstancias personales del autor y las concurrentes en la realización del hecho?",
+    "option_a": "Imponer la pena superior en grado.",
+    "option_b": "Suspender la ejecución de la pena sin condiciones.",
+    "option_c": "Imponer la pena inferior en grado.",
+    "option_d": "Sustituir la pena por una multa proporcional.",
+    "options": [
+      "Imponer la pena superior en grado.",
+      "Suspender la ejecución de la pena sin condiciones.",
+      "Imponer la pena inferior en grado.",
+      "Sustituir la pena por una multa proporcional."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 37 LO 1/2004 (nueva redacción del art. 153.4 CP)",
+        "texto": "No obstante lo previsto en los apartados anteriores, el Juez o Tribunal, razonándolo en sentencia, en atención a las circunstancias personales del autor y las concurrentes en la realización del hecho, podrá imponer la pena inferior en grado."
+      },
+      "options": {
+        "0": "El apartado 4 habilita a rebajar la pena, no a agravarla; no prevé imponer la pena superior en grado.",
+        "1": "El artículo no prevé una suspensión sin condiciones; la facultad que otorga es imponer la pena inferior en grado.",
+        "2": "Es la previsión literal: el Juez o Tribunal, razonándolo en sentencia, podrá imponer la pena inferior en grado.",
+        "3": "El artículo no habilita a sustituir la pena por una multa en este apartado; la facultad prevista es rebajarla en grado."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 37 LO 1/2004 (nueva redacción del art. 153.4 CP)**\n> \"No obstante lo previsto en los apartados anteriores, el Juez o Tribunal, razonándolo en sentencia, en atención a las circunstancias personales del autor y las concurrentes en la realización del hecho, podrá imponer la pena inferior en grado.\"\n\n**Por qué C es correcta:** Es la previsión literal: el Juez o Tribunal, razonándolo en sentencia, podrá imponer la pena inferior en grado.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 4 habilita a rebajar la pena, no a agravarla; no prevé imponer la pena superior en grado.\n- **B)** El artículo no prevé una suspensión sin condiciones; la facultad que otorga es imponer la pena inferior en grado.\n- **D)** El artículo no habilita a sustituir la pena por una multa en este apartado; la facultad prevista es rebajarla en grado."
+  },
+  {
+    "primary_article_id": "e75a674a-3125-4a03-9b35-f2702c38e1e1",
+    "primary_article_number": "38",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 38 LO 1/2004 (b)",
+    "question_text": "Según el artículo 171.5 del Código Penal (CP), apartado añadido por el artículo 38 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), cuando la amenaza leve se realice con armas u otros instrumentos peligrosos, ¿a quién se aplica la pena que prevé este apartado?",
+    "option_a": "A cualquier persona, sin distinción de su relación con el autor ni de las excepciones previstas en el apartado anterior.",
+    "option_b": "Exclusivamente a los ascendientes o descendientes del autor que convivan con él.",
+    "option_c": "A las mismas personas del apartado anterior de este artículo, esto es, la esposa o mujer ligada por análoga relación de afectividad.",
+    "option_d": "A alguna de las personas a las que se refiere el artículo 173.2, exceptuadas las contempladas en el apartado anterior de este artículo.",
+    "options": [
+      "A cualquier persona, sin distinción de su relación con el autor ni de las excepciones previstas en el apartado anterior.",
+      "Exclusivamente a los ascendientes o descendientes del autor que convivan con él.",
+      "A las mismas personas del apartado anterior de este artículo, esto es, la esposa o mujer ligada por análoga relación de afectividad.",
+      "A alguna de las personas a las que se refiere el artículo 173.2, exceptuadas las contempladas en el apartado anterior de este artículo."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 38 LO 1/2004 (nuevo art. 171.5 CP)",
+        "texto": "El que de modo leve amenace con armas u otros instrumentos peligrosos a alguna de las personas a las que se refiere el artículo 173.2, exceptuadas las contempladas en el apartado anterior de este artículo, será castigado"
+      },
+      "options": {
+        "0": "El apartado 5 no se aplica a cualquier persona sin distinción: se limita a las del artículo 173.2, excluyendo expresamente a las del apartado anterior.",
+        "1": "El apartado 5 remite a las personas del artículo 173.2, no exclusivamente a ascendientes o descendientes convivientes.",
+        "2": "El apartado 5 excluye expresamente a las personas del apartado anterior (esposa o pareja); esas víctimas ya están cubiertas por el apartado 4.",
+        "3": "Es la previsión literal: el apartado 5 se aplica a las personas del artículo 173.2, exceptuando a las ya contempladas en el apartado anterior."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 38 LO 1/2004 (nuevo art. 171.5 CP)**\n> \"El que de modo leve amenace con armas u otros instrumentos peligrosos a alguna de las personas a las que se refiere el artículo 173.2, exceptuadas las contempladas en el apartado anterior de este artículo, será castigado\"\n\n**Por qué D es correcta:** Es la previsión literal: el apartado 5 se aplica a las personas del artículo 173.2, exceptuando a las ya contempladas en el apartado anterior.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 5 no se aplica a cualquier persona sin distinción: se limita a las del artículo 173.2, excluyendo expresamente a las del apartado anterior.\n- **B)** El apartado 5 remite a las personas del artículo 173.2, no exclusivamente a ascendientes o descendientes convivientes.\n- **C)** El apartado 5 excluye expresamente a las personas del apartado anterior (esposa o pareja); esas víctimas ya están cubiertas por el apartado 4."
+  },
+  {
+    "primary_article_id": "e75a674a-3125-4a03-9b35-f2702c38e1e1",
+    "primary_article_number": "38",
+    "law_slug": "lo-1-2004",
+    "article_label": "Art 38 LO 1/2004 (c)",
+    "question_text": "A diferencia del apartado 4, ¿qué exige literalmente el apartado 5 del artículo 171 del Código Penal (CP), añadido por el artículo 38 de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género (LO 1/2004), para que se aplique la pena que prevé?",
+    "option_a": "Que de modo leve amenace con armas u otros instrumentos peligrosos.",
+    "option_b": "Que de modo reiterado amenace por cualquier medio idóneo para su difusión.",
+    "option_c": "Que la amenaza se dirija contra persona menor de edad o con discapacidad.",
+    "option_d": "Que el autor tenga antecedentes penales por delitos de la misma naturaleza.",
+    "options": [
+      "Que de modo leve amenace con armas u otros instrumentos peligrosos.",
+      "Que de modo reiterado amenace por cualquier medio idóneo para su difusión.",
+      "Que la amenaza se dirija contra persona menor de edad o con discapacidad.",
+      "Que el autor tenga antecedentes penales por delitos de la misma naturaleza."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Art. 38 LO 1/2004 (nuevo art. 171.5 CP)",
+        "texto": "El que de modo leve amenace con armas u otros instrumentos peligrosos a alguna de las personas a las que se refiere el artículo 173.2"
+      },
+      "options": {
+        "0": "Es el elemento diferenciador literal del apartado 5: la amenaza leve debe realizarse con armas u otros instrumentos peligrosos.",
+        "1": "El apartado 5 no exige reiteración; el elemento que añade es el uso de armas u otros instrumentos peligrosos.",
+        "2": "El apartado 5 no condiciona la pena a la edad o discapacidad de la víctima; lo distintivo es el uso de armas u otros instrumentos peligrosos.",
+        "3": "El apartado 5 no exige antecedentes penales del autor; el elemento adicional es el uso de armas u otros instrumentos peligrosos."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. 38 LO 1/2004 (nuevo art. 171.5 CP)**\n> \"El que de modo leve amenace con armas u otros instrumentos peligrosos a alguna de las personas a las que se refiere el artículo 173.2\"\n\n**Por qué A es correcta:** Es el elemento diferenciador literal del apartado 5: la amenaza leve debe realizarse con armas u otros instrumentos peligrosos.\n\n**Por qué las demás son incorrectas:**\n- **B)** El apartado 5 no exige reiteración; el elemento que añade es el uso de armas u otros instrumentos peligrosos.\n- **C)** El apartado 5 no condiciona la pena a la edad o discapacidad de la víctima; lo distintivo es el uso de armas u otros instrumentos peligrosos.\n- **D)** El apartado 5 no exige antecedentes penales del autor; el elemento adicional es el uso de armas u otros instrumentos peligrosos."
+  }
+]

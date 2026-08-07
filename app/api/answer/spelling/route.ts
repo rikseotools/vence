@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { safeParseSpellingAnswerRequest, validateSpellingAnswer, saveSpellingAnswer } from '@/lib/api/spelling-answer'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANSWER, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
+import { ipDeConfianza } from '@/lib/api/clientIp'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { getDailyLimitStatus, checkDeviceDailyUsage, getUserIdFromToken, incrementDailyCount } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
@@ -72,7 +73,7 @@ async function _POST(request: NextRequest) {
     const dailyLimit = await getDailyLimitStatus(tokenUserId)
 
     if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint)
+      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint, ipDeConfianza(request))
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
           { success: false, error: 'Has alcanzado el límite diario de preguntas del plan gratuito. Vuelve mañana o pásate a Premium para practicar sin límite.', limitReached: true },

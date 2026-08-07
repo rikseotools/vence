@@ -8,6 +8,7 @@ import {
 import { requireDuenoDelRecurso } from '@/lib/api/shared/auth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
+import { ipDeConfianza } from '@/lib/api/clientIp'
 import { getDailyLimitStatus, checkDeviceDailyUsage, incrementDailyCount, debeConsumirCupo } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
@@ -92,7 +93,7 @@ async function _POST(request: NextRequest) {
     // aplicamos el device-limit (fail-open) — un blip no debe bloquear saves.
     if (!dailyLimit.isPremium && !dailyLimit.degraded) {
       const deviceUsage = await withDbTimeout(
-        () => checkDeviceDailyUsage(deviceId, hwFingerprint),
+        () => checkDeviceDailyUsage(deviceId, hwFingerprint, ipDeConfianza(request)),
         8_000
       )
       if (deviceUsage && !deviceUsage.allowed) {

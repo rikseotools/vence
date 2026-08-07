@@ -81,6 +81,27 @@ export class AntifraudService {
   }
 
   /**
+   * Extrae la IP del cliente. Corrobora la huella de hardware antes de agrupar cuentas ([T-657]):
+   * la huella sola identifica el MODELO de móvil, no el aparato.
+   *
+   * Mismo orden de preferencia que `lib/api/clientIp.ts` en el frontend: primero las cabeceras que
+   * pone el CDN (no falsificables por el cliente), y `x-forwarded-for` al final, del que se toma
+   * el PRIMER valor (la cadena es `cliente, proxy1, proxy2`).
+   */
+  static extractIp(headers: Record<string, string | string[] | undefined>): string | null {
+    for (const h of ['cloudfront-viewer-address', 'cf-connecting-ip', 'x-real-ip', 'x-forwarded-for']) {
+      const v = headers[h];
+      const raw = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : null;
+      if (!raw) continue;
+      const primera = raw.split(',')[0].trim();
+      // `cloudfront-viewer-address` llega como `IP:puerto`; el resto, como IP a secas.
+      const sinPuerto = h === 'cloudfront-viewer-address' ? primera.replace(/:\d+$/, '') : primera;
+      if (sinPuerto) return sinPuerto;
+    }
+    return null;
+  }
+
+  /**
    * Helper puro estático — parsea User-Agent a label legible.
    * Mismo algoritmo que el frontend (port literal de `parseDeviceLabel`).
    *

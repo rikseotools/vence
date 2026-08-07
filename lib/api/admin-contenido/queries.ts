@@ -13,6 +13,7 @@ import { getDb, getAdminDb } from '@/db/client'
 import { pgTextArray } from '@/lib/api/sqlArrays'
 import { sql } from 'drizzle-orm'
 import { kindsCubiertos } from '@/lib/admin/landingSurfaces'
+import { articleInScope } from '@/lib/api/_shared/topicScopeSql'
 
 // Kinds que vigilan la landing, tomados del INVENTARIO DE SUPERFICIES (fuente única). Si mañana
 // se añade un detector de landing, esta columna lo cuenta sola — no hay una segunda lista que
@@ -156,8 +157,9 @@ export async function getContenidoOverview(): Promise<ContenidoOverview> {
                  SELECT 1 FROM questions q WHERE q.primary_article_id = a.id AND q.is_active))::int AS n_cov
         FROM topic_scope ts
         JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
-        JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-        JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+        -- article_numbers NULL = LA LEY ENTERA (T-451): unnest(NULL) no da ninguna fila y ese
+        -- scope desaparecía del cálculo de cobertura. Helper canónico (T-560), no reimplementar.
+        JOIN articles a ON a.law_id = ts.law_id AND ${articleInScope(sql`a.article_number`, sql`ts.article_numbers`)}
         WHERE length(coalesce(a.content, '')) > 40 AND a.content NOT ILIKE '%derogado%'
           AND a.article_number ~ '^[0-9]+$'
         GROUP BY tp.position_type, tp.id
@@ -354,8 +356,8 @@ export async function getArticleCoverageDetail(slug: string): Promise<CoverageDe
       SELECT tp.id AS tid
       FROM topic_scope ts
       JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active
-      JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-      JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+      -- article_numbers NULL = LA LEY ENTERA (T-451/T-560): mismo criterio que la CTE cov.
+      JOIN articles a ON a.law_id = ts.law_id AND ${articleInScope(sql`a.article_number`, sql`ts.article_numbers`)}
       WHERE tp.position_type = ${pt}
         AND length(coalesce(a.content, '')) > 40 AND a.content NOT ILIKE '%derogado%'
         AND a.article_number ~ '^[0-9]+$'
@@ -373,8 +375,8 @@ export async function getArticleCoverageDetail(slug: string): Promise<CoverageDe
     FROM topic_scope ts
     JOIN topics tp ON tp.id = ts.topic_id AND tp.is_active AND tp.id IN (SELECT tid FROM qual)
     JOIN laws l ON l.id = ts.law_id
-    JOIN LATERAL unnest(ts.article_numbers) AS an(num) ON true
-    JOIN articles a ON a.law_id = ts.law_id AND a.article_number = an.num
+    -- article_numbers NULL = LA LEY ENTERA (T-451/T-560): mismo criterio que arriba.
+    JOIN articles a ON a.law_id = ts.law_id AND ${articleInScope(sql`a.article_number`, sql`ts.article_numbers`)}
     WHERE length(coalesce(a.content, '')) > 40
       AND a.content NOT ILIKE '%derogado%'
       AND a.article_number ~ '^[0-9]+$'

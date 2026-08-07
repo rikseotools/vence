@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/psychometric-answer'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ANON_ANSWER } from '@/lib/api/rateLimit'
+import { ipDeConfianza } from '@/lib/api/clientIp'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, getUserIdFromToken } from '@/lib/api/dailyLimit'
 import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromRequest } from '@/lib/api/deviceLimit'
 // ============================================
@@ -78,7 +79,7 @@ return NextResponse.json(
 
     // Shared device daily limit (solo free users — premium bypass)
     if (!dailyLimit.isPremium) {
-      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint)
+      const deviceUsage = await checkDeviceDailyUsage(deviceId, hwFingerprint, ipDeConfianza(request))
       if (deviceUsage && !deviceUsage.allowed) {
         return NextResponse.json(
           {

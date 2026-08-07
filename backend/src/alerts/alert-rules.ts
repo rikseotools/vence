@@ -5611,6 +5611,68 @@ export const RULE_DEVICE_LIMIT_MUDO: AlertRule<{
   cooldownMin: 1440,
 };
 
+/**
+ * El muro del cupo diario está parando a gente que no ha respondido nada.
+ *
+ * ── POR QUÉ EXISTE (T-657, 07/08/2026) ──────────────────────────────────────
+ * Es el reverso de `device_limit_mudo`, que vigila que el enforcement no se quede callado. Este
+ * vigila lo contrario: que no se pase de frenada con quien no ha hecho nada.
+ *
+ * El caso que lo motiva: la huella de hardware v2 agrupaba cuentas ella sola, y como identifica el
+ * MODELO de móvil y no el aparato, juntaba a desconocidos (125 huellas compartidas por 369 cuentas;
+ * la peor, 18 cuentas de 15 ciudades). El día que se midió había **59 cuentas free topadas sin
+ * haber respondido una sola pregunta**, 49 de ellas con cero. Lo descubrió un usuario escribiendo
+ * a soporte, no una alerta: el evento del servidor no se emitía porque el muro salta ANTES de
+ * responder, así que la petición nunca llegaba a `answer-and-save`.
+ *
+ * La señal es `propias = 0`: alguien a quien se le dice "has agotado tu cupo" sin haber gastado
+ * nada. Un caso suelto es normal (dos cuentas reales en el mismo móvil); una docena al día
+ * significa que el ancla está volviendo a agrupar a quien no debe.
+ */
+export const RULE_MURO_CUPO_SIN_CONSUMO: AlertRule<{
+  usuarios: number;
+  eventos: number;
+}> = {
+  name: 'muro_cupo_sin_consumo',
+  severity: 'error',
+  query: sql`
+    SELECT
+      COUNT(DISTINCT user_id)::int AS "usuarios",
+      COUNT(*)::int                AS "eventos"
+      FROM observable_events
+     WHERE event_type = 'device_daily_limit_muro'
+       AND ts >= NOW() - INTERVAL '24 hours'
+       AND COALESCE((metadata->>'propias')::int, 0) = 0
+  `,
+  // Calibrado sobre lo medido el 07/08: con el ancla corroborada quedan 2 casos legítimos al día
+  // (cuentas que de verdad comparten aparato). Una docena es una regresión del ancla.
+  shouldFire: (rows) => (rows[0]?.usuarios ?? 0) >= 10,
+  buildNotification: (rows) => {
+    const u = rows[0]?.usuarios ?? 0;
+    return {
+      title: `Muro del cupo a ${u} usuarios que no han respondido nada`,
+      body:
+        `En 24 h, ${u} cuentas free han visto el muro de "cupo agotado" con CERO preguntas ` +
+        `respondidas por ellas. Eso es gente legítima sin poder estudiar.\n\n` +
+        `Causa típica: el ancla vuelve a agrupar cuentas que no comparten aparato. La huella v2 ` +
+        `identifica el MODELO de móvil, no el dispositivo, y por eso solo debe agrupar cuando la ` +
+        `corrobora una IP compartida (get_device_daily_usage_v3).\n\n` +
+        `Comprobar por este orden:\n` +
+        `  1. ¿Se está pasando la IP? → si llega NULL, la huella agrupa sola otra vez.\n` +
+        `     Mirar que los 5 llamadores usen ipDeConfianza(), no getClientIp().\n` +
+        `  2. ¿Sigue el registro de IP de sesión al 100%? → ver regla ip_sesion_caida. Sin IP no ` +
+        `hay corroboración posible y el ancla se queda sola.\n` +
+        `  3. ¿Cuántas cuentas cuelgan de la peor huella? →\n` +
+        `     SELECT hw_fingerprint, count(DISTINCT user_id) FROM user_devices ` +
+        `WHERE hw_fingerprint LIKE 'fp2\\_%' GROUP BY 1 ORDER BY 2 DESC LIMIT 5;\n\n` +
+        `Runbook: docs/runbooks/revisar-fraudes.md §límite por dispositivo.`,
+      metadata: { usuarios: u, eventos: rows[0]?.eventos ?? 0 },
+      fingerprint: 'muro_cupo_sin_consumo',
+    };
+  },
+  cooldownMin: 720,
+};
+
 
 /**
  * El registro de IP de sesión se ha caído: un WRITER que deja de escribir.
@@ -6885,6 +6947,7 @@ export const ALERT_RULES: AlertRule[] = [
   // Enforcement por dispositivo mudo (2026-07-30, T-304): un bloqueo que no ocurre no emite
   // nada, así que el silencio hay que vigilarlo a propósito. Tres meses sin cortar.
   RULE_DEVICE_LIMIT_MUDO as AlertRule,
+  RULE_MURO_CUPO_SIN_CONSUMO as AlertRule,
   RULE_HTTP_5XX_SPIKE as AlertRule,
   // Catch-all (2026-07-29): cualquier señal `error` con volumen manda email aunque
   // nadie le haya escrito una regla. Cierra el hueco estructural de "1 regla por tipo".

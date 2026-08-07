@@ -339,6 +339,18 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/completitud-leyes.md',
     claudeHace: 'localiza las leyes que sirven en temas vivos sin verificar contra su fuente oficial (`false_green` = marcada "actualizada" sin evidencia, `no_source` = sin URL de fuente, `never_verified`, `incomplete` = faltan artículos), registra la fuente que falte, compara artículo por artículo contra el boletín oficial e importa lo que falte (verbatim, doble auditoría) — NUNCA marca verificada sin evidencia.',
   },
+  ley_derogada_servida: {
+    title: 'Ley DEROGADA ENTERA que seguimos sirviendo en el temario',
+    triggerPhrase: 'revisa las leyes derogadas',
+    runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
+    claudeHace:
+      'corre `npm run laws:derogadas` (pregunta a la API del BOE por cada ley activa con URL, ' +
+      'una a una) y, por cada hallazgo, importa la norma que la sustituye y RE-ANCLA el temario. ' +
+      'NUNCA quita la ley sin más: el programa oficial suele decir que las referencias se ' +
+      'entienden hechas a la norma que la sustituya, así que retirarla dejaría el tema vacío en ' +
+      'vez de actualizado. Distingue derogación TOTAL de PARCIAL (un artículo caído no retira ' +
+      'una ley del temario).',
+  },
   law_source_changed: {
     title: 'La fuente oficial de una ley ha CAMBIADO desde que la verificamos',
     triggerPhrase: 'revisa los cambios de fuentes legales',
@@ -553,6 +565,26 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
       'equivocada: «¿quién publica la memoria?» respondía «el Instituto Andaluz de la Mujer» cuando el artículo ' +
       'solo dice que ASESORA. Mira también el epígrafe del tema: si dice «aspectos generales de la normativa», el ' +
       'contenido interno de un Plan no entra en programa.',
+  },
+  corpus_ajeno: {
+    title: 'Documentos de convocatoria clonados de OTRO proceso del mismo portal',
+    triggerPhrase: 'revisa los corpus de convocatoria',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    comando: 'audit:corpus-ajeno',
+    claudeHace:
+      'corre `npm run audit:corpus-ajeno` (BAJO DEMANDA, NO pinga el badge; acota con `-- --slug X`). ' +
+      'Pregunta lo que ningún otro detector pregunta: **de quién son los documentos que respaldan esta ' +
+      'convocatoria**. Nace de [T-654], donde `auxiliar-administrativo-diputacion-cadiz` (C2) tenía 8 ' +
+      'documentos clonados de la carpeta `admto_a` —el proceso de Administrativo (C1), otro cuerpo— ' +
+      'mientras su `programa_url` apuntaba a `aux_administrativo`: la landing publicaba una cifra de ' +
+      'plazas cuyo respaldo documental era de otra oposición. `plazas_afirmadas_sin_documento` y ' +
+      '`plazas_reserva_sin_declarar` avisaron con razón, pero señalaban el síntoma; la causa no la ' +
+      'miraba nadie. Para cada línea: abre el portal, comprueba de qué proceso son los documentos y, si ' +
+      'son de otro, despégalos y clona los del bueno con `backend/scripts/clonar-documento.ts`. Espera ' +
+      '≈50 % de falsos positivos por RUIDO DE PORTAL (un sitio que sirve el mismo proceso desde ' +
+      'secciones distintas) — por eso es on-demand. Mira el recuento de NO JUZGABLES que imprime: sobre ' +
+      'esas el detector no opina, y eso no es que estén bien. NUNCA repuntar el `programa_url` para que ' +
+      '«cuadre» con los documentos: eso arregla el detector y deja la mentira publicada.',
   },
   scope_cross_tema_dup: {
     title: 'Misma ley duplicada entre temas (repartir por materia)',

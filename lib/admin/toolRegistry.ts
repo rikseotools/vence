@@ -625,6 +625,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  audit_corpus_ajeno: {
+    titulo: '¿Los documentos que respaldan una convocatoria salen del sitio de su fuente oficial?',
+    ruta: 'scripts/convocatoria/audit-corpus-ajeno.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/provenance-convocatorias.md',
+    notas:
+      '`npm run audit:corpus-ajeno [-- --slug X] [--todo] [--json]`. SOLO LEE. Núcleo puro en ' +
+      '`lib/convocatoria/corpusAjeno.cjs` (7 tests). Nace de [T-654]: Cádiz tenía 8 documentos ' +
+      'clonados de la carpeta `admto_a` (Administrativo C1, OTRO cuerpo) con su `programa_url` ' +
+      'apuntando a `aux_administrativo`, y publicaba plazas respaldadas por otra oposición a 171 ' +
+      'usuarios. **Punto ciego que cubre:** `plazas_afirmadas_sin_documento` y ' +
+      '`plazas_reserva_sin_declarar` miraban esa cifra y avisaron con razón, pero **ninguno pregunta ' +
+      'de QUIÉN son los documentos** — señalaban el síntoma. ⚠️ **El primer diseño (comparar el TEXTO: ' +
+      '¿los documentos nombran el cuerpo?) se descartó por la medición: 70 de 125 activas daban ' +
+      '«ajeno», el 56 %**, porque nuestro `nombre` es comercial y el boletín usa la denominación ' +
+      'oficial («Auxiliar Administrativo del Estado» es «Cuerpo General Auxiliar…»: 422 apariciones de ' +
+      '«auxiliar» y CERO de la frase). Lo que delató a Cádiz fue la RUTA, y eso es lo que mide. ' +
+      'Medido: 163 convocatorias con fuente oficial → 42 juzgables → 4 hallazgos, 2 ciertos (auxiliar-enfermeria-geriatria-diputacion-cadiz, ' +
+      'misma contaminación de `admto_a`; auxiliar-administrativo-ayuntamiento-valladolid, con ' +
+      'documentos de «técnico de administración general» y «trabajador social») + 2 de ruido de ' +
+      'portal. Precisión ≈50 % → BAJO DEMANDA, no pinga el badge (mismo criterio que ' +
+      '`audit:vinculo-vecino` e `audit:instrumento-derivado`).',
+  },
   sim_baja_emails_vivo: {
     titulo: 'Comprobar que el SERVIDOR DESPLEGADO respeta la casilla de la baja masiva de emails',
     ruta: 'scripts/sim/sim-baja-emails-vivo.cjs',
@@ -2408,13 +2431,25 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'mayoría bloqueadas a propósito (PII/operativas) y fuera del veredicto.',
   },
   migraciones_rls_pendientes: {
-    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: aplicarla es manual, y nadie lo comprobaba',
+    titulo: 'Una migración RLS mergeada a `main` no llega sola a RDS: detectar Y aplicar, en la misma herramienta',
     ruta: 'scripts/migraciones-rls-pendientes.cjs',
     estado: 'vivo',
-    escribe: [],
+    escribe: ['pg_policies'],
     runbook: 'docs/runbooks/tareas-pendientes.md',
     notas:
-      '`npm run migraciones:rls-pendientes` (lee `VENCE_LECTOR_URL` de `.env.local`). [T-645]. ' +
+      '**[T-658] Ahora también APLICA (`-- --aplicar <f.sql>`) y CORRE EN CI.** Detectar y aplicar ' +
+      'van juntos a propósito: tenerlos separados es lo que produjo el hueco — el canario decía ' +
+      '«pendiente» y el paso siguiente era una consola a mano que nadie daba, así que el detector ' +
+      'existía desde el 07/08 y no corría en NINGÚN sitio. Dos puertas antes de escribir: el ' +
+      'fichero tiene que estar entre las pendientes recién calculadas Y pasar una LISTA BLANCA de ' +
+      'sentencias (`esAplicableSinRiesgo`, núcleo puro con tests) — `20260502_security_advisor_' +
+      'fixes.sql` se rechaza por su `REVOKE`, aunque el propio canario lo liste. Cada fichero en su ' +
+      'transacción y, al terminar, el pendiente se RECALCULA contra el catálogo (verificar, no ' +
+      'declarar). El veredicto (exit 1 → gate de CI en `test.yml`) lo fijan SOLO las de roles ' +
+      '`vence_*`; las de la era Supabase (`authenticated`) se imprimen pero no lo tiñen — un gate ' +
+      'rojo a diario se deja de mirar ([T-659] decide qué hacer con ellas). Aplicadas el 07/08 las ' +
+      '4 que dejaban 6 tablas ciegas: canario del rol lector 20/25 → **25/25**. ' +
+      'Lee `VENCE_LECTOR_URL` o, en su defecto, `DATABASE_URL` (la consulta es de catálogo). [T-645]. ' +
       'Ningún `scripts/deploy-*.sh` ni `.github/workflows/*.yml` menciona `supabase/migrations` ' +
       '(comprobado por grep): mergear a `main` no aplica nada contra RDS, es un paso manual sin ' +
       'dueño. Medido el 07/08: `20260805_rls_test_questions_lector.sql` (T-573) y ' +
@@ -2917,6 +2952,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`npm run sim:candado-deploy` (dos adquisiciones reales, 8 casos) porque un test de texto ' +
       'habría dado verde también con el flock solo, que era justo el fallo.',
   },
+  auditar_leyes_derogadas: {
+    titulo: '¿Servimos alguna ley que el BOE da por DEROGADA ENTERA?',
+    ruta: 'scripts/laws/auditar-derogadas.cjs',
+    estado: 'vivo',
+    escribe: ['content_health_findings', 'observable_events'],
+    runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
+    notas:
+      'Simula por defecto; `--escribe` publica los hallazgos (kind `ley_derogada_servida`) y emite ' +
+      'evento. Pregunta a la MISMA API del BOE que ya usa `annulledProvisions` (el análisis de ' +
+      'referencias posteriores), así que no estrena una tercera forma de preguntar lo mismo. ' +
+      'El criterio vive en `lib/laws/derogacion.ts` (12 tests). Lo que lo hace usable es distinguir ' +
+      'derogación TOTAL de PARCIAL: al estrenarlo marcó el RDL 8/2015 (Ley General de la Seguridad ' +
+      'Social, 674 preguntas en 47 temas) porque su texto empieza por coma como las totales — lo que ' +
+      'caía era un artículo. ON-DEMAND a propósito: 606 llamadas al BOE por pasada para una señal ' +
+      'que cambia dos o tres veces al año. Origen: feedback `1627e0d4`, un usuario premium que ' +
+      'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
+  },
+
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
