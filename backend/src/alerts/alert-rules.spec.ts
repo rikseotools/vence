@@ -925,7 +925,7 @@ describe('RULE_CI_INTEGRACION_ROJO (T-370 — el gate que estuvo ≥5 días mudo
   it('distingue «no verificó nada» de «verificó y hay rojos»', () => {
     const sinBd = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('sin_base_de_datos')]);
     expect(sinBd.title).toMatch(/NO está verificando nada/i);
-    expect(sinBd.body).toMatch(/DATABASE_URL_READONLY/);
+    expect(sinBd.body).toMatch(/DATABASE_URL_REPLICA/);
 
     const rojos = RULE_CI_INTEGRACION_ROJO.buildNotification([fila('tests_en_rojo')]);
     expect(rojos.title).toMatch(/en rojo/i);
