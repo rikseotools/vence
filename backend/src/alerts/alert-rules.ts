@@ -5026,6 +5026,95 @@ export const RULE_FILTERED_VALIDATION_REJECTED_SPIKE: AlertRule<{
  * telemetría" (muestrear) en vez de "bug del cliente". Esta regla convierte esa señal en
  * alerta: un endpoint que domina la telemetría con ratio anómalo por usuario ES un bug.
  */
+/**
+ * SESIONES VÁLIDAS RECIBIENDO 401 EN MASA — el incidente que nadie vio (T-685, 07/08/2026).
+ *
+ * ## Por qué hacía falta, y por qué NINGUNA regla lo cazaba
+ *
+ * El 07/08, [T-565] añadió —con razón— guardas de propiedad a `exam/*`, `psychometric/*` y
+ * `user-stats`, y varios clientes del navegador llamaban SIN token. Resultado: **8.085 respuestas
+ * 401 en `/api/exam/pending` a 263 usuarios y 4.151 en `/api/v2/user-stats` a 260**, durante seis
+ * horas. De 276 usuarios afectados, **136 (49 %) no respondieron ni una pregunta después de su
+ * primer 401**: la mitad se quedó sin poder estudiar.
+ *
+ * No se encendió **nada**. `client_error_spike` excluye 401/403/404/409/429 a propósito (son
+ * esperados en el wrapper de fetch), y `auth_token_mint_waste` mira las acuñaciones, no los
+ * rechazos — su propio comentario dice que se hizo «para no quedar ciegos ante *sesiones válidas
+ * reciben 401, nadie mintea*», y ese hueco seguía abierto. Lo destapó **una usuaria escribiendo a
+ * soporte**.
+ *
+ * ## La señal es NORMALIZADA, y esa es toda la lección
+ *
+ * El recuento a pelo NO sirve: baja solo porque hay menos gente. Durante el incidente se leyó una
+ * bajada de 401 como «el arreglo está entrando» cuando era la hora valle — y normalizado, esa hora
+ * era **el pico**. Así que se mide en **401 por cada 100 respuestas guardadas** en la misma
+ * ventana, que es la actividad real de la plataforma.
+ *
+ * ## Umbral, medido sobre el incidente entero (ventanas reales de 15 min, 12 h)
+ *
+ *   · antes (09:45-14:45): **0-4,5** por 100 respuestas, 0-3 usuarios → calla en las 20 ventanas
+ *   · durante (15:00-20:45): **122-1.167** por 100, 19-55 usuarios → dispara en las 24
+ *   · tras el deploy (21:00+): 8,3 → 3,5 → calla
+ *
+ * Con ≥25/100 y ≥15 usuarios hay un factor **27** entre el peor caso sano y el mejor del
+ * incidente. No es un umbral elegido a ojo: es el hueco que dejan los datos.
+ *
+ * `/api/auth/token` queda FUERA: su 401 anónimo es contrato conocido y está silenciado en origen
+ * (ver `withErrorLogging`); incluirlo metería miles de eventos sanos y mataría la señal.
+ */
+export const RULE_SESIONES_CON_401_EN_MASA: AlertRule<{
+  err: number;
+  usuarios: number;
+  respuestas: number;
+  por100: number;
+  topEndpoint: string | null;
+}> = {
+  name: 'sesiones_401_en_masa',
+  severity: 'critical',
+  query: sql`
+    WITH errores AS (
+      SELECT COUNT(*)::int AS err,
+             COUNT(DISTINCT user_id)::int AS usuarios,
+             MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+        FROM observable_events
+       WHERE http_status = 401
+         AND user_id IS NOT NULL
+         AND endpoint IS NOT NULL
+         AND endpoint <> '/api/auth/token'
+         AND ts > NOW() - INTERVAL '15 minutes'
+    ), actividad AS (
+      SELECT COUNT(*)::int AS respuestas
+        FROM test_questions
+       WHERE created_at > NOW() - INTERVAL '15 minutes'
+    )
+    SELECT e.err, e.usuarios, e."topEndpoint", a.respuestas,
+           ROUND(e.err * 100.0 / GREATEST(a.respuestas, 1), 1)::float AS "por100"
+      FROM errores e CROSS JOIN actividad a
+  `,
+  // ≥15 usuarios distintos para que no sea el navegador de uno solo, y ≥25 rechazos por cada 100
+  // respuestas guardadas. Sin actividad (madrugada) el denominador es 1 y el ratio se dispara,
+  // pero el mínimo de usuarios lo contiene: sin gente tampoco hay 15 personas recibiendo 401.
+  shouldFire: (rows) =>
+    (rows[0]?.usuarios ?? 0) >= 15 && (rows[0]?.por100 ?? 0) >= 25,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `Sesiones válidas recibiendo 401 — ${r?.usuarios ?? 0} usuarios, ${r?.por100 ?? 0} por cada 100 respuestas`,
+      body: `Usuarios CON sesión están recibiendo 401 en masa: ${r?.err ?? 0} rechazos a ${r?.usuarios ?? 0} personas en 15 min, con solo ${r?.respuestas ?? 0} respuestas guardadas en la plataforma. Endpoint más afectado: ${r?.topEndpoint ?? '(varios)'}.\n\nEsto NO es el 401 anónimo de contrato: son sesiones identificadas a las que el servidor rechaza. Lo normal es 0-4 por cada 100 respuestas; el incidente del 07/08 estuvo entre 122 y 1.167 durante seis horas y dejó a la mitad de los afectados sin poder estudiar.\n\nCAUSA MÁS PROBABLE (es la que ya pasó): una ruta con guarda de propiedad (\`requireDuenoDelRecurso\` / \`requireUsuarioPropio\`) cuyo cliente llama SIN mandar el token. El guardarraíl que lo cruza es __tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts.\n\nQuién falla:\n  SELECT endpoint, COUNT(*), COUNT(DISTINCT user_id)\n  FROM observable_events\n  WHERE http_status=401 AND user_id IS NOT NULL AND ts > NOW() - INTERVAL '1 hour'\n  GROUP BY 1 ORDER BY 2 DESC;`,
+      metadata: {
+        err: r?.err ?? 0,
+        usuarios: r?.usuarios ?? 0,
+        respuestas: r?.respuestas ?? 0,
+        por100: r?.por100 ?? 0,
+        topEndpoint: r?.topEndpoint ?? null,
+        windowMin: 15,
+      },
+      fingerprint: `sesiones_401_${r?.topEndpoint ?? 'varios'}`,
+    };
+  },
+  cooldownMin: 60,
+};
+
 export const RULE_AUTH_TOKEN_MINT_FLOOD: AlertRule<{
   minted: number;
   users: number;
@@ -7136,6 +7225,9 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_NETWORK_RETRY_EXHAUSTED_SPIKE as AlertRule,
   RULE_LAWS_CONFIGURATOR_DEGRADED as AlertRule,
   // Flood de acuñación de token (bug caché del poll cliente, 15/07 caso Natalia)
+  // Sesiones VÁLIDAS recibiendo 401 en masa (07/08, T-685): el hueco que dejó pasar seis
+  // horas de incidente sin encender nada. Señal normalizada por actividad, no recuento a pelo.
+  RULE_SESIONES_CON_401_EN_MASA as AlertRule,
   RULE_AUTH_TOKEN_MINT_FLOOD as AlertRule,
   // Su hermano FINO Y ANCHO (28/07, T-210): pocas acuñaciones por usuario pero
   // repartidas entre cientos → 45 reales/usuario/hora con TTL de 1 h, invisibles
