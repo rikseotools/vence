@@ -49,7 +49,16 @@ export class CanaryPdfQueueService implements CanaryProbe {
     const res = (await this.db.execute(sql`
       SELECT
         count(*) FILTER (WHERE status = 'pending')::int AS pending,
-        count(*) FILTER (WHERE status = 'failed')::int AS dlq,
+        -- OJO: el DLQ que PAGINA son solo los que un reintento podria arreglar (T-648). Los
+        -- irrecuperables se cuentan aparte y se publican: no se esconden, pero no despiertan a
+        -- nadie. El criterio vive en lib/temario/pdf/dlqTriage.cjs (SQL_IRRECUPERABLE); aqui va
+        -- su espejo porque el backend no puede importar del frontend, y el guardarrail de
+        -- paridad comprueba que no divergen. (Sin acentos ni comillas: va dentro de un template
+        -- literal de TS, y una comilla invertida aqui dentro lo parte.)
+        count(*) FILTER (WHERE status = 'failed'
+          AND NOT (coalesce(last_error, '') LIKE '%tema_no_encontrado%'))::int AS dlq,
+        count(*) FILTER (WHERE status = 'failed'
+          AND coalesce(last_error, '') LIKE '%tema_no_encontrado%')::int AS dlq_irrecuperable,
         count(*) FILTER (WHERE status = 'running'
           AND claimed_at < now() - make_interval(secs => ${this.STALE_RUNNING_SECONDS}))::int AS stale_running,
         COALESCE(
@@ -60,18 +69,22 @@ export class CanaryPdfQueueService implements CanaryProbe {
     `)) as unknown as Array<{
       pending: number;
       dlq: number;
+      dlq_irrecuperable: number;
       stale_running: number;
       oldest_pending_sec: number;
     }>;
 
-    const row = res[0] ?? { pending: 0, dlq: 0, stale_running: 0, oldest_pending_sec: 0 };
+    const row = res[0] ?? { pending: 0, dlq: 0, dlq_irrecuperable: 0, stale_running: 0, oldest_pending_sec: 0 };
     const pending = Number(row.pending ?? 0);
     const dlq = Number(row.dlq ?? 0);
+    const dlqIrrecuperable = Number(row.dlq_irrecuperable ?? 0);
     const staleRunning = Number(row.stale_running ?? 0);
     const oldestPendingSec = Number(row.oldest_pending_sec ?? 0);
 
     const backlogStuck = pending > 0 && oldestPendingSec > this.MAX_PENDING_AGE_SECONDS;
-    const metadata = { pending, dlq, staleRunning, oldestPendingSec };
+    // `dlqIrrecuperable` va SIEMPRE en la metadata, dispare o no: lo que no se publica deja de
+    // mirarse, y estos jobs son una señal real (usuarios con una personalizada sin temas).
+    const metadata = { pending, dlq, dlqIrrecuperable, staleRunning, oldestPendingSec };
 
     if (dlq > 0 || staleRunning > 0 || backlogStuck) {
       const reasons: string[] = [];

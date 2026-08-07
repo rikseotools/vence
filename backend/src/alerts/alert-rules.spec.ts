@@ -49,6 +49,7 @@ import {
   RULE_FRONTEND_SATURATION,
   RULE_EVENT_LOOP_LAG,
   RULE_AUTH_TOKEN_MINT_FLOOD,
+  RULE_SESIONES_CON_401_EN_MASA,
   RULE_AUTH_TOKEN_MINT_WASTE,
   RULE_CLIENT_METHOD_NOT_ALLOWED,
   RULE_CHECKOUT_SYNC_MUDO,
@@ -2872,5 +2873,59 @@ describe('RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED (sonda continua de scope — T
     expect(
       ALERT_RULES.some((r: { name: string }) => r.name === 'question_out_of_topic_scope_served'),
     ).toBe(true);
+  });
+});
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+describe('RULE_SESIONES_CON_401_EN_MASA', () => {
+  // Las cifras son las MEDIDAS en el incidente del 07/08 (ventanas reales de 15 min), no
+  // inventadas: si alguien toca el umbral, aquí se ve contra qué se calibró.
+  const v = (usuarios: number, por100: number, err = 100, respuestas = 100) => [
+    { err, usuarios, respuestas, por100, topEndpoint: '/api/exam/pending' },
+  ];
+
+  it('DISPARA en el peor tramo del incidente (45 usuarios, 477 por 100 respuestas)', () => {
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(45, 477.5, 1060, 222))).toBe(true);
+  });
+
+  it('DISPARA también en el tramo más flojo del incidente (35 usuarios, 122 por 100)', () => {
+    // El mínimo medido durante las seis horas. Si el umbral subiera de 122, el incidente
+    // dejaría ventanas sin cubrir.
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(35, 122.3, 417, 341))).toBe(true);
+  });
+
+  it('CALLA en el peor tramo SANO medido (3 usuarios, 4,5 por 100)', () => {
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(3, 4.5, 19, 425))).toBe(false);
+  });
+
+  it('CALLA tras el deploy que lo arregló (4 usuarios, 8,3 por 100)', () => {
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(4, 8.3, 10, 120))).toBe(false);
+  });
+
+  it('el ratio solo NO basta: una persona con su navegador roto no despierta a nadie', () => {
+    // Sin el mínimo de usuarios, un único cliente con la sesión caducada y la app abierta
+    // dispararía la alerta a las 4 de la mañana. Es el modo de fallo de las alertas que se
+    // acaban silenciando.
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(1, 900, 900, 100))).toBe(false);
+  });
+
+  it('los usuarios solos tampoco: sin ratio alto es ruido de fondo normal', () => {
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire(v(40, 3.1, 30, 970))).toBe(false);
+  });
+
+  it('sin filas no revienta ni dispara', () => {
+    expect(RULE_SESIONES_CON_401_EN_MASA.shouldFire([])).toBe(false);
+  });
+
+  it('cubre el hueco de client_error_spike, que excluye los 401 A PROPÓSITO', () => {
+    // Este test fija POR QUÉ hace falta una regla aparte: si alguien intenta «unificarlas»
+    // metiendo los 401 en la de 4xx, se rompe la exclusión que esa tiene por diseño.
+    const fuente = readFileSync(
+      join(__dirname, 'alert-rules.ts'),
+      'utf8',
+    );
+    expect(fuente).toMatch(/http_status = 401[\s\S]{0,200}endpoint <> '\/api\/auth\/token'/);
   });
 });

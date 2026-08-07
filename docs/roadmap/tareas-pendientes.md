@@ -1240,6 +1240,66 @@ escribir después.
   latido. Si el escritor no puede garantizar la escritura, que al menos el comando lo diga.
 
 **Relacionada:** [T-407] (identidad única de sesión), [T-539] (el fail-open es para personas).
+### [T-685] 🟡 [ABIERTO 07/08] Ninguna alerta vigilaba los 401: seis horas de incidente y 261 usuarios sin que se encendiera nada
+
+**Lo destapó una usuaria, no la observabilidad.** El 07/08, [T-565] añadió —con razón— guardas de
+propiedad a `exam/*`, `psychometric/*` y `user-stats`, y varios clientes del navegador llamaban SIN
+token. Seis horas de incidente:
+
+- **8.085 respuestas 401** en `/api/exam/pending` a **263 usuarios** y **4.151** en
+  `/api/v2/user-stats` a **260**.
+- De **276 usuarios** con algún 401, **136 (49 %) no respondieron ni una pregunta después del
+  primero**: la mitad se quedó sin poder estudiar.
+- **No se encendió nada propio.** `client_error_spike` **excluye 401/403/404/409/429 a propósito**
+  (son esperados en el wrapper de fetch) y `auth_token_mint_waste` mira las acuñaciones, no los
+  rechazos — su propio comentario dice que se hizo *«para no quedar ciegos ante sesiones válidas
+  reciben 401, nadie mintea»*, y ese hueco seguía abierto.
+- Se supo porque **Esther escribió a soporte** (feedback `e523eabc`).
+
+#### La señal es NORMALIZADA, y esa es toda la lección
+
+El recuento a pelo **no sirve**: baja solo porque hay menos gente. Durante el incidente se leyó una
+bajada de 401 como «el arreglo está entrando» cuando era la hora valle — y **normalizada, esa hora
+era el pico (339 por 100 respuestas)**. La regla mide **401 por cada 100 respuestas guardadas** en
+la misma ventana.
+
+#### Umbral medido sobre el incidente entero, no elegido a ojo
+
+Simulando la ventana real de la regla (15 min) sobre 12 h:
+
+| tramo | por 100 respuestas | usuarios | ¿dispara? |
+|---|---|---|---|
+| antes (09:45-14:45) | **0 – 4,5** | 0-3 | calla en las 20 ventanas |
+| durante (15:00-20:45) | **122 – 1.167** | 19-55 | **dispara en las 24** |
+| tras el deploy (21:00+) | 8,3 → 3,5 | 1-4 | calla |
+
+Corte: **≥25 por 100 respuestas Y ≥15 usuarios distintos** → factor **27** entre el peor tramo sano
+y el más flojo del incidente. Los dos umbrales hacen falta: el ratio solo dispararía con una persona
+y su navegador roto a las 4 de la mañana, y los usuarios solos serían ruido de fondo.
+
+`/api/auth/token` queda **fuera**: su 401 anónimo es contrato conocido y ya está silenciado en
+origen; incluirlo metería miles de eventos sanos y mataría la señal.
+
+#### ✅ Hecho
+
+- `RULE_SESIONES_CON_401_EN_MASA` en `backend/src/alerts/alert-rules.ts`, severidad **critical**
+  (deja a la mitad de los afectados sin estudiar), cooldown 60 min, registrada en la lista activa.
+- El cuerpo del aviso lleva **la causa más probable** (una ruta con guarda de propiedad cuyo cliente
+  no manda token), el guardarraíl que lo cruza y la consulta para ver quién falla — no solo el
+  número.
+- **8 tests** con las cifras REALES del incidente: dispara en el peor tramo (477/100) **y en el más
+  flojo (122/100)**, calla en el peor tramo sano (4,5) y tras el deploy (8,3), y los dos casos
+  degenerados. Más uno que fija por qué no se puede «unificar» con `client_error_spike`.
+- Suite de alertas **636/636** y typecheck del backend en verde.
+
+#### ⏳ NO está viva todavía
+
+Es una regla de **backend**: no vigila nada hasta que se despliegue el backend. Hasta entonces esto
+no protege de nada — y decir lo contrario sería exactamente el error que costó el correo a Esther
+([T-678]).
+
+**Relacionadas:** [T-669] y [T-671] (el incidente), [T-675] (lo que quedó fuera del arreglo),
+[T-678] (la puerta que impide anunciar un arreglo que no está vivo).
 
 ### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
 
