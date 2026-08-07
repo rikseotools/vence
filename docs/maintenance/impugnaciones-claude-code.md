@@ -774,6 +774,14 @@ Equipo de Vence
 - **NO usar fórmulas de apertura tipo "Gracias por avisar", "gracias por ayudarnos a mejorar la plataforma"** ni "gracias por el reporte. Mucho ánimo con la oposición!". Los opositores no quieren ayudarnos, quieren resolver su asunto. NO abrir el mensaje agradeciendo el aviso: entrar directo al reconocimiento ("Tienes razón…") o a la corrección. El único agradecimiento válido es el cierre "Muchas gracias." al final.
 - Cuando el usuario tiene razón, decirlo claramente: **"Tienes razón…", SIEMPRE en PRESENTE, nunca "Tenías razón"** (Manuel, 07/08/2026, corrigiendo un borrador). El pasado insinúa que la tenía entonces y ya no, o que se le da la razón como trámite; el presente afirma que su observación es correcta. Refuerza confianza en la plataforma.
 - **NO ahondar en los fallos en el mensaje al usuario** (para no parecer incompetentes). Reconocer que el usuario tenía razón y comunicar la mejora aplicada, pero **sin detallar/enumerar los defectos internos** (explicación cruzada de otra pregunta, referencias de artículos intercambiadas, clave equivocada, etc.). Basta un "Hemos mejorado la explicación para que quede más clara" + el punto clave correcto. El análisis exhaustivo del fallo es para el diagnóstico interno, no para el email. Compatible con la línea anterior: se puede decir "Tienes razón" sin listar todo lo que estaba mal.
+- **NI SIQUIERA "el fallo era nuestro" / "es culpa nuestra" (Manuel, 07/08/2026).** No es un matiz
+  de la regla anterior, es un escalón más: no se trata solo de no DETALLAR el fallo, sino de no
+  **proclamar la culpa**. «Tienes razón» ya reconoce lo que la persona necesita oír; añadir de
+  quién era el fallo no le aporta nada y solo nos pinta de incompetentes. Escribe QUÉ le pasaba a
+  ELLA y qué cambia para ella, sin adjudicar responsabilidad:
+  · ❌ *«Tienes razón, y el fallo era nuestro: la corrección devolvía un error»*
+  · ✅ *«Tienes razón: al pulsar para corregir el examen te salía un error en lugar de la corrección»*
+  Sale del borrador para Emma (feedback `afb8d4ae`, incidente [T-669]/[T-670]).
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
 ### 6.0.bis Cuando NO tiene razón: enseñarle, no ganarle la discusión (31/07/2026)
