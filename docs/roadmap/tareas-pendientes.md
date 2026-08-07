@@ -1518,6 +1518,38 @@ estaría añadiendo una TERCERA señal al lado de dos que ya se ignoran. El escr
 - Scope actual del tema 7 sobre la vieja: arts. 1-47 (coherente con «naturaleza y competencias»).
   Preguntas activas colgando de la ley vieja: **17**.
 
+#### ✅ RE-ANCLADAS 3 de 5 (07/08) — con el detector confirmándolo solo (5 → 3 hallazgos)
+| oposición · tema | de (derogada) | a (vigente) | scope nuevo |
+|---|---|---|---|
+| aux. admin. Canarias T7 | Ley 8/2015 Cabildos | **Ley 3/2026 Cabildos** (BOE-A-2026-17189, 128 arts importados) | arts 1-48 (Tít. Preliminar «naturaleza» + Tít. I «competencias») |
+| policía nacional T11 | RD 557/2011 (REx) | **RD 1155/2024** (BOE-A-2024-24099, 265 arts) | arts 215-257 (Tít. XIV «Infracciones… y su régimen sancionador») |
+| guardia civil T17 | RD 806/2014 | **RD 1125/2024** (BOE-A-2024-22935, 14 arts) | arts 1,2,8,9,10 (caps. I y III) |
+
+**El mapeo NO se hizo a ojo**: en los tres casos el epígrafe nombra la norma vieja y pide bloques
+concretos, y los títulos/capítulos de la norma nueva se llaman IGUAL (en Guardia Civil, palabra por
+palabra: «Objeto y ámbito de aplicación» y «Modelo de gobernanza en el ámbito de las tecnologías de
+la información y las comunicaciones»). Se usó `scripts/scope/arbol-ley-boe.cjs`, que ya existía.
+**Y se aprovechó para corregir sobre-inclusión heredada**: el scope viejo de Guardia Civil traía
+además los arts. 11-13 y un «preámbulo» que el epígrafe no pide.
+
+**Coste, dicho claro:** los temas pierden las preguntas de la norma muerta (Canarias 17, Policía 8,
+Guardia Civil 21) porque las nuevas aún no tienen ninguna. Es lo correcto —estudiar normativa
+derogada es peor que estudiar menos— pero deja un hueco hasta generarlas.
+
+#### ⏳ LO QUE QUEDA (estado exacto al cerrar la sesión del 07/08)
+1. **Ley 4/2005 Igualdad Euskadi** → Decreto Legislativo 1/2023, de 16 de marzo. 2 temas, 10 preguntas. SIN tocar.
+2. **RD 187/2008 Red Hospitalaria Defensa** → RD 931/2025, de 21 de octubre. 1 tema (TCAE SERMAS T3), 1 pregunta. SIN tocar.
+3. **Orden HFP/134/2018** (Gobierno Abierto): **ya estaba marcada `is_derogated` de ANTES y nadie la retiró** — 16 preguntas en DOS oposiciones (aux. admin. Estado T6 y administrativo Estado T6). El BOE no la reporta como derogación total, así que **mi barrido no la ve**: alguien la marcó a mano. Hay que mirar por qué y decidir.
+4. **Generar preguntas** de los tres bloques re-anclados (pipeline normal con doble auditoría).
+5. **Revisar las preguntas huérfanas** de las normas viejas: la materia se re-regula, así que muchas pueden ser recuperables re-ancladas al artículo equivalente. Ninguna se ha tocado ni desactivado.
+
+#### 🔎 Y un HALLAZGO NUEVO que merece su propio detector
+**4 leyes marcadas `is_derogated` seguían escopadas en 6 temas de 6 oposiciones.** Marcar no retira:
+la Orden HFP/134/2018 llevaba marcada desde antes de hoy y seguía sirviéndose. Esa comprobación es
+**solo de BD (sin llamar al BOE)**, así que cabe en el barrido NOCTURNO —a diferencia de
+`laws:derogadas`, que es on-demand por las 606 llamadas— y cerraría el hueco entre «lo sabemos» y
+«lo hemos quitado».
+
 #### Pendiente (el trabajo de contenido, que es lo caro)
 Por cada una: importar la norma que la sustituye y **RE-ANCLAR** el temario. **NUNCA quitar la ley
 sin más** — el programa oficial suele decir que las referencias se entienden hechas a la norma que
