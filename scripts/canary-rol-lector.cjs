@@ -60,6 +60,10 @@ const DEBE_LEER = [
   // [T-038] relink de needs_human + reescritura de explicaciones: sin esto no se sabe qué campaña
   // marcó cada pregunta ni con qué sugerencia de artículo. Ver 20260805_rls_ai_verification_results_lector.sql.
   ['ai_verification_results', 'qué campaña marcó cada pregunta needs_human y con qué sugerencia'],
+  // [T-640] detector seguimiento_fuente_error / auditoría de fuentes ciegas: sin esto no se puede
+  // leer error_message/http_status del último check para diagnosticar el MOTIVO del fallo. Ver
+  // 20260807_rls_convocatoria_seguimiento_checks_lector.sql.
+  ['convocatoria_seguimiento_checks', 'el histórico de checks del cron de seguimiento (error_message, http_status)'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
