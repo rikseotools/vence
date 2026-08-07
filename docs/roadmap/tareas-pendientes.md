@@ -1032,6 +1032,61 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 - **Diagnóstico del corpus, confirmado por la URL y no por el texto:** los 8 documentos clonados vienen de la carpeta **`admto_a`** (Administrativo, C1) mientras `programa_url` apunta a **`aux_administrativo`**. No fue un enganche a la convocatoria equivocada: **se clonó del proceso vecino**. Por eso el corpus no contiene ni una vez «Auxiliar Administrativ».
 - **Corrige la primera lectura de esta ficha:** NO había que sospechar de la cifra publicada, sino de **cómo está guardada** y de **de dónde salieron los documentos**. Los dos detectores de plazas tenían razón en avisar y el fallo real era de provenance.
 - **Orden para arreglarlo (el segundo paso toca lo que se publica):** (1) clonar el documento correcto al hub por el camino canónico (`backend/scripts/clonar-documento.ts`), que es lo que arregla la provenance de raíz; (2) `plazas_libres=44` + declarar el cupo **DENTRO** con la cita literal de arriba. **El número que ve el usuario no cambia** (44 → 44): lo que cambia es que deja de depender de que dos errores se anulen.
+### [T-660] 🔴 [ABIERTO 07/08] Servimos 5 leyes DEROGADAS: ninguna vigilancia miraba si la norma sigue viva, y lo cazó un usuario
+
+**Lo reporta un usuario premium, no una alerta.** Iván González (Auxiliar Administrativo de Canarias,
+feedback `1627e0d4`): el tema 7 seguía montado sobre la **Ley 8/2015 de Cabildos Insulares**.
+Verificado contra el BOE, literal: *«Norma derogada, con efectos de 30 de junio de 2026, por la
+disposición derogatoria única de la Ley 3/2026, de 16 de junio»* (BOE-A-2026-17189). **Cinco semanas**
+sirviendo 47 artículos escopados de una norma muerta a quien paga por estudiarla.
+
+#### Era un punto ciego REAL, no un fallo de triaje
+Ninguna de las cuatro vigilancias de leyes mira si la norma **sigue viva**:
+`article_annulled_unmarked` (incisos del TC, por artículo) · `staleDatedLaw` (leyes anuales
+caducadas) · `law_unverified_source` (si la fuente está registrada, no si vive) · `laws:vigilar`
+(hash, y solo cubría **21 de 738** leyes activas con URL del BOE = **2,8%**; ésta no estaba).
+Y la señal **estaba publicada**: la API de datos abiertos del BOE la da explícita.
+
+#### La medida para que no se repita (ya aplicada)
+- Núcleo puro `lib/laws/derogacion.ts` (12 tests) + barrido `npm run laws:derogadas`
+  (`--escribe` publica el kind `ley_derogada_servida` y emite evento). Registrado en
+  `toolRegistry`, `runbookRegistry` y CLAUDE.md con su frase-gatillo.
+- **Pregunta a la MISMA API y por el MISMO camino que `annulledProvisions`** (análisis de
+  referencias posteriores): no estrena una tercera forma de preguntar lo mismo.
+- **ON-DEMAND a propósito**: 606 llamadas al BOE por pasada para una señal que cambia dos o tres
+  veces al año. Deja rastro al correrlo para que el resultado no muera en la terminal.
+
+#### ⚠️ Lo que decide si el detector vale: TOTAL vs PARCIAL
+Al estrenarlo marcó el **RDL 8/2015 (Ley General de la Seguridad Social)**, que sirve **674
+preguntas en 47 temas**, porque su texto empieza por coma igual que las derogaciones totales
+(`, con efectos desde el 1 de enero de 2023, el art. 312…`) cuando lo que caía era **un artículo**.
+Un falso positivo así habría mandado a alguien a retirar del temario la Ley General de la Seguridad
+Social. Corregido (se descuenta la cláusula de efectos antes de juzgar) y **fijado como test de
+regresión con el texto REAL del BOE**.
+
+#### Los 5 hallazgos del primer barrido (606 leyes comprobadas, 11 sin respuesta del BOE)
+| ley | derogada por | temas | preguntas |
+|---|---|---|---|
+| Ley 8/2015 Cabildos Insulares | Ley 3/2026, de 16 de junio | 1 | 17 |
+| Ley 4/2005 Igualdad Euskadi | Decreto Legislativo 1/2023, de 16 de marzo | 2 | 10 |
+| RD 806/2014 | Real Decreto 1125/2024, de 5 de noviembre | 1 | 21 |
+| RD 187/2008 Red Hospitalaria Defensa | Real Decreto 931/2025, de 21 de octubre | 1 | 1 |
+| REx | Real Decreto 1155/2024, de 19 de noviembre | 1 | 75 |
+
+**La de REx lleva derogada desde el 20/05/2025**: más de un año sirviendo 75 preguntas de una norma
+que no existe.
+
+#### Pendiente (el trabajo de contenido, que es lo caro)
+Por cada una: importar la norma que la sustituye y **RE-ANCLAR** el temario. **NUNCA quitar la ley
+sin más** — el programa oficial suele decir que las referencias se entienden hechas a la norma que
+la sustituya, así que retirarla dejaría el tema vacío en vez de actualizado
+(`docs/runbooks/leyes-anuales-caducadas.md`). Empezar por Canarias (hay un usuario esperando) y por
+REx (75 preguntas, más de un año).
+
+#### Y las otras cuatro cosas que avisó el mismo usuario, sin verificar todavía
+Tema 17 con contenido de los temas 18/20 (dice que 40 de 100 en su muestra) · una pregunta del art.
+62 ambigua · dos preguntas del art. 49 TREBEP con 21 semanas donde él calcula 20 · tema 6 sin los
+Decretos 41/2023 y 123/2023. **Cada una es un trabajo aparte y NO se le ha dado la razón todavía.**
 
 ### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
 

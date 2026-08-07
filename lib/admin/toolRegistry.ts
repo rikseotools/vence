@@ -2917,6 +2917,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`npm run sim:candado-deploy` (dos adquisiciones reales, 8 casos) porque un test de texto ' +
       'habría dado verde también con el flock solo, que era justo el fallo.',
   },
+  auditar_leyes_derogadas: {
+    titulo: '¿Servimos alguna ley que el BOE da por DEROGADA ENTERA?',
+    ruta: 'scripts/laws/auditar-derogadas.cjs',
+    estado: 'vivo',
+    escribe: ['content_health_findings', 'observable_events'],
+    runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
+    notas:
+      'Simula por defecto; `--escribe` publica los hallazgos (kind `ley_derogada_servida`) y emite ' +
+      'evento. Pregunta a la MISMA API del BOE que ya usa `annulledProvisions` (el análisis de ' +
+      'referencias posteriores), así que no estrena una tercera forma de preguntar lo mismo. ' +
+      'El criterio vive en `lib/laws/derogacion.ts` (12 tests). Lo que lo hace usable es distinguir ' +
+      'derogación TOTAL de PARCIAL: al estrenarlo marcó el RDL 8/2015 (Ley General de la Seguridad ' +
+      'Social, 674 preguntas en 47 temas) porque su texto empieza por coma como las totales — lo que ' +
+      'caía era un artículo. ON-DEMAND a propósito: 606 llamadas al BOE por pasada para una señal ' +
+      'que cambia dos o tres veces al año. Origen: feedback `1627e0d4`, un usuario premium que ' +
+      'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
+  },
+
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
