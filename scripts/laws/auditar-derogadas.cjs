@@ -24,7 +24,7 @@ const { Client } = require('pg')
 // El núcleo es TS y este runner es CJS: se compila al vuelo con tsx cuando hace falta. Se importa
 // el núcleo en vez de copiar la regla — dos criterios para «¿está derogada?» acabarían divergiendo.
 require('tsx/cjs')
-const { detectarDerogacionTotal, gravedadDerogada } = require('../../lib/laws/derogacion.ts')
+const { detectarDerogacionTotal, derogadaSegunMetadatos, gravedadDerogada } = require('../../lib/laws/derogacion.ts')
 
 const args = process.argv.slice(2)
 const TODAS = args.includes('--todas')
@@ -38,8 +38,8 @@ function boeIdDeUrl(url) {
   return m ? m[1] : null
 }
 
-async function analisisDe(boeId) {
-  const url = `https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${boeId}/analisis`
+async function pedir(boeId, recurso) {
+  const url = `https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/${boeId}/${recurso}`
   const r = await fetch(url, { headers: { Accept: 'application/json' } })
   if (!r.ok) return { error: `HTTP ${r.status}` }
   try { return { json: await r.json() } } catch (e) { return { error: 'respuesta no es JSON' } }
@@ -70,10 +70,22 @@ async function analisisDe(boeId) {
   for (const [i, ley] of candidatas.entries()) {
     const boeId = boeIdDeUrl(ley.boe_url)
     if (!boeId) continue
-    const { json, error } = await analisisDe(boeId)
-    if (error) { sinRespuesta++; continue }
-    const derogada = detectarDerogacionTotal(json)
-    if (derogada) {
+    // 1) LA FUENTE AUTORITATIVA: el propio BOE dice si está derogada (`estatus_derogacion`).
+    //    Sustituye a la heurística de referencias, que tenía los dos fallos posibles: marcaba de
+    //    más (RDL 8/2015, Seguridad Social, derogada solo en parte) y de menos (Orden HFP/134/2018,
+    //    sin efectos desde 08/05/2026 y con CERO referencias posteriores en la API).
+    const meta = await pedir(boeId, 'metadatos')
+    if (meta.error) { sinRespuesta++; continue }
+    const veredicto = derogadaSegunMetadatos(meta.json)
+    if (veredicto.derogada) {
+      // 2) Y las referencias, solo para lo que sí saben: POR QUÉ NORMA. Si no lo dicen, se
+      //    informa igual — el hecho de la derogación ya está confirmado por el campo.
+      const ref = await pedir(boeId, 'analisis')
+      const porRef = ref.json ? detectarDerogacionTotal(ref.json) : null
+      const derogada = {
+        porNormaId: porRef?.porNormaId ?? null,
+        textoLiteral: porRef?.textoLiteral ?? `Derogada según el BOE${veredicto.fecha ? ` con efectos de ${veredicto.fecha}` : ''}`,
+      }
       const severidad = gravedadDerogada({ temasQueLaSirven: ley.temas, preguntasActivas: ley.preguntas })
       hallazgos.push({ ...ley, boeId, ...derogada, severidad })
       console.log(`   ${severidad === 'error' ? '🔴' : '🟡'} ${ley.short_name} — ${derogada.textoLiteral}` +
@@ -108,6 +120,19 @@ async function analisisDe(boeId) {
              '(docs/runbooks/leyes-anuales-caducadas.md).',
          })])
     }
+    // Y MARCAR LA LEY, que es lo que el resto del sistema puede leer. La columna `is_derogated`
+    // existía desde antes (26 leyes marcadas) y nadie la rellenaba: publicar solo un hallazgo
+    // habría sido añadir una TERCERA señal al lado de dos que ya se ignoran (`change_status`
+    // lleva 9 leyes en 'changed' sin triar, la más vieja desde el 26/07).
+    for (const h of hallazgos) {
+      await c.query('UPDATE laws SET is_derogated = true WHERE id = $1 AND is_derogated = false', [h.id])
+    }
+    const { rows: sinMarcar } = await c.query(
+      'SELECT short_name FROM laws WHERE id = ANY($1::uuid[]) AND is_derogated = false',
+      [hallazgos.map((h) => h.id)])
+    if (sinMarcar.length) throw new Error('no se marcaron como derogadas: ' + sinMarcar.map((l) => l.short_name).join(', '))
+    if (hallazgos.length) console.log(`   ▶ ${hallazgos.length} ley(es) marcada(s) is_derogated=true`)
+
     await c.query(`
       INSERT INTO observable_events (source, severity, event_type, endpoint, metadata)
       VALUES ('gha', $1, 'leyes_derogadas_auditadas', 'auditar-derogadas', $2::jsonb)`,

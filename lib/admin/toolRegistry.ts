@@ -625,6 +625,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  importar_rd486_anexos: {
+    titulo: 'Importar los anexos del RD 486/1997 VERBATIM desde la API de datos abiertos del BOE',
+    ruta: 'scripts/oposiciones/importar-rd486-anexos.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`node scripts/oposiciones/importar-rd486-anexos.cjs [--apply]`. Dry-run por defecto. Nace de ' +
+      '[T-676]: un usuario avisó de que el tema 9 de Córdoba servía el RD 486/1997 con los anexos ' +
+      '«resumidos». Medido contra el BOE: teníamos UN anexo completo de seis (el I estaba en 129 de ' +
+      '17.320 caracteres y faltaban enteros el III, IV, V y VI), con 6 oposiciones y ~500 usuarios ' +
+      'afectados. **Usa `/texto/bloque/<id>` de la API, NO el HTML de `act.php`**: recortar la norma ' +
+      'entera por marcadores es justo lo que produce los resúmenes que este script repara. ⚠️ La API ' +
+      'exige `Accept: application/xml` — sin esa cabecera devuelve un 400 de 187 bytes que parece ' +
+      'una descarga válida. Tras escribir **relee de la BD y compara carácter a carácter** con lo ' +
+      'descargado, y aborta si algo no cuadra: importar y declararlo hecho es como se llegó al ' +
+      'estado que venía a arreglar. Patrón reutilizable para cualquier norma con anexos mal ' +
+      'importados (cambiar `BOE_ID` y la tabla de bloques).',
+  },
   audit_corpus_ajeno: {
     titulo: '¿Los documentos que respaldan una convocatoria salen del sitio de su fuente oficial?',
     ruta: 'scripts/convocatoria/audit-corpus-ajeno.cjs',
@@ -2839,6 +2857,27 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'un caso: trabajar ES la señal. Hay versión SQL además de JS porque la decisión tiene que ' +
       'ir DENTRO del UPDATE atómico; su paridad está testeada. 12 tests.',
   },
+  puerta_vivo_en_produccion: {
+    titulo: 'El cierre no deja decirle a nadie que su problema «ya está arreglado» si el arreglo no está VIVO',
+    ruta: 'lib/impugnaciones/promesaDeArreglo.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '[T-678] Núcleo puro + puerta IO (`scripts/impugnaciones/lib/puerta-vivo.ts`) en los DOS ' +
+      'cierres (`cerrar.ts`, `cerrar-feedback.ts`). Nace del caso Esther (`e523eabc`, 07/08/2026): ' +
+      'se le envió «ya está corregido… no debería volver a pasarte» con el arreglo en `main` y sin ' +
+      'desplegar (`/api/health` servía `76404f1d`). NO inventa criterio: reutiliza el verificador ' +
+      'de [T-392] y `lib/deploy/shaVivo.cjs` — dos lectores de «¿está vivo?» se contradirían. ' +
+      'Mira los commits que CITAN el caso, no «cualquier cosa sin desplegar»: medido sobre 569 ' +
+      'mensajes reales de 30 días, **134 (23,6%) afirman un arreglo**, y la mayoría son de ' +
+      'CONTENIDO (BD, sin deploy) donde decir «ya está» es cierto. Fail-open sin sha vivo (hay una ' +
+      'persona esperando). Escape `--vivo-igualmente "<cómo lo comprobaste>"`, contado en el bus ' +
+      'de fricción. Calibración: `npm run sim:promesa-arreglo [-- --ver]`. 19 unitarios anclados ' +
+      'al texto exacto que se envió. **Al construirla salió un hueco de [T-392]:** `importadoEn` ' +
+      'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
+      'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
+  },
   dossier_rastro_errores: {
     titulo: 'El dossier de feedback pone delante el RASTRO DE ERRORES del usuario (antes / después de su mensaje)',
     ruta: 'lib/impugnaciones/rastroDeErrores.cjs',
@@ -2956,7 +2995,7 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     titulo: '¿Servimos alguna ley que el BOE da por DEROGADA ENTERA?',
     ruta: 'scripts/laws/auditar-derogadas.cjs',
     estado: 'vivo',
-    escribe: ['content_health_findings', 'observable_events'],
+    escribe: ['is_derogated', 'content_health_findings', 'observable_events'],
     runbook: 'docs/runbooks/leyes-anuales-caducadas.md',
     notas:
       'Simula por defecto; `--escribe` publica los hallazgos (kind `ley_derogada_servida`) y emite ' +

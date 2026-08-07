@@ -36,6 +36,38 @@
 // Confundirlas convertiría el detector en ruido —una ley grande acumula derogaciones parciales
 // durante años— y un detector ruidoso se acaba ignorando.
 
+/**
+ * ⭐ LA FUENTE BUENA, encontrada el 07/08 al cerrar el último caso: el endpoint `/metadatos` del
+ * BOE trae **`estatus_derogacion`** ('S'/'N') y **`fecha_derogacion`**. Lo dice el propio BOE, sin
+ * heurística ninguna.
+ *
+ * Se llegó a ella por un fallo del detector: la **Orden HFP/134/2018** (16 preguntas en DOS
+ * oposiciones) está sin efectos desde el 08/05/2026 y su `/analisis` devuelve **CERO referencias
+ * posteriores** — la nota vive solo en la cabecera del HTML. Es decir: la vía de las referencias
+ * **no la podía ver**. Contrastado el campo contra los cinco casos conocidos, acierta en todos:
+ *
+ * | norma | `estatus_derogacion` | ¿acierta? |
+ * |---|---|---|
+ * | RDL 8/2015 (Seguridad Social, derogada en PARTE) | `N` | ✅ evita el falso positivo que hubo que calibrar a mano |
+ * | Ley 8/2015 Cabildos | `S` (20260630) | ✅ |
+ * | RD 557/2011 Extranjería | `S` (20250520) | ✅ |
+ * | Orden HFP/134/2018 | `S` (20260508) | ✅ **el que la heurística no veía** |
+ * | RDL 5/2015 TREBEP (vigente) | `N` | ✅ |
+ *
+ * Las referencias siguen usándose, pero para lo que sí saben: decir **por qué norma**.
+ */
+export function derogadaSegunMetadatos(
+  metadatosJson: unknown,
+): { derogada: boolean; fecha: string | null } {
+  const m = (metadatosJson as any)?.data?.[0] ?? (metadatosJson as any)?.data ?? {}
+  const estatus = String(m?.estatus_derogacion ?? '').trim().toUpperCase()
+  if (estatus !== 'S') return { derogada: false, fecha: null }
+  const f = String(m?.fecha_derogacion ?? '').trim()
+  // El BOE la da como AAAAMMDD; se normaliza para poder mostrarla sin volver a parsearla.
+  const fecha = /^\d{8}$/.test(f) ? `${f.slice(0, 4)}-${f.slice(4, 6)}-${f.slice(6, 8)}` : null
+  return { derogada: true, fecha }
+}
+
 /** Una entrada de `referencias.posteriores[].posterior[]` del análisis del BOE. */
 export interface ReferenciaPosterior {
   id_norma?: string

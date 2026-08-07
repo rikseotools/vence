@@ -46,6 +46,7 @@ import { tokenDeAdmin, ADMIN_POR_DEFECTO } from './lib/admin-token'
 import { comprobarReserva, anunciar } from './lib/comprobar-reserva'
 import { comprobarTemario, anunciarTemario } from './lib/puerta-temario'
 import { comprobarEmbudo, anunciarEmbudo } from './lib/puerta-embudo'
+import { comprobarVivo, anunciarVivo } from './lib/puerta-vivo'
 
 config({ path: '.env.local' })
 
@@ -86,6 +87,8 @@ export function parsearArgs(argv: string[]) {
     // Escape de la puerta del EMBUDO (T-609, 06/08/2026). Propio y separado de los otros dos por
     // el mismo motivo: compartir el escape apagaría las tres puertas a la vez.
     embudoIgualmente: valor('--embudo-igualmente'),
+    // Escape de la puerta de «está vivo» (T-678): exige contar CÓMO se comprobó, no un flag pelado.
+    vivoIgualmente: valor('--vivo-igualmente'),
     aplicar: argv.includes('--aplicar'),
   }
 }
@@ -309,7 +312,15 @@ async function main() {
   const vEmbudo = await comprobarEmbudo({ disputeId: a.disputeId, igualmente: a.embudoIgualmente })
   const sePuedeEmbudo = anunciarEmbudo(vEmbudo, { aplicar: a.aplicar })
 
-  const sePuede = sePuedeReserva && sePuedeTemario && sePuedeEmbudo
+  // ── PUERTA DE «ESTÁ VIVO» (T-678) ──────────────────────────────────────────────────────────
+  // ¿El mensaje AFIRMA que el problema ya no existe, con el arreglo sin desplegar? Mergeado a
+  // `main` no es arreglado: si la persona entra, le sigue fallando y encima con un correo nuestro
+  // diciendo que ya no. Ver `lib/puerta-vivo.ts` (caso Esther, feedback e523eabc).
+  const sePuedeVivo = mensaje
+    ? anunciarVivo(await comprobarVivo(a.disputeId!, mensaje), { igualmente: a.vivoIgualmente })
+    : true
+
+  const sePuede = sePuedeReserva && sePuedeTemario && sePuedeEmbudo && sePuedeVivo
 
   // ── PUERTA DEL VERDICTO SISTÉMICO (T-520) ──────────────────────────────────────────────────
   // «Después de cada impugnación deberías hacerte esa pregunta y que no se te olvide, porque si no

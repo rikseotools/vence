@@ -6543,6 +6543,113 @@ export const RULE_SIM_JOURNEY_FALLIDO: AlertRule<{
  *
  * Dispara con UNO: no es un blip. O tiene credencial o no la tiene.
  */
+/**
+ * La MÁQUINA de la flota está ahogada: los turnos no avanzan aunque el panel los pinte trabajando.
+ *
+ * ── POR QUÉ EXISTE (T-677, 07/08/2026) ──────────────────────────────────────────────────────
+ * La flota vigilaba al TRABAJADOR desde cuatro ángulos (autenticación, clon al día, productividad
+ * y arranque del turno) y NUNCA el sitio donde trabaja. Medido en `flota-1` mientras el panel
+ * decía que los cuatro estaban en verde y «ejecutando»: **702 MB disponibles de 7.751 (9 %), sin
+ * swap, carga 19,69 en 4 núcleos con la CPU al 97,7 % OCIOSA** y los cuatro turnos en espera de
+ * disco. No estaban trabajando: estaban esperando. El peso no eran los Claude Code (menos de 1 GB
+ * entre los cuatro) sino sus BUILDS: cuatro `node` de 1,2-1,6 GB corriendo a la vez.
+ *
+ * Es el mismo modo de fallo que este repo persigue en el contenido —un verde que no significa lo
+ * que parece— pero en el panel que vigila a los que lo persiguen.
+ *
+ * El veredicto lo pone el núcleo puro `lib/flota/saludMaquina.cjs`, que distingue lo que hace
+ * usable la señal: una carga alta con la CPU OCUPADA es una máquina trabajando y no alerta; solo
+ * acusa cuando la carga se dispara con la CPU ociosa, que es la firma del atasco de E/S.
+ */
+export const RULE_FLOTA_MAQUINA_AHOGADA: AlertRule<{
+  n: number;
+  maquinas: string | null;
+  ultimoMotivo: string | null;
+}> = {
+  name: 'flota_maquina_ahogada',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           string_agg(DISTINCT metadata->>'maquina', ', ') AS "maquinas",
+           (ARRAY_AGG(error_message ORDER BY ts DESC))[1] AS "ultimoMotivo"
+      FROM observable_events
+     WHERE event_type = 'flota_maquina_salud'
+       AND metadata->>'estado' = 'ahogada'
+       AND ts >= NOW() - INTERVAL '2 hours'
+  `,
+  // Dos pasadas del supervisor: una lectura suelta puede ser un pico de build legítimo, dos
+  // seguidas ya es un estado. Con la pasada por defecto (~5 min) eso es ~10 min de ahogo real.
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 2,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    return {
+      title: `Máquina de la flota AHOGADA (${rows[0]?.maquinas ?? '?'})`,
+      body:
+        `${n} lectura(s) en 2 h dicen que la máquina no puede con lo que se le manda.\n` +
+        `Última: ${rows[0]?.ultimoMotivo ?? '(sin detalle)'}\n\n` +
+        `QUÉ SIGNIFICA: los trabajadores siguen «en verde» y con proceso vivo, pero sus turnos ` +
+        `están esperando disco en vez de avanzar. Un turno así puede durar horas sin terminar ` +
+        `nada, y bloquea su tarea para el resto de la flota.\n\n` +
+        `LA CAUSA HABITUAL NO SON LOS TRABAJADORES, SON SUS BUILDS: un Claude Code ocupa ~300 MB ` +
+        `y un build de este repo (jest / tsc / next) entre 1,2 y 1,6 GB. Cuatro builds a la vez ` +
+        `no caben en 8 GB. Comprobarlo antes de tocar el número de trabajadores:\n` +
+        `  ps -eo rss,pid,etime,comm --sort=-rss | head -12\n\n` +
+        `QUÉ MIRAR, en orden:\n` +
+        `  1. ¿Es memoria o es E/S? → free -m (mirar 'available', NO 'free') y uptime.\n` +
+        `     Carga alta CON la CPU ocupada es trabajo legítimo, no avería.\n` +
+        `  2. ¿Cuántos builds simultáneos? Serializarlos pesa más que quitar trabajadores.\n` +
+        `  3. ¿Hay swap? Sin swap el siguiente pico lo resuelve el OOM killer.\n\n` +
+        `Panel: npm run flota (la máquina sale arriba cuando no está en verde).`,
+      metadata: { lecturas: n, maquinas: rows[0]?.maquinas ?? null },
+      fingerprint: 'flota_maquina_ahogada',
+    };
+  },
+  cooldownMin: 180,
+};
+
+/**
+ * Un turno VIVO cuyo andamiaje lleva horas sin dar señal: el proceso está, el avance no. (T-677)
+ *
+ * Es el cruce que ninguna señal hacía. El panel mira si hay proceso (correcto) e imprime la
+ * antigüedad del latido AL LADO, sin juntarlas. Medido: `w1` con **8,5 h sin latir** y un
+ * `claude -p` de 2 h 31 min, pintado en verde todo el rato. No se juzga por la duración del turno
+ * —uno largo puede ser trabajo honesto— sino por que en todo ese rato no haya ejecutado NI UN
+ * comando del andamiaje, que es lo que renueva el latido.
+ */
+export const RULE_FLOTA_TURNO_SIN_PROGRESO: AlertRule<{
+  n: number;
+  trabajadores: string | null;
+  peorMin: number | null;
+}> = {
+  name: 'flota_turno_sin_progreso',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(DISTINCT metadata->>'trabajador')::int AS n,
+           string_agg(DISTINCT metadata->>'trabajador', ', ') AS "trabajadores",
+           MAX((metadata->>'latidoMin')::int) AS "peorMin"
+      FROM observable_events
+     WHERE event_type = 'flota_turno_sin_progreso'
+       AND ts >= NOW() - INTERVAL '3 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => ({
+    title: `Turno de la flota sin progreso: ${rows[0]?.trabajadores ?? '?'}`,
+    body:
+      `Su proceso vive y el panel lo pinta «ejecutando», pero su andamiaje lleva hasta ` +
+      `${rows[0]?.peorMin ?? '?'} min sin dar señal. Un turno que no late no está avanzando: ` +
+      `no ha llegado a ejecutar ni un claim, ni un heartbeat, ni un comando del backlog.\n\n` +
+      `Mientras tanto su tarea sigue COGIDA y el resto de la flota no puede tomarla.\n\n` +
+      `QUÉ MIRAR:\n` +
+      `  1. ¿Está la máquina ahogada? → regla flota_maquina_ahogada. Es la causa más común: el ` +
+      `turno no avanza porque espera disco.\n` +
+      `  2. Si la máquina está bien, mirar el turno en su sitio: tmux attach -t <trabajador>.\n` +
+      `  3. Relanzarlo: npm run flota -- encargar <trabajador> --tarea <T-nnn>`,
+    metadata: { trabajadores: rows[0]?.trabajadores ?? null, peorMin: rows[0]?.peorMin ?? null },
+    fingerprint: 'flota_turno_sin_progreso',
+  }),
+  cooldownMin: 120,
+};
+
 export const RULE_FLOTA_AUTENTICACION: AlertRule<{
   n: number;
   trabajadores: string | null;
@@ -6965,6 +7072,10 @@ export const ALERT_RULES: AlertRule[] = [
   // Un trabajador de la flota latiendo pero sin poder autenticar (T-486): el latido no puede
   // verlo, porque es node hablando con Postgres y eso funciona igual con la sesión en el login.
   RULE_FLOTA_AUTENTICACION as AlertRule,
+  // Y el hueco que quedaba: se vigilaba al trabajador desde cuatro ángulos y nunca la MÁQUINA
+  // donde trabaja, ni si su turno vivo estaba avanzando de verdad (T-677).
+  RULE_FLOTA_MAQUINA_AHOGADA as AlertRule,
+  RULE_FLOTA_TURNO_SIN_PROGRESO as AlertRule,
   // Y el otro modo de «arrancado pero sin poder trabajar»: su clon del repo no se pone al día, así
   // que el supervisor rehúsa darle encargo (T-486).
   RULE_FLOTA_CLON as AlertRule,

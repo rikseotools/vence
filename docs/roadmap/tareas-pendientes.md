@@ -28,6 +28,165 @@
 > node scripts/backlog.cjs claim T-042    # CÓGELA antes de tocar nada
 > node scripts/backlog.cjs done T-042 --outcome "…"   # + mueve la ficha a "## Hechas
 
+### [T-660] ✅ [HECHA 07/08] Servimos 5 leyes DEROGADAS: ninguna vigilancia miraba si la norma sigue viva, y lo cazó un usuario
+
+**Lo reporta un usuario premium, no una alerta.** Iván González (Auxiliar Administrativo de Canarias,
+feedback `1627e0d4`): el tema 7 seguía montado sobre la **Ley 8/2015 de Cabildos Insulares**.
+Verificado contra el BOE, literal: *«Norma derogada, con efectos de 30 de junio de 2026, por la
+disposición derogatoria única de la Ley 3/2026, de 16 de junio»* (BOE-A-2026-17189). **Cinco semanas**
+sirviendo 47 artículos escopados de una norma muerta a quien paga por estudiarla.
+
+#### Era un punto ciego REAL, no un fallo de triaje
+Ninguna de las cuatro vigilancias de leyes mira si la norma **sigue viva**:
+`article_annulled_unmarked` (incisos del TC, por artículo) · `staleDatedLaw` (leyes anuales
+caducadas) · `law_unverified_source` (si la fuente está registrada, no si vive) · `laws:vigilar`
+(hash, y solo cubría **21 de 738** leyes activas con URL del BOE = **2,8%**; ésta no estaba).
+Y la señal **estaba publicada**: la API de datos abiertos del BOE la da explícita.
+
+#### La medida para que no se repita (ya aplicada)
+- Núcleo puro `lib/laws/derogacion.ts` (12 tests) + barrido `npm run laws:derogadas`
+  (`--escribe` publica el kind `ley_derogada_servida` y emite evento). Registrado en
+  `toolRegistry`, `runbookRegistry` y CLAUDE.md con su frase-gatillo.
+- **Pregunta a la MISMA API y por el MISMO camino que `annulledProvisions`** (análisis de
+  referencias posteriores): no estrena una tercera forma de preguntar lo mismo.
+- **ON-DEMAND a propósito**: 606 llamadas al BOE por pasada para una señal que cambia dos o tres
+  veces al año. Deja rastro al correrlo para que el resultado no muera en la terminal.
+
+#### ⚠️ Lo que decide si el detector vale: TOTAL vs PARCIAL
+Al estrenarlo marcó el **RDL 8/2015 (Ley General de la Seguridad Social)**, que sirve **674
+preguntas en 47 temas**, porque su texto empieza por coma igual que las derogaciones totales
+(`, con efectos desde el 1 de enero de 2023, el art. 312…`) cuando lo que caía era **un artículo**.
+Un falso positivo así habría mandado a alguien a retirar del temario la Ley General de la Seguridad
+Social. Corregido (se descuenta la cláusula de efectos antes de juzgar) y **fijado como test de
+regresión con el texto REAL del BOE**.
+
+#### Los 5 hallazgos del primer barrido (606 leyes comprobadas, 11 sin respuesta del BOE)
+| ley | derogada por | temas | preguntas |
+|---|---|---|---|
+| Ley 8/2015 Cabildos Insulares | Ley 3/2026, de 16 de junio | 1 | 17 |
+| Ley 4/2005 Igualdad Euskadi | Decreto Legislativo 1/2023, de 16 de marzo | 2 | 10 |
+| RD 806/2014 | Real Decreto 1125/2024, de 5 de noviembre | 1 | 21 |
+| RD 187/2008 Red Hospitalaria Defensa | Real Decreto 931/2025, de 21 de octubre | 1 | 1 |
+| REx | Real Decreto 1155/2024, de 19 de noviembre | 1 | 75 |
+
+**La de REx lleva derogada desde el 20/05/2025**: más de un año sirviendo 75 preguntas de una norma
+que no existe.
+
+#### 🔬 Lo que apareció al TRIAR (07/08) — dos hallazgos que valen más que las 9 leyes
+Al mirar la fila de la ley salieron dos cosas que cambian el diagnóstico de «era un punto ciego»:
+
+1. **La señal SÍ existía, pero no es accionable.** El monitor del BOE había marcado la Ley 8/2015
+   como `change_status='changed'` **ese mismo día a las 08:00**. El problema es que «changed» dice
+   que el texto del BOE se movió y **NO dice qué se movió**: para saber si te afecta hay que
+   diffear la ley entera a mano. Por eso nadie lo tría — **9 leyes activas en ese estado, la más
+   vieja desde el 26/07** (hasta 12 días). Triadas las 9 el 07/08: **ninguna de las otras 8 está
+   derogada** (dos son de la misma reforma canaria: la Ley 3/2026 también tocó la Ley 14/1990); el
+   resto son sentencias del TC de 2012-2024, desarrollos reglamentarios y correcciones de errores.
+   - **Cómo se ve una revisión BIEN hecha** (Ley 4/2021 FPV, 24/07): *«Re-consolidación BOE
+     02/07/2026 (falsa alarma). Art 8 texto 100% coincide con BOE vigente. Art 11 suprimido por Ley
+     6/2024, ya inactivo en BD (0 preguntas). Sin cambio de contenido servido.»* Eso es triar; lo
+     demás es dejar el flag puesto.
+2. **Una verificación sin caducidad se convierte en falso verde sola.** El
+   `last_verification_summary` de la ley de Cabildos dice `is_ok: true`, **157 de 157 artículos
+   coincidiendo**… con fecha **26/05**. Era CIERTO ese día: la ley se derogó un mes después. Es el
+   mismo patrón que el `verified_correct` del scope ([T-518]) en otra tabla — un verde que nadie
+   vuelve a mirar envejece hasta mentir.
+
+**Corregido de raíz en el barrido:** `laws:derogadas --escribe` ya marca **`is_derogated = true`**
+(las 5, verificado leyendo la fila después de escribir) además de publicar el hallazgo. Sin eso
+estaría añadiendo una TERCERA señal al lado de dos que ya se ignoran. El escritor está declarado en
+`toolRegistry` (`escribe: ['is_derogated', …]`).
+
+#### 🇮🇨 Canarias — lo verificado para re-anclar (07/08)
+- **La norma nueva es `Ley 3/2026, de 16 de junio, de cabildos insulares`** (BOE-A-2026-17189):
+  **128 artículos** en cinco títulos (Preliminar 1-4 · I Competencias 5-48 · II Organización 49-81 ·
+  III Régimen jurídico 82-96 · IV Potestad reglamentaria 97-109 · V Relaciones interadministrativas
+  110-128). **Deroga íntegramente la 8/2015** y preceptos de la Ley 14/1990.
+- **NO deroga la Ley 7/2015 de Municipios**, así que esa mitad del tema 7 se queda como está.
+- **El epígrafe del tema 7 NOMBRA la ley derogada por su nombre** (*«La Ley 8/2015, de 1 de abril,
+  de cabildos insulares: naturaleza de los Cabildos Insulares y competencias»*), así que quitarla
+  sin sustituirla dejaría el tema mudo. Lo que pide el epígrafe se corresponde con el **Título
+  Preliminar (naturaleza) + Título I (competencias)** de la nueva, es decir **arts. 1-48**.
+- Scope actual del tema 7 sobre la vieja: arts. 1-47 (coherente con «naturaleza y competencias»).
+  Preguntas activas colgando de la ley vieja: **17**.
+
+#### ✅ RE-ANCLADAS 3 de 5 (07/08) — con el detector confirmándolo solo (5 → 3 hallazgos)
+| oposición · tema | de (derogada) | a (vigente) | scope nuevo |
+|---|---|---|---|
+| aux. admin. Canarias T7 | Ley 8/2015 Cabildos | **Ley 3/2026 Cabildos** (BOE-A-2026-17189, 128 arts importados) | arts 1-48 (Tít. Preliminar «naturaleza» + Tít. I «competencias») |
+| policía nacional T11 | RD 557/2011 (REx) | **RD 1155/2024** (BOE-A-2024-24099, 265 arts) | arts 215-257 (Tít. XIV «Infracciones… y su régimen sancionador») |
+| guardia civil T17 | RD 806/2014 | **RD 1125/2024** (BOE-A-2024-22935, 14 arts) | arts 1,2,8,9,10 (caps. I y III) |
+
+**El mapeo NO se hizo a ojo**: en los tres casos el epígrafe nombra la norma vieja y pide bloques
+concretos, y los títulos/capítulos de la norma nueva se llaman IGUAL (en Guardia Civil, palabra por
+palabra: «Objeto y ámbito de aplicación» y «Modelo de gobernanza en el ámbito de las tecnologías de
+la información y las comunicaciones»). Se usó `scripts/scope/arbol-ley-boe.cjs`, que ya existía.
+**Y se aprovechó para corregir sobre-inclusión heredada**: el scope viejo de Guardia Civil traía
+además los arts. 11-13 y un «preámbulo» que el epígrafe no pide.
+
+**Coste, dicho claro:** los temas pierden las preguntas de la norma muerta (Canarias 17, Policía 8,
+Guardia Civil 21) porque las nuevas aún no tienen ninguna. Es lo correcto —estudiar normativa
+derogada es peor que estudiar menos— pero deja un hueco hasta generarlas.
+
+#### ✅ CERRADAS LAS 5 + 1 — el barrido da 0 (07/08)
+Las tres primeras arriba; las que faltaban:
+- **Ley 4/2005 Igualdad Euskadi** → **DL 1/2023** (texto refundido), que **ya estaba en el banco**:
+  solo hubo que re-anclar los 2 temas. El epígrafe no nombra la ley por su número (describe la
+  materia), así que el refundido lo cumple igual.
+- **RD 187/2008 Red Hospitalaria Defensa** → **RETIRADO sin sustituto**. Su epígrafe (TCAE SERMAS T3)
+  es íntegramente de la Comunidad de Madrid (LOSCAM, Red Sanitaria Única, SERMAS, Ley 6/2009, Ley
+  11/2017) y **no menciona Defensa por ninguna parte**: no era un problema de derogación, era un
+  error de scope que la derogación destapó.
+- **Orden HFP/134/2018** (Gobierno Abierto, 16 preguntas en 2 oposiciones) → **RETIRADA**. No hizo
+  falta sustituto: el **RD 371/2026** —la norma que la dejó sin efectos— ya estaba importado y
+  escopado en esos mismos temas con 28 preguntas. Sus 16 preguntas empiezan literalmente por «De
+  acuerdo con la Orden HFP/134/2018…», así que no eran recuperables re-anclando.
+
+**Verificación final: `SELECT count(*) FROM laws l JOIN topic_scope ts ON ts.law_id=l.id WHERE
+l.is_derogated` → 0**, y el barrido completo (604 leyes contra el BOE) da **0 hallazgos**.
+
+#### ⭐ LA LECCIÓN, y es de método (07/08)
+**El detector tenía LOS DOS fallos posibles a la vez, y los dos por inferir del texto teniendo el
+BOE un campo que lo dice.** La API `/metadatos` trae **`estatus_derogacion`** ('S'/'N') y
+`fecha_derogacion`:
+
+| norma | heurística de referencias | `estatus_derogacion` |
+|---|---|---|
+| RDL 8/2015 (Seguridad Social, derogada en PARTE) | ❌ la marcaba (674 preguntas en 47 temas) | ✅ `N` |
+| Orden HFP/134/2018 (sin efectos desde 08/05/2026) | ❌ **invisible**: su `/analisis` devuelve CERO referencias | ✅ `S` |
+| Cabildos · Extranjería · TREBEP | ✅ | ✅ |
+
+**Por qué me pasó:** me fui directo a las referencias porque era donde ya miraba el detector de
+incisos del TC, y **heredé su forma sin comprobar si había algo mejor a un endpoint de distancia**.
+Reusar está bien; reusar sin mirar es cómo se hereda un punto ciego. **Regla: cuando la fuente
+oficial tiene un campo estructurado, se pregunta por él ANTES de inferir del texto.** Las
+referencias siguen usándose, pero solo para lo que sí saben: decir por qué norma.
+
+#### ⏳ LO QUE QUEDA (estado exacto al cerrar la sesión del 07/08)
+1. ~~Euskadi, Red Hospitalaria y Orden HFP~~ — **HECHAS**, ver arriba.
+2. **Generar preguntas** de los tres bloques re-anclados (pipeline normal con doble auditoría).
+5. **Revisar las preguntas huérfanas** de las normas viejas: la materia se re-regula, así que muchas pueden ser recuperables re-ancladas al artículo equivalente. Ninguna se ha tocado ni desactivado.
+
+#### 🔎 Y un HALLAZGO NUEVO que merece su propio detector
+**4 leyes marcadas `is_derogated` seguían escopadas en 6 temas de 6 oposiciones.** Marcar no retira:
+la Orden HFP/134/2018 llevaba marcada desde antes de hoy y seguía sirviéndose. Esa comprobación es
+**solo de BD (sin llamar al BOE)**, así que cabe en el barrido NOCTURNO —a diferencia de
+`laws:derogadas`, que es on-demand por las 606 llamadas— y cerraría el hueco entre «lo sabemos» y
+«lo hemos quitado».
+
+#### Pendiente (el trabajo de contenido, que es lo caro)
+Por cada una: importar la norma que la sustituye y **RE-ANCLAR** el temario. **NUNCA quitar la ley
+sin más** — el programa oficial suele decir que las referencias se entienden hechas a la norma que
+la sustituya, así que retirarla dejaría el tema vacío en vez de actualizado
+(`docs/runbooks/leyes-anuales-caducadas.md`). Empezar por Canarias (hay un usuario esperando) y por
+REx (75 preguntas, más de un año).
+
+#### Y las otras cuatro cosas que avisó el mismo usuario, sin verificar todavía
+Tema 17 con contenido de los temas 18/20 (dice que 40 de 100 en su muestra) · una pregunta del art.
+62 ambigua · dos preguntas del art. 49 TREBEP con 21 semanas donde él calcula 20 · tema 6 sin los
+Decretos 41/2023 y 123/2023. **Cada una es un trabajo aparte y NO se le ha dado la razón todavía.**
+
+
 ### [T-443] ✅ [HECHA 06/08/2026] Trabajo DESTRUIDO entre sesiones: un commit rancio dejó un arreglo vivo pero inerte, y una ficha se perdió antes de existir
 
 - **Esfuerzo: sesion_propia.** Es investigación de diseño, no un parche: hay cinco huecos distintos y conviene decidirlos juntos.
@@ -981,6 +1140,308 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
+
+**El hueco, medido el 07/08:** había **4 leyes marcadas `is_derogated = true` que seguían escopadas
+en 6 temas de 6 oposiciones**. Una de ellas —la Orden HFP/134/2018, 16 preguntas en dos
+oposiciones— llevaba marcada **desde antes de esa sesión** y nadie la había retirado. **Marcar no
+retira**: entre «lo sabemos» y «lo hemos quitado» no había nada que avisara.
+
+**Lo que falta, y es barato:** una comprobación **solo de BD** (`laws.is_derogated = true` JOIN
+`topic_scope`) que publique hallazgo cuando una ley marcada siga escopada. Sin llamadas al BOE, así
+que **cabe en el barrido NOCTURNO** — a diferencia de `laws:derogadas` ([T-660]), que es on-demand
+porque son ~600 llamadas por pasada.
+
+**No es lo mismo que el detector de [T-660]** y por eso es ficha aparte:
+- `laws:derogadas` pregunta **al BOE** si una ley está derogada (descubre lo que no sabíamos).
+- Esto pregunta **a nuestra propia BD** si lo que ya sabemos se ha traducido en algo (vigila que no
+  se quede a medias). Es la diferencia entre detectar y cerrar el círculo.
+
+**Dónde encaja:** `scripts/health-sweep.cjs` + su gemelo del `@Cron` del backend, kind nuevo (p. ej.
+`ley_derogada_aun_escopada`), con su entrada en `runbookRegistry` y su frase-gatillo en CLAUDE.md
+(el guardarraíl de registros lo exigirá).
+
+**Hoy nace en verde**: [T-660] dejó el contador a 0, así que cualquier subida es una regresión
+demostrable.
+
+### [T-683] 🟠 [ABIERTO 07/08] Revisar las preguntas huérfanas de las 6 leyes derogadas: la materia se re-regula, muchas son recuperables re-ancladas
+
+**De dónde sale:** [T-660] retiró del temario 6 normas derogadas y ancló los temas a las vigentes.
+**Ninguna pregunta se desactivó**: siguen en BD, colgando de artículos de normas muertas, y por tanto
+sin servirse en ningún tema.
+
+**Las huérfanas, por norma** (activas, medidas el 07/08):
+
+| norma retirada | preguntas | sustituta ya importada |
+|---|---|---|
+| RD 806/2014 (TIC AGE) | 21 | RD 1125/2024 |
+| Ley 8/2015 Cabildos | 17 | Ley 3/2026 |
+| Orden HFP/134/2018 (Gobierno Abierto) | 16 | RD 371/2026 (ya estaba) |
+| Ley 4/2005 Igualdad Euskadi | 10 | DL 1/2023 (ya estaba) |
+| RD 557/2011 (REx) | 8 (dentro del scope) | RD 1155/2024 |
+| RD 187/2008 Red Hospitalaria Defensa | 1 | — (retirada por scope, no hay sustituta) |
+
+**Por qué merece revisión y no borrado:** una norma que se re-regula suele conservar la mayor parte
+del contenido, así que **muchas preguntas pueden ser válidas re-ancladas al artículo equivalente de
+la norma nueva** — y re-anclar es mucho más barato que generar. Pero hay dos clases que NO se
+recuperan y hay que distinguirlas:
+1. **Las que citan la norma por su nombre** en el enunciado (p. ej. las 16 de la Orden HFP empiezan
+   por «De acuerdo con la Orden HFP/134/2018…»): irrecuperables, se jubilan.
+2. **Las que preguntan por un contenido que la norma nueva cambió**: hay que compararlas contra el
+   artículo equivalente antes de decidir, NUNCA re-anclar por cercanía de numeración.
+
+**Método:** para cada pregunta, localizar el artículo equivalente en la norma vigente (los títulos y
+capítulos suelen llamarse igual — ver el mapeo ya hecho en [T-660]), comparar el contenido y solo
+entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:buscar -- reanclar`).
+
+**Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
+después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
+
+### [T-678] 🟡 [ABIERTO 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
+
+**Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
+producción y probado y simulado. Deberías hacer guardrail o algo.»*
+
+**El fallo, concreto:** a Esther (feedback `e523eabc`) se le envió *«Las dos venían del mismo fallo y
+ya está corregido. Actualiza la página y vuelve a probar, que no debería volver a pasarte»* con el
+arreglo en `main` y **sin desplegar** — `/api/health` servía `76404f1d` y el commit no era ancestro
+suyo. Si ella entra, le sigue fallando, con un correo nuestro diciendo lo contrario.
+
+**Y el error de método que lo permitió:** se leyó una bajada de 401 como «el arreglo está entrando»
+cuando era **menos tráfico** (a esa hora solo 4 personas respondían preguntas en toda la plataforma).
+Horas punta comparadas con hora valle, sin normalizar por actividad.
+
+#### La regla ya existía a medias, y ese es el punto
+
+[T-392] impide **cerrar una tarea** cuyos commits tocan superficie servida y no están vivos, con
+`lib/deploy/shaVivo.cjs`. El criterio estaba; lo que no tenía puerta era **el punto por donde sale un
+mensaje a una persona**, que es el irreversible. Esto no inventa criterio: **lo reutiliza**.
+
+#### ✅ Construido
+
+- **Núcleo puro** `lib/impugnaciones/promesaDeArreglo.cjs`: `afirmaArreglo(texto)` (la promesa en
+  PRESENTE) + `puedeAfirmarse({texto, shaVivo, commitsPendientes})`.
+- **Puerta IO** `scripts/impugnaciones/lib/puerta-vivo.ts`, cableada en los **dos** cierres
+  (`cerrar.ts` y `cerrar-feedback.ts`), con la forma de las otras tres puertas: anuncia, cuenta el
+  roce dentro de la puerta, y escape **propio** `--vivo-igualmente "<cómo lo comprobaste>"`
+  (compartir escape apagaría cuatro puertas a la vez).
+- **Fail-open** sin sha vivo: hay una persona esperando respuesta, y «no lo sé» no es «no está
+  desplegado».
+
+#### Calibrada contra los mensajes REALES, no a ojo
+
+`npm run sim:promesa-arreglo` mide sobre lo ya enviado. **569 mensajes de admin en 30 días, 134
+(23,6 %) afirman un arreglo.** Ese 23,6 % es el TECHO, no el bloqueo: **la puerta solo para si además
+hay commits que CITAN el caso, tocan superficie servida y no están vivos**. Por eso mira los commits
+del caso y no «cualquier cosa sin desplegar» — la mayoría de esos 134 son arreglos de **contenido**
+(una explicación, una clave, un scope) que viven en la BD y no necesitan deploy: ahí decir «ya está»
+es CIERTO, y bloquearlo convertiría la puerta en un estorbo que se rodea con el escape.
+
+#### El hueco de [T-392] que salió al construirla
+
+La puerta **no bloqueaba** el caso de Esther. Al depurarlo: `importadoEn` devolvía `servidos: []`
+porque los ficheros eran `app/test/aleatorio-examen/page.js` y un componente `.js` — **a una página
+de Next no la importa nadie**, la sirve el framework por su ruta. Es decir, el verificador que
+impide cerrar tareas sin desplegar **era ciego a las páginas y a las rutas de API**. Arreglado en el
+módulo compartido (`servidoPorConvencion` en `scripts/backlog/verificacion.cjs`), no en la puerta
+nueva, para que lo aprovechen los dos. Tras el cambio, `npm run sim:verificacion` sigue verde y el
+alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispara.
+
+#### Capas
+
+- **19 unitarios** (`__tests__/impugnaciones/promesaDeArreglo.test.js`) anclados al **texto exacto**
+  que se envió a Esther, con los contrastes que NO deben marcarse (el futuro honesto, «lo estamos
+  mirando», los mensajes que no hablan de arreglos).
+- **Reproducción del caso real**: con el id de su feedback y su mensaje, la puerta **bloquea** y
+  nombra el commit sin desplegar. Antes del arreglo de `servidoPorConvencion`, no.
+- **Simulación de calibración** contra 30 días de mensajes enviados, con ancla y contraste, y exit
+  code (falla si el ancla deja de dispararla o si el mensaje honesto empieza a marcarse).
+- 311 tests de `__tests__/impugnaciones` + `__tests__/backlog/verificacion` en verde, typecheck verde.
+
+#### Lo que NO cubre
+
+Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
+`shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
+y sin un caso real que lo pida sería adivinar.
+### [T-681] 🟠 [ABIERTO 07/08] Generar preguntas del régimen sancionador de extranjería de Policía Nacional T11 tras el re-anclaje al RD 1155/2024 (43 artículos)
+
+**Contexto:** [T-660] retiró el **RD 557/2011 (REx), derogado desde el 20/05/2025** —quince meses
+sirviéndose— y ancló el tema al **RD 1155/2024** (`1205685c-e020-449e-acce-1c96052a88a3`,
+BOE-A-2024-24099, 265 arts), scope **arts. 215-257**: su Título XIV se llama literalmente
+«Infracciones en materia de extranjería y su régimen sancionador», que es el epígrafe. Ese bloque
+sirve hoy **0 preguntas** (las 8 que había eran de la norma derogada).
+
+**El encargo:** generar preguntas de los arts. 215-257 siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** (draft, cita literal, distractores
+igualados, clave en posición aleatoria, autocontenidas, tag + batch_id único, **doble auditoría
+ciega PRE y re-verificación POST**). ~63k caracteres, el bloque más grande de los tres.
+
+**Antes de empezar, mira [T-679]** (el mismo trabajo con 5 artículos): es la calibración del método.
+
+**Contexto que importa para el enfoque:** el tema conserva 251 preguntas de la LO 4/2000, que es la
+LEY. Lo que falta es el REGLAMENTO, así que las preguntas deben apoyarse en lo que el reglamento
+añade (procedimiento, plazos, órganos, tramitación) y no repetir lo que ya cubre la ley.
+
+### [T-680] 🟠 [ABIERTO 07/08] Generar preguntas del tema 7 de Aux. Admin. Canarias tras el re-anclaje a la Ley 3/2026 de cabildos (48 artículos)
+
+**Contexto:** lo destapó un usuario premium (Iván González, feedback `1627e0d4`): el tema 7 llevaba
+cinco semanas montado sobre la **Ley 8/2015 de Cabildos, derogada** el 30/06/2026. [T-660] importó la
+**Ley 3/2026** (`eafb3d37-1785-4bc3-8043-62002e4ac0d1`, BOE-A-2026-17189, 128 arts) y ancló el tema a
+sus **arts. 1-48** (Título Preliminar «naturaleza» + Título I «competencias», que es lo que pide el
+epígrafe). Ese bloque sirve hoy **0 preguntas**; las 17 anteriores eran de la ley muerta.
+
+**El encargo:** generar preguntas de los arts. 1-48 siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** (draft, cita literal, distractores
+igualados, clave en posición aleatoria, autocontenidas, tag + batch_id único, **doble auditoría
+ciega PRE y re-verificación POST**). ~53k caracteres de texto legal.
+
+**Antes de empezar, mira [T-679]** (el mismo trabajo con 5 artículos): es la calibración del método.
+
+**Y OJO con el epígrafe:** pide «naturaleza de los Cabildos Insulares y competencias». No generes
+sobre organización, régimen jurídico ni relaciones interadministrativas (Títulos II-V) aunque la ley
+los tenga: eso sería servir fuera de programa, que es justo el otro defecto que este usuario
+encontró en su tema 17.
+
+**Hay una persona esperando esto:** se le respondió que estábamos actualizando el temario.
+
+### [T-679] 🟠 [ABIERTO 07/08] Generar preguntas del bloque TIC de Guardia Civil T17 tras el re-anclaje al RD 1125/2024 (5 artículos)
+
+**Contexto:** [T-660] retiró del temario el RD 806/2014 (derogado) y ancló el tema al **RD 1125/2024**
+(`87a155b4-34a3-41fa-bcee-fa0b57af196c`, BOE-A-2024-22935). El scope son **arts. 1, 2, 8, 9 y 10**
+(cap. I «Objeto y ámbito de aplicación» y cap. III «Modelo de gobernanza…», que es LITERALMENTE lo
+que pide el epígrafe). Hoy ese bloque sirve **0 preguntas**: las 21 que había eran de la norma
+derogada y dejaron de servirse.
+
+**El encargo:** generar preguntas de esos 5 artículos siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** — no es opcional: importar en `draft`,
+cita LITERAL del artículo en la correcta, distractores igualados en longitud y forma, posición de la
+clave aleatoria uniforme, preguntas autocontenidas (siglas desarrolladas), tag `ia_generada` +
+`batch_id` único, y **doble auditoría ciega PRE-aplicación y re-verificación POST**.
+
+**Empieza por este de los tres** ([T-680] Canarias 48 arts, [T-681] Policía Nacional 43 arts): son 5
+artículos y ~5k caracteres, así que sirve de **calibración barata** del prompt y del pipeline antes
+de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método antes de multiplicarlo.
+
+**Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
+artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
+
+### [T-675] 🔴 [ABIERTO 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
+
+**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
+para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
+desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
+desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
+
+Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
+`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
+describe.
+
+#### Medido antes de tocar nada (401 por día, TZ Madrid)
+
+| endpoint | 29/07 – 05/08 | 07/08 |
+|---|---|---|
+| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
+| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
+| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
+
+**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
+no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
+personas en toda la plataforma.
+
+#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
+
+[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
+`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
+son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
+user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
+`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
+
+#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
+
+Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
+`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
+guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
+con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
+es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
+
+#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
+
+- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
+  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
+- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
+  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
+  las cuatro (`.js/.jsx/.ts/.tsx`).
+- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
+  tenía dentro dos endpoints con dueño.
+- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
+  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
+
+#### Lo que NO cubre, y hay que mirarlo aparte
+
+**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
+encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
+Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
+y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
+aquí.**
+
+**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
+correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
+### [T-677] 🟠 [ABIERTO 07/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
+
+**Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
+tiene bug**: mira si hay proceso en su tmux (lo había, un `claude -p` de 2 h 31 min con T-168) y la
+antigüedad del latido se imprime al lado. Está hecho así a propósito. Lo que no existía era el
+**cruce** entre las dos señales, ni nada que mirase la máquina.
+
+**Lo medido en `flota-1` (07/08) mientras el panel daba los cuatro trabajadores en verde:**
+- **671-702 MB disponibles de 7.751 (9 %)**, y **sin swap**.
+- **carga 17,1-19,7 en 4 núcleos (4,3-4,9×)… con la CPU al 91-98 % OCIOSA.** Esa carga no es
+  cálculo: son procesos encolados esperando disco (8-9 en estado `D`).
+- **Cuatro builds de Node a la vez: 1.574 + 1.383 + 1.295 + 1.213 MB = 5,5 GB.**
+
+**El dato que cambia la conclusión:** el peso **no son los trabajadores**. Los cuatro Claude Code
+juntos ocupaban **menos de 1 GB** (81-330 MB cada uno); son sus **builds** (jest / tsc / next) los
+que pesan 1,2-1,6 GB. La primera reacción —«bajar de cuatro trabajadores a dos»— era **incorrecta**
+y se retiró al medir quién consumía la memoria. Lo que encaja es **serializar los builds** (un
+`flock` compartido, como el que ya serializa los deploys): los cuatro trabajadores siguen, y solo
+hacen cola en el momento en que se pisan. Eso queda PENDIENTE.
+
+**Lo construido (esto sí está hecho):**
+1. **Núcleo puro `lib/flota/saludMaquina.cjs`** — `clasificarMaquina()` y `turnoSinProgreso()`,
+   14 tests. Dos criterios que son los que lo hacen usable:
+   · **Carga alta con la CPU OCUPADA no alerta**: eso es una máquina trabajando. Solo acusa cuando
+     la carga se dispara **con la CPU ociosa**, que es la firma del atasco de E/S.
+   · Se mide **`available`, no `free`**: un Linux sano usa casi toda la RAM en caché.
+2. **Sonda en el supervisor** (`medirMaquina`, una conexión por máquina, no por trabajador) + la
+   máquina sale en el panel cuando no está en verde.
+3. **El cruce que faltaba**: proceso vivo + latido congelado ≥ 2 h → 🟠 con el motivo escrito.
+4. **Dos alertas proactivas** (`flota_maquina_ahogada`, `flota_turno_sin_progreso`) y sus eventos
+   (`flota_maquina_salud`, `flota_turno_sin_progreso`). Entran solos en el panel de salud del
+   sistema por el catch-all de señales `error`/`warn`; el email lo dan las reglas propias.
+   La de máquina exige **dos lecturas en 2 h**: una suelta puede ser un build legítimo.
+
+**GOTCHA que solo apareció al probarlo contra la máquina real** (y por eso se probó, en vez de
+darlo por bueno leyendo el código): la primera versión contaba los builds siguiendo la cadena de
+padres (`node` cuyo ppid es un `npm`) y devolvía **CERO** en una máquina con cuatro builds
+corriendo — el padre ya no siempre está. Se cambió a **`node` con RSS > 500 MB**, umbral que sale
+de la medición: builds 1.213-1.574 MB frente a Claude Code 81-330 MB, dos poblaciones sin solape.
+
+**Verificado contra `flota-1`**: la sonda lee los seis campos y el veredicto sale `ahogada` con los
+cuatro motivos.
+
+**PENDIENTE:** serializar los builds entre trabajadores (la causa), y desplegar el backend para que
+las dos reglas empiecen a avisar.
+### [T-682] 🔴 [ABIERTO 07/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
+
+- **Cómo se llegó aquí.** El VPS llevaba horas con **carga 18 sobre 4 núcleos** y se atribuyó a falta de CPU. **Era falso.** La medida que lo decide (PSI, `/proc/pressure`): **CPU 0,00 % · disco 0,00 % · memoria `full` 98,73 %**. O sea: **durante el 98,7 % del tiempo TODOS los procesos estaban parados esperando memoria**, y nadie usaba CPU — el proceso más activo era un `sshd` al 3 %. En Linux el *load average* cuenta también a los que esperan; por eso marcaba 18.
+- **El culpable, medido con `ps` ordenado por RSS:** cuatro procesos **`tsc --noEmit`** a la vez — **1,3 + 1,2 + 0,7 + 0,6 = 3,8 GB solo en typechecks**, sobre una máquina de 7,7 GB donde además viven cuatro sesiones de Claude Code. El typecheck de este repo (Next.js grande) pide **más de 1 GB él solo**, y los cuatro turnos coinciden en ese paso porque **todos pasan por el mismo peaje**: el `pre-commit` y el `pre-push`.
+- **Y hay realimentación, que es lo que lo vuelve un pozo:** con la máquina en *thrashing* el typecheck que tardaba ~11 s tarda minutos; al durar más, se solapa con los de los otros; al solaparse, hay más presión; y así. Los turnos pasan de minutos a horas, y con ellos **los trabajadores dejan de latir dentro del lease** (medido: w1 sin señal 9 h 40, w2 4 h, con sus leases vencidos) — o sea que el sistema los da por muertos y `reap` puede devolver al reparto tareas que alguien está haciendo.
+- **Lo ya hecho, y hasta dónde llega:** se añadieron **4 GB de swap** (`swappiness=10`). Alivió de golpe —RAM libre de 385 MB a 2,5 GB, presión del 98,7 % al 48,9 %— pero **se llenó entero en unos diez minutos** y volvió a subir. Confirmado que es *thrashing* y no páginas aparcadas: **+18.699 `pswpin` y +17.759 `pswpout` en 30 segundos**. El swap era necesario (sin él el reclamo no tenía dónde ir) pero **no basta**: el conjunto de trabajo excede la máquina.
+- **El arreglo que NO quita trabajadores — serializar el typecheck.** Un `flock` de máquina alrededor de `tsc --noEmit` en los hooks: **solo uno corre a la vez**, los demás esperan. Pasa de 3,8 GB a ~1,3 GB de pico, que sí cabe. **No quita capacidad**: el typecheck no es el trabajo, es el peaje — y hoy los cuatro lo pagan a la vez y ninguno avanza. El patrón ya existe en la casa (el candado del deploy es un `flock` local, [T-485]), así que no hay que inventarlo.
+- **Alternativas descartadas y por qué:** *bajar a tres trabajadores* — Manuel lo descartó explícitamente, y además no ataca la causa (tres typechecks a la vez siguen sin caber holgadamente); *subir `MemoryHigh`* — está descartado desde [T-647] y devolvería los OOM; *más RAM* — cuesta dinero y es decisión suya.
+- **⚠️ Cuidado al implementarlo:** el `pre-push` ya decide si el push «paga peaje» de typecheck; el candado va DENTRO de esa rama, no envolviendo el hook entero, o se serializarán también los pushes que hoy pasan sin typecheck. Y tiene que ser **por máquina, no por worktree**: el recurso escaso es la RAM de la máquina.
+- **Relacionadas:** [T-647] (el techo de memoria, cuyo ajuste cambió muertes por parálisis), [T-485] (el `flock` del deploy como patrón), [T-486].
+
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
 - **Lo que veía el usuario:** termina el examen, pulsa corregir, y la app dice que **no hay conexión**. No se corrige, no se ve el resultado, no se guarda. **Cuatro usuarias premium lo escribieron el mismo día** (`emmavallejoteijeira`, `rbsc87` ×2, `esthlazar`), y una quinta (`ivangonlezpe`) por otra vía.
@@ -1289,28 +1750,6 @@ sirven es leer los casos, no contar filas. Al tocarlo, mantener la paridad sweep
 **Relacionadas:** [T-253] (la misma familia dentro del TEXTO del artículo, no de la explicación) ·
 memoria `project-detector-notas-auditoria-verde-falso` (ya van tres veces que este detector da verde
 falso: conviene leerla antes de recalibrar).
-### [T-676] 🟠 [ABIERTO 07/08] El RD 486/1997 se sirve sin CUATRO de sus seis anexos, y el primero al 0,7% de su texto — 6 oposiciones, 500 usuarios
-
-- **Lo destapó un usuario, no un detector.** `casterpepe76` (free, Ordenanza del Ayuntamiento de Córdoba) escribió: *«Comparando el tema con el real decreto 486/1997 sacado del BOE veo que faltan anexos y que los anexos que ponéis vosotros están como resumidos. ¿Es correcto el tema 9 que tenéis subido?»*. **Tiene razón, y se queda corto.**
-- **Contrastado contra el BOE consolidado** (`BOE-A-1997-8669`, descargado y medido, no de memoria):
-
-  | Anexo | En el BOE | En nuestra BD |
-  |---|---|---|
-  | I — Condiciones generales de seguridad | **17.320** car. | `AI-suelos`, **129 car.** (solo los suelos) |
-  | II — Orden, limpieza y mantenimiento | 1.779 | `AII`, 1.769 ✅ |
-  | III — Condiciones ambientales | 3.657 | **NO ESTÁ** |
-  | IV — Iluminación | 3.774 | **NO ESTÁ** |
-  | V — Servicios higiénicos y locales de descanso | 6.595 | **NO ESTÁ** |
-  | VI — Material y locales de primeros auxilios | 3.496 | **NO ESTÁ** |
-
-  **Un anexo completo de seis.** Faltan ~34.800 caracteres de temario, y son justo los que se examinan: las cifras concretas (temperaturas, lux, dimensiones, dotación de vestuarios) viven en los anexos, no en los 12 artículos, que son remisiones de dos líneas.
-- **Alcance:** 6 oposiciones (`ordenanza_ayuntamiento_cordoba`, `cuidador_diputacion_cordoba`, `subalterno_gva`, `administrativo_castilla_leon`, `auxiliar_administrativo_cyl`, `agrupacion_profesional_servicios_publicos_carm`), **500 usuarios** con esas oposiciones. El scope es LEY ENTERA (`article_numbers NULL`), así que el temario **promete los anexos** y sirve un hueco.
-- **La consecuencia concreta, y es la que duele:** hay preguntas que EXAMINAN un anexo que no existe como contenido. Ejemplo vivo: *«Según el RD 486/1997 (**Anexo V**), los vestuarios de los lugares de trabajo estarán provistos de…»*, colgada del **art. 9** — el opositor abre el artículo desde la pregunta y lee una remisión, no el texto que se le está preguntando. De 44 preguntas activas de esta norma, **ninguna cuelga de los anexos III-VI** porque no hay dónde colgarlas.
-- **Punto ciego que lo explica:** `articulo_servido_sin_texto` mira artículos escopados **sin texto**; aquí los artículos SÍ tienen texto (correcto y completo) y lo que falta es una **parte de la ley que nunca se importó**. Y `law_unverified_source` / completitud de leyes mira si la ley está verificada contra su fuente — esta norma **no lo estaba**. Es exactamente el hueco que [T-528] describe: contenido servido sin contrastar nunca con el documento del que dice venir.
-- **Qué hacer:** importar VERBATIM del BOE los anexos III, IV, V y VI, y **completar el I** (hoy es un muñón de 129 caracteres que además se llama `AI-suelos`, o sea que ni el nombre es el del anexo). Doble auditoría antes de activar. Después, generar preguntas ancladas a los anexos nuevos y revisar si alguna de las 44 actuales está mal vinculada (la del Anexo V debería colgar del Anexo V, no del art. 9). **NUNCA redactar el anexo de memoria ni resumirlo**: el resumen es precisamente el defecto que el usuario ha detectado.
-- **Comprobar si el patrón se repite:** esta norma se importó con los anexos resumidos; conviene medir en cuántas otras leyes con anexos examinables pasa lo mismo (`AI-…`, `AII`, etc. con longitudes ridículas frente a su fuente). Si sale más de un puñado, es ficha aparte y detector.
-- **Relacionadas:** feedback `94a1d41f` (el usuario que lo encontró), [T-528] (temarios sin contrastar con su fuente), [T-596] (`articulo_servido_sin_texto`, el hermano que no ve este caso).
-
 ### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
 
 - **Medido el 07/08** al buscar por qué 7 tareas revisadas en verde no tenían su trabajo en `main`:
@@ -1374,62 +1813,6 @@ entero solo para que el canario calle.
 - **Diagnóstico del corpus, confirmado por la URL y no por el texto:** los 8 documentos clonados vienen de la carpeta **`admto_a`** (Administrativo, C1) mientras `programa_url` apunta a **`aux_administrativo`**. No fue un enganche a la convocatoria equivocada: **se clonó del proceso vecino**. Por eso el corpus no contiene ni una vez «Auxiliar Administrativ».
 - **Corrige la primera lectura de esta ficha:** NO había que sospechar de la cifra publicada, sino de **cómo está guardada** y de **de dónde salieron los documentos**. Los dos detectores de plazas tenían razón en avisar y el fallo real era de provenance.
 - **Orden para arreglarlo (el segundo paso toca lo que se publica):** (1) clonar el documento correcto al hub por el camino canónico (`backend/scripts/clonar-documento.ts`), que es lo que arregla la provenance de raíz; (2) `plazas_libres=44` + declarar el cupo **DENTRO** con la cita literal de arriba. **El número que ve el usuario no cambia** (44 → 44): lo que cambia es que deja de depender de que dos errores se anulen.
-### [T-660] 🔴 [ABIERTO 07/08] Servimos 5 leyes DEROGADAS: ninguna vigilancia miraba si la norma sigue viva, y lo cazó un usuario
-
-**Lo reporta un usuario premium, no una alerta.** Iván González (Auxiliar Administrativo de Canarias,
-feedback `1627e0d4`): el tema 7 seguía montado sobre la **Ley 8/2015 de Cabildos Insulares**.
-Verificado contra el BOE, literal: *«Norma derogada, con efectos de 30 de junio de 2026, por la
-disposición derogatoria única de la Ley 3/2026, de 16 de junio»* (BOE-A-2026-17189). **Cinco semanas**
-sirviendo 47 artículos escopados de una norma muerta a quien paga por estudiarla.
-
-#### Era un punto ciego REAL, no un fallo de triaje
-Ninguna de las cuatro vigilancias de leyes mira si la norma **sigue viva**:
-`article_annulled_unmarked` (incisos del TC, por artículo) · `staleDatedLaw` (leyes anuales
-caducadas) · `law_unverified_source` (si la fuente está registrada, no si vive) · `laws:vigilar`
-(hash, y solo cubría **21 de 738** leyes activas con URL del BOE = **2,8%**; ésta no estaba).
-Y la señal **estaba publicada**: la API de datos abiertos del BOE la da explícita.
-
-#### La medida para que no se repita (ya aplicada)
-- Núcleo puro `lib/laws/derogacion.ts` (12 tests) + barrido `npm run laws:derogadas`
-  (`--escribe` publica el kind `ley_derogada_servida` y emite evento). Registrado en
-  `toolRegistry`, `runbookRegistry` y CLAUDE.md con su frase-gatillo.
-- **Pregunta a la MISMA API y por el MISMO camino que `annulledProvisions`** (análisis de
-  referencias posteriores): no estrena una tercera forma de preguntar lo mismo.
-- **ON-DEMAND a propósito**: 606 llamadas al BOE por pasada para una señal que cambia dos o tres
-  veces al año. Deja rastro al correrlo para que el resultado no muera en la terminal.
-
-#### ⚠️ Lo que decide si el detector vale: TOTAL vs PARCIAL
-Al estrenarlo marcó el **RDL 8/2015 (Ley General de la Seguridad Social)**, que sirve **674
-preguntas en 47 temas**, porque su texto empieza por coma igual que las derogaciones totales
-(`, con efectos desde el 1 de enero de 2023, el art. 312…`) cuando lo que caía era **un artículo**.
-Un falso positivo así habría mandado a alguien a retirar del temario la Ley General de la Seguridad
-Social. Corregido (se descuenta la cláusula de efectos antes de juzgar) y **fijado como test de
-regresión con el texto REAL del BOE**.
-
-#### Los 5 hallazgos del primer barrido (606 leyes comprobadas, 11 sin respuesta del BOE)
-| ley | derogada por | temas | preguntas |
-|---|---|---|---|
-| Ley 8/2015 Cabildos Insulares | Ley 3/2026, de 16 de junio | 1 | 17 |
-| Ley 4/2005 Igualdad Euskadi | Decreto Legislativo 1/2023, de 16 de marzo | 2 | 10 |
-| RD 806/2014 | Real Decreto 1125/2024, de 5 de noviembre | 1 | 21 |
-| RD 187/2008 Red Hospitalaria Defensa | Real Decreto 931/2025, de 21 de octubre | 1 | 1 |
-| REx | Real Decreto 1155/2024, de 19 de noviembre | 1 | 75 |
-
-**La de REx lleva derogada desde el 20/05/2025**: más de un año sirviendo 75 preguntas de una norma
-que no existe.
-
-#### Pendiente (el trabajo de contenido, que es lo caro)
-Por cada una: importar la norma que la sustituye y **RE-ANCLAR** el temario. **NUNCA quitar la ley
-sin más** — el programa oficial suele decir que las referencias se entienden hechas a la norma que
-la sustituya, así que retirarla dejaría el tema vacío en vez de actualizado
-(`docs/runbooks/leyes-anuales-caducadas.md`). Empezar por Canarias (hay un usuario esperando) y por
-REx (75 preguntas, más de un año).
-
-#### Y las otras cuatro cosas que avisó el mismo usuario, sin verificar todavía
-Tema 17 con contenido de los temas 18/20 (dice que 40 de 100 en su muestra) · una pregunta del art.
-62 ambigua · dos preguntas del art. 49 TREBEP con 21 semanas donde él calcula 20 · tema 6 sin los
-Decretos 41/2023 y 123/2023. **Cada una es un trabajo aparte y NO se le ha dado la razón todavía.**
-
 ### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
 
 **De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
@@ -1468,6 +1851,19 @@ no toca nada que sirva a un usuario).
 
 **Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
 ceguera).
+#### ⚠️ CABO SUELTO OPERATIVO (07/08): w3 está en la cuenta que NO le toca
+Se rotó **w3 a la cuenta A** (la de w1/w2/w4) porque la suya había agotado el **límite SEMANAL**
+(*«hit your weekly limit · resets 11pm (UTC)»*). Es reversible y hay copia:
+`/etc/vence-flota/w3.env.bak-secundaria`. **Cuando la cuenta B reponga, devolverlo** — el reparto de
+`lib/flota/cuentas.cjs` es determinista POR NOMBRE a propósito (si rota, el consumo por cuenta deja
+de ser comparable y no se puede saber a quién le pasó qué).
+
+**Y salió un fallo del propio andamiaje:** tras rotar la cuenta, el gate seguía diciendo «sin cuota»
+porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el veredicto de la cuenta
+vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
+**Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
+motivo que ya no existe.
+
 ### [T-652] 🟡 [ABIERTO 07/08] El TREBEP se sirve con CAPÍTULOS PARTIDOS en 24 temas más: el hueco cae dentro de un título que sí está escopado, y ningún detector lo ve
 
 **Lo destapa una usuaria, no una alerta.** María G. (feedback `b24b1aee`, premium de Madrid, 07/08):
@@ -1757,21 +2153,6 @@ en móvil** (`scrollWidth` 421 vs 393 de pantalla) — defecto real, sin ficha t
 - **Nada de esto se ha tocado.** No se ha creado ningún rol, ningún secret nuevo, ningún contenedor de BD efímera. Es un hallazgo, no un arreglo — cerrado el prerrequisito de T-370 (el secret de solo lectura), este es el HUECO que queda detrás.
 - **Origen:** medido investigando [T-370] (07/08), a petición explícita de Manuel de no enterrarlo dentro de esa ficha ("se perdería al cerrarla").
 - **Relacionada:** [T-370] (el secret de solo lectura que desbloqueó el resto del gate).
-### [T-638] 🟡 [ABIERTO 07/08] `vence_lector` no puede leer `question_lifecycle_history`: RLS activo sin política, mismo mecanismo que T-573
-
-- **De dónde sale:** trabajando [T-598] (barrido de preguntas con deixis visual sin imagen), quise corroborar que la pregunta de Laura Simar (impugnación `bdf4a132`) tenía de verdad su transición a `retired_irreparable`/`admin_image_unavailable` en `question_lifecycle_history`. La tabla devolvió **0 filas — para CUALQUIER filtro, sin excepción**, incluso `SELECT count(*) FROM question_lifecycle_history` a secas.
-- **DEMOSTRADO, no supuesto — mismo mecanismo exacto que [T-573]/[T-574]:** `pg_class.relrowsecurity = true` para `question_lifecycle_history`, y `pg_policies` no tiene NINGUNA política para ella (ni de SELECT ni de ningún otro comando). Con RLS activo y cero políticas, el `GRANT SELECT` de `20260805_rol_lector_flota.sql` no basta: el motor filtra en silencio y devuelve 0 filas SIEMPRE, sea cual sea el contenido real — no lanza error, así que un canario que solo mira "¿lanzó?" lo da por bueno. Verificado con el mismo par de consultas que usa `scripts/canary-rol-lector.cjs` / `lib/db/rlsSelectBlocked.cjs`.
-- **Por qué importa — no es una tabla cualquiera:** `question_lifecycle_history` es, según el propio CLAUDE.md, la **"fuente única de verdad"** del audit trail de lifecycle de preguntas (`transition_question_state`). La citan como sitio donde verificar transiciones **al menos 11 fichas distintas** de `docs/roadmap/tareas-pendientes.md` (duplicados jubilados, preguntas a `needs_human`, retiradas por falta de fuente…). Hoy, cualquier worker de la flota que quiera **comprobar** (no solo confiar en la prosa de otra sesión) que una transición pasó de verdad, no puede — tiene que fiarse de lo que dice la ficha, que es exactamente el tipo de verificación ciega que este piloto existe para evitar.
-- **Por qué es seguro conceder acceso (mismo criterio que T-573):** columnas — `id`, `question_id`, `from_state`, `to_state`, `reason_code`, `changed_at`, `changed_by`, `ai_verification_id`, `notes`. Ningún identificador directo de persona (correo, nombre, teléfono, IP, pago). `changed_by` es un identificador de sesión/autor del cambio (string tipo `w2-vence-flota-…` o similar), no un dato personal. Mismo perfil de riesgo que `test_questions`/`tests`, que SÍ se concedieron sin objeción en T-573.
-- **Cómo (calcado de `supabase/migrations/20260805_rls_test_questions_lector.sql`):** una política `SELECT` para el rol `vence_lector` sobre `question_lifecycle_history`, `USING (true)`, idempotente (`DROP POLICY IF EXISTS` + `CREATE POLICY`). NO tocar ninguna otra de las ~70 tablas con RLS activo y cero políticas — la inmensa mayoría son operativas o con PII, y bloquearlas es el comportamiento correcto.
-- **Capas:** añadir `question_lifecycle_history` a `DEBE_LEER` en `scripts/canary-rol-lector.cjs` (así el propio canario deja de poder mentir sobre esta tabla en el futuro) + comprobar con `SELECT count(*)` real tras aplicar.
-- **Relacionadas:** [T-573] (mismo mecanismo, otras tablas), [T-574] (donde se diagnosticó el mecanismo por primera vez, `question_disputes`), [T-598] (de donde sale este hallazgo).
-
-- **🛠️ IMPLEMENTADO (07/08, w2), rama `flota/T-638-rls-question-lifecycle-history-lector` (pusheada) — NO APLICADO NI VERIFICADO en vivo, un worker no puede.**
-  - `supabase/migrations/20260807_rls_question_lifecycle_history_lector.sql`, calcada 1:1 del patrón de `20260805_rls_test_questions_lector.sql` (T-573): política `SELECT` para `vence_lector`, idempotente, con el mismo guard final que aborta la migración si el `GRANT` de tabla no existiera (para que la política nunca dé una falsa sensación de acceso sin él).
-  - `scripts/canary-rol-lector.cjs`: `question_lifecycle_history` añadida a `DEBE_LEER`, así el propio canario deja de poder dar un falso verde sobre esta tabla en el futuro.
-  - **Capas:** `__tests__/db/rlsQuestionLifecycleHistoryLectorMigration.test.js` (6 tests, mismo patrón que el gemelo de T-573: forma de la migración + que el canario la declare), verdes. Re-corridos también `rlsSelectBlocked.test.js` y `rlsTestQuestionsLectorMigration.test.js` — sin romper nada (20/20 en total).
-  - **NO PUDE aplicar la migración ni comprobar que `SELECT count(*) FROM question_lifecycle_history` deje de dar 0**: ese paso necesita ejecutar SQL de escritura (DDL) contra RDS, que un worker no tiene. Falta que alguien con permiso la aplique y confirme.
 ### [T-661] 🟡 [ABIERTO 07/08] La puerta de temario de las impugnaciones nunca ha bloqueado a nadie y su escape se usa de PREFIJO: 9 de 9 usos sin bloqueo detrás
 
 - **Lo medido (07/08, `npm run sesiones:friccion`, ventana de 7 días):** el guardarraíl `temario` sale **🔴 rodeado el 100% (9/9)**, y el desglose dice lo importante: **«9 de 9 escapes NO respondían a ningún bloqueo»**. O sea, no es que la puerta estorbe y la gente la salte — es que **la puerta no ha parado a nadie ni una vez** y `--temario-igualmente` se está escribiendo por costumbre, delante del comando, como quien pone `sudo`.
@@ -8701,6 +9082,75 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-638] ✅ [HECHA 07/08] `vence_lector` no puede leer `question_lifecycle_history`: RLS activo sin política, mismo mecanismo que T-573
+
+- **De dónde sale:** trabajando [T-598] (barrido de preguntas con deixis visual sin imagen), quise corroborar que la pregunta de Laura Simar (impugnación `bdf4a132`) tenía de verdad su transición a `retired_irreparable`/`admin_image_unavailable` en `question_lifecycle_history`. La tabla devolvió **0 filas — para CUALQUIER filtro, sin excepción**, incluso `SELECT count(*) FROM question_lifecycle_history` a secas.
+- **DEMOSTRADO, no supuesto — mismo mecanismo exacto que [T-573]/[T-574]:** `pg_class.relrowsecurity = true` para `question_lifecycle_history`, y `pg_policies` no tiene NINGUNA política para ella (ni de SELECT ni de ningún otro comando). Con RLS activo y cero políticas, el `GRANT SELECT` de `20260805_rol_lector_flota.sql` no basta: el motor filtra en silencio y devuelve 0 filas SIEMPRE, sea cual sea el contenido real — no lanza error, así que un canario que solo mira "¿lanzó?" lo da por bueno. Verificado con el mismo par de consultas que usa `scripts/canary-rol-lector.cjs` / `lib/db/rlsSelectBlocked.cjs`.
+- **Por qué importa — no es una tabla cualquiera:** `question_lifecycle_history` es, según el propio CLAUDE.md, la **"fuente única de verdad"** del audit trail de lifecycle de preguntas (`transition_question_state`). La citan como sitio donde verificar transiciones **al menos 11 fichas distintas** de `docs/roadmap/tareas-pendientes.md` (duplicados jubilados, preguntas a `needs_human`, retiradas por falta de fuente…). Hoy, cualquier worker de la flota que quiera **comprobar** (no solo confiar en la prosa de otra sesión) que una transición pasó de verdad, no puede — tiene que fiarse de lo que dice la ficha, que es exactamente el tipo de verificación ciega que este piloto existe para evitar.
+- **Por qué es seguro conceder acceso (mismo criterio que T-573):** columnas — `id`, `question_id`, `from_state`, `to_state`, `reason_code`, `changed_at`, `changed_by`, `ai_verification_id`, `notes`. Ningún identificador directo de persona (correo, nombre, teléfono, IP, pago). `changed_by` es un identificador de sesión/autor del cambio (string tipo `w2-vence-flota-…` o similar), no un dato personal. Mismo perfil de riesgo que `test_questions`/`tests`, que SÍ se concedieron sin objeción en T-573.
+- **Cómo (calcado de `supabase/migrations/20260805_rls_test_questions_lector.sql`):** una política `SELECT` para el rol `vence_lector` sobre `question_lifecycle_history`, `USING (true)`, idempotente (`DROP POLICY IF EXISTS` + `CREATE POLICY`). NO tocar ninguna otra de las ~70 tablas con RLS activo y cero políticas — la inmensa mayoría son operativas o con PII, y bloquearlas es el comportamiento correcto.
+- **Capas:** añadir `question_lifecycle_history` a `DEBE_LEER` en `scripts/canary-rol-lector.cjs` (así el propio canario deja de poder mentir sobre esta tabla en el futuro) + comprobar con `SELECT count(*)` real tras aplicar.
+- **Relacionadas:** [T-573] (mismo mecanismo, otras tablas), [T-574] (donde se diagnosticó el mecanismo por primera vez, `question_disputes`), [T-598] (de donde sale este hallazgo).
+
+- **🛠️ IMPLEMENTADO (07/08, w2), rama `flota/T-638-rls-question-lifecycle-history-lector` (pusheada) — NO APLICADO NI VERIFICADO en vivo, un worker no puede.**
+  - `supabase/migrations/20260807_rls_question_lifecycle_history_lector.sql`, calcada 1:1 del patrón de `20260805_rls_test_questions_lector.sql` (T-573): política `SELECT` para `vence_lector`, idempotente, con el mismo guard final que aborta la migración si el `GRANT` de tabla no existiera (para que la política nunca dé una falsa sensación de acceso sin él).
+  - `scripts/canary-rol-lector.cjs`: `question_lifecycle_history` añadida a `DEBE_LEER`, así el propio canario deja de poder dar un falso verde sobre esta tabla en el futuro.
+  - **Capas:** `__tests__/db/rlsQuestionLifecycleHistoryLectorMigration.test.js` (6 tests, mismo patrón que el gemelo de T-573: forma de la migración + que el canario la declare), verdes. Re-corridos también `rlsSelectBlocked.test.js` y `rlsTestQuestionsLectorMigration.test.js` — sin romper nada (20/20 en total).
+  - **NO PUDE aplicar la migración ni comprobar que `SELECT count(*) FROM question_lifecycle_history` deje de dar 0**: ese paso necesita ejecutar SQL de escritura (DDL) contra RDS, que un worker no tiene. Falta que alguien con permiso la aplique y confirme.
+
+### [T-108] ✅ [HECHA 07/08] OEP como entidad de primer nivel + desambiguación año OEP/convocatoria
+- **Qué:** la OEP no es entidad — vive como `convocatorias.oep_decreto` TEXT (60% multi-OEP concatenadas) + `oep_fecha` una date. Imposible modelar N OEP→1 convocatoria, 1 OEP→N convocatorias, plazas por OEP, ni el backlog de OEP sin convocar. Además `año` tiene doble semántica (convocatoria vs OEP en `historico.ts`) y había un **bug de runtime** en el rollover por señal. Investigación completa (3 agentes + RDS) y diseño por fases en **`docs/roadmap/oep-entidad-modelo.md`**.
+- **Impacto:** 🟡 higiene de dato + fiabilidad. El bug F0 rompía el rollover automático por señal OEP (INSERT reventaba). Lo demás es que la acumulación de OEP y el backlog no son consultables (viven en texto).
+- **HECHO (25/07, aditivo, cero pérdida de datos):**
+  - **F0** — arreglado el `ON CONFLICT (oposicion_id, "año")` (esa UNIQUE se eliminó en 20260718) → reanimar-o-insertar. `lib/api/oep-signals/queries.ts`.
+  - **F1** — migración `20260726_oep_entidad.sql`: tablas **`oep`** (con `estado` backlog + `source_documento_id` al hub) + **`convocatoria_oep`** (N:M) + `convocatoria_documentos.oep_id`. Backfill `scripts/oep/backfill-oep-entidad.cjs` (parser por patrón + find-or-insert por (oposición,año)) → **238 OEP únicas** (58 multi-OEP, **52 backlog en 39 oposiciones**). Cloner `scripts/oep/clonar-oep-documento.cjs` (reutiliza el hub) → 6 OEP estatales AGE clonadas verbatim (RD 625/2023, 651/2025). NO se toca `convocatorias` ni el rollover (inscritos/plazas/stats por ciclo intactos); `oep_decreto`/`oep_fecha` quedan como legacy. *(1er backfill sobre-partía strings complejos → 70 filas basura; reescrito + re-backfilleado limpio, guardrails anti-regresión DUP+ruido en `oepEntidadIntegrity`.)*
+  - **F3 (25/07)** — el radar ALIMENTA la entidad: `promoteSignalToConvocatoria` (`lib/api/oep-signals/queries.ts`) hace find-or-insert de la `oep` del año + enlace `convocatoria_oep`, y clona el decreto si la fuente es un boletín reconocido (`fuente='oep-radar'`). No bloqueante → las OEP nuevas ya no se degradan.
+  - **F2 parcial (25/07)** — la entidad se CONSUME: `/api/admin/oep-consistency` lee el backlog (check `oep_backlog`, **52 OEP en 39 oposiciones**). **Ya NO es silo** (radar-escribe → admin-lee). Tests: 57 verdes (parser + integridad + paridad); typecheck limpio.
+- **PENDIENTE — CABOS SUELTOS (ir resolviendo todos):**
+  1. **DEPLOY (bloqueante para que F0/F2/F3 vivan).** El schema+backfill ya está en RDS, pero el CÓDIGO está en `main` sin desplegar → **frontend** (`lib/api/oep-signals/queries.ts` = F0/F3, `app/api/admin/oep-consistency` = F2). Hasta el deploy, prod sigue con el **bug F0** (`ON CONFLICT (oposicion_id,"año")` reventaba el rollover por señal). Runbook: `docs/runbooks/pusheo-revision-despliegue.md`.
+  2. **Clonado de decretos de OEP — ALTO VALOR HECHO, regional DESPRIORIZADO (25/07).** `source_documento_id`: **6→30**. Clonadas las **estatales** (RD 625/2023 BOE-A-2023-16191, RD 656/2024 BOE-A-2024-13572, RD 651/2025 BOE-A-2025-14783, RD 387/2026 BOE-A-2026-9946 — cubren muchas oposiciones AGE) + GVA Decreto 16/2026 (DOGV-2026-3776). **RD 1052/2025 anotado para revisión** (no consta como decreto de OEP en BOE; el estatal 2025 es RD 651/2025 — probable dato erróneo). Quedan **~28 regionales nombradas (1-2 oposiciones c/u) + 173 "OEP AAAA" sin decreto** → grind por-boletín de BAJO multiplicador. **Recomendación: NO hacer backfill masivo** — el forward (F3) clona la OEP regional sola al aplicar la señal; hacer las históricas solo a demanda de una oposición concreta. Herramienta: `scripts/oep/clonar-oep-documento.cjs` (verifica el texto contra la fuente; NUNCA inventar la URL).
+  3. **Docs `oep_decreto` huérfanos: 32→13.** Enlazados 19 (docs que el radar ya había clonado, match por oposición+año, cero re-descarga). Los 13 restantes son multi-año / sin oep que case → revisión a mano. GOTCHA arreglado (`c3c95f84b`): el cloner ahora PROMUEVE `tipo='oep_decreto'` al enlazar un doc pre-existente de otro tipo (caso RD 387/2026 estaba como `tipo='otro'`).
+  4. **F2-resto (lectores):** `añoOep()` que derive del enlace estructurado en la landing (hoy `historico.ts` usa el slice de `oep_fecha` → la landing puede mostrar un año distinto al auditado); arreglar el `ORDER BY c."año"` engañoso en `lib/api/convocatoria/queries.ts:341`.
+  5. **F3-resto (señal→entidad más rica):** la señal capta `detected_decreto`/`detected_oep_fecha` (hoy la `oep` del radar nace con `decreto=NULL`, enriquecible por backfill/resolución).
+  6. **F4:** deprecar `oep_decreto`/`oep_fecha` texto cuando no queden lectores; `estado_proceso` a **fuente única** (hoy duplicado en ~6 sitios: DB CHECK + `advance-estado` + `oportunidad.ts` + 3 schemas LLM) — sin guardrail que cace la divergencia.
+  7. **Intersección con el cost-gate (otra sesión, memoria `project_gasto_anthropic_crons_sin_gate`):** cuando se arregle `detect-oep-llm`, su columna propuesta `llm_scan_extraction` NO debe ser un store OEP paralelo → la extracción debe alimentar la entidad `oep` (por `promoteSignalToConvocatoria`), no un JSON suelto en `oposiciones`. `llm_scan_hash`/`at` sí son para el gate de coste.
+  - Detalle y diseño por fases: `docs/roadmap/oep-entidad-modelo.md`.
+
+> **07/08 — CORRECCIÓN DE PREMISA: lo que parecía "el camino vivo no crea entidades" era, medido, que YO (y probablemente la sesión anterior) no podía VER las señales — RLS bloqueando la lectura, no el radar parado.**
+> - **Repetida la medición del "falta":** `oep`/`convocatoria_oep` siguen en 287/291, TODAS del backfill del 29/07 — eso sigue siendo cierto y sigue midiéndose igual. Pero `oep_detection_signals` da **0 filas totales** (ni una, de ningún estado) con `VENCE_LECTOR_URL`, cuando `radar_adapter_runs` (tabla hermana, sin el problema que sigue) muestra el radar **corriendo HOY** (última pasada 07/08 07:01 UTC, 316 runs históricos) y reportando `signals_new > 0` en varios adapters de esta misma mañana (`dogv`: 2, `bome`: 2, `pag-empleo`: 1).
+> - **Causa medida, no supuesta — mismo mecanismo que [T-573]/[T-574]:** `oep_detection_signals` y `detection_sources` tienen `pg_class.relrowsecurity=true` y **CERO filas en `pg_policies`**. Con RLS activo y sin política, el motor filtra en SILENCIO y da 0 filas siempre — no lanza error, así que es indistinguible de "no hay nada" con un `SELECT count(*)`. Confirmado con el detector YA EXISTENTE en el repo (`lib/db/rlsSelectBlocked.cjs` → `seleccionBloqueadaPorRls`): `true` para las dos, `false` para `oep`/`convocatoria_oep`/`radar_adapter_runs` (que sí se leen bien). El dueño de las 4 tablas es `venceadmin`, que por ser OWNER está exento de RLS (sin `FORCE ROW LEVEL SECURITY`, confirmado `false`) — así que **producción (que usa `getDb()`/`venceadmin`) lee y escribe con normalidad; el bloqueo es específico de `vence_lector`**, el rol de lectura de un trabajador de la flota.
+> - **Arreglado:** migración `supabase/migrations/20260807_rls_oep_detection_signals_lector.sql` (mismo patrón exacto que `20260805_rls_test_questions_lector.sql`: política `FOR SELECT TO vence_lector USING (true)`, sin PII en ninguna de las dos tablas — `reviewed_by` es `uuid`, el resto son metadatos de la señal/fuente). Añadidas ambas a `DEBE_LEER` en `scripts/canary-rol-lector.cjs`, que ahora las marca en rojo correctamente (verificado corriendo el canario: `❌ lee oep_detection_signals` / `❌ lee detection_sources`, exactamente el fallo que la migración corrige). **No pude aplicar la migración yo mismo** (sin escritura en BD de negocio) — sigue viva solo en la rama hasta que alguien con acceso la aplique contra RDS.
+> - **⚠️ HALLAZGO COLATERAL, más grande que T-108: el canario también canta en rojo `test_questions` y `ai_verification_results` — las MISMAS tablas que [T-573]/[T-038] ya arreglaron con migraciones fechadas 05/08.** Comprobado (`SELECT * FROM pg_policies WHERE tablename IN (...)`): **cero políticas hoy**, para las tres. Esto significa que esas migraciones, aunque están en `main` y el problema que describen está bien diagnosticado, **no han sido aplicadas contra la RDS real** — 2+ días después. No lo afirmo sin comprobarlo: busqué un paso de deploy que aplique `supabase/migrations/*.sql` automáticamente (`package.json`, `scripts/deploy-*.sh`) y **no existe ninguno** — aplicar una migración a RDS es hoy un paso MANUAL que nadie automatiza. Ficha nueva abierta con esto: **[T-645]**, porque afecta a mucho más que OEP — cualquier migración de este tipo puede quedarse escrita y revisada, pero inerte.
+> - **Lo que SIGUE sin poder confirmarse (la pregunta original de T-108):** que `promoteSignalToConvocatoria` cree entidades cuando de verdad se aplica una señal. Con las 4 migraciones de RLS aplicadas, una sesión (yo u otra) podrá por fin VER la cola de pendientes y triar una de verdad — hasta entonces sigo sin poder decir si el código del camino vivo funciona, solo que la comprobación anterior ("9 pending, 0 aplicadas") es una medición NO FIABLE, hecha ciega.
+
+
+### [T-676] ✅ [HECHA 07/08] El RD 486/1997 se sirve sin CUATRO de sus seis anexos, y el primero al 0,7% de su texto — 6 oposiciones, 500 usuarios
+
+- **Lo destapó un usuario, no un detector.** `casterpepe76` (free, Ordenanza del Ayuntamiento de Córdoba) escribió: *«Comparando el tema con el real decreto 486/1997 sacado del BOE veo que faltan anexos y que los anexos que ponéis vosotros están como resumidos. ¿Es correcto el tema 9 que tenéis subido?»*. **Tiene razón, y se queda corto.**
+- **Contrastado contra el BOE consolidado** (`BOE-A-1997-8669`, descargado y medido, no de memoria):
+
+  | Anexo | En el BOE | En nuestra BD |
+  |---|---|---|
+  | I — Condiciones generales de seguridad | **17.320** car. | `AI-suelos`, **129 car.** (solo los suelos) |
+  | II — Orden, limpieza y mantenimiento | 1.779 | `AII`, 1.769 ✅ |
+  | III — Condiciones ambientales | 3.657 | **NO ESTÁ** |
+  | IV — Iluminación | 3.774 | **NO ESTÁ** |
+  | V — Servicios higiénicos y locales de descanso | 6.595 | **NO ESTÁ** |
+  | VI — Material y locales de primeros auxilios | 3.496 | **NO ESTÁ** |
+
+  **Un anexo completo de seis.** Faltan ~34.800 caracteres de temario, y son justo los que se examinan: las cifras concretas (temperaturas, lux, dimensiones, dotación de vestuarios) viven en los anexos, no en los 12 artículos, que son remisiones de dos líneas.
+- **Alcance:** 6 oposiciones (`ordenanza_ayuntamiento_cordoba`, `cuidador_diputacion_cordoba`, `subalterno_gva`, `administrativo_castilla_leon`, `auxiliar_administrativo_cyl`, `agrupacion_profesional_servicios_publicos_carm`), **500 usuarios** con esas oposiciones. El scope es LEY ENTERA (`article_numbers NULL`), así que el temario **promete los anexos** y sirve un hueco.
+- **La consecuencia concreta, y es la que duele:** hay preguntas que EXAMINAN un anexo que no existe como contenido. Ejemplo vivo: *«Según el RD 486/1997 (**Anexo V**), los vestuarios de los lugares de trabajo estarán provistos de…»*, colgada del **art. 9** — el opositor abre el artículo desde la pregunta y lee una remisión, no el texto que se le está preguntando. De 44 preguntas activas de esta norma, **ninguna cuelga de los anexos III-VI** porque no hay dónde colgarlas.
+- **Punto ciego que lo explica:** `articulo_servido_sin_texto` mira artículos escopados **sin texto**; aquí los artículos SÍ tienen texto (correcto y completo) y lo que falta es una **parte de la ley que nunca se importó**. Y `law_unverified_source` / completitud de leyes mira si la ley está verificada contra su fuente — esta norma **no lo estaba**. Es exactamente el hueco que [T-528] describe: contenido servido sin contrastar nunca con el documento del que dice venir.
+- **Qué hacer:** importar VERBATIM del BOE los anexos III, IV, V y VI, y **completar el I** (hoy es un muñón de 129 caracteres que además se llama `AI-suelos`, o sea que ni el nombre es el del anexo). Doble auditoría antes de activar. Después, generar preguntas ancladas a los anexos nuevos y revisar si alguna de las 44 actuales está mal vinculada (la del Anexo V debería colgar del Anexo V, no del art. 9). **NUNCA redactar el anexo de memoria ni resumirlo**: el resumen es precisamente el defecto que el usuario ha detectado.
+- **Comprobar si el patrón se repite:** esta norma se importó con los anexos resumidos; conviene medir en cuántas otras leyes con anexos examinables pasa lo mismo (`AI-…`, `AII`, etc. con longitudes ridículas frente a su fuente). Si sale más de un puñado, es ficha aparte y detector.
+- **Relacionadas:** feedback `94a1d41f` (el usuario que lo encontró), [T-528] (temarios sin contrastar con su fuente), [T-596] (`articulo_servido_sin_texto`, el hermano que no ve este caso).
+
+- **✅ HECHO (07/08, el mismo día).** Importados los seis anexos VERBATIM desde la **API de datos abiertos** del BOE (`/texto/bloque/<id>`), no del HTML: recortar la norma entera por marcadores es justo lo que produce los resúmenes que esto venía a reparar. Resultado: `AI` **129 → 19.087** car. (y de paso deja de llamarse `AI-suelos`, que ni era su nombre), `AII` normalizado, y **AIII, AIV, AV y AVI importados de cero** (3.595 · 3.787 · 6.600 · 3.095 car.). El script **relee de la BD y compara carácter a carácter** con lo descargado: **6/6 coinciden**. Herramienta reutilizable y registrada: `scripts/oposiciones/importar-rd486-anexos.cjs`.
+- **Los dos cabos que dejaba el propio import, cerrados también:** (a) dos scopes de la CARM citaban `AI-suelos`, que tras el renombrado habría quedado como **artículo fantasma** — repuntados a `AI`, comprobado que no queda ninguno; (b) la pregunta *«Según el RD 486/1997 (Anexo V), los vestuarios…»* colgaba del **art. 9** porque el Anexo V no existía — **re-anclada al Anexo V**, así que ahora el opositor abre desde la pregunta el texto que se le está preguntando.
+- **Verificado en PRODUCCIÓN, no en la BD:** `curl` sobre `https://www.vence.es/ordenanza-ayuntamiento-cordoba/temario/tema-9` → los **seis anexos aparecen en el HTML servido**. Es el tema por el que escribió el usuario, y su scope es ley entera, así que los recibe sin tocar nada más.
+- **⚠️ CABO ABIERTO A PROPÓSITO — 5 temas con lista explícita NO reciben los anexos nuevos** (`auxiliar_administrativo_cyl` T28, `administrativo_castilla_leon` T511, `subalterno_gva` T14, y `agrupacion_profesional_servicios_publicos_carm` T10 y T12). **NO se han ampliado, y no es un olvido:** meter los anexos en un scope acotado sin leer su epígrafe es sobre-inclusión, o sea el defecto contrario y el que persigue `scope_over_inclusion_suspect`. Cada uno hay que mirarlo contra su programa oficial; los dos de la CARM son los más sospechosos, porque hoy sirven `AI`+`AII` y nada más.
 
 ### [T-651] ✅ [HECHA 07/08] El antifraude marcaba como bot a nuestro propio canario y lo dejaba clavado en rojo
 
@@ -16286,31 +16736,6 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Impacto:** 🟢 no rompe nada, pero no se puede medir el ROI real de cada newsletter/campaña sin cruce manual. Ej. medido 25/07: la campaña cross-sell **Ujieres** (2.419 correos, 22% apertura, 25 clicks) no tiene forma automática de decir cuánto ingresó; el cruce manual ese día dio **0 ventas atribuibles** (los 4 compradores del día no habían clicado la NL; uno incluso compró 2h ANTES de recibir el correo).
 - **Cómo:** los CTAs de las newsletters YA llevan UTMs (`utm_source=email`, `utm_campaign=cross_ujieres` en `send-promo-cruzada.cjs`). Cerrar el bucle: (1) capturar `utm_source`/`utm_campaign` en el front y pasarlos como **`metadata` en el checkout de Stripe** (`create-checkout`); (2) el webhook los propaga a una columna nueva `user_subscriptions.attribution_campaign` (+ `attribution_source`); (3) un panel/consulta de **conversión por campaña** (correos → clicks → ventas → €) sin cruces manuales. Aditivo, nullable, back-compat.
 - **Origen:** 25/07, tras la campaña cross-sell Ujieres. Pregunta de Manuel *"¿alguna venta llegó por la newsletter? ¿tenemos la fuente de origen trackeada?"* — hoy solo respondible a mano. El tracking de eventos de email (sent/opened/clicked + UTM) SÍ existe; falta la pata de la conversión.
-
-### [T-108] 🟡 [ABIERTO 25/07] OEP como entidad de primer nivel + desambiguación año OEP/convocatoria
-- **Qué:** la OEP no es entidad — vive como `convocatorias.oep_decreto` TEXT (60% multi-OEP concatenadas) + `oep_fecha` una date. Imposible modelar N OEP→1 convocatoria, 1 OEP→N convocatorias, plazas por OEP, ni el backlog de OEP sin convocar. Además `año` tiene doble semántica (convocatoria vs OEP en `historico.ts`) y había un **bug de runtime** en el rollover por señal. Investigación completa (3 agentes + RDS) y diseño por fases en **`docs/roadmap/oep-entidad-modelo.md`**.
-- **Impacto:** 🟡 higiene de dato + fiabilidad. El bug F0 rompía el rollover automático por señal OEP (INSERT reventaba). Lo demás es que la acumulación de OEP y el backlog no son consultables (viven en texto).
-- **HECHO (25/07, aditivo, cero pérdida de datos):**
-  - **F0** — arreglado el `ON CONFLICT (oposicion_id, "año")` (esa UNIQUE se eliminó en 20260718) → reanimar-o-insertar. `lib/api/oep-signals/queries.ts`.
-  - **F1** — migración `20260726_oep_entidad.sql`: tablas **`oep`** (con `estado` backlog + `source_documento_id` al hub) + **`convocatoria_oep`** (N:M) + `convocatoria_documentos.oep_id`. Backfill `scripts/oep/backfill-oep-entidad.cjs` (parser por patrón + find-or-insert por (oposición,año)) → **238 OEP únicas** (58 multi-OEP, **52 backlog en 39 oposiciones**). Cloner `scripts/oep/clonar-oep-documento.cjs` (reutiliza el hub) → 6 OEP estatales AGE clonadas verbatim (RD 625/2023, 651/2025). NO se toca `convocatorias` ni el rollover (inscritos/plazas/stats por ciclo intactos); `oep_decreto`/`oep_fecha` quedan como legacy. *(1er backfill sobre-partía strings complejos → 70 filas basura; reescrito + re-backfilleado limpio, guardrails anti-regresión DUP+ruido en `oepEntidadIntegrity`.)*
-  - **F3 (25/07)** — el radar ALIMENTA la entidad: `promoteSignalToConvocatoria` (`lib/api/oep-signals/queries.ts`) hace find-or-insert de la `oep` del año + enlace `convocatoria_oep`, y clona el decreto si la fuente es un boletín reconocido (`fuente='oep-radar'`). No bloqueante → las OEP nuevas ya no se degradan.
-  - **F2 parcial (25/07)** — la entidad se CONSUME: `/api/admin/oep-consistency` lee el backlog (check `oep_backlog`, **52 OEP en 39 oposiciones**). **Ya NO es silo** (radar-escribe → admin-lee). Tests: 57 verdes (parser + integridad + paridad); typecheck limpio.
-- **PENDIENTE — CABOS SUELTOS (ir resolviendo todos):**
-  1. **DEPLOY (bloqueante para que F0/F2/F3 vivan).** El schema+backfill ya está en RDS, pero el CÓDIGO está en `main` sin desplegar → **frontend** (`lib/api/oep-signals/queries.ts` = F0/F3, `app/api/admin/oep-consistency` = F2). Hasta el deploy, prod sigue con el **bug F0** (`ON CONFLICT (oposicion_id,"año")` reventaba el rollover por señal). Runbook: `docs/runbooks/pusheo-revision-despliegue.md`.
-  2. **Clonado de decretos de OEP — ALTO VALOR HECHO, regional DESPRIORIZADO (25/07).** `source_documento_id`: **6→30**. Clonadas las **estatales** (RD 625/2023 BOE-A-2023-16191, RD 656/2024 BOE-A-2024-13572, RD 651/2025 BOE-A-2025-14783, RD 387/2026 BOE-A-2026-9946 — cubren muchas oposiciones AGE) + GVA Decreto 16/2026 (DOGV-2026-3776). **RD 1052/2025 anotado para revisión** (no consta como decreto de OEP en BOE; el estatal 2025 es RD 651/2025 — probable dato erróneo). Quedan **~28 regionales nombradas (1-2 oposiciones c/u) + 173 "OEP AAAA" sin decreto** → grind por-boletín de BAJO multiplicador. **Recomendación: NO hacer backfill masivo** — el forward (F3) clona la OEP regional sola al aplicar la señal; hacer las históricas solo a demanda de una oposición concreta. Herramienta: `scripts/oep/clonar-oep-documento.cjs` (verifica el texto contra la fuente; NUNCA inventar la URL).
-  3. **Docs `oep_decreto` huérfanos: 32→13.** Enlazados 19 (docs que el radar ya había clonado, match por oposición+año, cero re-descarga). Los 13 restantes son multi-año / sin oep que case → revisión a mano. GOTCHA arreglado (`c3c95f84b`): el cloner ahora PROMUEVE `tipo='oep_decreto'` al enlazar un doc pre-existente de otro tipo (caso RD 387/2026 estaba como `tipo='otro'`).
-  4. **F2-resto (lectores):** `añoOep()` que derive del enlace estructurado en la landing (hoy `historico.ts` usa el slice de `oep_fecha` → la landing puede mostrar un año distinto al auditado); arreglar el `ORDER BY c."año"` engañoso en `lib/api/convocatoria/queries.ts:341`.
-  5. **F3-resto (señal→entidad más rica):** la señal capta `detected_decreto`/`detected_oep_fecha` (hoy la `oep` del radar nace con `decreto=NULL`, enriquecible por backfill/resolución).
-  6. **F4:** deprecar `oep_decreto`/`oep_fecha` texto cuando no queden lectores; `estado_proceso` a **fuente única** (hoy duplicado en ~6 sitios: DB CHECK + `advance-estado` + `oportunidad.ts` + 3 schemas LLM) — sin guardrail que cace la divergencia.
-  7. **Intersección con el cost-gate (otra sesión, memoria `project_gasto_anthropic_crons_sin_gate`):** cuando se arregle `detect-oep-llm`, su columna propuesta `llm_scan_extraction` NO debe ser un store OEP paralelo → la extracción debe alimentar la entidad `oep` (por `promoteSignalToConvocatoria`), no un JSON suelto en `oposiciones`. `llm_scan_hash`/`at` sí son para el gate de coste.
-  - Detalle y diseño por fases: `docs/roadmap/oep-entidad-modelo.md`.
-
-> **07/08 — CORRECCIÓN DE PREMISA: lo que parecía "el camino vivo no crea entidades" era, medido, que YO (y probablemente la sesión anterior) no podía VER las señales — RLS bloqueando la lectura, no el radar parado.**
-> - **Repetida la medición del "falta":** `oep`/`convocatoria_oep` siguen en 287/291, TODAS del backfill del 29/07 — eso sigue siendo cierto y sigue midiéndose igual. Pero `oep_detection_signals` da **0 filas totales** (ni una, de ningún estado) con `VENCE_LECTOR_URL`, cuando `radar_adapter_runs` (tabla hermana, sin el problema que sigue) muestra el radar **corriendo HOY** (última pasada 07/08 07:01 UTC, 316 runs históricos) y reportando `signals_new > 0` en varios adapters de esta misma mañana (`dogv`: 2, `bome`: 2, `pag-empleo`: 1).
-> - **Causa medida, no supuesta — mismo mecanismo que [T-573]/[T-574]:** `oep_detection_signals` y `detection_sources` tienen `pg_class.relrowsecurity=true` y **CERO filas en `pg_policies`**. Con RLS activo y sin política, el motor filtra en SILENCIO y da 0 filas siempre — no lanza error, así que es indistinguible de "no hay nada" con un `SELECT count(*)`. Confirmado con el detector YA EXISTENTE en el repo (`lib/db/rlsSelectBlocked.cjs` → `seleccionBloqueadaPorRls`): `true` para las dos, `false` para `oep`/`convocatoria_oep`/`radar_adapter_runs` (que sí se leen bien). El dueño de las 4 tablas es `venceadmin`, que por ser OWNER está exento de RLS (sin `FORCE ROW LEVEL SECURITY`, confirmado `false`) — así que **producción (que usa `getDb()`/`venceadmin`) lee y escribe con normalidad; el bloqueo es específico de `vence_lector`**, el rol de lectura de un trabajador de la flota.
-> - **Arreglado:** migración `supabase/migrations/20260807_rls_oep_detection_signals_lector.sql` (mismo patrón exacto que `20260805_rls_test_questions_lector.sql`: política `FOR SELECT TO vence_lector USING (true)`, sin PII en ninguna de las dos tablas — `reviewed_by` es `uuid`, el resto son metadatos de la señal/fuente). Añadidas ambas a `DEBE_LEER` en `scripts/canary-rol-lector.cjs`, que ahora las marca en rojo correctamente (verificado corriendo el canario: `❌ lee oep_detection_signals` / `❌ lee detection_sources`, exactamente el fallo que la migración corrige). **No pude aplicar la migración yo mismo** (sin escritura en BD de negocio) — sigue viva solo en la rama hasta que alguien con acceso la aplique contra RDS.
-> - **⚠️ HALLAZGO COLATERAL, más grande que T-108: el canario también canta en rojo `test_questions` y `ai_verification_results` — las MISMAS tablas que [T-573]/[T-038] ya arreglaron con migraciones fechadas 05/08.** Comprobado (`SELECT * FROM pg_policies WHERE tablename IN (...)`): **cero políticas hoy**, para las tres. Esto significa que esas migraciones, aunque están en `main` y el problema que describen está bien diagnosticado, **no han sido aplicadas contra la RDS real** — 2+ días después. No lo afirmo sin comprobarlo: busqué un paso de deploy que aplique `supabase/migrations/*.sql` automáticamente (`package.json`, `scripts/deploy-*.sh`) y **no existe ninguno** — aplicar una migración a RDS es hoy un paso MANUAL que nadie automatiza. Ficha nueva abierta con esto: **[T-645]**, porque afecta a mucho más que OEP — cualquier migración de este tipo puede quedarse escrita y revisada, pero inerte.
-> - **Lo que SIGUE sin poder confirmarse (la pregunta original de T-108):** que `promoteSignalToConvocatoria` cree entidades cuando de verdad se aplica una señal. Con las 4 migraciones de RLS aplicadas, una sesión (yo u otra) podrá por fin VER la cola de pendientes y triar una de verdad — hasta entonces sigo sin poder decir si el código del camino vivo funciona, solo que la comprobación anterior ("9 pending, 0 aplicadas") es una medición NO FIABLE, hecha ciega.
 
 ### [T-107] 🟡 [ABIERTO 24/07] Campaña de clonado de epígrafes oficiales (Paso 1) — falso verde de scope a escala
 - **📌 28/07 — DESBLOQUEADAS 2 de las 3 "flagged", y en las DOS el flag era un FALSO POSITIVO de método:**

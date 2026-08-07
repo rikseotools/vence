@@ -81,9 +81,29 @@ function ficherosDe(commits) {
  * tooling daban falso positivo, o sea que el gate habría sido puro ruido justo en las tareas más
  * frecuentes. Con `sessions/trabajoHuerfano` en vez de `trabajoHuerfano`, cero.
  */
+/**
+ * Ficheros que son superficie servida POR CONVENCIÓN del framework, sin que nadie los importe.
+ *
+ * El hueco que cierra (T-678, 07/08/2026): a una `app/**​/page.js` **no la importa nadie** — la
+ * sirve Next por su ruta —, así que `importadoEn` devolvía `[]` y el verificador la daba por NO
+ * servida. Consecuencia: un arreglo que solo toca páginas o rutas de API se leía como «no hace
+ * falta desplegar para verificarlo», que es exactamente lo contrario de la verdad. Se descubrió
+ * porque la puerta nueva de «está vivo» no bloqueó un mensaje que sí debía bloquear: los dos
+ * ficheros del arreglo eran `app/test/aleatorio-examen/page.js` y un componente `.js`.
+ */
+function servidoPorConvencion(fichero) {
+  if (/^app\/api\/.+\/route\.[jt]sx?$/.test(fichero)) return ['frontend']
+  if (/^app\/.+\/(page|layout|template|loading|error|not-found)\.[jt]sx?$/.test(fichero)) return ['frontend']
+  if (/^app\/(page|layout)\.[jt]sx?$/.test(fichero)) return ['frontend']
+  if (/^middleware\.[jt]s$/.test(fichero)) return ['frontend']
+  return []
+}
+
 function importadoEn(fichero, profundidad = 3, vistos = new Set()) {
   if (profundidad <= 0 || vistos.has(fichero)) return []
   vistos.add(fichero)
+  const porConvencion = servidoPorConvencion(fichero)
+  if (porConvencion.length) return porConvencion
   const token = tokenDeImport(fichero)
   if (!token) return []
   const supers = new Set()
@@ -215,7 +235,7 @@ async function analizar(id, { shas = null, detectarRollout = true } = {}) {
   return { ...veredicto, commits, desplegado, vivos, rollout, grupos }
 }
 
-module.exports = { analizar, commitsDe, ficherosDe, importadoEn, tokenDeImport, patronImport, packageTocaDependencias, contenidos, noContenidos, shaVivo, HEALTH }
+module.exports = { analizar, commitsDe, ficherosDe, importadoEn, servidoPorConvencion, tokenDeImport, patronImport, packageTocaDependencias, contenidos, noContenidos, shaVivo, HEALTH }
 
 if (require.main === module) {
   const id = process.argv[2]
