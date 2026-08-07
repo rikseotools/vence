@@ -981,6 +981,63 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
+
+**El hueco, medido el 07/08:** había **4 leyes marcadas `is_derogated = true` que seguían escopadas
+en 6 temas de 6 oposiciones**. Una de ellas —la Orden HFP/134/2018, 16 preguntas en dos
+oposiciones— llevaba marcada **desde antes de esa sesión** y nadie la había retirado. **Marcar no
+retira**: entre «lo sabemos» y «lo hemos quitado» no había nada que avisara.
+
+**Lo que falta, y es barato:** una comprobación **solo de BD** (`laws.is_derogated = true` JOIN
+`topic_scope`) que publique hallazgo cuando una ley marcada siga escopada. Sin llamadas al BOE, así
+que **cabe en el barrido NOCTURNO** — a diferencia de `laws:derogadas` ([T-660]), que es on-demand
+porque son ~600 llamadas por pasada.
+
+**No es lo mismo que el detector de [T-660]** y por eso es ficha aparte:
+- `laws:derogadas` pregunta **al BOE** si una ley está derogada (descubre lo que no sabíamos).
+- Esto pregunta **a nuestra propia BD** si lo que ya sabemos se ha traducido en algo (vigila que no
+  se quede a medias). Es la diferencia entre detectar y cerrar el círculo.
+
+**Dónde encaja:** `scripts/health-sweep.cjs` + su gemelo del `@Cron` del backend, kind nuevo (p. ej.
+`ley_derogada_aun_escopada`), con su entrada en `runbookRegistry` y su frase-gatillo en CLAUDE.md
+(el guardarraíl de registros lo exigirá).
+
+**Hoy nace en verde**: [T-660] dejó el contador a 0, así que cualquier subida es una regresión
+demostrable.
+
+### [T-683] 🟠 [ABIERTO 07/08] Revisar las preguntas huérfanas de las 6 leyes derogadas: la materia se re-regula, muchas son recuperables re-ancladas
+
+**De dónde sale:** [T-660] retiró del temario 6 normas derogadas y ancló los temas a las vigentes.
+**Ninguna pregunta se desactivó**: siguen en BD, colgando de artículos de normas muertas, y por tanto
+sin servirse en ningún tema.
+
+**Las huérfanas, por norma** (activas, medidas el 07/08):
+
+| norma retirada | preguntas | sustituta ya importada |
+|---|---|---|
+| RD 806/2014 (TIC AGE) | 21 | RD 1125/2024 |
+| Ley 8/2015 Cabildos | 17 | Ley 3/2026 |
+| Orden HFP/134/2018 (Gobierno Abierto) | 16 | RD 371/2026 (ya estaba) |
+| Ley 4/2005 Igualdad Euskadi | 10 | DL 1/2023 (ya estaba) |
+| RD 557/2011 (REx) | 8 (dentro del scope) | RD 1155/2024 |
+| RD 187/2008 Red Hospitalaria Defensa | 1 | — (retirada por scope, no hay sustituta) |
+
+**Por qué merece revisión y no borrado:** una norma que se re-regula suele conservar la mayor parte
+del contenido, así que **muchas preguntas pueden ser válidas re-ancladas al artículo equivalente de
+la norma nueva** — y re-anclar es mucho más barato que generar. Pero hay dos clases que NO se
+recuperan y hay que distinguirlas:
+1. **Las que citan la norma por su nombre** en el enunciado (p. ej. las 16 de la Orden HFP empiezan
+   por «De acuerdo con la Orden HFP/134/2018…»): irrecuperables, se jubilan.
+2. **Las que preguntan por un contenido que la norma nueva cambió**: hay que compararlas contra el
+   artículo equivalente antes de decidir, NUNCA re-anclar por cercanía de numeración.
+
+**Método:** para cada pregunta, localizar el artículo equivalente en la norma vigente (los títulos y
+capítulos suelen llamarse igual — ver el mapeo ya hecho en [T-660]), comparar el contenido y solo
+entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:buscar -- reanclar`).
+
+**Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
+después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
+
 ### [T-678] 🟡 [ABIERTO 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
 
 **Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
@@ -1793,6 +1850,19 @@ no toca nada que sirva a un usuario).
 
 **Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
 ceguera).
+#### ⚠️ CABO SUELTO OPERATIVO (07/08): w3 está en la cuenta que NO le toca
+Se rotó **w3 a la cuenta A** (la de w1/w2/w4) porque la suya había agotado el **límite SEMANAL**
+(*«hit your weekly limit · resets 11pm (UTC)»*). Es reversible y hay copia:
+`/etc/vence-flota/w3.env.bak-secundaria`. **Cuando la cuenta B reponga, devolverlo** — el reparto de
+`lib/flota/cuentas.cjs` es determinista POR NOMBRE a propósito (si rota, el consumo por cuenta deja
+de ser comparable y no se puede saber a quién le pasó qué).
+
+**Y salió un fallo del propio andamiaje:** tras rotar la cuenta, el gate seguía diciendo «sin cuota»
+porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el veredicto de la cuenta
+vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
+**Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
+motivo que ya no existe.
+
 ### [T-652] 🟡 [ABIERTO 07/08] El TREBEP se sirve con CAPÍTULOS PARTIDOS en 24 temas más: el hueco cae dentro de un título que sí está escopado, y ningún detector lo ve
 
 **Lo destapa una usuaria, no una alerta.** María G. (feedback `b24b1aee`, premium de Madrid, 07/08):
