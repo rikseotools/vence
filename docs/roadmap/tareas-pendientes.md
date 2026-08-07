@@ -6776,6 +6776,26 @@ esas preguntas no le habrían salido nunca.
 > declara a propósito que NO pinga badge (una alerta sin remediación construida enseña a ignorar el
 > buzón entero).
 
+> **07/08 — el hilo del "borrado silencioso" se cierra: NO aplicar el commit `466d247f8`, ya está redundante.**
+> La revisión de w4 dejó dicho "extrae solo `app/perfil/page.tsx` + el test nuevo del commit de rescate
+> `466d247f8` sobre `main` limpio". Antes de hacerlo, comprobé qué hay HOY en `origin/main` en esas
+> mismas líneas: **el fix ya está ahí, el mismo mecanismo, vía [T-569]**
+> (`app/perfil/page.tsx:1948-2201`, comentarios `[T-569] target_oposicion NO entra aquí…`) — `saveProfile()`
+> ya no manda `targetOposicion`/`targetOposicionData` al API, `hasRealChanges` ya no los compara, y hay
+> guardarraíl propio (`__tests__/guardrails/perfilTargetOposicionUnEscritor.guardrail.test.ts`, **8/8 verde
+> corrido ahora mismo contra `origin/main`**) que cita el MISMO síntoma que esta ficha investigaba ("11
+> cuentas con `target_oposicion=''`" ≈ los "8 perfiles con `target_oposicion=''`" del §01/08 de arriba).
+> T-569 encontró y arregló el mismo bug por su cuenta, en paralelo a esta ficha, sin que ninguna se
+> enterara de la otra hasta hoy.
+> - **Aplicar `466d247f8` tal cual habría sido un downgrade, no una mejora**: además de redundante,
+>   revertiría el `emitClientEvent('perfil_target_oposicion_invalido', …)` que T-569 añadió — el commit
+>   de rescate es de antes de que ese evento existiera, así que un `git checkout 466d247f8 -- app/perfil/page.tsx`
+>   sobre el `main` de hoy habría BORRADO observabilidad ya viva, no añadido nada nuevo. No se toca el
+>   código: nada que extraer.
+> - **Lo que SIGUE abierto de T-397 no es código, son las tres decisiones de producto de la cabecera**
+>   (¿se puede seguir eligiendo una oposición sin temario?, qué se hace con los 3-4 premium, ¿se construye
+>   `agente_hacienda`?) — ésas no las toca ni T-569 ni el commit rescatado.
+
 ### [T-393] 🟠 [ABIERTO 31/07] Auxiliar de Archivos, Bibliotecas y Museos de Madrid: 50 temas publicados que sirven CERO preguntas, con 3 usuarios apuntados
 
 - **Qué hay, medido el 31/07:** `auxiliar_archivos_bibliotecas_museos_madrid` tiene **50 temas activos, los 50 con epígrafe**, y **0 filas de `topic_scope`**. Como la pregunta llega al tema por el scope, esos 50 temas sirven **cero preguntas**. La oposición está en `oposiciones` con `is_active=false` (o sea, no la preparamos) y **sin entrada en `lib/config/oposiciones.ts`**, así que la app ni siquiera sabe enrutarla.
