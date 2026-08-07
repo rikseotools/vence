@@ -15,9 +15,15 @@
  */
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ordenRescate, parsearRescate, necesitaSegundaFase } = require('../../lib/flota/rescate.cjs')
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const MAQ = require('../../lib/flota/maquinas.cjs')
 
-const LOCAL = { local: true }
-const REMOTA = { local: false, host: '1.2.3.4', usuario: 'root' }
+// CON credenciales: el portátil, o cualquier máquina que las tenga de verdad.
+const CON_CREDENCIALES = { tieneCredencialesGit: true }
+// SIN credenciales: el VPS (flota-1), tenga quien pregunte `.local` o no — es justo la
+// distinción que el bug de T-628 pasaba por alto. `host`/`usuario` para que la orden de la
+// segunda fase pueda construir el `ssh://`.
+const SIN_CREDENCIALES = { tieneCredencialesGit: false, host: '1.2.3.4', usuario: 'root' }
 
 describe('[T-628] parsearRescate — un solo lector de la salida', () => {
   it('lee los pares origen|destino que emite el rescate', () => {
@@ -54,25 +60,25 @@ describe('[T-628] parsearRescate — un solo lector de la salida', () => {
 describe('[T-628] necesitaSegundaFase — solo donde hace falta', () => {
   const conTrabajo = parsearRescate('ORIGEN=flota/T-525|rescate/w1-x-abc\nSALVADO=2')
 
-  it('EL CASO DEL VPS: máquina remota que no pudo empujar → SÍ', () => {
-    const v = necesitaSegundaFase(REMOTA, conTrabajo)
+  it('EL CASO DEL VPS: máquina sin credenciales que no pudo empujar → SÍ', () => {
+    const v = necesitaSegundaFase(SIN_CREDENCIALES, conTrabajo)
     expect(v.hace_falta).toBe(true)
     expect(v.motivo).toMatch(/fuera de todo remoto/)
   })
 
-  it('máquina LOCAL: nunca — su propio push es el bueno', () => {
+  it('máquina CON credenciales: nunca — su propio push es el bueno', () => {
     // Repetirlo desde fuera sería un segundo camino al mismo sitio, y entonces «se rescató»
     // dejaría de ser comprobable por un solo indicador.
-    expect(necesitaSegundaFase(LOCAL, conTrabajo).hace_falta).toBe(false)
+    expect(necesitaSegundaFase(CON_CREDENCIALES, conTrabajo).hace_falta).toBe(false)
   })
 
-  it('remota que SÍ pudo empujar (SALVADO=0): no se repite', () => {
+  it('sin credenciales pero SÍ pudo empujar (SALVADO=0): no se repite', () => {
     const ya = parsearRescate('ORIGEN=a|b\nSALVADO=0')
-    expect(necesitaSegundaFase(REMOTA, ya).hace_falta).toBe(false)
+    expect(necesitaSegundaFase(SIN_CREDENCIALES, ya).hace_falta).toBe(false)
   })
 
   it('sin ramas que rescatar: no se hace nada', () => {
-    expect(necesitaSegundaFase(REMOTA, parsearRescate('NADA')).hace_falta).toBe(false)
+    expect(necesitaSegundaFase(SIN_CREDENCIALES, parsearRescate('NADA')).hace_falta).toBe(false)
   })
 
   it('máquina desconocida no dispara una fase contra nadie', () => {
@@ -82,9 +88,62 @@ describe('[T-628] necesitaSegundaFase — solo donde hace falta', () => {
   it('SALVADO sin confirmar (null) con ramas identificadas: SÍ remata, y lo dice', () => {
     // Si el rescate se cortó antes de contar, lo prudente es rematar: el coste de repetir un
     // push idempotente es cero, y el de no hacerlo es dejar el trabajo en una sola máquina.
-    const v = necesitaSegundaFase(REMOTA, parsearRescate('ORIGEN=a|b'))
+    const v = necesitaSegundaFase(SIN_CREDENCIALES, parsearRescate('ORIGEN=a|b'))
     expect(v.hace_falta).toBe(true)
     expect(v.motivo).toMatch(/sin confirmar/)
+  })
+})
+
+describe('[T-628] EL BUG REAL: `.local` mentía sobre si la máquina tenía credenciales', () => {
+  // La primera versión de esta feature miraba `maquina.local` — "¿quien llama está en la
+  // misma máquina que el trabajador?" — para decidir si el push del propio trabajador iba a
+  // funcionar. Esa pregunta NO es la misma que "¿esta máquina tiene con qué empujar?", y solo
+  // coinciden por accidente en el portátil (quien llama SIEMPRE tiene sus credenciales ahí).
+  // En el VPS no coinciden nunca: el supervisor systemd corre con `VENCE_FLOTA_AQUI=flota-1`
+  // (T-617, valor real de `/etc/vence-flota/supervisor.env`), así que para ÉL
+  // `maquinaDe('w1').local` da `true` — y con el criterio viejo, "local" bastaba para decir
+  // "no hace falta rematar", dejando el trabajo atrapado exactamente como antes de T-628.
+  it('REPRODUCIDO: con VENCE_FLOTA_AQUI=flota-1 (la config REAL del supervisor), maquinaDe da local:true', () => {
+    const previo = process.env.VENCE_FLOTA_AQUI
+    process.env.VENCE_FLOTA_AQUI = 'flota-1'
+    try {
+      const m = MAQ.maquinaDe('w1')
+      expect(m.local).toBe(true) // esto es lo que hacía fallar el criterio viejo
+      // Y aun así la máquina sigue sin credenciales — lo que importa para decidir:
+      expect(m.tieneCredencialesGit).toBe(false)
+    } finally {
+      if (previo === undefined) delete process.env.VENCE_FLOTA_AQUI
+      else process.env.VENCE_FLOTA_AQUI = previo
+    }
+  })
+
+  it('CON EL CRITERIO NUEVO: la misma llamada real da hace_falta:true, no false', () => {
+    const previo = process.env.VENCE_FLOTA_AQUI
+    process.env.VENCE_FLOTA_AQUI = 'flota-1'
+    try {
+      const m = MAQ.maquinaDe('w1')
+      const parsed = parsearRescate('ORIGEN=flota/T-525|rescate/w1-x-abc\nSALVADO=2')
+      const v = necesitaSegundaFase(m, parsed)
+      expect(v.hace_falta).toBe(true)
+    } finally {
+      if (previo === undefined) delete process.env.VENCE_FLOTA_AQUI
+      else process.env.VENCE_FLOTA_AQUI = previo
+    }
+  })
+
+  it('el portátil, en cambio, sigue diciendo que no hace falta (su push SÍ vale)', () => {
+    const previo = process.env.VENCE_FLOTA_AQUI
+    process.env.VENCE_FLOTA_AQUI = 'portatil'
+    try {
+      // l1 es un trabajador local del portátil (MAQUINAS.portatil.trabajadores).
+      const m = MAQ.maquinaDe('l1')
+      expect(m.tieneCredencialesGit).toBe(true)
+      const parsed = parsearRescate('ORIGEN=sesion/l1-x|rescate/l1-x-abc\nSALVADO=2')
+      expect(necesitaSegundaFase(m, parsed).hace_falta).toBe(false)
+    } finally {
+      if (previo === undefined) delete process.env.VENCE_FLOTA_AQUI
+      else process.env.VENCE_FLOTA_AQUI = previo
+    }
   })
 })
 

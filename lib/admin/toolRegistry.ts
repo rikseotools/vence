@@ -2395,7 +2395,13 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
-      '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión.',
+      '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión. ' +
+      '**Gotcha corregido (07/08):** la decisión "¿hace falta rematar?" miraba `.local` — "¿quien ' +
+      'llama está en la misma máquina que el trabajador?" — no "¿esa máquina tiene con qué ' +
+      'empujar?". El supervisor systemd corre CON `VENCE_FLOTA_AQUI=flota-1`, así que para él ' +
+      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba, aunque el push de ' +
+      'esa máquina nunca funciona. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una ' +
+      'propiedad DE LA MÁQUINA (`lib/flota/maquinas.cjs`), no de quien pregunta.',
   },
 
   flota_presencia_trabajador: {
