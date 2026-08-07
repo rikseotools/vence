@@ -213,6 +213,19 @@ export function filterSelectedLawsByScope(
  * empezara a tener oficiales propias en el futuro.
  */
 export function buildOfficialExamFilter(positionType: string) {
+  // ── T-597 (07/08, decisión de Manuel): una PERSONALIZADA sí admite oficiales ──────────────
+  // El motivo por el que este filtro existe (caso Laura) es evitar que las oficiales de OTRA
+  // oposición se cuelen en un test que comparte ley. En una personalizada no hay "otra
+  // oposición" de la que proteger: el usuario eligió los artículos él mismo, y no existe un
+  // examen propio con el que una oficial pueda "contaminar". Antes caían en el `else` final
+  // (pensado para positionTypes CORRUPTOS, no para este caso legítimo) y perdían el 100% de
+  // las oficiales sin que nadie lo hubiera decidido — medido: 6 de 7 preguntas retenidas en
+  // difícil eran oficiales, no del tag de T-513. ACOTADO al prefijo `personalizada_`: las 131
+  // oposiciones reales y las entradas de EXAM_POSITION_MAP siguen exactamente igual, filtrando
+  // por debajo.
+  if (positionType && positionType.toLowerCase().startsWith('personalizada_')) {
+    return sql`true`
+  }
   const validPositions = getValidExamPositions(positionType)
   if (!validPositions || validPositions.length === 0) {
     // Si está REGISTRADA en EXAM_POSITION_MAP (aunque con array vacío),

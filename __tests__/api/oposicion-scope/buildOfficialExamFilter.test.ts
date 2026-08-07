@@ -214,4 +214,55 @@ describe('buildOfficialExamFilter', () => {
     expect(filter).toBeDefined()
     expect(typeof filter).toBe('object')
   })
+
+  // ── T-597 (07/08, decisión de Manuel): las PERSONALIZADAS sí admiten oficiales ──────────────
+  // El caso Laura protege de OTRA oposición; una personalizada no tiene "otra oposición" de la
+  // que protegerse, el usuario eligió los artículos él mismo. Manuel pidió explícitamente que el
+  // test fije las DOS mitades: que una personalizada ya recibe oficiales, Y que una oposición
+  // normal SIGUE filtrando — la segunda es la que evita que alguien "simplifique" el `else`
+  // dentro de unos meses y se lleve el caso Laura por delante sin darse cuenta.
+  test('una personalizada NO dispara el warn de "Bug real" (antes SÍ lo disparaba)', () => {
+    buildOfficialExamFilter('personalizada_a92faefaf41b4d36b723c274f90a59f7')
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  test('una personalizada admite TODAS las oficiales — el filtro es un "true" sin restricción, no la cláusula que bloquea', () => {
+    const filter = buildOfficialExamFilter('personalizada_a92faefaf41b4d36b723c274f90a59f7')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((filter as any).queryChunks).toEqual([{ value: ['true'] }])
+  })
+
+  test('el prefijo se compara sin distinguir mayúsculas (el positionType siempre llega normalizado, pero no se confía en eso)', () => {
+    const filter = buildOfficialExamFilter('PERSONALIZADA_ABC123')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((filter as any).queryChunks).toEqual([{ value: ['true'] }])
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  test('no dispara el camino de telemetría ni de BD: es un return inmediato, antes de tocar getValidExamPositions', async () => {
+    buildOfficialExamFilter('personalizada_otra_mas')
+    await flush()
+    expect(logValidationErrorSpy).not.toHaveBeenCalled()
+    expect(insertValuesSpy).not.toHaveBeenCalled()
+  })
+
+  // ── LA OTRA MITAD: nada de esto toca las oposiciones reales ────────────────────────────────
+  test('una oposición con mapeo SIGUE devolviendo la cláusula por exam_position, no "true"', () => {
+    const filter = buildOfficialExamFilter('TEST_MAPPED_OPOSICION')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((filter as any).queryChunks).not.toEqual([{ value: ['true'] }])
+  })
+
+  test('el caso Laura sigue protegido: una oposición SIN mapeo (no personalizada) sigue bloqueando TODAS las oficiales', () => {
+    const filter = buildOfficialExamFilter('oposicion_inexistente_xyz')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((filter as any).queryChunks).not.toEqual([{ value: ['true'] }])
+    expect(warnSpy).toHaveBeenCalledTimes(1) // sigue siendo "bug real": no es personalizada y no está mapeada
+  })
+
+  test('un positionType que solo CONTIENE "personalizada" pero no empieza así NO se cuela', () => {
+    // Ej.: si algún día existiera 'oposicion_personalizada_falsa', no debe admitir oficiales.
+    buildOfficialExamFilter('oposicion_personalizada_xyz')
+    expect(warnSpy).toHaveBeenCalledTimes(1) // sigue cayendo en el "Bug real": no empieza por el prefijo
+  })
 })
