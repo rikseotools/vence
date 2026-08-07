@@ -1426,16 +1426,6 @@ no esta ruta.
 
 **Relacionadas:** [T-650] (de donde sale, y que trajo el modo móvil al harness).
 
-### [T-667] 🟠 [ABIERTO 07/08] El supervisor elige un sid arbitrario cuando hay historial: gana la fila más antigua y el reparto se decide sobre ella
-
-- **Qué pasa.** Un trabajador acumula **una fila de `worktree_sessions` por cada identidad que ha tenido** (se reinstala, se recrea su worktree, cambia su `.session-id`). Quien resolvía *«¿cuál es el sid de w1?»* hacía `new Map(sesiones.map((s) => [s.slug, s.sid]))`, que **se queda con la última fila que llegue** — y la consulta **no lleva `ORDER BY`**, así que cuál gana es **arbitrario**.
-- **Medido en el VPS el 07/08:** `w1` y `w2` tenían **DOS filas cada uno** —la del 05/08 y la viva de hoy— y en la pasada que lo destapó **ganaron las del 05/08**. Media hora después, con los MISMOS datos, ganaron las vivas. Eso es lo peligroso: no falla siempre, falla cuando le toca, y entonces no hay nada que mirar.
-- **Qué rompe cuando falla, que no es cosmético.** Con el sid equivocado, `conTarea.has(sid)` da **`false` para un trabajador que SÍ tiene tarea cogida**. Consecuencias en cadena: se le cuenta **libre**, no se le reconoce el **turno muerto con la tarea cogida** y **no se le devuelve SU tarea** — que es, por la propia ficha de [T-617], «el fallo que más caro sale: la tarea queda bloqueada para todos y nadie avanza». Encaja con lo visto esta tarde: `w1` seis horas con T-168 cogida sin que nadie la retomara.
-- **Y estaba DOS veces**, lo cual multiplica el daño porque las dos copias pueden discrepar entre sí en la misma pasada: una en el **reparto** (decide libre/ocupado) y otra en el **panel** (`tareaDe`, decide qué tarea se enseña de cada trabajador). O sea que el panel podía decir «sin tarea» de quien la tenía, y al revés.
-- **El arreglo:** un solo criterio, `sesionVigente()` en `lib/flota/maquinas.cjs` — de todas las filas de un slug, **la que ha dado señal más recientemente**; sin señal pierde siempre. No es una regla nueva: es **la que el sistema ya tiene escrita** («la señal de vida manda sobre la antigüedad») aplicada donde se estaba incumpliendo. `comparar()` lo usa por dentro y los dos consumidores de `flota.cjs` lo llaman, en vez de rehacer el Map cada uno.
-- **Capas:** 9 tests (`__tests__/flota/sesionVigente.test.ts`) con el caso real de `w1`, **probando los DOS órdenes de llegada** —un test de un solo orden habría pasado con el código roto— y con un guardarraíl anti-silo que **rechaza que reaparezca el `new Map(sesiones.map(...))`**. Ese guardarraíl ya se ganó el sitio: al escribirlo encontró la **segunda copia**, la del panel, que yo no había visto.
-- **Relacionadas:** [T-407] (una sola identidad de sesión — mismo problema una capa más abajo: había SEIS copias con DOS reglas), [T-617] (el turno muerto con la tarea cogida, que es lo que esto impedía detectar), [T-642], [T-663].
-
 ### [T-665] 🟠 [ABIERTO 07/08] Dos puertas con criterios opuestos: el push-guard impide justo el merge que el claim-guard acaba de mandar hacer
 
 - **Reproducido hoy (07/08 18:30) mergeando T-161 y T-163**, las dos entregadas por la flota y revisadas EN VERDE. Secuencia literal, sin trampa:
@@ -8952,6 +8942,39 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-667] 🟠 [HECHA 07/08] ✅ El supervisor elige un sid arbitrario cuando hay historial: gana la fila más antigua y el reparto se decide sobre ella
+
+- **Qué pasa.** Un trabajador acumula **una fila de `worktree_sessions` por cada identidad que ha tenido** (se reinstala, se recrea su worktree, cambia su `.session-id`). Quien resolvía *«¿cuál es el sid de w1?»* hacía `new Map(sesiones.map((s) => [s.slug, s.sid]))`, que **se queda con la última fila que llegue** — y la consulta **no lleva `ORDER BY`**, así que cuál gana es **arbitrario**.
+- **Medido en el VPS el 07/08:** `w1` y `w2` tenían **DOS filas cada uno** —la del 05/08 y la viva de hoy— y en la pasada que lo destapó **ganaron las del 05/08**. Media hora después, con los MISMOS datos, ganaron las vivas. Eso es lo peligroso: no falla siempre, falla cuando le toca, y entonces no hay nada que mirar.
+- **Qué rompe cuando falla, que no es cosmético.** Con el sid equivocado, `conTarea.has(sid)` da **`false` para un trabajador que SÍ tiene tarea cogida**. Consecuencias en cadena: se le cuenta **libre**, no se le reconoce el **turno muerto con la tarea cogida** y **no se le devuelve SU tarea** — que es, por la propia ficha de [T-617], «el fallo que más caro sale: la tarea queda bloqueada para todos y nadie avanza». Encaja con lo visto esta tarde: `w1` seis horas con T-168 cogida sin que nadie la retomara.
+- **Y estaba DOS veces**, lo cual multiplica el daño porque las dos copias pueden discrepar entre sí en la misma pasada: una en el **reparto** (decide libre/ocupado) y otra en el **panel** (`tareaDe`, decide qué tarea se enseña de cada trabajador). O sea que el panel podía decir «sin tarea» de quien la tenía, y al revés.
+- **El arreglo:** un solo criterio, `sesionVigente()` en `lib/flota/maquinas.cjs` — de todas las filas de un slug, **la que ha dado señal más recientemente**; sin señal pierde siempre. No es una regla nueva: es **la que el sistema ya tiene escrita** («la señal de vida manda sobre la antigüedad») aplicada donde se estaba incumpliendo. `comparar()` lo usa por dentro y los dos consumidores de `flota.cjs` lo llaman, en vez de rehacer el Map cada uno.
+- **Capas:** 9 tests (`__tests__/flota/sesionVigente.test.ts`) con el caso real de `w1`, **probando los DOS órdenes de llegada** —un test de un solo orden habría pasado con el código roto— y con un guardarraíl anti-silo que **rechaza que reaparezca el `new Map(sesiones.map(...))`**. Ese guardarraíl ya se ganó el sitio: al escribirlo encontró la **segunda copia**, la del panel, que yo no había visto.
+- **Relacionadas:** [T-407] (una sola identidad de sesión — mismo problema una capa más abajo: había SEIS copias con DOS reglas), [T-617] (el turno muerto con la tarea cogida, que es lo que esto impedía detectar), [T-642], [T-663].
+
+#### RESUELTO — encontrado ya implementado y verificado (07/08, w3)
+
+**El trabajo YA estaba hecho y en `main` (commit `3f0b3e62c`, "fix(T-667): el sid de un trabajador
+se elegía arbitrariamente cuando tenía historial") — solo la ficha y el estado del backlog se
+quedaron atrás.** No he tocado código: he verificado que lo descrito en la ficha es exactamente lo
+que hay hoy en `origin/main`, y cierro la contabilidad.
+
+**Verificado, no supuesto:**
+- `sesionVigente()` existe en `lib/flota/maquinas.cjs:244` y `comparar()` la usa por dentro
+  (línea 258), tal y como dice la ficha.
+- El guardarraíl anti-silo: `grep -n "new Map(sesiones.map" lib/flota/*.cjs scripts/flota/*.cjs`
+  no encuentra ninguna reconstrucción del Map a mano — solo el COMENTARIO que explica por qué NO
+  se hace así (`scripts/flota/flota.cjs:1173`, `lib/flota/maquinas.cjs:232`).
+- **Corrí los 9 tests de `__tests__/flota/sesionVigente.test.ts` contra `origin/main` de verdad**
+  (rama `scratch/t667-check`, descartada tras comprobar): **9/9 en verde**, incluidos el caso real
+  de `w1` con los DOS órdenes de llegada y el guardarraíl anti-silo (`flota.cjs no reconstruye el
+  Map slug→sid a mano`).
+
+**Por qué se quedó así:** el commit se mergeó a `main` pero nadie corrió `done T-667` ni movió la
+ficha — el trabajo de verdad estaba completo, la contabilidad no. Lo cierro ahora para que
+`backlogRegistry.guardrail` y el panel de la flota dejen de contarla como pendiente.
+
 
 ### [T-237] ✅ [HECHA 07/08] `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
 
