@@ -619,20 +619,24 @@ export async function completeExam(
  * Fuente única para `requireDuenoDelRecurso` en toda la familia `exam/*`: NUNCA
  * comparar contra un userId que mande el cliente (ver el comentario en
  * `lib/api/shared/auth.ts`).
+ *
+ * [T-565, hallazgo de revisión 07/08] `null` es lo que `requireDuenoDelRecurso` lee como
+ * "recurso anónimo, pasa cualquiera". Antes esta función devolvía ESE MISMO `null` cuando
+ * la consulta LANZABA (catch → return null) — conflate "no existe/anónimo legítimo" con
+ * "la BD tosió", y durante un fallo transitorio de conexión CUALQUIERA podía leer/responder
+ * el examen de otra persona. Es la propiedad exacta que esta tarea vino a cerrar, reabierta
+ * por un borde no cubierto. No se atrapa el error aquí: se deja propagar, y el try/catch que
+ * YA envuelve a cada llamante de esta función (`app/api/exam/{answer,discard,resume}/route.ts`)
+ * lo convierte en 500 — fail-closed, no fail-open.
  */
 export async function getTestOwnerId(testId: string): Promise<string | null> {
-  try {
-    const db = getExamDb()
-    const result = await db
-      .select({ userId: tests.userId })
-      .from(tests)
-      .where(eq(tests.id, testId))
-      .limit(1)
-    return result[0]?.userId ?? null
-  } catch (error) {
-    console.error('Error obteniendo dueño del test:', error)
-    return null
-  }
+  const db = getExamDb()
+  const result = await db
+    .select({ userId: tests.userId })
+    .from(tests)
+    .where(eq(tests.id, testId))
+    .limit(1)
+  return result[0]?.userId ?? null
 }
 
 // ============================================

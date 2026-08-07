@@ -258,6 +258,28 @@ describe('/api/exam/resume', () => {
 
       expect(data.success).toBe(true)
     })
+
+    // [T-565, hallazgo de revisión 07/08] Antes, si `getTestOwnerId` LANZABA (fallo
+    // transitorio de conexión), su catch interno devolvía `null` — el MISMO valor que
+    // "examen anónimo legítimo" del test de arriba — y `requireDuenoDelRecurso` dejaba
+    // pasar a cualquiera. El arreglo deja que la excepción se propague hasta el try/catch
+    // de la propia ruta, que responde 500. Este test fija que un fallo de la consulta NO
+    // se puede confundir con "no tiene dueño": nunca debe llegar a leer datos ajenos.
+    it('si getTestOwnerId LANZA, responde 500 y nunca llega a leer el examen (fail-closed, no fail-open)', async () => {
+      ;(safeParseResumeExamRequest as jest.Mock).mockReturnValue({
+        success: true,
+        data: { testId: TEST_ID },
+      })
+      ;(getTestOwnerId as jest.Mock).mockRejectedValue(new Error('connection reset'))
+
+      const res = await GET(createRequest({ testId: TEST_ID }))
+      const data = await res.json()
+
+      expect(res.status).toBe(500)
+      expect(data.success).toBe(false)
+      expect(requireDuenoDelRecurso).not.toHaveBeenCalled()
+      expect(getResumedExamData).not.toHaveBeenCalled()
+    })
   })
 
   describe('Flujo', () => {
