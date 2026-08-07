@@ -13693,6 +13693,88 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Cómo:** crear artículo editorial (fuente normalizadora) para cada concepto y añadirlo al `topic_scope` del tema; re-verificar. Runbook `verificar-epigrafes-scope.md`.
 - **Estado:** resto de la oposición verificado (18/20 correct tras arreglar T12 mover II Acuerdo→T13 y T8/T7 mover reglamentos 127-133). Solo estos 2 huecos.
 
+- **⚠️ GOTCHA encontrado antes de tocar nada (07/08): la BD de HOY contradice esta ficha, y hay que
+  desconfiar de la BD, no de la ficha.** `topic_scope_verification` para T6 y T16 muestra HOY
+  `state='verified_correct'`, `verified_by='claude_direct'`, `agent_run_id='--run'`,
+  `verified_at='2026-07-21T19:21:19...'` (los dos en el MISMO segundo) — es el sello exacto que
+  `verificar-epigrafes-scope.md` marca como "no respalda nada" (mismo patrón que [T-518]). Los otros
+  18 temas de esta oposición SÍ tienen `verified_by='multi_agent'` con `agent_run_id` real fechado
+  13-15/07. Es decir: en algún momento entre el 13/07 (fecha de esta ficha) y el 21/07, alguien (o
+  algún proceso) volvió a sellar SOLO T6 y T16 — justo los dos huecos abiertos de esta ficha — con el
+  sello que no vale, tapando el `needs_human` real sin arreglar nada. **No se ha tocado esa fila**
+  (soy `trabajador`, sin escritura en BD de negocio); lo dejo escrito para que quien aplique lo de
+  abajo sepa que hay que sobrescribir un `verified_correct` falso, no un `needs_human` limpio.
+
+- **T6 — RESUELTO sin inventar nada: ya existe el artículo, no hace falta crear editorial.** La
+  ficha decía "no existe artículo estatal genérico para escopar". Comprobado que SÍ existe:
+  **Código Civil art. 1** ("Las fuentes del ordenamiento jurídico español son la ley, la costumbre y
+  los principios generales del derecho... Carecerán de validez las disposiciones que contradigan
+  otra de rango superior...") — cubre EXACTO "fuentes del derecho" (1.1) Y "jerarquía normativa"
+  (1.2) en el mismo artículo, real, nacional, `is_active=true`. **Y no es una novedad mía: ya está
+  en `topic_scope` de 14 temas de otras oposiciones con este mismo propósito**
+  (`auxiliar_administrativo_cyl` T11, `auxiliar_administrativo_madrid` T4,
+  `administrativo_seguridad_social` T13, `administrativo_madrid` T9, `policia_nacional` T1…) — es
+  un patrón ya probado en la plataforma, no una decisión nueva. CE art. 9 (que también menciona
+  "la jerarquía normativa" en su punto 3) ya está en `topic_scope` de T1 de esta MISMA oposición,
+  así que añadirlo de nuevo en T6 sería redundante — con CC art. 1 basta.
+  **Fix, listo para aplicar (requiere `DATABASE_URL` de escritura, fuera de mi alcance) — IDs ya
+  resueltos, no hace falta buscarlos de nuevo:** `topics.id` de T6 =
+  `9799c865-d481-4b86-9cf4-638c4818eecb`; `laws.id` de "Código Civil" =
+  `899e61d1-e168-482b-9e86-4e7787eab6fc`. T6 hoy NO tiene fila de `topic_scope` para esa ley
+  (comprobado), así que es un `INSERT`, no un `UPDATE`:
+  ```sql
+  INSERT INTO topic_scope (topic_id, law_id, article_numbers)
+  VALUES ('9799c865-d481-4b86-9cf4-638c4818eecb', '899e61d1-e168-482b-9e86-4e7787eab6fc', ARRAY['1']);
+  ```
+  Después: `record_topic_verification` con `verdict='correct'` (sobrescribe el `claude_direct`/`--run`
+  falso) y re-purgar caché/MV del tema.
+
+- **T16 — el hueco es real, confirmado leyendo el CONTENIDO (no solo el título) de los dos
+  contenedores actuales.** Busqué "certificad" / "firma electr" dentro de `Informática Básica`
+  (arts 1-5) y `La Red Internet` (arts 1-10): hay 7 menciones, todas DE PASADA y sobre un concepto
+  DISTINTO — certificados **TLS/SSL** de un navegador para HTTPS (`La Red Internet` art 2 y 3) y una
+  mención suelta de que Autofirma "permite la ejecución de operaciones de firma electrónica desde
+  el navegador" (`Informática Básica` art 5). Ninguna trata **certificados de identidad digital /
+  DNIe / FNMT** ni **firma electrónica de persona física** como concepto propio — que es lo que pide
+  el epígrafe. El hueco es real.
+  **Reuso descartado, y por qué:** busqué en TODA la plataforma un contenedor `is_virtual` ya
+  existente sobre "certificados y firma electrónica" (principio de la casa: *"busca si ya existe un
+  contenedor de ese contenido y reúsalo, solo crea uno nuevo si no existe"*,
+  `crear-nueva-oposicion.md` §sobre leyes virtuales). Encontrado **`Herramientas Admin-e JA`**
+  (is_virtual, art. 9 "Certificados electrónicos y FNMT", usado hoy en 2 temas de Andalucía) — pero
+  su texto nombra "Junta de Andalucía" y "@firma de la Junta de Andalucía" en cada párrafo: es
+  contenido de plataforma REGIONAL, no reutilizable verbatim para Aragón sin confundir al opositor.
+  No vale.
+  **Recomendación: NO crear una ley virtual nueva — añadir UN artículo nuevo dentro de
+  `Informática Básica`** (art. 6, siguiente al 0-5 que ya tiene), que es el contenedor que ya sirve
+  a **37 oposiciones** — así el arreglo queda reutilizable de inmediato para cualquier otra
+  oposición con el mismo hueco, en vez de crear un silo solo para Aragón (mismo principio que evitó
+  el problema anterior).
+  **Esqueleto de contenido, con hechos verificados contra ley REAL ya en BD (no inventados — para
+  que quien redacte el artículo final no parta de cero, y para que quede claro qué SÍ está
+  verificado y qué falta pulir a prosa):**
+  - Qué es un certificado electrónico / DNIe / Cl@ve (identificación de personas físicas).
+  - Vigencia: **"el período de vigencia de los certificados cualificados no será superior a cinco
+    años"** — cita literal de `Ley 6/2020` art. 4 (ya en BD, verificada).
+  - Revocación: motivos y quién la ejecuta (prestadores de servicios de confianza) — `Ley 6/2020`
+    art. 5 (ya en BD).
+  - Uso en la Administración: la actuación administrativa por medios electrónicos se firma con
+    firma electrónica del titular/empleado público — `Ley 40/2015` art. 43 (ya en BD).
+  - Sistemas de firma admitidos por las AAPP (avanzada/cualificada, `Ley 39/2015` art. 10.2) — `RD
+    203/2021` art. 29 (ya en BD).
+  **NO redactado a prosa final ni insertado.** Escribir contenido educativo nuevo (no solo mover
+  un artículo existente, como en T6) es un paso distinto — por la propia disciplina de la casa,
+  antes de marcarlo `tech_approved` necesita el mismo circuito de doble auditoría que cualquier
+  contenido nuevo (`docs/maintenance/generar-preguntas-con-ia.md`), no solo la palabra de un
+  trabajador de lectura. Dejo el esqueleto sourced para que quien lo redacte no tenga que rehacer
+  la búsqueda de fuentes.
+
+- **Falta (todo requiere `DATABASE_URL` de escritura):** 1) aplicar el `UPDATE` de T6 de arriba;
+  2) crear `Informática Básica` art. 6 con el esqueleto de arriba redactado a prosa + doble
+  auditoría; añadirlo al `topic_scope` de T16; 3) `record_topic_verification` en los dos temas
+  (sobrescribe el `claude_direct`/`--run` falso); 4) purgar caché/MV y comprobar
+  `npm run audit:epigrafe -- auxiliar_administrativo_aragon` en verde.
+
 ### [T-026] 🟡 [SISTEMA HECHO + LOOP VIVO — drena como mantenimiento] Completitud de leyes vs fuente oficial
 - **Qué:** sistema para que ninguna ley del temario quede importada a medias / falso verde / sin fuente. **Las 4 capas CONSTRUIDAS y el loop CERRADO Y VIVO (verificado 20/07):** detección (`lib/laws/completeness.ts` + `scripts/audit-law-completeness.cjs` + sweep) · tabla+guard anti-falso-verde+vista (`20260718_law_source_verification.sql`, en RDS) · extractor no-BOE (`scripts/verify-law-source.cjs`) · gate publicación (`trg_topics_gate_incomplete_laws`) · **cron semanal de regresión DESPLEGADO** (`backend/src/law-completeness/`, emite `law_completeness_swept`, última hoy 20/07 10:18).
 - **Estado (20/07, re-medido a última hora):** **64 leyes actionable sirviendo en temas vivos** (45 false_green, 12 no_source, 6 never_verified, 1 issues) — bajó de 92 con el drenaje del día (bloque BOA, etc.). **Desglose por fuente (útil para planificar):** **40 SIN url** (editoriales/regionales marcadas "actualizada" sin evidencia — el bucket mayor y el que more reincide), **23 non-BOE con gaceta propia** (aquí vive el ex-"cabo de las 129", ya absorbido; extractor reutilizable `scripts/verify-law-boa.cjs` + 18 tests, y los gotchas por gaceta en esa ficha), **1 BOE**. **OJO — el backlog REINCIDE al alza:** cada build de oposición nueva mete leyes regionales marcadas `actualizada` SIN evidencia (false_green) o sin fuente; el gate solo bloquea `incomplete`, no never_verified/no_source/false_green → **el número sube con cada build** (subió ~83→95 con los builds de esta semana). El cron lo DETECTA (regresión) pero no lo PREVIENE.
