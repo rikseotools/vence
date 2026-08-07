@@ -24,7 +24,7 @@
  * Uso:
  *   npx tsx --env-file=.env.local scripts/impugnaciones/cerrar.ts <dispute_id> \
  *     --estado resolved|rejected --mensaje <fichero.txt> [--psicotecnica] \
- *     [--sin-recompensa "<motivo>"] [--saltar-barajado "<motivo>"] [--aplicar]
+ *     [--sin-recompensa "<motivo>"] [--con-recompensa "<motivo>"] [--saltar-barajado "<motivo>"] [--aplicar]
  *
  *   Exige tener la impugnación RESERVADA (T-474): cerrar lo que no has cogido es lo que hace que
  *   dos sesiones acaben en el mismo caso. Si sigues el flujo del manual ya la tienes, porque
@@ -65,6 +65,10 @@ export function parsearArgs(argv: string[]) {
     mensajeFichero: valor('--mensaje'),
     psicotecnica: argv.includes('--psicotecnica'),
     sinRecompensa: valor('--sin-recompensa'),
+    // Simétrico [T-388]: concede el euro a mano cuando el motivo es subjetivo (`otro`,
+    // `explicacion_confusa`, `explicacion_mejorable`) y el caso lo merece. Exige MOTIVO por la
+    // misma razón que el de arriba: un booleano no deja rastro de POR QUÉ sí se pagó.
+    conRecompensa: valor('--con-recompensa'),
     saltarBarajado: valor('--saltar-barajado'),
     silencioso: process.argv.includes('--silencioso'),
     nota: valor('--nota'),
@@ -197,6 +201,13 @@ async function main() {
     console.error(`--estado tiene que ser resolved o rejected (llegó «${a.estado}»)`)
     process.exit(1)
   }
+  // Mismo motivo que --silencioso/--mensaje arriba: uno pide QUITAR el euro y el otro
+  // CONCEDERLO, así que los dos a la vez no tienen una respuesta única. El endpoint también lo
+  // rechaza (Zod), pero fallar aquí evita el viaje de red y da un mensaje más claro.
+  if (a.sinRecompensa && a.conRecompensa) {
+    console.error('--sin-recompensa y --con-recompensa son incompatibles: elige uno.')
+    process.exit(1)
+  }
   // adminResponse VACÍO es lo que hace el cierre silencioso: el endpoint no manda email ni campana
   // (emailSkipReason='empty_response'). Ver `feedback-nila-cierre-silencioso`.
   const mensaje = a.silencioso ? '' : readFileSync(a.mensajeFichero!, 'utf8').trim()
@@ -262,6 +273,7 @@ async function main() {
     adminResponse: mensaje,
   }
   if (a.sinRecompensa) cuerpo.skipRewardReason = a.sinRecompensa
+  if (a.conRecompensa) cuerpo.grantRewardReason = a.conRecompensa
   if (a.correccion) cuerpo.correccionDeRespuesta = a.correccion
   if (a.saltarBarajado) cuerpo.skipShuffleReason = a.saltarBarajado
 
@@ -269,6 +281,7 @@ async function main() {
   console.log(`\n── ${a.disputeId} → ${a.estado}${etiqueta}${detectado ? ' [tipo detectado en BD]' : ''}`)
   console.log(`   endpoint: ${BASE}/api/v2/dispute/resolve · admin: ${ADMIN}`)
   if (a.sinRecompensa) console.log(`   sin recompensa: ${a.sinRecompensa}`)
+  if (a.conRecompensa) console.log(`   🎁 recompensa A MANO: ${a.conRecompensa}`)
   if (a.saltarBarajado) console.log(`   salta barajado: ${a.saltarBarajado}`)
   if (a.silencioso) {
     console.log(`   🔇 CIERRE SILENCIOSO — sin email ni campana. Motivo: ${a.nota}`)
