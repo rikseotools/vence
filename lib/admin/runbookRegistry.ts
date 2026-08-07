@@ -364,6 +364,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
     claudeHace: 'para cada ley señalada, coge los números escopados en topic_scope que no tienen fila ACTIVA en articles (mismo law_id): si es `inexistente` y la ley SÍ tiene ese artículo en su fuente oficial (BOE), lo importa verbatim (doble auditoría) y genera las preguntas que falten; si es `desactivado` (existe con is_active=false, a veces con preguntas ya listas), lo reactiva tras revisar por qué se desactivó; si la ley NO lo tiene (over-scope), lo quita del article_numbers. NUNCA inventa el artículo ni deja el número colgado sirviendo 0 preguntas/teoría en silencio.',
   },
+  orphan_inactive_article: {
+    title: 'Artículo inactivo y SIN escopar que aún tiene preguntas activas colgando (invisible por partida doble)',
+    triggerPhrase: 'revisa los artículos huérfanos inactivos',
+    runbook: 'docs/runbooks/verificar-epigrafes-scope.md',
+    claudeHace: 'para cada artículo señalado (`is_active=false`, sin fila en NINGÚN `topic_scope` activo, pero con preguntas `is_active=true` colgando de `primary_article_id`), decide si el artículo entra en el temario de alguna oposición: si SÍ (el epígrafe oficial de algún tema lo pide), añádelo a ese `topic_scope` con el criterio de `verificar-epigrafes-scope.md` y SOLO ENTONCES reactívalo con `scripts/reactivar-articulo-boe.cjs "<ley>" "<art>"` (que ya compara contra el bloque vigente del BOE — bloquea a propósito reactivar sin scope, porque seguiría sin servirse); si NO entra en ningún temario, la salida honesta es jubilar esas preguntas, no reactivar el artículo. NUNCA reactivar sin haber decidido el scope primero: es el orden al revés del que usa `scope_phantom_article`.',
+  },
   scope_titulo_huerfano: {
     title: 'Título con preguntas huérfanas (hueco interno del temario)',
     triggerPhrase: 'revisa los huecos del temario',
