@@ -34,7 +34,10 @@ function reqUrl(url: string) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockExecute.mockResolvedValue({ rows: [] })
+  // Forma real de postgres.js (drizzle `db.execute`): array plano, no `{rows:[...]}` — los
+  // routes de este fichero son defensivos con las dos formas (ver `filas()`/`Array.isArray`),
+  // así que el default modela la que de verdad devuelve producción.
+  mockExecute.mockResolvedValue([])
 })
 
 describe('POST /api/v2/onboarding/save-field', () => {
@@ -63,6 +66,60 @@ describe('POST /api/v2/onboarding/save-field', () => {
     mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
     await SAVE_FIELD(reqBody({ field: 'target_oposicion_data', value: { id: 'x', tipo: 'custom' } }))
     expect(JSON.stringify(mockExecute.mock.calls[0][0])).toContain('jsonb')
+  })
+
+  // [T-077] Guardarraíl: este endpoint es de ONBOARDING, no un segundo escritor libre de
+  // target_oposicion. Antes de este fix, nada lo impedía (ver la nota junto al `case
+  // 'target_oposicion'` de la ruta) — se podía llamar en cualquier momento y pisar el
+  // objetivo de un usuario que ya había completado el onboarding, sin pasar por
+  // `/api/profile/target` ni por su guardarraíl de T-508.
+  describe('target_oposicion / target_oposicion_data — solo ANTES de completar el onboarding', () => {
+    test('FIJAR target_oposicion pide onboarding_completed_at IS NULL en el UPDATE', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue([{ id: 'U_TOKEN' }]) // forma real: array plano (postgres.js)
+      await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: 'guardia_civil' }))
+      expect(JSON.stringify(mockExecute.mock.calls[0][0])).toContain('onboarding_completed_at')
+    })
+
+    test('si el UPDATE afecta 0 filas (ya completado), responde 409 onboarding_ya_completado', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue([]) // 0 filas: la condición WHERE no casó
+      const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: 'guardia_civil' }))
+      expect(res.status).toBe(409)
+      expect((await res.json()).error).toBe('onboarding_ya_completado')
+    })
+
+    test('si el UPDATE afecta 1 fila (primera vez), responde 200 success', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue([{ id: 'U_TOKEN' }])
+      const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: 'guardia_civil' }))
+      expect(res.status).toBe(200)
+      expect((await res.json()).success).toBe(true)
+    })
+
+    test('VACIAR (value: null) nunca se bloquea, aunque el UPDATE devuelva 0 filas', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue([]) // p.ej. el perfil ya estaba a NULL
+      const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: null }))
+      expect(res.status).toBe(200)
+      // Y el UPDATE de vaciado no lleva la condición — vaciar es SIEMPRE legítimo.
+      expect(JSON.stringify(mockExecute.mock.calls[0][0])).not.toContain('onboarding_completed_at')
+    })
+
+    test('mismo guardarraíl para target_oposicion_data (bloqueado)', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue([])
+      const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion_data', value: { id: 'x' } }))
+      expect(res.status).toBe(409)
+      expect((await res.json()).error).toBe('onboarding_ya_completado')
+    })
+
+    test('compatible con la forma {rows:[...]} además del array plano (defensivo, como los routes hermanos)', async () => {
+      mockVerifyAuth.mockResolvedValue({ success: true, userId: 'U_TOKEN', email: 'a@b.c' })
+      mockExecute.mockResolvedValue({ rows: [{ id: 'U_TOKEN' }] })
+      const res = await SAVE_FIELD(reqBody({ field: 'target_oposicion', value: 'guardia_civil' }))
+      expect(res.status).toBe(200)
+    })
   })
 })
 
