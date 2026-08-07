@@ -2018,7 +2018,13 @@ export const RULE_COMPRA_ATASCADA_CHECKOUT: AlertRule<{
 /** Una ejecución de un drenador, tal y como la deja en `cron_run`. */
 export interface DrenajeRun {
   endpoint: string;
-  ts: Date;
+  /**
+   * `Date | string`, y el `string` no es paranoia: es lo que devuelve el driver según la columna
+   * y el camino. Declararlo solo como `Date` fue lo que dejó pasar `b.ts.getTime()` — los tests
+   * construían `new Date()` y daban verde mientras producción fallaba en cada evaluación.
+   * El tipo tiene que decir la verdad, o el compilador ayuda a equivocarse.
+   */
+  ts: Date | string;
   /** Filas que dice haber movido/borrado en esa pasada (suma de todas sus tablas). */
   procesadas: number;
   /** Filas que dice que le QUEDAN fuera de retención, por tabla (acotado). */
@@ -2054,6 +2060,18 @@ export interface DrenajeDiagnostico {
  * una vez al día y un agregado de 24 h mezclaría un fallo de anoche con el éxito
  * de hoy.
  */
+/**
+ * Los milisegundos de un `ts` que puede venir como Date o como cadena.
+ *
+ * No es defensa por si acaso: es lo que pasa de verdad. El driver decide el tipo según la columna
+ * y el camino, así que una regla que asuma `Date` funciona en los tests (que construyen `new
+ * Date()`) y revienta en producción. Es exactamente cómo `drenaje_atrasado` se pasó 201
+ * evaluaciones sin vigilar nada.
+ */
+function msDe(ts: Date | string): number {
+  return ts instanceof Date ? ts.getTime() : Date.parse(String(ts));
+}
+
 export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
   const porEndpoint = new Map<string, DrenajeRun[]>();
   for (const r of runs) {
@@ -2064,7 +2082,14 @@ export function diagnosticarDrenaje(runs: DrenajeRun[]): DrenajeDiagnostico[] {
 
   const salida: DrenajeDiagnostico[] = [];
   for (const [endpoint, lista] of porEndpoint) {
-    const ordenadas = [...lista].sort((a, b) => b.ts.getTime() - a.ts.getTime());
+    // `ts` NO siempre llega como Date: el driver lo entrega como CADENA según la columna y el
+    // camino por el que venga, y `b.ts.getTime()` explotaba con «b.ts.getTime is not a function».
+    // Medido: la regla llevaba desde el 06/08 22:30 fallando en CADA evaluación —201 veces— así
+    // que el drenaje se quedó sin vigilancia justo después del deploy que la estrenó, y encima
+    // ensuciaba `alert_rule_failed` tapando cualquier otra regla que fallara de verdad.
+    // Mismo criterio que ya usa `latenciaSostenida` diez líneas más arriba (línea ~1014): no se
+    // asume el tipo, se normaliza.
+    const ordenadas = [...lista].sort((a, b) => msDe(b.ts) - msDe(a.ts));
     const ultima = ordenadas[0];
     // Sin `remaining` no se puede juzgar: es una versión anterior al deploy de
     // T-613. Callar es correcto — inventar un veredicto sin el dato, no.

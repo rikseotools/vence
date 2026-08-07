@@ -181,4 +181,49 @@ describe('la regla, cableada', () => {
     expect(n.body).toContain('observable_events');
     expect(n.body).toContain('200.000');
   });
+  // ── EL `ts` LLEGA COMO CADENA, Y ASÍ ES COMO ESTA REGLA SE PASÓ 201 EVALUACIONES SIN VIGILAR ──
+  //
+  // Todos los casos de arriba construyen `new Date()`, así que la suite daba verde mientras
+  // producción fallaba en CADA pasada con «b.ts.getTime is not a function» — desde el 06/08 22:30,
+  // justo después del deploy que estrenó la regla. El driver entrega `ts` como cadena según la
+  // columna y el camino, y el tipo declaraba `Date`, así que el compilador tampoco avisaba.
+  //
+  // Estos dos casos son los que de verdad protegen: mismo escenario, con el `ts` tal y como llega.
+  describe('[T-613] el ts puede llegar como cadena, no solo como Date', () => {
+    const comoCadena = (d: Date) => d.toISOString();
+
+    // ⚠️ DOS filas, y no es un detalle: con UNA sola, `sort` no llama al comparador, así que el
+    // `getTime()` roto nunca se ejecuta y el test pasa en verde con el defecto puesto. La primera
+    // versión de este caso tenía una fila y lo comprobé revirtiendo el arreglo: seguía verde.
+    it('no revienta al ordenar y detecta igual al drenador parado', () => {
+      const rows = [
+        run({
+          endpoint: 'telemetry-retention',
+          ts: comoCadena(dia(1)) as never,
+          procesadas: 0,
+          remaining: { observable_events: 300_000 },
+        }),
+        run({
+          endpoint: 'telemetry-retention',
+          ts: comoCadena(T0) as never,
+          procesadas: 0,
+          remaining: { observable_events: 200_000 },
+        }),
+      ];
+      expect(() => RULE_DRENAJE_ATRASADO.shouldFire(rows, undefined as never)).not.toThrow();
+      expect(RULE_DRENAJE_ATRASADO.shouldFire(rows, undefined as never)).toBe(true);
+    });
+
+    it('ordena bien con cadenas: se juzga la ÚLTIMA pasada, no una cualquiera', () => {
+      // La más reciente está SANA (ya drenó): con el orden roto se juzgaría la vieja y saltaría
+      // una alerta falsa.
+      const rows = [
+        run({ endpoint: 'archive-interactions', ts: comoCadena(dia(2)) as never,
+              procesadas: 0, remaining: { user_interactions: 500_000 } }),
+        run({ endpoint: 'archive-interactions', ts: comoCadena(dia(0)) as never,
+              procesadas: 200_000, remaining: { user_interactions: 0 } }),
+      ];
+      expect(RULE_DRENAJE_ATRASADO.shouldFire(rows, undefined as never)).toBe(false);
+    });
+  });
 });
