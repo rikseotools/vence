@@ -32,11 +32,16 @@ const { pgConfig } = require('../lib/db/pgSsl.cjs')
 const LINEA_BASE_CONOCIDA = 11
 
 async function main() {
-  const url = process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL
+  // [T-624] El criterio de qué credencial se usa para LEER negocio vive en un solo sitio. Este
+  // canario nació con su propia copia (`VENCE_LECTOR_URL || DATABASE_URL`) y el guardarraíl la
+  // cazó al mergear: dos sitios eligiendo credencial es como se acaba leyendo con la que no toca.
+  const { urlLecturaNegocioConFuente } = require('../lib/db/negocioSoloLectura.cjs')
+  const { url, fuente } = urlLecturaNegocioConFuente()
   if (!url) {
-    console.error('⚠️  Ni VENCE_LECTOR_URL ni DATABASE_URL están definidas — no puedo medir.')
+    console.error('⚠️  No hay credencial de lectura de negocio definida — no puedo medir.')
     return 1
   }
+  if (process.env.DEBUG) console.error(`   (leyendo con ${fuente})`)
   const c = new Client(pgConfig(url))
   await c.connect()
   try {
