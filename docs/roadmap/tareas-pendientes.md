@@ -5117,6 +5117,14 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **De dónde sale:** inventario real de [T-377].
 - **Relacionada:** [T-377], [T-374] (las 7.202 placeholder, otra decisión tuya del mismo tipo).
 
+> **⚠️ 07/08 (w4): la opción 2 de arriba («ajustar la config a lo que de verdad se sirve» /
+> bajar de 120) queda DESCARTADA — verificado el BOE 07/08/2025-26903 en crudo (56 páginas,
+> `pdfjs-dist`, no un resumen): el Anexo I es 20 comunes + 4 áreas de 100 temas cada una
+> (Consumo, Medicamentos, Seguridad Alimentaria, Vigilancia en Salud Pública), y cada aspirante
+> estudia común + UNA área = **120 exacto**. Bajarlo a 20 sería desmentir el boletín, no corregir
+> un error. Esta ficha y [T-391] son la MISMA decisión — respondida junta, ver el detalle
+> completo (y el resto del hallazgo: subgrupo mal en BD, es A2 no A1) en [T-391].
+
 ### [T-395] 🟠 [ABIERTO 31/07] 9 leyes con `is_ok:false` se publican como VERIFICADAS: el criterio de completitud ignora el veredicto del propio summary
 
 - **El caso, medido el 31/07:** hay 9 leyes cuyo `last_verification_summary` dice literalmente **`"is_ok": false`** y a las que el sistema asigna el estado **`verified`**, que es el más favorable posible. Y no son leyes muertas: **OPCAT (114 preguntas activas)**, Convenio Schengen (25), Orden 22/07/1987 (20), Convención Apátridas (6), RD 1087/2010 (3), Tratado Prüm (2), Convenio Prevención Tortura (1), Orden HFP/147/2022 (1), Protocolo Sedes UE (0).
@@ -5511,6 +5519,46 @@ esas preguntas no le habrían salido nunca.
 - **El sitio natural de esta oposición es [T-327]** (que el usuario arme su propio temario), cuya ficha ya apunta exactamente a este público: *«las oposiciones de A1 y A2, más específicas y menos generalistas»*.
 - **🔬 MEDIDO EL 31/07 — el catálogo publicado por grupo:** **106 de grupo C** (la estrategia), **7 de grupo A**, 5 E, 5 AP. Las 7 de grupo A son las **6 de enfermería (A2)** —las mismas donde viven las 7.134 preguntas sobre contenedores vacíos de [T-379]— y etgoa. **26 usuarios en total** en todo el grupo A, **1 premium** (en etgoa). Es decir: el grupo A es el 6% del catálogo publicado y concentra dos de los problemas de contenido abiertos.
 - **Lo que esto le hace a [T-379]:** refuerza la decisión de dejarlo. Enfermería es A2, así que tampoco toca invertir contenido ahí.
+
+> **✅ VERIFICADO EN LA FUENTE PRIMARIA (07/08, w4) — confirma el hallazgo del 31/07, con una
+> trampa por el camino que conviene dejar escrita.**
+>
+> **Un primer intento con el resumen automático de la propia herramienta de lectura web dio un
+> dato FALSO** (dijo *"Un área única… con 66 temas específicos"*, "no hay múltiples áreas") — lo
+> descarté sin usarlo y bajé al PDF crudo del BOE (`boe.es/boe/dias/2025/12/29/pdfs/BOE-A-2025-26903.pdf`,
+> 56 páginas, extraído con `pdfjs-dist`, texto plano, no un resumen de un modelo intermedio).
+> **Contra el texto literal:** Primera parte = Tema 1 a Tema 20 (comunes). Segunda parte = CUATRO
+> áreas — *Consumo*, *garantías de calidad, seguridad, eficacia y correcta información de
+> medicamentos…*, *Seguridad Alimentaria y Nutrición*, *Vigilancia en Salud Pública, Sistemas de
+> Información Sanitaria y Cartera Común* — **cada una con su propio Tema 1 a Tema 100** (comprobado
+> el último tema de las cuatro, una por una). 20 + 100 = **120**, confirmado exacto. El **subgrupo
+> A2** también sale literal y repetido (requisitos de promoción interna 3.9, y el propio Anexo III
+> del certificado dice *"Subgrupo A2"* tres veces). **Nada que corregir del hallazgo del 31/07** —
+> queda registrado que la primera pasada con el resumen automático mintió, para que quien lo repita
+> no se fíe de un resumen sin bajar al documento.
+>
+> **Confirmado también en NUESTRA BD (vía `VENCE_LECTOR_URL`), no solo en la ficha:**
+> `oposiciones.subgrupo='A1'` para `etgoa-sanidad-consumo` — el dato SIGUE mal (nadie lo ha
+> corregido desde el 31/07). `topics`: 20 activos de 120 totales (coincide). `boe_reference` y
+> `programa_url` SÍ están bien enlazados a `BOE-A-2025-26903`. `plazas_libres=87` +
+> `plazas_discapacidad=11` = 98 (turno libre acceso general+discapacidad, cuadra con el BOE) —
+> nada que tocar ahí. **NO pude releer `user_profiles`** (permission denied incluso con
+> `VENCE_LECTOR_URL` — tabla con datos personales, fuera de mi alcance por diseño): no pude
+> re-verificar el "26 usuarios / 1 premium" del 31/07, lo doy por bueno tal cual estaba escrito
+> sin re-medirlo.
+>
+> **⚠️ Esta ficha y [T-396] son LA MISMA decisión, medida por dos caminos distintos — no se
+> pueden responder por separado.** T-396 nació del inventario de [T-377] (antes de verificar
+> contra el BOE) y su opción 2 dice *«ajustar la config a lo que de verdad se sirve»* (bajar de
+> 120) — **esa opción queda DESCARTADA por la verificación de arriba**: 120 es lo que dice el
+> BOE, bajarlo sería mentir al boletín, no corregir un error nuestro. Las dos fichas convergen en
+> las MISMAS dos salidas reales: despublicar, o dejarla viva declarando que solo está la parte
+> común. Pregunto una sola vez, citando las dos.
+>
+> **NO ESCRITO — subgrupo A1→A2:** un `UPDATE oposiciones SET subgrupo='A2' WHERE
+> slug='etgoa-sanidad-consumo'`, verificado arriba contra el BOE y contra nuestra propia BD. Fuera
+> de mi permiso de esta tarea (nada de BD de negocio) y mi credencial de lectura no alcanza para
+> escribirlo de todas formas. Queda listo para quien tenga la credencial completa.
 
 ### [T-384] 🟠 [ABIERTO 31/07] Separar el job de CI: tests de código con BD efímera vs vigilancias de datos al barrido
 
