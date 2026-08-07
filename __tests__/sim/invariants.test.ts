@@ -6,6 +6,7 @@ import {
   mixedInclusionIsWarned,
   requestIsScopedTo,
   failureWasObserved,
+  testEndOffersActionsInTime,
   type Selection,
 } from '@/lib/sim/invariants'
 
@@ -103,6 +104,25 @@ describe('failureWasObserved (meta-bug / punto ciego)', () => {
   })
   it('OK: sin fallo', () => {
     expect(failureWasObserved({ userVisibleFailure: false, observedEventCount: 0 }).ok).toBe(true)
+  })
+})
+
+describe('testEndOffersActionsInTime (T-315, caso Lourdes: terminas el test y no hay nada)', () => {
+  it('FALLA: la pantalla no ofrece NADA tras terminar', () => {
+    const r = testEndOffersActionsInTime({ elapsedMs: 20_000, budgetMs: 12_000, actionsVisible: false })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/no apareció NADA/)
+  })
+  it('FALLA: aparecen, pero tarde — es el bug de esperar al guardado', () => {
+    const r = testEndOffersActionsInTime({ elapsedMs: 19_500, budgetMs: 12_000, actionsVisible: true })
+    expect(r.ok).toBe(false)
+    expect(r.detail).toMatch(/sigue esperando al guardado/)
+  })
+  it('OK: aparecen dentro del margen aunque el guardado vaya mal', () => {
+    expect(testEndOffersActionsInTime({ elapsedMs: 4_200, budgetMs: 12_000, actionsVisible: true }).ok).toBe(true)
+  })
+  it('el borde del margen no se cuela como fallo', () => {
+    expect(testEndOffersActionsInTime({ elapsedMs: 12_000, budgetMs: 12_000, actionsVisible: true }).ok).toBe(true)
   })
 })
 
