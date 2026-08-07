@@ -139,7 +139,7 @@ function sesionViva(trabajador) {
   const como = m && m.local ? '' : 'sudo -u flota '
   try {
     const r = enMaquina(trabajador,
-      `${como}sh -c 'tmux has-session -t ${trabajador} 2>/dev/null && echo SI || echo NO'`).trim()
+      `${como}sh -c 'tmux -L ${trabajador} has-session -t ${trabajador} 2>/dev/null && echo SI || echo NO'`).trim()
     if (r.endsWith('SI')) return true
     if (r.endsWith('NO')) return false
     return null
@@ -206,7 +206,7 @@ function comandoDelPanel(trabajador) {
   const como = m && m.local ? '' : 'sudo -u flota '
   try {
     return enMaquina(trabajador,
-      `${como}tmux list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
+      `${como}tmux -L ${trabajador} list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
   } catch { return '' }
 }
 
@@ -367,7 +367,7 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
     `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
-    `${como}tmux send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
+    `${como}tmux -L ${trabajador} send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
 
@@ -745,12 +745,12 @@ async function main() {
           turno: () => emitirTurno(w, 'encargado', { tarea: tarea.id, tipo: 'backlog' }) })
       if (!r.ok) {
         console.error(r.ocupado
-          ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux attach -t ${w}`
+          ? `❌ ${w} ${r.motivo} — espera a que termine, o míralo con: tmux -L ${w} attach -t ${w}`
           : `❌ ${w}: ${motivoFallo(r)}`)
         return 1
       }
       console.log(`✅ encargo enviado a ${w}: ${tarea.id} — ${String(tarea.title).slice(0, 60)}`)
-      console.log(`   míralo con:  npm run flota    (o tmux attach -t ${w} en la máquina)`)
+      console.log(`   míralo con:  npm run flota    (o tmux -L ${w} attach -t ${w} en la máquina)`)
       return 0
     }
 
@@ -918,7 +918,7 @@ async function main() {
         const rama = ramas[0] || '(?)'
         console.log(ok
           ? `   💾 ${w}: ${ramas.length} rama(s) puesta(s) a salvo`
-          : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux attach -t ${w}) · ${salida.trim().slice(-120)}`)
+          : `   ❌ ${w}: NO se pudo poner a salvo — míralo tú (tmux -L ${w} attach -t ${w}) · ${salida.trim().slice(-120)}`)
         for (const r of ramas) console.log(`        → ${r}`)
         emitirTurno(w, ok ? 'rescatado' : 'rescate_fallido', { rama, ramas, motivo: ok ? null : 'no se pudo empujar lo que dejó sin salvar' })
         if (ok) n++
@@ -1498,7 +1498,7 @@ async function main() {
         console.error(String((e.stdout || '') + (e.stderr || '')).trim().slice(-500))
         return 1
       }
-      enMaquina(w, `tmux has-session -t ${w} 2>/dev/null || tmux new-session -d -s ${w} -c ${wt} /bin/bash`)
+      enMaquina(w, `tmux -L ${w} has-session -t ${w} 2>/dev/null || tmux -L ${w} new-session -d -s ${w} -c ${wt} /bin/bash`)
       console.log(`✅ ${w} en marcha en el portátil (${wt})`)
       console.log(`   dale trabajo:  npm run flota -- encargar ${w}`)
       return 0
@@ -1511,7 +1511,7 @@ async function main() {
       if (!m) { console.error(`❌ ${w} no está declarado en ninguna máquina`); return 1 }
       if (cmd === 'parar') {
         enMaquina(w, m.local
-          ? `tmux kill-session -t ${w} 2>/dev/null || true`
+          ? `tmux -L ${w} kill-session -t ${w} 2>/dev/null || true`
           : `systemctl stop vence-flota@${w}`)
         console.log(`✅ ${w}: parado`)
         return 0

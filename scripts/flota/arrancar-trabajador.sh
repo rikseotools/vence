@@ -205,8 +205,14 @@ EnvironmentFile=/etc/vence-flota/%i.env
 # Así que el trabajo se lanza como `claude -p` desde `flota.cjs encargar`, dentro de esta shell:
 # el token sirve, la salida queda visible al atachar, y tmux la mantiene viva aunque se caiga el
 # SSH. systemd levanta la shell tras un reinicio.
-ExecStart=/usr/bin/tmux new-session -d -s %i -c ${VENCE_SESSION_HOME} /bin/bash
-ExecStop=/usr/bin/tmux kill-session -t %i
+# ── UN SERVIDOR DE TMUX POR TRABAJADOR (`-L %i`), y de esto depende TODO lo de abajo ────────
+# tmux comparte UN servidor por usuario: sin `-L`, las cuatro sesiones cuelgan del primero que
+# arrancó, así que los cuatro trabajadores acaban en el MISMO cgroup y los límites de memoria de
+# más abajo serían pura decoración — un turno desbocado mataría turnos de otro. Comprobado el
+# 07/08 al aplicarlos: con servidor compartido, las sesiones de w2, w3 y w4 vivían dentro de
+# `vence-flota@w1.service`. Con `-L` cada uno tiene el suyo y responde de lo suyo.
+ExecStart=/usr/bin/tmux -L %i new-session -d -s %i -c ${VENCE_SESSION_HOME} /bin/bash
+ExecStop=/usr/bin/tmux -L %i kill-session -t %i
 RemainAfterExit=yes
 Restart=on-failure
 RestartSec=30
@@ -276,7 +282,7 @@ fi
 echo "   ✅ autenticado y respondiendo"
 
 # ── 9. ARRANQUE ─────────────────────────────────────────────────────────────────────────────
-if sudo -u "$USUARIO" tmux has-session -t "$SLUG" 2>/dev/null; then
+if sudo -u "$USUARIO" tmux -L "$SLUG" has-session -t "$SLUG" 2>/dev/null; then
   echo "→ ya había una sesión tmux '$SLUG': se conserva (no se pisa el trabajo en curso)"
   systemctl enable "vence-flota@$SLUG" >/dev/null 2>&1 || true
 else
@@ -292,7 +298,7 @@ cat <<FIN
    máquina: $(hostname -s)
    rol:     trabajador (sus guardarraíles fallan CERRADOS)
 
-   hablar con él:            tmux attach -t $SLUG      (soltar sin matarlo: Ctrl-b d)
+   hablar con él:            tmux -L $SLUG attach -t $SLUG      (soltar sin matarlo: Ctrl-b d)
    pararlo / arrancarlo:     systemctl stop|start vence-flota@$SLUG
    verlo desde el portátil:  npm run parte
    lo que te pregunte:       node scripts/backlog.cjs preguntas

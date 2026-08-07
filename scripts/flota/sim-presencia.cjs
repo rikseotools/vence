@@ -17,7 +17,8 @@
  * Usa la orden REAL (`ordenDeArranque` de `lib/flota/encargo.cjs`), no una reconstrucción: si
  * alguien la cambia, esto cambia con ella o falla.
  *
- * No toca la flota: crea sus propias sesiones de tmux con un prefijo propio y las mata al salir.
+ * No toca la flota: crea sus propias sesiones de tmux **en su propio socket** (`-L`, igual que los
+ * trabajadores de verdad desde T-647) con un prefijo propio, y las mata al salir.
  * La rama de systemd no se ejecuta aquí a propósito —no hay unidad que arrancar en un portátil—,
  * pero SÍ se comprueba que la orden que se mandaría es `restart`, que es el defecto que se arregló.
  */
@@ -29,7 +30,7 @@ const { presenciaDelPanel, ordenDeArranque } = require(path.join(__dirname, '..'
 const PREFIJO = `simpres-${process.pid}`
 const sesiones = []
 process.on('exit', () => {
-  for (const s of sesiones) { try { execSync(`tmux kill-session -t ${s} 2>/dev/null || true`) } catch {} }
+  for (const s of sesiones) { try { execSync(`tmux -L ${s} kill-server 2>/dev/null || true`) } catch {} }
 })
 
 const sh = (cmd) => execSync(cmd, { encoding: 'utf8', shell: '/bin/bash' }).trim()
@@ -37,7 +38,7 @@ const sh = (cmd) => execSync(cmd, { encoding: 'utf8', shell: '/bin/bash' }).trim
 /** Igual que el supervisor: pregunta de forma que el comando SIEMPRE salga bien. */
 function sesionExiste(nombre) {
   try {
-    const r = sh(`tmux has-session -t ${nombre} 2>/dev/null && echo SI || echo NO`)
+    const r = sh(`tmux -L ${nombre} has-session -t ${nombre} 2>/dev/null && echo SI || echo NO`)
     if (r.endsWith('SI')) return true
     if (r.endsWith('NO')) return false
     return null
@@ -45,7 +46,7 @@ function sesionExiste(nombre) {
 }
 
 function panel(nombre) {
-  try { return sh(`tmux list-panes -t ${nombre} -F '#{pane_current_command}' 2>/dev/null | head -1`) } catch { return '' }
+  try { return sh(`tmux -L ${nombre} list-panes -t ${nombre} -F '#{pane_current_command}' 2>/dev/null | head -1`) } catch { return '' }
 }
 
 const casos = []
@@ -66,23 +67,25 @@ function main() {
   // ── CASO 1: la sesión desaparece (w2 y w4) ────────────────────────────────────────────────
   const w = `${PREFIJO}-caido`
   sesiones.push(w)
-  sh(`tmux new-session -d -s ${w} -c ${os.tmpdir()} /bin/bash`)
+  sh(`tmux -L ${w} new-session -d -s ${w} -c ${os.tmpdir()} /bin/bash`)
   comprobar('recién creada, se ve como libre', presenciaDelPanel({ sesionExiste: sesionExiste(w), paneCommand: panel(w), reparte: true }).estado, 'libre')
 
-  sh(`tmux kill-session -t ${w}`)
+  sh(`tmux -L ${w} kill-server`)
   const caido = presenciaDelPanel({ sesionExiste: sesionExiste(w), paneCommand: panel(w), reparte: true })
   comprobar('desaparecida, se ve como sin_sesion (antes: se saltaba en silencio)', caido.estado, 'sin_sesion')
   comprobar('y lleva ACCIÓN, que es lo que faltaba', caido.accion, 'resucitar')
 
   // Y la orden REAL la devuelve. En local no hay unidad de systemd, así que se ejecuta la rama
   // local — la del VPS se comprueba por su forma, más abajo.
-  sh(ordenDeArranque({ trabajador: w, local: true }).replace('$HOME/vence-sessions/' + w, os.tmpdir()))
+  sh(ordenDeArranque({ trabajador: w, systemd: false }).replace('"$HOME/vence-sessions/' + w + '"', os.tmpdir()))
   comprobar('la orden real la devuelve a la vida', sesionExiste(w), true)
 
   // ── CASO 2: sesión SANA con algo corriendo — nadie la toca ────────────────────────────────
   const s = `${PREFIJO}-sana`
   sesiones.push(s)
-  sh(`tmux new-session -d -s ${s} -c ${os.tmpdir()} 'sleep 30'`)
+  // Sin comillas: con `'sleep 30'` tmux lo lanza a través de una shell y el panel reporta `sh`,
+  // que ES un shell y saldría «libre» — un falso negativo de la propia simulación.
+  sh(`tmux -L ${s} new-session -d -s ${s} -c ${os.tmpdir()} sleep 60`)
   const sana = presenciaDelPanel({ sesionExiste: sesionExiste(s), paneCommand: panel(s), reparte: true })
   comprobar('ocupada: se ve trabajando', sana.estado, 'trabajando')
   comprobar('y NO se resucita (resucitar mataría el turno de dentro)', sana.accion, null)
@@ -92,7 +95,7 @@ function main() {
   comprobar('y tampoco se resucita a ciegas', presenciaDelPanel({ sesionExiste: null, reparte: true }).accion, null)
 
   // ── La forma de la orden del VPS, que es el defecto que se arregló ────────────────────────
-  const vps = ordenDeArranque({ trabajador: 'w2', local: false })
+  const vps = ordenDeArranque({ trabajador: 'w2', systemd: true })
   comprobar('en el VPS la orden es restart (start es un no-op sobre active/exited)', /restart/.test(vps) && !/systemctl start/.test(vps), true)
 
   // ── Y el portátil apagado NO es una avería ───────────────────────────────────────────────

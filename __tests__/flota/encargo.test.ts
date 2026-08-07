@@ -942,8 +942,12 @@ describe('[T-642] ordenDeArranque — tiene que levantar TAMBIÉN a uno ya «arr
 
   it('en el portátil no hay unidad: crea la sesión solo si no está', () => {
     const o = ordenDeArranque({ trabajador: 'l3', systemd: false })
-    expect(o).toContain('tmux has-session -t l3')
-    expect(o).toContain('tmux new-session -d -s l3')
+    expect(o).toContain('tmux -L l3 has-session -t l3')
+    expect(o).toContain('tmux -L l3 new-session -d -s l3')
+    // `-L`: un servidor de tmux POR trabajador. Sin él, tmux comparte uno por usuario y las
+    // cuatro sesiones cuelgan del primero que arrancó — con lo que los cuatro acaban en el mismo
+    // cgroup y los límites de memoria por unidad son decoración (comprobado el 07/08: las
+    // sesiones de w2, w3 y w4 vivían dentro de vence-flota@w1.service).
     expect(o).not.toMatch(/systemctl/)
   })
 
@@ -1004,7 +1008,7 @@ describe('[T-647] a los trabajadores los levanta systemd, y de eso depende el te
 
   it('donde NO hay unidad (el portátil de Manuel), se crea la sesión a mano', () => {
     const o = ordenDeArranque({ trabajador: 'l3', systemd: false })
-    expect(o).toContain('tmux new-session -d -s l3')
+    expect(o).toContain('tmux -L l3 new-session -d -s l3')
     expect(o).not.toMatch(/systemctl/)
   })
 
