@@ -443,3 +443,173 @@ describe('parseBoeSectionsMultinivel (T-510)', () => {
     expect(parseBoeSectionsMultinivel(conVacia).niveles[0].secciones.map(s => s.num)).toEqual(['I', 'III'])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// T-333 (06/08/2026) — SECCIÓN / SUBSECCIÓN, el nivel que el detector de frontera de scope
+// no podía ver. Fixtures REALES, no inventados: verificados contra la API BOE datosabiertos
+// el 06/08/2026 (BOE-A-2017-12902 Ley 9/2017 y BOE-A-2015-11724 TRLGSS/RDL 8/2015).
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+describe('rubricaVigente — clase real de Sección/Subsección ("seccion"/"subseccion", SIN "_tit")', () => {
+  const { rubricaVigente } = require('@/lib/laws/parseBoeSections')
+
+  test('Sección: la clase real es "seccion", no "seccion_tit" (BOE-A-2017-12902, bloque s1)', () => {
+    const xml = `<response><data><bloque id="s1" tipo="encabezado" titulo="Sección 1">
+      <version id_norma="BOE-A-2017-12902" fecha_publicacion="20171109" fecha_vigencia="20180309">
+        <p class="seccion">Sección 1.ª Objeto y ámbito de aplicación</p>
+      </version></bloque></data></response>`
+    expect(rubricaVigente(xml, '20260806').rubrica).toBe('Sección 1.ª Objeto y ámbito de aplicación')
+  })
+
+  test('Subsección: la clase real es "subseccion" (BOE-A-2015-11724, bloque ss1)', () => {
+    const xml = `<response><data><bloque id="ss1" tipo="encabezado" titulo="Subsección 1">
+      <version id_norma="BOE-A-2015-11724" fecha_publicacion="20151031" fecha_vigencia="20160102">
+        <p class="subseccion">Subsección 1.ª Disposiciones generales</p>
+      </version></bloque></data></response>`
+    expect(rubricaVigente(xml, '20260806').rubrica).toBe('Subsección 1.ª Disposiciones generales')
+  })
+
+  test('antes del fix esto habría dado null — la clase "seccion_tit" no existe en el XML real', () => {
+    // Regresión directa: si alguien reintroduce SOLO "seccion_tit" en el regex, este caso
+    // (con la clase real "seccion") vuelve a fallar.
+    const xml = '<bloque><p class="seccion">Sección 2.ª Negocios y contratos excluidos</p></bloque>'
+    expect(rubricaVigente(xml, '20260806').rubrica).toBe('Sección 2.ª Negocios y contratos excluidos')
+  })
+})
+
+describe('numSeccSubseccDeLabel', () => {
+  const { numSeccSubseccDeLabel } = require('@/lib/laws/parseBoeSections')
+
+  test('distingue Sección de Subsección por el LABEL (el id no siempre lo dice)', () => {
+    expect(numSeccSubseccDeLabel('Sección 1')).toEqual({ tipo: 'seccion', num: '1' })
+    expect(numSeccSubseccDeLabel('Subsección 4')).toEqual({ tipo: 'subseccion', num: '4' })
+  })
+
+  test('numeración ARÁBIGA, no romana (a diferencia de título/capítulo)', () => {
+    expect(numSeccSubseccDeLabel('Sección 12')).toEqual({ tipo: 'seccion', num: '12' })
+  })
+
+  test('no casa con Título/Capítulo ni con texto libre', () => {
+    expect(numSeccSubseccDeLabel('TÍTULO I')).toBeNull()
+    expect(numSeccSubseccDeLabel('CAPÍTULO II')).toBeNull()
+    expect(numSeccSubseccDeLabel('Artículo 5')).toBeNull()
+    expect(numSeccSubseccDeLabel('')).toBeNull()
+  })
+})
+
+describe('parseSeccionesSubsecciones — Ley 9/2017 Título Preliminar (fixture REAL, T22)', () => {
+  const { parseSeccionesSubsecciones } = require('@/lib/laws/parseBoeSections')
+
+  // Índice REAL de BOE-A-2017-12902 (verificado 06/08/2026): Título Preliminar › Capítulo I
+  // (Sección 1 = arts.1-3, Sección 2 = arts.4-11) › Capítulo II (Sección 1 = 12-18, Sección 2 =
+  // 19-23, Sección 3 = 24-27). Nótese que Sección y Subsección de este índice AMBAS usan el
+  // prefijo de id "s" (a diferencia del TRLGSS) — la prueba de que esto funciona por LABEL.
+  const BLOQUES_T22 = [
+    { id: 'tp', label: 'TÍTULO PRELIMINAR' },
+    { id: 'ci', label: 'CAPÍTULO I' },
+    { id: 's1', label: 'Sección 1' },
+    { id: 'a1', label: 'Artículo 1' }, { id: 'a2', label: 'Artículo 2' }, { id: 'a3', label: 'Artículo 3' },
+    { id: 's2', label: 'Sección 2' },
+    { id: 'a4', label: 'Artículo 4' }, { id: 'a5', label: 'Artículo 5' }, { id: 'a6', label: 'Artículo 6' },
+    { id: 'a7', label: 'Artículo 7' }, { id: 'a8', label: 'Artículo 8' }, { id: 'a9', label: 'Artículo 9' },
+    { id: 'a1-2', label: 'Artículo 10' }, { id: 'a1-3', label: 'Artículo 11' },
+    { id: 'ci-2', label: 'CAPÍTULO II' },
+    { id: 's1-2', label: 'Sección 1' },
+    { id: 'a1-4', label: 'Artículo 12' }, { id: 'a1-5', label: 'Artículo 13' }, { id: 'a1-6', label: 'Artículo 14' },
+    { id: 'a1-7', label: 'Artículo 15' }, { id: 'a1-8', label: 'Artículo 16' }, { id: 'a1-9', label: 'Artículo 17' },
+    { id: 'a1-10', label: 'Artículo 18' },
+    { id: 's2-2', label: 'Sección 2' },
+    { id: 'a1-11', label: 'Artículo 19' }, { id: 'a2-2', label: 'Artículo 20' }, { id: 'a2-3', label: 'Artículo 21' },
+    { id: 'a2-4', label: 'Artículo 22' }, { id: 'a2-5', label: 'Artículo 23' },
+    { id: 's3', label: 'Sección 3' },
+    { id: 'a2-6', label: 'Artículo 24' }, { id: 'a2-7', label: 'Artículo 25' }, { id: 'a2-8', label: 'Artículo 26' },
+    { id: 'a2-9', label: 'Artículo 27' },
+  ]
+
+  test('extrae las 5 secciones con su rango exacto', () => {
+    const { niveles } = parseSeccionesSubsecciones(BLOQUES_T22)
+    expect(niveles.map((n) => n.tipo)).toEqual(['seccion']) // sin subsecciones en este tramo
+    expect(niveles[0].secciones).toEqual([
+      { num: '1', blockId: 's1', from: 1, to: 3 },
+      { num: '2', blockId: 's2', from: 4, to: 11 },
+      { num: '1', blockId: 's1-2', from: 12, to: 18 },
+      { num: '2', blockId: 's2-2', from: 19, to: 23 },
+      { num: '3', blockId: 's3', from: 24, to: 27 },
+    ])
+  })
+})
+
+describe('parseSeccionesSubsecciones — TRLGSS (RDL 8/2015), Sección→Subsección anidada + prefijo "ss" (T15/T16)', () => {
+  const { parseSeccionesSubsecciones } = require('@/lib/laws/parseBoeSections')
+
+  // Índice REAL de BOE-A-2015-11724 (verificado 06/08/2026): Capítulo I SIN secciones (arts.
+  // 1-6) › Capítulo II (Sección 1 = 7-11, Sección 2 = 12-14) › Capítulo III (Sección 1 = 15-17,
+  // Sección 2 = 18-20 con el 19 bis, Sección 3 → Subsección 1 = 21-27, Subsección 2 = 28-36,
+  // Subsección 3 = 37-41…). Aquí Subsección usa el prefijo de id "ss", DISTINTO de Sección ("s").
+  const BLOQUES_TRLGSS = [
+    { id: 'ti', label: 'TÍTULO I' },
+    { id: 'ci', label: 'CAPÍTULO I' },
+    { id: 'a1', label: 'Artículo 1' }, { id: 'a2', label: 'Artículo 2' }, { id: 'a3', label: 'Artículo 3' },
+    { id: 'a4', label: 'Artículo 4' }, { id: 'a5', label: 'Artículo 5' }, { id: 'a6', label: 'Artículo 6' },
+    { id: 'cii', label: 'CAPÍTULO II' },
+    { id: 's1', label: 'Sección 1' },
+    { id: 'a7', label: 'Artículo 7' }, { id: 'a8', label: 'Artículo 8' }, { id: 'a9', label: 'Artículo 9' },
+    { id: 'a10', label: 'Artículo 10' }, { id: 'a11', label: 'Artículo 11' },
+    { id: 's2', label: 'Sección 2' },
+    { id: 'a12', label: 'Artículo 12' }, { id: 'a13', label: 'Artículo 13' }, { id: 'a14', label: 'Artículo 14' },
+    { id: 'ciii', label: 'CAPÍTULO III' },
+    { id: 's1-2', label: 'Sección 1' },
+    { id: 'a15', label: 'Artículo 15' }, { id: 'a16', label: 'Artículo 16' }, { id: 'a17', label: 'Artículo 17' },
+    { id: 's2-2', label: 'Sección 2' },
+    { id: 'a18', label: 'Artículo 18' }, { id: 'a19', label: 'Artículo 19' },
+    { id: 'a1-4', label: 'Artículo 19 bis' }, { id: 'a20', label: 'Artículo 20' },
+    { id: 's3', label: 'Sección 3' },
+    { id: 'ss1', label: 'Subsección 1' },
+    { id: 'a21', label: 'Artículo 21' }, { id: 'a22', label: 'Artículo 22' }, { id: 'a23', label: 'Artículo 23' },
+    { id: 'a24', label: 'Artículo 24' }, { id: 'a25', label: 'Artículo 25' }, { id: 'a26', label: 'Artículo 26' },
+    { id: 'a27', label: 'Artículo 27' },
+    { id: 'ss2', label: 'Subsección 2' },
+    { id: 'a28', label: 'Artículo 28' }, { id: 'a29', label: 'Artículo 29' }, { id: 'a30', label: 'Artículo 30' },
+  ]
+
+  test('Capítulo I (sin secciones) no aporta ninguna sección — arts.1-6 quedan sin cubrir a este nivel', () => {
+    const { niveles } = parseSeccionesSubsecciones(BLOQUES_TRLGSS)
+    const seccion = niveles.find((n) => n.tipo === 'seccion')
+    // La primera sección empieza en el art.7 (Cap.II): el art.1 del Cap.I NUNCA aparece en
+    // ningún rango de este nivel — es la prueba de que no se coló en una sección ajena.
+    expect(seccion.secciones[0]).toEqual({ num: '1', blockId: 's1', from: 7, to: 11 })
+    expect(seccion.secciones.some((s) => s.from <= 1 && 1 <= s.to)).toBe(false)
+  })
+
+  test('Sección 3 del Cap.III queda VACÍA (todo su contenido está en subsecciones) y no aparece', () => {
+    const { niveles } = parseSeccionesSubsecciones(BLOQUES_TRLGSS)
+    const seccion = niveles.find((n) => n.tipo === 'seccion')
+    // 4 secciones con artículos propios (7-11, 12-14, 15-17, 18-20); la "Sección 3" (s3) no
+    // tiene ninguno directo (todos están bajo sus subsecciones) → se filtra, no aparece un
+    // quinto rango fantasma con from=to=undefined.
+    expect(seccion.secciones).toEqual([
+      { num: '1', blockId: 's1', from: 7, to: 11 },
+      { num: '2', blockId: 's2', from: 12, to: 14 },
+      { num: '1', blockId: 's1-2', from: 15, to: 17 },
+      { num: '2', blockId: 's2-2', from: 18, to: 20 },
+    ])
+  })
+
+  test('Subsección: prefijo de id DISTINTO ("ss"), y los rangos son correctos', () => {
+    const { niveles } = parseSeccionesSubsecciones(BLOQUES_TRLGSS)
+    const subseccion = niveles.find((n) => n.tipo === 'subseccion')
+    expect(subseccion.secciones).toEqual([
+      { num: '1', blockId: 'ss1', from: 21, to: 27 },
+      { num: '2', blockId: 'ss2', from: 28, to: 30 },
+    ])
+  })
+
+  test('subsección es el nivel MÁS FINO: aparece antes que sección en el array de niveles', () => {
+    const { niveles } = parseSeccionesSubsecciones(BLOQUES_TRLGSS)
+    expect(niveles.map((n) => n.tipo)).toEqual(['subseccion', 'seccion'])
+  })
+
+  test('ley sin ninguna sección → array vacío (no revienta, no inventa niveles)', () => {
+    const plana = [{ id: 'ti', label: 'TÍTULO I' }, { id: 'a1', label: 'Artículo 1' }]
+    expect(parseSeccionesSubsecciones(plana).niveles).toEqual([])
+  })
+})

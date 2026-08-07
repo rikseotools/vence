@@ -2,7 +2,7 @@
  * Detector de off-by-one de frontera de título (fix 24/07/2026, caso Mario/LOSU).
  * Fixture calcado del caso real: LOSU 2/2023, estructura oficial BOE-A-2023-7500.
  */
-import { classifyTitleBoundary, seccionNumToInt } from '@/lib/laws/scopeTitleBoundary'
+import { classifyTitleBoundary, seccionNumToInt, resolverNivelDecisivo } from '@/lib/laws/scopeTitleBoundary'
 
 type Seccion = { num: string; from: number; to: number }
 
@@ -387,5 +387,127 @@ describe('classifyTitleBoundary — T-223: capítulos nombrados SOLO por rúbric
     const secs = [{ num: 'I', from: 1, to: 4, rubrica: 'Capítulo I. Régimen sancionador' }]
     const r = classifyTitleBoundary('Materia totalmente distinta y sin relación.', secs, ['1'])
     expect(r.applicable).toBe(false)
+  })
+})
+
+describe('seccionNumToInt — T-333: Sección/Subsección numeran en ARÁBIGO, no romano', () => {
+  it('parsea dígitos arábigos', () => {
+    expect(seccionNumToInt('1')).toBe(1)
+    expect(seccionNumToInt('12')).toBe(12)
+  })
+
+  it('antes de T-333 esto devolvía null (romanToInt("1") no reconoce ningún carácter romano)', () => {
+    // Regresión directa: si `seccionNumToInt` vuelve a delegar SOLO en `romanToInt`, este
+    // caso rompe otra vez y el bucle de `classifyTitleBoundary` los salta en silencio
+    // (`if (tInt == null) continue`), sin overflow y sin figurar en `unmapped`.
+    expect(seccionNumToInt('1')).not.toBeNull()
+  })
+
+  it('preliminar y romano siguen intactos (no se ha tocado nada de título/capítulo)', () => {
+    expect(seccionNumToInt('Preliminar')).toBe(0)
+    expect(seccionNumToInt('IX')).toBe(9)
+  })
+})
+
+// ── T-333 (06/08/2026) — el hueco real: el epígrafe nombra SECCIONES por su rúbrica, y el
+// detector solo veía TÍTULOS/CAPÍTULOS. Caso real: Ley 9/2017 Tema 22 (`auxiliar_administrativo_
+// sms`). Rúbricas verificadas contra la API BOE datosabiertos el 06/08/2026 (BOE-A-2017-12902).
+describe('classifyTitleBoundary — T-333: a nivel TÍTULO el problema es invisible, a nivel SECCIÓN no', () => {
+  // Epígrafe REAL del Tema 22 (auxiliar_administrativo_sms), tal cual está en topics.epigrafe.
+  const EPI_T22 =
+    'La Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público. Objeto y ámbito de ' +
+    'aplicación. Contratos del sector público: delimitación de los tipos contractuales; ' +
+    'contratos sujetos a una regulación armonizada; contratos administrativos y contratos privados.'
+
+  // Reconstrucción del scope ANTES del recorte (verificado con el ficha/T-332): el bug
+  // original era un rango CONTIGUO 1-27. Hoy en producción ya está corregido a [1,2,3,12..27]
+  // — este fixture reproduce el estado ANTERIOR, que es lo que el detector debe saber cazar.
+  const SCOPE_BUGGY_CONTIGUO = Array.from({ length: 27 }, (_, i) => String(i + 1))
+
+  // Nivel TÍTULO (BOE-A-2017-12902): Título Preliminar cubre TODO el rango 1-27 de una pieza
+  // — ambos capítulos caen dentro, así que a este nivel no hay NADA que discriminar.
+  const NIVEL_TITULO = [{ num: 'Preliminar', from: 1, to: 27, rubrica: 'Disposiciones generales' }]
+
+  // Nivel SECCIÓN (parseSeccionesSubsecciones sobre el índice real): 5 secciones con su
+  // rúbrica VIGENTE literal, obtenida con rubricaVigente contra cada bloque real.
+  const NIVEL_SECCION = [
+    { num: '1', from: 1, to: 3, rubrica: 'Objeto y ámbito de aplicación' },
+    { num: '2', from: 4, to: 11, rubrica: 'Negocios y contratos excluidos' },
+    { num: '1', from: 12, to: 18, rubrica: 'Delimitación de los tipos contractuales' },
+    { num: '2', from: 19, to: 23, rubrica: 'Contratos sujetos a una regulación armonizada' },
+    { num: '3', from: 24, to: 27, rubrica: 'Contratos administrativos y contratos privados' },
+  ]
+
+  it('a nivel TÍTULO: aplica (rúbrica "Disposiciones generales" no casa) pero SIN overflow — el título es UN bloque, no puede discriminar dentro de sí mismo', () => {
+    const r = classifyTitleBoundary(EPI_T22, NIVEL_TITULO, SCOPE_BUGGY_CONTIGUO)
+    // "Disposiciones generales" no aparece en el epígrafe → no exime por rúbrica → no
+    // aplicable (ninguna sección casó). Así se ve HOY el Tema 22 desde `sim-title-boundary.ts`.
+    expect(r.applicable).toBe(false)
+    expect(r.overflow).toEqual([])
+  })
+
+  it('a nivel SECCIÓN: SÍ aplica y caza exactamente los arts. 4-11 (Sección 2.ª "Negocios y contratos excluidos", la única no nombrada)', () => {
+    const r = classifyTitleBoundary(EPI_T22, NIVEL_SECCION, SCOPE_BUGGY_CONTIGUO)
+    expect(r.applicable).toBe(true)
+    expect(r.overflow).toEqual([
+      { article: 4, titulo: '2' },
+      { article: 5, titulo: '2' },
+      { article: 6, titulo: '2' },
+      { article: 7, titulo: '2' },
+      { article: 8, titulo: '2' },
+      { article: 9, titulo: '2' },
+      { article: 10, titulo: '2' },
+      { article: 11, titulo: '2' },
+    ])
+  })
+
+  it('el scope YA corregido (1-3, 12-27) no da overflow a nivel sección', () => {
+    const corregido = ['1', '2', '3', ...Array.from({ length: 16 }, (_, i) => String(i + 12))]
+    const r = classifyTitleBoundary(EPI_T22, NIVEL_SECCION, corregido)
+    expect(r.overflow).toEqual([])
+  })
+
+  it('resolverNivelDecisivo prefiere SECCIÓN (más fino, con overflow real) sobre TÍTULO (no aplicable)', () => {
+    const rTitulo = classifyTitleBoundary(EPI_T22, NIVEL_TITULO, SCOPE_BUGGY_CONTIGUO)
+    const rSeccion = classifyTitleBoundary(EPI_T22, NIVEL_SECCION, SCOPE_BUGGY_CONTIGUO)
+    const decision = resolverNivelDecisivo([
+      { tipo: 'seccion', resultado: rSeccion },
+      { tipo: 'titulo', resultado: rTitulo },
+    ])
+    expect(decision?.tipo).toBe('seccion')
+    expect(decision?.resultado.overflow).toHaveLength(8)
+  })
+})
+
+describe('resolverNivelDecisivo', () => {
+  const limpio = { applicable: true, overflow: [] as { article: number; titulo: string }[] }
+  const conHallazgo = { applicable: true, overflow: [{ article: 4, titulo: '2' }] }
+  const noAplicable = { applicable: false, overflow: [] as { article: number; titulo: string }[] }
+
+  it('prefiere el nivel MÁS FINO con overflow real, aunque venga después en la lista', () => {
+    const r = resolverNivelDecisivo([
+      { tipo: 'subseccion', resultado: noAplicable },
+      { tipo: 'seccion', resultado: conHallazgo },
+      { tipo: 'titulo', resultado: limpio },
+    ])
+    expect(r?.tipo).toBe('seccion')
+  })
+
+  it('sin overflow en ningún nivel, se queda con el primero applicable (para poder decir "limpio")', () => {
+    const r = resolverNivelDecisivo([
+      { tipo: 'subseccion', resultado: noAplicable },
+      { tipo: 'seccion', resultado: noAplicable },
+      { tipo: 'titulo', resultado: limpio },
+    ])
+    expect(r?.tipo).toBe('titulo')
+    expect(r?.resultado.overflow).toEqual([])
+  })
+
+  it('ningún nivel applicable → null (fail-safe, no hay nada que afirmar)', () => {
+    expect(resolverNivelDecisivo([{ tipo: 'titulo', resultado: noAplicable }])).toBeNull()
+  })
+
+  it('lista vacía → null', () => {
+    expect(resolverNivelDecisivo([])).toBeNull()
   })
 })
