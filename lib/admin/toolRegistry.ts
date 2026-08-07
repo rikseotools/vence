@@ -114,6 +114,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`npm run canary:perfil-sin-resolver`, que cuenta las curas EXCLUYENDO el tráfico headless ' +
       'de esta misma simulación.',
   },
+  // ── Quitar el captcha permanente a quien está mal marcado como bot ────────────────────────
+  levantar_reto_forzado: {
+    titulo: 'Levantar la marca de "retar siempre" (captcha por señal de bot) de un usuario o dispositivo (T-651)',
+    ruta: 'scripts/security/levantar-reto-forzado.ts',
+    estado: 'vivo',
+    escribe: ['captcha_force_flag'],
+    notas:
+      'npx tsx --env-file=.env.local scripts/security/levantar-reto-forzado.ts --usuario <uuid> ' +
+      '[--dispositivo <id>] --motivo "…" [--aplicar]. SIMULA por defecto y EXIGE motivo (≥15 ' +
+      'caracteres): quitar una defensa sin dejar dicho por qué es lo que nadie sabe explicar tres ' +
+      'semanas después. Necesita AUTH_SECRET de SSM (el script imprime el comando). ' +
+      'POR QUÉ EXISTE: la marca la pone sola `/api/fraud/report` con TTL de 24 h y NO había forma ' +
+      'de quitarla. Se vio con el canario que el propio antifraude marcó el 07/08 (21 h condenado ' +
+      'a rojo), pero lo que la justifica es el usuario real: ese mismo día SEIS premium recibieron ' +
+      'el captcha y a una mal marcada solo se le podía decir «espera un día». ' +
+      'NO se puede hacer desde el portátil a pelo — la marca vive en ElastiCache dentro de la VPC —, ' +
+      'así que el CLI solo llama a `/api/admin/anti-scraping/levantar-marca`, que corre dentro. ' +
+      'NO absuelve al usuario ni toca `fraud_alerts`: si vuelve a detectarse automatización, se le ' +
+      'marca otra vez. Criterio compartido CLI↔endpoint en `levantarMarcaCore.cjs`; el formato de la ' +
+      'clave vive SOLO en `forceChallenge.ts` (guardarraíl `retoForzadoPuertaUnica`, validado por ' +
+      'mutación). Deja rastro en `observable_events` (`scraping_force_challenge_levantado`, con ' +
+      'quién y por qué).',
+  },
   // ── La ley que se guardó como "unknown" y se publicaba como si fuera una ley ──────────────
   backfill_law_name_relleno: {
     titulo: 'Reponer la ley real donde se guardó un relleno ("unknown") en test_questions y en las stats (T-559)',

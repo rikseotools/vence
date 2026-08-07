@@ -27,6 +27,20 @@ function ficherosDeCodigo(dir: string, acc: string[] = []): string[] {
   return acc
 }
 
+/**
+ * Quita comentarios antes de juzgar. Nombrar la clave EXPLICANDO por qué solo se construye en un
+ * sitio es justo lo que se quiere que la gente escriba; lo que no puede haber es una segunda
+ * pieza que la fabrique. Sin esto, el guardarraíl castigaba la documentación y empujaba a
+ * borrarla — que es lo contrario de lo que persigue.
+ */
+function soloCodigo(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((l) => !/^\s*(\/\/|\*|#)/.test(l))
+    .join('\n')
+}
+
 describe('guardarraíl: una sola puerta para el reto forzado', () => {
   const ficheros = ficherosDeCodigo(RAIZ)
 
@@ -35,7 +49,7 @@ describe('guardarraíl: una sola puerta para el reto forzado', () => {
       const rel = f.slice(RAIZ.length + 1)
       if (rel === PUERTA) return false
       if (rel.startsWith('__tests__/')) return false // los tests la citan para comprobarla
-      return readFileSync(f, 'utf8').includes('captcha:force:')
+      return soloCodigo(readFileSync(f, 'utf8')).includes('captcha:force:')
     })
     expect(infractores.map((f) => f.slice(RAIZ.length + 1))).toEqual([])
   })
