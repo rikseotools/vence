@@ -171,6 +171,18 @@ pagar* con número + PIN, así que su enlace va a las instrucciones oficiales, n
 existe. Comprobar cómo queda: `npm run sim:vale-marca [-- --email <correo>]` (lee los vales reales y
 enseña marca + destino de cada uno).
 
+**Y una marca se puede registrar SIN enlace — es media ganancia, no un registro a medias (07/08/2026,
+Zalando).** `zalando.es` responde **403 a `fetch` Y a navegador real** desde nuestra IP (WAF más duro
+que el de Nike: ni con UA de Chrome ni desactivando la marca de automatización), así que su URL de
+canje (`zalando.es/mistarjetasregalo`, según su propia FAQ) **no se pudo abrir** y por tanto no se
+registra. Lo que sí se registra es la **etiqueta** («Zalando España») y la **instrucción** — el vale
+deja de salir como «Tarjeta regalo» genérica, que es la mitad del daño. Cuando alguien abra la URL en
+un navegador normal y la confirme, añadirla es una línea.
+- **Corolario para el simulador:** «sin enlace» son **dos cosas distintas** y confundirlas manda a
+  registrar lo que ya está registrado. `sim:vale-marca` las separa desde ese día: *sin MARCA
+  reconocida* (trabajo pendiente) frente a *marca reconocida, sin enlace verificado* (esperando poder
+  abrir la URL).
+
 ### 3.quater — CONCILIACIÓN: que las cuentas cuadren siempre
 
 ```bash

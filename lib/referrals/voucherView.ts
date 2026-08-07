@@ -55,6 +55,21 @@ const NIKE: VoucherBrand = {
   balanceUrl: 'https://www.nike.com/es/orders/gift-card-lookup',
 }
 
+// Zalando se registra SIN enlace a propósito (07/08/2026). Su FAQ dice que el código se mete en
+// «Mis tarjetas regalo» de la cuenta (`zalando.es/mistarjetasregalo`), pero **esa URL no se ha podido
+// abrir**: zalando.es responde 403 a `fetch` Y a navegador real desde nuestra IP (WAF más duro que el
+// de Nike). La regla de la cabecera manda: un enlace que no se ha abierto no se registra, porque un
+// destino equivocado parece un vale roto. La etiqueta y la instrucción SÍ son ganancia — el vale deja
+// de salir como «Tarjeta regalo» genérica. En cuanto alguien abra la URL en un navegador normal y la
+// confirme, esto es una línea.
+const ZALANDO: VoucherBrand = {
+  label: 'Zalando España',
+  redeemUrl: null,
+  redeemCta: null,
+  redeemHint: 'entra en tu cuenta de Zalando, apartado «Mis tarjetas regalo», y pega ahí el código',
+  balanceUrl: null,
+}
+
 /** Marca sin registrar: se sirve el código y se dice la verdad — no sabemos dónde se canjea. */
 const DESCONOCIDA: VoucherBrand = {
   label: 'Tarjeta regalo',
@@ -74,6 +89,8 @@ const POR_CLAVE: Record<string, VoucherBrand> = {
   amazon_giftcard: AMAZON,
   'nike-spain': NIKE,
   nike_giftcard: NIKE,
+  'zalando-spain': ZALANDO,
+  zalando_giftcard: ZALANDO,
 }
 
 /**

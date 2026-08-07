@@ -33,11 +33,21 @@ async function main() {
   console.log(`\n🎁 ${rows.length} vale(s) servibles — lo que ve el usuario en «Mis vales»\n`)
 
   let sinDestino = 0
+  let sinMarca = 0
   for (const r of rows) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const v = toVoucherDTO(r as any)
-    const destino = v.brand.redeemUrl ? `${v.brand.redeemCta} → ${v.brand.redeemUrl}` : '⚠️ SIN destino (marca no registrada)'
+    // Sin enlace hay DOS casos distintos y confundirlos manda a registrar lo que ya está registrado:
+    // la marca sin identificar («Tarjeta regalo») y la identificada cuya URL de canje no se ha podido
+    // verificar (Zalando, 07/08/2026: 403 a fetch y a navegador real). Solo la primera es trabajo.
+    const reconocida = v.brand.label !== 'Tarjeta regalo'
+    const destino = v.brand.redeemUrl
+      ? `${v.brand.redeemCta} → ${v.brand.redeemUrl}`
+      : reconocida
+        ? 'ℹ️ marca reconocida, sin enlace verificado'
+        : '⚠️ SIN destino (marca no registrada)'
     if (!v.brand.redeemUrl) sinDestino++
+    if (!reconocida) sinMarca++
     console.log(`  ${String(v.amount).padStart(5)} € · ${v.brand.label.padEnd(14)} │ ${String(r.email).slice(0, 28).padEnd(28)} │ ${String(r.reason)}`)
     console.log(`         código ${v.code}${v.pin ? ` · PIN ${v.pin}` : ''}`)
     console.log(`         ${destino}`)
@@ -50,7 +60,8 @@ async function main() {
   const nikeMalEtiquetados = nike.filter(r => toVoucherDTO(r as any).brand.label !== 'Nike España')
   console.log(`\n── Veredicto ──`)
   console.log(`   vales Nike: ${nike.length} · mal etiquetados: ${nikeMalEtiquetados.length} ${nikeMalEtiquetados.length ? '❌' : '✅'}`)
-  console.log(`   vales sin destino de canje: ${sinDestino} ${sinDestino ? '(marca por registrar)' : '✅'}`)
+  console.log(`   vales sin MARCA reconocida: ${sinMarca} ${sinMarca ? '(marca por registrar)' : '✅'}`)
+  console.log(`   vales sin enlace de canje:  ${sinDestino} ${sinDestino ? '(de ellos, con marca ya reconocida: ' + (sinDestino - sinMarca) + ')' : '✅'}`)
 
   await sql.end()
   process.exit(nikeMalEtiquetados.length ? 1 : 0)
