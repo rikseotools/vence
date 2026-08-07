@@ -41,6 +41,7 @@ const { VD_STRONG, VD_FP, VD_SQL } = require('../lib/health/visualDeixis.cjs');
 const { tablasFrias, tablasSinAjuste, remedioVisibilidad, VM_MIN_PAGES } = require('../lib/db/visibilityMap.cjs');
 const { detectarTecho } = require('../lib/observability/techoTimeout.cjs');
 const { epigrafesSucios } = require('../lib/health/epigrafeRuidoBoletin.cjs');
+const { epigrafesTruncados } = require('../lib/health/epigrafeTruncado.cjs');
 const { explicacionesRotas } = require('../lib/health/explicacionEstructuraRota.cjs');
 const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
@@ -1803,6 +1804,24 @@ async function detectarTodo(c, add, marcar, now) {
     }
     marcar('epigrafe_ruido_boletin', eps.length);
   } catch (e) { console.warn('⚠️ ruido de boletín en epígrafes no evaluado:', String(e.message || e).slice(0, 120)); }
+
+  // ── Epígrafe CORTADO: promete la lista de materias y no la trae (T-625) ──
+  // Al importar por lotes, la continuación del epígrafe (lo que sigue a los dos puntos) se pierde
+  // y el campo se queda cortado en seco: «Régimen Jurídico del Sector Público (I):». El epígrafe
+  // es la VARA DE MEDIR del temario (Paso 1/Paso 2/sobre-inclusión); uno truncado no se puede
+  // contrastar con NADA — cualquier scope le encaja porque no dice nada. Solo temas ACTIVOS: es la
+  // superficie que sirve al usuario. Nace en 14 (medido 06-07/08/2026): cualquier subida es
+  // regresión demostrable.
+  try {
+    const epsTemasActivos = (await c.query(`SELECT position_type AS slug, topic_number AS tema, epigrafe
+                                  FROM topics WHERE is_active = true AND epigrafe IS NOT NULL`)).rows;
+    for (const e of epigrafesTruncados(epsTemasActivos).slice(0, 20)) {
+      add('content', 'warn', e.slug, 'epigrafe_truncado',
+        `${e.slug} T${e.tema}: el epígrafe termina en ":" sin traer la lista de materias que promete ("${(e.epigrafe || '').slice(-50)}")`,
+        { slug: e.slug, tema: e.tema, epigrafe: e.epigrafe });
+    }
+    marcar('epigrafe_truncado', epsTemasActivos.length);
+  } catch (e) { console.warn('⚠️ epígrafes truncados no evaluados:', String(e.message || e).slice(0, 120)); }
 
 
   // ── Explicación estructurada que se RENDERIZA rota (29/07) ──

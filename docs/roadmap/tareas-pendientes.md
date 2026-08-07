@@ -1225,6 +1225,69 @@ otros cuatro bloques, ninguno nuevo aparte):
   3. Aceptar el coste y llamar a `getFilteredQuestions` por tema activo en el barrido nocturno, igual que hace el gate on-demand — solo si el volumen medido lo justifica.
 - **NO hacer:** "arreglar" bajando el umbral de ningún detector existente ni añadir `scripts/health-sweep.cjs`/el backend al guardarraíl `officialCountSingleSource.test.ts` sin antes decidir CÓMO se arregla — eso solo lo pondría en rojo sin dar una salida.
 - **Relacionadas:** [T-522] (el mismo defecto, ya arreglado en el gate on-demand), [T-507] (el "bug del 115", origen de `officialCountSingleSource`), [T-455] (de donde salió este hallazgo), [T-513] (la deuda de etiquetado que hace que haya preguntas "exclusivas" de otra oposición en primer lugar).
+### [T-641] 🟡 [ABIERTO 07/08/2026] Completar los 14 epígrafes truncados (detector T-625) con el texto literal del programa oficial
+
+- **Esfuerzo: larga.** 6 oposiciones distintas, cada una exige localizar el documento oficial (hub o `programa_url`), leer la continuación literal y re-verificar el Paso 1 — no es un find-and-replace.
+- **De dónde sale:** [T-625] construyó el detector (`lib/health/epigrafeTruncado.cjs`, kind `epigrafe_truncado`) para que un `topics.epigrafe` cortado en seco (termina en `:` sin traer la lista de materias que promete) no vuelva a pasar desapercibido. La propia ficha de T-625 separa esto A PROPÓSITO: el detector es "rato", completar los 14 "va por oposición" y es más grande.
+- **LOS 14 (medido 07/08/2026 contra RDS, `is_active=true`):**
+  ```
+  administrativo_diputacion_valencia   T36
+  administrativo_extremadura           T14, T16, T19, T20, T22, T25, T27, T30   (8, no 6 — la ficha
+                                        original de T-625 decía "(6)"; corregido aquí con lo MEDIDO)
+  auxiliar_administrativo_sermas       T9, T19
+  auxiliar_administrativo_universidad_huelva  T5
+  celador_sescam_clm                   T2
+  enfermero_scs_canarias               T31   (no estaba nombrado en la ficha original de T-625,
+                                        pero SÍ entra en el total de 14 medido — verificado con
+                                        SELECT directo, no es un descuadre de mi cálculo)
+  ```
+  Query para reproducir: `SELECT position_type, topic_number, epigrafe FROM topics WHERE is_active = true AND epigrafe IS NOT NULL AND btrim(epigrafe) ~ ':\s*$';`
+- **QUÉ HACER, por cada tema:**
+  1. Localizar el documento oficial de la oposición (`convocatoria_documentos` del hub, o `programa_url` si aún no está clonado — clonar con `backend/scripts/clonar-documento.ts`, NUNCA con WebFetch para el articulado).
+  2. Encontrar el epígrafe TAL CUAL aparece en el programa oficial y copiar la continuación LITERAL (la lista de materias que el `:` promete).
+  3. Actualizar `topics.epigrafe` con el texto completo (dual-write si aplica el patrón de esa tabla).
+  4. Re-verificar el Paso 1 (literalidad) de ese tema: `npm run epigrafe:revision -- <position_type> --pregunta <question_id>` o el pipeline `verify:scope` según corresponda — un epígrafe que cambia invalida su verificación previa por trigger, así que esto debería pasar solo, pero comprobarlo.
+- **NUNCA inventar la continuación ni "redondear" con lo que parezca razonable** — es exactamente el defecto que motivó el detector. Si el documento oficial no está localizable para alguna oposición, dejarla fuera y anotarlo (no rellenar a ciegas).
+- **Cómo se sabe que salió bien:** el badge de `epigrafe_truncado` en `/admin/salud-sistema` / `/admin/contenido` baja de 14 a 0 (o al número de las que de verdad no se pudieron localizar, documentado). Es un trinquete: cualquier subida después de esto es una regresión demostrable.
+- **Relacionadas:** [T-625] (el detector), [T-518] (de donde salió el problema — 1 de 12 temas no se pudo recortar por esto), [T-528] (temarios sin contrastar contra su fuente, mismo espíritu).
+
+- **✅ LOS 14/14 LOCALIZADOS Y VERIFICADOS (07/08/2026) — trabajado como `trabajador`, sin escritura en BD de negocio (`DATABASE_URL`=coordinación). Ninguno inventado: los 14 tienen su continuación literal encontrada y contrastada contra el documento oficial (13 ya en el hub, 1 clonado hoy). Queda aplicar el `UPDATE` + re-verificar Paso 1, que exige `DATABASE_URL` completo.**
+
+  **`administrativo_extremadura` (8 de 8) — mismo documento del hub, ya clonado (`convocatoria_documentos`, doc "Convocatoria publicada en el DOE", DOE-2026-26050044, `curado=true`). Todos localizados dentro del ANEXO del mismo PDF:**
+  - **T14:** *"Régimen Jurídico del Sector Público (I): Disposiciones generales. Los órganos de las Administraciones Públicas. Los Convenios. Las relaciones interadministrativas."*
+  - **T16:** *"El Procedimiento Administrativo Común de las Administraciones Públicas (I): Disposiciones Generales. Los interesados en el procedimiento."*
+  - **T19:** *"La contratación del sector público (I): Disposiciones generales: Objeto y ámbito de aplicación de la Ley. Contratos del Sector Público. Disposiciones generales sobre la contratación del sector público."*
+  - **T20:** *"La contratación del sector público (II): Disposiciones generales sobre la contratación del sector público. Partes en el contrato."*
+  - **T22:** *"La contratación del sector público (IV): Disposiciones generales. De la preparación de los contratos de las Administraciones Públicas. De la adjudicación de los contratos de las Administraciones Públicas."*
+  - **T25:** *"Régimen Jurídico de Administración Electrónica de la Comunidad Autónoma de Extremadura: Disposiciones Generales. Puntos de acceso electrónicos corporativos. Registro Electrónico. Comunicaciones y notificaciones electrónicas."*
+  - **T27:** *"La Hacienda Pública de la Comunidad Autónoma de Extremadura (II): De los créditos y sus modificaciones: Disposiciones Generales. De las modificaciones de créditos. Competencias en materia de modificaciones de créditos."*
+  - **T30:** *"Ley de Igualdad entre Mujeres y Hombres y contra la Violencia de Género en Extremadura: Disposiciones generales. Integración de la perspectiva de género en las políticas públicas. Violencia de Género: Derechos de las mujeres en situaciones de violencia de género a la atención integral y efectiva."*
+  - Verificado por prefijo EXACTO contra el epígrafe truncado actual de cada uno de los 8 (coincide carácter a carácter antes del corte). `source_url`: `https://doe.juntaex.es/pdfs/doe/2024/2500o/24050212.pdf`.
+
+  **`auxiliar_administrativo_universidad_huelva` T5** — doc del hub "programa oficial auxiliar-administrativo-universidad-huelva" (`curado=false`, pendiente de curar aparte): *"La Ley 40/2015, de 1 de octubre, del Régimen Jurídico del Sector Público. Título Preliminar: Disposiciones generales, principios de actuación y funcionamiento del sector público."* `source_url`: `https://www.juntadeandalucia.es/boja/2025/228/29`.
+
+  **`auxiliar_administrativo_sermas` (2 de 2)** — doc del hub "programa oficial auxiliar-administrativo-sermas" (`curado=false`), `source_url`: `https://www.bocm.es/boletin/CM_Orden_BOCM/2025/07/04/BOCM-20250704-16.PDF`:
+  - **T9:** *"La Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público: disposiciones generales. Los órganos administrativos. Principios generales y competencia. Abstención y recusación. Funcionamiento electrónico del sector público. Relaciones interadministrativas."*
+  - **T19:** *"Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social. Régimen General de la Seguridad Social: campo de aplicación. Afiliación de trabajadores: altas, bajas y variaciones en los datos. Cotización: obligatoriedad. Liquidación: competencia y prescripción. Acción protectora del sistema de Seguridad Social: Disposiciones generales."*
+
+  **`administrativo_diputacion_valencia` T36** — doc del hub "programa oficial administrativo-diputacion-valencia" (`curado=false`): *"La actividad de subvenciones de las administraciones públicas: Disposiciones comunes a las subvenciones públicas."* `source_url`: `https://bop.dival.es/bop/downloads?anuncioNumReg=2026/04491&lang=es&type=pdf`.
+
+  **`celador_sescam_clm` T2** — doc del hub "programa oficial celador-sescam-clm" (`curado=false`, 1.001.714 caracteres — es un PDF que compila el temario de VARIAS categorías del OPE 2023-24 a la vez, 89 repeticiones del mismo "Tema 2" en distintas secciones de categoría): *"Ley General de Sanidad: Organización general del Sistema Sanitario Público; Los Servicios de Salud de las Comunidades Autónomas y Las Áreas de Salud. Ley de Ordenación Sanitaria de Castilla-La Mancha: Disposiciones generales; Plan de Salud de Castilla-La Mancha, Competencias de las Administraciones Públicas: El Servicio de Salud de Castilla-La Mancha: funciones, organización y estructura."* Contrastadas 4 copias del "Tema 2" repartidas por todo el documento (inicio/medio/final): **byte a byte idénticas** entre sí — es materia común a todas las categorías del OPE, no hace falta aislar la sección exacta de "Celador". `source_url`: `https://sanidad.castillalamancha.es/sites/sescam.castillalamancha.es/files/documentos/paginas/archivos/resolucion_2-04-2025_publicacion_temarios_ope_2023-2024.pdf`.
+
+  **`enfermero_scs_canarias` T31 — el único NO estaba en el hub, LOCALIZADO Y CLONABLE hoy, no clonado aún (necesita `DATABASE_URL` completo).** Los 4 documentos que sí había en el hub para esta oposición (convocatoria 2025, FAQ, plazos, decreto OEP) son sobre el PROCESO, no el temario — el propio BOC núm. 116 (13/06/2025, la convocatoria vigente) remite el contenido exigido al **BOC núm. 18, de 28/01/2019** (verificado con WebSearch, luego confirmado abriendo la fuente primaria, no la paráfrasis de terceros). Descargado y extraído con `pdfjs-dist` (192 páginas, 4.774.684 bytes, `https://sede.gobiernodecanarias.org/boc/boc-a-2019-018-356.pdf`, HTTP 200 verificado): dentro de la sección **"PROGRAMA DE ENFERMERA/O"** (confirmado que es la categoría correcta por su Tema 1, el arranque estándar de este temario — no la especialidad de Geriatría, que tiene su PROPIA sección "PROGRAMA DE LA ESPECIALIDAD DE GERIATRÍA" con un Tema 31 totalmente distinto, contrastado para no confundirlas):
+  - **T31:** *"Valoración y cuidados de enfermería en el anciano. Principales cambios en el proceso de envejecimiento: fisiológicos, psicológicos y sociales. Valoración geriátrica integral: clínica, funcional, mental y social. Orientación para el autocuidado. El apoyo al cuidador principal y familia. Plan Gerontológico Nacional: generalidades. Prevención de la dependencia y promoción de la autonomía personal: factores de riesgo. Automarginación e inactividad en los mayores de sesenta y cinco años. Abordaje multidisciplinar. Atención enfermera a personas en situación de dependencia."*
+  - Clonar PRIMERO con el camino canónico: `cd backend && npx tsx scripts/clonar-documento.ts --slug=enfermero-scs-canarias --url=https://sede.gobiernodecanarias.org/boc/boc-a-2019-018-356.pdf --tipo=temario --titulo="BOC núm. 18/2019 — Programa Enfermera/o del SCS (temario base, remitido por la convocatoria 2025)" --boletin=BOC --ref=BOC-A-2019-018-356 --fecha=2019-01-28`.
+
+  **Comando de escritura, el mismo patrón para los 6:** `topics.epigrafe` se reescribe con el texto de arriba y se re-registra el Paso 1 con `node scripts/verify-epigrafe-literality.cjs record <position_type> consenso.json` (o `apply` si hace falta el flujo con `--fuente-manual`, dado que estas fuentes son PDFs sin boletín HTML parseable — igual que [T-631] con la ULE). Ejemplo de `consenso.json` para uno de los de Extremadura:
+    ```json
+    {"14": {"verdict": "literal", "verified_by": "claude_code",
+      "source_url": "https://doe.juntaex.es/pdfs/doe/2024/2500o/24050212.pdf",
+      "source_notes": "Anexo del DOE-2026-26050044 (Convocatoria publicada en el DOE, ya clonado en el hub). Continuacion literal encontrada tras el corte del epigrafe truncado, T-641 07/08/2026.",
+      "findings": {"note": "epigrafe completado: Regimen Juridico del Sector Publico (I): Disposiciones generales. Los organos de las Administraciones Publicas. Los Convenios. Las relaciones interadministrativas."}}}
+    ```
+  - **Tras cada `UPDATE`: recache MV + purga de rutas + `revalidate-temario` (paso obligatorio, ver §7.2 del runbook) y comprobar que `topic_scope_verification` se invalidó sola por el trigger de hash (no hace falta forzarlo).**
+  - **NUNCA aplicar a ciegas:** aunque el texto de arriba está verificado, quien lo escriba debe re-abrir al menos UNA de las 6 fuentes citadas antes del `UPDATE` — es la misma disciplina que exige el runbook para cualquier literalidad, y evita heredar un error de transcripción mío sin que nadie lo mire dos veces.
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
