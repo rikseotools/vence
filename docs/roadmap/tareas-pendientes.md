@@ -5510,6 +5510,79 @@ esas preguntas no le habrían salido nunca.
 - **NO tocar a ciegas:** son 7.202 preguntas de 8 oposiciones reales. Desactivarlas en bloque deja esos temas sin contenido, que es otro daño distinto. Decisión de producto antes que `UPDATE`.
 - **Relacionadas:** [T-370] (el gate ciego que dejó pasar esto), memoria `project-placeholder-temario-backlog` (el inventario original de 17.504 y el método que lo bajó a 0).
 
+> **🚧 PARCIAL (07/08, w4). Punto 3 (cerrar la puerta) HECHO y verificado; puntos 1 y 2 son
+> decisión de producto — pregunto, no decido.**
+>
+> **MEDIDO contra RDS, no contra la ficha (coincide exacto con lo escrito arriba):** 7.202
+> confirmado con la query del trinquete. Distribución por fecha de `created_at`: **7.134 el
+> 08/07/2026 + 68 el 15/07/2026** (no es "todo el mismo lote" al 100%, pero sí una sola
+> importación con un rebalse de 68 una semana después). `exam_source='Aula Plus - Enfermería'`
+> en 7.134 de los 7.202; los 68 restantes con `exam_source=NULL`. Contenido literal del
+> artículo en la muestra: `"⏳ Teoría pendiente (contenedor enfermería)."` (44 caracteres).
+> `lifecycle_state='tech_approved'` en la muestra comprobada (de ahí `is_active=true`, columna
+> GENERADA).
+>
+> **Causa raíz de IMPORTACIÓN confirmada leyendo el código (no ejecuté el script contra RDS: mi
+> `DATABASE_URL` de coordinación no lee `articles`/`questions`).** El `exam_source` por defecto
+> de `scripts/import-aulaplus-clinico.cjs` es literalmente `'Aula Plus - Enfermería'` (coincide
+> con el 99% de las 7.202) y su `INSERT` no fija `lifecycle_state` → usa el default `'draft'`.
+> Construye las filas con `primary_article_id = arts[0].id` — el PRIMER artículo del contenedor
+> — **sin leer ni comprobar su `content` en ningún punto del código anterior a mi cambio**: es
+> un hecho verificable leyendo el fichero antes de mi edición (`git show HEAD:...`), no una
+> inferencia. Su gemelo `import-tcae-subject.cjs` tenía el mismo agujero en `pickArticle()`. Lo
+> que SÍ reproduje de verdad: la función pura que ahora usan los dos scripts
+> (`esContenidoPlaceholder`) clasifica el texto exacto del incidente («⏳ Teoría pendiente
+> (contenedor enfermería).») como placeholder (test unitario, ver abajo) — la pieza que decide
+> si se aborta o no está probada; el script completo end-to-end no lo pude ejecutar por falta de
+> credencial.
+>
+> **SOSPECHO, sin poder confirmarlo, cómo pasó de `draft` (lo que este script inserta) a
+> `tech_approved` (lo que hay activo).** `question_lifecycle_history` de la muestra comprobada
+> da **0 filas** — pero antes de leerlo como «se saltó la función `transition_question_state`»
+> hay que decir la trampa: **esa tabla tiene `relrowsecurity=true` y CERO políticas para
+> `vence_lector`** (mismo patrón sistémico que [T-573]/[T-572] en `validation_error_logs`),
+> comprobado con `pg_policies` + `has_table_privilege`. O sea que mi «0 filas» es un LEER
+> BLOQUEADO, no una prueba de que el historial esté vacío de verdad. No encontré en el repo
+> ningún script que promueva a `tech_approved` mencionando "aula plus" o "enfermer" — lo más
+> parecido que hay (`clinical_double_pass_adjudicate.cjs`) es de OTRA ola (ola 20) y no toca
+> estos ids. Lo más probable, sin poder probarlo, es un script ad-hoc corrido fuera del repo
+> (patrón ya visto en otros scripts de Manuel con rutas `/home/manuel/...` hardcodeadas). No lo
+> afirmo como causa.
+>
+> **✅ HECHO — punto 3, «cerrar la puerta por la que entraron»:**
+> - `lib/generacion/articuloPlaceholder.js`: fuente ÚNICA del umbral (120 car., el mismo que ya
+>   usaba el trinquete) — `esContenidoPlaceholder(content)`. El trinquete
+>   (`placeholderTemarioGuard.test.ts`) ahora IMPORTA esta constante en vez de tener el `120`
+>   repetido a mano (para que detector y puerta de entrada no puedan discrepar).
+> - `import-aulaplus-clinico.cjs` e `import-tcae-subject.cjs`: comprueban el/los artículo(s) que
+>   el run va a usar de verdad ANTES de construir las filas, y **abortan** (`process.exit(1)`)
+>   si alguno sigue en placeholder. Escape explícito con motivo: `--permitir-placeholder "<por
+>   qué>"` (avisa por consola, no lo hace en silencio).
+> - Manual `docs/maintenance/importar-preguntas-scrapeadas.md` §11: nuevo aviso citando T-374,
+>   dejando claro que el paso 3 (redactar contenido) es OBLIGATORIO y ahora se hace cumplir, no
+>   solo se pide.
+> - **Capas:** `__tests__/lib/generacion/articuloPlaceholder.test.js` (5, incluida la
+>   REPRODUCCIÓN con el texto verbatim real `"⏳ Teoría pendiente (contenedor enfermería)."`) +
+>   `__tests__/guardrails/importPreguntasPlaceholderGuard.test.ts` (9, mira el código fuente de
+>   los dos importadores: usan el criterio único, tienen el escape con motivo, abortan cerca de
+>   la comprobación, citan T-374, y el manual documenta el orden). Typecheck limpio. No pude
+>   ejecutar el trinquete en sí con mi credencial (`DATABASE_URL` de coordinación no lee
+>   `questions`/`articles`/`topics` — `permission denied`, esperado); confirmado que mi cambio
+>   solo interpola una constante en la query (byte a byte igual una vez sustituida) y que la
+>   query en sí ya la verifiqué manualmente contra `VENCE_LECTOR_URL` (da 7.202).
+> - **NO subí `BASELINE_PLACEHOLDER_QUESTIONS`** (sigue en 0): el propio mensaje de error del
+>   trinquete lo prohíbe («si has migrado/añadido temario, BAJA el baseline; nunca lo subas para
+>   tapar esto») y yo no he escrito temario ni desactivado nada. El gate se queda en ROJO hasta
+>   que el punto 1/2 se resuelva — es el comportamiento correcto, no un cabo suelto.
+>
+> **⬜ NO HECHO a propósito — puntos 1 y 2 (qué son estas 7.202 y si se sirven mientras tanto):
+> decisión de producto, la ficha ya lo decía y lo confirmo.** No he tocado ni una fila de
+> `questions`. Pregunto con `backlog.cjs preguntar` (ver abajo) en vez de decidir por mi cuenta:
+> las dos opciones razonables son (a) dejarlas activas mientras se escribe temario de verdad
+> (bajo riesgo hoy: solo 16 respuestas de 5 usuarios) o (b) sacarlas del scope hasta tener
+> contenido, para no exponerlas «respondibles pero no estudiables» a las 8 oposiciones reales
+> que las escopan. No elijo yo cuál.
+
 ### [T-370] 🔴 [ABIERTO 31/07] El gate de integración/perf/seguridad lleva días en rojo porque CI se quedó sin base de datos
 - **Qué pasa:** el job **`Integration / perf / security`** de `.github/workflows/test.yml` falla en **todos** los commits. La causa no es ningún test: es que el paso arranca sin BD. El error, literal y repetido en cada suite:
   ```
