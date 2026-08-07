@@ -127,6 +127,90 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * La identidad de quien llama, si la hay.
+ *
+ * ── POR QUÉ ESTO ESTÁ AQUÍ Y NO EN CADA LLAMADA (07/08/2026, T-670) ──────────────────────────
+ * `apiFetch` mandaba SIEMPRE peticiones anónimas: solo ponía `Authorization` si el llamante se
+ * acordaba de pasarlo a mano. Mientras los endpoints aceptaban tráfico anónimo no se notó; en
+ * cuanto uno comprobó la PROPIEDAD del recurso, la misma petición pasó a ser «alguien sin
+ * identidad pidiendo el examen de otro» y el servidor respondió 403 — correctamente.
+ *
+ * Lo que eso fue para una usuaria: Emma (premium) intentó corregir su examen **seis veces en 45
+ * minutos**, bajando de 100 preguntas a 25, a 10, a 5 y a 2 por si acaso, y se fue sin corregir
+ * ninguno. Medido el mismo día: **190 rechazos y 20 personas** con ese error.
+ *
+ * Ponerlo en `validateExam` habría arreglado ESA llamada. Va aquí porque el defecto es de clase:
+ * cualquier otra que use este cliente contra un endpoint con dueño repetiría el fallo, y nadie
+ * lo vería hasta que otro usuario perdiera otro examen.
+ *
+ * Reglas:
+ *   · **No pisa** un `Authorization` explícito del llamante (los hay que acuñan el suyo).
+ *   · **Nunca lanza ni bloquea**: sin token se manda anónima, que es el comportamiento de
+ *     siempre y lo que necesitan los endpoints públicos.
+ *
+ * ── POR QUÉ SE INYECTA Y NO SE IMPORTA ───────────────────────────────────────────────────────
+ * El primer intento fue que este módulo pidiera el token al puerto de auth (`await
+ * import('@/lib/auth')`). Funcionaba, y estaba mal: un cliente HTTP genérico que se busca la
+ * identidad por su cuenta **hace una llamada de red que nadie ve** — en los tests se comía el
+ * `fetch` mockeado y tumbó 20 pruebas que no tenían nada que ver con auth. Un seam que rompe a
+ * quien no lo usa está en el sitio equivocado.
+ *
+ * Así que el puerto de auth se REGISTRA al construirse (`lib/auth/client.ts`), y aquí solo se
+ * lee una función. Sin proveedor registrado, las peticiones salen anónimas exactamente como
+ * antes: los endpoints públicos y los tests no se enteran.
+ */
+type ProveedorDeIdentidad = () => Promise<string | null | undefined>
+
+let proveedorDeIdentidad: ProveedorDeIdentidad | null = null
+
+/**
+ * Lo llama el puerto de auth al crearse. Idempotente y sin efectos: registrar dos veces deja
+ * el último, que es el mismo singleton.
+ */
+export function registrarProveedorDeIdentidad(proveedor: ProveedorDeIdentidad | null): void {
+  proveedorDeIdentidad = proveedor
+}
+
+/** Solo para tests: volver al estado «nadie ha registrado nada». */
+export function _resetProveedorDeIdentidadParaTests(): void {
+  proveedorDeIdentidad = null
+}
+
+/**
+ * ¿La URL es NUESTRA? El token solo puede viajar a la propia API.
+ *
+ * Hoy nadie llama a `apiFetch` con una URL absoluta (comprobado), pero el día que alguien la use
+ * para un servicio de terceros, adjuntar el Bearer automáticamente le regalaría la sesión del
+ * usuario a ese tercero. Es la clase de fuga que no se nota hasta que se nota.
+ */
+function esNuestra(url: string): boolean {
+  if (url.startsWith('/')) return true
+  if (typeof window === 'undefined') return false
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
+async function cabeceraDeIdentidad(
+  url: string,
+  extraHeaders?: Record<string, string>,
+): Promise<Record<string, string>> {
+  const yaLaTrae = Object.keys(extraHeaders ?? {}).some(
+    (k) => k.toLowerCase() === 'authorization',
+  )
+  if (yaLaTrae || !proveedorDeIdentidad || !esNuestra(url)) return {}
+  try {
+    const token = await proveedorDeIdentidad()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  } catch {
+    // Nunca bloquea: sin identidad se manda anónima y el servidor decide.
+    return {}
+  }
+}
+
+/**
  * Fetch wrapper centralizado para llamadas a APIs internas.
  *
  * - AbortController con timeout configurable (default 10s)
@@ -152,6 +236,10 @@ export async function apiFetch<T>(
 
   let lastError: unknown
 
+  // Se resuelve UNA vez para todos los reintentos: el token está cacheado en el puerto de auth
+  // (T-210) y pedirlo en cada vuelta solo añadiría latencia al camino de error.
+  const identidad = await cabeceraDeIdentidad(url, extraHeaders)
+
   for (let attempt = 0; attempt < retries; attempt++) {
     if (attempt > 0) {
       console.log(`🔄 [apiFetch] Retry ${attempt + 1}/${retries} for ${url}...`)
@@ -168,7 +256,9 @@ export async function apiFetch<T>(
         // una usuaria el 29/07: su página de precio se quedó vacía y acabó pagando la
         // tarifa pública, tres veces, porque el 405 no se veía por ningún lado.
         method,
-        headers: { 'Content-Type': 'application/json', ...extraHeaders },
+        // La identidad va PRIMERO y los headers del llamante después, para que un
+        // `Authorization` explícito siga mandando (ver `cabeceraDeIdentidad`).
+        headers: { 'Content-Type': 'application/json', ...identidad, ...extraHeaders },
         // GET y HEAD no admiten cuerpo: `fetch` lanza TypeError si se le pone, y ese error
         // se vería como «error de red» (reintentado dos veces) en vez de como lo que es.
         ...(method === 'GET' ? {} : { body: JSON.stringify(body) }),

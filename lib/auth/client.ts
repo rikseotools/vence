@@ -19,6 +19,7 @@
 import { createSupabaseAuthAdapter } from './adapters/supabaseAdapter'
 import { createAuthjsAuthAdapter } from './adapters/authjsAdapter'
 import type { AuthClientPort } from './types'
+import { registrarProveedorDeIdentidad } from '../api/client'
 
 let instance: AuthClientPort | null = null
 
@@ -34,6 +35,17 @@ export function getAuthClient(): AuthClientPort {
       getProvider() === 'authjs'
         ? createAuthjsAuthAdapter()
         : createSupabaseAuthAdapter()
+
+    // El cliente HTTP común necesita la identidad para las llamadas a endpoints con dueño, y
+    // hasta el 07/08/2026 no la tenía: `apiFetch` mandaba TODO anónimo salvo que el llamante
+    // se acordara de poner el Bearer a mano. Cuando `/api/exam/validate` empezó a comprobar la
+    // propiedad del recurso, corregir un examen pasó a devolver 403 al propio dueño — Emma lo
+    // intentó seis veces en 45 minutos y se fue sin corregir ninguno (T-670).
+    //
+    // Se registra AQUÍ, al construir el puerto, y no en el arranque de la app: así no hay un
+    // paso de cableado que alguien pueda olvidar al añadir una página o un layout nuevo. Lo
+    // vigila `__tests__/guardrails/identidadEnClienteHttp.guardrail.test.ts`.
+    registrarProveedorDeIdentidad(() => instance!.getAccessToken())
   }
   return instance
 }

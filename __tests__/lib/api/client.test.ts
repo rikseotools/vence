@@ -7,7 +7,9 @@ import {
   ApiTimeoutError,
   ApiHttpError,
   ApiNetworkError,
-  ApiValidationError
+  ApiValidationError,
+  registrarProveedorDeIdentidad,
+  _resetProveedorDeIdentidadParaTests
 } from '@/lib/api/client'
 
 // ============================================
@@ -539,5 +541,86 @@ describe('apiFetch — edge cases', () => {
 
     const sentBody = mockFetch.mock.calls[0][1].body
     expect(sentBody).toBe('{}')
+  })
+})
+
+// ============================================
+// LA IDENTIDAD VIAJA CON LA PETICIÓN (T-670, 07/08/2026)
+// ============================================
+//
+// `apiFetch` mandaba siempre peticiones ANÓNIMAS: solo ponía `Authorization` si el llamante se
+// acordaba de pasarlo. Mientras los endpoints toleraban tráfico anónimo no se notó; en cuanto
+// uno comprobó la PROPIEDAD del recurso (`/api/exam/validate`), la misma petición pasó a ser
+// «alguien sin identidad pidiendo el examen de otro» y el servidor respondió 403 — con razón.
+//
+// Lo que costó: Emma, premium, intentó corregir su examen SEIS veces en 45 minutos —bajando de
+// 100 preguntas a 25, a 10, a 5 y a 2 por si acaso— y se fue sin corregir ninguno. Medido el
+// mismo día: 190 rechazos y 20 personas distintas.
+describe('apiFetch — la identidad viaja con la petición (T-670)', () => {
+  const respuestaOk = () => Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ ok: true }),
+  })
+
+  const cabeceras = (): Record<string, string> =>
+    mockFetch.mock.calls[0][1].headers as Record<string, string>
+
+  // El proveedor se INYECTA (así el cliente HTTP no se busca la identidad por su cuenta ni
+  // consume el fetch mockeado de otros tests — ver la cabecera de lib/api/client.ts).
+  async function conAuth(getAccessToken: () => Promise<string | null>) {
+    registrarProveedorDeIdentidad(getAccessToken)
+    return apiFetch
+  }
+
+  afterEach(() => _resetProveedorDeIdentidadParaTests())
+
+  it('adjunta el Bearer del usuario cuando hay sesión', async () => {
+    const fresco = await conAuth(async () => 'tok-123')
+    mockFetch.mockReturnValue(respuestaOk())
+
+    await fresco('/api/exam/validate', { testId: 't1' })
+
+    expect(cabeceras().Authorization).toBe('Bearer tok-123')
+  })
+
+  it('NO pisa un Authorization que el llamante ya trae', async () => {
+    const fresco = await conAuth(async () => 'tok-de-sesion')
+    mockFetch.mockReturnValue(respuestaOk())
+
+    await fresco('/api/algo', { a: 1 }, { headers: { Authorization: 'Bearer tok-propio' } })
+
+    expect(cabeceras().Authorization).toBe('Bearer tok-propio')
+  })
+
+  it('sin sesión manda la petición anónima (los endpoints públicos siguen funcionando)', async () => {
+    const fresco = await conAuth(async () => null)
+    mockFetch.mockReturnValue(respuestaOk())
+
+    await fresco('/api/publico', { a: 1 })
+
+    expect(cabeceras().Authorization).toBeUndefined()
+    expect(cabeceras()['Content-Type']).toBe('application/json')
+  })
+
+  it('si el puerto de auth revienta, la llamada SIGUE (nunca bloquea)', async () => {
+    const fresco = await conAuth(async () => { throw new Error('sesión rota') })
+    mockFetch.mockReturnValue(respuestaOk())
+
+    await expect(fresco('/api/algo', { a: 1 })).resolves.toEqual({ ok: true })
+    expect(cabeceras().Authorization).toBeUndefined()
+  })
+
+  it('el token se pide UNA vez aunque haya reintentos', async () => {
+    const getAccessToken = jest.fn().mockResolvedValue('tok-123')
+    const fresco = await conAuth(getAccessToken)
+    mockFetch
+      .mockReturnValueOnce(Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }))
+      .mockReturnValueOnce(respuestaOk())
+
+    await fresco('/api/algo', { a: 1 }, { retries: 2, retryDelayMs: 0 })
+
+    expect(getAccessToken).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })

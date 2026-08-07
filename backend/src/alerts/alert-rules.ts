@@ -1873,6 +1873,66 @@ export const RULE_COBRO_BLOQUEADO_AUTH: AlertRule<{
 };
 
 /**
+ * La MISMA clase de bloqueo, pero FUERA de las rutas de cobro. (T-670, 07/08/2026)
+ *
+ * `cobro_bloqueado_auth` (justo arriba) vigila `auth_identidad_ajena_rechazada` solo en rutas de
+ * pago, porque nació de un incidente de pagos. Consecuencia no buscada: el mismo rechazo en
+ * cualquier otra ruta **no lo mira nadie**.
+ *
+ * Lo que costó descubrirlo así: el 07/08 hubo **190 rechazos en `/api/exam/validate` y 20
+ * personas** que no pudieron corregir su examen, con cero alertas. Se supo porque **una usuaria
+ * escribió a soporte**: Emma, premium, lo intentó seis veces en 45 minutos bajando de 100
+ * preguntas a 25, a 10, a 5 y a 2, y se fue sin corregir ninguno. La causa (que el cliente HTTP
+ * no adjuntaba la identidad) ya está arreglada; esta regla existe para que la PRÓXIMA vez lo
+ * diga el sistema y no la persona que lo sufre.
+ *
+ * Umbral 5 en 15 min: en días normales estos rechazos van de uno en uno (máximo medido: 9 en una
+ * HORA), y durante el incidente pasaban de 20 por cuarto de hora. `error` y no `critical` a
+ * propósito: el dinero conserva su propia regla, más ruidosa.
+ */
+export const RULE_BLOQUEADO_EN_SU_RECURSO: AlertRule<{
+  n: number;
+  topEndpoint: string | null;
+  usuarios: number;
+}> = {
+  name: 'bloqueado_en_su_recurso',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           COUNT(DISTINCT user_id)::int AS usuarios,
+           MODE() WITHIN GROUP (ORDER BY endpoint) AS "topEndpoint"
+    FROM observable_events
+    WHERE event_type = 'auth_identidad_ajena_rechazada'
+      AND NOT (endpoint LIKE ANY (${sql.raw(`ARRAY[${PATRONES_RUTA_COBRO.map((p) => `'${p}'`).join(', ')}]`)}))
+      AND ts > NOW() - INTERVAL '15 minutes'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 5,
+  buildNotification: (rows) => {
+    const n = rows[0]?.n ?? 0;
+    const top = rows[0]?.topEndpoint ?? '(varios)';
+    const usuarios = rows[0]?.usuarios ?? 0;
+    return {
+      title: `🚫 ${n} rechazos a gente en SU PROPIO recurso en 15 min (${usuarios} usuario/s) — ${top}`,
+      body:
+        `Endpoint: ${top}\n\n` +
+        `El servidor respondió 403 («no tienes acceso a este recurso») a quien SÍ es su dueño. La causa ` +
+        `típica es que esa llamada del cliente llega SIN identidad: el guard ve una petición anónima ` +
+        `pidiendo algo con dueño y corta, con razón.\n\n` +
+        `  SELECT ts, endpoint, user_id, metadata\n` +
+        `  FROM observable_events WHERE event_type='auth_identidad_ajena_rechazada'\n` +
+        `    AND ts > NOW() - INTERVAL '30 minutes' ORDER BY ts DESC;\n\n` +
+        `Si el evento trae user_id NULL y motivo 'recurso_ajeno', es exactamente eso: mirar qué llamada ` +
+        `del cliente pega a ese endpoint y si pasa por \`apiFetch\`, que desde T-670 adjunta la identidad sola.\n\n` +
+        `Origen 07/08/2026: 190 rechazos y 20 personas sin poder corregir su examen, sin una sola alerta, ` +
+        `descubierto porque una usuaria premium escribió a soporte.`,
+      metadata: { count: n, topEndpoint: top, usuarios, windowMin: 15 },
+      fingerprint: `bloqueado_en_su_recurso_${top}`,
+    };
+  },
+  cooldownMin: 60,
+};
+
+/**
  * Caída brutal de tráfico — proxy de salud del frontend.
  *
  * Origen: incidente 2026-05-26 — entre 12:00-13:00 UTC el tráfico
@@ -7034,6 +7094,7 @@ export const ALERT_RULES: AlertRule[] = [
   // Su reverso (31/07/2026): el servidor NO se rompió, simplemente no le dejó pagar. La de
   // arriba cuenta 5xx y no ve un 403; para el negocio son la misma venta perdida.
   RULE_COBRO_BLOQUEADO_AUTH as AlertRule,
+  RULE_BLOQUEADO_EN_SU_RECURSO as AlertRule,
   // Cancel flow robusto (2026-05-27 post-caso Mariangeles)
   RULE_SUBSCRIPTION_VOID_FAILED as AlertRule,
   RULE_SUBSCRIPTION_FORCE_CANCEL_BURST as AlertRule,
