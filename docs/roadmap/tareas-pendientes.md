@@ -2845,6 +2845,17 @@ por primera vez como necesarios y bloqueados).
 **Esfuerzo: minutos** (para quien tiene la credencial de aplicar migraciones — es un `psql -f` +
 confirmar con el canario).
 
+> **➕ AÑADIDO (07/08, desde [T-377]):** una TERCERA tabla necesita la misma política.
+> `__tests__/integration/seguimientoFuentesCiegas.integration.test.ts` (el detector de fuentes
+> ciegas de seguimiento) da `filas.length === 0` con `vence_lector` pese a que
+> `convocatoria_seguimiento_checks` tiene **31.410 filas vivas reales** (`pg_stat_user_tables`,
+> `last_autoanalyze` 06/08) — mismo patrón exacto: `relrowsecurity=true`, CERO filas en
+> `pg_policies` para ese rol. No es contenido roto, es la MISMA conexión rota que ya diagnosticó
+> esta ficha, en una tabla que no estaba en su lista. Añadirla a la migración
+> `20260805_rls_test_questions_lector.sql` (o una hermana) cuando se aplique el resto — mismo
+> perfil de columnas (sin PII: `oposicion_id`, `checked_at`, `content_preview`, `checked_url`…).
+> No aplicado (mismo bloqueo de privilegio que el resto de esta ficha).
+
 ### [T-591] 🟡 [ABIERTO 05/08] Vales de otra marca: la tarjeta decía «Amazon.es» y enlazaba a Amazon fuera cual fuera la marca
 
 **Qué pasaba.** `VoucherCard.tsx` tenía la marca escrita a mano en el JSX (`{v.amount} € · Amazon.es`)
@@ -5752,6 +5763,30 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - Con `pg` contra RDS hay que **quitar el `sslmode` de la URL**; poner `ssl` no basta. Usar `pgConfig()` de `lib/db/pgSsl.cjs` (tests: `testDbConfig()`). Guardarraíl puesto.
 - Un helper de conexión **no debe cargar `dotenv` al importarse**: despierta suites dormidas a propósito y tiñe el pre-commit de todo el mundo.
 - CI sigue **ciego** por el secreto `DATABASE_URL_READONLY` que falta (**[T-370]**, necesita a Manuel). Mientras no vuelva, este rojo solo se ve corriéndolo en local.
+
+**✅ CIERRE (07/08): la última sin mirar, mirada — no era dato ni umbral, era la MISMA familia de conexión rota.**
+
+`seguimientoFuentesCiegas` da `filas.length === 0`: la query del detector (`oposiciones` JOIN LATERAL
+`convocatoria_seguimiento_checks`) devuelve 0 filas con el rol de lectura. Medido contra RDS
+(`VENCE_LECTOR_URL`, vía `pgConfig()`, sin escribir nada):
+- `pg_stat_user_tables.n_live_tup` para `convocatoria_seguimiento_checks` = **31.410** filas vivas,
+  `last_autoanalyze` 06/08 — la tabla está viva y el cron escribe.
+- `SELECT count(*)` con `vence_lector` = **0**. Sin error: `relrowsecurity=true` y **CERO** filas en
+  `pg_policies` para ese rol (`pg_policies WHERE tablename='convocatoria_seguimiento_checks'` → `[]`).
+
+Es el MISMO mecanismo que esta ficha ya vino a cazar (SSL), un nivel más abajo: no es la conexión
+la que se rompe, es el permiso — un `GRANT` de tabla no vale nada si la tabla tiene RLS y cero
+políticas, y el motor filtra en silencio (0 filas, no excepción) en vez de avisar. Ya diagnosticado
+y con migración a medio aplicar para dos tablas hermanas en **[T-573]** (que a su vez sigue la
+plantilla de **[T-574]**); esta tabla no estaba en su lista y ya se ha añadido ahí (addendum
+07/08) en vez de abrir una ficha duplicada — `reserve` la bloqueó por parecido y tenía razón.
+Ni [T-573] ni [T-574] las puede aplicar un worker de coordinación (falta privilegio `CREATE
+POLICY`): sigue pendiente de quien aplicó las migraciones RLS del 05/08.
+
+**Con esto, el inventario completo de esta ficha queda cerrado:** las 5 suites de la tabla de
+arriba tienen TODAS dueño (4 fichas de contenido/decisión + esta, ahora plegada en [T-573]).
+`.env.local` no se ha tocado en el repo — el swap de credencial usado para medir fue local y
+revertido antes de escribir nada.
 
 ### [T-368] 🟠 [ABIERTO 31/07] Subir los exámenes oficiales recientes de Auxiliar Administrativo del Gobierno de Canarias
 
