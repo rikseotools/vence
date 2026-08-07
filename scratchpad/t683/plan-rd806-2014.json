@@ -1,0 +1,72 @@
+{
+  "motivo": "T-683 — RD 806/2014 (TIC AGE) derogado y retirado del temario por T-660. Re-anclaje de las huérfanas recuperables al RD 1125/2024 (guardia_civil/T17). Solo se re-ancla a artículos 1,2,8,9,10 (los únicos en topic_scope hoy: Cap. I + Cap. III, que es literalmente lo que pide el epígrafe). Las que mapean a Capítulo II (CETIC art.3, Comisiones Ministeriales/Unidades TIC art.5/7) se jubilan: el contenido sigue existiendo en la norma nueva pero está fuera de programa por diseño (T-660 no escopó el Cap. II a propósito).",
+  "movimientos": [
+    {
+      "preguntas": ["dbc46ba9-102f-4885-983b-4cce55ecb985"],
+      "origenArticuloId": "fff99c33-a63e-40ca-8f5c-bbe86651ed6c",
+      "destinoArticuloId": "108f0ea9-c4e9-4c3a-b8ff-1c8ce5c91d14",
+      "porQue": "old art.1 pero la opción correcta (C) es cita literal exacta de la definición de Ámbito de aplicación, que en RD1125 es el art.2. Los 3 distractores son variantes fabricadas (cogobernanza/sectorial/CCAA no aparecen en ningún artículo real), no hay fuga a otro artículo.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["eefce17a-9073-494a-ad64-b882c7d1611e"],
+      "origenArticuloId": "85e84b06-040c-43d0-b219-9d2a4d9b70d6",
+      "destinoArticuloId": "108f0ea9-c4e9-4c3a-b8ff-1c8ce5c91d14",
+      "porQue": "cita literal exacta de RD1125 art.2 (Ámbito de aplicación); distractores fabricados.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["bfbd0b4e-ec63-49ce-a532-914b9a1f5fb9", "2ee10571-0e2c-462b-822b-2cca59686d4b", "b38118d4-b889-46c9-918a-12fadff7577b"],
+      "origenArticuloId": "6323f226-9b68-4973-bda2-9745c432d19d",
+      "destinoArticuloId": "7174d57d-52d7-4c38-bef6-5a3f9d91c8e6",
+      "porQue": "aprobación/iniciativa de la Estrategia TIC: literal en RD1125 art.8. 2ee10571 tiene 2 opciones (C,D) cuyo contenido real vive en el art.9 hermano (mismo capítulo, también en scope) — es el MISMO patrón de referencia cruzada que ya tenía la pregunta activa bajo la norma derogada (old art.9 citaba old art.10 en la misma pregunta), no es un defecto introducido por el re-anclaje.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["8da6a0df-2b1c-4baa-b786-1a2b9f6e4fb2", "ad2ca1ee-06ac-4442-929f-723d9ed2c745", "ee8c2453-bac7-4274-a204-f908d8d2b5ae", "fca6bef2-f8ae-4570-90df-006bc3f1b37d"],
+      "origenArticuloId": "6323f226-9b68-4973-bda2-9745c432d19d",
+      "destinoArticuloId": "923e7df5-dd9b-4a51-932d-c88602f1e907",
+      "porQue": "estas 4 estaban mal etiquetadas ya en la norma vieja (tag art.9 pero contenido real de \"medios/servicios declarados transversales + Catálogo\", que en la norma vieja era el art.10): en RD1125 ese contenido vive en el art.9. fca6bef2 tiene 1 opción (D) del art.8 hermano (mismo patrón pre-existente que arriba).",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["cc88049f-b973-4082-927d-9a3e35616bc6"],
+      "origenArticuloId": "906e8fbd-a982-449a-9e7e-63a9d1bcb613",
+      "destinoArticuloId": "923e7df5-dd9b-4a51-932d-c88602f1e907",
+      "porQue": "declaración de medios/servicios como transversales corresponde a la Comisión de Estrategia TIC: literal en RD1125 art.9 §1. Distractores (Dirección TIC, CMAD, Comité de Dirección) fabricados/inexistentes.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["94a77723-359d-4200-9c7b-d86290d8538c"],
+      "origenArticuloId": "906e8fbd-a982-449a-9e7e-63a9d1bcb613",
+      "destinoArticuloId": "141c1927-52fa-4d25-a5dd-e6f0be9d5da5",
+      "porQue": "traslado de la declaración de proyecto de interés prioritario al Ministerio de Hacienda y la Comisión de Políticas de Gasto: cita literal exacta de RD1125 art.10 §2.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    },
+    {
+      "preguntas": ["5fdd4fb5-e082-433a-b3a1-918e783e2329"],
+      "origenArticuloId": "0a170914-1208-4053-bd65-c3a81b11315f",
+      "destinoArticuloId": "141c1927-52fa-4d25-a5dd-e6f0be9d5da5",
+      "porQue": "proyectos de interés prioritario con CCAA/AALL/UE: cita literal exacta de RD1125 art.10 §1. El distractor correcto (\"terceros países del extranjero\") no aparece en la lista real.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    }
+  ],
+  "retirar": [
+    { "pregunta": "b2bb2286-3b70-4d04-b1fb-2b08a546ef17", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "pregunta de síntesis que mezcla arts. 1, 2 y 3 de la norma vieja; su opción A (definición de la CETIC) solo se sostiene en RD1125 art.3, que NO está en el topic_scope de guardia_civil/T17 (el epígrafe solo pide Cap. I y III, no Cap. II). No hay un único artículo destino limpio." },
+    { "pregunta": "50683a75-9fca-4d39-8c79-b5ab04c26cf3", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "contenido (CETIC: definición, adscripción, líneas estratégicas) vive en RD1125 art.3, fuera del topic_scope actual (Cap. II excluido por el epígrafe de T17)." },
+    { "pregunta": "a0be6688-33ad-417a-8376-fa8e4776e2e4", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "presidencia de la CETIC: RD1125 art.3 §2, fuera del topic_scope actual." },
+    { "pregunta": "22eea2b6-9d62-4eb5-9957-9e2fb03fbd9b", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "periodicidad del informe de la CETIC al Consejo de Ministros: RD1125 art.3 §4, fuera del topic_scope actual." },
+    { "pregunta": "4d879b62-e417-402f-b982-d99b13b22893", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "funciones de las unidades TIC: RD1125 art.7, fuera del topic_scope actual (Cap. II)." },
+    { "pregunta": "56a24c61-b1b8-4789-b469-01c3363b16c5", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "configuración de las unidades TIC: RD1125 art.7, fuera del topic_scope actual." },
+    { "pregunta": "86b658ea-35b4-4a56-bd55-e2fde2b28aa5", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "provisión sectorial de medios/servicios TIC: RD1125 art.7, fuera del topic_scope actual." },
+    { "pregunta": "9b507dfa-4cb6-45d7-ab9a-dad98ffdd656", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "unidades TIC como instrumentos fundamentales: RD1125 art.7, fuera del topic_scope actual." },
+    { "pregunta": "de7adf95-aaf9-46fd-8df1-93de81645801", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "pregunta de síntesis: 2 opciones (A,B) son del art.9 (en scope) pero la opción C es del art.7 §4 (fuera de scope) — fuga real a un artículo que ni siquiera se sirve en este tema. No hay un único destino limpio." }
+  ]
+}
