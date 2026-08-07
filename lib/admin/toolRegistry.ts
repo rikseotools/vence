@@ -58,6 +58,41 @@ export interface Herramienta {
 }
 
 export const TOOL_REGISTRY: Record<string, Herramienta> = {
+  // ── Leer una plantilla oficial de examen sin pdftotext/pdftoppm/magick ────────────────────
+  extraer_pdf_examen_oficial: {
+    titulo: 'Extraer texto + respuesta marcada en color de una plantilla oficial de examen (PDF), sin pdftotext (T-368)',
+    ruta: 'scripts/examenes-oficiales/extraer-pdf-con-respuestas.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/importar-examen-oficial-completo.md',
+    notas:
+      'node scripts/examenes-oficiales/extraer-pdf-con-respuestas.cjs <archivo.pdf> [salida.txt]. ' +
+      'SOLO LEE el PDF, no escribe nada de negocio — es la FASE 1-2 del manual de importación ' +
+      '(localizar+extraer), no el import en sí. ' +
+      'NACE porque este entorno (worker de la flota) no tiene `pdftotext`/`pdftoppm`/`magick` ' +
+      'instalados (comprobado: los tres sin resultado en el PATH), que es lo que asume el manual. ' +
+      '`pdfjs-dist` (ya dependencia) da el texto plano bien, pero PIERDE el color — y el Gobierno ' +
+      'de Canarias marca la respuesta correcta en ROJO sobre el texto (verificado en el examen del ' +
+      '08/07/2024: el rojo cae en una única opción por pregunta y varía de posición, no es "la ' +
+      'primera siempre"). Este script interpreta el content stream a mano (vía `pdf-lib`) para no ' +
+      'perder `rg`/`Tf`, decodificando cada fuente por su propio `/ToUnicode`. ' +
+      '⚠️ GOTCHA que costó una transcripción rota (07/08/2026, cazado por contraste contra una ' +
+      'extracción de referencia — sin ese contraste se habría publicado mal): el `codespacerange` ' +
+      'del `/ToUnicode` NO dice cuántos bytes ocupa un carácter en el content stream — eso lo dice ' +
+      'el `Subtype` de la fuente. Una fuente SIMPLE (`/TrueType`, `/Type1`) usa SIEMPRE 1 byte, ' +
+      'aunque su ToUnicode declare `<0000><FFFF>` (habitual, no significa 2 bytes). Solo una ' +
+      'compuesta (`/Type0`) usa el ancho real de su CMap. Al confiar en el codespacerange para una ' +
+      'fuente simple, cada carácter se partía en dos y se perdía la mitad del texto ("CUERPO ' +
+      'AUXILIAR" → "UEO AUXIAR") — el bug ya está arreglado (mira el `Subtype` primero), pero es la ' +
+      'razón de NO confiar nunca en la salida de este script sin contrastarla contra otra fuente ' +
+      '(pdfjs plano, o el propio ojo) antes de dar un examen por verbatim. ' +
+      '⚠️ LÍMITE CONOCIDO: solo detecta la marca de RESPUESTA CORRECTA cuando es color de TEXTO ' +
+      '(rojo). Al menos una institución (Gobierno de Canarias, examen del 14/03/2026) marca con ' +
+      'FONDO amarillo detrás de la línea en vez de texto en color — eso este script NO lo lee (haría ' +
+      'falta correlacionar rectángulos `re f` amarillos con la posición Y del texto, prototipado ' +
+      'pero sin verificar al 100% — ver `data/examenes-oficiales/auxiliar-administrativo-canarias/' +
+      '"26-03-14 ejercicio unico - OEP 2021"/NOTAS-T-368.md`). Sin marca fiable, NO ADIVINAR la ' +
+      'respuesta correcta.',
+  },
   // ── Soltar al que «cree estar dentro» sin soltar al que sí lo está ───────────────────────
   sim_sesion_fantasma: {
     titulo: 'Comprobar que se suelta la sesión fantasma y NO se desloguea al usuario sano (T-434)',
