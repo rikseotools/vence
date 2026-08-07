@@ -60,6 +60,26 @@ describe('[T-648] resolución de la oposición en la pre-generación de PDFs', (
     expect(esObjetivoPersonalizado('a92faefaf41b4d36b723c274f90a59f7')).toBe(false)
   })
 
+  it('LOS DOS sitios que slugifican tienen la excepción, no solo uno', () => {
+    // ⚠️ La lección que costó una vuelta entera el 07/08: el arreglo se puso en
+    // `pregenerateTopicPdf` y **seguía fallando en producción**, porque `scripts/pdf-local.ts`
+    // —el punto de entrada REAL del worker— tenía su PROPIA copia del `replace(/_/g,'-')` y la
+    // aplicaba ANTES de llamarla. La prueba directa a la función pasaba y la ruta real no; lo
+    // delató la salida, que decía `personalizada-f228…` con guion.
+    // Este test mira el CÓDIGO de los dos sitios: un test de comportamiento sobre la función no
+    // puede ver una conversión que ocurre antes de entrar en ella.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs'), path = require('path')
+    const raiz = path.join(__dirname, '..', '..')
+    for (const f of ['lib/temario/pdf/pregenerate.ts', 'scripts/pdf-local.ts']) {
+      const txt = fs.readFileSync(path.join(raiz, f), 'utf8')
+      // Si el fichero convierte guiones bajos, tiene que exceptuar antes a las personalizadas.
+      if (/replace\(\/_\/g/.test(txt)) {
+        expect(txt).toMatch(/esObjetivoPersonalizado/)
+      }
+    }
+  })
+
   it('una del catálogo sigue resolviéndose por su slug, como siempre', () => {
     const [slug] = Object.keys(OPOSICIONES)
     expect(slug).toBeTruthy()
