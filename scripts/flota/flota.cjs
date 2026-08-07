@@ -1562,4 +1562,14 @@ async function main() {
   }
 }
 
-main().then((c) => process.exit(c)).catch((e) => { console.error('❌ flota:', e.message); process.exit(1) })
+// Exports para test — SOLO lo que hace falta para ejercitar el CABLEADO real (mandarEncargo
+// bloqueando de verdad, logDelTurno construyendo el comando con sudo) con `child_process`
+// mockeado, en vez de testear `AUT.clasificar()` en aislamiento (T-617, revisión 07/08: esa era
+// exactamente la capa que faltaba — el criterio se testeaba solo, nunca su llamador real).
+// El guard de abajo es lo que lo permite: sin él, cualquier `require()` de este fichero dispara
+// `main()` (conexión a RDS incluida) igual que invocarlo por CLI.
+module.exports = { enMaquina, logDelTurno, mandarEncargo, comandoDelPanel, turnosVivosDe }
+
+if (require.main === module) {
+  main().then((c) => process.exit(c)).catch((e) => { console.error('❌ flota:', e.message); process.exit(1) })
+}

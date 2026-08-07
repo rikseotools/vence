@@ -2829,6 +2829,62 @@ Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darle
 para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
 Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
 
+#### Retomado 07/08 (w3): la capa que la revisión encontró que faltaba
+
+**Veredicto de la revisión sobre `cb34e9b4b` (ya mergeado a main): "problemas" — no por un defecto
+en el código, sino por una capa ausente.** El propio revisor lo verificó y confirmó que el fix del
+crash-loop es correcto (27 eventos reproducidos, 323/323 tests verdes), y aun así encontró que
+`grep -rn 'cuota_agotada|sinCuota|logDelTurno' __tests__/flota/` (salvo `autenticacion.test.ts`) daba
+**CERO** — ningún test ejercitaba el CABLEADO real (`mandarEncargo` bloqueando de verdad,
+`logDelTurno` construyendo el comando con `sudo`), solo `AUT.clasificar()` en aislamiento o el TEXTO
+fuente con `grep`. Los dos bugs reales que llegaron a producción (T-642) eran precisamente del tipo
+que esa capa habría cazado.
+
+**Lo que hacía falta para poder testear el cableado, y por qué no existía:** `scripts/flota/flota.cjs`
+no tenía `module.exports` ni guard de `require.main === module` — `main()` se invocaba sin condición
+en la última línea, así que cualquier `require()` del fichero disparaba el CLI entero (conexión a
+RDS incluida). Confirmado que NINGÚN test previo lo requería nunca como módulo: los dos que lo tocan
+(`encargo.test.ts`, `actualizacion.test.ts`) lo leen con `fs.readFileSync` como TEXTO, no con
+`require()` — es la misma causa que explica por qué el grep daba cero.
+
+**Cambio mínimo, sin tocar lógica:** añadido `module.exports = { enMaquina, logDelTurno,
+mandarEncargo, comandoDelPanel, turnosVivosDe }` + `if (require.main === module) { main()... }`
+envolviendo la única línea que antes se ejecutaba sin condición. Verificado que el CLI queda
+IDÉNTICO: `node --check` limpio, y `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/flota/flota.cjs
+estado` corrido de verdad tras el cambio, mismo comportamiento que antes.
+
+**Tests nuevos, `__tests__/flota/mandarEncargoWiring.test.ts` (6), mockeando `child_process.execFileSync`
+— el único punto de E/S real — y usando trabajadores YA REGISTRADOS (`l1`=portátil/local,
+`w1`=VPS/remoto) en vez de mockear `lib/flota/maquinas.cjs`, para no fingir una forma de máquina que
+el registro no tiene:**
+- `logDelTurno('l1')` → el `tail` va SIN `sudo -u flota`, por `bash` (no ssh).
+- `logDelTurno('w1')` → el `tail` va CON `sudo -u flota`, por `ssh` — el bug real de T-642.
+- `logDelTurno` con `execFileSync` lanzando → devuelve `''`, nunca propaga.
+- `mandarEncargo('w1', …)` con panel libre + 0 turnos vivos + log anterior con el mensaje real de
+  cuota (`"You've hit your weekly limit · resets 11pm (UTC)"`, el mismo texto del incidente) →
+  `{ok:false, sinCuota:true}`, **y se comprueba que NO hubo `send-keys` ni `mkdir -p`** (la prueba de
+  que bloqueó DE VERDAD antes de mandar nada, no que casualmente devolvió el valor correcto).
+- el `motivo` devuelto es literalmente `AUT.clasificar(...).detalle` (misma fuente, no reimplementado
+  en el test).
+- panel ocupado → bloquea ANTES de leer el log (no gasta esa llamada de más).
+
+**Mutación verificada, no solo "el test pasa":** para confirmar que el test de bloqueo cazaría una
+regresión de verdad (y no es un tautología que pasa pase lo que pase), se desactivó a propósito el
+`if (auth.estado === 'cuota_agotada')` (`if (false && ...)`) y se re-corrió — **2 de los 6 tests
+fallan exactamente como se espera** (`sinCuota` deja de estar, `motivo` queda `undefined`). Revertido
+el cambio, `node --check` limpio, y confirmado de nuevo en verde.
+
+**Capas:** `__tests__/flota/mandarEncargoWiring.test.ts` (nuevo, 6 tests) + `__tests__/flota/`
+completo sigue en verde: **374/374** (13 suites; antes 373, contando el resto de tests de flota que
+ya existían más los 6 nuevos). No se tocó ninguna lógica de negocio, solo se hizo testeable lo que ya
+funcionaba.
+
+**Rama `flota/T-617-wiring-tests`, pusheada. Sin desplegar** (no aplica: no hay cambio de
+comportamiento del supervisor, solo de testabilidad — nada que instalar en el VPS). Cierro vía
+`revision`, no `done`: es código que gobierna la flota entera y el crash-loop de cuota real seguía
+activo en vivo cuando se revisó por última vez; que alguien con más contexto del incidente en curso
+confirme antes de dar la tarea por cerrada del todo.
+
 ### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
 
 **No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es
