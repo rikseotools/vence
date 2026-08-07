@@ -1140,6 +1140,107 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-688] 🟡 [ABIERTO 07/08] Dos preguntas activas con la explicación defectuosa, encontradas al medir otras impugnaciones
+
+Las dos salieron de las mediciones sistémicas del 07/08 (impugnaciones `3d3dd74e` y `28745372`). **No
+las reportó nadie**, así que se anotan aquí para que no se pierdan con la sesión.
+
+**1. `4788f559` — tres razones escritas en CONDICIONAL, que no afirman nada.**
+Su explicación dice, opción por opción, cosas como *«**Si** afirma que el magistrado pierde su
+condición de miembro de la Sala al integrarse en la sección especializada, contradice…»*, *«**Si**
+establece que la participación en juntas queda suspendida…»*, *«**Si** indica que la adscripción
+requiere renuncia…»*. El opositor lee un «si» y no sabe si la opción dice eso o no: la razón no
+juzga, plantea una hipótesis. Es primo hermano de `article_audit_note` (la nota de auditoría colada
+como explicación) pero con otra forma, así que **ningún detector la ve**.
+
+**2. `fe67e9c0` — cita la ley EQUIVOCADA.**
+Es una pregunta del art. 10 de la **Ley 40/2015** (avocación) y su explicación cierra con *«C)
+**CORRECTA**. Art. 10.2 Ley 39/2015»*. La 39/2015 es la del procedimiento, no la del sector público:
+quien vaya a comprobarlo abrirá la norma que no es. La clave y el resto del razonamiento están bien;
+lo que falla es la referencia.
+
+**Qué hacer:** reescribir las razones de `4788f559` en afirmativo contra el artículo vinculado, y
+corregir la referencia de `fe67e9c0` a la Ley 40/2015, en los dos casos con
+`scripts/aplicar-explicacion.ts` (que deja las dos columnas coherentes y la pregunta barajable).
+Ninguna toca la clave.
+
+**Por qué está fichado y no arreglado ya:** aparecieron mientras se medía si otra cosa era sistémica,
+y arreglarlas de paso habría mezclado dos asuntos en la misma impugnación. Son minutos.
+
+**Lo que NO es:** no hay indicios de que sean una clase. El barrido de razones descolocadas por
+solape de palabras da 2.469 candidatas y **20 de 20 leídas a mano eran correctas** (razones
+parafraseadas), así que ese número no vale para nada — anotado aquí para que nadie lo reviva.
+
+### [T-686] 🟡 [ABIERTO 07/08] Las esperas de deploy entre sesiones se auto-encuentran con `pgrep` y no disparan NUNCA: quedan procesos zombis
+
+**Qué es.** Varias sesiones esperan a que termine un deploy ajeno con este patrón:
+
+```bash
+while pgrep -f "deploy-cuando-verde.sh frontend" >/dev/null; do sleep 20; done
+scripts/deploy-cuando-verde.sh frontend
+```
+
+El `pgrep -f` casa contra la **línea de órdenes completa**… que incluye la del propio `while`, porque
+lleva dentro esa misma cadena. Así que el proceso **se encuentra a sí mismo** y espera para siempre.
+
+**Medido el 07/08:** con el lock libre y NINGÚN deploy corriendo, había **dos esperas** vivas
+(`1411578`, `1515973`), una de ellas encadenando un deploy de backend que nunca llegó a lanzarse. Una
+llevaba horas.
+
+**Por qué importa más de lo que parece.** No es solo un proceso colgado: es una sesión que **cree que
+va a desplegar y no va a desplegar nunca**. Nadie recibe un error, nadie ve un rojo — simplemente el
+deploy no ocurre, y el trabajo se queda sin salir a producción hasta que alguien pasa por ahí y lo
+nota a mano. Es el mismo modo de fallo que [T-613]: un cero silencioso que se lee como «no había nada
+que hacer».
+
+**El arreglo no es un `pgrep` más listo.** Se puede excluir el propio PID (`pgrep -f … | grep -v $$`)
+pero eso vuelve a poner la corrección en cada sitio que lo copie. Lo que ya existe y sirve: el
+**`flock`** de `/tmp/vence-deploy.lock`, que serializa de verdad — lanzar el deploy directamente lo
+pone A LA COLA sin que nadie tenga que esperar a mano. El propio runbook lo dice: *«no hace falta
+coordinar con nadie: el flock serializa y lanzar un deploy solo lo pone a la cola»*.
+
+**Propuesta:** que el patrón de espera desaparezca. Si alguien quiere saber cuándo terminó, que mire
+el LOG del deploy o el sha vivo de `/api/health`, no la tabla de procesos. Y si hace falta un
+esperador, que viva en un sitio (un `scripts/deploy/esperar-turno.sh`) y no copiado en cada sesión.
+
+**Cabo suelto asociado:** mientras esto exista, `pgrep -fa "deploy-cuando-verde"` da falsos positivos
+al comprobar «¿hay un deploy en marcha?» — hoy mismo me hizo dudar antes de lanzar la segunda ronda.
+La comprobación fiable es `fuser /tmp/vence-deploy.lock`.
+
+### [T-687] 🟠 [ABIERTO 07/08] El latido de sesión no se escribe aunque se corran comandos de backlog: el reparto da por muertas sesiones VIVAS
+
+**Qué se observó (07/08, sesión `movil3`).** El hook de `UserPromptSubmit` avisó **dos veces** en la
+misma tarde: *«tu id `sesion-07ago-32351262e6ed-abf528` no da señales desde hace 41 min»* y luego
+*«…desde hace 75 min»*. En ese intervalo la sesión había corrido `backlog.cjs` varias veces —
+incluido un `heartbeat` explícito— y seguía trabajando sin parar (impugnaciones, deploys, merges).
+
+**Por qué NO es cosmético.** Todo el reparto entre 2-10 sesiones cuelga de ese latido: el claim
+caduca por **señal de vida**, no por reloj (`sistema-sesiones-paralelas.md`). Una sesión viva que no
+late es exactamente el caso que el diseño quiere evitar — sus reservas se sueltan y otra sesión se
+pone con lo mismo. Esa tarde no costó nada porque la sesión apenas tenía nada reservado, pero es
+azar, no diseño.
+
+**Lo que hace sospechar dónde está.** El latido lo escribe `lib/sessions/latir.cjs` como
+**subproceso detached** desde `backlog.cjs`, a propósito para que no añada latencia ni pueda fallar
+el comando. Ese mismo desacople es el que lo deja fallar **en silencio**: si el subproceso muere, el
+comando principal sale con éxito igual. Y encima el aviso de riesgo lo emite otra pieza distinta
+(el hook), que solo mira la antigüedad de `worktree_sessions.last_signal_at`.
+
+**Dato que acota el diagnóstico:** la fila SÍ existía y se actualizó a las 15:21 con el `slug` y el
+`worktree_path` correctos (`movil3`) tras renombrar el worktree — o sea que **el escritor funcionó
+al menos una vez** y el problema no es de identidad mal resuelta ni de fila ausente. Es que dejó de
+escribir después.
+
+**Por dónde empezar (sin dar por hecha la causa):**
+- Correr `backlog.cjs list` y mirar si `worktree_sessions.last_signal_at` avanza de verdad, no si el
+  comando termina bien.
+- Ver si el subproceso detached está muriendo (¿SIGHUP al terminar el comando padre? ¿el `setsid` se
+  perdió?) y si su fallo deja rastro en algún sitio.
+- **Y la pregunta de fondo, que es la que importa:** un latido que puede fallar en silencio no es un
+  latido. Si el escritor no puede garantizar la escritura, que al menos el comando lo diga.
+
+**Relacionada:** [T-407] (identidad única de sesión), [T-539] (el fail-open es para personas).
+
 ### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
 
 **El hueco, medido el 07/08:** había **4 leyes marcadas `is_derogated = true` que seguían escopadas
@@ -8952,6 +9053,60 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-670] ✅ [HECHA 07/08] INCIDENTE: al corregir un examen el servidor respondía 403 al propio dueño porque esa llamada no adjuntaba Bearer
+
+**Nota de trazabilidad:** la ficha se reservó y la tarea se trabajó, cerró y archivó el mismo día,
+pero su cuerpo nunca llegó al markdown (solo existía la fila en `backlog_tasks`). Se escribe ahora
+para que el conocimiento no viva únicamente en el `outcome`.
+
+**Qué pasaba.** [T-565] añadió — con razón — una guarda de propiedad en `/api/exam/*`: antes, con
+solo el UUID de un test se leían las respuestas de otra persona. Pero las llamadas del navegador iban
+sin token, así que el servidor no veía identidad, `callerUserId` salía `null`, el examen SÍ tenía
+dueño y la guarda **bloqueaba al propio dueño** con un 403 «No tienes acceso a este recurso». El
+usuario lo veía como «no hay conexión».
+
+**Medido:** 190 rechazos en `/api/exam/validate` en 24 h · 20 personas distintas · Emma (premium) lo
+intentó **seis veces en 45 minutos**, bajando de 100 preguntas a 25, a 10, a 5 y a 2 por si acaso, y
+se fue sin corregir ninguno.
+
+**Dos arreglos complementarios, de dos sesiones distintas:**
+- **[T-669]** (otra sesión): mandar la identidad en los CINCO sitios de llamada afectados, con
+  `getAuthHeaders()`. No se relajó la guarda.
+- **Esta ficha:** cerrar la CLASE. `apiFetch` mandaba todo anónimo salvo que el llamante se acordara
+  del Bearer, así que **cualquier otra llamada futura** contra un endpoint con dueño repetiría el
+  fallo y no se vería hasta que otro usuario perdiera otro examen. Ahora el puerto de auth
+  **registra su proveedor al construirse** (`lib/auth/client.ts`), así que no hay paso de cableado
+  que olvidar; no pisa un `Authorization` explícito, nunca bloquea, y **solo adjunta el token a URLs
+  nuestras** (con una absoluta le regalaríamos la sesión del usuario a un tercero).
+
+**El intento que se descartó, porque enseña dónde va el seam:** primero se hizo que `apiFetch` fuera
+a buscar el token él mismo (`await import('@/lib/auth')`). Funcionaba y estaba mal: un cliente HTTP
+genérico que se busca la identidad hace **una llamada de red que nadie ve** — en los tests se comía
+el `fetch` mockeado y tumbó **20 pruebas ajenas**. Un seam que rompe a quien no lo usa está en el
+sitio equivocado; por eso se inyecta.
+
+**Y el agujero de fondo, que era de VIGILANCIA:** `cobro_bloqueado_auth` ya miraba
+`auth_identidad_ajena_rechazada`… pero **solo en rutas de pago**. Por eso 190 rechazos y 20 personas
+no dispararon nada y lo acabó contando una usuaria por soporte. Nueva regla hermana
+**`bloqueado_en_su_recurso`** (`error`, ≥5 en 15 min; el máximo de un día normal son 9 en una HORA),
+excluyendo cobro para no avisar dos veces del mismo hecho.
+
+**Capas:** 5 unit del cliente, guardarraíl de cableado que **ejecuta** (comprueba que pedir el puerto
+deja el proveedor puesto, no que los ficheros mencionen la función) y 7 casos de la regla. 93 tests
+verdes junto con los de T-669.
+
+**Verificado en producción** (frontend `eb8fc1ff`, backend `165b6e5d`): los rechazos pasaron de 32-71
+por HORA a **cero en dos horas**, último a las 19:22; cero `client_error` de ExamLayout y exámenes
+completándose.
+
+**⚠️ Discrepancias con los datos de [T-669], sin resolver.** No se pudo avisar a esa sesión (no era
+alcanzable por su nombre), así que quedan aquí para quien las lea:
+- Dice *«cero en los diez días anteriores»*. La serie de `auth_identidad_ajena_rechazada` **no está a
+  cero antes**: 350 eventos y 19 usuarios desde el 30/07, con ~25 el 06/08. En `/api/exam/validate`
+  concreto sí puede ser regresión del día, pero el evento no nació hoy.
+- Sitúa el primer caso en **07/08 17:34**; los `client_error` de ExamLayout de Emma son de las
+  **16:33 UTC**, una hora antes.
 
 ### [T-237] ✅ [HECHA 07/08] `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
 
