@@ -64,6 +64,9 @@ const DEBE_LEER = [
   // cambió (hash/preview/status), solo que `oposiciones.seguimiento_change_status='changed'`.
   // Ver 20260806_rls_convocatoria_seguimiento_checks_lector.sql.
   ['convocatoria_seguimiento_checks', 'el histórico de checks de seguimiento, para triar qué cambió'],
+  // [T-639] canario de T-450 (cupo vs respuestas reales): sin esto no se puede comparar el cupo
+  // consumido contra las respuestas de verdad. Ver 20260807_rls_daily_question_usage_lector.sql.
+  ['daily_question_usage', 'el cupo diario consumido, para diagnosticar fugas de cupo'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
