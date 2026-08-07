@@ -13470,6 +13470,93 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Cómo:** Paso 1 clonar epígrafe del PDF oficial (`programa_url` = madrid.es BasesEspecificas.pdf) → `verify:scope` 2 agentes → generar preguntas de T21/T22 (ofimática Word/Excel Office) + reforzar los 8 finos. Doble auditoría + `tech_approved`.
 - **Estado:** sin empezar (en curso 15/07). Conecta con los otros huecos de ofimática (Windows/Office de otras oposiciones).
 
+---
+
+**🔍 REVISADA el 07/08/2026 — Paso 1 verificado de verdad, Paso 2 rehecho de verdad. El estado que
+mostraba la BD (22/22 `verified_literal` + 21/22 `verified_correct`) era un FALSO VERDE.**
+
+**Paso 1 (epígrafe) — CONFIRMADO, no supuesto.** Descargué el PDF oficial
+(`madrid.es/.../BasesEspecificas.pdf`, ANEXO PROGRAMA) y comparé los 22 epígrafes del PDF contra
+`topics.epigrafe` en BD **uno a uno**: coinciden **VERBATIM, letra por letra**, los 22. El método
+`manual_boam_verbatim` es exactamente lo que dice ser. Paso 1 es de fiar.
+
+**Paso 2 (scope) — el `verified_correct` de 21/22 temas NO respalda nada, exactamente el patrón que
+avisa el propio runbook.** Medido: **21 de 22** filas de `topic_scope_verification` tienen
+`verified_by='claude_direct'` y `agent_run_id='--run'` — el sello que `docs/runbooks/verificar-epigrafes-scope.md`
+señala explícitamente como "NO respalda nada" (medido allí el 04/08: 711 temas en 45 oposiciones
+así). Solo **T16** tiene un run real (`verified_by='pipeline'`, `agent_run_id='verify_..._2026-08-01'`,
+01/08). **Este mismo patrón sigue vivo HOY en 174 temas de toda la BD** (no solo Madrid) — ya
+documentado por el runbook, no es un hallazgo nuevo, pero confirma que Madrid no es un caso aislado.
+
+**Rehecho el Paso 2 de verdad — 2 agentes independientes (Agent tool, sonnet), sin Workflow tool
+(no hay opt-in de ultracode en esta sesión), siguiendo el manual §"Lanzar 2 agentes INDEPENDIENTES"
+con los prompts EXACTOS del runbook. Consenso construido por las reglas del runbook (correct solo si
+AMBOS dicen correct; issues si ambos dicen issues; needs_human si discrepan):**
+
+| verdict | temas | n |
+|---|---|---|
+| **correct** | T1,T2,T3,T6,T9,T10,T11,T12,T13,T14,T15,T18,T20 | 13 |
+| **issues** | T5,T7,T8,T16,T17,T19 | 6 |
+| **needs_human** | T4,T21,T22 | 3 |
+
+**Los 6 `issues`, verificados por los DOS agentes de forma independiente (y uno spot-checkeado por
+mí contra `articles.title` directamente en BD, no solo contra lo que dijeron los agentes):**
+- **T5** — falta "Disposiciones comunes a las Entidades locales" (Título V LRBRL, ~arts 68-92),
+  citado LITERALMENTE en el epígrafe; el scope salta de 30 a 121.
+- **T7** — el scope trae "Operaciones de crédito" (arts 48-55, deuda municipal) y otros artículos
+  fuera de "Tasas/Contribuciones especiales/Precios públicos", que es todo lo que pide el epígrafe.
+- **T8** — **CONFIRMADO YO MISMO contra `articles.title`** (no solo los agentes): el scope trae
+  arts 1-8 de la Ley 22/2006 Capitalidad Madrid ("Objeto de la Ley", "Autonomía municipal",
+  "Régimen de capitalidad", "Comisión Interadministrativa", "Fuero"...) cuando el epígrafe pide
+  SOLO "Las competencias del Ayuntamiento de Madrid" — que son los arts 31-37 ("Régimen general de
+  competencias", "Competencias municipales", "Competencias propias"...), ya presentes en el mismo
+  scope. Sobre-scope clarísimo, mismo patrón que T9/T10/T13 (misma ley) SÍ respetan.
+- **T16, T17, T19** — mismo patrón entre los tres: el epígrafe cita un documento INSTITUCIONAL
+  PROPIO del Ayuntamiento de Madrid (T16: "Plan de Igualdad... en vigor"; T17: "Acuerdo Convenio en
+  vigor... del Ayuntamiento de Madrid"; T19: "Código de Buenas Prácticas Administrativas del
+  Ayuntamiento de Madrid") que NO es una ley codificada con articulado en `laws`/`articles` — el
+  scope solo cubre la norma general (LO 3/2007, LPRL, Ordenanza) sin ese contenido municipal
+  específico. **Esto NO se arregla con un recorte/ampliación de `article_numbers`**: es contenido
+  EDITORIAL que hay que localizar y sourcear como documento aparte (mismo tipo de hueco que
+  `docs/roadmap` ya cataloga para "contenido editorial sin fuente oficial registrada").
+
+**Los 3 `needs_human` (discrepancia genuina entre agentes, NO forzada a un lado):**
+- **T4** — escéptico dice CORRECT (arts 53-126 cubre procedimiento+recursos); analista dice ISSUES
+  (faltan arts 96-105, tramitación simplificada/ejecución — apremio, ejecución subsidiaria, multa
+  coercitiva). Genuinamente dudoso sin mirar si ese tramo ya está cubierto de otra forma.
+- **T21, T22 (Ofimática Word/Excel)** — es EXACTAMENTE el caso que el runbook documenta en su
+  §5-bis ("variante de Office no especificada"): el epígrafe dice solo "Microsoft Office 365: Word/Excel"
+  sin distinguir Escritorio/Web, y el scope trae una ley EXTRA "· Escritorio" (208 preg. en T21,
+  47 en T22) como variante aparte. La regla del runbook es explícita: **NO fusionar a ciegas**,
+  esperar nota informativa o decisión de Manuel sobre qué variante entra.
+
+**Consenso completo, listo para registrar:** commiteado en esta rama, `docs/roadmap/consensus/consensus_auxiliar_administrativo_ayuntamiento_madrid.json`
+(sin precedente de dónde guardar esto — no encontré ningún consensus.json previo en el repo,
+así que las sesiones con `DATABASE_URL` completo debían registrarlo al vuelo sin persistirlo;
+aquí hace falta persistirlo porque yo no puedo ejecutar el `record`). Comando exacto,
+**SIN EJECUTAR** (escribe en `topic_scope_verification`, business DB, fuera del permiso de este
+worker):
+```
+node scripts/verify-topic-scope.cjs record auxiliar_administrativo_ayuntamiento_madrid \
+  docs/roadmap/consensus/consensus_auxiliar_administrativo_ayuntamiento_madrid.json
+```
+Esto SOBRESCRIBE los 21 sellos `claude_direct`/`--run` con el veredicto real (13 correct, 6 issues,
+3 needs_human) — es el objetivo directo de esta ficha: que el estado en BD dejar de mentir.
+
+**Lo que queda tras registrar (fuera de mi alcance — todo requiere escritura en BD de negocio):**
+1. T5, T7, T8: decidir y aplicar el rango correcto de `article_numbers` contra la estructura real
+   de cada ley (regla de oro: ante duda, scope más extenso).
+2. T16, T17, T19: localizar y sourcear el Plan de Igualdad / Acuerdo Convenio / Código de Buenas
+   Prácticas del Ayuntamiento de Madrid — trabajo de contenido editorial, no de scope.
+3. T4: decidir si 96-105 de la Ley 39/2015 son un hueco genuino.
+4. T21, T22: decisión de Manuel sobre la variante Escritorio/Web de Office (o esperar nota
+   informativa, per el runbook).
+5. Re-verificar cada tema tras aplicar su fix (vuelve a `verified_correct`) y purgar caché.
+
+No se ha escrito nada en `topics`/`topic_scope`/`topic_scope_verification` — todo lo de arriba es
+lectura (`VENCE_LECTOR_URL`) + 2 agentes de análisis + comparación manual contra el PDF oficial y
+contra `articles.title`.
+
 ### [T-020] 🟡 [MEDIA — demanda de usuaria] Supuestos prácticos para Administrativo de la Comunidad de Madrid
 > **⚠️ Cifras corregidas por la auditoría del 20/07:** El problema se mantiene (0 `exam_cases` en Madrid) pero el temario tiene **20.246** preguntas, no 11.177.
 - **Qué:** crear supuestos prácticos (`exam_cases`) para `administrativo_madrid`. Hoy tiene **0** (el temario sí está: 47 temas, ~11.177 preguntas activas). Otras oposiciones ya los tienen (administrativo-seguridad-social 8, auxilio-judicial 8, auxiliar-administrativo-carm 6, administrativo_estado 2…).
