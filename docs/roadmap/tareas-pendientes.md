@@ -1043,6 +1043,85 @@ en móvil** (`scrollWidth` 421 vs 393 de pantalla) — defecto real, sin ficha t
 #### Pendiente
 - Desplegar frontend y **volver a correr el journey**: tiene que pasar a VERDE.
 - Contestar a Sara (borrador con OK de Manuel), sin prometer lo que no está demostrado.
+### [T-649] 🟡 [ABIERTO 07/08] El dossier de feedback no mira el rastro de errores del usuario: por eso se atribuyó el cuelgue de Lourdes al bug que teníamos en la mano
+
+**Lo destapa una réplica, no una alerta.** Lourdes (feedback `e790c7bf`, premium) escribió el 06/08:
+*«la plataforma se me queda colgada con mucha frecuencia… me ocurre cuando termino un test y quiero
+hacer otro»*. Se le contestó que era el configurador de artículos ([T-623], abierto ese mismo día) y
+**replicó** a la mañana siguiente: *«en ningún momento he configurado un test con muchos artículos»*.
+La causa real era otra ([T-315]: `answer-and-save` saturado; el arreglo de cliente vive en su ficha).
+
+#### La contraprueba ya estaba en su cuenta cuando respondimos (UTC del 06/08)
+
+| Hora | Qué dice su rastro | ¿Explica su aviso? |
+|---|---|---|
+| 17:05 | `client_error` · `answerSaveQueue syncOne network` + `http_network_error` · `/api/v2/answer-and-save`, en `/test/tema/11/test-personalizado` | ✅ sí — es **el momento que ella describe** |
+| 17:45 | escribe el feedback | — |
+| 17:50 y 17:55 | `http_4xx 494` · `/api/v2/test-config/estimate` — esto **sí** es [T-623] | ❌ no — es **POSTERIOR** a su mensaje |
+| 20:13 | le respondemos atribuyéndolo a [T-623] | |
+
+#### Los tres fallos, en orden de gravedad
+
+1. **Se atribuyó a la avería que teníamos en la mano.** De las dos señales de su rastro se eligió la
+   que encajaba con una ficha recién abierta, no la que encajaba con **sus palabras**.
+2. **Se le contó lo que ella había hecho** (*«si deseleccionas lo que traías del anterior…»*), una
+   conducta que nunca se midió. Por eso la réplica empieza con «siento decirte que en ningún
+   momento…»: un diagnóstico incompleto se corrige, una conducta atribuida ofende.
+3. **Certeza absoluta** (*«Ya sabemos por qué te pasa»*) sobre una hipótesis, contra la regla de no
+   ser categóricos.
+
+#### La causa de fondo: la herramienta no ponía la evidencia delante
+
+`scripts/impugnaciones/revisar-feedback.cjs` volcaba **solo `user_interactions`** (12 clics) y **no
+consultaba `observable_events` ni una vez**. La regla ya estaba escrita —`gestionar-feedback-bug.md`
+§1 exige *«diagnosticar a ciencia cierta… usa `observable_events`»*—, pero **dependía de acordarse**,
+que es como se pierden todas. Mismo patrón que ya obligó a enforzar el claim y la puerta de temario.
+
+#### ✅ Resuelto (07/08)
+
+- **Núcleo puro `lib/impugnaciones/rastroDeErrores.cjs`**: agrupa los `observable_events` de esa
+  persona (severidad `error`/`warn`) en la ventana **−3 h / +30 min** y los separa en **ANTES** y
+  **DESPUÉS** de su mensaje. La firma del grupo es el `component` de `metadata` cuando lo hay (dice
+  mucho más que `client_error`) y si no el endpoint + status.
+- **La separación no es cosmética, está MEDIDA:** sobre los 59 feedbacks `bug`/`other` de los
+  últimos 14 días, **40** tienen rastro previo (evidencia utilizable), **11** ninguno y **8 SOLO
+  posterior** — esos 8 son exactamente la trampa en la que se cayó. Mezclados en una lista por
+  fecha, el evento que encaja con la ficha abierta se lee igual de bien que el que encaja con lo
+  que la persona cuenta.
+- **Si la ventana sale vacía lo dice con todas las letras** («SIN RASTRO… no es un permiso para
+  suponer»). Un bloque que desaparece cuando no hay datos es indistinguible de uno que nadie miró,
+  y es ahí donde vuelve la suposición. *(«No lo sé» tiene que poder decirse.)*
+- **Sin `try/catch` a propósito:** tragarse el error de esa consulta daría un «sin rastro» FALSO, que
+  es peor que no tener el bloque — y es el mismo modo de fallo que ya costó un mensaje duplicado a
+  un usuario (cabecera de ese mismo fichero).
+- **Checklist del dossier, punto 3.bis:** *no nombro una causa que no salga en su rastro **antes** del
+  mensaje, y no le cuento lo que él hizo sin medirlo*.
+
+#### Capas
+
+- **15 unitarios** del núcleo (`__tests__/impugnaciones/rastroDeErrores.test.js`), anclados a los
+  eventos REALES del caso: el `answerSaveQueue` tiene que caer en ANTES y el 494 en DESPUÉS.
+- **Guardarraíl estático** (`__tests__/guardrails/dossierRastroErrores.guardrail.test.ts`, 6): el
+  dossier consulta `observable_events`, usa la ventana del núcleo (no un `interval '3 hour'` escrito
+  a mano, que sería una segunda definición del criterio), no reimplementa el agrupado y **no se traga
+  el error**. Lo que esto vigila es una **ausencia**, que no enrojece ningún test por sí sola.
+- **Simulación contra RDS real** — `npm run sim:rastro-errores` (solo lee): reproduce el caso ancla y
+  calibra la cola reciente; se pone en rojo si el ancla deja de repartirse como debe o si ningún
+  feedback reciente tiene rastro previo (señal de que la ventana se quedó corta).
+- **Verificado EJECUTANDO el dossier**, no leyendo el fuente: el bloque sale en pantalla en un caso
+  real (`b24b1aee`). Suites relacionadas: 296/296.
+
+#### Integrado (no es un silo)
+
+Registrado en `lib/admin/toolRegistry.ts` (`dossier_rastro_errores`) y documentado donde se busca:
+**`impugnaciones-claude-code.md` §14.1.bis** (la regla, la tabla del caso y el enforcement) y
+**`gestionar-feedback-bug.md`** (caso de referencia, junto a los de Alfonso / MariSol / Querino).
+
+#### Lo que NO cubre
+
+Solo el dossier de **feedback**. El gemelo de impugnaciones (`revisar-impugnacion.cjs`) no lo lleva:
+allí el caso llega anclado a una pregunta concreta y la evidencia que manda es el artículo, no el
+rastro. El núcleo está listo para cablearlo el día que haga falta.
 
 ### [T-648] 🟠 [ABIERTO 07/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
 
