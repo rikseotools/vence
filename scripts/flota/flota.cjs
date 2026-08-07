@@ -1053,7 +1053,11 @@ async function main() {
           const ok = sesionViva(f.trabajador) === true
           console.log(`   [${sello}] ${ok ? '🫀' : '❌'} ${f.trabajador}: sin sesión → ${ok ? 'resucitado' : 'NO levanta, requiere una persona'}`)
         } catch (e) {
+          // El PORQUÉ importa más que el fallo: si lo que falta es el permiso, la orden fallará
+          // igual para los cuatro y para siempre, así que decirlo aquí ahorra buscarlo (T-663).
+          const v = ENC.permisoDeResurreccion(e.message)
           console.log(`   [${sello}] ❌ ${f.trabajador}: sin sesión y no se pudo resucitar (${String(e.message).slice(0, 60)})`)
+          if (!v.puede) console.log(`   [${sello}] 🔑 ${v.motivo}`)
         }
       }
 
