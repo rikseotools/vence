@@ -11702,6 +11702,19 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Impacto:** 🟡 no rompe producción, pero es fricción diaria entre sesiones y **empuja al `--no-verify`**, que es lo que dejó `main` roto dos veces hoy.
 - **Relacionada:** [T-225] (el typecheck en pre-push, misma familia: que el rojo no llegue a `main`).
 
+> **⚠️ Nota tras mirarla (07/08), soltada sin implementar — el diseño de (a) tiene un gotcha que
+> hay que resolver ANTES de tocar el hook, no después.** `git rev-parse --git-common-dir` en este
+> repo da `/home/flota/vence/.git` — **un único `.git` compartido por 5+ worktrees vivos ahora
+> mismo** (`git worktree list`). Automatizar (a) con `git stash` (la forma obvia: stashear,
+> testear HEAD limpio, hacer pop) **reintroduce exactamente el gotcha que esta misma ficha ya
+> señala** (`refs/stash` es del repo, no del worktree) — un stash automático dentro del hook, con
+> 5-10 sesiones commiteando en paralelo, puede robarle el stash a otra sesión a medio camino. La
+> vía SEGURA es no tocar `refs/stash` en absoluto: aislar el HEAD limpio en un `git worktree add`
+> temporal (con `node_modules` symlinkeado al de la sesión, NO un `npm install` completo — patrón
+> ya usado en este repo para revisar ramas ajenas) y correr los tests ahí. Es más código que un
+> `git stash`, pero es la única forma de automatizar (a) sin apostar la historia compartida de
+> TODAS las sesiones a una carrera. Soltada por tamaño/riesgo, no por falta de plan.
+
 ### [T-253] 🟠 [ABIERTO 28/07] La prosa de auditoría también está DENTRO del temario: 9 artículos que respaldan 7.300+ preguntas
 - **Qué ve el opositor:** estudia la teoría y se encuentra el comentario del revisor incrustado en el texto. Caso literal (temario de Correos, Tema 3, sección CityPaq): *«Si no es recogido, el destinatario **NO puede retirarlo en la oficina de referencia en 5 días naturales** (esa afirmación es INCORRECTA). El procedimiento exacto aplica plazos y condiciones específicos.»* Ni afirma ni niega: deja al opositor sin saber cuál es el plazo.
 - **Tamaño medido (28/07/2026):** **9 artículos activos**, de los cuales **8 son bloques del temario de Correos** (T1, T3, T4, T6, T7, T9, T10, T12) que respaldan **más de 7.300 preguntas activas** entre todos, más un artículo de Modelado y Diseño de Bases de Datos.
