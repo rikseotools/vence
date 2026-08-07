@@ -1766,6 +1766,78 @@ export class ContentHealthSweepService {
         );
     }
 
+    // ── CONTENIDO: veredicto ROJO de verificación que no llega a ninguna cola (T-405) ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
+    // Criterio en `lib/health/veredictoRojoInequivoco.cjs`, que es donde vive con sus tests —
+    // reimplementado aquí en TS a mano porque este servicio NUNCA importa `lib/` del frontend
+    // (mismo patrón que `opciones_duplicadas` un poco más abajo).
+    //
+    // Caso Estela (31/07): una verificación del 19/07 escribió «OPCIONES CORRUPTAS» sobre 8cd4ee16
+    // y la pregunta siguió `approved` y sirviéndose 12 días — escribir la fila en
+    // `ai_verification_results` no cambia `lifecycle_state`, no crea señal, no pinga ningún badge
+    // y no abre ninguna cola. Solo la ÚLTIMA verificación no descartada de cada pregunta activa
+    // (una fila vieja que una posterior ya corrigió no debe seguir sonando); `fix_applied` filtra
+    // lo ya atendido aunque el histórico siga en false.
+    //
+    // DOS BANDAS: `error` = el texto describe un defecto INEQUÍVOCO (opciones de otra pregunta,
+    // opción marcada que no responde al enunciado) — el patrón del caso Estela. `warn` = el
+    // resto: el pool de ~400 `options_ok=false` activas es MAYORMENTE ruido de auditoría ciega
+    // (~76% según la campaña de calibración de junio, `scripts/answer-review/README.md`) —
+    // convertirlo todo en alarma repetiría el error de [T-317].
+    const PATRON_ETIQUETA = /\bopciones?\s+corruptas?\b/i;
+    const PATRON_NO_RESPONDE = /\bopci[oó]n(?:es)?\b[^.]{0,80}\bno\s+responde\b[^.]{0,30}\bpregunta\b/i;
+    const PATRON_OTRA_PREGUNTA = /\bopciones?\b[^.]{0,60}\b(?:de|son de|pertenecen a)\s+otra\s+pregunta\b/i;
+    const esVeredictoInequivoco = (explanation: string | null): boolean => {
+      const texto = explanation ?? '';
+      return (
+        PATRON_ETIQUETA.test(texto) || PATRON_NO_RESPONDE.test(texto) || PATRON_OTRA_PREGUNTA.test(texto)
+      );
+    };
+    const vrRows = (await this.db.execute(sql`
+      WITH ultima AS (
+        SELECT DISTINCT ON (v.question_id)
+          v.question_id, v.options_ok, v.answer_ok, v.enunciado_ok, v.explanation, v.verified_at, v.fix_applied
+        FROM ai_verification_results v
+        JOIN questions q ON q.id = v.question_id AND q.is_active
+        WHERE v.discarded IS NOT TRUE
+        ORDER BY v.question_id, v.verified_at DESC
+      )
+      SELECT question_id, options_ok, answer_ok, enunciado_ok, explanation, verified_at
+        FROM ultima
+       WHERE (options_ok = false OR answer_ok = false OR enunciado_ok = false)
+         AND COALESCE(fix_applied, false) = false
+    `)) as unknown as Array<{
+      question_id: string
+      options_ok: boolean | null
+      answer_ok: boolean | null
+      enunciado_ok: boolean | null
+      explanation: string | null
+    }>;
+    {
+      const inequivocas = (vrRows ?? []).filter((f) => esVeredictoInequivoco(f.explanation));
+      const opinables = (vrRows ?? []).filter((f) => !esVeredictoInequivoco(f.explanation));
+      const muestra = (xs: typeof vrRows) => xs.slice(0, 15).map((f) => f.question_id);
+      if (inequivocas.length)
+        add(
+          'content',
+          'error',
+          null,
+          'veredicto_verificacion_rojo',
+          `${inequivocas.length} pregunta(s) activas con un veredicto de verificación INEQUÍVOCO (opciones de otra pregunta / no responden al enunciado) sin atender`,
+          { count: inequivocas.length, banda: 'inequivoco', sample: muestra(inequivocas) },
+        );
+      if (opinables.length)
+        add(
+          'content',
+          'warn',
+          null,
+          'veredicto_verificacion_rojo',
+          `${opinables.length} pregunta(s) activas con un flag de verificación en falso (options_ok/answer_ok/enunciado_ok) sin adjudicar — mayoría esperada: ruido de auditoría ciega, triar antes de tocar`,
+          { count: opinables.length, banda: 'opinable', sample: muestra(opinables) },
+        );
+      marcar('veredicto_verificacion_rojo', vrRows.length);
+    }
+
     // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
     // Criterio en `lib/health/opcionesDuplicadas.cjs`, que es donde vive con sus tests.

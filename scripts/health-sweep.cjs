@@ -46,6 +46,7 @@ const { clasificaTruncada } = require('../lib/health/explicacionTruncada.cjs');
 const { AC_DESNUDA, AC_IDENTIFICA, AC_SIGLA } = require('../lib/health/autocontenida.cjs');
 const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SRC } = require('../lib/health/auditNoteExplanation.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
+const { clasificarVeredicto } = require('../lib/health/veredictoRojoInequivoco.cjs');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
@@ -545,6 +546,53 @@ async function detectarTodo(c, add, marcar, now) {
     if (partes.length) add('content', 'error', null, 'psicotecnico_integridad',
       `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
       { sinSeccion: psi.sin_seccion, seccionAjena: psi.seccion_ajena, claveInvalida: psi.clave_invalida });
+  }
+
+  // ── CONTENIDO: veredicto ROJO de verificación que no llega a ninguna cola (T-405) ──
+  // Caso Estela (31/07): una verificación del 19/07 escribió «OPCIONES CORRUPTAS» sobre 8cd4ee16
+  // y la pregunta siguió `approved` y sirviéndose 12 días — escribir la fila en
+  // `ai_verification_results` no cambia `lifecycle_state`, no crea señal, no pinga ningún badge y
+  // no abre ninguna cola. Se queda de dato histórico hasta que una persona la mire a mano.
+  //
+  // Solo la ÚLTIMA verificación no descartada de cada pregunta activa: una fila vieja con flag en
+  // false que una verificación POSTERIOR ya corrigió no debe seguir sonando. `fix_applied` filtra
+  // lo que ya se atendió aunque el histórico siga en false.
+  //
+  // DOS BANDAS (no una — ver la cabecera larga en lib/health/veredictoRojoInequivoco.cjs):
+  // `error` = el texto describe un defecto INEQUÍVOCO (opciones de otra pregunta, opción marcada
+  // que no responde al enunciado) — el patrón del caso Estela. `warn` = el resto: el pool de
+  // ~400 `options_ok=false` activas es MAYORMENTE ruido de auditoría ciega (~76% según la propia
+  // campaña de calibración de junio, `scripts/answer-review/README.md`) — convertirlo todo en
+  // alarma repetiría el error de [T-317]. Ambas bandas EXISTEN a partir de hoy; antes, ninguna.
+  const vrRows = (await c.query(`
+    WITH ultima AS (
+      SELECT DISTINCT ON (v.question_id)
+        v.question_id, v.options_ok, v.answer_ok, v.enunciado_ok, v.explanation, v.verified_at, v.fix_applied
+      FROM ai_verification_results v
+      JOIN questions q ON q.id = v.question_id AND q.is_active
+      WHERE v.discarded IS NOT TRUE
+      ORDER BY v.question_id, v.verified_at DESC
+    )
+    SELECT question_id, options_ok, answer_ok, enunciado_ok, explanation, verified_at
+      FROM ultima
+     WHERE (options_ok = false OR answer_ok = false OR enunciado_ok = false)
+       AND COALESCE(fix_applied, false) = false`)).rows;
+  {
+    const inequivocas = [];
+    const opinables = [];
+    for (const fila of vrRows) {
+      const banda = clasificarVeredicto(fila);
+      if (banda === 'error') inequivocas.push(fila);
+      else if (banda === 'warn') opinables.push(fila);
+    }
+    const muestra = (xs) => xs.slice(0, 15).map((f) => f.question_id);
+    if (inequivocas.length) add('content', 'error', null, 'veredicto_verificacion_rojo',
+      `${inequivocas.length} pregunta(s) activas con un veredicto de verificación INEQUÍVOCO (opciones de otra pregunta / no responden al enunciado) sin atender`,
+      { count: inequivocas.length, banda: 'inequivoco', sample: muestra(inequivocas) });
+    if (opinables.length) add('content', 'warn', null, 'veredicto_verificacion_rojo',
+      `${opinables.length} pregunta(s) activas con un flag de verificación en falso (options_ok/answer_ok/enunciado_ok) sin adjudicar — mayoría esperada: ruido de auditoría ciega, triar antes de tocar`,
+      { count: opinables.length, banda: 'opinable', sample: muestra(opinables) });
+    marcar('veredicto_verificacion_rojo', vrRows.length);
   }
 
   // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──

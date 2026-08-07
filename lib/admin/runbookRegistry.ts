@@ -294,6 +294,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'mira los tres invariantes que emite el barrido sobre `psychometric_questions` activas y los repara UNO A UNO contra la fuente, nunca en lote: sin `section_id` (la pregunta existe pero no cae en ninguna sección, así que NO se sirve a nadie) → asignarle la sección que le corresponde por su categoría; sección de OTRA categoría (los totales por categoría mienten y la pregunta sale donde no toca) → corregir el `section_id`, no la categoría, salvo que la materia diga lo contrario; y `correct_option` fuera de 0-3 o nulo (la pregunta no se puede corregir al responderla) → verificar la clave contra el enunciado y las opciones, y si no se puede determinar, desactivar en vez de adivinar. NUNCA fijar una clave a ojo.',
   },
+  veredicto_verificacion_rojo: {
+    title: 'Una verificación dejó un flag en falso (opciones/respuesta/enunciado) y nadie lo triajó',
+    triggerPhrase: 'revisa los veredictos de verificación en rojo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'lee `detail.sample` (los `question_id`) y va a `ai_verification_results` a leer la ÚLTIMA verificación no descartada de cada uno. Banda `inequivoco` (error): el texto describe opciones que pertenecen a OTRA pregunta o una opción marcada que no responde al enunciado — verificar contra el artículo y, si se confirma, reparar la pregunta (o mandarla a `needs_human` si es oficial) SIN esperar a más señales, cada día que sigue activa es una persona más a la que se le sirve mal. Banda `opinable` (warn, la mayoría): NO actuar en bloque — la propia campaña de calibración de junio (`scripts/answer-review/README.md`) midió que la auditoría ciega que genera la mayoría de estos flags se equivoca MÁS que la pasada que audita (~76% de ruido); adjudicar UNA A UNA contra la fuente antes de tocar nada, y si el flag resulta ser ruido, `discarded=true` con motivo. NUNCA desactivar en bloque ni flipar una clave sin confirmar contra el artículo.',
+  },
   opciones_duplicadas: {
     title: 'Dos opciones IDÉNTICAS dentro de la misma pregunta (se queda en tres alternativas)',
     triggerPhrase: 'revisa las opciones duplicadas',
