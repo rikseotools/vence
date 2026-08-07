@@ -34,11 +34,28 @@ interface RawPruneRow {
  * Helper estático puro — parsea la fila devuelta por la función SQL.
  * Exportado para test unitario sin tener que mockear Drizzle entero.
  */
-export function parseSampleResult(rows: RawRow[]): PoolCapacitySampleResult {
-  if (!rows || rows.length === 0) {
+export function parseSampleResult(
+  rows: RawRow[] | { rows?: RawRow[] } | null | undefined,
+): PoolCapacitySampleResult {
+  // ── EL DRIVER NO SIEMPRE DEVUELVE UN ARRAY, Y ESO MATÓ ESTE CRON 28 DÍAS (07/08/2026) ────
+  // `db.execute()` entrega unas veces la lista de filas y otras un `{ rows: [...] }`. Con la
+  // segunda forma, `rows.length` es `undefined`, así que la guarda de «0 filas» —que existe justo
+  // para esto— NO saltaba: `undefined === 0` es falso. Se pasaba de largo y reventaba en la línea
+  // siguiente con «Cannot read properties of undefined (reading 'sample_at')», un error que no
+  // dice nada de la causa.
+  //
+  // Medido: el cron falla así desde el 10/07, o sea 28 días sin muestrear el pool. Lo tapaba el
+  // `as unknown as RawRow[]` del llamador, que le promete al compilador algo que el driver no
+  // garantiza — un cast así apaga precisamente la comprobación que habría avisado.
+  //
+  // Es el mismo patrón que `drenaje_atrasado` el mismo día (asumir `Date` donde llega cadena) y
+  // el que T-613 documentó con `rowCount`: en este proyecto, la forma que devuelve el driver se
+  // NORMALIZA, no se supone.
+  const lista: RawRow[] = Array.isArray(rows) ? rows : (rows?.rows ?? []);
+  if (lista.length === 0) {
     throw new Error('take_pool_capacity_sample() devolvió 0 filas — esperado 1');
   }
-  const row = rows[0];
+  const row = lista[0];
   const sampleAt =
     row.sample_at instanceof Date ? row.sample_at : new Date(row.sample_at);
   return {
@@ -76,7 +93,10 @@ export class PoolCapacitySamplerService {
     const sampleResult = await this.db.execute(
       sql`SELECT * FROM public.take_pool_capacity_sample()`,
     );
-    const parsed = parseSampleResult(sampleResult as unknown as RawRow[]);
+    // Sin `as unknown as RawRow[]`: ese cast le prometía al compilador una forma que el driver no
+    // garantiza, y fue lo que dejó pasar 28 días de fallos. `parseSampleResult` acepta las dos
+    // formas y decide con el dato, no con la promesa (T-613, 07/08).
+    const parsed = parseSampleResult(sampleResult as never);
 
     // Log compacto sólo cuando hay banderas rojas — evita ruido con 1.440
     // logs/día sin valor. Si todo OK, debug-level (no aparece en CloudWatch
