@@ -175,6 +175,7 @@
     "scope:medir-ley-entera": "node --env-file=.env.local scripts/scope/medir-ley-entera.cjs",
     "flota": "node scripts/flota/flota.cjs",
     "canary:rol-lector": "node scripts/canary-rol-lector.cjs",
+    "canary:target-oposicion-vacio": "node scripts/canary-target-oposicion-vacio.cjs",
     "sim:repaso-ajeno": "tsx --env-file=.env.local scripts/sim/sim-repaso-ajeno.ts",
     "sim:repaso-articulos": "tsx --env-file=.env.local scripts/sim/sim-repaso-articulos.ts",
     "sim:scope-servido": "tsx --env-file=.env.local scripts/sim/sim-scope-servido.ts",
