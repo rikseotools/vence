@@ -1042,6 +1042,51 @@ aquí.**
 
 **Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
 correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
+### [T-677] 🟠 [ABIERTO 07/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
+
+**Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
+tiene bug**: mira si hay proceso en su tmux (lo había, un `claude -p` de 2 h 31 min con T-168) y la
+antigüedad del latido se imprime al lado. Está hecho así a propósito. Lo que no existía era el
+**cruce** entre las dos señales, ni nada que mirase la máquina.
+
+**Lo medido en `flota-1` (07/08) mientras el panel daba los cuatro trabajadores en verde:**
+- **671-702 MB disponibles de 7.751 (9 %)**, y **sin swap**.
+- **carga 17,1-19,7 en 4 núcleos (4,3-4,9×)… con la CPU al 91-98 % OCIOSA.** Esa carga no es
+  cálculo: son procesos encolados esperando disco (8-9 en estado `D`).
+- **Cuatro builds de Node a la vez: 1.574 + 1.383 + 1.295 + 1.213 MB = 5,5 GB.**
+
+**El dato que cambia la conclusión:** el peso **no son los trabajadores**. Los cuatro Claude Code
+juntos ocupaban **menos de 1 GB** (81-330 MB cada uno); son sus **builds** (jest / tsc / next) los
+que pesan 1,2-1,6 GB. La primera reacción —«bajar de cuatro trabajadores a dos»— era **incorrecta**
+y se retiró al medir quién consumía la memoria. Lo que encaja es **serializar los builds** (un
+`flock` compartido, como el que ya serializa los deploys): los cuatro trabajadores siguen, y solo
+hacen cola en el momento en que se pisan. Eso queda PENDIENTE.
+
+**Lo construido (esto sí está hecho):**
+1. **Núcleo puro `lib/flota/saludMaquina.cjs`** — `clasificarMaquina()` y `turnoSinProgreso()`,
+   14 tests. Dos criterios que son los que lo hacen usable:
+   · **Carga alta con la CPU OCUPADA no alerta**: eso es una máquina trabajando. Solo acusa cuando
+     la carga se dispara **con la CPU ociosa**, que es la firma del atasco de E/S.
+   · Se mide **`available`, no `free`**: un Linux sano usa casi toda la RAM en caché.
+2. **Sonda en el supervisor** (`medirMaquina`, una conexión por máquina, no por trabajador) + la
+   máquina sale en el panel cuando no está en verde.
+3. **El cruce que faltaba**: proceso vivo + latido congelado ≥ 2 h → 🟠 con el motivo escrito.
+4. **Dos alertas proactivas** (`flota_maquina_ahogada`, `flota_turno_sin_progreso`) y sus eventos
+   (`flota_maquina_salud`, `flota_turno_sin_progreso`). Entran solos en el panel de salud del
+   sistema por el catch-all de señales `error`/`warn`; el email lo dan las reglas propias.
+   La de máquina exige **dos lecturas en 2 h**: una suelta puede ser un build legítimo.
+
+**GOTCHA que solo apareció al probarlo contra la máquina real** (y por eso se probó, en vez de
+darlo por bueno leyendo el código): la primera versión contaba los builds siguiendo la cadena de
+padres (`node` cuyo ppid es un `npm`) y devolvía **CERO** en una máquina con cuatro builds
+corriendo — el padre ya no siempre está. Se cambió a **`node` con RSS > 500 MB**, umbral que sale
+de la medición: builds 1.213-1.574 MB frente a Claude Code 81-330 MB, dos poblaciones sin solape.
+
+**Verificado contra `flota-1`**: la sonda lee los seis campos y el veredicto sale `ahogada` con los
+cuatro motivos.
+
+**PENDIENTE:** serializar los builds entre trabajadores (la causa), y desplegar el backend para que
+las dos reglas empiecen a avisar.
 
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 

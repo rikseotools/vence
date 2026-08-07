@@ -44,6 +44,7 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 // Quién espera revisor y quién espera decisión lo decide UN sitio (T-486): si el supervisor lo
 // dedujera por su cuenta de las columnas, `flota` y `backlog list` acabarían contando distinto.
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
+const SALUD = require(path.join(REPO, 'lib', 'flota', 'saludMaquina.cjs'))
 const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
 
 // Margen para comprobar que un encargo arrancó de verdad tras el `send-keys` (T-642). Corto a
@@ -208,6 +209,59 @@ function comandoDelPanel(trabajador) {
     return enMaquina(trabajador,
       `${como}tmux -L ${trabajador} list-panes -t ${trabajador} -F '#{pane_current_command}' 2>/dev/null | head -1`).trim()
   } catch { return '' }
+}
+
+/**
+ * Mide la máquina donde trabaja un trabajador: memoria, carga, CPU ociosa y builds simultáneos.
+ *
+ * Una sola conexión por máquina (no por trabajador): lo que se mide es el HOST. Devuelve `null` si
+ * no se puede leer — sin dato no se inventa un veredicto, igual que el resto del andamiaje.
+ *
+ * El juicio NO vive aquí: lo pone `lib/flota/saludMaquina.cjs`, que es puro y testeable sin ssh.
+ */
+function medirMaquina(trabajador) {
+  // `free -b` en bytes (sin locale que meta comas), loadavg del kernel, núcleos, y los builds:
+  // procesos `node` cuyo padre es `npm` — que es la firma de un jest/tsc/next lanzado por el
+  // trabajador, y no del propio Claude Code (que también es node, pero no cuelga de npm).
+  const orden = [
+    "awk '/MemTotal|MemAvailable|SwapTotal/{printf \"%s %d\\n\", $1, $2}' /proc/meminfo",
+    "awk '{print \"load1\", $1}' /proc/loadavg",
+    "printf 'nucleos %s\\n' $(nproc)",
+    "awk '/^cpu /{idle=$5; tot=0; for(i=2;i<=NF;i++) tot+=$i; printf \"idlepct %d\\n\", (idle*100)/tot}' /proc/stat",
+    // BUILDS = procesos `node` GRANDES, no «node hijo de npm».
+    // La primera versión seguía la cadena de padres (node cuyo ppid es un npm) y contaba CERO en
+    // una máquina que tenía cuatro builds de 1,2-1,6 GB: el padre `npm` ya no siempre está, o su
+    // `comm` no dice «npm». Lo que importa no es quién lo lanzó sino cuánto pesa — y el corte lo
+    // da la medición real: los builds ocupaban 1.213-1.574 MB y los Claude Code 81-330 MB, así
+    // que 500 MB separa las dos poblaciones sin ambigüedad.
+    "ps -eo comm=,rss= | awk '$1==\"node\" && $2>512000 {n++} END{printf \"builds %d\\n\", n+0}'",
+    "printf 'espera_io %s\\n' \"$(ps -eo stat --no-headers | grep -c '^D' || echo 0)\"",
+  ].join('; ')
+  let salida
+  try {
+    salida = enMaquina(trabajador, `sh -c ${citar(orden)}`)
+  } catch { return null }
+
+  const num = (clave) => {
+    const m = new RegExp(`${clave}[: ]+(\\d+)`).exec(salida)
+    return m ? Number(m[1]) : null
+  }
+  const kbAMb = (kb) => (kb == null ? null : Math.round(kb / 1024))
+  const memTotalMb = kbAMb(num('MemTotal'))
+  const memDisponibleMb = kbAMb(num('MemAvailable'))
+  if (memTotalMb == null || memDisponibleMb == null) return null
+
+  const load1Match = /load1 ([\d.]+)/.exec(salida)
+  return {
+    memTotalMb,
+    memDisponibleMb,
+    swapTotalMb: kbAMb(num('SwapTotal')) ?? 0,
+    load1: load1Match ? Number(load1Match[1]) : 0,
+    nucleos: num('nucleos') || 1,
+    cpuOciosaPct: num('idlepct') ?? 100,
+    buildsNode: num('builds') ?? 0,
+    turnosEnEsperaIo: num('espera_io') ?? null,
+  }
 }
 
 /**
@@ -506,6 +560,40 @@ async function main() {
 
       console.log('\nFLOTA')
       console.log('='.repeat(60))
+
+      // ── LA MÁQUINA, NO SOLO EL TRABAJADOR ([T-677]) ─────────────────────────────────
+      // Se vigilaba si el trabajador puede autenticarse, si su clon está al día, si produce y si
+      // su turno arranca — y nunca el SITIO donde trabaja. Medido el 07/08 en `flota-1`: cuatro
+      // trabajadores en verde y «ejecutando» sobre una máquina con el 9 % de memoria disponible,
+      // carga 19,7 en 4 núcleos y la CPU 97,7 % ociosa, o sea los cuatro turnos esperando disco.
+      // Un trabajador sano en una máquina ahogada no avanza, y eso no lo dice ninguna otra señal.
+      const saludPorMaquina = new Map()
+      for (const f of filas) {
+        const maq = MAQ.maquinaDe(f.trabajador)
+        const clave = maq ? maq.nombre : f.trabajador
+        if (saludPorMaquina.has(clave)) continue
+        const medida = medirMaquina(f.trabajador)
+        if (!medida) continue
+        saludPorMaquina.set(clave, { medida, veredicto: SALUD.clasificarMaquina(medida) })
+      }
+      for (const [maquina, { medida, veredicto }] of saludPorMaquina) {
+        if (veredicto.estado === 'ok') continue
+        const icono = veredicto.estado === 'ahogada' ? '🔴' : '🟠'
+        console.log(`  ${icono} MÁQUINA ${maquina}: ${veredicto.estado.toUpperCase()}`)
+        for (const m of veredicto.motivos) console.log(`       · ${m}`)
+        if (veredicto.estado === 'ahogada') {
+          console.log('       → los turnos no avanzan aunque el panel los pinte «ejecutando»')
+        }
+        // Rastro para la alerta proactiva: sin esto solo lo ve quien mira el panel.
+        try {
+          await sql`
+            INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+            VALUES ('fargate', ${veredicto.estado === 'ahogada' ? 'error' : 'warn'},
+                    'flota_maquina_salud', 'flota',
+                    ${`máquina ${maquina} ${veredicto.estado}: ${veredicto.motivos[0] ?? ''}`},
+                    ${sql.json({ maquina, estado: veredicto.estado, motivos: veredicto.motivos, ...veredicto.señales, medida })})`
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
+      }
       // ── LA PREGUNTA QUE EL LATIDO NO CONTESTA: ¿HAY ALGUIEN EJECUTANDO? ─────────────
       // El latido demuestra que un comando del andamiaje corrió; el claim, que alguien cogió la
       // tarea. Ninguno de los dos dice si AHORA MISMO hay un proceso trabajando. Medido el 05/08:
@@ -534,7 +622,22 @@ async function main() {
         const icono = abandonada ? '🟠' : ejecutando ? '🟢' : libre ? '🔵' : '🔴'
         const cuando = f.antiguedadMin == null ? 'sin señal nunca'
           : f.antiguedadMin < 1 ? 'ahora mismo' : `hace ${f.antiguedadMin} min`
-        console.log(`  ${icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}${ejecutando ? '  · ejecutando' : ''}`)
+        // El cruce que faltaba ([T-677]): el semáforo mira si hay PROCESO y la antigüedad del
+        // latido se imprimía AL LADO, sin juntarse nunca. Un proceso vivo con el latido congelado
+        // es un turno que no progresa — medido: `w1` con 8,5 h sin latir y un `claude -p` de
+        // 2 h 31 min que no terminaba, pintado en verde todo el rato.
+        const atascado = SALUD.turnoSinProgreso({ ejecutando, latidoMin: f.antiguedadMin, turnoMin: null })
+        console.log(`  ${atascado.sospechoso ? '🟠' : icono} ${f.trabajador.padEnd(4)} ${f.maquina.padEnd(9)} ${cuando}${ejecutando ? '  · ejecutando' : ''}`)
+        if (atascado.sospechoso) {
+          console.log(`       ⚠️ ${atascado.motivo}`)
+          try {
+            await sql`
+              INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+              VALUES ('fargate', 'warn', 'flota_turno_sin_progreso', 'flota',
+                      ${`${f.trabajador}: ${atascado.motivo}`},
+                      ${sql.json({ trabajador: f.trabajador, maquina: f.maquina, latidoMin: f.antiguedadMin, tarea: t ? t.id : null })})`
+          } catch { /* la telemetría nunca puede parar al supervisor */ }
+        }
         console.log(`       ${abandonada ? `⚠️ ${t.id} COGIDA Y SIN PROCESO — su turno terminó (relánzalo: flota -- encargar ${f.trabajador} --tarea ${t.id})`
           : t ? `${t.id} — ${String(t.title).slice(0, 60)}`
           : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'

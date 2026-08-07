@@ -2346,6 +2346,49 @@ describe('Alertas del BARAJADO (29/07, tras el incidente del piloto T-235)', () 
   });
 });
 
+describe('RULE_FLOTA_MAQUINA_AHOGADA / RULE_FLOTA_TURNO_SIN_PROGRESO (T-677, 07/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_FLOTA_MAQUINA_AHOGADA, RULE_FLOTA_TURNO_SIN_PROGRESO } = require('./alert-rules');
+
+  const maq = (n: number) => [{ n, maquinas: 'flota-1', ultimoMotivo: 'solo 9 % de memoria disponible' }];
+
+  it('una lectura suelta NO dispara: puede ser un build legítimo', () => {
+    expect(RULE_FLOTA_MAQUINA_AHOGADA.shouldFire(maq(1))).toBe(false);
+  });
+
+  it('dos lecturas en 2 h ya son un estado, no un pico', () => {
+    expect(RULE_FLOTA_MAQUINA_AHOGADA.shouldFire(maq(2))).toBe(true);
+  });
+
+  it('sin lecturas, silencio', () => {
+    expect(RULE_FLOTA_MAQUINA_AHOGADA.shouldFire(maq(0))).toBe(false);
+    expect(RULE_FLOTA_MAQUINA_AHOGADA.shouldFire([])).toBe(false);
+  });
+
+  it('el aviso desmiente la conclusión fácil (quitar trabajadores) y manda medir los builds', () => {
+    const n = RULE_FLOTA_MAQUINA_AHOGADA.buildNotification(maq(3));
+    expect(n.body).toMatch(/NO SON LOS TRABAJADORES, SON SUS BUILDS/);
+    expect(n.body).toMatch(/available/);       // el error de leer `free` en vez de `available`
+    expect(n.body).toMatch(/CPU ocupada es trabajo legítimo/);
+  });
+
+  it('un solo turno sin progreso basta: su tarea queda cogida y nadie más puede tomarla', () => {
+    expect(RULE_FLOTA_TURNO_SIN_PROGRESO.shouldFire([{ n: 1, trabajadores: 'w1', peorMin: 508 }])).toBe(true);
+    expect(RULE_FLOTA_TURNO_SIN_PROGRESO.shouldFire([{ n: 0, trabajadores: null, peorMin: null }])).toBe(false);
+  });
+
+  it('el aviso apunta primero a la máquina, que es la causa más común', () => {
+    const n = RULE_FLOTA_TURNO_SIN_PROGRESO.buildNotification([{ n: 1, trabajadores: 'w1', peorMin: 508 }]);
+    expect(n.body).toMatch(/flota_maquina_ahogada/);
+    expect(n.body).toMatch(/sigue COGIDA/);
+  });
+
+  it('tolera filas vacías (corre en un cron)', () => {
+    expect(RULE_FLOTA_TURNO_SIN_PROGRESO.shouldFire([])).toBe(false);
+    expect(RULE_FLOTA_MAQUINA_AHOGADA.shouldFire([{}] as never)).toBe(false);
+  });
+});
+
 describe('RULE_MURO_CUPO_SIN_CONSUMO (el muro para a quien no ha respondido nada — T-657, 07/08)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { RULE_MURO_CUPO_SIN_CONSUMO } = require('./alert-rules');
