@@ -30,6 +30,7 @@
 // Solo lectura.
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 
 // El evento `auth_token_minted` se muestrea al 10% para via='authjs_session' y se emite
 // SIEMPRE para via='bridge' (app/api/auth/token/route.ts, MINT_SAMPLE_RATE). Mezclarlos
@@ -41,10 +42,7 @@ const DIAS = i > 0 && process.argv[i + 1] ? parseInt(process.argv[i + 1], 10) : 
 const UMBRAL_ALERTA = 8
 
 ;(async () => {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   const { rows: [m] } = await c.query(`

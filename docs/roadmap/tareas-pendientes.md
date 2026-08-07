@@ -5902,16 +5902,6 @@ ponerse a verificar una por una.
 - **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
 - **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
 
-### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
-
-- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
-- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
-- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
-- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
-- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
-- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
-- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
-
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
@@ -8648,56 +8638,52 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 ### [T-651] ✅ [HECHA 07/08] El antifraude marcaba como bot a nuestro propio canario y lo dejaba clavado en rojo
 
-**Qué pasaba.** Nuestros canaries navegan con un navegador AUTOMATIZADO y con la cuenta
-`smoke@vence.es`. BotD (cliente → `/api/fraud/report`) los reconoce como automatización —
-correctamente, lo son — y con score alto el endpoint llamaba a `markForcedChallenge`, que pega en
-Redis una marca de «retar siempre» (`captcha:force:<sujeto>`, TTL 24 h) sobre el usuario y su
-dispositivo. A partir de ahí el gate de `/api/questions/filtered` reta a ese sujeto **sin mirar el
-volumen**.
+### [T-492] ✅ [HECHA 07/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
 
-**Medido el 07/08:** a las 13:41 se puso la marca sobre `127063e1…` (= `smoke@vence.es`, score 175,
-`severity: critical`). Desde entonces el canario `canary-questions-gate` recibía `challenge` con
-`reason: 'bot_flag'` y `served: 1, tripped: false, threshold: 500` — o sea, **1 pregunta servida de
-500** y aun así retado. Resultado: `canary_questions_gate_failed` (critical) disparando en bucle.
+- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
+- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
+- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
+- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
+- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
+- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
 
-**Por qué importa más de lo que parece.** No es que un canario moleste: es que **un canario que no
-puede volver a verde deja de ser una señal**. El que se apagó vigila precisamente que el gate
-anti-scraping no le cierre la puerta a un usuario normal — la avería más cara que puede tener ese
-subsistema — y estaba clavado en rojo por otra pieza nuestra. En 7 días la marca se puso 9 veces,
-7 de ellas sobre cuentas reales y 2 sobre la sintética.
+**✅ CIERRE (07/08): drenados los 27, `TECHO_RECETA_A_MANO` a 0.**
 
-**Arreglo (hecho, pendiente de desplegar).** La exención vive en el **punto de escritura**
-(`lib/security/challengePolicy/forceChallenge.ts`), no en el llamante: `markForcedChallenge`
-consulta `user_profiles.is_synthetic` — la fuente central que ya existía desde la migración
-`20260720_synthetic_user_central` y que el ranking ya usa para no premiar a los canaries — y no
-marca si la cuenta es sintética. Si viviera en el llamante, el próximo sitio que marque un reto
-nacería sin ella, que es exactamente cómo se pierden las protecciones (T-130).
+Migrados los 27 ficheros (17 `.cjs` vía `require('../…/lib/db/pgSsl.cjs')`, 10 `.ts` vía
+`await import('../…/lib/db/pgSsl.cjs')` — el mismo patrón que ya usaba
+`scripts/sim/sim-perfil-roto-se-cura.ts`) a `new Client(pgConfig(process.env.DATABASE_URL))` /
+`new Pool({ ...pgConfig(...), ...opciones })`, incluidos los dos prioritarios
+(`clonar-documento.ts`, `sweep-shuffle-safety-drift.ts`).
 
-- Decisión pura y exportada (`decidirMarcadoForzado`) + lector con **fail-open hacia MARCAR**: si la
-  BD no contesta no se puede afirmar que la cuenta sea nuestra, y la defensa anti-scraping no debe
-  caerse porque falle una consulta auxiliar.
-- **La exención no es silenciosa:** emite `scraping_force_challenge_exento` (info) con el motivo. Una
-  exención que no deja rastro es indistinguible de un marcado que nunca ocurrió.
-- ⚠️ **NO confundir con `esCanaryDeConfianza`** (`lib/api/syntheticTrust.ts`): aquello exime a una
-  PETICIÓN que demuestra con un secreto ser interna, y el canario del gate no lo usa a propósito
-  (su cometido es pasar por el gate como un usuario normal). Esto decide sobre la CUENTA, que es un
-  dato del servidor y nadie puede afirmar desde fuera.
+**Verificado, en capas (sin escribir a producción):**
+- Guardarraíl `pgConfigUnico.guardrail.test.ts`: **0/0** infractores (era 27), `TECHO_RECETA_A_MANO`
+  bajado a 0. Trinquete cerrado: un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- Los 17 `.cjs`: `node --check` (sintaxis) + resolución real de la ruta relativa a `pgSsl.cjs`
+  (`fs.existsSync` sobre la ruta calculada) — las 17, correctas.
+- Los 10 `.ts`: la misma resolución de ruta sobre el `await import(...)` — las 11 ocurrencias (10
+  ficheros + las 2 de `admin-token.ts`), correctas. `tsc --noEmit` de proyecto completo revienta por
+  OOM (no es de esta tarea); comprobado archivo a archivo con flags mínimas — los únicos errores que
+  salen son de líneas que esta tarea NO tocó (imports `@/lib/shuffle/...` sin resolver por faltar el
+  `tsconfig.json` del proyecto en el check aislado, y un `@ts-expect-error` preexistente en otra
+  línea), confirmado comparando número de línea contra el diff.
+- **Dos smokes de conexión REAL contra RDS** (con `VENCE_LECTOR_URL`, sin escribir nada):
+  `sweep-shuffle-safety-drift.ts --json` conectó limpio y devolvió su JSON (`{"regressions":0,…}`,
+  sin error de certificado — el bug exacto que esto arregla); `canary-cobertura-dispositivos.cjs`
+  conectó (pasó la capa TLS) y solo entonces topó con `permission denied for table user_profiles`
+  — un hueco de GRANT/RLS de mi credencial de flota restringida, **no** un fallo de esta migración
+  (misma familia que [T-573]/[T-574], fuera de este alcance).
+- Suite `__tests__/guardrails` completa: **125/127 en verde, 2 skip** (sin `DATABASE_URL`) — sin
+  regresión. Un fallo de `shuffleRoundtripBD.test.ts` visto de pasada con `DATABASE_URL` puesta al
+  rol de coordinación (4 tablas) es el mismo hueco de permisos, en un fichero que esta tarea no toca.
 
-**Capas:** 8 unit (`__tests__/security/forceChallengeSintetica.test.ts`, núcleo puro + puerta con el
-lector mockeado) y guardarraíl `__tests__/guardrails/retoForzadoPuertaUnica.guardrail.test.ts`, que
-exige que nadie construya `captcha:force:` fuera de la puerta y que todo llamante pase el `userId`
-(sin él la exención es imposible). Los 43 tests de seguridad ya existentes siguen verdes.
+**NO hecho, a propósito (fuera de alcance de esta ficha):** no se ha EJECUTADO la lógica de negocio
+completa de los 27 (muchos exigen argumentos concretos, otros escriben, y mi credencial de flota es
+más estrecha que la de un run real) — solo se ha verificado que la CAPA DE CONEXIÓN (el bug que
+[T-377] diagnosticó) queda arreglada en los 27, con dos pruebas end-to-end reales de que el patrón
+funciona. Ejecutar cada script con sus argumentos reales, si hace falta, es trabajo de quien lo use.
 
-**Qué falta:** verificar en producción tras el deploy que (a) el canario `canary-questions-gate`
-vuelve a verde y (b) aparece algún `scraping_force_challenge_exento` cuando el canario de navegador
-se autoreporte. La marca viva caduca sola por TTL (24 h desde el 07/08 13:41), pero **se rearma en
-cada pasada del canario de navegador** mientras el arreglo no esté desplegado.
 
-**Cabos sueltos que deja a la vista (NO son esta tarea):**
-- No hay forma de **levantar una marca** de reto forzado sobre un usuario REAL mal marcado: hoy solo
-  se puede esperar el TTL de 24 h. El 07/08 seis premium recibieron el captcha (575-1.200 servidas en
-  2 días; una lo vio 33 veces) — si alguno fuera falso positivo, no tenemos herramienta.
-- Si el umbral de 500/día es el correcto para premium es decisión de producto, sin tocar aquí.
 ### [T-663] ✅ [HECHA 07/08] La resurrección de un trabajador estaba escrita, se invocaba y NO PODÍA EJECUTARSE: dos permisos que faltaban, y w1 seis horas muerto con su tarea cogida
 
 - **Lo que se veía:** `w1` llevaba **6 horas parado** con T-168 reclamada y sin proceso. El supervisor lo contaba como **ocupado**, así que tampoco le mandaba trabajo nuevo — un trabajador de cuatro, invisible. Lo mismo le había pasado a `w3`.

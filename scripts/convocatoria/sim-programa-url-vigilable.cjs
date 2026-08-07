@@ -25,6 +25,7 @@
 //
 require('dotenv').config({path:'.env.local'});
 const {Client}=require('pg');
+const {pgConfig}=require('../../lib/db/pgSsl.cjs');
 const {execFileSync}=require('child_process');
 const fs=require('fs');
 const {clasificarVigilancia}=require('../../lib/convocatoria/seguimientoVigilable.cjs');
@@ -48,7 +49,7 @@ function fetchTexto(url){
   return {status:200,texto:raw};
 }
 (async()=>{
-const c=new Client({connectionString:process.env.DATABASE_URL.split('?')[0],ssl:{rejectUnauthorized:false}});await c.connect();
+const c=new Client(pgConfig(process.env.DATABASE_URL));await c.connect();
 const r=await c.query(`SELECT o.slug, cv.programa_url url,
   (SELECT count(*) FROM user_profiles up WHERE up.target_oposicion=replace(o.slug,'-','_')) usuarios
  FROM oposiciones o JOIN convocatorias cv ON cv.oposicion_id=o.id AND cv.is_current

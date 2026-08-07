@@ -63,7 +63,8 @@ ${texto.slice(0, 90_000)}`
 }
 
 ;(async () => {
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   const doc = (await c.query(

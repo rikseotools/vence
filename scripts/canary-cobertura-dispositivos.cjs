@@ -27,6 +27,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
 
 // La tabla nace el 17/04/2026: antes de esa fecha la ausencia no significa nada.
 const DESDE_QUE_EXISTE = '2026-04-17'
@@ -42,10 +43,7 @@ const ROJO = 60
 const AMBAR = 80
 
 async function main() {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   const { rows } = await c.query(

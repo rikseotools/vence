@@ -19,8 +19,9 @@
 // Medido el 27/07/2026: tcae_murcia 37/6, tcae_galicia 19/3, auxiliar_administrativo_clm 12/9.
 require('dotenv').config({path:'.env.local'});
 const {Client}=require('pg');const fs=require('fs');
+const {pgConfig}=require('../../lib/db/pgSsl.cjs');
 const PT=process.argv[2], G=require(process.argv[3]), OUT=process.argv[4], FUENTE=process.argv[5]||'boletín';
-(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL.split('?')[0],ssl:{rejectUnauthorized:false}});await c.connect();
+(async()=>{const c=new Client(pgConfig(process.env.DATABASE_URL));await c.connect();
 const prev=(await c.query(`SELECT t.topic_number n, v.state, v.verdict, left(coalesce(v.findings->>'note',''),80) nota
  FROM topics t JOIN topic_scope_verification v ON v.topic_id=t.id WHERE t.position_type=$1 AND t.is_active`,[PT])).rows;
 const by={};prev.forEach(x=>by[x.n]=x);

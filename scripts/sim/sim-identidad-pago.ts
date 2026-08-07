@@ -29,7 +29,8 @@ import { sessionCookieNameFor } from '../../lib/sim/session'
 const BASE = process.argv.find((a) => a.startsWith('--url'))?.split('=')[1] || 'http://localhost:3000'
 
 async function main() {
-  const c = new Client({ connectionString: process.env.DATABASE_URL!.split('?')[0], ssl: { rejectUnauthorized: false } })
+  const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const victima = (await c.query("select id, email from user_profiles where email='daluamva@gmail.com'")).rows[0]
   const otro = (await c.query("select id, email from user_profiles where plan_type='free' and email <> $1 order by updated_at desc limit 1", [victima.email])).rows[0]
