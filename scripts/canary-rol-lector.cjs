@@ -67,6 +67,11 @@ const DEBE_LEER = [
   // [T-639] canario de T-450 (cupo vs respuestas reales): sin esto no se puede comparar el cupo
   // consumido contra las respuestas de verdad. Ver 20260807_rls_daily_question_usage_lector.sql.
   ['daily_question_usage', 'el cupo diario consumido, para diagnosticar fugas de cupo'],
+  // [T-108] "Claude en el bucle" del runbook OEP: sin esto ninguna sesión puede ver una sola
+  // señal pendiente para triar (RLS activo, cero políticas — mismo mecanismo que test_questions/
+  // tests). Ver 20260807_rls_oep_detection_signals_lector.sql.
+  ['oep_detection_signals', 'las señales del radar de OEP pendientes de revisar'],
+  ['detection_sources', 'qué fuentes vigila el radar y si están sanas (salud del radar)'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */
