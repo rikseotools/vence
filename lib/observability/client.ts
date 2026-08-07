@@ -231,6 +231,14 @@ export type ClientEventType =
   // entender quién la mueve / oculta / re-activa y así pulir el diseño (en móvil
   // tapaba contenido). metadata.action ∈ {'drag','hide','show'}. userId va auto.
   | 'daily_goal_banner_action'
+  // [T-569] El loader de /perfil encontró un target_oposicion inválido (UUID, JSON,
+  // slug que no existe en el registro del frontend) y lo vació SOLO en pantalla —
+  // antes esto era un console.warn suelto, capturado como 'console_warn' (BENIGNO,
+  // lib/observability/benignSignals.ts), indistinguible del ruido. Evento propio para
+  // poder vigilar el volumen real: cada disparo es una cuenta con la oposición
+  // ilegible desde el cliente (592 usuarios así, ver [T-397]). metadata.valorInvalido
+  // (truncado, sin PII — es un slug/UUID, no un dato personal).
+  | 'perfil_target_oposicion_invalido'
   // Flechitas de tendencia (▲/▼ de 30 días) en el temario: quién las oculta /
   // re-activa, para entender la fricción de la métrica. metadata.action ∈
   // {'show','hide','toggle_failed'}. userId va auto.
