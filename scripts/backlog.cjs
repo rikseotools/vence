@@ -22,6 +22,7 @@
 //   node scripts/backlog.cjs wake T-042                # la despierta antes de tiempo
 //   node scripts/backlog.cjs sync                      # importa ids nuevos del markdown
 //   node scripts/backlog.cjs archive T-042 --evidencia "…" # confirma que se vio funcionar en prod (T-392)
+//   node scripts/backlog.cjs mover T-042                # mueve a "## Hechas" a mano (done ya lo hace sola)
 //
 // El session-id se resuelve solo: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
 'use strict';
@@ -35,11 +36,21 @@ const loadPg = () => require('postgres');
 const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, puedeMarcarseVerificada, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 // El PLAZO («tiene que estar antes de») es lo contrario de snooze («no la cojas antes de»).
 const { clasificarPlazo, validarPlazo, tareasConPlazo } = require(path.join(__dirname, '..', 'lib', 'backlog', 'plazo.cjs'));
+// Único escritor del markdown para el cierre Abiertas↔Hechas (T-387): sin esto, cada sesión
+// movía la ficha a mano con su propio script de usar y tirar.
+const { moverAHechas, moverAAbiertas } = require(path.join(__dirname, '..', 'lib', 'backlog', 'moverFicha.cjs'));
+const { leerTransformarEscribir } = require(path.join(__dirname, '..', 'lib', 'backlog', 'escrituraSegura.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
 const MD_REL = path.join('docs', 'roadmap', 'tareas-pendientes.md');
 const MD = path.join(REPO, MD_REL);
+
+/** Fecha de hoy en `dd/mm`, formato que ya usan las marcas `[HECHA …]` del fichero real. */
+function fechaCortaHoy() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 /**
  * ¿La ficha de este id ESTUVO alguna vez en el markdown? Es la prueba que separa «me la han
@@ -1024,8 +1035,23 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           console.log(`   ⏱ ${dur} — declaraste «${row.effort}» y salió MÁS CORTA de lo previsto.`);
         }
       }
-      console.log(`   ⚠️ AHORA mueve su entrada a "## Hechas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
+      // Mover Abiertas→Hechas en el markdown (T-387): antes esto era «hazlo tú», y cada sesión lo
+      // hacía con su propio script ad-hoc — la causa medida de 91 commits/día sobre este fichero.
+      // Fail-open a la instrucción manual: un fallo de FORMATO en el markdown (ficha ya movida a
+      // mano, cabecera con una forma rara, etc.) no puede bloquear el cierre en BD, que ya pasó.
+      try {
+        const r = leerTransformarEscribir(MD, (md) => moverAHechas(md, row.id, fechaCortaHoy()));
+        if (r.ok) {
+          console.log(`   📝 movida a "## Hechas" en tareas-pendientes.md (marca ✅ [HECHA ${fechaCortaHoy()}])`);
+        } else if (r.motivo === 'ya_cerrada') {
+          console.log('   📝 su cabecera ya llevaba ✅ — no hacía falta mover nada.');
+        } else {
+          console.log(`   ⚠️ no se pudo mover sola (${r.motivo}${r.detalle ? `: ${r.detalle}` : ''}) — muévela tú:`);
+          console.log(`      "## Hechas" en docs/roadmap/tareas-pendientes.md (el guardarraíl de CI falla si sigue en "Abiertas")`);
+        }
+      } catch (e) {
+        console.log(`   ⚠️ no se pudo mover sola (${e.message}) — muévela tú a "## Hechas" en tareas-pendientes.md`);
+      }
       // Cerrar es el momento en que el contexto está más cargado y a punto de tirarse (T-498).
       await sugerirSiguiente(s, id, sid);
     }
@@ -1074,8 +1100,18 @@ async function despertarPorDeploy(s, shas, opts = {}) {
          WHERE id = ${id} RETURNING id, title`;
       console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
+      // Mismo remedio que en `done` (T-387): mover sola en vez de dejarlo como aviso manual.
+      try {
+        const r = leerTransformarEscribir(MD, (md) => moverAAbiertas(md, row.id, fechaCortaHoy()));
+        if (r.ok) {
+          console.log(`   📝 devuelta a "## Abiertas" en tareas-pendientes.md (marca [ABIERTO ${fechaCortaHoy()}])`);
+        } else {
+          console.log(`   ⚠️ no se pudo devolver sola (${r.motivo}${r.detalle ? `: ${r.detalle}` : ''}) — muévela tú:`);
+          console.log(`      "## Abiertas" en docs/roadmap/tareas-pendientes.md (el guardarraíl de CI falla si se queda en "Hechas")`);
+        }
+      } catch (e) {
+        console.log(`   ⚠️ no se pudo devolver sola (${e.message}) — muévela tú a "## Abiertas" en tareas-pendientes.md`);
+      }
     }
 
     else if (cmd === 'release') {
@@ -1935,13 +1971,12 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         process.exit(3);
       }
 
-      const md = fs.readFileSync(MD, 'utf8');
-      const r = insertarFicha(md, id, bloque);
+      const r = leerTransformarEscribir(MD, (md) => insertarFicha(md, id, bloque));
       if (!r.ok) {
-        console.error(`❌ NO insertada (${r.motivo}): ${r.detalle}`);
+        const reintenta = r.motivo === 'cambio_bajo_los_pies';
+        console.error(`❌ NO insertada (${r.motivo}): ${r.detalle}${reintenta ? ' — vuelve a intentarlo' : ''}`);
         process.exit(2);
       }
-      fs.writeFileSync(MD, r.md);
       console.log(`✅ ficha ${id} colocada bajo «## Abiertas» (línea ${r.linea}) — ninguna ficha previa se ha perdido`);
       console.log(`   ahora:  node scripts/backlog.cjs sync`);
     }
@@ -1956,21 +1991,53 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       // booleanos van por `includes`, como `--all` y el `--apply` de `reap`. Escrito con
       // `arg('--apply')` no aplicaba nunca — falló hacia el lado seguro, pero no hacía su trabajo.
       const APLICAR = process.argv.includes('--apply');
-      const md = fs.readFileSync(MD, 'utf8');
-      const r = reubicarHuerfanas(md);
-      if (!r.ok) { console.error(`❌ no se ha tocado nada (${r.motivo})`); process.exit(2); }
+      // En simulación no se escribe nada, así que la relectura-antes-de-escribir no aplica: se
+      // calcula sobre una lectura suelta. Al aplicar de verdad se pasa por la puerta única.
+      if (!APLICAR) {
+        const md = fs.readFileSync(MD, 'utf8');
+        const r = reubicarHuerfanas(md);
+        if (!r.ok) { console.error(`❌ no se ha tocado nada (${r.motivo})`); process.exit(2); }
+        if (!r.movidas.length) {
+          console.log('✅ ninguna ficha VIVA fuera de sección.');
+          if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas: se dejan — su sitio sería «## Hechas» y hay tres)`);
+          return;
+        }
+        console.log(`🔍 SIMULACIÓN (usa --apply para escribir) ${r.movidas.length} ficha(s) VIVA(s) al final de «## Abiertas»:`);
+        for (const id of r.movidas) console.log(`   · ${id}`);
+        if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas se quedan donde están, a propósito)`);
+        return;
+      }
+      const r = leerTransformarEscribir(MD, reubicarHuerfanas);
+      if (!r.ok) {
+        const reintenta = r.motivo === 'cambio_bajo_los_pies';
+        console.error(`❌ no se ha tocado nada (${r.motivo})${reintenta ? ' — vuelve a intentarlo' : ''}`);
+        process.exit(2);
+      }
       if (!r.movidas.length) {
         console.log('✅ ninguna ficha VIVA fuera de sección.');
         if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas: se dejan — su sitio sería «## Hechas» y hay tres)`);
         return;
       }
-      console.log(`${APLICAR ? '✍️  moviendo' : '🔍 SIMULACIÓN (usa --apply para escribir)'} ${r.movidas.length} ficha(s) VIVA(s) al final de «## Abiertas»:`);
+      console.log(`✍️  movidas ${r.movidas.length} ficha(s) VIVA(s) al final de «## Abiertas»:`);
       for (const id of r.movidas) console.log(`   · ${id}`);
       if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas se quedan donde están, a propósito)`);
-      if (APLICAR) {
-        fs.writeFileSync(MD, r.md);
-        console.log('✅ escrito. Ninguna ficha se ha perdido (comprobado antes de escribir).');
+      console.log('✅ escrito. Ninguna ficha se ha perdido (comprobado antes de escribir).');
+    }
+
+    // ── MOVER UNA FICHA A "## Hechas" A MANO (T-387) ─────────────────────────────────────────
+    // `done` ya lo hace sola al cerrar; este comando es el escape para el resto de casos: una
+    // ficha que `done` no pudo mover sola (avisa por qué), o una que alguien cerró a mano en la
+    // BD sin pasar por el CLI.
+    else if (cmd === 'mover') {
+      const id = process.argv[3];
+      if (!id) { console.error('Uso: backlog.cjs mover <T-xxx>   (a «## Hechas»; exige que la ficha ya esté cerrada)'); process.exit(2); }
+      const r = leerTransformarEscribir(MD, (md) => moverAHechas(md, id, fechaCortaHoy()));
+      if (!r.ok) {
+        const reintenta = r.motivo === 'cambio_bajo_los_pies';
+        console.error(`❌ NO movida (${r.motivo}${r.detalle ? `: ${r.detalle}` : ''})${reintenta ? ' — vuelve a intentarlo' : ''}`);
+        process.exit(2);
       }
+      console.log(`✅ ${id} movida a «## Hechas» (marca ✅ [HECHA ${fechaCortaHoy()}]) — ninguna ficha previa se ha perdido`);
     }
 
     // ── EL EMBUDO DE PREGUNTAS (T-493) ───────────────────────────────────────────────────────
@@ -2167,7 +2234,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | archive <id> --evidencia "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | archive <id> --evidencia "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | mover <id> | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);

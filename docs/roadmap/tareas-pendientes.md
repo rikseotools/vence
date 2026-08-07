@@ -5473,6 +5473,56 @@ esas preguntas no le habrían salido nunca.
 - **Por qué en ese orden:** (1) es barato y quita el daño IRREVERSIBLE (corromper el fichero de otro). (2) es más grande y quita la fricción diaria. Hacer solo (2) dejaría vivo el "edito a mano con un script mío".
 - **Relacionadas:** [T-338] (la duplicada), `docs/runbooks/tareas-pendientes.md`.
 
+**✅ Capa (1), la parte más concreta y más usada de las tres (07/08).**
+
+`ficha nueva|mover|editar` tenía tres verbos y solo el primero existía (`ficha --texto`, de T-515).
+El que faltaba y el que de verdad explica el volumen medido —**mover**, el paso «cierra en BD →
+mueve en markdown» que corre en TODA tarea de TODA sesión, no un edge case— ya no es un script
+ad-hoc: es código con tests.
+
+- **`lib/backlog/moverFicha.cjs`** (función PURA, sin tocar disco): `moverAHechas`/`moverAAbiertas`
+  localizan el bloque de una ficha por CABECERA (no por texto suelto — no se confunde con una cita
+  `[T-nnn]` dentro del cuerpo de otra), aplican la marca `✅ [HECHA dd/mm]` / `[ABIERTO dd/mm]`
+  reescribiendo la cabecera de verdad (el ✅ va DELANTE del emoji de prioridad, la convención
+  mayoritaria medida en el fichero real — un simple sustituir-en-sitio la dejaba detrás, que es
+  como se ve la forma T-442 `✅ ✅ 🟠`, la prueba viva de que esto se venía haciendo a mano y mal),
+  y mueven el bloque a la sección correcta con el mismo invariante de NO-PÉRDIDA que ya usaba
+  `insertarFicha.cjs` (recuento de ids antes/después). **Gotcha real, no hipotético:** los emojis
+  de prioridad son pares subrogados (fuera del BMP) — una clase de caracteres `[🔴🟠🟡🟢]` SIN el
+  flag `u` de la regex los rompe en dos unidades sueltas y el grupo opcional deja de casar el
+  emoji entero. Lo cazaron los propios tests, no una lectura de código.
+- **`lib/backlog/escrituraSegura.cjs`**: la puerta única de verdad — control de concurrencia
+  OPTIMISTA (leer → transformar → **releer justo antes de escribir** → si cambió, abortar sin
+  escribir). Es la «relectura antes de escribir» que pedía la ficha, y es la comprobación real:
+  un test simula la carrera exacta (algo escribe en el hueco) y confirma que NO se pisa lo ajeno.
+- **`done` y `reopen` ya NO dejan «AHORA muévela tú»**: mueven solas, con plan B textual si el
+  movimiento automático no puede (formato no reconocido, ficha ya movida a mano…) — fail-open a
+  propósito, para que un problema de FORMATO del markdown nunca bloquee un cierre que ya pasó en
+  BD. `ficha --texto` (insertar) y `reubicar --apply` (huérfanas) se retrofitearon a la misma
+  puerta: antes escribían con `fs.writeFileSync` suelto, cada uno a su manera.
+- **Verificado, en capas:** 21 tests de `moverFicha.cjs` + 3 de `escrituraSegura.cjs` (incluida la
+  carrera simulada) + guardarraíl `backlogMoverAlCerrar.guardrail.test.ts` (5 tests: comprueba que
+  `done`/`reopen` siguen LLAMANDO a la lógica nueva, no que alguien la desconectó al tocar algo
+  cerca). Y **contra el fichero real**, no solo el fixture: copiado a `/tmp`, cerrado y reabierto
+  T-634 de verdad por la puerta completa (`leerTransformarEscribir` + `moverAHechas`/`moverAAbiertas`)
+  — 602 fichas antes, 602 después, cabecera exacta esperada, `parseBacklogMarkdown` (el mismo
+  parser que usa TODO el CLI) confirma el estado correcto en cada paso del ida-y-vuelta.
+- **Esta ficha se cierra CON la herramienta que acaba de construir**: el `done` que la cierra es
+  la primera vez que el camino nuevo mueve algo en el fichero real de producción, no en una copia.
+
+**Lo que esta pasada NO cubre — para quien coja la continuación:**
+- **`editar`** (el tercer verbo: insertar un párrafo/addendum en el CUERPO de una ficha ya
+  existente, como este mismo bloque) sigue siendo edición manual. Es una operación más difusa que
+  `nueva`/`mover` — no hay un patrón ad-hoc único y repetido que sustituir, sino "cualquier texto,
+  en cualquier sitio del cuerpo" — y no es la causa concreta que sostiene el número de 91
+  commits/día (ésa es la vuelta de cada cierre, ya cubierta). Candidata a acotarse igual si vuelve
+  a medirse.
+- **Capa (2)** (una ficha por fichero) sigue intacta: es lo único que mata los conflictos de GIT
+  entre sesiones tocando fichas distintas, y esta pasada no los toca — mueve dentro del MISMO
+  fichero, así que dos cierres simultáneos de fichas distintas siguen pudiendo chocar al fusionar
+  ramas. Migración de ~360 fichas + adaptar guardarraíles/sync a leer un directorio: tarea propia,
+  de tamaño de sesión completa, no una continuación de una tarde.
+
 
 
 ### [T-380] 🟠 [ABIERTO 31/07] Registrar la fuente oficial de las 153 leyes sin vigilante (4.518 preguntas) — el research por-ley que bloquea toda la vigilancia
