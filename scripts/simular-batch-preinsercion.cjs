@@ -25,6 +25,11 @@ const {
   aplicarLeyPorDefecto,
 } = require(path.join(__dirname, '..', 'lib/generacion/simularBatch.js'))
 const { equilibrarLote } = require(path.join(__dirname, '..', 'lib/generacion/transponerPosicion.js'))
+// [T-115/T-624] Solo LEE articles/questions (el propio docstring del fichero lo dice: "en
+// SOLO LECTURA"); usaba DATABASE_URL sin más, así que un trabajador con DATABASE_URL
+// restringido a coordinación (T-539) no podía simular nada aunque tuviera VENCE_LECTOR_URL
+// exportado. Resolución única en lib/db/negocioSoloLectura.cjs (T-624).
+const { urlLecturaNegocio } = require(path.join(__dirname, '..', 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const FILE = process.argv[2]
 // Ley POR DEFECTO del lote, igual que en `insertar-batch-generado.cjs <fichero> <law_slug> <batch>`.
@@ -57,7 +62,7 @@ const etiqueta = (q, i) => `Q${i + 1}${q.article_label ? ` (${q.article_label})`
   }
 
   const c = new Client({
-    connectionString: (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, ''),
+    connectionString: urlLecturaNegocio().replace(/[?&]sslmode=require/, ''),
     ssl: { rejectUnauthorized: false },
   })
   await c.connect()
