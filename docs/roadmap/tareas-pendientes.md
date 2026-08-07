@@ -14032,6 +14032,69 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **7) Límite conocido y TESTEADO de la exención por materia** (`epigrafeNamesRubrica`): *"Delitos contra la Administración de Justicia"* se sigue eximiendo en un epígrafe que solo nombra *"Delitos contra la Administración Pública"*, porque comparten la frase entera menos el sustantivo final. Es un **falso negativo aceptado**; está fijado en un test para que nadie lo lea como cubierto. Y **no volver a la regla del último token**: la probé, y la medición cazó que rompía el Estatuto de CyL (19 artículos que el epígrafe SÍ pide).
 - **8) Método que sí funciona, en orden:** `--suspects` (mira `consenso_banco`) → `--peers` (¿hay hermano verificado con epígrafe parecido?) → si no lo hay, `arbol-ley-boe.cjs "<short_name>" --rubricas` y mapear el epígrafe a bloques → `verify:scope plan/apply`. **NUNCA** recortar por rango numérico ni por cercanía, y **NUNCA** teclear el id del BOE de memoria (existen DOS "LO 14/2007").
 
+> **07/08 (w1) — `tcae_sermas_madrid` triado (7 sospechosos, 39 usuarios). PLAN LISTO, NO APLICADO — un
+> worker no tiene escritura en `topic_scope`, y el propio clasificador lo manda a puerta de juicio.**
+>
+> **✅ T5 · LPRL (Ley 31/1995) — plan medido y guardado, pendiente de `--include-gate` + criterio
+> humano.** Evidencia CONVERGENTE, no una sola señal:
+>  - `consenso_banco`: 22/95 temas (23%) la tienen entera → `anomalia`, mediana de los que acotan **~24 arts**.
+>  - Estructura oficial (`arbol-ley-boe.cjs "LPRL" --rubricas`, BOE-A-1995-24292): el epígrafe pide
+>    literalmente *"derechos y obligaciones"* → **Cap. III, arts 14-29 (16 arts)** — y *"consulta y
+>    participación de los trabajadores"* → **Cap. V, arts 33-40 (8 arts)** — coincide PALABRA POR
+>    PALABRA con la rúbrica oficial de esos dos capítulos. 16+8 = **24**, el mismo número que la
+>    mediana del banco, por una vía independiente (lectura de la fuente, no estadística).
+>  - **El único hermano que discrepa (`celador_sermas_madrid` T9, 81% de parecido, ENTERA,
+>    "verificado") es el mismo falso verde ya documentado en el punto 4 de arriba** — comprobado, no
+>    supuesto: `topic_scope_verification` da `verified_by='claude_direct'`, `agent_run_id='--run'`
+>    (fuera del pipeline real), `state='stale'`, y sus `findings` solo comprueban duplicados de ley
+>    entre temas hermanos — **nunca preguntó si el scope estaba acotado al epígrafe**. No respalda
+>    "entera" más de lo que respaldaba la LOPJ de la SS.
+>  - **Medido, no supuesto:** las 542 preguntas que saldrían de este tema (554 quedan, de 1096
+>    activas) siguen sirviéndose ÍNTEGRAS en otros 20 temas del banco que escopan la LPRL (varios
+>    con la ley entera) — cero artículo huérfano, comprobado uno a uno contra `topic_scope` de esos
+>    20 temas.
+>  - **Plan generado y guardado** (no en `/tmp`, que es efímero): `scripts/scope/plan-t154-tcae-sermas-madrid-t5-lprl-w1.json`
+>    (`node scripts/verify-topic-scope.cjs plan tcae_sermas_madrid <ese fichero>`). El propio
+>    clasificador determinista lo manda a **`judgment_gate` / `impacto_alto`** (542 > umbral 150) —
+>    coincide con mi propia cautela: es un recorte grande y merece que alguien con permiso lo mire
+>    antes de `apply --include-gate`, no un auto_safe.
+> - **⏳ T2 · Ley 55/2003 (Estatuto Marco) — mapeo hecho, NO verificado del todo, dejar para la
+>   siguiente sesión.** `consenso_banco` da `insuficiente` (38%, ambiguo). Estructura oficial
+>   (BOE-A-2003-23101, 14 capítulos): el epígrafe nombra *"objeto y ámbito de aplicación"* (Cap. I),
+>   *"clasificación de personal estatutario"* (Cap. II), *"derechos y deberes"* (Cap. IV),
+>   *"situaciones"* (Cap. XI), *"selección"* (Cap. VI, "provisión de plazas, selección…"),
+>   *"incompatibilidades"* (Cap. XIII), *"régimen disciplinario"* (Cap. XII) y *"modelo de desarrollo
+>   profesional"* (Cap. VIII, "carrera profesional", 1 solo artículo — mapeo más débil que el resto).
+>   Serían 40 de 84 arts. **NO calculé el impacto en preguntas ni comprobé cobertura en otros
+>   temas** — falta eso antes de convertirlo en plan.
+> - **⏳ T2 · LOPS (Ley 44/2003) — `consenso_banco` dice `norma` (75% legítima) pero la lectura
+>   literal DISCREPA, y no lo he resuelto.** El epígrafe (*"objeto, ámbito de aplicación, ejercicio
+>   de las profesiones sanitarias, formación y desarrollo profesional"*) mapea a Preliminar+I+II+III
+>   (BOE-A-2003-21340, 39 de 50 arts) y deja fuera Título IV *"ejercicio privado"* (7 arts) y Título V
+>   *"participación de los profesionales"* (4 arts) — 11 arts de posible exceso, MENOR que el de LPRL
+>   y en tensión directa con la señal de banco. **SOSPECHO que puede ser un recorte legítimo pero
+>   pequeño, o que el banco tiene razón y "formación y desarrollo profesional" se entiende ampliado
+>   con la práctica privada** — no lo sé, y por eso no lo llevé a plan. Antes de tocarlo: mirar 2-3
+>   de los hermanos que SÍ acotan para ver qué título excluyen ellos.
+> - **⏳ Cluster T3 (4 sospechosos, un mismo epígrafe de "Estructura Sanitaria de la Comunidad de
+>   Madrid" cubriendo 4 normas a la vez: LOSCAM, Decreto 246/2023, Convenio Colectivo Personal
+>   Laboral CM, Ley 11/2017 Buen Gobierno SERMAS) — sin tocar.** Todas `insuficiente` (1-4 temas en
+>   el banco, punto ciego estructural #5 de arriba). Aviso de lectura rápida, SIN verificar: el
+>   epígrafe enumera submaterias explícitas para LOSCAM (*"Las áreas Sanitarias. Red Sanitaria Única…
+>   Derechos y deberes… El Servicio Madrileño de Salud"*) pero NO para Ley 11/2017 (solo cita el
+>   nombre de la ley completo) — el mismo patrón que hizo legítimas a LO 1/2004 y RD 1221/1992 en la
+>   SS (norma citada por nombre entero = probable "toda la norma"; norma con submaterias listadas =
+>   candidata a recorte). Necesitan el documento oficial (Convenio Colectivo y Decreto autonómico no
+>   están en el BOE consolidado), no está hecho.
+> - **Herramientas usadas, ninguna nueva:** `--suspects`, `--peers`, `arbol-ley-boe.cjs --rubricas`,
+>   `verify-topic-scope.cjs plan` — las cuatro YA registradas. Gotcha operativo para la siguiente
+>   sesión: los tres scripts leen `DATABASE_URL` directamente y un worker solo tiene ahí
+>   `vence_coordinacion` (sin acceso a `topic_scope`/`topics`/`laws`) — hace falta invocarlos con
+>   `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/…` para que lean con el rol de lectura real; y
+>   siguen siendo de solo-LECTURA en los subcomandos `--suspects`/`--peers`/`plan` (confirmado
+>   leyendo el código, no solo probándolo) — `--record`/`apply` sí escriben y un worker no puede
+>   correrlos.
+
 ### [T-148] 🟠 [ABIERTO 26/07 · 12 de 25 temas · CERO sospechosos sin adjudicar] Guardia Civil: 58 de 64 scopes son "toda la ley" contra un temario oficial MUY selectivo
 
 > **🔍 REVISADA el 06/08/2026 — plan verificado contra RDS cifra a cifra, listo para aplicar.**
