@@ -244,7 +244,12 @@ async function main() {
  */
 async function publicarHallazgos() {
   try {
-    await sql`DELETE FROM content_health_findings WHERE kind = 'oposicion_incompleta' AND oposicion_slug = ${slug}`
+    // Acotado también por origen (T-455, 07/08/2026): desde que `audit:served` publica en el
+    // MISMO kind+slug (misma tabla, mismo destino en /admin/contenido), un DELETE que solo
+    // mirara kind+slug haría que la última herramienta en correr borrara los hallazgos de la
+    // otra en vez de solo los suyos — "reemplaza, no acumula" tiene que ser POR HERRAMIENTA,
+    // no por slug entero.
+    await sql`DELETE FROM content_health_findings WHERE kind = 'oposicion_incompleta' AND oposicion_slug = ${slug} AND detail->>'origen' = 'audit:oposicion'`
     for (const h of hallazgos) {
       await sql`
         INSERT INTO content_health_findings (id, category, severity, oposicion_slug, kind, message, detail, computed_at)
