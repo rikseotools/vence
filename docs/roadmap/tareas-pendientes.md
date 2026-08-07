@@ -4196,6 +4196,62 @@ generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin r
 - **🔲 PUNTOS 1 y 2 — NO abordados, y por qué no es evasión.** El punto 1 (disciplina: el supervisor no opera en árbol ajeno) no es codeable — es una instrucción de comportamiento, y ya está escrita en varios sitios (comentarios de `lib/flota/actualizacion.cjs`, esta misma ficha) sin que evitara el incidente. El punto 2 (protección real contra un `checkout`/`reset`/`clean` manual desde una sesión con Bash arbitrario) sigue siendo, tal como lo deja la ficha original, "a decidir": interceptar `git` en sí (un wrapper que rechace verbos destructivos fuera del árbol propio) es una intervención de mucho más alcance —afecta a TODO uso de git en la máquina, no solo al de la flota— y con riesgo real de romper flujos legítimos; no es del tamaño de "esfuerzo: rato" y merece su propia ficha con diseño discutido, no una decisión unilateral de un worker. Candidato a ficha propia si Manuel quiere que se aborde.
 - **Relacionada añadida:** [T-615] (el mismo criterio, el hueco gemelo que dejó sin cerrar: aquel arregló "sin BD", este arregla "con BD, latido real, proceso confirmado en 0").
 
+> **✅ RESPUESTA (07/08, w4).** El diagnóstico ya estaba hecho por otra sesión (l2) y fusionado a
+> `main` (`cbcd1c01d`, 06/08 11:29) + desplegado (`15656eef`, 06/08 11:37): raíz = un worktree local
+> apuntando a la RDS de producción (`.env.local`, patrón documentado en CLAUDE.md) escribía
+> `request_completed` con `host=localhost:3210` y `httpStatus=500` directamente en la tabla que
+> alimenta el panel — 89 eventos en 4 minutos, mientras `validation_error_logs` (la fuente real del
+> indicador 1) estaba en CERO en esa ventana. Arreglo: `shouldSkipObservabilityPersistence()`
+> (`lib/observability/runtimeGate.ts`, `NODE_ENV!=='production'`) usado ahora por LAS DOS puertas
+> que escriben observabilidad (`withErrorLogging.ts` y `validation-error-log/queries.ts`), que antes
+> solo la tenía una.
+>
+> **Verificado EN VIVO por mí contra RDS (lo que quedaba pendiente de la ficha), no dando el deploy
+> por bueno de oídas:**
+> - `/api/auth/token` desde el deploy (15h): **0 eventos 5xx** (5.797×401 + 1.147×200). Antes eran 89
+>   en 4 minutos.
+> - Tráfico `host=localhost` desde el deploy: 1.589 eventos, **todos 200**, y son tráfico interno
+>   legítimo (1.565 `/api/health/db-ready` en `localhost:3000` — healthcheck del propio contenedor
+>   Fargate — + 12 `/api/internal/isr-apply` en `127.0.0.1:3000`). No es el worktree roto volviendo:
+>   puerto distinto (3000 del contenedor vs 3210 del worktree) y sin un solo error.
+> - 5xx reales desde el deploy (`host=www.vence.es`): **13**, todos con `synthetic=null` (no
+>   canary) y mensajes de fallo genuino («Database operation exceeded 8000ms timeout», «Servicio
+>   saturado momentáneamente») — la «cola larga» que la ficha original ya distinguía del bug
+>   (`answer-and-save`×3, `laws-configurator`×2, `stats`×2, `medals`/`profile`/`user-stats`/
+>   `pdf`/`random-test/availability`×1). Nada de esto es T-572; una parte encaja con [T-315].
+>
+> **HALLAZGO NUEVO al intentar cerrar el segundo punto pendiente** («que el indicador 1 cuadre con
+> `validation_error_logs`»): **no se puede verificar con esta credencial — mismo patrón sistémico de
+> RLS que [T-573]/[T-574].** `validation_error_logs` tiene `relrowsecurity=true` con **una sola
+> política**, `service_role_all` (`roles={service_role}`), y ninguna para `vence_lector` — el GRANT
+> de tabla existe (`has_table_privilege=true`) pero sin política el motor filtra en silencio:
+> `SELECT count(*) FROM validation_error_logs` (sin `WHERE`) da **0**, siempre, aunque la tabla esté
+> llena. Los 13 eventos de arriba deberían tener su espejo en VLE (el código de `withErrorLogging.ts`
+> los escribe con `await` para 5xx no-sintéticos, sin excepción que aplique a ninguno de los 13) y no
+> pude comprobarlo. **No estaba en el catálogo `DEBE_LEER`/`NO_DEBE_LEER` de
+> `scripts/canary-rol-lector.cjs`** — cae en el mismo hueco de catalogación que T-573 ya señala para
+> otras tablas. No abro ficha nueva a propósito (sería la 4ª de la misma familia esta semana);
+> queda anotado aquí y en el `Relacionadas` de abajo para quien retome T-573/T-574.
+>
+> **Veredicto: el bug que motivó la ficha está arreglado y verificado con datos reales, no con la
+> palabra del deploy.** Lo que queda («cuadra VLE con obs_events») es un problema de ACCESO de
+> lectura, no del propio fix.
+
+**Relacionadas:** [T-573], [T-574] (mismo bloqueo RLS de `vence_lector`, ahora también en
+`validation_error_logs`) · [T-315] (parte de la «cola larga» de 5xx reales sí es su timeout de
+antifraude).
+
+- **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
+  - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
+  - **89 de ellos son `/api/auth/token`** (último a las 09:40 UTC). El resto es cola larga: 6 en `/api/v2/answer-and-save`, 2 en `laws-configurator`, 2 en `random-test/availability`, 2 en `referrals/badge`.
+- **No se queda en un contador: le está costando datos a usuarios.** En la misma ventana hay **193 `console_error` con el texto `❌ [answerSaveQueue] Sin token (intento #1…)`** — la cola que persiste las respuestas de los tests se queda sin token y no puede llamar a `/api/v2/answer-and-save`. El usuario ve su respuesta corregida al instante (validación en cliente), así que **el fallo es invisible para él**, pero el registro en `test_questions`, el score autoritativo y el antifraude se los pierde el servidor. Es exactamente el modo de fallo que el runbook avisa: *«el servidor puede decir 0 5xx y el panel verde mientras los clientes sufren — p.ej. 502 de `/api/auth/token`, que es un error de EDGE»*.
+- **Qué hay que averiguar primero (no está determinado):** si los 89 son 502 de edge (infraestructura, delante de la app) o 500 de la propia ruta. La distinción cambia por completo el arreglo y **no se puede deducir del contador**: hay que mirar el `error_message`/`metadata` de esos eventos y los logs de Fargate/edge de esa franja.
+- **Relación con la cola de respuestas:** comprobar si los 193 «Sin token» caen en las MISMAS franjas que los 89 5xx. Si correlan, es un solo fallo con dos síntomas; si no, son dos.
+- **NO confundir con [T-315]** (el techo de 25 s de `answer-and-save`): ahí el problema es el presupuesto de tiempo del backend, aquí es que no hay token con el que llamar. Los 6 `answer-and-save` de esta ventana sí pueden ser de T-315.
+- **Ruido que NO es esto:** los 1.305 + 604 `console_error` de `[GSI_LOGGER] FedCM …` son del inicio de sesión con Google en el navegador y dominan el volumen; hay que descartarlos antes de mirar nada, o tapan la señal.
+- **Contexto de la medición:** también hay 96 `canary_pdf_queue_failed` (crónico conocido, cola de PDFs sin consumidor) y 85 `ci_integracion_rojo` (es [T-370], ya dormida esperando los secrets de GitHub).
+- **Esfuerzo: rato** (diagnóstico; el arreglo puede ser mayor y saldrá de lo que diga el diagnóstico).
+
 ### [T-569] 🟠 [ABIERTO 05/08] El perfil BORRA en silencio la oposición del usuario si no está en el registro del frontend: 11 cuentas con cadena vacía
 
 **Lo que le pasa a la persona.** Entra en `/perfil`, cambia cualquier cosa (el apodo, la meta
