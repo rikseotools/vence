@@ -5433,6 +5433,37 @@ y que **ya estamos ampliándolos**, así que hay una promesa hecha a una clienta
 convocatoria abierta. Ficha hermana: **T-511** (verificar epígrafes y scope de esta misma oposición).
 ### [T-518] 🔴 [ABIERTO 04/08] 550 temas con el Paso 2 en VERDE sin haber pasado por el pipeline — el sellado directo del 20-21/07
 
+#### 🔴 SEGUNDA FIRMA, y ya no es sospecha: `single_reviewer` (07/08/2026)
+- **La ficha desconfiaba de `claude_direct`. Hay una segunda firma igual de mala y con un caso MEDIDO
+  de daño**: `single_reviewer` — **267 temas en 10 oposiciones**. Su propio veredicto lo confiesa
+  cuando se lee: *«Revisor único (agentes rate-limited)… PENDIENTE confirmar con 2 agentes tras
+  reset»*. El «pendiente» nunca llegó, y el tema quedó en VERDE.
+- **El caso que lo demuestra (feedback `1627e0d4`, Iván González, premium de Canarias):** el tema 17
+  figuraba `verified_correct` firmado por `single_reviewer`, y tenía **158 de 416 preguntas activas
+  (38%) fuera de su epígrafe** — los arts. 56-61 son acceso y selección (tema 18) y el 76 son grupos
+  de clasificación (tema 20). Lo cazó él estudiando, con una muestra a mano de 100 preguntas que
+  acertó casi al punto («unas 40 de 100»). Recortado el 07/08 (fuera 14 y 56-61; **416 → 290
+  preguntas**), con el art. 76 conservado a propósito: ningún otro tema lo sirve y quitarlo dejaría
+  32 preguntas sin salir en ninguna parte.
+- **El alcance real es mayor que el de la cabecera:** medido el 07/08, `verified_correct` sellado
+  **fuera del pipeline de dos agentes** son **1.968 temas**, repartidos así:
+
+  | firma | temas | oposiciones |
+  |---|---|---|
+  | `multi_agent` | 1.062 | 56 |
+  | `multi_agent+curado` | 416 | 13 |
+  | **`single_reviewer`** | **267** | **10** |
+  | **`claude_direct`** | **174** | **15** |
+  | `pipeline` | 98 | 50 |
+  | resto (curado/manual/adjudicación) | 49 | — |
+
+  Las dos primeras SÍ vienen de dos agentes; las dos marcadas en negrita son las que no pueden
+  sostener un verde. **Y el orden de ataque debería salir de ahí**, no de la fecha del sellado.
+- **Lo que este caso añade al método:** hasta ahora la regla era «desconfía de esa firma». Ya hay
+  una medida de qué significa esa desconfianza — **38% del tema fuera de programa** — y un usuario
+  que lo pagó estudiando cinco semanas. Un verde que nadie puede desmentir es peor que un rojo.
+
+
 **De dónde sale:** una impugnación de temario (`0b9d9f56`, Jonatan González, Aux. Admin. Universidad
 de León). Decía *«el art. 28.3 no entra en este examen»* y **tenía razón**: el art. 28 de la Ley
 40/2015 es del Capítulo III del Título Preliminar (potestad sancionadora) y el programa oficial
