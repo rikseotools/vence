@@ -37,11 +37,25 @@ const APPLY = process.argv.includes('--apply')
 const TIPO = [
   ['nombramientos',         /nombramiento|toma de posesi|adjudicaci.n de (destino|plaza)/i],
   ['reconocimiento_medico', /reconocimiento m.dico|revisi.n m.dica|prueba m.dica/i],
-  ['tribunal_constituido',  /tribunal(es)? (designad|calificador|coordinador|nombrad)|constituci.n.*tribunal|composici.n.*(tribunal|comisi.n)/i],
+  // `designaci.n.*tribunal` (T-170, 07/08): "Designación del Tribunal de selección" caía a
+  // 'otro' porque la regla solo reconocía "tribunal designado" (verbo DESPUÉS del sustantivo),
+  // no el orden inverso. Medido: único hito con "designación"+"tribunal" en 1.084, sin riesgo.
+  ['tribunal_constituido',  /tribunal(es)? (designad|calificador|coordinador|nombrad)|constituci.n.*tribunal|composici.n.*(tribunal|comisi.n)|designaci.n.*tribunal/i],
   ['plantilla_respuestas',  /plantilla|cuestionario|alegacion|impugnaci/i],
-  ['modificacion_plazas',   /ampliaci.n.*(plaza|convocatoria|proceso)|modificaci.n.*plaza|correcci.n de errores/i],
+  // `acumulaci.n.*plaza` (T-170, 07/08): "Decreto de acumulación de plazas (9 → 17)" y
+  // "Acumulación de plazas (11 plazas)" caían a 'otro' — acumular plazas de OEPs anteriores es
+  // una modificación de plazas tan real como "ampliación", solo que con otra palabra. Medido
+  // contra los 1.084 hitos reales: 2 aciertos, 0 casos que dejen de clasificar bien.
+  ['modificacion_plazas',   /ampliaci.n.*(plaza|convocatoria|proceso)|modificaci.n.*plaza|correcci.n de errores|acumulaci.n.*plaza/i],
   ['oep_aprobada',          /oferta (de )?(empleo|p.blica)|\boep\b|\bope\b/i],   // ANTES que resultados (ver cabecera)
-  ['resultados',            /resultados?\b|calificaci|lista de aprobad|aprobados del|nota del|puntuaci|superan la fase|relaci.n de aspirantes|resuelta|aspirantes admitidos/i],
+  // `relaci.n de aprobad` (T-170, 07/08): "Relación de aprobados (fase de oposición)" caía a
+  // ejercicio_1 porque "fase de oposici" (más abajo) SÍ casaba y esta regla no — el título dice
+  // "lista DE aprobados" o "aprobados DEL", no la forma real "RELACIÓN de aprobados". Acotado a
+  // propósito (no "aprobad" a secas): un patrón suelto se come los ~40 hitos "OEP … aprobada"
+  // (que van antes, a oep_aprobada, así que en la práctica no chocarían) y "Aprobados fase de
+  // oposición"/"Aprobados del primer ejercicio", que son ejercicio_1/oep_aprobada por diseño y
+  // NO empiezan por "relación de". Medido: 2 aciertos, 0 regresiones sobre los 1.084 reales.
+  ['resultados',            /resultados?\b|calificaci|lista de aprobad|aprobados del|nota del|puntuaci|superan la fase|relaci.n de aspirantes|resuelta|aspirantes admitidos|relaci.n de aprobad/i],
   ['lista_definitiva',      /(lista|relaci.n|llista).*definitiv|definitiv.*(admitid|admesos)/i],
   ['lista_provisional',     /(lista|relaci.n|llista).*provisional|provisional.*(admitid|admesos)|lista de personas admitidas|admitid.*\(pendiente\)/i],
   ['ejercicio_2',           /segundo ejercicio|2.. ejercicio|ejercicio 2|segunda prueba/i],
@@ -49,8 +63,20 @@ const TIPO = [
   // no hay fecha, y caía a 'otro' — con lo que el hito del EXAMEN quedaba sin tipo y fuera de
   // cualquier consulta por tipo (rollover, timeline, avisos). Medido 27/07: 2 hitos en prod.
   ['ejercicio_1',           /primer ejercicio|1.. ejercicio|ejercicio .nico|ejercicio 1|examen|ejercicios? (del|de la|pendientes)|celebraci.n de (los |las )?(ejercicios?|pruebas?)|fase de oposici|inicio de la oposici|instrucciones del ejercicio|convocatoria (a examen|del examen|de (las )?pruebas)/i],
-  ['plazo_fin',             /(cierre|tancament|fin(al)?\b|^fi\b|\bfi )\s*(del?\s*)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)/i],
-  ['plazo_inicio',          /(apertura|inici(o)?|comienzo)\s*(del?\s*)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)|plazo de (presentaci.n de )?(solicitud|inscripci)/i],
+  // Dos arreglos en la misma regla (T-170, 07/08), medidos contra los 1.084 hitos reales, 0
+  // regresiones sobre lo que ya acertaba:
+  //  · el conector `(del?\s*)?` solo dejaba pasar "del "/"el " entre el verbo y "plazo" — un
+  //    adjetivo de por medio ("Cierre del NUEVO plazo de solicitudes") rompía el match y el
+  //    hito caía al fallback genérico de plazo_inicio, invirtiendo el sentido.
+  //  · "Plazo de inscripción CERRADO" / "…(fechas) cerrado" dice el cierre AL FINAL, no antes
+  //    de "plazo" — sin la alternativa de orden inverso, "plazo de inscripción" solo case con
+  //    el fallback genérico de plazo_inicio y el hito salía con el sentido contrario.
+  ['plazo_fin',             /(cierre|tancament|fin(al)?\b|^fi\b|\bfi )\s*(del?\s+(nuevo\s+)?)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)|(plazo|solicitud|instancia|inscripci).{0,40}?(cerrad|finalizad)/i],
+  // Mismo conector ensanchado para "Apertura de NUEVO plazo de solicitudes" — sin esto también
+  // dependía en solitario del fallback genérico, que es el que hay que tocar con más cuidado
+  // (varios hitos reales SOLO llevan "Plazo de presentación de solicitudes", sin "apertura" ni
+  // "inicio", y dependen de él para clasificar bien: no se toca, solo se ensancha lo de arriba).
+  ['plazo_inicio',          /(apertura|inici(o)?|comienzo)\s*(del?\s+(nuevo\s+)?|de\s+(nuevo\s+)?)?(plazo|solicitud|instancia|inscripci|termini|sol.licitud)|plazo de (presentaci.n de )?(solicitud|inscripci)/i],
   ['programa_publicado',    /programa|temario/i],
   ['bases_publicadas',      /bases/i],
   ['convocatoria_publicada',/convocat.ria|convocatoria|extracto|anuncio|resumen publicado|publicaci.n en (el )?(boe|bocm|dogv|dogc|bop|dog|boc|bocyl|borm|doe|boib|bon|bopv|boja|bor|bocce|bouc|boa)/i],
