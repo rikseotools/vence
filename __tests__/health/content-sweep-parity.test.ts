@@ -52,6 +52,11 @@ const hasKind = (txt: string, kind: string) =>
 // `explicacion_yuxtaposicion` (T-525, 05/08) es CLI-only por la MISMA razón que `cita_no_literal`:
 // compara, opción por opción, el segmento de la explicación contra el texto de esa opción — no
 // cabe en un `WHERE`. Subproceso `audit-explicacion-yuxtaposicion.cjs --json`.
+// `familia_desincronizada`/`familia_cobertura_baja` (T-384, 07/08) son CLI-only por la MISMA razón
+// que los `shuffle_*`: `classifyFamilia` vive en `lib/oposiciones/familia.ts` (TS del frontend, 200
+// líneas de keywords) y el @Cron es un build NestJS aparte sin acceso a ese `lib/`. Reimplementarlo
+// en el backend sería la tercera copia del mismo clasificador. Consecuencia asumida: el badge no
+// se refresca solo de noche; hace falta correr `scripts/health-sweep.cjs` a mano.
 const CLI_ONLY_KINDS = new Set([
   'shuffle_safe_regressed',
   'shuffle_narrativa_letra_clavada',
@@ -60,6 +65,8 @@ const CLI_ONLY_KINDS = new Set([
   'shuffle_veredicto_criterio_viejo',
   'cita_no_literal',
   'explicacion_yuxtaposicion',
+  'familia_desincronizada',
+  'familia_cobertura_baja',
 ])
 
 // Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano
@@ -571,6 +578,43 @@ describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)
   })
 })
 
+describe('mirror del detector article_audit_note (núcleo ↔ backend @Cron) [T-253]', () => {
+  const core = require('@/lib/health/articleAuditNote.cjs')
+
+  /** Lee `const ARTICLE_AUDIT_NOTE_RE_SRC_SQL = '…' + '…';` del backend y lo evalúa. */
+  function evalArticleAuditNoteRe(src: string): string {
+    const m = src.match(/const ARTICLE_AUDIT_NOTE_RE_SRC_SQL\s*=\s*([\s\S]*?);\n/)
+    if (!m) throw new Error('no se encontró const ARTICLE_AUDIT_NOTE_RE_SRC_SQL en el fuente')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el patrón del backend es IDÉNTICO al del núcleo (mismo valor, no solo mismo texto)', () => {
+    expect(evalArticleAuditNoteRe(BACKEND)).toBe(core.ARTICLE_AUDIT_NOTE_RE_SRC_SQL)
+  })
+
+  it('el patrón usa \\y (límite de palabra en Postgres ARE), NO \\b — \\b no lo es ahí', () => {
+    expect(core.ARTICLE_AUDIT_NOTE_RE_SRC_SQL).toMatch(/^\\y/)
+    expect(evalArticleAuditNoteRe(BACKEND)).toMatch(/^\\y/)
+  })
+
+  it('los DOS gemelos aplican el patrón sobre articles.content, no sobre explanation', () => {
+    expect(SCRIPT).toMatch(/a\.content ~\* \$/)
+    expect(BACKEND).toMatch(/a\.content ~\* \$\{ARTICLE_AUDIT_NOTE_RE_SRC_SQL\}/)
+  })
+
+  it('el CLI CONSUME el patrón del núcleo, no lo redeclara', () => {
+    expect(SCRIPT).toContain("require('../lib/health/articleAuditNote.cjs')")
+    expect(SCRIPT).toContain('ARTICLE_AUDIT_NOTE_RE_SRC_SQL')
+    expect(SCRIPT).not.toMatch(/const ARTICLE_AUDIT_NOTE_RE_SRC_SQL\s*=/)
+  })
+
+  it('los dos gemelos emiten el kind', () => {
+    expect(hasKind(SCRIPT, 'article_audit_note')).toBe(true)
+    expect(hasKind(BACKEND, 'article_audit_note')).toBe(true)
+  })
+})
+
 // ── El gemelo CLI tiene que PARSEAR ────────────────────────────────────────────
 // La paridad de arriba compara TEXTO: busca el literal del kind en el fichero. Eso no se entera
 // de si el fichero es JavaScript válido, y por eso el 29/07 se descubrió que `health-sweep.cjs`
@@ -676,5 +720,56 @@ describe('barrido — los detectores globales NO viven dentro del bucle por opos
     // Y algo que SÍ es por oposición sigue dentro, para que el detector de arriba no sea un
     // falso verde por haberse movido el bucle en vez del bloque.
     expect(dentroDelBucle(BACKEND, "'temas_card'")).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// El TRUNCATE se llevaba por delante hallazgos de OTRAS herramientas (T-455, 07/08/2026)
+//
+// `content_health_findings` no la escribe solo este barrido: `audit-oposicion-completa.ts`
+// (kind `oposicion_incompleta`) publica ahí bajo demanda, al crear/auditar una oposición. El
+// paso de escritura de los dos gemelos hacía `TRUNCATE content_health_findings` —la tabla
+// ENTERA, cualquier kind, de cualquier escritor— antes de reinsertar solo lo que ESTE barrido
+// detectó. Como ninguno de los dos gemelos re-evalúa `oposicion_incompleta`, la fila publicada
+// por el gate on-demand sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC),
+// nunca hasta que el problema se arreglara. Medido en vivo el 07/08: 0 filas
+// `kind='oposicion_incompleta'` en `content_health_findings` mientras las demás ~37 kinds
+// tenían `computed_at` de la pasada de la noche anterior — la fila de T-522
+// (`mecanico_conductor_estado`) ya no estaba, borrada por un barrido que nunca la miró.
+//
+// Arreglo: el borrado se acota a los kinds que ESA pasada evaluó de verdad
+// (`Object.keys(kindsEvaluados)`, el mismo objeto del latido de T-529) — un kind ajeno al
+// barrido no se toca nunca, y un barrido `sweep_incompleto` (T-307) tampoco arrasa los kinds
+// que no llegó a evaluar.
+describe('el snapshot NO trunca toda la tabla — solo los kinds de ESTA pasada (T-455)', () => {
+  it('ninguno de los dos gemelos hace TRUNCATE de content_health_findings', () => {
+    expect(SCRIPT).not.toMatch(/TRUNCATE\s+content_health_findings/i)
+    expect(BACKEND).not.toMatch(/TRUNCATE\s+content_health_findings/i)
+  })
+
+  it('el CLI borra por kind, con la lista derivada de kindsEvaluados (no una lista a mano)', () => {
+    expect(SCRIPT).toMatch(/DELETE FROM content_health_findings WHERE kind = ANY\(\$1::text\[\]\)/)
+    expect(SCRIPT).toMatch(/const kindsDeEstaPasada = Object\.keys\(kindsEvaluados\)/)
+  })
+
+  it('el backend borra por kind, y usa pgTextArray — NO la interpolación cruda que ya rompió el barrido antifraude', () => {
+    // sql-arrays.ts documenta el gotcha: `sql`ANY(${arr})`` interpola como parámetros sueltos,
+    // no como array de Postgres, y revienta ("op ANY/ALL (array) requires array on right side").
+    // El barrido antifraude estuvo fallando 7 de 7 noches por esto exacto (21/07/2026).
+    expect(BACKEND).toMatch(/DELETE FROM content_health_findings WHERE kind = ANY\(\$\{pgTextArray\(kindsDeEstaPasada\)\}\)/)
+    expect(BACKEND).toMatch(/import \{ pgTextArray \} from '\.\.\/db\/sql-arrays'/)
+  })
+
+  it('el borrado queda dentro del if (!NO_WRITE) — DRY_RUN sigue sin tocar la tabla', () => {
+    const ifIdx = SCRIPT.indexOf('if (!NO_WRITE)')
+    const delIdx = SCRIPT.indexOf('DELETE FROM content_health_findings')
+    expect(ifIdx).toBeGreaterThan(-1)
+    expect(delIdx).toBeGreaterThan(ifIdx)
+    expect(delIdx).toBeLessThan(SCRIPT.indexOf('await c.end()'))
+  })
+
+  it('con kindsEvaluados vacío no se borra nada (guarda contra un DELETE sin condición real)', () => {
+    expect(SCRIPT).toMatch(/if \(kindsDeEstaPasada\.length\)/)
+    expect(BACKEND).toMatch(/if \(kindsDeEstaPasada\.length\)/)
   })
 })

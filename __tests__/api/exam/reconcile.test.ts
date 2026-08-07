@@ -113,6 +113,43 @@ describe('overlayResultsWithDb — la BD gana sobre el batch desalineado', () =>
     const merged = overlayResultsWithDb(payload, db)
     expect(merged.map(r => r.questionId)).toEqual(['q3', 'q1'])
   })
+
+  // T-277: la BD guarda SIEMPRE en coordenadas ORIGINALES (0=A del banco). Si esta función
+  // inyectara `db.userAnswer` tal cual sobre un examen barajado, el cliente resaltaría el
+  // botón EQUIVOCADO en su pantalla de revisión — la nota seguiría bien (isCorrect viene
+  // de la BD también), pero la opción marcada como "la que elegiste" sería otra distinta.
+  describe('examen BARAJADO: la BD gana, pero traducida a coordenadas MOSTRADAS', () => {
+    it('la respuesta de la BD (original) se traduce al orden que el cliente tiene delante', () => {
+      // order=[2,0,1,3]: el original 'a' (índice 0) está mostrado en la posición 1 ('b')
+      const payload = [result('q1', 'x', 'z', false)] // lo que mandó el batch da igual: gana la BD
+      const db = indexDbRowsByQuestionId([row('q1', 'a', true)]) // BD: original 'a'
+      const merged = overlayResultsWithDb(payload, db, { q1: [2, 0, 1, 3] })
+      expect(merged[0]).toMatchObject({ questionId: 'q1', userAnswer: 'b', isCorrect: true })
+    })
+
+    it('sin optionOrders (parámetro omitido): identidad total — mismo resultado que antes de T-277', () => {
+      const payload = [result('q1', 'b', 'a', false)]
+      const db = indexDbRowsByQuestionId([row('q1', 'a', true)])
+      expect(overlayResultsWithDb(payload, db)).toEqual(overlayResultsWithDb(payload, db, {}))
+    })
+
+    it('la pregunta NO tiene orden en el mapa (no se barajó ESA en concreto): identidad', () => {
+      const payload = [result('q1', 'x', 'z', false)]
+      const db = indexDbRowsByQuestionId([row('q1', 'c', true)])
+      const merged = overlayResultsWithDb(payload, db, { 'otra-pregunta': [1, 0] })
+      expect(merged[0].userAnswer).toBe('c') // sin traducir: no había orden para q1
+    })
+
+    it('dos preguntas del mismo examen con órdenes DISTINTOS: cada una se traduce con el suyo', () => {
+      const payload = [result('q1', 'x', 'x', false), result('q2', 'x', 'x', false)]
+      const db = indexDbRowsByQuestionId([row('q1', 'a', true), row('q2', 'b', true)])
+      const merged = overlayResultsWithDb(payload, db, { q1: [1, 0], q2: [0, 2, 1] })
+      // q1: order=[1,0] → original 'a' (0) está en posición 1 → 'b'
+      expect(merged[0].userAnswer).toBe('b')
+      // q2: order=[0,2,1] → original 'b' (1) está en posición 2 → 'c'
+      expect(merged[1].userAnswer).toBe('c')
+    })
+  })
 })
 
 describe('scoreDivergence — señal de observabilidad', () => {

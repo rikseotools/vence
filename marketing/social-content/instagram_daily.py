@@ -6,7 +6,10 @@ Flujo: elige una pregunta fiable de la BD → genera imagen 1080x1080 →
 sube a S3 (bucket público) → publica en Instagram vía Graph API →
 registra en `instagram_posts` (anti-repetición).
 
-Pensado para correr en GitHub Actions (1/día). Variables de entorno:
+Corre en AWS Fargate (EventBridge Scheduler, cron(0 10 * * ? *) tz Europe/Madrid,
+desde 2026-07-07 — ver marketing/social-content/README.md). Migrado de GitHub
+Actions, cuyo workflow quedó .DISABLED; este docstring decía "GitHub Actions" y
+mentía sobre dónde corre de verdad. Variables de entorno:
   DATABASE_URL                  (Postgres)
   META_ADS_ACCESS_TOKEN         (token System User con instagram_content_publish)
   META_IG_USER_ID               (id de la cuenta IG, ej. 17841460897412178)
@@ -28,6 +31,36 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 GRAPH = "https://graph.facebook.com/v21.0"
 LAWS = ("constitucion-espanola", "rdl-5-2015", "ley-39-2015", "ley-40-2015")
+
+# Nombre del job para la liveness de crons. DEBE coincidir EXACTO con la entrada de
+# EXTERNAL_SCHEDULED_JOBS en backend/src/cron-schedule/external-jobs.registry.ts: la
+# regla cron_overdue une catálogo y señales por este string. Lo fija el guardarraíl
+# __tests__/guardrails/externalScheduledJobs.test.ts. [T-325]
+JOB_NAME = "vence-instagram-daily"
+
+
+def emit_cron_signal(conn, event_type, ms=None, status="success", error=None):
+    """Señal de LIVENESS del job, mismo contrato que scripts/pdf-worker.ts:
+    cron_tick al arrancar y cron_run al terminar, ambos con endpoint=JOB_NAME. Sin
+    esto el job es invisible para cron_overdue -- exactamente como
+    temario-pdf-worker estuvo 2 días muerto sin una sola alerta (27->29/07/2026):
+    un contenedor que muere antes del entrypoint no puede avisar de su propia
+    muerte, y la única señal fiable es la AUSENCIA de estas dos.
+    """
+    import json
+    meta = json.dumps({"phase": "start"} if event_type == "cron_tick" else {"status": status})
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO observable_events "
+                "(source, severity, event_type, endpoint, duration_ms, error_message, metadata) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
+                ("worker", "error" if error else "debug", event_type, JOB_NAME, ms, error, meta),
+            )
+    except Exception:
+        # La observabilidad nunca tumba el job. Si se pierde el tick, el cron_run
+        # de completado actúa de fallback (la regla lee ambos).
+        pass
 FONT_DIR = "/usr/share/fonts"
 # rutas de fuentes (GitHub Actions ubuntu trae DejaVu; instalamos Open Sans en el workflow)
 def _font_path(*cands):
@@ -218,28 +251,38 @@ def publish_ig(image_url, caption):
 
 def main():
     dry = os.environ.get("DRY_RUN") == "1"
+    t0 = time.time()
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = True
-    q = pick_question(conn)
-    cr = round(q["first_attempts_correct_sum"] / q["difficulty_sample_size"] * 100)
-    print(f"Elegida: [{q['short_name']} art.{q['article_number']}] {cr}% acierto · {q['question_text'][:70]}")
-    buf = render(q)
-    caption = build_caption(q)
-    if dry:
-        with open("/tmp/ig_preview.jpg", "wb") as f:
-            f.write(buf.getvalue())
-        print("DRY_RUN: imagen en /tmp/ig_preview.jpg, NO se publica.\n--- caption ---\n" + caption)
-        return
-    image_url = upload_s3(buf)
-    print("Imagen en:", image_url)
-    mid, permalink = publish_ig(image_url, caption)
-    with conn.cursor() as cur:
-        cur.execute(
-            "INSERT INTO instagram_posts (question_id, media_id, permalink, caption, image_url) "
-            "VALUES (%s,%s,%s,%s,%s)",
-            (q["id"], mid, permalink, caption, image_url),
-        )
-    print(f"✅ Publicado: {permalink} (media {mid})")
+    emit_cron_signal(conn, "cron_tick")
+    try:
+        q = pick_question(conn)
+        cr = round(q["first_attempts_correct_sum"] / q["difficulty_sample_size"] * 100)
+        print(f"Elegida: [{q['short_name']} art.{q['article_number']}] {cr}% acierto · {q['question_text'][:70]}")
+        buf = render(q)
+        caption = build_caption(q)
+        if dry:
+            with open("/tmp/ig_preview.jpg", "wb") as f:
+                f.write(buf.getvalue())
+            print("DRY_RUN: imagen en /tmp/ig_preview.jpg, NO se publica.\n--- caption ---\n" + caption)
+            emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="dry_run")
+            return
+        image_url = upload_s3(buf)
+        print("Imagen en:", image_url)
+        mid, permalink = publish_ig(image_url, caption)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO instagram_posts (question_id, media_id, permalink, caption, image_url) "
+                "VALUES (%s,%s,%s,%s,%s)",
+                (q["id"], mid, permalink, caption, image_url),
+            )
+        print(f"✅ Publicado: {permalink} (media {mid})")
+        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="success")
+    except Exception as e:
+        # Un ciclo que peta SÍ anuncia que terminó: sin cron_run la regla lo vería
+        # como colgado en vez de como fallado, y son dos diagnósticos distintos.
+        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="error", error=str(e))
+        raise
 
 
 if __name__ == "__main__":

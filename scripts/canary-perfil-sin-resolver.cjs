@@ -44,6 +44,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env.loc
 const { Client } = require('pg')
 const { pgConfig } = require('../lib/db/pgSsl.cjs')
 const { clasificarRebotes, bandaRebotes } = require('../lib/auth/rebotePersistente.cjs')
+const { sinNingunaCobertura } = require('../lib/auth/coberturaCuracion.cjs')
 
 const arg = (n, def) => {
   const i = process.argv.indexOf(n)
@@ -302,6 +303,50 @@ async function main() {
         `\n   🟡 EN CURSO — se están soltando rastros ajenos. Cada navegador se limpia la\n` +
           `      primera vez que vuelve, así que ambas cifras deben bajar día a día.`,      )
     }
+    // ── Quinto bloque: ¿las TRES señales de cura juntas cubren a todos? (T-633, 06/08/2026) ──
+    //
+    // Los bloques de arriba miden cada mecanismo POR SEPARADO. Ninguno comprueba su UNIÓN
+    // contra el total de gente que rebota — y esta ficha nació precisamente porque dos de esas
+    // señales (`auth_perfil_recuperado`, `auth_alta_sin_perfil`) llevaban 5 días mudas mientras
+    // «Usuario no existe» seguía activo. La primera lectura (comparar CONTEOS diarios) parecía
+    // dar el visto bueno porque `auth_identidad_ajena_descartada` tenía un volumen parecido —
+    // pero contar por DÍA, no por USUARIO, es la misma trampa que ya le costó cara a esta ficha
+    // el 01/08 («0 no significa que nadie falló, significa que no se ejecuta»). Comparando
+    // usuario a usuario: de 49 afectados en 48 h, 29 (59 %) no tenían NINGUNA de las tres
+    // señales. Este bloque es esa comparación, permanente.
+    const afectadosRes = await c.query(
+      `SELECT DISTINCT user_id::text AS id FROM observable_events
+        WHERE error_message ILIKE '%usuario no existe%' AND user_id IS NOT NULL
+          AND created_at > now() - ($1 || ' hours')::interval`,
+      [String(HORAS)],
+    )
+    const curadosRes = await c.query(
+      `SELECT DISTINCT user_id::text AS id FROM observable_events
+        WHERE event_type IN ('auth_identidad_ajena_descartada', 'auth_perfil_recuperado', 'sesion_fantasma_soltada')
+          AND user_id IS NOT NULL
+          AND created_at > now() - ($1 || ' hours')::interval`,
+      [String(HORAS)],
+    )
+    const sinCubrir = sinNingunaCobertura(afectadosRes.rows.map((r) => r.id), curadosRes.rows.map((r) => r.id))
+    console.log(`\n── ¿Las tres curas juntas cubren a todos? — ventana de ${HORAS} h ${'─'.repeat(15)}`)
+    console.log(etiqueta('afectados (Usuario no existe)') + afectadosRes.rowCount)
+    console.log(etiqueta('con ALGUNA de las tres señales de cura') + curadosRes.rowCount)
+    console.log(etiqueta('SIN NINGUNA — el hueco') + sinCubrir.length)
+    if (sinCubrir.length > 0) {
+      codigo = Math.max(codigo, 1)
+      console.log(
+        `\n   🔴 ${sinCubrir.length} usuario(s) rebotan y ninguno de los tres mecanismos los ve.\n` +
+          `      NO se ha identificado la causa — esto solo hace el hueco observable. Primeras\n` +
+          `      pistas medidas el 06/08: mezclan peticiones \`userIdVerified=true\` y \`=false\`\n` +
+          `      DENTRO de la misma sesión (no es una identidad ajena estable), y algunos traen\n` +
+          `      "Session expired (no access_token)". Ver T-633.`,
+      )
+      for (const id of sinCubrir.slice(0, 8)) console.log(`        · ${id.slice(0, 8)}`)
+      if (sinCubrir.length > 8) console.log(`        … y ${sinCubrir.length - 8} más`)
+    } else {
+      console.log(`\n   🟢 Todo afectado tiene al menos una señal de cura en esta ventana.`)
+    }
+
     console.log('')
     return codigo
   } finally {

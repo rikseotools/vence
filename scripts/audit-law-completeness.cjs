@@ -42,6 +42,9 @@ function classify({ isVirtual, boeUrl, verificationStatus, su }) {
   const cm = num(su.content_mismatch) ?? 0, tm = num(su.title_mismatch) ?? 0
   if (missing != null && missing > 0) return { state: 'incomplete', hasSource, missingInDb: missing, actionable: true }
   if (cm > 0 || tm > 0) return { state: 'issues', hasSource, missingInDb: missing, actionable: true }
+  // T-395: is_ok:false sin contadores es una NOTA DE INCIDENCIA (audit_boe_url), no una
+  // comparación limpia — mismo mirror que lib/laws/completeness.ts, MANTENER EN SYNC.
+  if (su.is_ok === false) return { state: 'never_verified', hasSource, missingInDb: missing, actionable: true }
   return { state: 'verified', hasSource, missingInDb: missing ?? 0, actionable: false }
 }
 function num(x) { return typeof x === 'number' && Number.isFinite(x) ? x : null }

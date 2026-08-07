@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 149.1.9ª CE",
+    "texto": "9.ª Legislación sobre propiedad intelectual e industrial."
+  },
+  "options": {
+    "0": "Incorrecta: la ordenación del territorio, el urbanismo y la vivienda no figuran entre las materias de competencia exclusiva del Estado que enumera el art. 149.1 CE.",
+    "1": "Incorrecta: la agricultura y la ganadería tampoco figuran en esa lista como competencia exclusiva estatal.",
+    "2": "Incorrecta: el art. 149.1.23ª CE atribuye al Estado solo la legislación básica sobre montes y aprovechamientos forestales, no la materia entera en exclusiva.",
+    "3": "Correcta: el art. 149.1.9ª CE atribuye al Estado la competencia exclusiva sobre la legislación de propiedad intelectual e industrial."
+  },
+  "frame": "select_correct",
+  "estilo": "boletin"
+}

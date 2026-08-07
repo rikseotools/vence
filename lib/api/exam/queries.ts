@@ -21,6 +21,7 @@ import type {
 
 import { normalizeDifficulty } from '@/lib/api/shared/difficulty'
 import { estrenaRespuesta } from '@/lib/api/dailyLimit'
+import { optionOrdersFromMetadata, orderForQuestion, displayedLetterToOriginal, type OptionOrders } from '@/lib/shuffle/examOrder'
 
 // ============================================
 // OBTENER OPOSICIÓN DEL USUARIO
@@ -137,12 +138,28 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
     // Obtener userId del test (necesario para resolver temas y para el insert)
     const testInfo = await db
-      .select({ userId: tests.userId })
+      .select({ userId: tests.userId, questionsMetadata: tests.questionsMetadata })
       .from(tests)
       .where(eq(tests.id, params.testId))
       .limit(1)
 
     const testUserId = testInfo[0]?.userId ?? null
+
+    // T-277: si el examen se sirvió barajado, `userAnswer` llega en coordenadas de lo
+    // MOSTRADO (lo que el usuario clicó en pantalla). Se traduce a coordenadas ORIGINALES
+    // del banco (0=A) ANTES de tocar nada más: todo lo de abajo —comparación, guardado en
+    // test_questions— sigue exactamente igual que hoy, sin enterarse de que hubo barajado.
+    // El orden lo lee el SERVIDOR de su propia BD (tests.questions_metadata), nunca del
+    // cliente: sin esto no hay forma de que un cliente "mienta" sobre el orden.
+    // Sin metadata.option_orders (examen histórico o sin shuffle) → identidad, 100%
+    // retrocompatible.
+    if (params.questionId) {
+      const orders = optionOrdersFromMetadata(testInfo[0]?.questionsMetadata)
+      const order = orderForQuestion(orders, params.questionId)
+      if (order) {
+        params = { ...params, userAnswer: displayedLetterToOriginal(order, params.userAnswer) ?? params.userAnswer }
+      }
+    }
 
     // Si no hay temaNumber, intentar resolverlo
     if (temaNumber == null && (params.questionId || params.articleId)) {
@@ -756,6 +773,10 @@ export type GetResumedExamResponse = {
   isCompleted?: boolean
   questions?: ResumedExamQuestion[]
   error?: string
+  // T-277: el orden de exposición que se grabó al SERVIR el examen (si el sensor barajó
+  // alguna pregunta). El route de resume lo usa para reconstruir option_a..e en el MISMO
+  // orden que el usuario dejó, y para traducir savedAnswers de original→mostrada.
+  optionOrders?: OptionOrders
 }
 
 export async function getResumedExamData(testId: string): Promise<GetResumedExamResponse> {
@@ -801,14 +822,20 @@ export async function getResumedExamData(testId: string): Promise<GetResumedExam
 
     const metadataQuestionIds = metadata?.question_ids ?? []
 
+    // T-277: el orden de exposición, si se grabó al servir. `{}` en exámenes históricos
+    // o sin shuffle — el resume route lo trata como "no barajado", 100% retrocompatible.
+    const optionOrders = optionOrdersFromMetadata(test.questionsMetadata)
+
     // Si metadata tiene question_ids, usar path nuevo
     if (metadataQuestionIds.length > 0) {
-      return getResumedExamDataFromMetadata(testId, test, metadataQuestionIds)
+      const res = await getResumedExamDataFromMetadata(testId, test, metadataQuestionIds)
+      return { ...res, optionOrders }
     }
 
     // Fallback legacy: leer de test_questions (exámenes viejos pre-migración)
     console.log(`⚠️ [getResumedExamData] Fallback legacy para test ${testId} - sin metadata question_ids`)
-    return getResumedExamDataLegacy(testId, test)
+    const legacy = await getResumedExamDataLegacy(testId, test)
+    return { ...legacy, optionOrders }
   } catch (error) {
     console.error('Error obteniendo datos para reanudar:', error)
     return {
