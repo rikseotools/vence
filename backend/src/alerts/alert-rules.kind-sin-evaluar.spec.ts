@@ -50,25 +50,44 @@ describe('kindsSinEvaluarBackend — mismo criterio que lib/health/kindsEvaluado
   });
 });
 
+// ── LAS PRUEBAS DE LA REGLA VAN CONTRA LA HORA REAL, NO CONTRA `AHORA` (07/08/2026) ──────────
+//
+// Los tests del núcleo de arriba le pasan `AHORA` a la función, así que son deterministas y está
+// bien que lo sean. Pero `shouldFire(rows)` NO recibe reloj: usa `Date.now()`. Al construir sus
+// filas con `pasada()` —anclada al 05/08— el test decía «pasada de anoche» y el código veía una
+// pasada de hace DOS días.
+//
+// Resultado: la suite pasó el 05/08 y **empezó a fallar sola el 07/08**, sin que nadie tocara
+// nada. Un test que caduca con el calendario es peor que no tenerlo: cuando se pone rojo, lo
+// primero que se piensa es «esto ya estaba roto» y deja de mirarse — que es justo lo que pasó,
+// estaba en rojo junto a la regla del drenaje, que sí tenía un fallo real en producción.
+//
+// Por eso estas filas se construyen relativas al AHORA DE VERDAD.
+const pasadaReal = (haceDias: number, kindsEvaluados: Record<string, number>) => ({
+  ts: new Date(Date.now() - haceDias * DIA).toISOString(),
+  status: 'success',
+  kindsEvaluados,
+});
+
 describe('RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR', () => {
   it('NO dispara sin filas (aún no hay historial, o todo se evaluó anoche)', () => {
     expect(RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR.shouldFire([])).toBe(false);
   });
 
   it('NO dispara si todos los kinds vistos siguen dentro del umbral', () => {
-    expect(RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR.shouldFire([pasada(0, { opciones_duplicadas: 0 })])).toBe(false);
+    expect(RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR.shouldFire([pasadaReal(0, { opciones_duplicadas: 0 })])).toBe(false);
   });
 
   it('dispara cuando un kind deja de aparecer — el caso T-406/T-384', () => {
     const rows = [
-      pasada(0, { otro: 5 }),
-      pasada(3, { otro: 5, psicotecnico_integridad: 7102 }),
+      pasadaReal(0, { otro: 5 }),
+      pasadaReal(3, { otro: 5, psicotecnico_integridad: 7102 }),
     ];
     expect(RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR.shouldFire(rows)).toBe(true);
   });
 
   it('la notificación nombra el kind, los días y el comando de diagnóstico', () => {
-    const rows = [pasada(0, { otro: 5 }), pasada(3, { otro: 5, opciones_duplicadas: 33 })];
+    const rows = [pasadaReal(0, { otro: 5 }), pasadaReal(3, { otro: 5, opciones_duplicadas: 33 })];
     const notif = RULE_CONTENT_HEALTH_KIND_SIN_EVALUAR.buildNotification(rows);
     expect(notif.title).toContain('1');
     expect(notif.body).toContain('opciones_duplicadas');
