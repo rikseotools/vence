@@ -2853,6 +2853,84 @@ para Madrid y Valencia, y `plazas_afirmadas_sin_documento` deja de tener hallazg
 **NUNCA** inventar la cifra ni clonar una URL sin abrirla; si el enlace da 403 o no es un boletín, dejar el hueco
 anotado en la ficha (mismo criterio que [T-188]).
 
+---
+
+**🔍 REVISADA el 07/08/2026 — el estado MEDIDO hoy ya no es el de la tabla de arriba (2 días después,
+probablemente otra sesión avanzó parte). Y este worker (rol `trabajador`, `DATABASE_URL`=`vence_coordinacion`,
+sin permiso de escritura en BD de negocio) NO PUEDE ejecutar `clonar-documento.ts` ni los `--apply` de
+enlazado: son INSERT/UPDATE en `convocatoria_documentos`/`convocatoria_hitos`. Deja el trabajo VERIFICADO y
+listo para ejecutar por quien tenga la credencial (Manuel u otra sesión con `DATABASE_URL` completo).**
+
+**Estado real por slug (medido contra `VENCE_LECTOR_URL`, vista `convocatoria_docs_coverage`):**
+
+| slug | docs_clonados | hitos_por_enlazar | veredicto |
+|---|---|---|---|
+| `auxiliar-administrativo-madrid` | 1 | 2 | **incompleto** — 1 doc por clonar + 2 hitos por enlazar |
+| `auxiliar-administrativo-madrid-2027` | 1 | 4 citas sin fuente | **incompleto** — 0 docs nuevos, 4 hitos por enlazar (ver abajo) |
+| `auxiliar-administrativo-valencia` | 3 | 0 | ✅ **ya completo** (no estaba así el 05/08 — resuelto entre medias) |
+| `auxiliar-administrativo-diputacion-cordoba` | 2 | 0 | ✅ **ya completo** (ídem) |
+| `tramitacion-procesal` | 3 | 0 | provenance OK, pero **defecto distinto**: ver abajo |
+
+**`auxiliar-administrativo-madrid` — el único con un documento REAL por clonar.** Los 2 hitos sin enlazar
+(`convocatoria_hitos.url`) apuntan los dos a `comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-2026`,
+que es un PORTAL/índice (verificado abriéndolo: WebFetch + `curl` del HTML), no un documento — coincide con lo
+que dice [T-147] sobre no confundir portal con documento. Dentro de ese portal:
+- Hito "Convocatoria publicada en BOCM" (18/02/2026) → el documento YA está clonado
+  (`BOCM-20260218-2.PDF`, curado=true, 80.449 caracteres extraídos — **coincide byte a byte con lo que
+  extrae `pdf-parse` en local, contiene BASES + ANEXO III/IV con el TEMARIO completo dentro del mismo PDF, no
+  hay "bases"/"temario" que clonar aparte**). Solo falta ENLAZAR el hito a ese documento, cero fetch.
+- Hito "Lista provisional de admitidos y excluidos" (04/06/2026) → **documento sin clonar, encontrado y
+  verificado**: `https://www.bocm.es/boletin/CM_Orden_BOCM/2026/06/04/BOCM-20260604-1.PDF` (HTTP 200,
+  845.428 bytes, `Last-Modified: 04/06/2026` — coincide con la fecha del hito). El HTML del portal lo etiqueta
+  "LISTADOS PROVISIONALES — Resolución de 22 de mayo (BOCM de 4 de junio) — Admitidos provisionales / Excluidos
+  provisionales". Comando listo (sin ejecutar — necesita el `DATABASE_URL` completo):
+  ```
+  cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+    --slug=auxiliar-administrativo-madrid \
+    --url=https://www.bocm.es/boletin/CM_Orden_BOCM/2026/06/04/BOCM-20260604-1.PDF \
+    --tipo=lista_admitidos \
+    --titulo="Resolución de 22 de mayo de 2026, por la que se aprueban las listas provisionales de personas admitidas y excluidas" \
+    --boletin=BOCM --ref=BOCM-20260604-1 --fecha=2026-06-04
+  ```
+  Después: `node scripts/backfill-hito-source-documento.cjs --apply` enlaza los dos hitos por URL exacta (dry-run
+  por defecto, ya lo hace determinista y sin red — no hace falta re-verificar).
+
+**`auxiliar-administrativo-madrid-2027` — 0 documentos nuevos, solo enlazado.** 6 hitos con URL: 3 apuntan a
+`BOCM-20260713-2.PDF` (**el único documento ya clonado**, curado=true) → los enlaza el mismo
+`backfill-hito-source-documento.cjs --apply` sin tocar nada más. Las otras 2 (plazo de solicitudes) apuntan a
+`sede.comunidad.madrid/oferta-empleo/auxiliar-administracion-general-3` — es la SEDE ELECTRÓNICA (portal de
+trámite, no documento oficial descargable) → **no clonar como documento**; si se quiere provenance ahí, el
+sitio correcto es `seguimiento_url` de la oposición, no `convocatoria_documentos`.
+
+**`tramitacion-procesal` — provenance de hitos OK, pero el corpus tiene DOS defectos que `docs_por_clonar` no ve:**
+1. Los 3 documentos existentes (`convocatoria` 126.221 car., `oep_decreto` 80.786 car., y una fila **tipo `nota`
+   con el MISMO contenido que `convocatoria`** — mismo `content_hash`/longitud) tienen **`curado=false` los
+   tres**, o sea nadie ha hecho el paso de discriminación que exige el propio `clonar-documento.ts` ("el
+   documento entra al corpus cuando Claude lo ha discriminado: curado=true").
+2. La fila `tipo='nota'` es justo lo que [T-147] pide evitar ("tipo REAL, nunca nota") — aquí parece un
+   duplicado exacto de la fila `convocatoria` (mismo hash), probablemente clonado dos veces por vías distintas
+   (el cron de notas + un clonado manual posterior). **SOSPECHO que se puede borrar sin pérdida** (mismo
+   contenido, misma URL previsiblemente) **pero no lo he confirmado comparando `url`/`content_hash` fila a
+   fila** — falta ese contraste antes de borrar nada.
+
+**Sobre `Aux. Admin. Valencia` y `Aux. Admin. Dip. Córdoba`: la ficha original (05/08) decía que necesitaban
+trabajo y HOY (07/08) `convocatoria_docs_coverage` las da `incompleto=false` — no he tocado nada yo, así que
+o las resolvió otra sesión entre medias, o la medición del 05/08 usaba un criterio distinto. Mando lo MEDIDO
+ahora, no lo que decía la ficha.**
+
+**SOSPECHA sin confirmar — `npm run audit:landing -- auxiliar-administrativo-madrid` reporta 2
+`landing_enlace_roto` en las URLs de BOCM ("sin respuesta / fetch failed"), pero los mismos dos enlaces
+respondieron HTTP 200 vía `curl` directo y vía WebFetch en esta misma sesión.** No he determinado si es un
+falso positivo del método de fetch del script en ESTE entorno (sandbox con proxy `caching.labs.local` visible
+en las cabeceras de respuesta) o un problema real intermitente contra BOCM — falta reproducirlo desde el
+entorno de producción/CI real antes de tocar el detector.
+
+**Por qué no se ha aplicado nada:** este worker corre con `DATABASE_URL=vence_coordinacion` (4 tablas de
+coordinación, sin permiso de escritura en `convocatoria_documentos`/`convocatoria_hitos`) por regla dura de la
+sesión — no se ha intentado ni un solo INSERT/UPDATE contra la BD de negocio. Todo lo de arriba está verificado
+por lectura (`VENCE_LECTOR_URL`) y contra la fuente oficial (curl/WebFetch a BOCM y al portal de
+comunidad.madrid), no inventado.
+
 **Relacionadas:** [T-147] (documentos clonados como `nota`), [T-188] (los que no se pudieron clonar),
 [T-190] (extracción pobre), [T-181] (clonados en la convocatoria equivocada), [T-152] y [T-110] (campañas a Madrid).
 ### [T-581] 🟡 [ABIERTO 05/08] Herramientas de impugnaciones/feedback revientan con el rol de lectura de la flota (permission denied sin capturar)
