@@ -49,6 +49,11 @@ const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = 
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
+// Clasificador de familia (T-384): `lib/oposiciones/familia.ts` es TS y este script es CJS sin
+// ts-node — el bridge YA existía (`scripts/_load-familia.cjs`, babel-en-memoria), usado hasta hoy
+// solo por `backfill-familia.cjs`. Reutilizarlo aquí es la única fuente, no una copia.
+const loadFamiliaModule = require('./_load-familia.cjs');
+const { degradaFamilia } = require('../lib/oposiciones/familiaBackfill.cjs');
 
 const DB_URL = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=require/, '');
 if (!DB_URL) { console.error('❌ DATABASE_URL no configurado.'); process.exit(2); }
@@ -545,6 +550,57 @@ async function detectarTodo(c, add, marcar, now) {
     if (partes.length) add('content', 'error', null, 'psicotecnico_integridad',
       `Psicotécnicos con la integridad rota: ${partes.join(' · ')}`,
       { sinSeccion: psi.sin_seccion, seccionAjena: psi.seccion_ajena, claveInvalida: psi.clave_invalida });
+  }
+
+  // ── CONTENIDO: taxonomía de FAMILIA (T-384) ──
+  // Segundo hueco del inventario de suites del job de integración: `familiaClassification.test.ts`
+  // mezclaba DOS verdades — contrato de esquema (¿la vista expone `familia`? ¿el CHECK rechaza
+  // valores fuera de la taxonomía?) y vigilancia de datos (¿el clasificador sigue de acuerdo con
+  // lo persistido? ¿hay cobertura suficiente?). El esquema se queda en CI, bloqueante
+  // (`__tests__/integration/familiaSchemaContract.test.ts`); esto es la mitad de VIGILANCIA, los
+  // dos `it()` de contenido que quedaron en `familiaClassification.test.ts`.
+  //
+  // CLI-only a propósito, mismo motivo que `cita_no_literal`/`shuffle_*`: `classifyFamilia` vive
+  // en `lib/oposiciones/familia.ts` (TS del frontend) y el @Cron del backend es un build NestJS
+  // aparte sin acceso a ese `lib/`. Duplicar el clasificador (200 líneas de keywords) como TS
+  // nativo en el backend sería la tercera copia de la misma lógica — el propio problema que este
+  // registro existe para evitar. Se documenta en `content-sweep-parity.test.ts` (CLI_ONLY_KINDS).
+  const { classifyFamilia } = loadFamiliaModule();
+  const famRows = (await c.query(
+    `SELECT nombre, administracion, familia FROM oposiciones WHERE familia IS NOT NULL ORDER BY id LIMIT 300`,
+  )).rows;
+  marcar('familia_desincronizada', famRows.length);
+  {
+    // EXENCIÓN (heredada de T-377): que el clasificador diga `otros` donde la BD tiene familia
+    // concreta no es desincronización — es una fila corregida a mano que `degradaFamilia`
+    // protege a propósito. Mismo núcleo puro que el backfill, para que detector y herramienta no
+    // puedan discrepar.
+    const desincronizados = famRows.filter((o) => {
+      const nueva = classifyFamilia(o.nombre, o.administracion);
+      if (nueva === o.familia) return false;
+      return !degradaFamilia(o.familia, nueva);
+    });
+    if (desincronizados.length) {
+      const ejemplos = desincronizados.slice(0, 5).map((o) => o.nombre);
+      add('content', 'error', null, 'familia_desincronizada',
+        `${desincronizados.length} oposición(es) donde classifyFamilia() ya no reproduce la familia persistida (p.ej. ${ejemplos.join(', ')}) — re-correr scripts/backfill-familia.cjs o revisar el cambio de keywords`,
+        { count: desincronizados.length, ejemplos });
+    }
+  }
+  // COBERTURA: catalogadas mostrables (banner, plazo abierto HOY) con familia útil.
+  const famCobertura = (await c.query(
+    `SELECT familia FROM oposiciones
+      WHERE is_active = false AND seguimiento_url IS NOT NULL
+        AND inscription_start::text <= $1 AND inscription_deadline::text >= $1`,
+    [hoyMadrid(now)],
+  )).rows;
+  marcar('familia_cobertura_baja', famCobertura.length);
+  if (famCobertura.length) {
+    const clasificadas = famCobertura.filter((o) => o.familia && o.familia !== 'otros').length;
+    const ratio = clasificadas / famCobertura.length;
+    if (ratio < 0.8) add('content', 'warn', null, 'familia_cobertura_baja',
+      `Solo ${clasificadas}/${famCobertura.length} (${Math.round(ratio * 100)}%) de las catalogadas con plazo abierto hoy tienen familia útil (mínimo 80%)`,
+      { clasificadas, total: famCobertura.length, ratio });
   }
 
   // ── CONTENIDO: dos OPCIONES idénticas dentro de la misma pregunta ──
