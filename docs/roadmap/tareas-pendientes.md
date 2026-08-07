@@ -1461,6 +1461,82 @@ sobre organización, régimen jurídico ni relaciones interadministrativas (Tít
 los tenga: eso sería servir fuera de programa, que es justo el otro defecto que este usuario
 encontró en su tema 17.
 
+#### AVANZADO (07/08, w3) — 1er batch de 15 preguntas (arts. 1-7 de 48) auditado, resto pendiente
+
+**Verificado el límite del scope antes de tocar nada — no me fío del epígrafe, lo comprobé contra el
+índice estructurado del BOE** (`curl .../texto/indice`, no un resumen): el Título I (competencias)
+termina EXACTAMENTE en el art. 48 (bloque `a4-10`) y el Título II (organización) empieza en el art.
+49 (bloque `ti-2`) — el corte de la ficha en 48 es correcto, no hay que ajustarlo. Confirmado también
+el scope real en BD (`topic_scope` de `auxiliar_administrativo_canarias` T7 = arts 1-48 de esta ley,
+exacto) y que el bloque sigue en 0 preguntas.
+
+**Por qué NO until los 48 de golpe:** el propio manual es explícito («empieza siempre por una ley +
+3-5 artículos, nunca un batch grande al inicio») y la propia ficha ya usó [T-679] (5 artículos) como
+calibración. 48 artículos / ~53k caracteres exige varios batches sucesivos con su propia auditoría
+cada uno — intentarlo de una sentada con el mismo rigor no cabe en un turno. Elegí como **primer
+batch una unidad legal natural y completa**: el **Título Preliminar entero (arts. 1-4, "naturaleza")
++ el Capítulo I del Título I (arts. 5-7, "disposiciones generales" de competencias)** — un corte que
+existe en la propia ley, no arbitrario.
+
+**Verificados los 7 artículos contra el BOE vigente** (`verificar-articulos-vs-boe.cjs
+ley-3-2026-cabildos-insulares BOE-A-2026-17189 1 2 3 4 5 6 7` → **7/7 idénticos**, 20260630).
+
+**Generadas 15 preguntas** (Art 1 ×3, Art 2 ×2, Art 3 ×2, Art 4 ×1, Art 5 ×2, Art 6 ×4, Art 7 ×1) en
+`scratchpad/t680/gen_canarias_t7_ley3-2026_2026-08-07_borrador.json`. El art. 6 (listado de 24
+materias a-x) justifica sus 4 preguntas por estructura (§2.6: "enumerativo con ≥5 ítems → 4-5
+preguntas"). Técnica de distractor: swap de UN elemento real sobre la frase literal completa
+(§2.2-bis), y para las preguntas de "qué dice la letra X" (Q1, Q2, Q12 del art.1 y art.6) los 3
+distractores son las OTRAS letras reales del mismo listado, simplemente mal etiquetadas — cero
+invención, balance de longitud automático.
+
+**Paso 3.bis — 0 bloqueantes tras una ronda de arreglo:** la 1ª pasada dio un tell de longitud (la
+pregunta de la letra e) del art.1, 65 caracteres, frente al distractor más largo de 47 — las letras
+del art.1 no son intercambiables en longitud) + distribución 100% invertida hacia D por cómo
+construí las opciones. Arreglado cambiando esa pregunta a la letra c) (47 ch, balance con las otras
+tres letras dentro del margen) y equilibrando posición con `--equilibrar` (7 transposiciones,
+letra+viñeta movidas juntas). Resultado final: **A 27% · B 27% · C 20% · D 27%, secuencia
+CBCAABABABDCDDD (no cíclica)**. Verificado a ojo que las 15 viñetas describen su propia opción tras
+el movimiento (imprimí opción y viñeta enfrentadas, las 15 casan).
+
+**Auditoría ciega independiente (agente Sonnet que no sabía que yo las generé), con instrucción
+explícita de revisar con lupa las preguntas de letra (Q1/Q2/Q12) y las dos del art. 6.3 (Q13/Q14, que
+citan párrafos consecutivos del mismo apartado y podían mezclarse): 15/15 PERFECT, 0 hallazgos.**
+Verificó carácter a carácter el mapeo de las 24 letras del art. 6.2 contra el listado real y confirmó
+que Q13/Q14 no se contaminan entre sí (cada una cita un párrafo distinto de 6.3, sin solape).
+
+**Confirmado `grep -i "8/2015"` sobre el borrador: 0 menciones** a la Ley 8/2015 derogada (el
+criterio de verificación que pide esta ficha). Dedup contra el banco completo: 0 coincidencias
+exactas de `question_text`. Los 2 avisos de "posible duplicado intra-lote" que quedan (Q1↔Q2 por
+compartir la plantilla "¿qué establece la letra X?", CLAVE 0.00; Q5↔Q9 por vocabulario compartido
+entre arts. 2 y 5, CLAVE 0.23) son el propio patrón de redundancia controlada del manual — el
+simulador ya los marca como "probable falso positivo" por el Jaccard de CLAVE bajo.
+
+**Lo que falta — y es GRANDE, hay que decirlo con la cifra por delante:** este primer batch cubre
+**7 de los 48 artículos del scope (15%)**. Quedan **41 artículos** (Capítulos II-III del Título I,
+~45k caracteres) para batches sucesivos siguiendo el mismo patrón de este manual — cobertura inicial
+→ extendida, con su propia verificación contra BOE y su propia auditoría ciega cada vez. No es una
+tarea que un solo batch pueda cerrar; que quien retome esto lo sepa antes de prometer un plazo.
+
+**Lo que falta para ESTE batch, además, por permisos:** este worker solo tiene `VENCE_LECTOR_URL`
+(lectura). Para servir estas 15 preguntas, quien tenga escritura de negocio tiene que seguir el
+manual desde el **Paso 4**: insertar (`insertar-batch-generado.cjs
+scratchpad/t680/gen_canarias_t7_ley3-2026_2026-08-07_borrador.json ley-3-2026-cabildos-insulares
+gen_canarias_t7_ley3-2026_2026-08-07`), Paso 5.bis (debería salir limpio), Paso 8 (transición a
+`approved` registrando el veredicto de auditoría de arriba), **Paso 9 OBLIGATORIO** (re-verificación
+con Sonnet nuevo sobre las preguntas ya vivas en BD, no sobre el borrador), Paso 11 (invalidar las 3
+capas de caché del tema 7 de `auxiliar_administrativo_canarias`), y verificar que el tema pase de 0 a
+15 preguntas activas.
+
+**Capas:** simulación (`simular-batch-preinsercion.cjs`) en 2 rondas hasta 0 bloqueantes + auditoría
+doble real (auto-audit + agente Sonnet independiente y ciego) con 15/15 PERFECT. Sin tests de código
+porque no se ha tocado ningún fichero de producción — es contenido, no lógica.
+
+**Entrega:** rama `flota/T-680-preguntas-canarias-t7-ley3-2026`, pusheada, con el borrador en
+`scratchpad/t680/`.
+
+**Relacionadas:** [T-679] (el mismo trabajo en Guardia Civil T17, calibración del método),
+[T-660] (el re-anclaje de esta ley que dejó el bloque en 0 preguntas).
+
 **Hay una persona esperando esto:** se le respondió que estábamos actualizando el temario.
 
 ### [T-679] 🟠 [ABIERTO 07/08] Generar preguntas del bloque TIC de Guardia Civil T17 tras el re-anclaje al RD 1125/2024 (5 artículos)
