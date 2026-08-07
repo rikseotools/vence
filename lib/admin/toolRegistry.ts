@@ -1550,7 +1550,16 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'la verificación de literalidad de epígrafe cantaría un `outdated_convocatoria` falso) y exige ' +
       '`--acepto-perder-temario` si la URL actual era el temario. Traza en `observable_events` ' +
       '(`convocatoria_enlace_repuntado`). NO purga la caché: eso va aparte y es per-instancia. ' +
-      'Hermano de `repuntar_seguimiento_url`.',
+      'Hermano de `repuntar_seguimiento_url`. ' +
+      '**MODO `--quitar <slug> --motivo "…"` (T-186, 07/08/2026):** deja la landing SIN botón ' +
+      'oficial, poniendo `programa_url` a NULL en las DOS tablas. Es para cuando NO existe ' +
+      'documento al que apuntar, no para cuando apunta al equivocado — el caso real fue ' +
+      '`correos-personal-operativo`, cuyo botón prometía «Ver OEP en BOE» y abría un 404 de ' +
+      'Correos (sitemap sin una sola ruta de empleo, portal interno en 401, y `empleo.correos.com` ' +
+      'rechazado por este mismo script por ser portal y no documento). Exige `--motivo` de ≥20 ' +
+      'caracteres: dejar una oposición ACTIVA sin enlace es decisión de contenido y a las tres ' +
+      'semanas nadie recuerda por qué. Mismo dual-write, misma verificación sobre la SSOT y misma ' +
+      'traza que el repunte normal — por eso vive aquí y no en un UPDATE suelto, que se salta las tres.',
   },
   clasificar_tipo_documento: {
     titulo: 'Clasificar el TIPO de un documento del hub de provenance (convocatoria/bases/OEP/…) por su cabecera',

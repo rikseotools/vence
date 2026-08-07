@@ -54,16 +54,18 @@ const argv = process.argv.slice(2)
 const APPLY = argv.includes('--apply')
 const SOLO_VERIFICAR = argv.includes('--verificar')
 const ACEPTO_PERDER_TEMARIO = argv.includes('--acepto-perder-temario')
+const QUITAR = argv.includes('--quitar')
 const valorDe = (flag) => {
   const i = argv.indexOf(flag)
   return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null
 }
 const ANCLAS = (valorDe('--anclas') || '').split('|').map((s) => s.trim()).filter(Boolean)
 const ETIQUETA_NUEVA = valorDe('--etiqueta')
+const MOTIVO = valorDe('--motivo')
 const posicionales = argv.filter((a, i) => {
   if (a.startsWith('--')) return false
   const previo = argv[i - 1]
-  return previo !== '--anclas' && previo !== '--etiqueta'
+  return previo !== '--anclas' && previo !== '--etiqueta' && previo !== '--motivo'
 })
 
 // Descargar el documento, leerlo (HTML o PDF) y comprobar que habla de ESTE proceso vive en
@@ -76,7 +78,8 @@ function uso(msg) {
   console.error(`\n❌ ${msg}\n`)
   console.error('Uso:  node scripts/convocatoria/repuntar-enlace-convocatoria.cjs <slug> <url-nueva> \\')
   console.error('        [--anclas "a|b"] [--etiqueta BOE] [--acepto-perder-temario] [--apply]')
-  console.error('      node scripts/convocatoria/repuntar-enlace-convocatoria.cjs --verificar <url> [--anclas "a|b"]\n')
+  console.error('      node scripts/convocatoria/repuntar-enlace-convocatoria.cjs --verificar <url> [--anclas "a|b"]')
+  console.error('      node scripts/convocatoria/repuntar-enlace-convocatoria.cjs --quitar <slug> --motivo "…" [--apply]\n')
   process.exit(2)
 }
 
@@ -102,6 +105,58 @@ async function traza(sql, datos) {
   }
 }
 
+/**
+ * Deja la oposición SIN enlace oficial (programa_url = NULL), con el mismo dual-write, la misma
+ * verificación sobre la SSOT y la misma traza que el repunte normal. Ver el porqué en el modo
+ * QUITAR de `main()`.
+ */
+async function quitarEnlace(slug, motivo) {
+  const sql = conectar()
+  const [op] = await sql`
+    SELECT slug, nombre, is_active, diario_oficial, programa_url, estado_proceso
+    FROM oposiciones_ssot WHERE slug = ${slug} LIMIT 1`
+  if (!op) { await sql.end(); uso(`no existe la oposición '${slug}'`) }
+
+  console.log(`\n${'='.repeat(78)}`)
+  console.log(`QUITAR el enlace oficial — ${op.slug}${op.is_active ? ' [ACTIVA]' : ' [catálogo]'}`)
+  console.log('='.repeat(78))
+  console.log(`  enlace actual : ${op.programa_url || '(ya está vacío)'}`)
+  console.log(`  motivo        : ${motivo}`)
+
+  if (!op.programa_url) {
+    await sql.end()
+    console.log('\n✅ nada que hacer: ya no tiene enlace oficial.\n')
+    return
+  }
+  if (!APPLY) {
+    await sql.end()
+    console.log('\n🔍 DRY-RUN: no se ha escrito nada. Añade --apply para aplicarlo.\n')
+    return
+  }
+
+  const [{ id: oposicionId }] = await sql`SELECT id FROM oposiciones WHERE slug = ${slug}`
+  await sql.begin(async (tx) => {
+    await tx`UPDATE oposiciones SET programa_url = NULL WHERE id = ${oposicionId}`
+    // Se resetea el hash por lo mismo que en el repunte: no hay documento contra el que comparar,
+    // y dejarlo haría que la verificación de literalidad de epígrafe cantara un falso desfase.
+    await tx`
+      UPDATE convocatorias
+         SET programa_url = NULL, programa_last_hash = NULL, programa_last_checked = NULL
+       WHERE oposicion_id = ${oposicionId} AND is_current AND archived_at IS NULL`
+  })
+
+  const [tras] = await sql`SELECT programa_url FROM oposiciones_ssot WHERE slug = ${slug} LIMIT 1`
+  const ok = tras.programa_url === null
+  await traza(sql, {
+    slug: op.slug, url_vieja: op.programa_url, url_nueva: null, aplicado: true,
+    quitado: true, motivo, ssot_coherente: ok,
+  })
+  await sql.end()
+  console.log(ok
+    ? `\n✅ QUITADO (dual-write). La SSOT ya no sirve enlace: la landing no pintará el botón.\n`
+    : `\n⚠️ escrito, pero la SSOT sigue devolviendo «${tras.programa_url}» — MIRARLO antes de dar por hecho nada.\n`)
+}
+
 async function main() {
   if (SOLO_VERIFICAR) {
     const url = posicionales[0]
@@ -114,6 +169,32 @@ async function main() {
     if (ANCLAS.length) console.log(`  anclas   : ${v.anclasEncontradas.length ? `✅ ${v.anclasEncontradas.join(' · ')}` : '❌ ninguna'}${v.anclasFaltan.length ? ` — faltan: ${v.anclasFaltan.join(' · ')}` : ''}`)
     console.log(`  veredicto: ${v.ok ? '✅ SIRVE' : `❌ ${v.motivo}`}\n`)
     process.exit(v.ok ? 0 : 1)
+  }
+
+  // ── Modo QUITAR: dejar la landing SIN botón oficial ────────────────────────────────────
+  //
+  // Existe porque el caso real no era «apunta al documento equivocado» sino «no existe ningún
+  // documento al que apuntar» (T-186, `correos-personal-operativo`): el enlace llevaba a una
+  // página de error de Correos, el sitemap no tiene ni una ruta de empleo, el portal interno da
+  // 401 y el único sitio vivo (`empleo.correos.com`) es un portal, no un documento — lo rechaza
+  // la propia validación de este script. Con `programa_url` a NULL, `enlaceOficialEfectivo`
+  // devuelve null y la landing deja de pintar el botón: mejor sin botón que con uno que promete
+  // «Ver OEP en BOE» y abre un 404.
+  //
+  // Va AQUÍ y no en un SQL suelto para que la escritura siga teniendo una sola puerta: el mismo
+  // dual-write (oposiciones + convocatoria vigente), la misma comprobación de que la SSOT quedó
+  // como se esperaba y la misma traza en `observable_events`. Un UPDATE a mano se salta las tres.
+  //
+  // Exige `--motivo` a propósito: quitar el enlace oficial de una oposición ACTIVA es una
+  // decisión de contenido, y dentro de tres semanas nadie recuerda por qué esa landing no tiene
+  // botón.
+  if (QUITAR) {
+    const slugQ = posicionales[0]
+    if (!slugQ) uso('falta el slug: --quitar <slug> --motivo "…"')
+    if (!MOTIVO || MOTIVO.trim().length < 20) {
+      uso('--quitar exige --motivo "…" (mínimo 20 caracteres): por qué esta landing se queda sin botón oficial')
+    }
+    return await quitarEnlace(slugQ, MOTIVO.trim())
   }
 
   const [slug, urlNueva] = posicionales
