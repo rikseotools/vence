@@ -182,8 +182,20 @@ function logDelTurno(trabajador) {
  * otras dos puertas (`puedeRecibir` y el arranque comprobado) siguen delante.
  */
 function turnosVivosDe(trabajador) {
+  const w = String(trabajador || '')
+  if (!w) return 0
+  // ⚠️ EL PATRÓN NO PUEDE COINCIDIR CONSIGO MISMO. `pgrep -f 'Eres w1,'` corre dentro de un
+  // `bash -c` cuya línea de órdenes CONTIENE ese texto, así que se cuenta a sí mismo y devuelve
+  // siempre ≥1: estrenado así, el reparto se paró entero diciendo que los cuatro trabajadores
+  // tenían un turno vivo cuando solo lo tenía uno. Medido en la máquina: patrón directo → 2,
+  // con el corchete → 1, turnos reales → 1. El truco del corchete hace que el texto del comando
+  // (`Eres [w]1,`) NO case con la expresión que busca (`Eres w1,`), que es lo mismo que se hace
+  // de toda la vida con `ps | grep [p]atron`.
+  //
+  // Ningún test de texto podía cazar esto: la función era correcta y el sistema estaba mintiendo.
+  const patron = `Eres [${w[0]}]${w.slice(1)},`
   try {
-    const n = enMaquina(trabajador, `pgrep -fc 'Eres ${trabajador},' 2>/dev/null || true`).trim()
+    const n = enMaquina(trabajador, `pgrep -fc '${patron}' 2>/dev/null || true`).trim()
     return Number(n) || 0
   } catch { return 0 }
 }
