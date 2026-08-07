@@ -1581,11 +1581,43 @@ además los arts. 11-13 y un «preámbulo» que el epígrafe no pide.
 Guardia Civil 21) porque las nuevas aún no tienen ninguna. Es lo correcto —estudiar normativa
 derogada es peor que estudiar menos— pero deja un hueco hasta generarlas.
 
+#### ✅ CERRADAS LAS 5 + 1 — el barrido da 0 (07/08)
+Las tres primeras arriba; las que faltaban:
+- **Ley 4/2005 Igualdad Euskadi** → **DL 1/2023** (texto refundido), que **ya estaba en el banco**:
+  solo hubo que re-anclar los 2 temas. El epígrafe no nombra la ley por su número (describe la
+  materia), así que el refundido lo cumple igual.
+- **RD 187/2008 Red Hospitalaria Defensa** → **RETIRADO sin sustituto**. Su epígrafe (TCAE SERMAS T3)
+  es íntegramente de la Comunidad de Madrid (LOSCAM, Red Sanitaria Única, SERMAS, Ley 6/2009, Ley
+  11/2017) y **no menciona Defensa por ninguna parte**: no era un problema de derogación, era un
+  error de scope que la derogación destapó.
+- **Orden HFP/134/2018** (Gobierno Abierto, 16 preguntas en 2 oposiciones) → **RETIRADA**. No hizo
+  falta sustituto: el **RD 371/2026** —la norma que la dejó sin efectos— ya estaba importado y
+  escopado en esos mismos temas con 28 preguntas. Sus 16 preguntas empiezan literalmente por «De
+  acuerdo con la Orden HFP/134/2018…», así que no eran recuperables re-anclando.
+
+**Verificación final: `SELECT count(*) FROM laws l JOIN topic_scope ts ON ts.law_id=l.id WHERE
+l.is_derogated` → 0**, y el barrido completo (604 leyes contra el BOE) da **0 hallazgos**.
+
+#### ⭐ LA LECCIÓN, y es de método (07/08)
+**El detector tenía LOS DOS fallos posibles a la vez, y los dos por inferir del texto teniendo el
+BOE un campo que lo dice.** La API `/metadatos` trae **`estatus_derogacion`** ('S'/'N') y
+`fecha_derogacion`:
+
+| norma | heurística de referencias | `estatus_derogacion` |
+|---|---|---|
+| RDL 8/2015 (Seguridad Social, derogada en PARTE) | ❌ la marcaba (674 preguntas en 47 temas) | ✅ `N` |
+| Orden HFP/134/2018 (sin efectos desde 08/05/2026) | ❌ **invisible**: su `/analisis` devuelve CERO referencias | ✅ `S` |
+| Cabildos · Extranjería · TREBEP | ✅ | ✅ |
+
+**Por qué me pasó:** me fui directo a las referencias porque era donde ya miraba el detector de
+incisos del TC, y **heredé su forma sin comprobar si había algo mejor a un endpoint de distancia**.
+Reusar está bien; reusar sin mirar es cómo se hereda un punto ciego. **Regla: cuando la fuente
+oficial tiene un campo estructurado, se pregunta por él ANTES de inferir del texto.** Las
+referencias siguen usándose, pero solo para lo que sí saben: decir por qué norma.
+
 #### ⏳ LO QUE QUEDA (estado exacto al cerrar la sesión del 07/08)
-1. **Ley 4/2005 Igualdad Euskadi** → Decreto Legislativo 1/2023, de 16 de marzo. 2 temas, 10 preguntas. SIN tocar.
-2. **RD 187/2008 Red Hospitalaria Defensa** → RD 931/2025, de 21 de octubre. 1 tema (TCAE SERMAS T3), 1 pregunta. SIN tocar.
-3. **Orden HFP/134/2018** (Gobierno Abierto): **ya estaba marcada `is_derogated` de ANTES y nadie la retiró** — 16 preguntas en DOS oposiciones (aux. admin. Estado T6 y administrativo Estado T6). El BOE no la reporta como derogación total, así que **mi barrido no la ve**: alguien la marcó a mano. Hay que mirar por qué y decidir.
-4. **Generar preguntas** de los tres bloques re-anclados (pipeline normal con doble auditoría).
+1. ~~Euskadi, Red Hospitalaria y Orden HFP~~ — **HECHAS**, ver arriba.
+2. **Generar preguntas** de los tres bloques re-anclados (pipeline normal con doble auditoría).
 5. **Revisar las preguntas huérfanas** de las normas viejas: la materia se re-regula, así que muchas pueden ser recuperables re-ancladas al artículo equivalente. Ninguna se ha tocado ni desactivado.
 
 #### 🔎 Y un HALLAZGO NUEVO que merece su propio detector

@@ -1,5 +1,6 @@
 import {
   detectarDerogacionTotal,
+  derogadaSegunMetadatos,
   esDerogacionTotal,
   gravedadDerogada,
 } from '@/lib/laws/derogacion'
@@ -109,5 +110,33 @@ describe('REGRESIÓN: el falso positivo que apareció al estrenarlo (07/08/2026)
       { id_norma: 'BOE-A-2022-1', relacion: { texto: 'SE DEROGA' }, texto: TEXTO_REAL },
     ] }] } }] }
     expect(detectarDerogacionTotal(rdl)).toBeNull()
+  })
+})
+
+describe('derogadaSegunMetadatos — la fuente AUTORITATIVA (07/08/2026)', () => {
+  const meta = (estatus: string, fecha?: string) => ({ data: [{ estatus_derogacion: estatus, fecha_derogacion: fecha }] })
+
+  it('los cinco casos REALES, con los valores que devuelve el BOE', () => {
+    // Los mismos que costaron la calibración a mano de la heurística.
+    expect(derogadaSegunMetadatos(meta('S', '20260630')).derogada).toBe(true)   // Cabildos
+    expect(derogadaSegunMetadatos(meta('S', '20250520')).derogada).toBe(true)   // Extranjería
+    expect(derogadaSegunMetadatos(meta('S', '20260508')).derogada).toBe(true)   // Orden HFP (la que la heurística NO veía)
+    expect(derogadaSegunMetadatos(meta('N')).derogada).toBe(false)              // Seguridad Social (derogada en PARTE)
+    expect(derogadaSegunMetadatos(meta('N')).derogada).toBe(false)              // TREBEP (vigente)
+  })
+
+  it('normaliza la fecha AAAAMMDD para no volver a parsearla en cada consumidor', () => {
+    expect(derogadaSegunMetadatos(meta('S', '20260508')).fecha).toBe('2026-05-08')
+  })
+
+  it('sin fecha o con basura no inventa una', () => {
+    expect(derogadaSegunMetadatos(meta('S')).fecha).toBeNull()
+    expect(derogadaSegunMetadatos(meta('S', 'mayo')).fecha).toBeNull()
+  })
+
+  it('una respuesta vacía o rara NO da por derogada una ley viva', () => {
+    expect(derogadaSegunMetadatos(null).derogada).toBe(false)
+    expect(derogadaSegunMetadatos({}).derogada).toBe(false)
+    expect(derogadaSegunMetadatos({ data: [{}] }).derogada).toBe(false)
   })
 })
