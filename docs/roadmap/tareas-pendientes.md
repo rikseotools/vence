@@ -981,6 +981,29 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-640] 🟡 [ABIERTO 07/08] `convocatoria_seguimiento_checks` RLS-ciega en silencio para `vence_lector`
+
+- **Cómo salió:** investigando [T-564] (detector de `seguimiento_change_status='error'`), quise usar `convocatoria_seguimiento_checks.error_message`/`http_status` para clasificar el MOTIVO del fallo (WAF/403 → headless, 404/DNS → repuntar). La consulta con `vence_lector` devolvía **0 filas siempre**, para CUALQUIER `oposicion_id` — incluso oposiciones con `seguimiento_last_checked` de HOY.
+- **MEDIDO (07/08/2026, `VENCE_LECTOR_URL`):**
+  ```sql
+  SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname='convocatoria_seguimiento_checks';
+  -- relrowsecurity=true, relforcerowsecurity=false
+  SELECT policyname FROM pg_policies WHERE tablename='convocatoria_seguimiento_checks';
+  -- 0 filas: NINGÚN rol tiene política, no solo vence_lector
+  SELECT grantee, privilege_type FROM information_schema.role_table_grants WHERE table_name='convocatoria_seguimiento_checks';
+  -- vence_lector | SELECT   (el GRANT existe, RLS lo neutraliza igualmente)
+  ```
+  Con RLS activo y CERO políticas, Postgres deniega TODA fila a cualquier rol sin `BYPASSRLS` — la tabla no está vacía (el cron SÍ inserta: `oposiciones.seguimiento_last_checked` se actualiza a diario), solo es invisible para el rol de solo-lectura.
+- **Es la MISMA clase de bug, quinta vez esta racha:** `question_lifecycle_history` ([T-598]/[T-638]), `daily_question_usage` ([T-639]), `user_devices` ([T-530]), y antes `test_questions`/`tests`/`question_disputes` ([T-573]/[T-574], donde se descubrió el mecanismo). El patrón de arreglo ya está validado 4 veces:
+  ```sql
+  DROP POLICY IF EXISTS flota_lector_lee ON public.convocatoria_seguimiento_checks;
+  CREATE POLICY flota_lector_lee ON public.convocatoria_seguimiento_checks FOR SELECT TO vence_lector USING (true);
+  ```
+  más el guardarraíl `DO $$ ... RAISE EXCEPTION ... $$` verificando `information_schema.role_table_grants`, más añadirla a `DEBE_LEER` en `scripts/canary-rol-lector.cjs`, más un test dedicado tipo `__tests__/db/rlsQuestionLifecycleHistoryLectorMigration.test.js`.
+- **Por qué importa más de lo que parece:** esta tabla es la evidencia FINA (`error_message`, `http_status`, `content_preview`, `checked_url`) de la que dependen `seguimiento_fuente_ciega` (kind existente) y `seguimiento_fuente_error` (kind nuevo de [T-564]) — ambos detectores se ejecutan desde el `@Cron` del BACKEND (que sí tiene acceso de escritura/superusuario, así que a ELLOS no les afecta), pero **cualquier auditoría, simulación o script CLI que use `vence_lector`/`VENCE_LECTOR_URL` para diagnosticar un caso concreto está ciega** — exactamente el hueco que me bloqueó al intentar construir el bucket de remediación (WAF/403 vs 404/DNS) para [T-564], que quedó sin hacer por esto.
+- **Por dónde:** migración `supabase/migrations/20260807_rls_convocatoria_seguimiento_checks_lector.sql` con el patrón de arriba + entrada en `DEBE_LEER` + test dedicado, calcado de [T-638]/[T-530]. Esfuerzo: minutos (ya está resuelto 4 veces, es repetir la receta).
+- **Relacionadas:** [T-564] (de donde sale), [T-573]/[T-574] (origen del mecanismo), [T-598]/[T-638] (`question_lifecycle_history`), [T-639] (`daily_question_usage`), [T-530] (`user_devices`).
+
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
