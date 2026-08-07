@@ -1194,6 +1194,37 @@ Algunas preguntas dependen de **importes que se revisan periódicamente** (umbra
 > única excepción legítima a «cerrar siempre por el endpoint» (§6), porque aquí el email es
 > exactamente lo que no se quiere.
 
+## 7.3.PREMISA ⚖️ La pregunta debe ser LITERAL y su artículo debe responderla SIN AMBIGÜEDAD (Manuel, 07/08/2026)
+
+> **«Las preguntas deben ser literales y el artículo debe responderla sin ambigüedad. Lo no literal
+> y ambiguo debe o reformularse o desactivarse.»**
+
+Es una **premisa de todo el banco**, no un criterio para un caso: decide impugnaciones y manda sobre
+cualquier razonamiento que defienda una clave que no está en el artículo.
+
+- La respuesta correcta tiene que **estar en el artículo vinculado**. Si para sostenerla hay que
+  salir de él —doctrina del TC, un plan derivado, una interpretación—, la pregunta **no vale tal cual**.
+- Una impugnación **`no_literal` que sea CIERTA procede**. No se rechaza explicando que «la pregunta
+  busca el alcance, no la letra»: eso es defender el defecto con palabras.
+- **Dos salidas, ninguna más:** *reformular* (que el artículo la responda literalmente) o
+  *desactivar*. Si al reformularla duplica a una hermana que ya pregunta eso, se **desactiva**.
+- La medida ya la da el dossier: el check **(b) recall opción correcta ↔ artículo**. Un recall bajo
+  con la clave sostenida en jurisprudencia es exactamente este caso.
+
+**Caso que la fija (Patricia, `dbc5b602`, 07/08/2026):** pregunta sobre el art. 14 CE cuya clave era
+la doctrina del TC («integra el derecho a la igualdad jurídica que prohíbe todo tratamiento desigual
+injustificado por no ser razonable») — correcta como doctrina, **inexistente en el artículo**. Se
+sirvió **125 veces a 88 personas y falló 86 (69 %)**, y la impugnaron **dos personas distintas por el
+mismo motivo**: la primera el 02/08 (se rechazó y se reescribió la explicación para «dejar clara la
+distinción») y la segunda **cinco días después, con esa explicación ya delante**. La explicación no
+podía arreglarlo: se lee DESPUÉS de fallar.
+
+> ⚠️ **Relación con §7.3.ter (abajo), que dice lo contrario y sigue vigente:** aquella regla es para
+> cuando la clave **SÍ es literal del precepto vigente** y el usuario opone una sentencia que lo
+> matiza → `rejected` + nota jurisprudencial en la explicación. **Aquí la clave nunca estuvo en el
+> artículo.** Antes de aplicar una u otra, la pregunta es siempre la misma: *¿está la respuesta en el
+> artículo vinculado?*
+
 ## 7.3.ter «Según la ley sí, pero en la práctica no»: la jurisprudencia va a la EXPLICACIÓN, no a la clave (post-31/07/2026)
 
 Hay un tipo de impugnación que llega bien argumentada y **no cambia la respuesta**: la que opone

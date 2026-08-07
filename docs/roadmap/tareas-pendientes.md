@@ -1146,6 +1146,114 @@ ambos admitidos el 06/08, no le generaron recompensa. Comprobado: la impugnació
 `explicacion_confusa`, que por política NO paga sola (evento `reward_skipped_subjective_type`), y el
 bug de premium exige orden explícita de Manuel que nadie dio. **Tiene razón en los hechos**; las dos
 son decisión suya.
+### [T-672] 🟠 [ABIERTO 07/08] Barrido bajo la PREMISA de literalidad: preguntas activas cuya clave NO está en su artículo vinculado (reformular o desactivar)
+
+**La premisa (Manuel, 07/08/2026), que es de todo el banco y no de un caso:**
+
+> «Las preguntas deben ser literales y el artículo debe responderla sin ambigüedad. Lo no literal y
+> ambiguo debe o reformularse o desactivarse.»
+
+Escrita en el manual de impugnaciones como **§7.3.PREMISA**, delante de §7.3.ter (que dice lo
+contrario para el caso inverso y sigue vigente: allí la clave SÍ es literal y lo que se opone es una
+sentencia que la matiza).
+
+#### De dónde sale, con las cifras delante
+
+Impugnación `dbc5b602` (Patricia): pregunta sobre el **art. 14 CE** cuya clave era la doctrina del TC
+(*«integra el derecho a la igualdad jurídica que prohíbe todo tratamiento desigual injustificado por
+no ser razonable»*) — correcta como doctrina, **inexistente en el artículo**, que es todo lo que el
+opositor puede leer. Datos:
+
+- **125 exposiciones a 88 personas, 86 fallos (69 %).**
+- **Dos impugnaciones distintas por el MISMO motivo** (`no_literal`): `a943bf0d` el 02/08 —rechazada
+  entonces, con la explicación reescrita «para dejar clara la distinción»— y `dbc5b602` **cinco días
+  después, con esa explicación ya delante**.
+- La explicación no podía arreglarlo: **se lee DESPUÉS de fallar**.
+
+Resuelta desactivándola (`retired_irreparable`, `admin_content_not_in_law`): reformularla para que el
+art. 14 la respondiera literalmente la habría convertido en duplicado de tres hermanas activas que ya
+preguntan justo eso.
+
+#### Lo que queda: medir el banco
+
+**La señal ya existe y no hay que inventarla:** el dossier de impugnaciones calcula el check **(b)
+recall opción correcta ↔ artículo vinculado** (`revisar-impugnacion.cjs`). En este caso dio **0 %**.
+Lo que NO existe es correrlo sobre las activas en vez de sobre la pregunta que alguien impugnó.
+
+**Pasos, en este orden:**
+
+1. **Medir sin sesgo**: recall clave↔artículo de TODAS las activas con `primary_article_id`, y mirar
+   la distribución antes de fijar corte. NO empezar por un umbral inventado.
+2. **Leer una muestra de cada banda** antes de creerse el número: un recall bajo puede ser una clave
+   correcta expresada con otras palabras (sinónimos, cifra en letra) y no un defecto. Este es el
+   error clásico de esta casa —173 falsos positivos en el intento anterior de otra medida—, así que
+   la precisión se comprueba a mano y se escribe en la ficha.
+3. **Cruzar con el DAÑO**, que es lo que prioriza: `% de fallo` y exposición. Una pregunta no literal
+   que nadie ve importa menos que una con 69 % de fallo y 88 personas.
+4. Por cada confirmada: **reformular** si el artículo puede responderla, **desactivar** si al hacerlo
+   duplica a una hermana. Nunca cambiar la clave para que encaje.
+
+⚠️ **Ojo con el alcance:** hay familias donde «no literal» es legítimo por construcción (psicotécnicos,
+ofimática, contenedores sin artículo real). Acotar a preguntas legislativas ancladas a un artículo con
+texto.
+
+**Relacionadas:** [T-668] (el detector de notas de auditoría, mismo origen) · `audit:vinculo-vecino` y
+`audit:instrumento-derivado`, que son dos casos particulares de esta misma premisa y conviene mirar
+antes de construir nada.
+
+### [T-668] 🟡 [ABIERTO 07/08] El detector de notas de auditoría no ve la confesión en PROSA: se sirvió una explicación que decía «la pregunta es imprecisa y el artículo vinculado es incorrecto»
+
+**Lo destapa una impugnación, no el barrido.** Ángela P. (premium, `5c4458fb`) impugnó una pregunta
+sobre los principios de actuación de las AAPP. Al abrir el caso, la explicación que se le estaba
+sirviendo era, literalmente, **la nota del auditor**:
+
+> «La pregunta trata sobre los principios generales de actuación de las Administraciones Públicas
+> según la Ley 39/2015, **pero está vinculada al artículo 71** (Impulso del procedimiento). […]
+> **La pregunta debería estar vinculada al artículo 3 de la Ley 40/2015** […]
+> **La pregunta es imprecisa y el artículo vinculado es incorrecto.**»
+
+Es decir: sabíamos que estaba mal, lo teníamos escrito **en el sitio donde lo lee el opositor**, y se
+siguió sirviendo — **31 veces a 26 personas**. (La pregunta ya está reparada: re-anclada al art. 3 de
+la Ley 40/2015 y con explicación nueva por opción.)
+
+#### El hueco, medido
+
+`audit_note_explanation` existe justo para esto y **no la ve**: los tres patrones del núcleo
+(`AUDIT_NOTE_META_RE_SRC`, `…ACTO…`, `…LITERAL…`) fallan contra ese texto, y el kind está **a cero
+hallazgos**. Falso verde por construcción: los patrones buscan la nota con la forma que tenía en los
+lotes que motivaron el detector (*«La explicación debería…»*, *«Nota técnica:»*, *«posible errata»*),
+y esta variante es **prosa corrida que confiesa el defecto** sin ninguna de esas marcas.
+
+#### Cuánto hay ahí fuera (y por qué NO se amplía a ojo)
+
+Medido el 07/08 sobre las activas, con cinco patrones de confesión:
+
+| patrón | candidatas |
+|---|---|
+| `el artículo vinculado es incorrecto` | 1 |
+| `debería estar vinculada` | 1 |
+| `la pregunta es imprecisa/errónea/ambigua` | 4 |
+| `la pregunta debería` | 5 |
+| `ninguna opción es correcta` | 7 |
+
+**Total 15 distintas… y leídas una a una, solo 1 es real: la de esta impugnación.** Las demás son
+explicaciones legítimas («la pregunta es de tipo señale lo que NO…», «ninguna de las opciones es
+correcta porque los individuos del grupo 0…»). Un primer intento con un patrón más ancho («habla de
+la pregunta en vez de explicarla») daba **173**, casi todo ruido — está anotado para que nadie lo
+reviva pensando que mide algo.
+
+#### Qué hacer
+
+Ampliar el núcleo `lib/health/auditNoteExplanation.cjs` con la familia **«confesión»**, calibrada
+contra el banco y **no de oído**: el candidato firme es *«el artículo vinculado es
+(incorrecto|erróneo)»* + *«debería estar vinculada»* (2 apariciones, 1 pregunta, precisión 1/1). Los
+otros tres patrones **no valen tal cual** — hay que acotarlos o dejarlos fuera, y la prueba de que
+sirven es leer los casos, no contar filas. Al tocarlo, mantener la paridad sweep ↔ @Cron
+(`content-sweep-parity.test.ts`) y añadir los contrastes que deben SEGUIR sin marcarse.
+
+**Relacionadas:** [T-253] (la misma familia dentro del TEXTO del artículo, no de la explicación) ·
+memoria `project-detector-notas-auditoria-verde-falso` (ya van tres veces que este detector da verde
+falso: conviene leerla antes de recalibrar).
 
 ### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
 
