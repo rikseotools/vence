@@ -497,7 +497,11 @@ async function main() {
       const preguntasMarcadas = await marcarCasosCerradosEnEmbudo(sql, preguntas)
 
       const filas = MAQ.comparar(sesiones)
-      const porSid = new Map(sesiones.map((s) => [s.slug, s.sid]))
+      // Mismo criterio que el reparto, y por la misma razón (T-667): con dos filas de sesión del
+      // mismo trabajador —lo normal en cuanto se reinstala o se recrea su worktree— un Map a pelo
+      // se queda con una arbitraria, y entonces **el panel enseña la tarea de otro sid**: o dice
+      // «sin tarea» a quien la tiene cogida, o al revés. Lo resuelve `maquinas.cjs`.
+      const porSid = new Map([...MAQ.sesionVigente(sesiones)].map(([slug, s]) => [slug, s.sid]))
       const tareaDe = (slug) => tareas.find((t) => t.claimed_by === porSid.get(slug))
 
       console.log('\nFLOTA')
@@ -1063,7 +1067,15 @@ async function main() {
 
       const vivos = delReparto
         .filter((f) => f.estado === 'vivo' || sesionViva(f.trabajador) === true)
-      const porSlug = new Map(sesiones.map((s) => [s.slug, s.sid]))
+      // ⚠️ NO es `new Map(sesiones.map(...))` (T-667). Un trabajador acumula una fila por cada
+      // identidad que ha tenido, la consulta no lleva `ORDER BY`, y ese Map se queda con la última
+      // que llegue: medido en el VPS, `w1` y `w2` tenían DOS filas y ganaba la del 05/08. Con el
+      // sid equivocado, `conTarea.has(sid)` da false para quien SÍ tiene tarea cogida → se le
+      // cuenta libre, no se le reconoce el turno muerto y no se le devuelve SU tarea. El criterio
+      // —la señal de vida manda sobre la antigüedad— vive en `maquinas.cjs`, que es quien ya lo
+      // usa para decidir vivo/callado: dos resoluciones distintas del mismo sid es como se llega a
+      // que el panel diga una cosa y el reparto haga otra.
+      const porSlug = new Map([...MAQ.sesionVigente(sesiones)].map(([slug, s]) => [slug, s.sid]))
       const libres = vivos.filter((f) => !conTarea.has(porSlug.get(f.trabajador)))
 
       // ── UN TURNO QUE MURIÓ CON LA TAREA COGIDA SE RETOMA CON **SU** TAREA (T-617) ────────
