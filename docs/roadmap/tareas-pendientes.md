@@ -5306,6 +5306,27 @@ esas preguntas no le habrían salido nunca.
 - **Cómo salió:** de `positionTypeIntegrity` en el inventario real de [T-377] («1 DB position_type without config mapping»). El test no se quejaba de un detalle de configuración: señalaba una oposición a medias.
 - **Relacionada:** [T-390] (esta misma oposición aparece ahí con sus 50 temas sin descripción — si se termina, se arreglan las dos), [T-377].
 
+> **🔬 REMEDIDO (07/08, w4), y hay dos correcciones a la ficha — mando lo medido, no lo escrito.**
+>
+> - **`oposiciones` NO tiene fila para este `position_type`, ni activa ni inactiva — no hay fila
+>   NINGUNA.** La ficha decía *"está en `oposiciones` con `is_active=false`"*: comprobado con
+>   `SELECT slug, is_active FROM oposiciones WHERE slug ILIKE '%archivos%bibliotecas%museos%madrid%'`
+>   → **0 filas**. Es más orfandad de la que decía la ficha, no menos: ni siquiera existe el
+>   registro base de la oposición, solo los 50 `topics` sueltos con ese `position_type`.
+> - **Las descripciones YA NO faltan.** [T-390] listaba estos 50 temas entre los 791 «sin
+>   descripción»; hoy los 50 tienen `descripcion_corta` poblada (`count(*) FILTER (WHERE
+>   descripcion_corta IS NOT NULL AND descripcion_corta<>'')` = 50 de 50). Alguien lo arregló
+>   entre el 31/07 y hoy sin marcarlo en ninguna ficha — [T-390] sigue sin el ✅. **Lo que NO ha
+>   cambiado es el problema real: `topic_scope` sigue en 0 filas.** Descripción sin scope es
+>   cosmético — el temario se lee bien y sigue sirviendo cero preguntas.
+> - **No pude re-verificar los 3 usuarios** (`user_profiles` da `permission denied` incluso con
+>   `VENCE_LECTOR_URL` — tabla con datos personales, fuera de mi alcance por diseño). Lo doy por
+>   bueno tal cual estaba escrito, sin remedirlo.
+> - **La decisión sigue siendo la misma y sigue sin tomar — pregunto, no construyo a ciegas.**
+>   "Terminarla" es un trabajo de contenido real (mapeo scope tema→ley/artículos para 50 temas,
+>   siguiendo `crear-nueva-oposicion.md` + gates `audit:oposicion`/`verify:scope`), no algo para
+>   empezar especulativamente sin saber si es el camino elegido.
+
 ### [T-389] 🟠 [ABIERTO 31/07] Al ACEPTAR una impugnación, medir si el fallo es sistémico no puede depender de que Claude se acuerde
 
 - **Lo pregunta Manuel (31/07):** *«siempre que resuelvas una impugnación como aceptada hay que revisar si es un fallo sistémico, ¿se puede?»*. Sí se puede — y el manual **ya lo exige** desde el 30/07 (*«si el fallo puede ser sistémico, míralo en la BD antes de cerrar»*). El problema es que **es una instrucción, no un paso**: hoy depende de que la sesión se acuerde, y esa es exactamente la clase de regla que se cumple a ratos.
