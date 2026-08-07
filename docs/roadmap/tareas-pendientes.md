@@ -1047,6 +1047,67 @@ alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispar
 Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
 `shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
 y sin un caso real que lo pida sería adivinar.
+### [T-681] 🟠 [ABIERTO 07/08] Generar preguntas del régimen sancionador de extranjería de Policía Nacional T11 tras el re-anclaje al RD 1155/2024 (43 artículos)
+
+**Contexto:** [T-660] retiró el **RD 557/2011 (REx), derogado desde el 20/05/2025** —quince meses
+sirviéndose— y ancló el tema al **RD 1155/2024** (`1205685c-e020-449e-acce-1c96052a88a3`,
+BOE-A-2024-24099, 265 arts), scope **arts. 215-257**: su Título XIV se llama literalmente
+«Infracciones en materia de extranjería y su régimen sancionador», que es el epígrafe. Ese bloque
+sirve hoy **0 preguntas** (las 8 que había eran de la norma derogada).
+
+**El encargo:** generar preguntas de los arts. 215-257 siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** (draft, cita literal, distractores
+igualados, clave en posición aleatoria, autocontenidas, tag + batch_id único, **doble auditoría
+ciega PRE y re-verificación POST**). ~63k caracteres, el bloque más grande de los tres.
+
+**Antes de empezar, mira [T-679]** (el mismo trabajo con 5 artículos): es la calibración del método.
+
+**Contexto que importa para el enfoque:** el tema conserva 251 preguntas de la LO 4/2000, que es la
+LEY. Lo que falta es el REGLAMENTO, así que las preguntas deben apoyarse en lo que el reglamento
+añade (procedimiento, plazos, órganos, tramitación) y no repetir lo que ya cubre la ley.
+
+### [T-680] 🟠 [ABIERTO 07/08] Generar preguntas del tema 7 de Aux. Admin. Canarias tras el re-anclaje a la Ley 3/2026 de cabildos (48 artículos)
+
+**Contexto:** lo destapó un usuario premium (Iván González, feedback `1627e0d4`): el tema 7 llevaba
+cinco semanas montado sobre la **Ley 8/2015 de Cabildos, derogada** el 30/06/2026. [T-660] importó la
+**Ley 3/2026** (`eafb3d37-1785-4bc3-8043-62002e4ac0d1`, BOE-A-2026-17189, 128 arts) y ancló el tema a
+sus **arts. 1-48** (Título Preliminar «naturaleza» + Título I «competencias», que es lo que pide el
+epígrafe). Ese bloque sirve hoy **0 preguntas**; las 17 anteriores eran de la ley muerta.
+
+**El encargo:** generar preguntas de los arts. 1-48 siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** (draft, cita literal, distractores
+igualados, clave en posición aleatoria, autocontenidas, tag + batch_id único, **doble auditoría
+ciega PRE y re-verificación POST**). ~53k caracteres de texto legal.
+
+**Antes de empezar, mira [T-679]** (el mismo trabajo con 5 artículos): es la calibración del método.
+
+**Y OJO con el epígrafe:** pide «naturaleza de los Cabildos Insulares y competencias». No generes
+sobre organización, régimen jurídico ni relaciones interadministrativas (Títulos II-V) aunque la ley
+los tenga: eso sería servir fuera de programa, que es justo el otro defecto que este usuario
+encontró en su tema 17.
+
+**Hay una persona esperando esto:** se le respondió que estábamos actualizando el temario.
+
+### [T-679] 🟠 [ABIERTO 07/08] Generar preguntas del bloque TIC de Guardia Civil T17 tras el re-anclaje al RD 1125/2024 (5 artículos)
+
+**Contexto:** [T-660] retiró del temario el RD 806/2014 (derogado) y ancló el tema al **RD 1125/2024**
+(`87a155b4-34a3-41fa-bcee-fa0b57af196c`, BOE-A-2024-22935). El scope son **arts. 1, 2, 8, 9 y 10**
+(cap. I «Objeto y ámbito de aplicación» y cap. III «Modelo de gobernanza…», que es LITERALMENTE lo
+que pide el epígrafe). Hoy ese bloque sirve **0 preguntas**: las 21 que había eran de la norma
+derogada y dejaron de servirse.
+
+**El encargo:** generar preguntas de esos 5 artículos siguiendo
+`docs/maintenance/generar-preguntas-con-ia.md` **entero** — no es opcional: importar en `draft`,
+cita LITERAL del artículo en la correcta, distractores igualados en longitud y forma, posición de la
+clave aleatoria uniforme, preguntas autocontenidas (siglas desarrolladas), tag `ia_generada` +
+`batch_id` único, y **doble auditoría ciega PRE-aplicación y re-verificación POST**.
+
+**Empieza por este de los tres** ([T-680] Canarias 48 arts, [T-681] Policía Nacional 43 arts): son 5
+artículos y ~5k caracteres, así que sirve de **calibración barata** del prompt y del pipeline antes
+de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método antes de multiplicarlo.
+
+**Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
+artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
 
 ### [T-675] 🔴 [ABIERTO 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
 
