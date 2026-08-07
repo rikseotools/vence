@@ -90,10 +90,25 @@ caso('scrape-opositatest', 'contenido_unico', 'limpieza a medias SIN COMMITEAR �
   return { ruta: w, rama: 'sesion/scrape' }
 })
 
-caso('viva-con-trabajo', 'en_uso', 'tiene contenido único pero SIGUE VIVA: no se opina', () => {
+caso('viva-con-trabajo', 'en_uso', 'tiene contenido único y hay un PROCESO real dentro: no se opina', () => {
   const w = nuevoWorktree('viva-con-trabajo', 'sesion/viva')
   escribir(w, 'lib/en-curso.js', 'trabajo en marcha\n')
-  return { ruta: w, rama: 'sesion/viva', minSinSenal: 2 }
+  // El proceso confirmado es lo que representa "sigue viva" de verdad (T-577): un latido fresco
+  // por sí solo YA NO basta si se puede comprobar que no hay nadie dentro. En un repo desechable
+  // no hay ningún proceso real trabajando, así que aquí se simula pasando `procesos:1` — es la
+  // única forma honesta de representar "vivo" sin mentir sobre lo que `/proc` vería de verdad.
+  return { ruta: w, rama: 'sesion/viva', minSinSenal: 2, procesos: 1 }
+})
+
+caso('l2-recien-muerta', 'contenido_unico', 'T-577: el turno terminó (procesos:0) con latido AÚN fresco — ya no cuela como "en uso"', () => {
+  // El caso raíz del incidente: el supervisor entró en el worktree de otra sesión que acababa de
+  // terminar su turno (proceso muerto) pero cuyo latido en worktree_sessions todavía tenía solo
+  // un par de minutos -- muy por debajo de las 3 horas que hacían falta para que el barrido lo
+  // mirara como huérfano -- y le hizo un `git checkout HEAD -- .` que borró 6 ficheros. Antes de
+  // T-577 este caso salía "en_uso" (nadie avisaba); ahora sale "contenido_unico" de inmediato.
+  const w = nuevoWorktree('l2-recien-muerta', 'sesion/l2')
+  escribir(w, 'lib/temario/badgeProvenance.cjs', 'trabajo de T-518 sin commitear\n')
+  return { ruta: w, rama: 'sesion/l2', minSinSenal: 2, procesos: 0 }
 })
 
 caso('recien-creada', 'sin_trabajo', 'worktree limpio, recién sincronizado', () => {
@@ -111,12 +126,15 @@ function main() {
   console.log(`\n═══ SIM — trabajo huérfano en worktrees (T-431) ═══\n${raiz}\n`)
   let fallos = 0
   for (const c of casos) {
-    const { ruta, rama, minSinSenal = null } = c.construir()
+    // `procesos` por defecto es 0 (nada corre de verdad en un repo desechable) y CADA caso puede
+    // pisarlo -- necesario desde T-577: el único caso que de verdad está "viva" (`viva-con-trabajo`)
+    // ya no lo puede fingir solo con un latido reciente, hace falta declarar un proceso real.
+    const { ruta, rama, minSinSenal = null, procesos = 0 } = c.construir()
     const r = clasificarWorktree({
       slug: c.nombre,
       ...datosDeWorktree(ruta, rama),
       minSinSenal,          // null = nunca latió → sesión muerta
-      procesos: 0,
+      procesos,
     })
     const ok = r.veredicto === c.esperado
     if (!ok) fallos++
