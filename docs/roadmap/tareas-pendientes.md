@@ -3130,6 +3130,54 @@ si el limpiador dispara, eso tiene que ser un evento.
 - **Alcance, medido el 05/08:** **913 de 11.615 usuarios con oposición fijada (8%) apuntan a algo con 0 temas.** Las cabezas no son oposiciones sino etiquetas genéricas (`auxiliar_ayuntamiento` 37, `auxiliar_enfermeria` 28, `subalterno_ordenanza_conserje` 24) — o sea, el selector deja elegir una categoría y detrás no hay nada. Hermano de [T-545], que mide solo las creadas por usuarios.
 - **Lo que NO hay que hacer:** dejar de guardar la elección cuando no está construida. Es deliberado y es lo que permite medir la demanda; lo que falta es no dejar a la persona en el callejón.
 
+#### Hecho 07/08 (w4): los tres arreglos, con las piezas que la ficha ya señalaba
+
+Rama `flota/T-562-selector-oposicion-callejon`, pusheada. **El caso concreto de Elisabet (fila
+`bibliotecario` en `oposiciones`) ya NO existe en BD** — comprobado contra `VENCE_LECTOR_URL`: hoy
+solo hay `auxiliar-biblioteca-estado` (`coverage_level='con_tests'`, `short_name` ya poblado) y
+`auxiliar-archivos-estado`, ambas con contenido real. Alguien la limpió entre el 05/08 y hoy. Pero
+el defecto ESTRUCTURAL —el que produce el PRÓXIMO caso igual, de los 913 usuarios que la ficha
+midió apuntando a algo con 0 temas— seguía intacto en el código, así que se arregla igual:
+
+1. **El dato ya no se tira.** `OposicionItem` (`components/OnboardingModal.tsx`) gana
+   `short_name?`/`coverage_level?` opcionales (no rompe el fallback estático, que no los trae), y
+   `mapApiToOposicionItem` (`lib/hooks/useOposicionesCatalog.ts`) los copia — antes se quedaba solo
+   con `{id, nombre, categoria, administracion, icon}` pese a que `/api/oposiciones/catalog` ya los
+   manda (confirmado leyendo `route.ts`: el SELECT los trae desde el primer commit del endpoint).
+2. **`short_name` se muestra cuando existe**, en `OposicionChangeModal` y en la lista de oficiales
+   de `OnboardingModal` — con `|| op.nombre` para no romper el fallback SSR sin ese campo.
+3. **Orden por madurez.** `sortByCoverageLevel` nuevo en `lib/utils/searchOposicion.ts` (mismo
+   orden que ya usaba `app/admin/oposiciones-coverage/page.tsx`, no inventado), aplicado a los
+   resultados filtrados de `OposicionChangeModal` (antes de agrupar por administración) Y de
+   `OnboardingModal` (donde además se cortan a los primeros 10 — con la vacía pudiendo ganarle el
+   puesto a la construida por región/alfabético, el corte la dejaba directamente fuera).
+4. **El callejón sin salida, cerrado.** `findBuiltEquivalent` nuevo en el mismo fichero: es
+   LITERALMENTE `matchesOposicion(construida, nombreElegido)` como decía la ficha, solo que
+   expuesto como función reusable. En `OposicionChangeModal.handleSelect`, cuando la elegida no
+   está implementada, ahora busca el equivalente entre las 131 de `OPOSICIONES` (la lista
+   construida, no el catálogo aspiracional) ANTES de mostrar "en elaboración". Si lo encuentra, el
+   modal ofrece un botón "Ir a [equivalente]" que reusa el MISMO `handleSelect` (esta vez con
+   `info` presente) — sin duplicar el flujo de guardado/navegación. Si no lo encuentra, se
+   mantiene el mensaje "en elaboración" de siempre.
+   - **Simplificación consciente respecto a la ficha:** no se muestra el conteo de preguntas
+     ("· 13.891 preguntas") en el botón — mostrarlo en vivo exige plumbing nuevo (el catálogo no
+     trae ese número) y no estaba en el alcance mínimo. El texto dice qué oposición es y basta
+     para decidir.
+- **Verificado, no solo declarado:** `findBuiltEquivalent`/`sortByCoverageLevel` probados contra
+  los datos REALES de `lib/config/oposiciones.ts` (`auxiliar_biblioteca_estado`, con sus alias
+  reales `'bibliotecario'`, `'auxiliar biblioteca'`…, leídos del fichero, no inventados en el
+  test) — 4 tests con el caso concreto del incidente. `npx tsc --noEmit` limpio (0 errores) y
+  `npm run lint` sobre los 4 ficheros tocados sin errores nuevos (solo warnings preexistentes en
+  líneas que no toqué). 22 tests nuevos/actualizados en verde
+  (`__tests__/lib/utils/searchOposicion.test.ts`).
+- **No re-verificado (sin acceso — RLS de `user_profiles` bloquea a `vence_lector`):** el "913 de
+  11.615" de la ficha. No hacía falta para hacer el fix (es un defecto de código, reproducido
+  leyendo la fuente, no una afirmación estadística mía), pero quien lo revise con acceso completo
+  puede recontarlo tras desplegar para medir el efecto.
+- **Falta:** desplegar a producción (frontend) y comprobar en vivo que buscar "biblioteca" (o
+  cualquier término con una catalogada-vacía y su construida) en `/perfil` ofrece la construida
+  primero y, si se pulsa la vacía primero, el botón "Ir a…".
+
 ### [T-560] 🟠 [ABIERTO 05/08] El panel de admin sigue con el `unnest` ciego a los scopes de «ley entera» que [T-451] arregló en el barrido
 
 > ⚠️ **06/08 (noche) — SU VEREDICTO DICE «ARREGLADO» Y EL ARREGLO NO EXISTE EN NINGÚN SITIO.**

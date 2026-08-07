@@ -11,7 +11,7 @@
  * lib/config/oposiciones.ts y centraliza el filtrado aquí.
  */
 
-import { matchesOposicion } from '@/lib/utils/searchOposicion'
+import { matchesOposicion, coverageLevelRank, sortByCoverageLevel, findBuiltEquivalent } from '@/lib/utils/searchOposicion'
 
 describe('matchesOposicion', () => {
   const opo = {
@@ -84,5 +84,75 @@ describe('matchesOposicion', () => {
 
   test('término con espacios al inicio/final se trim()-ea', () => {
     expect(matchesOposicion(opo, '  gva  ')).toBe(true)
+  })
+})
+
+describe('coverageLevelRank / sortByCoverageLevel (T-562)', () => {
+  test('la madurez ordena catalogada < monitorizada < con_temario < con_tests < con_landing < full', () => {
+    expect(coverageLevelRank('catalogada')).toBeLessThan(coverageLevelRank('monitorizada'))
+    expect(coverageLevelRank('monitorizada')).toBeLessThan(coverageLevelRank('con_temario'))
+    expect(coverageLevelRank('con_temario')).toBeLessThan(coverageLevelRank('con_tests'))
+    expect(coverageLevelRank('con_tests')).toBeLessThan(coverageLevelRank('con_landing'))
+    expect(coverageLevelRank('con_landing')).toBeLessThan(coverageLevelRank('full'))
+  })
+
+  test('sin coverage_level (fallback estático OFFICIAL_OPOSICIONES) no revienta, va al rango 0', () => {
+    expect(coverageLevelRank(null)).toBe(0)
+    expect(coverageLevelRank(undefined)).toBe(0)
+    expect(coverageLevelRank('')).toBe(0)
+  })
+
+  test('un nivel que no existe en el orden no revienta: va al rango 0, no -1 ni undefined', () => {
+    expect(coverageLevelRank('algo_que_no_existe')).toBe(0)
+  })
+
+  test('EL CASO REAL (T-562): la construida con miles de preguntas queda por delante de la vacía', () => {
+    // Datos reales del incidente: buscar "biblioteca" devolvía las dos, con
+    // la catalogada-vacía ganando por orden alfabético/demanda.
+    const vacia = { id: 'bibliotecario', nombre: 'Auxiliar de Biblioteca', coverage_level: 'catalogada' }
+    const construida = { id: 'auxiliar_biblioteca_estado', nombre: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado', coverage_level: 'con_tests' }
+    expect(sortByCoverageLevel([vacia, construida])).toEqual([construida, vacia])
+    // Y si ya venían en el orden bueno, se queda igual (no las intercambia sin motivo).
+    expect(sortByCoverageLevel([construida, vacia])).toEqual([construida, vacia])
+  })
+
+  test('empate de coverage_level conserva el orden relativo (sort estable)', () => {
+    const a = { id: 'a', coverage_level: 'con_tests' }
+    const b = { id: 'b', coverage_level: 'con_tests' }
+    const c = { id: 'c', coverage_level: 'con_tests' }
+    expect(sortByCoverageLevel([a, b, c]).map((x) => x.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  test('no muta el array original', () => {
+    const items = [{ id: 'a', coverage_level: 'catalogada' }, { id: 'b', coverage_level: 'full' }]
+    const copia = [...items]
+    sortByCoverageLevel(items)
+    expect(items).toEqual(copia)
+  })
+})
+
+describe('findBuiltEquivalent (T-562)', () => {
+  const construidas = [
+    { id: 'auxiliar_biblioteca_estado', name: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado', badge: 'C2', administracion: 'estado', aliases: ['bibliotecario', 'auxiliar biblioteca', 'auxiliar de biblioteca', 'biblioteca estado'] },
+    { id: 'administrativo_estado', name: 'Administrativo del Estado', badge: 'C1', administracion: 'estado', aliases: [] },
+  ]
+
+  test('EL CASO REAL: elegir "Auxiliar de Biblioteca" (catalogada, 0 preguntas) encuentra la construida por su alias', () => {
+    const eq = findBuiltEquivalent(construidas, 'Auxiliar de Biblioteca')
+    expect(eq?.id).toBe('auxiliar_biblioteca_estado')
+  })
+
+  test('sin coincidencia devuelve undefined — no inventa una equivalencia que no existe', () => {
+    expect(findBuiltEquivalent(construidas, 'Bombero de Alicante')).toBeUndefined()
+  })
+
+  test('término vacío no matchea con la primera de la lista por accidente', () => {
+    // matchesOposicion('') === true SIEMPRE, así que aquí se corta antes de preguntarle.
+    expect(findBuiltEquivalent(construidas, '')).toBeUndefined()
+    expect(findBuiltEquivalent(construidas, '   ')).toBeUndefined()
+  })
+
+  test('lista de construidas vacía no revienta', () => {
+    expect(findBuiltEquivalent([], 'Auxiliar de Biblioteca')).toBeUndefined()
   })
 })
