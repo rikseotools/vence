@@ -101,15 +101,24 @@ describe('el test de un tema propio usa SU temario, no el de otra oposición', (
  *  2. El texto de esa pantalla es UNO, compartido con la ruta de tests. Con dos copias, la
  *     próxima corrección solo llega a una — que es exactamente cómo nació este bug (la de tests
  *     lo explicaba, la de temario no).
- *  3. Las dos puertas que deciden si se puede fijar como objetivo usan el MISMO criterio puro.
+ *  3. Las TRES puertas que deciden si se puede fijar como objetivo usan el MISMO criterio puro.
  *     Escribir `temas > 0` a mano en cualquiera de ellas las separa el día que el criterio
  *     cambie, y entonces la buena deja de proteger.
+ *
+ * [T-077, 07/08] Eran DOS puertas y pasaron a ser TRES: `app/api/v2/oposicion/assign/route.ts`
+ * (la asignación automática al visitar la landing de una oposición, `OposicionDetector.tsx`) es
+ * un CUARTO write-path de `target_oposicion` que nadie había protegido — se encontró en
+ * revisión, no al escribir el código. Contar los escritores a ojo es exactamente cómo se dejó
+ * uno fuera la primera vez (ver la cabecera de `app/api/profile/target/route.ts`: "había 4
+ * write-paths... este es la ÚNICA vía robusta", y aun así apareció un quinto). Si aparece un
+ * escritor más, este test NO lo caza solo — hay que añadirlo aquí a mano.
  */
 describe('una personalizada vacía no es un 404', () => {
   const rutaTemario = leer('app/oposicion-personalizada/[id]/temario/page.tsx')
   const rutaTests = leer('app/oposicion-personalizada/[id]/test/page.tsx')
   const boton = leer('components/oposicionPersonalizada/MisOposiciones.tsx')
   const endpoint = leer('app/api/profile/target/route.ts')
+  const endpointAssign = leer('app/api/v2/oposicion/assign/route.ts')
 
   it('la ruta del temario decide ELLA si está vacía, en vez de heredar el 404 del componente', () => {
     expect(rutaTemario).toContain('personalizadaUtilizable')
@@ -132,8 +141,8 @@ describe('una personalizada vacía no es un 404', () => {
   const sinComentarios = (src: string) =>
     src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '')
 
-  it('las DOS puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
-    for (const [nombre, fuente] of [['botón', boton], ['endpoint', endpoint]] as const) {
+  it('las TRES puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
+    for (const [nombre, fuente] of [['botón', boton], ['endpoint', endpoint], ['endpoint assign', endpointAssign]] as const) {
       const codigo = sinComentarios(fuente)
       expect(`${nombre}:${codigo.includes('personalizadaUtilizable')}`).toBe(`${nombre}:true`)
       expect(`${nombre}:${/\.temas\s*>\s*0/.test(codigo)}`).toBe(`${nombre}:false`)
@@ -142,6 +151,7 @@ describe('una personalizada vacía no es un 404', () => {
 
   it('el rechazo del servidor deja rastro: sin evento no nos enteraríamos otra vez', () => {
     expect(endpoint).toContain('objetivo_personalizado_vacio')
+    expect(endpointAssign).toContain('objetivo_personalizado_vacio')
     expect(rutaTemario).toContain('objetivo_personalizado_vacio')
   })
 })
