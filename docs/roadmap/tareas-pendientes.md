@@ -981,67 +981,6 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-635] 🟠 [ABIERTO 07/08] El AbortController del proxy de `answer-and-save` puede morir en un 504 sin dejar rastro en `observable_events`
-
-- **Dónde:** `app/api/v2/answer-and-save/route.ts`, el proxy condicional al backend NestJS (Bloque 3
-  KEYSTONE, canary `answer-and-save: true` en producción — todas las respuestas pasan por aquí).
-- **LA CAUSA, demostrada leyendo el código (no supuesta):** `maxDuration = 30` del endpoint. El
-  intento al backend usa un `AbortController` con su propio techo de **25.000ms**. Si aborta, el
-  `catch` solo hacía un `console.warn` y caía al fallback local — que tiene SUS PROPIOS techos
-  (`ANTIFRAUD_TIMEOUT_MS` y `VALIDATE_AND_SAVE_TIMEOUT_MS`, 25.000ms cada uno, pensados para el
-  camino DIRECTO, sin haber gastado ya 25s en el intento al backend). La aritmética: 25s (intento
-  abortado) + hasta otros 25s (fallback) puede superar por mucho el `maxDuration=30` del propio
-  endpoint. Cuando eso pasa, **Vercel mata la función a nivel de plataforma — no lanza ninguna
-  excepción de JS**, así que ni el `catch` del proxy, ni el `catch` general de `_POST`, ni
-  `withErrorLogging` (que solo emite `request_completed` DESPUÉS de que `await handler()`
-  resuelva) llegan a ejecutarse nunca. El usuario ve un 504 y no queda ni rastro.
-- **MEDIDO contra `observable_events` (07/08, 7 días, `VENCE_LECTOR_URL`):** de 11.527 requests a
-  `/api/v2/answer-and-save`, **36 (0,31%) superan los 25.000ms**, y las 36 caen en la banda
-  **25.100–25.246ms** — la huella de un aborto seguido de un fallback local RÁPIDO que sí llegó a
-  tiempo. **Cero eventos entre 25.300ms y 30.000ms**, que es justo la zona invisible por
-  construcción: no se puede medir un evento que nunca se emite, así que esto es consistente con
-  la hipótesis pero no la prueba de forma directa. **SOSPECHO** (no confirmado, y no se puede
-  confirmar sin los logs de plataforma de Vercel, a los que este worker no tiene acceso) que el
-  caso catastrófico —fallback también lento, total >30s, kill silencioso— ya ha ocurrido en
-  producción; lo que SÍ está demostrado con certeza es que el código lo permite matemáticamente y
-  que, si ocurre, hoy no deja ningún rastro.
-- **Segundo hallazgo relacionado, mismo gap:** ni siquiera el caso RECUPERABLE (fallback exitoso
-  tras un aborto) se podía distinguir en los datos — `request_completed` siempre lleva
-  `source: 'vercel'` sea cual sea el camino que sirvió la respuesta, así que tampoco había forma
-  de medir CUÁNTAS veces se dispara el fallback, con éxito o sin él.
-
-**ARREGLADO:**
-1. **Rastro en el momento exacto del fallo** (antes de caer al fallback, no después): nuevo evento
-   `answer_save_backend_proxy_fallback` (severidad `warn`, con `durationMs` y `metadata.motivo`
-   distinguiendo `timeout_abort_25s` de `network_error`). `await emit(...)` (no fire-and-forget):
-   dentro de un handler que sigue haciendo más `await` después, un emit huérfano puede perderse si
-   la lambda se suspende antes de que el INSERT termine — mismo mecanismo que causó la pérdida del
-   47% del 26/05 (ver comentario en `lib/observability/emit.ts`).
-2. **El fallback deja de tener presupuesto fijo y pasa a tener presupuesto RESTANTE.** Nuevo
-   `SAFE_TOTAL_BUDGET_MS = 27000` (margen de 3s bajo `maxDuration=30` para que la propia respuesta
-   salga) y `presupuestoRestanteMs()` (con suelo de 1000ms, nunca 0 ni negativo). Los dos
-   `withDbTimeout` del fallback (antifraude y validar+guardar) se acotan a
-   `Math.min(TIMEOUT_CONSTANTE, presupuestoRestanteMs())` en vez de a la constante fija. Con esto,
-   si ya se gastó casi todo el presupuesto en el intento al backend, el fallback corta ANTES —
-   `withDbTimeout` ya emite `http_timeout` en el momento del corte (mecanismo preexistente, sin
-   tocar) y devuelve un 503 normal, que SÍ deja rastro porque `handler()` llega a resolver dentro
-   del `maxDuration`. El total queda acotado por construcción, no por confiar en que el fallback
-   vaya a ser rápido.
-- **NO tocado a propósito:** el techo de 25.000ms del propio `AbortController` (decidir cuánto
-  esperar al backend antes de abortar es una decisión distinta, sobre latencia del backend
-  específicamente, y no hay datos de esa latencia por separado en `observable_events` — cambiarlo
-  a ciegas podría forzar fallbacks innecesarios sobre respuestas del backend que solo iban un poco
-  lentas). El fix de esta ficha hace que el TOTAL esté acotado sin necesidad de tocar ese valor.
-- **Capas:** `__tests__/api/v2/answer-and-save/proxyToBackend.test.ts` (fichero YA existente para
-  este proxy, extendido — no un fichero nuevo): 4 tests nuevos (10/10 en total, todos verdes) que
-  comprueban (a) el evento se emite con el motivo correcto en fallo de red, (b) se distingue
-  `timeout_abort_25s` de un `AbortError`, (c) con presupuesto casi agotado el primer
-  `withDbTimeout` recibe muy por debajo de los 25.000ms completos, (d) el suelo de 1.000ms nunca
-  se rompe aunque se simule haber gastado el presupuesto entero. Typecheck y lint limpios.
-- **Origen:** cabo suelto del incidente `docs/roadmap/incidente-answer-save-503-28-05.md` y de la
-  llegada del canary del Bloque 3 (proxy al backend), que introdujo un segundo intento con su
-  propio techo sin recalcular el presupuesto de lo que viene después.
-
 ### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
@@ -6485,6 +6424,68 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-635] ✅ [HECHA 07/08/2026] El AbortController del proxy de `answer-and-save` puede morir en un 504 sin dejar rastro en `observable_events`
+
+- **Dónde:** `app/api/v2/answer-and-save/route.ts`, el proxy condicional al backend NestJS (Bloque 3
+  KEYSTONE, canary `answer-and-save: true` en producción — todas las respuestas pasan por aquí).
+- **LA CAUSA, demostrada leyendo el código (no supuesta):** `maxDuration = 30` del endpoint. El
+  intento al backend usa un `AbortController` con su propio techo de **25.000ms**. Si aborta, el
+  `catch` solo hacía un `console.warn` y caía al fallback local — que tiene SUS PROPIOS techos
+  (`ANTIFRAUD_TIMEOUT_MS` y `VALIDATE_AND_SAVE_TIMEOUT_MS`, 25.000ms cada uno, pensados para el
+  camino DIRECTO, sin haber gastado ya 25s en el intento al backend). La aritmética: 25s (intento
+  abortado) + hasta otros 25s (fallback) puede superar por mucho el `maxDuration=30` del propio
+  endpoint. Cuando eso pasa, **Vercel mata la función a nivel de plataforma — no lanza ninguna
+  excepción de JS**, así que ni el `catch` del proxy, ni el `catch` general de `_POST`, ni
+  `withErrorLogging` (que solo emite `request_completed` DESPUÉS de que `await handler()`
+  resuelva) llegan a ejecutarse nunca. El usuario ve un 504 y no queda ni rastro.
+- **MEDIDO contra `observable_events` (07/08, 7 días, `VENCE_LECTOR_URL`):** de 11.527 requests a
+  `/api/v2/answer-and-save`, **36 (0,31%) superan los 25.000ms**, y las 36 caen en la banda
+  **25.100–25.246ms** — la huella de un aborto seguido de un fallback local RÁPIDO que sí llegó a
+  tiempo. **Cero eventos entre 25.300ms y 30.000ms**, que es justo la zona invisible por
+  construcción: no se puede medir un evento que nunca se emite, así que esto es consistente con
+  la hipótesis pero no la prueba de forma directa. **SOSPECHO** (no confirmado, y no se puede
+  confirmar sin los logs de plataforma de Vercel, a los que este worker no tiene acceso) que el
+  caso catastrófico —fallback también lento, total >30s, kill silencioso— ya ha ocurrido en
+  producción; lo que SÍ está demostrado con certeza es que el código lo permite matemáticamente y
+  que, si ocurre, hoy no deja ningún rastro.
+- **Segundo hallazgo relacionado, mismo gap:** ni siquiera el caso RECUPERABLE (fallback exitoso
+  tras un aborto) se podía distinguir en los datos — `request_completed` siempre lleva
+  `source: 'vercel'` sea cual sea el camino que sirvió la respuesta, así que tampoco había forma
+  de medir CUÁNTAS veces se dispara el fallback, con éxito o sin él.
+
+**ARREGLADO:**
+1. **Rastro en el momento exacto del fallo** (antes de caer al fallback, no después): nuevo evento
+   `answer_save_backend_proxy_fallback` (severidad `warn`, con `durationMs` y `metadata.motivo`
+   distinguiendo `timeout_abort_25s` de `network_error`). `await emit(...)` (no fire-and-forget):
+   dentro de un handler que sigue haciendo más `await` después, un emit huérfano puede perderse si
+   la lambda se suspende antes de que el INSERT termine — mismo mecanismo que causó la pérdida del
+   47% del 26/05 (ver comentario en `lib/observability/emit.ts`).
+2. **El fallback deja de tener presupuesto fijo y pasa a tener presupuesto RESTANTE.** Nuevo
+   `SAFE_TOTAL_BUDGET_MS = 27000` (margen de 3s bajo `maxDuration=30` para que la propia respuesta
+   salga) y `presupuestoRestanteMs()` (con suelo de 1000ms, nunca 0 ni negativo). Los dos
+   `withDbTimeout` del fallback (antifraude y validar+guardar) se acotan a
+   `Math.min(TIMEOUT_CONSTANTE, presupuestoRestanteMs())` en vez de a la constante fija. Con esto,
+   si ya se gastó casi todo el presupuesto en el intento al backend, el fallback corta ANTES —
+   `withDbTimeout` ya emite `http_timeout` en el momento del corte (mecanismo preexistente, sin
+   tocar) y devuelve un 503 normal, que SÍ deja rastro porque `handler()` llega a resolver dentro
+   del `maxDuration`. El total queda acotado por construcción, no por confiar en que el fallback
+   vaya a ser rápido.
+- **NO tocado a propósito:** el techo de 25.000ms del propio `AbortController` (decidir cuánto
+  esperar al backend antes de abortar es una decisión distinta, sobre latencia del backend
+  específicamente, y no hay datos de esa latencia por separado en `observable_events` — cambiarlo
+  a ciegas podría forzar fallbacks innecesarios sobre respuestas del backend que solo iban un poco
+  lentas). El fix de esta ficha hace que el TOTAL esté acotado sin necesidad de tocar ese valor.
+- **Capas:** `__tests__/api/v2/answer-and-save/proxyToBackend.test.ts` (fichero YA existente para
+  este proxy, extendido — no un fichero nuevo): 4 tests nuevos (10/10 en total, todos verdes) que
+  comprueban (a) el evento se emite con el motivo correcto en fallo de red, (b) se distingue
+  `timeout_abort_25s` de un `AbortError`, (c) con presupuesto casi agotado el primer
+  `withDbTimeout` recibe muy por debajo de los 25.000ms completos, (d) el suelo de 1.000ms nunca
+  se rompe aunque se simule haber gastado el presupuesto entero. Typecheck y lint limpios.
+- **Origen:** cabo suelto del incidente `docs/roadmap/incidente-answer-save-503-28-05.md` y de la
+  llegada del canary del Bloque 3 (proxy al backend), que introdujo un segundo intento con su
+  propio techo sin recalcular el presupuesto de lo que viene después.
+
 
 ### [T-485] ✅ [HECHA 06/08/2026] El candado de deploy es un `flock` local: entre máquinas no hay exclusión ninguna
 
