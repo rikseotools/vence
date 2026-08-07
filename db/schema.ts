@@ -322,6 +322,10 @@ export const topicScope = pgTable("topic_scope", {
 	includeFullChapter: boolean("include_full_chapter").default(false),
 	weight: numeric({ precision: 3, scale:  2 }).default('1.0'),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	// [T-607] Última vez que se tocó la fila; mantenida por trigger (trg_topic_scope_updated_at).
+	// Backfill inicial = created_at. Sin esto no se puede distinguir una fuga de scope real de un
+	// re-vínculo/recorte posterior a que la pregunta se sirviera.
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
 	index("idx_topic_scope_article_numbers_gin").using("gin", table.articleNumbers.asc().nullsLast().op("array_ops")),
 	index("idx_topic_scope_law_id_topic_id").using("btree", table.lawId.asc().nullsLast().op("uuid_ops"), table.topicId.asc().nullsLast().op("uuid_ops")),

@@ -28,7 +28,7 @@ import type {
 
 import { getValidExamPositions } from '@/lib/config/exam-positions'
 import { buildOfficialExamFilter, buildQuestionTagFilter } from '@/lib/api/oposicion-scope/queries'
-import { articleInPositionScopeExists } from '@/lib/api/_shared/topicScopeSql'
+import { articleInPositionScopeExists, fueraDeScope } from '@/lib/api/_shared/topicScopeSql'
 import { logValidationError } from '@/lib/api/validation-error-log'
 import { emitFireAndForget } from '@/lib/observability/emit'
 import { isShuffleServeEligible } from '@/lib/shuffle/classifyShuffleMode'
@@ -195,6 +195,54 @@ export function registrarBarajadoServido(
         barajadas: barajadas.length,
         // El orden POR pregunta: es exactamente lo que hoy no se podía reconstruir.
         ordenes: barajadas.slice(0, 50).map((q) => ({ q: q.id, o: q.option_order })),
+      },
+    })
+  } catch {
+    /* la observabilidad nunca puede tumbar el servir preguntas */
+  }
+  return qs
+}
+
+/**
+ * La SONDA CONTINUA que pide [T-607]. Hermana de `registrarBarajadoServido`: envoltorio
+ * transparente, fire-and-forget, y solo emite si hay algo que decir.
+ *
+ * Por qué existe: el `EXISTS` de `articleInPositionScopeExists` filtra en SQL, y ese filtro se
+ * verificó correcto a mano (T-607, 06/08). Pero verificarlo A MANO no es vigilarlo, y las dos
+ * mediciones anteriores del mismo problema (T-583 y la primera versión de esta ficha) fallaron
+ * precisamente por medir HACIA ATRÁS, contra un scope que ya había cambiado. La única medida que
+ * distingue una fuga real de un re-vínculo posterior es la que se toma EN EL MOMENTO de servir,
+ * con el `scope` que se acaba de usar para la query — así que esto es una segunda comprobación,
+ * en JS y en memoria, del MISMO criterio que el `EXISTS` (`fueraDeScope`, gemelo puro de
+ * `articleInScope`), para que un futuro bug en el SQL (un JOIN mal hecho, un filtro que se cae al
+ * refactorizar) se vea AQUÍ y no en una impugnación semanas después.
+ *
+ * Si `scope` viene vacío no se opina (misma regla que `decidirAlcanceDeLey`): una oposición sin
+ * `topic_scope` para esta ley no tiene fuga que medir, tiene temario sin construir.
+ */
+export function registrarScopeServido<
+  T extends { id: string; lawId: string | null; articleNumber: string | null },
+>(
+  qs: T[],
+  scope: Array<{ lawId: string | null; articleNumbers: string[] | null }>,
+  ctx: { positionType?: string | null; userId?: string | null; endpoint?: string },
+): T[] {
+  try {
+    if (scope.length === 0) return qs
+    const fuera = fueraDeScope(qs, scope)
+    if (fuera.length === 0) return qs
+    emitFireAndForget({
+      source: 'vercel',
+      severity: 'error',
+      eventType: 'question_served_out_of_topic_scope',
+      endpoint: ctx.endpoint ?? '/api/questions/filtered',
+      userId: ctx.userId ?? undefined,
+      metadata: {
+        positionType: String(ctx.positionType ?? '').slice(0, 80),
+        servidas: qs.length,
+        fuera: fuera.length,
+        // Los ids: sin ellos la alerta dice "algo se coló" y no permite reparar nada concreto.
+        ids: fuera.slice(0, 50).map((q) => q.id),
       },
     })
   } catch {
@@ -1205,24 +1253,35 @@ export async function getFilteredQuestions(
         positionType: scopePositionType,
       })
 
-      const globalQuestions = await db
-        .select({ ...questionColumns, ...articleColumns })
-        .from(questions)
-        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
-        .innerJoin(laws, eq(articles.lawId, laws.id))
-        .where(and(
-          eq(questions.isActive, true),
-          isNull(questions.examCaseId), // casos prácticos solo en exam oficial
-          inArray(laws.id, validLawIds),
-          // 🎯 Scope a nivel de ARTÍCULO (no solo ley) — cierra la fuga CE 134.
-          articleScopeFilter,
-          // 🏛️ Filtro anti-contaminación de OFICIALES — ver comentario en
-          // queryQuestionsForMappingsLightweight. Aplica SIEMPRE salvo opt-in.
-          includeSharedOfficials ? sql`true` : buildOfficialExamFilter(positionType),
-          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
-        ))
-        .orderBy(sql`RANDOM()`)
-        .limit(numQuestions)
+      // Temario en memoria para la sonda de abajo (registrarScopeServido). Se pide EN PARALELO
+      // con la query que sirve — no le añade latencia al camino crítico — y es la MISMA forma
+      // {lawId, articleNumbers} que usan `sim-scope-servido.ts` y `fueraDeScope`: sin ella, esta
+      // segunda comprobación no puede ser independiente del SQL de arriba.
+      const [globalQuestions, scopeRowsForServing] = await Promise.all([
+        db
+          .select({ ...questionColumns, ...articleColumns })
+          .from(questions)
+          .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+          .innerJoin(laws, eq(articles.lawId, laws.id))
+          .where(and(
+            eq(questions.isActive, true),
+            isNull(questions.examCaseId), // casos prácticos solo en exam oficial
+            inArray(laws.id, validLawIds),
+            // 🎯 Scope a nivel de ARTÍCULO (no solo ley) — cierra la fuga CE 134.
+            articleScopeFilter,
+            // 🏛️ Filtro anti-contaminación de OFICIALES — ver comentario en
+            // queryQuestionsForMappingsLightweight. Aplica SIEMPRE salvo opt-in.
+            includeSharedOfficials ? sql`true` : buildOfficialExamFilter(positionType),
+            onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`,
+          ))
+          .orderBy(sql`RANDOM()`)
+          .limit(numQuestions),
+        db
+          .select({ articleNumbers: topicScope.articleNumbers, lawId: topicScope.lawId })
+          .from(topicScope)
+          .innerJoin(topics, eq(topics.id, topicScope.topicId))
+          .where(eq(topics.positionType, scopePositionType)),
+      ])
 
       if (!globalQuestions || globalQuestions.length === 0) {
         // 🔭 Observabilidad: hay leyes en scope (validLawIds>0) pero 0 preguntas.
@@ -1246,6 +1305,15 @@ export async function getFilteredQuestions(
       }
 
       console.log(`✅ Modo global: ${globalQuestions.length} preguntas de ${validLawIds.length} leyes válidas`)
+
+      // [T-607] Sonda continua: comprobación INDEPENDIENTE del EXISTS de arriba, con el scope
+      // del mismo instante. Transparente (no filtra ni descarta nada) — solo hace audible un
+      // desacuerdo entre lo que el SQL dejó pasar y lo que el criterio puro dice.
+      registrarScopeServido(globalQuestions, scopeRowsForServing, {
+        positionType: scopePositionType,
+        userId,
+        endpoint: '/api/questions/filtered',
+      })
 
       const transformedQuestions = registrarBarajadoServido(
         globalQuestions.map((q, i) =>

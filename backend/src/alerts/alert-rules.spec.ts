@@ -52,6 +52,7 @@ import {
   RULE_AUTH_TOKEN_MINT_WASTE,
   RULE_CLIENT_METHOD_NOT_ALLOWED,
   RULE_CHECKOUT_SYNC_MUDO,
+  RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED,
 } from './alert-rules';
 import { BENIGN_SIGNALS, CON_REGLA_PROPIA } from './benign-signals';
 
@@ -2721,5 +2722,42 @@ describe('RULE_IDENTIDAD_AJENA_NO_DRENA (el navegador con DOS identidades — T-
     expect(ALERT_RULES.some((r: { name: string }) => r.name === 'identidad_ajena_no_drena')).toBe(
       true,
     );
+  });
+});
+
+describe('RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED (sonda continua de scope — T-607)', () => {
+  const fila = (n: number, fuera: number, positionType: string | null = 'auxiliar_x') => [
+    { positionType, n, fuera },
+  ];
+
+  it('dispara con UNA sola fila: el EXISTS ya debería impedirlo, no hace falta umbral alto', () => {
+    expect(RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED.shouldFire(fila(1, 1))).toBe(true);
+  });
+
+  it('NO dispara sin filas', () => {
+    expect(RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED.shouldFire([])).toBe(false);
+  });
+
+  it('la notificación lista la oposición y el conteo de fuera de scope', () => {
+    const notif = RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED.buildNotification(fila(2, 5, 'guardia_civil'));
+    expect(notif.title).toContain('1 oposición');
+    expect(notif.body).toContain('guardia_civil');
+    expect(notif.body).toContain('5 pregunta(s)');
+    expect(notif.body).toContain('metadata.ids');
+  });
+
+  it('tolera positionType null sin romper', () => {
+    const notif = RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED.buildNotification(fila(1, 1, null));
+    expect(notif.body).toContain('(desconocida)');
+  });
+
+  it('severity error: es una regresión de contenido, no ruido de fondo', () => {
+    expect(RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED.severity).toBe('error');
+  });
+
+  it('está registrada en ALERT_RULES (si no, el eventType nace sin quien lo mire)', () => {
+    expect(
+      ALERT_RULES.some((r: { name: string }) => r.name === 'question_out_of_topic_scope_served'),
+    ).toBe(true);
   });
 });
