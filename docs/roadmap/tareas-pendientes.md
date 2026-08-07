@@ -5202,6 +5202,33 @@ node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas   # el corte e
 - **Relacionada: [T-408]**, el mismo hueco en las legislativas. Las dos fichas se escribieron el mismo día sin saber una de otra —y ninguna vio que el barrido de duplicados exactos ya existía, porque `tools:buscar -- duplicadas` no casa con «duplicad**os**»: la búsqueda es por subcadena y el femenino no encuentra el masculino—. **El criterio ya está unificado**; lo que queda repartido es el badge (T-408) y esta adjudicación.
 - **NO hacer:** aplicar la cola parafraseada en bloque (`--parafraseadas` no escribe a propósito), ni tocar la clave de ninguna copia, ni desactivar la de examen oficial.
 
+> **✅ EL BADGE, HECHO (07/08) — la mitad que un trabajador de flota SÍ puede hacer sin credencial de escritura.**
+> Extendido el kind `pregunta_duplicada` (construido para [T-408] esa misma sesión) para que también
+> cubra `psychometric_questions`, en `scripts/health-sweep.cjs` + su espejo backend — MISMO kind,
+> reutilizando `sqlNormalizar`/`unidoSoloPorTildes`/`bandaGrupo` del núcleo `lib/calidad/duplicados.js`
+> (normalización FUERTE + huella de imagen/`content_data`, la diferencia real entre los dos bancos).
+>
+> **MEDIDO fresco contra RDS (VENCE_LECTOR_URL, 07/08), con la query REAL del fichero, no una
+> recreación a mano:** universo evaluado **7.098** activas, **3 grupos duplicados / 6 preguntas**,
+> banda `error` en **0**, **0** apartados por la guarda de tildes. Los 3 grupos son justo los que la
+> ficha ya nombraba como «seguros por construcción» (`41ef1a23`/`782ad84c` FANÁTICO y las otras dos
+> parejas) — el detector los ve, coincide con lo que ya se había mirado a mano.
+>
+> **Capas:** guardarraíl de wiring extendido en `content-sweep-parity.test.ts` (4 tests nuevos:
+> consumo del núcleo, consulta con huella, y una prueba de COMPORTAMIENTO que extrae `unidoSoloPorTildes`
+> del TypeScript del backend —junto con su dependencia `normalizarConTildes`, que cierra sobre ella—
+> y la ejecuta contra el núcleo JS con el caso real que motivó la guarda). Total del fichero: 184/184.
+>
+> **Lo que NO se ha tocado, y por qué — no es pereza, es el candado del propio piloto:** los DOS pasos
+> que quedaban listados arriba («aplicar el corte exacto» y «adjudicar los 40 grupos») escriben en
+> `psychometric_questions` (`--aplicar`), y **ningún trabajador de la flota tiene una credencial con
+> permiso de escritura sobre tablas de negocio** (`DATABASE_URL` es de coordinación, 4 tablas;
+> `VENCE_LECTOR_URL` es SELECT-only) — no es una regla que se decida no seguir, es que el propio
+> `--aplicar` fallaría con «permission denied» aunque se intentara. Se entrega para que una PERSONA
+> con la credencial completa corra los dos comandos ya documentados arriba y lea la cola de 40 antes
+> de aplicar: `node scripts/calidad/duplicados-exactos.cjs --banco psicotecnicas --aplicar` (los 3
+> seguros) y la adjudicación manual de los 40 parafraseados con los cuatro sesgos ya escritos en
+> esta ficha.
 
 ### [T-422] 🔴 [ABIERTO 31/07] El reconciliador de emails juzga una decisión PASADA con el valor ACTUAL de una columna mutable
 

@@ -49,7 +49,7 @@ const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = 
 // Criterio del banco duplicado ENTERO (distinto de opciones_duplicadas: aquí se repite la
 // PREGUNTA, no una opción dentro de ella). Compartido con scripts/calidad/duplicados-exactos.cjs
 // para que el barrido nocturno y la herramienta manual de jubilar nunca discrepen. Ver T-408.
-const { bandaGrupo: bandaDuplicado, decidirSuperviviente: decidirSupervivienteDup } = require('../lib/calidad/duplicados.js');
+const { bandaGrupo: bandaDuplicado, sqlNormalizar: sqlNormalizarDup, unidoSoloPorTildes } = require('../lib/calidad/duplicados.js');
 // Universo del detector de cobertura (numérico + familia de reforma) y orden seguro de los
 // ejemplos: una sola definición, compartida con el planificador. Ver T-146.
 const { SQL_UNIVERSO_COBERTURA, SQL_ORDEN_ARTICULO, UMBRAL_BANDA_CIEGA } = require('../lib/generacion/huerfanosPlan.js');
@@ -654,6 +654,65 @@ async function detectarTodo(c, add, marcar, now) {
       `${avisosGrupos} grupo(s) de preguntas duplicadas literalmente (${avisosPreguntas} activas), misma clave: repetición, no contradicción`,
       { grupos: avisosGrupos, preguntas: avisosPreguntas, banda: 'repeticion', sample: muestraAviso });
     marcar('pregunta_duplicada', dupUniverso);
+  }
+
+  // ── CONTENIDO: mismo kind, banco PSICOTÉCNICO (T-410) ──
+  // El criterio ya estaba unificado en lib/calidad/duplicados.js desde que se construyó la
+  // herramienta de jubilar (T-410, --banco psicotecnicas); lo que faltaba era el badge, igual
+  // que en legislativas. Dos diferencias que impone la tabla, no el criterio:
+  //   - normalización FUERTE (sqlNormalizar: ignora tildes/puntuación) en vez de la laxa de
+  //     legislativas — psicotécnicas necesita agrupar «¿Qué palabra…» con «¿Que palabra…»;
+  //   - la clave de grupo lleva la HUELLA de imagen/content_data. Sin ella, 95 de 98 grupos son
+  //     preguntas DISTINTAS que solo comparten un enunciado genérico («Observa la secuencia…») y
+  //     se diferencian en la figura — medido al construir la herramienta.
+  // Guarda propia: un grupo unido SOLO por quitar la tilde se aparta (no se cuenta como
+  // duplicado) — en un banco que examina ORTOGRAFÍA la tilde puede ser la respuesta.
+  const NP = (col) => sqlNormalizarDup(col);
+  const SQL_DUP_PSICO = `
+    with base as (
+      select q.id, q.correct_option, q.section_id,
+             ${NP('q.question_text')} as norm,
+             (select string_agg(x, '|' order by x) from unnest(array[
+                ${NP('q.option_a')}, ${NP('q.option_b')}, ${NP('q.option_c')},
+                ${NP('q.option_d')}, ${NP('q.option_e')}]) x where x <> '') as ops,
+             md5(coalesce(q.image_url, '') || '#' || coalesce(q.content_data::text, '')) as huella,
+             array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e] as opciones,
+             (array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e])[q.correct_option + 1] as texto_correcta
+        from psychometric_questions q
+       where q.is_active
+    )
+    select norm, ops, huella, count(*)::int n,
+           json_agg(json_build_object(
+             'id', id, 'opciones', opciones, 'textoCorrecta', texto_correcta
+           )) as miembros
+      from base
+     group by 1, 2, 3
+    having count(*) > 1`;
+  const dupPsicoGrupos = (await c.query(SQL_DUP_PSICO)).rows;
+  {
+    const dupPsicoUniverso = (await c.query(
+      `select count(*)::int n from psychometric_questions where is_active`)).rows[0].n;
+    let erroresGrupos = 0, erroresPreguntas = 0, avisosGrupos = 0, avisosPreguntas = 0, porTilde = 0;
+    const muestraError = [], muestraAviso = [];
+    for (const g of dupPsicoGrupos) {
+      if (unidoSoloPorTildes(g.miembros.map((m) => m.opciones))) { porTilde++; continue; }
+      const banda = bandaDuplicado(g.miembros);
+      const ids = g.miembros.map((m) => m.id).join('=');
+      if (banda === 'error') {
+        erroresGrupos++; erroresPreguntas += g.n;
+        if (muestraError.length < 15) muestraError.push(ids);
+      } else {
+        avisosGrupos++; avisosPreguntas += g.n;
+        if (muestraAviso.length < 15) muestraAviso.push(ids);
+      }
+    }
+    if (erroresGrupos) add('content', 'error', null, 'pregunta_duplicada',
+      `${erroresGrupos} grupo(s) de PSICOTÉCNICAS duplicadas con clave CONTRADICTORIA (${erroresPreguntas} activas): el opositor no puede saber cuál vale`,
+      { grupos: erroresGrupos, preguntas: erroresPreguntas, banda: 'clave_contradictoria_psico', sample: muestraError });
+    if (avisosGrupos) add('content', 'warn', null, 'pregunta_duplicada',
+      `${avisosGrupos} grupo(s) de PSICOTÉCNICAS duplicadas literalmente (${avisosPreguntas} activas), misma clave: repetición, no contradicción`,
+      { grupos: avisosGrupos, preguntas: avisosPreguntas, banda: 'repeticion_psico', sample: muestraAviso, apartadosPorTilde: porTilde });
+    marcar('pregunta_duplicada', dupPsicoUniverso);
   }
 
   // ── CONTENIDO: leyes ANUALES caducadas dentro de un topic_scope ──
