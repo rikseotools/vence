@@ -1252,9 +1252,14 @@ async function main() {
       if (!process.argv.includes('--igualmente')) {
         let ultima = null
         try {
+          // ⚠️ LA ÚLTIMA PASADA **DE OTRO**, no la última a secas. Con dos supervisores
+          // alternándose, cada uno vería la SUYA como la más reciente y ninguno bloquearía —
+          // medido al estrenar esto: el guard dejó arrancar un segundo bucle teniendo el
+          // primero vivo. El filtro va en el WHERE, no después.
           const f = await sql`
             SELECT ts, metadata FROM public.observable_events
              WHERE event_type = 'flota_bucle_pasada'
+               AND metadata->>'host' IS DISTINCT FROM ${yo}
              ORDER BY ts DESC LIMIT 1`
           if (f[0]) ultima = { host: f[0].metadata?.host, ts: f[0].ts, pausaS: f[0].metadata?.pausaS }
         } catch { /* sin rastro no se puede juzgar: se sigue, como el resto del andamiaje */ }
