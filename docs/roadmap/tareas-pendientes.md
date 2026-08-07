@@ -13948,6 +13948,26 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Origen:** T-007 (21/07). Nota: esta ficha se **reconstruyó el 25/07** porque la tarea vivía en `backlog_tasks` sin ficha en el markdown (divergencia detectada por `backlog.cjs sync`).
 
 ### [T-077] 🟡 [ABIERTO 21/07 — ficha reconstruida 25/07 desde `backlog_tasks`] Cambiar de oposición como gate de plan premium de compromiso largo (semestral/anual)
+
+> **⛔ DECISIÓN DE MANUEL (07/08/2026) — ESTA TAREA NO SE HACE: NO HAY GATE.** Textual:
+> *«cambiar de oposición pueden hacerlo los free y los premium trimestrales anuales y semestrales»*.
+> O sea **todos los planes, y también los free**. Cambiar de oposición **no se cobra ni se restringe**.
+>
+> ⚠️ **Esto CORRIGE la respuesta que se dio unos minutos antes ese mismo día** (#108), donde se
+> aprobó el gate para semestral/anual y se dijo que las personalizadas contaban. **Manda esta.**
+> Si alguien ya había empezado a escribir el gate, se deshace: no se despliega nada que bloquee
+> el cambio de oposición a ningún plan.
+>
+> **Lo que SÍ se queda, porque no era el gate sino su prerrequisito:** el cierre de la puerta
+> trasera. `target_oposicion` se guardaba desde **tres sitios** y solo uno estaba protegido —
+> cualquiera podía cambiar de oposición saltándose la validación llamando directo a los endpoints
+> de onboarding. Eso está arreglado, con tests, y vale igual sin gate: la validación de [T-508]
+> tiene que aplicarse por los tres caminos, cobre o no cobre.
+>
+> **Y una tarea que nace de aquí:** actualizar la página de Premium para que lo DIGA. Hoy
+> «cambia cuando quieras» aparece bajo *«Incluido en Premium»*, lo que da a entender que es una
+> ventaja de pago; si un free también puede, eso es engañoso en la dirección peor (promete como
+> exclusivo algo que no lo es).
 - **Qué:** que **cambiar de oposición objetivo requiera un plan premium de compromiso largo** — SEMESTRAL (`premium_semester`, 6m/69€) o ANUAL (`premium_annual`, 1a/99€). Los tiers `free` + `premium_monthly` + `premium_quarterly` **NO podrían cambiar de oposición** → upsell a los planes largos (más margen y retención). **Es el TIER del plan, NO la antigüedad de cuenta** (idea previa descartada).
 - **Impacto:** 🟡 media: palanca de monetización/retención (empuja a planes largos). Toca modelo de suscripción + UX de onboarding.
 - **Cómo (detalle de diseño a decidir con Manuel):** (1) si el usuario **FREE** debe poder fijar/cambiar su ÚNICA oposición objetivo en el onboarding (para no matar la exploración inicial) o bloqueo total; (2) cómo se comunica el gate (CTA al plan largo). Cablear el gate donde hoy se cambia de oposición (selector del breadcrumb del test — ver `feedback-cambio-oposicion-via-perfil`).
