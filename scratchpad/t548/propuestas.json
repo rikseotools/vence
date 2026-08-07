@@ -1,0 +1,27 @@
+[
+  { "tema": 1, "title": "La Constitución Española de 1978 (I)", "veredicto": [
+    { "ley": "CE", "quitar": [], "anadir": [], "razon": "Consenso 2 agentes (verify-scope-oposicion, alta confianza): Título Preliminar 1-9 + Título I 10-55 = scope actual exacto. Fuente: BOE-A-1978-31229." }
+  ]},
+  { "tema": 2, "title": "La Constitución Española de 1978 (II)", "veredicto": [
+    { "ley": "CE", "quitar": [], "anadir": [], "razon": "Consenso 2 agentes, alta confianza: Títulos II-V = 56-116 exacto." }
+  ]},
+  { "tema": 3, "title": "La Constitución Española de 1978 (III)", "veredicto": [
+    { "ley": "CE", "quitar": [], "anadir": [], "razon": "Consenso 2 agentes, alta confianza: Títulos VI+VIII+IX+X = 117-127,137-169 exacto (excluye correctamente Título VII 128-136, no citado)." }
+  ]},
+  { "tema": 4, "title": "La Administración General del Estado", "veredicto": [
+    { "ley": "Ley 40/2015", "quitar": [], "anadir": [], "razon": "Consenso 2 agentes, alta confianza: Título I Ley 40/2015 = 54-80 exacto." }
+  ]},
+  { "tema": 5, "title": "El Estatuto de Autonomía del Principado de Asturias", "veredicto": [
+    { "ley": "LO 7/1981 Estatuto Asturias", "quitar": [], "anadir": [], "razon": "Consenso 2 agentes, alta confianza: epígrafe nombra TODOS los títulos = ley completa; huecos 40 y 53 son arts SUPRIMIDOS por LO 1/1999, correctamente ausentes." }
+  ]},
+  { "tema": 6, "title": "El Presidente, el Consejo de Gobierno y la Organización de la Administración del Principado", "veredicto": [
+    { "ley": "Ley 6/1984 Asturias", "quitar": [], "anadir": [], "razon": "Analista y escéptico coinciden en sustancia (quitar=[], anadir=[] ambos) pero el nombre de ley en formato distinto rompió el comparador de string del workflow, que lo mandó a juez -- el juez falló por cuota semanal agotada. Resuelto a mano leyendo el JSON crudo de los dos veredictos: no hay discrepancia real. Epígrafe cita la ley entera (39 arts) = scope actual exacto." },
+    { "ley": "Ley 8/1991 Asturias", "quitar": [], "anadir": [], "razon": "Mismo caso: ambos agentes coinciden en quitar=[]/anadir=[] (14 arts, ley entera sin acotar por el epígrafe) = scope actual exacto." }
+  ]},
+  { "tema": 215, "title": "Políticas de igualdad de género y contra la violencia de género", "veredicto": [
+    { "ley": "LO 3/2007", "quitar": [14,15,16,17,18,19,21,39,45,49,51,55,62,64,71,72,76], "anadir": [], "razon": "MEDIDO A MANO (no vía agente, cuota agotada). Estructura de Títulos de LO 3/2007 consultada en NUESTRA copia (topic_law_question_summary/law_sections, poblada en el Paso 1 de T-547 contra BOE-A-2007-6115): Título Preliminar=1-2, Título I=3-13 -- el epígrafe pide SOLO esos 13 artículos. El scope actual sirve además 17 arts de Títulos II/III/IV/V/VI/VIII: 14-19,21 (Tít.II, políticas públicas), 39 (Tít.III, medios comunicación privada), 45,49 (Tít.IV, derecho al trabajo), 51,55,62,64 (Tít.V, empleo público), 71,72 (Tít.VI, bienes y servicios), 76 (Tít.VIII, organizativas). 208 preguntas activas exactas (SQL directo sobre questions/articles), 42,3% de las 492 que sirve el tema de esa ley. Temas hermanos T301(TREBEP)/T302(Ley 2/2023 Asturias) revisados: ninguno menciona 'igualdad'/'planes de igualdad' en su epígrafe -- no hay reparto posible, es recorte puro. Aprobado por Manuel en la pregunta #104 del embudo (07/08): opción (a), recortar." }
+  ]},
+  { "tema": 305, "title": "La Ley General de la Seguridad Social (I)", "veredicto": [
+    { "ley": "RDL 8/2015", "quitar": [21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41], "anadir": [], "razon": "MEDIDO A MANO contra el ÍNDICE OFICIAL DEL BOE (WebFetch a boe.es/buscar/act.php?id=BOE-A-2015-11724 -- nuestra copia en law_sections no tenía granularidad de Sección para esta ley, solo Título/Capítulo). El epígrafe pide 'Secciones 1 y 2 del Capítulo III' = Sección 1 'Afiliación al sistema...' (15-17) + Sección 2 'Cotización...' (18-20) = 15-20. El scope actual llega hasta el 41, incluyendo la Sección 3 'Liquidación y recaudación de las cuotas' (21-41) que el epígrafe NO pide. El Capítulo IV está correcto (epígrafe pide Secciones 1+2 = 42-52, y el scope para exacto en 52). 66 preguntas activas exactas en 21-41 (SQL directo), 28,8% de las 229 del tema para esa ley. Confirmado por Manuel en #104: aplicación directa, sin necesitar más criterio." }
+  ]}
+]
