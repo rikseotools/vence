@@ -32,6 +32,7 @@ const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarIncoherenciasEstado, hoyMadrid } = require('../lib/convocatoria/estadoCoherencia.cjs');
 const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
+const { diagnosticarSeguimientoError } = require('../lib/convocatoria/seguimientoFuenteError.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOrigen.js');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
@@ -783,6 +784,27 @@ async function detectarTodo(c, add, marcar, now) {
       `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`);
   }
   marcar('seguimiento_fuente_ciega', ciegaRows.length);
+
+  // ── seguimiento_change_status='error': el cron ni siquiera llega a un HTTP 2xx (seguimiento_fuente_error) ──
+  // Hermano de los dos anteriores, un escalón MÁS ATRÁS: `seguimiento_url_stale` mira el TEXTO de
+  // la URL y `seguimiento_fuente_ciega` exige un fetch que responda 200 (`clasificarVigilancia`
+  // descarta a propósito el caso 'error' — severidad 'warn', y el sweep hace `continue`, "ya
+  // visible como seguimiento_change_status='error', no duplicar"). Esa suposición era falsa: NADA
+  // lee ese estado. Medido (T-564, 07/08): 18 oposiciones ACTIVAS con seguimiento_change_status
+  // ='error', de las cuales solo 3 tenían algún hallazgo de seguimiento (por otro motivo, no por
+  // el fallo de red) y CERO tenían seguimiento_fuente_ciega. Severidad graduada por FASE (mismo
+  // criterio que seguimiento_url_stale con procesoEnJuego): con convocatoria de ficha viva, estar
+  // ciego al cron es indefendible (error); sin ella, el resto del radar puede seguir cazándola por
+  // otra vía (warn). Ver lib/convocatoria/seguimientoFuenteError.cjs para el porqué completo.
+  const erroresRows = (await c.query(`
+    SELECT slug, estado_proceso, seguimiento_url
+    FROM oposiciones
+    WHERE is_active AND seguimiento_change_status = 'error'`)).rows;
+  for (const r of erroresRows) {
+    const d = diagnosticarSeguimientoError({ estadoProceso: r.estado_proceso, seguimientoUrl: r.seguimiento_url });
+    add('content', d.severidad, r.slug, 'seguimiento_fuente_error', `${r.slug}: ${d.motivo}`);
+  }
+  marcar('seguimiento_fuente_error', erroresRows.length);
 
   // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──
   // La caja "Ver … en BOE" de la landing muestra una referencia (boe_reference) pero el enlace
