@@ -236,6 +236,12 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
     claudeHace: 'para cada oposición señalada, verifica contra fuente oficial si la `seguimiento_url` apunta a la convocatoria VIGENTE o a un ciclo ya cerrado. Si está desfasada, repúntala a la página de la convocatoria viva Y pon `seguimiento_last_hash=NULL` (si no, la siguiente pasada del cron da un `changed` falso garantizado). `stale_boletin` (apunta a un documento de boletín inmutable de año viejo) es casi seguro; `posible_ciclo_viejo`/`url_generica` son cola de revisión: pueden ser legítimas (OPE plurianual, portal sin página propia). NUNCA repuntar sin confirmar la URL nueva contra fuente oficial.',
   },
+  notas_convocatoria_sin_vigilancia: {
+    title: 'El sensor de notas (versión de software, fechas, criterio) parece vigilar y no vigila',
+    triggerPhrase: 'revisa las notas sin vigilancia',
+    runbook: 'docs/maintenance/oeps-convocatorias-seguimiento.md',
+    claudeHace: 'para cada oposición señalada, el sensor `detect-notas-convocatoria` lleva sin dejar nota reciente pese a tener documentos clonados (nunca vio ninguna, o vio una y se congeló ≥4 días). Primero comprobar si es la causa YA conocida (WAF de comunidad.madrid bloqueando la UA propia, arreglado en `oep-signals-llm.service.ts` con reintento de UA de navegador — T-311): reproducir con `curl -A "VenceBot/1.0 (+https://www.vence.es/oep-detection)" <seguimiento_url>` vs `curl -A "Mozilla/5.0 ..." <misma_url>`; si difieren (404 vs 200), es esa causa y el fix ya cubre `comunidad.madrid` — comprobar que el sitio nuevo entra en ese mismo patrón. Si NO es eso (responde igual con las dos UA), el fallo está en otro punto de la tubería (extracción de enlaces a documentos, `fetchPdfText` con el PDF concreto, o el propio documento bloqueado/roto) y hay que diagnosticarlo aparte — este detector solo avisa, no dice la causa. NUNCA marcar como resuelto sin comprobar que `convocatoria_notas.last_seen` vuelve a moverse tras el arreglo.',
+  },
   seguimiento_fuente_ciega: {
     title: 'seguimiento_url que responde 200 pero no vigila nada',
     triggerPhrase: 'revisa las fuentes ciegas de seguimiento',

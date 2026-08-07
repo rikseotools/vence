@@ -32,6 +32,7 @@ const { Client } = require('pg');
 const { diagnosticarSeguimientoUrl, procesoConFichaViva } = require('../lib/convocatoria/seguimientoUrlSalud.cjs');
 const { detectarIncoherenciasEstado, hoyMadrid } = require('../lib/convocatoria/estadoCoherencia.cjs');
 const { clasificarVigilancia } = require('../lib/convocatoria/seguimientoVigilable.cjs');
+const { clasificarNotasVigilancia } = require('../lib/convocatoria/notasSinVigilancia.cjs');
 const { detectarEnOposicion } = require('../lib/convocatoria/examenPasadoEnTexto.cjs');
 const { clasificarHito, esFechaDeExamen } = require('../lib/convocatoria/hitoOrigen.js');
 const { checkConvocatoriaLinks } = require('../lib/convocatoria/linkCoherence.cjs');
@@ -872,6 +873,40 @@ async function detectarTodo(c, add, marcar, now) {
       `${r.slug}: la seguimiento_url responde pero NO se puede vigilar (${v.nivel}) — ${v.motivo}`);
   }
   marcar('seguimiento_fuente_ciega', ciegaRows.length);
+
+  // ── El sensor de NOTAS (versión de software, fechas, criterio) parece vigilar y no vigila ──
+  // Hermano de los dos anteriores, pero del sensor `detect-notas-convocatoria`, no del cron de
+  // hash de `check-seguimiento`. Origen (T-311, 30/07→06/08): una usuaria de Madrid preguntó por
+  // Windows 11 y, al comprobarlo, el sensor tenía 0 filas en `convocatoria_notas` para su
+  // oposición pese a tener documentos ya clonados. La consulta simple que proponía la ficha
+  // ("corpus>0 y notas=0") se queda corta: 3 oposiciones de Madrid (celador/TCAE/auxiliar-
+  // administrativo SERMAS) SÍ tenían notas, pero congeladas 11+ días — "notas=0" las daba por
+  // sanas. Con las dos condiciones juntas (nunca vista, o vista pero stale ≥4 días — umbral
+  // calibrado: 103/111 oposiciones sanas ven su última nota en <2 días, 7 forman una cola aparte
+  // de 7 a 21.6 días, sin casos intermedios) la lista mide 21, no 2. Causa raíz DEMOSTRADA solo
+  // para `comunidad.madrid` (WAF que bloquea la UA propia del sensor — arreglado con reintento de
+  // UA de navegador en `oep-signals-llm.service.ts`); el resto queda solo VISIBLE, sin diagnosticar.
+  const notasRows = (await c.query(`
+    SELECT o.slug,
+      (SELECT count(*) FROM convocatoria_documentos cd
+        JOIN convocatorias cv ON cv.id = cd.convocatoria_id
+        WHERE cv.oposicion_id = o.id)::int AS docs_corpus,
+      (SELECT count(*) FROM convocatoria_notas n WHERE n.oposicion_id = o.id)::int AS notas_count,
+      (SELECT EXTRACT(EPOCH FROM (now() - max(n.last_seen)))/86400
+         FROM convocatoria_notas n WHERE n.oposicion_id = o.id) AS dias_sin_ver
+    FROM oposiciones o
+    WHERE o.is_active AND o.seguimiento_url IS NOT NULL`)).rows;
+  for (const r of notasRows) {
+    const v = clasificarNotasVigilancia({
+      docsCorpus: r.docs_corpus,
+      notasCount: r.notas_count,
+      diasSinVer: r.dias_sin_ver != null ? Number(r.dias_sin_ver) : null,
+    });
+    if (v.severidad !== 'error') continue;
+    add('content', 'error', r.slug, 'notas_convocatoria_sin_vigilancia',
+      `${r.slug}: el sensor de notas no está vigilando esta oposición — ${v.motivo}`);
+  }
+  marcar('notas_convocatoria_sin_vigilancia', notasRows.length);
 
   // ── Enlaces de la convocatoria vigente que NO corresponden a lo que MUESTRAN ──
   // La caja "Ver … en BOE" de la landing muestra una referencia (boe_reference) pero el enlace
