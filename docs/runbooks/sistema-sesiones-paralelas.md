@@ -317,8 +317,29 @@ Ruido 4 de cada 5 veces enseñando a teclear el gesto que destruye.
 > un directorio que no existe ahí.
 
 **Nace en silencio** (hoy hay 0 huérfanos), así que la única prueba de que sabe encontrar algo es
-`npm run sim:huerfanos`: reconstruye los cinco casos sobre repos de git de verdad y falla si
-alguno se clasifica mal — en cualquiera de las dos direcciones.
+`npm run sim:huerfanos`: reconstruye ocho casos sobre repos de git de verdad (los cinco originales
+más tres de T-577) y falla si alguno se clasifica mal — en cualquiera de las dos direcciones.
+
+> **T-577 (07/08) — el hueco COMPLEMENTARIO: worktrees VIVOS por latido pero MUERTOS de verdad.**
+> Este barrido miraba worktrees *abandonados* (`MIN_SIN_SENAL` = 3h de silencio); lo que no miraba
+> era el hueco de EN MEDIO. Un `claude -p` no se despide: el turno termina y el proceso muere solo,
+> pero su ÚLTIMO latido en `worktree_sessions` puede tener solo un par de minutos — «fresco» para
+> el criterio antiguo (`procesos>0 || latido<3h`) durante casi las tres horas siguientes, aunque no
+> haya NADIE defendiendo ese árbol. Es justo la ventana en la que **alguien de fuera puede pensar
+> que es seguro tocarlo**: el 05/08 el supervisor de la flota entró en el worktree de otra sesión
+> (`l2`, turno ya terminado, 6 ficheros de T-518 sin commitear) y le hizo `git checkout HEAD -- .`
+> — el árbol se veía "en uso" por el latido, pero llevaba minutos sin ningún proceso dentro.
+> **Arreglo:** el latido SOLO decide "viva" cuando `procesos` no se pudo comprobar (null/undefined,
+> típico de una máquina remota sin acceso a `/proc`); si se pudo comprobar y dio 0, el 0 manda
+> siempre, por fresco que esté el latido. `npm run sesiones:huerfanos` (el barrido COMPLETO, que
+> clasifica todos los worktrees sin pre-filtrar por antigüedad de señal) avisa de esto de
+> inmediato, sin esperar a que nadie intente encargarle nada a esa sesión. **Ojo, no confundir con
+> el bloque de "candidatas a cerrar" dentro de `latidos.cjs`**: ese es, A PROPÓSITO, un cruce más
+> estrecho (solo los worktrees que YA parecían tranquilos por `clasificarSenal`, `VIVA_MIN`=15 min)
+> — el propio `latidos.cjs` remite al barrido completo para lo que no entra ahí ("Barrido completo,
+> también de las vivas: `npm run sesiones:huerfanos`"), así que el latido de 2 minutos del caso de
+> `l2` no habría aparecido en ESE bloque concreto aunque sí en el barrido completo. Caso
+> `l2-recien-muerta` en la simulación reproduce el incidente exacto. Detalle: [T-577].
 
 ### 3.10 Que la regla llegue cuando se empieza a trabajar
 

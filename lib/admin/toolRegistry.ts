@@ -2109,9 +2109,17 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '47 commits de vence-clean, ya arriba por contenido) ∪ lo no commiteado. Medido 31/07: de ' +
       '5 worktrees con «trabajo», 4 eran ruido y 1 llevaba 3 días con 43 líneas perdidas. NACE EN ' +
       'SILENCIO (hoy 0 huérfanos), así que la prueba de que encuentra algo es `npm run ' +
-      'sim:huerfanos`, que reconstruye los 5 casos sobre repos de verdad. NO va al barrido ' +
-      'nocturno: los worktrees son locales y el sweep corre en Fargate. Emite `trabajo_huerfano` ' +
-      'al bus de fricción (T-423).',
+      'sim:huerfanos`, que reconstruye 8 casos sobre repos de verdad (los 5 originales + T-577). ' +
+      'NO va al barrido nocturno: los worktrees son locales y el sweep corre en Fargate. Emite ' +
+      '`trabajo_huerfano` al bus de fricción (T-423). ' +
+      '**T-577 (07/08):** un `procesos` CONFIRMADO en 0 (se pudo mirar /proc y no había nadie) ya ' +
+      'no se deja tapar por un latido fresco — antes «viva» se decidía con `procesos>0 || ' +
+      'latido<3h`, y un turno que acaba de morir (proceso a 0) con latido de minutos salía «en ' +
+      'uso» hasta 3 horas después: la ventana exacta en la que el supervisor entró en el worktree ' +
+      'de otra sesión (`l2`, turno ya terminado) y le hizo `git checkout HEAD -- .`, borrando 6 ' +
+      'ficheros sin commitear de T-518. Ahora el latido SOLO decide cuando `procesos` no se pudo ' +
+      'comprobar (null/undefined, típico de una máquina remota); si se comprobó y dio 0, manda el ' +
+      '0. Caso `l2-recien-muerta` en la simulación reproduce el incidente exacto.',
   },
   reserva_perdida: {
     titulo: 'Avisar a una sesión de que lo que tenía reservado ya lo lleva otra',
