@@ -625,6 +625,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  candado_typecheck: {
+    titulo: 'Un `tsc --noEmit` a la vez por MÁQUINA (el peaje que ahogaba el VPS de la flota)',
+    ruta: 'lib/hooks/candadoTypecheck.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      'Núcleo puro + cableado en `scripts/typecheck-push-guard.cjs`. Simulación: ' +
+      '`npm run sim:candado-typecheck` (lanza 4 a la vez y comprueba que NO se solapan — los ' +
+      'unitarios solo prueban la línea de órdenes, que es texto). Nace de [T-682]: el VPS llevaba ' +
+      'horas con carga 18 y se culpaba a la CPU; el PSI decía **CPU 0,00 % · disco 0,00 % · ' +
+      'memoria `full` 98,73 %** — todos parados esperando memoria. Con `ps` por RSS: cuatro `tsc` a ' +
+      'la vez, 3,8 GB, sobre 7,7 GB. Coinciden por construcción porque todos los turnos pasan por ' +
+      'el `pre-push`. **Misma convención que el cerrojo del deploy** (`flock` + `/tmp/vence-*.lock`) ' +
+      '**pero con el fallo al revés y a propósito**: el deploy ABORTA si no consigue el candado ' +
+      '(dos `update-service` sobre ECS se pisan de verdad), este CORRE IGUAL (dos typechecks solo ' +
+      'van lentos, y bloquear un push para siempre sería peor). El código `-E 99` separa «no cogí ' +
+      'el candado» de «los tipos fallan», que es lo único que impide que el candado se coma un ' +
+      'error real. La espera va al bus de fricción compartido (`typecheck_espera`), no a un evento ' +
+      'propio: ese contador es el que dirá si el candado basta o si el cuello está antes.',
+  },
   importar_rd486_anexos: {
     titulo: 'Importar los anexos del RD 486/1997 VERBATIM desde la API de datos abiertos del BOE',
     ruta: 'scripts/oposiciones/importar-rd486-anexos.cjs',

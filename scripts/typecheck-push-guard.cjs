@@ -27,6 +27,13 @@
 const path = require('path')
 const { execFileSync, spawnSync } = require('child_process')
 const { needsTypecheck, needsBackendTypecheck } = require('../lib/hooks/typecheckRelevance.cjs')
+const { conCandado, interpretarSalida } = require('../lib/hooks/candadoTypecheck.cjs')
+const { emitirFriccion } = require('../lib/sessions/friccion.cjs')
+
+/** ¿Existe `flock` en esta máquina? Sin él no se serializa, pero tampoco se impide nada. */
+function hayFlock() {
+  return spawnSync('sh', ['-c', 'command -v flock'], { stdio: 'ignore' }).status === 0
+}
 
 const REPO = path.join(__dirname, '..')
 
@@ -97,12 +104,42 @@ function main() {
     // mano con más heap: 0 errores de tipos, el fallo era solo memoria. Sin este flag el guard
     // bloqueaba TODO push que tocara "código" (T-486, cualquier trabajador de la flota en una
     // máquina de 7-8GB compartida), aunque el código en sí compilase limpio.
-    const r = spawnSync('npm', ['run', 'typecheck'], {
+    // ── UN TYPECHECK A LA VEZ POR MÁQUINA (T-682) ─────────────────────────────────────────
+    // Cada `tsc` de este repo pide >1 GB (y el flag de arriba le PERMITE hasta 6). Cuatro turnos
+    // de la flota coinciden en este peaje por construcción —todos pasan por el pre-push— y el
+    // 07/08 eso dejó el VPS con la memoria al 98,7 % de presión y la CPU al 0 %: nadie calculaba,
+    // todos esperaban memoria. El candado no quita capacidad, solo impide que se pisen.
+    const inv = conCandado({
+      comando: 'npm', args: ['run', 'typecheck'],
+      esperaMaxSegundos: Number(process.env.TYPECHECK_LOCK_WAIT || 900),
+      hayFlock: hayFlock(),
+    })
+    const r = spawnSync(inv.comando, inv.args, {
       cwd: p.cwd,
       stdio: 'inherit',
       env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim() },
     })
     const seg = ((Date.now() - t0) / 1000).toFixed(0)
+
+    // Esperar al candado es fricción de trabajar en paralelo, igual que esperar al de deploy: va
+    // al MISMO bus (`typecheck_espera`), no a un evento propio. Es lo que dirá si el candado basta
+    // o si el cuello está antes. Fail-open: la telemetría no puede impedir un push.
+    if (inv.conCandado && Number(seg) > 30) {
+      try { emitirFriccion({ clase: 'typecheck_espera', guard: 'typecheck-push', detalle: p.nombre, segundos: Number(seg) }) } catch {}
+    }
+    if (interpretarSalida(r.status, { conCandado: inv.conCandado }) === 'sin_candado') {
+      // No es un fallo de tipos: es que otro typecheck lleva la máquina ocupada más de lo previsto.
+      // Se corre sin candado antes que dejar a nadie sin poder pushear.
+      console.log(`⏳ typecheck [${p.nombre}]: el candado sigue tomado tras ${seg} s — se corre igual, sin serializar.`)
+      try { emitirFriccion({ clase: 'typecheck_espera', guard: 'typecheck-push', detalle: `${p.nombre}:sin_candado`, segundos: Number(seg) }) } catch {}
+      const r2 = spawnSync('npm', ['run', 'typecheck'], {
+        cwd: p.cwd,
+        stdio: 'inherit',
+        env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim() },
+      })
+      r.status = r2.status
+      r.error = r2.error
+    }
 
     if (r.error) {
       console.log(`⚠️  typecheck-push-guard [${p.nombre}]: no pude ejecutar npm (${r.error.message}). Se ignora (fail-open).`)
