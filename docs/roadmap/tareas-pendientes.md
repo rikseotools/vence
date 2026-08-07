@@ -1479,6 +1479,59 @@ lo que no se puede satisfacer), [T-486] (el ciclo de revisión que hace esto rut
   para cazar.
 
 Contexto: es un proceso de 196 plazas (98 libre + 98 promoción interna), grupo E2, del Parque Móvil.
+
+> **🚨 URGENTE — RESPUESTA (07/08, w4). El plazo termina HOY, 07/08/2026. Fecha verificada contra
+> la fuente oficial, escritura NO HECHA (fuera de mi permiso de esta tarea): entrega para que
+> alguien con credencial de negocio la aplique HOY.**
+>
+> **Localicé la resolución oficial y ya no es la "Bases del 13/07" del `programa_url`** (ese PDF
+> —`hacienda.gob.es/pme/20260713basesconvocatoria.pdf`— es el mismo texto, pero el BOE es la
+> fuente primaria): **BOE-A-2026-15052**, «Resolución de 8 de julio de 2026, de la Subsecretaría…»,
+> **publicada en el BOE núm. 167 del 10/07/2026** (`https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-15052`).
+> Cita literal, base 3.5 (idéntica en el PDF y en el BOE): *"la solicitud deberá presentarse en el
+> plazo de 20 días hábiles contados a partir del día siguiente al de la fecha de publicación de la
+> reseña de esta convocatoria en el Boletín Oficial del Estado."*
+>
+> **El documento NO da una fecha literal — da una FÓRMULA, así que la fecha es DERIVADA (mismo
+> patrón que `cifra_derivada` del runbook de plazas, aplicado a fechas: se deriva de literales del
+> propio documento, y se firma, no se silencia).** Cálculo, con el calendario OFICIAL de días
+> inhábiles 2026 de la AGE (**BOE-A-2025-23702**, Resolución de 18/11/2025 de la Secretaría de
+> Estado de Función Pública — festivos nacionales 2026: 1 y 6 de enero, 3 de abril, 1 de mayo, 12
+> de octubre, 8 de diciembre, 25 de diciembre; ninguno cae en la ventana jul-ago):
+> - Día siguiente a la publicación (10/07) = **11/07/2026** (sábado, no hábil → el primer día
+>   hábil contado es el **13/07/2026**, lunes).
+> - Contando 20 días hábiles (solo L-V, sin festivos nacionales en la ventana) desde el 13/07: el
+>   día 20 hábil es **07/08/2026** (viernes) — **HOY**.
+> - **Cita literal + cálculo verificados por CÓDIGO** (no a ojo): iteré día a día con la lista de
+>   festivos nacionales de la resolución oficial, contando solo L-V y excluyendo esos 7 días. El
+>   propio `inscription_start=2026-07-11` que ya tiene la fila **coincide exactamente** con "día
+>   siguiente a la publicación" — confirma que la fecha de publicación de referencia (10/07) es la
+>   correcta.
+> - **Corroborado por una fuente independiente** (academia de oposiciones `grafton.es`,
+>   `https://grafton.es/convocatoria-conductor-parque-movil-del-estado-2026/`): cita textual **"Del
+>   13 de julio al 7 de agosto, ambos inclusive"** — coincide EXACTO con mi cálculo (13/07 = primer
+>   hábil, 07/08 = vigésimo hábil). Dos métodos independientes, mismo resultado.
+>
+> **Valor a escribir: `inscription_deadline = '2026-08-07'`, dual-write en `oposiciones` Y en la
+> convocatoria vigente (`convocatorias.is_current=true`).** `estado_proceso` se queda en
+> `inscripcion_abierta` — el plazo no ha cerrado todavía (termina esta noche), no hay que
+> avanzarlo.
+>
+> **⛔ NO ESCRITO. Es una prohibición de esta tarea, no una limitación técnica que quisiera
+> saltarme:** el encargo de este turno dice explícito «NO escribas en la BD de negocio», y mi
+> credencial (`DATABASE_URL` de coordinación) no tiene privilegio sobre `oposiciones`/
+> `convocatorias` de todos modos — solo pude LEER con `VENCE_LECTOR_URL`. No existe una
+> herramienta ya hecha para este campo (`scripts/corregir-plazas-contra-boletin.cjs` es SOLO para
+> `plazas_*`, `scripts/dual-write-adjudicar.cjs` es para RECONCILIAR una divergencia entre
+> `oposiciones`/`convocatorias` que ya difieren — aquí las dos están en NULL, no hay nada que
+> adjudicar). No construí una herramienta nueva para un único campo de una única fila con "minutos"
+> de esfuerzo declarado — sería la puerta genérica que el runbook de plazas explícitamente evitó
+> crear sin necesidad.
+>
+> **Por qué corre prisa de verdad:** si nadie escribe esto HOY, la landing seguirá invisible en
+> home/SEO/banner el día en que el plazo cierra — justo cuando alguien podría estar decidiendo
+> apuntarse en el último momento y no encuentra la convocatoria. Pregunto con `--bloquea` para que
+> se vea arriba.
 ### [T-617] 🔴 [ABIERTO 06/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
 
 **Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
