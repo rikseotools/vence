@@ -1065,6 +1065,70 @@ la persona pierde el acceso sin saber por qué.
 **Vigilancia ya existente:** la regla `pago_fallido_falsa_alarma` (tolerancia cero, ≥1 en 24 h) y
 `npm run stripe:pago-fallido-falsos`, que lista a quién y con cuánto desfase. Si esta tarea se
 hace bien, las dos se quedan mudas.
+### [T-671] 🔴 [ABIERTO 07/08] INCIDENTE VIVO: el 95% de las lecturas de estadísticas devuelve 401 — 248 usuarios ven sus datos a 0
+
+**Lo destapó una usuaria, no una alerta.** Laura Simar (premium, Zaragoza) escribió a las 15:44 UTC
+*«hoy la app me da otro problema y es que mis estadísticas están a 0»* (feedback `8bd13f67`).
+**No ha perdido nada**: tiene 130 tests y 1.746 respuestas guardadas, 817 de los últimos 7 días y la
+última a las 15:51 de hoy. Es un fallo de LECTURA.
+
+**Y no es solo ella. Medido el 07/08:**
+- `/api/v2/user-stats` → **4.114 respuestas 401 sobre 4.329 peticiones = 95%**. La línea base de los
+  21 días anteriores es **6-51%** (26-404 al día). No es un cambio de instrumentación: el RATIO subió,
+  no solo el volumen.
+- `/api/exam/pending` → 7.763 eventos 401 en 24 h, **254 usuarios**.
+- `/api/psychometric/completed-sessions` → también.
+- **248-253 usuarios distintos afectados**, y **166 de ellos SIGUEN respondiendo preguntas** mientras
+  las lecturas les fallan: el token sirve para escribir y no para estas lecturas.
+
+**Ventana.** Arranca **hoy 15:10-15:11 UTC** (17:10 local) y sigue a las 19:21 UTC. Cruza CINCO
+`deploy_version` distintas (b1f37fa2, e67847b1, 269e31e1, 2553d894, f71b6817), así que **no es una
+versión concreta de cliente**: es del lado servidor o de un cambio de estado compartido.
+
+**Mensajes:** «No autorizado» (4.088) y **«Usuario no existe» (26)**. Origen `vercel` (los emite el
+propio endpoint, no el navegador).
+
+**Pistas sin confirmar (NO son la causa, son por dónde seguir):**
+- `auth` como evento de severidad error/warn: **6.044 desde las 15:10**, que es exactamente el inicio.
+- **`auth_identidad_ajena_rechazada`: 210 eventos desde las 14:51**, 20 minutos ANTES del pico. Es el
+  candidato más prometedor: mirar qué lo emite y con qué criterio compara identidades.
+- `/api/auth/token` acumula 6.333 respuestas 401 en 24 h pero **solo 27 usuarios** (bucle de reintento
+  de unos pocos), y su serie ya venía alta de antes: probablemente OTRO problema, no este.
+
+**Descartado con datos:**
+- **NO es el antifraude de [T-651]** (encajaba en el tiempo, commit 14:50 UTC): los eventos de reto y
+  bot suman 1-2 usuarios en 8 h, no 248.
+- **NO son las migraciones RLS de [T-658]**: son de las 17:02 UTC, dos horas DESPUÉS del inicio.
+- **NO es [T-657]** (el trabajo de esta sesión): desplegado a las 17:48 UTC, también posterior.
+
+**Por qué nadie se enteró:** no hay regla que vigile el RATIO de 401 de un endpoint de lectura contra
+su propia línea base. `senal_error_sin_vigilancia` exige ≥150/h de un tipo `error` sin regla propia, y
+esto entra como `auth`/`request_completed`, que ya tienen dueño. Cerrar el incidente **y** el hueco.
+
+**AVANCE (07/08, 21:30 — hasta donde llegó la sesión que lo destapó):**
+- **`auth_identidad_ajena_rechazada` queda DESCARTADO como causa.** Se emite en `/api/exam/validate`
+  (194 eventos, 0 usuarios identificados) y en Stripe, **no en `user-stats`**. Era la pista más
+  prometedora y no lo era.
+- **La causa está un paso antes: las peticiones llegan SIN TOKEN VÁLIDO.** El 401 sale de la primera
+  rama de `requireUsuarioPropio` (`verifyAuth` falla → `{error:'No autorizado'}`), y la metadata de los
+  1.358 eventos mayoritarios lo dice: **`userIdVerified: false`**, `reason: null`, mensaje
+  `unauthorized`. **No es un token de otra persona ni un id discrepante: es que no hay token
+  verificable.** Eso descarta también toda la familia de guardas de identidad de [T-565].
+- Por tanto el fallo está en **quién debería poner el `Authorization`**: o el cliente deja de
+  adjuntarlo, o la renovación del access token no está devolviendo uno válido. Encaja con que
+  `/api/auth/token` acumule **6.333 respuestas 401 con solo 27 usuarios** (bucle de reintento), aunque
+  esa serie ya venía alta de antes y hay que comprobar si es el mismo fallo o dos distintos.
+
+**PENDIENTE (sesión propia, es fuego):** seguir por `verifyAuth` / `getAuthHeaders()` y por
+`/api/auth/token` — por qué el cliente se queda sin token válido a partir de las 15:10 UTC del 07/08.
+Y responder a Laura, que espera por esto Y por unas recompensas (ver abajo).
+
+**Atado a `8bd13f67`** (Laura): su segunda queja es que la impugnación `a1a6e998` y el bug `7847ff3e`,
+ambos admitidos el 06/08, no le generaron recompensa. Comprobado: la impugnación es
+`explicacion_confusa`, que por política NO paga sola (evento `reward_skipped_subjective_type`), y el
+bug de premium exige orden explícita de Manuel que nadie dio. **Tiene razón en los hechos**; las dos
+son decisión suya.
+
 ### [T-656] 🟠 [ABIERTO 07/08] 142 commits varados en ramas COMPARTIDAS de trabajador, invisibles para el inventario de merge
 
 - **Medido el 07/08** al buscar por qué 7 tareas revisadas en verde no tenían su trabajo en `main`:
