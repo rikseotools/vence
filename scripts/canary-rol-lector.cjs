@@ -64,6 +64,10 @@ const DEBE_LEER = [
   // cambió (hash/preview/status), solo que `oposiciones.seguimiento_change_status='changed'`.
   // Ver 20260806_rls_convocatoria_seguimiento_checks_lector.sql.
   ['convocatoria_seguimiento_checks', 'el histórico de checks de seguimiento, para triar qué cambió'],
+  // [T-237] investigar los sensores del radar OEP (docs/runbooks/salud-radar.md): sin esto no se
+  // puede contrastar cuántas señales produjo un sensor en un periodo ni triar una concreta. Ver
+  // 20260806_rls_oep_detection_signals_lector.sql.
+  ['oep_detection_signals', 'el histórico de señales del radar OEP, para triar y contrastar sensores'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */

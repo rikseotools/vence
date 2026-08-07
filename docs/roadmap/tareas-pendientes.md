@@ -1658,17 +1658,38 @@ va con esfuerzo `sesion_propia` y no como higiene.
   opción + cita literal del BOE). No era trámite del gate: dos de ellas se resuelven por un matiz que
   la explicación vieja no explicaba (art. 30, *«promover la convocatoria»* ≠ *«convocar»*; art. 48,
   *«aguas interiores»* frente a exteriores).
-
-#### ⏳ LO QUE FALTA
-
-1. **El Paso 2 (recorte) por el PIPELINE, no a mano.** `verify:scope dump` → los 2 agentes + juez →
-   `plan` → `apply`. Es de **impacto alto** (92 artículos fuera, ~51 dentro, 29 preguntas dejan de
-   servirse ahí), así que el clasificador lo mandará a **puerta de juicio** y necesita OK explícito.
-   ⚠️ **Nada se borra:** las 29 preguntas siguen en el banco, solo dejan de servirse en ESE tema.
-2. **Generar las preguntas de los arts. 89-139**, que es lo que el programa pide y hoy tiene **0**.
-   Ojo al mapeo fino: el epígrafe no pide el Título IV entero sino **los capítulos I, III, IV, VI y
-   VII**, así que hay que bajar la estructura por capítulos del BOE antes de escopar (regla del manual:
-   casar por RÚBRICA, no por el número a ojo).
+- **Paso 2 (recorte) PREPARADO por el pipeline, pendiente de `apply` con criterio humano (06/08,
+  sesión w1).** El mapeo fino de capítulos —lo que este mismo ítem pedía como pendiente— está HECHO y
+  **verificado por triplicado contra `BOE-A-2007-5825`**: mi propia lectura del índice del BOE, el
+  agente ANALISTA y el agente ESCÉPTICO (2 agentes independientes, cada uno con WebFetch propio al
+  BOE, sin verse entre sí) llegaron **exactamente** a los mismos rangos:
+  - Título III (organización territorial): **89-98**.
+  - Título IV, solo capítulos I (**100-107**), III (**117-118**), IV (**119-123**), VI (**128-132**)
+    y VII (**133-139**) — se excluyen a propósito el art. 99 (introductorio del título, sin capítulo),
+    el capítulo II 108-116 («La Junta de Andalucía») y el capítulo V 124-127 («La Administración de la
+    Junta de Andalucía»), que el epígrafe NO cita.
+  - Total scope correcto: **37 artículos** (89-98, 100-107, 117-123, 128-139) — **no 51**: la cifra
+    «~51» de arriba era la estimación ANTES de filtrar por capítulo (Título III + Título IV entero =
+    10+41=51); con el filtro fino son 14 menos (art. 99 + cap. II + cap. V).
+  - `node scripts/verify-topic-scope.cjs dump auxiliar_administrativo_ayuntamiento_sevilla` →
+    `plan auxiliar_administrativo_ayuntamiento_sevilla <propuestas.json>` (propuestas = consenso de
+    los 2 agentes) da: **quitar 92 / añadir 37, impacto 51 preguntas** (activas hoy en T4 que dejan de
+    servirse ahí — no se borran, ver arriba), `deltaValid: true`, `category: judgment_gate`
+    (`flags: ['epigrafe_no_localizable']` — heurística conservadora esperada: el epígrafe dice «el
+    Estatuto de Autonomía para Andalucía», no «LO 2/2007», así que el localizador automático no casa
+    el segmento; NO es un dato sospechoso, es el propio diseño del clasificador pidiendo ojos humanos).
+  - **NO se ha aplicado**: además de la puerta de juicio, este rol (trabajador, `VENCE_LECTOR_URL`
+    de solo lectura) no tiene permiso de escritura en tablas de negocio. `dump`/`plan` corrieron
+    sustituyendo `DATABASE_URL` por `VENCE_LECTOR_URL` (son solo `SELECT`); `apply` necesita el
+    `DATABASE_URL` real (`vence_coordinacion` tampoco sirve: sin acceso a `topic_scope`).
+  - **Para aplicar** (sesión/persona con `DATABASE_URL` de escritura): re-generar `dump` y `plan` en
+    fresco (el dump lee `topic_scope` EN VIVO, no reutilizar el de esta sesión) con la misma
+    `propuestas.json` (los rangos de arriba), revisar la tabla que imprime `plan`, y
+    `apply auxiliar_administrativo_ayuntamiento_sevilla plan.json --include-gate` (el `--include-gate`
+    es obligatorio: sin él `apply` solo tocaría los `auto_safe`, que aquí son 0).
+2. **Generar las preguntas de los arts. 89-139** (el subconjunto real: 89-98, 100-107, 117-123,
+   128-139 — ver mapeo de arriba), que es lo que el programa pide y hoy tiene **0**. Ya no falta
+   mapeo: los rangos exactos están arriba, verificados.
 3. **Los otros 25 temas de la oposición siguen en `never_sourced`** (Paso 1 sin hacer). No bloquea las
    respuestas ya dadas, pero la próxima queja de temario de Sevilla volverá a parar en la puerta.
    El literal de los 26 temas está **entero en el mismo documento del hub** — es clonar, no investigar.
@@ -6966,6 +6987,60 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
   - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
 
+- **▸ SESIÓN w1 (06/08): las dos primeras prioridades de la ficha, arregladas y verificadas — y de
+  paso una regresión seria en T-434 que no es de esta ficha, con [T-633] abierta para ella.**
+  1. **`UserAvatar: Usuario no existe` — comprobado el primer paso pedido, y NO era lo que
+     parecía.** [T-245] SÍ está desplegada (`auth_sub_reconciliado` sigue activo hoy, aunque a
+     bajo volumen — el atasco original ya drenó). Pero medido fresco (06/08, `SELECT
+     date_trunc('day',ts), count(distinct user_id), count(*) FROM observable_events WHERE
+     event_type='console_error' AND severity='error' AND error_message ILIKE '%UserAvatar%Usuario
+     no existe%' GROUP BY 1`, 10 días): **30-45 usuarios/día, 39-107 eventos/día, SIN bajar**
+     desde el 28/07 hasta el 05/08. [T-245] cura una vía de identidad (`/api/auth/token`); esta
+     firma pasa por OTRA vía (`/api/v2/user-stats`, que su propio código ya reconoce como "sesión
+     zombie" con `sessionInvalid:true` en el 401 — no es un bug del servidor, está gestionado ahí).
+     **El bug real era del CLIENTE:** `components/UserAvatar.tsx` ignoraba ese flag y hacía
+     `console.error` igual que un fallo genuino, inflando `console_error`/`severity:'error'` con
+     un caso ya reconocido. Arreglado: si `sessionInvalid`, `console.warn` (el pipeline de
+     `lib/observability/client.ts` ya clasifica por nivel de consola: `error`→`severity:'error'`,
+     `warn`→`severity:'warn'` — sin mecanismo nuevo). Un error SIN el flag sigue siendo
+     `console.error`, no se silencia de más. 2 tests nuevos en
+     `__tests__/components/UserAvatar.test.tsx`, mutation-testeados (revertido el fix, el test
+     de `sessionInvalid→warn` cae; restaurado, verde). **No cura la causa de fondo de por qué el
+     perfil no resuelve — solo deja de clasificarla como error crónico cuando el servidor ya la
+     tiene identificada y controlada.**
+  2. **`[answerSaveQueue] Sin token` — la causa que la ficha del 31/07 ya había separado (618/642
+     anónimos, 0 pendientes) estaba en `utils/answerSaveQueue.ts:flush()`: pedía el token SIEMPRE,
+     antes de comprobar si había algo que sincronizar.** `flush()` se dispara en `online`/
+     `visibilitychange` — eventos globales para cualquier visitante, con sesión o sin ella. Con
+     la cola vacía no hay nada en juego y no hace falta ni pedir el token ni loguear su ausencia.
+     Arreglado: `if (getPendingCount() === 0) return` al principio de `flush()`, antes de
+     `getAccessToken()`. Los 24 casos CON usuario (los preocupantes de verdad, per ficha del
+     31/07) siguen intactos: con `pending>0` el flujo no cambia. 2 tests nuevos en
+     `__tests__/utils/answerSaveQueuePurge.test.ts` (con el harness de puerto de auth, no un
+     proveedor concreto), mutation-testeados igual. Con la proporción medida el 31/07 (618/642 =
+     96%), el volumen de esta firma debería caer en ese orden — **queda por remedir tras
+     desplegar**, no lo afirmo sin la cifra de después.
+  3. **NO tocado, y a propósito:** el 403 del cupo gratuito (→ [T-418], ya tiene ficha propia) y
+     `Error cargando notificaciones` (→ [T-419], ya tiene ficha propia). `[CALLBACK] No se
+     estableció sesión` (login que no cuaja, 125/11) tampoco se ha investigado en esta sesión —
+     queda para quien retome esto; primer sitio donde mirar: `app/auth/callback/page.tsx:69-73`,
+     `completeOAuthCallback()` es UN intento sin reintento tras el redirect OAuth.
+  4. **🚨 HALLAZGO SERIO, con ficha propia [T-633] (🔴): la propia telemetría de éxito de [T-434]
+     (`auth_perfil_recuperado`/`auth_alta_sin_perfil`) lleva 5 DÍAS MUDA** mientras el síntoma
+     que debía curar (esta misma firma de `UserAvatar`) sigue activo sin bajar. Verificado que el
+     fix de T-434 SÍ está desplegado (`git merge-base --is-ancestor e6b117b3e 51f96259` → true,
+     deploy de hoy 21:09 UTC) — no es que falte desplegar, es que su propio termómetro no se
+     mueve. SOSPECHO (sin confirmar) que la cohorte actual puede ser distinta de la que T-434
+     arregló (usuarios genuinamente eliminados vs. perfil nunca resuelto) — detalle completo,
+     con los SQL de siguiente paso, en [T-633]. Pregunta #93 dejada en el embudo dado que T-434
+     se abrió con *"hay dinero en juego ahora mismo"*.
+  - **Tests corridos en el área:** `UserAvatar.test.tsx` + `userAvatarStats.test.ts` +
+    `answerSaveQueuePurge.test.ts` + `__tests__/auth/` + `answerValidationRobustness.test.ts` →
+    164/164 verdes. `tsc --noEmit` y `eslint` limpios en los ficheros tocados.
+  - **Relacionadas:** [T-245] (identidad, vía distinta), [T-434]/[T-633] (identidad, regresión
+    encontrada de paso), [T-418] (403 cupo, ficha propia), [T-419] (401 notificaciones, ficha
+    propia).
+
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
 - **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
@@ -7052,6 +7127,61 @@ ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206).
 alerta `arranques > cierres`.
 **Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
 incluida).
+
+- **▸ SESIÓN w1 (06/08): la ficha estaba desfasada en dos puntos — la alerta que decía "falta"
+  YA EXISTE, y el problema real hoy no es que el cron se cuelgue: es que lleva 10 días PARADO.**
+  - **La alerta `arranques > cierres` ya está construida, y no es de esta tarea.** `RULE_CRON_STARTED_NOT_FINISHED`
+    (`backend/src/alerts/alert-rules.ts:637`, commit `d61f26e86`, T-162, en `main` desde el
+    27/07) compara `cron_tick` vs `cron_run` de CUALQUIER cron con el par y con >= 3 `cron_run`
+    de referencia, dispara `error` con cooldown de 6h, y **respeta explícitamente el caso de un
+    cron en pausa** (des-registrado del `SchedulerRegistry` → desaparece de `listCronJobs()` →
+    la regla no opina). No hacía falta escribirla: ya cubre `detect-oep-llm` cuando esté activo.
+  - **MEDIDO, no de la ficha (`SELECT ts::date, count(*) FILTER (event_type='cron_tick'),
+    count(*) FILTER (event_type='cron_run') FROM observable_events WHERE endpoint='detect-oep-llm'
+    ... GROUP BY 1`, corrido hoy con `VENCE_LECTOR_URL`): el último `cron_tick` de `detect-oep-llm`
+    es del **27/07** — CERO arranques desde entonces, 10 días.** No es que siga muriendo a media
+    pasada: **no corre en absoluto.** Confirmado el porqué en el propio código: commit `75661c268`
+    (28/07, T-cost) añadió `DETECT_OEP_LLM_ENABLED` (default `true`, pero `scripts/deploy-backend.sh`
+    lo fija a `'false'` en el deploy real) — el cron se des-registra del `SchedulerRegistry` al
+    arrancar la app, precisamente para que `cron_overdue`/`cron_started_not_finished` NO disparen
+    por algo apagado a propósito (coste: ~$8/día laborable en Haiku, ~1.700 llamadas/día). **Esto
+    es un problema MÁS GRANDE que el de la ficha, que la ficha no menciona**: 2.206 URLs de
+    cobertura completamente a oscuras desde hace 10 días, no unos pocos días sueltos sin cerrar.
+    No es tarea de T-237 decidir si reactivarlo (haría falta primero el gate de hash que evite
+    re-extraer páginas sin cambios, mencionado en el propio comentario del cron y aún sin
+    implementar — `getOposicionesForLlmScan()` sigue trayendo TODAS las filas con
+    `seguimiento_url`, sin filtro de hash) — se deja anotado para quien decida sobre el coste.
+  - **SOSPECHO (no confirmado, y digo qué falta) sobre la causa de los cuelgues del 21/22/27-07:**
+    las 4 llamadas de `oep-signals-llm.service.ts` a `client.messages.create()` NO pasaban
+    `timeout` — corrían con el default del SDK de Anthropic, **10 minutos, con reintento
+    automático** (verificado leyendo `node_modules/@anthropic-ai/sdk/client.js`, no supuesto).
+    Medido contra `observable_events` (30d, `feature='oep_signals'`, 3.050 llamadas reales):
+    p50=2,3s · p90=3,3s · p99=7,2s · **máximo observado=24,8s** — el default dejaba ~24× de
+    margen antes de considerar una llamada "colgada", y el sensor recorre ~2.200 oposiciones EN
+    SECUENCIA. Es un mecanismo PLAUSIBLE y ahora cerrado, pero **no lo he demostrado**: confirmarlo
+    de verdad exige logs de ECS/CloudWatch de esos 3 días concretos, y un trabajador no tiene esa
+    credencial (mismo límite que T-206). No intenté correlacionar con deploys porque
+    `deploy_runs` (la tabla que lo permitiría) solo tiene datos desde el 31/07 — no existía aún
+    el 21-27/07.
+  - **✅ HECHO: timeout acotado (60s, con la medición arriba) en las 4 llamadas LLM de
+    `oep-signals-llm.service.ts`** (`extractOepFromHtml`, `extractRegionalOeps`,
+    `extractTemarioChanges`, `extractGenericSourceChanges` — comparten el mismo riesgo
+    estructural, las 4 en el mismo fichero). Guardarraíl nuevo
+    `backend/src/oep-signals/oep-signals-llm.timeout.spec.ts` (5 tests) — mutation-testeado:
+    revertido el fix a mano, las 4 llamadas fallan (`opts` sale `undefined`); restaurado, verdes.
+    `npx jest oep-signals detect-oep-llm` → 75/75 verdes, sin regresión.
+  - **🔧 HALLAZGO Y ARREGLO, de paso: `oep_detection_signals` tiene el MISMO bloqueo RLS que
+    `convocatoria_seguimiento_checks` (T-220) — un sexto caso del patrón T-573/T-574/T-038.**
+    `relrowsecurity=true`, cero políticas, `vence_lector` con el GRANT de tabla pero
+    `SELECT count(*)` → 0 siempre, sin error. Bloqueaba mi propia investigación de este sensor
+    (no podía contrastar el histórico real de señales `llm_semantic`). Migración
+    `supabase/migrations/20260806_rls_oep_detection_signals_lector.sql` (dry-run, no aplicada —
+    sin permiso de escritura como trabajador) + test de forma
+    `__tests__/db/rlsOepDetectionSignalsLectorMigration.test.js` (5/5) + añadida a `DEBE_LEER`
+    en `scripts/canary-rol-lector.cjs` (confirmado en rojo hoy, como se espera antes de aplicar).
+  - **Queda, y no es para un trabajador:** (1) aplicar la migración RLS de arriba; (2) decidir si
+    reactivar `detect-oep-llm` — con el timeout ya puesto, o esperar también al gate de hash de
+    coste; (3) si se reactiva, confirmar unos días que `cron_tick`/`cron_run` cierran en pareja.
 
 ### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
 
@@ -12147,6 +12277,44 @@ y eso solo ocurre donde las dos se sirven.
 - **Impacto:** 🟠 riesgo de temario desalineado en 68 oposiciones, del mismo tipo que estuvo a punto de jubilar 5 temas en CARM. No es 🔴 porque el detector ya no está ciego y el triaje se puede hacer por lotes.
 - **Ya hecho:** patrón corregido en `scripts/temario/detect-temario-revision.cjs` y en el test de paridad, que vuelve a pasar (`temarioComunicadoParity`, 2/2). Ese test **llevaba un mes en rojo por timeout** y su rojo se leía como flaky: por eso nadie vio que la señal SQL no casaba nada. Timeout subido a 60 s con el motivo escrito.
 - **Relacionada:** [T-295], [T-297] (misma familia: vigilancias que existían y no vigilaban).
+- **🔬 PROGRESO 06/08 (parcial, MEDIDO — la ficha original estaba 8 días desactualizada):** reproducida
+  la query del detector hoy (sin el JOIN a `user_profiles`, PII, con `VENCE_LECTOR_URL`): **71 oposiciones
+  con temario sin verificar del todo, de las cuales 28 tienen `comunicados_temario > 0` — 40 documentos,
+  NO 68/99.** La cola bajó ~60% por el trabajo paralelo de T-295/T-297. **Corregir la cifra del título.**
+  De los 28: **12 tienen SOLO documentos cuya url coincide con `programa_url`** (ya incorporados, baja
+  prioridad) y **16/24 documentos tienen url DISTINTA** (cola real). De esos 16 se triaron **9** con
+  lectura de `extracted_text` contra los topics activos reales:
+  - **Sin gap (documento ya reflejado o solo cambia granularidad):** `enfermero-sas-andalucia`,
+    `auxiliar-administrativo-ayuntamiento-huesca`, `auxiliar-administrativo-diputacion-huesca`
+    (41 temas del doc = 23 topics porque agrupa varios en uno, verificado tema a tema),
+    `tcae-sas`, `auxiliar-administrativo-baleares` (ya triado por sesión previa, nota en el hub).
+  - **❌ Falsos positivos (documento de OTRA categoría, comparte convocatoria/boletín):**
+    `tcae-extremadura` (3 docs "lectura fácil" son de Pinche/Planchador/Celador, no TCAE),
+    `auxiliar-administrativo-diputacion-segovia` (el doc es de Enfermero/a, no Aux. Admvo.).
+  - **⚠️ Posible documento mal enlazado, necesita sesión con escritura:** `mecanico-conductor-estado`
+    (el único doc "distinto" no tiene NINGÚN contenido de conductor/tráfico/Parque Móvil — parece de
+    otro proceso compartiendo `convocatoria_id`).
+  - **🔧 Nota de curación ERRÓNEA encontrada en el hub:** el `titulo` del doc `3b98d6ea-d3db-4c81-9ca5-281acf021de2`
+    (tcae-sas) afirma "29 común + 26 específico = 55 temas" — falso, aislado el bloque real (ANEXO VIII)
+    y el específico va de Tema 11 a 29 DENTRO de la misma secuencia de 29, sin +26 aparte. Corregir esa
+    nota antes de que alguien la use para "rellenar" un hueco que no existe.
+  - **ℹ️ Corrobora un hallazgo YA CONOCIDO:** `etgoa-sanidad-consumo` — el doc BOE tiene una "Segunda
+    parte: Área de Consumo" (100 temas) que YA EXISTE en BD como topics 101-200 (`is_active=false`,
+    0 `topic_scope`) y casa título por título con el documento. Es exactamente [T-396], pendiente de
+    decisión de Manuel — mi verificación confirma que la estructura de 100 temas ya está bien
+    scaffoldeada si se decide construirla.
+  - **Quedan sin triar:** 7 de los 16 "distinto" (`administrativo-universidad-leon` — pinta a espejo
+    BOCYL/BOE de la misma convocatoria, mismo nº de referencia que `programa_url`, no confirmado del
+    todo; `auxiliar-administrativo-ayuntamiento-sevilla`, `auxiliar-administrativo-consell-formentera`,
+    `auxiliar-administrativo-diputacion-leon`, `celador-sas` — mismo patrón de PDF multi-anexo BOJA que
+    tcae-sas, probablemente sin gap pero no verificado línea a línea —, `enfermero-ics` —documento
+    gigante multi-categoría, 555K caracteres, requiere aislar el bloque "infermer/a" código 100-2025—,
+    `enfermero-sacyl`) y las 12 oposiciones del bucket "MISMO" (sin spot-check).
+  - **Método para quien continúe:** separar por `documento.url == oposicion.programa_url`, priorizar
+    "distinto"; contar `/Tema\s+([0-9]+)[\.\s]/gi` y comparar `max_tema` contra los topics activos;
+    ojo con los DOS falsos positivos recurrentes — documento de OTRA categoría compartiendo boletín, y
+    PDF multi-anexo donde la numeración de Tema se REINICIA por categoría (aislar el bloque del
+    "ANEXO <romano>"/nombre de categoría correcto antes de contar).
 
 ### [T-295] 🟠 [ABIERTO 30/07] Deducir el acceso premium de los hechos en vez de guardarlo en plan_type
 - **El caso que lo destapa (29/07):** un cliente canceló su suscripción **desde nuestra app** el 26/05 (`cancellation_feedback`: `self_service`), Stripe la terminó el 27/05 al acabar el mes pagado… y su fila se quedó en `active` con el perfil en `premium`. **Dos meses y 293 tests con premium regalado.** Encaja con el incidente del webhook roto del 26-27/05 (no demostrable ya: los eventos de Stripe caducan a los 30 días y la observabilidad no empieza hasta el 29/06). Corregido a mano el 29/07; el usuario vuelve a ser free.
@@ -12497,6 +12665,83 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Urgencia real, matizada:** el plazo de **solicitud** cierra el 5 de agosto, pero el **examen** cae dentro de meses, así que la ventana de venta NO se cierra esa semana. Lo que sí conviene es tenerla antes de que la gente que se inscriba empiece a buscar dónde preparársela.
 - **Demanda medida:** **1 usuario** la ha pedido (Chema, free, prepara Policía Municipal de Madrid). No hay ninguno con esa oposición fijada en su perfil. Es poca señal — pero 196 plazas con inscripción abierta y cero cobertura nuestra es el otro lado de la balanza.
 
+- **▸ SESIÓN w1 (06/08): la ficha estaba MUY desfasada — la oposición NO está "catalogada y vacía",
+  lleva construida (temario+scope+rutas) desde ANTES de esta ficha, ya está `is_active=true` y
+  `audit:oposicion` pasa 0❌/0🟡. El trabajo real que queda es distinto del que describe la ficha.**
+  - **MEDIDO, no de la ficha:** `oposiciones.is_active=true`, `coverage_level='con_landing'`,
+    `created_at=2026-06-01` (la fila lleva viva desde JUNIO, antes incluso del 28/07). **15 topics**
+    con epígrafe + `topic_scope`, rutas de temario/test, registros en `OnboardingModal`/perfil,
+    `CcaaFlag` resuelto. `npm run audit:oposicion mecanico-conductor-estado` → **0 ❌ / 0 🟡** (con el
+    workaround de conectividad de T-197 más abajo — sin él, falsos 🟡 por un corte de red, no de
+    datos). El nombre ya está resuelto: se llama *"Conducción de Vehículos de Transporte por
+    Carretera del Parque Móvil del Estado"*, no "Mecánico-Conductor" — la duda de la ficha original
+    ya no aplica.
+  - **El reparto real de temas — esto SÍ es la información nueva y útil:** de los 15 temas, **5 están
+    `disponible=true`** y sirven contenido (T1 CE, T2 Gobierno/Admón., T3 Régimen del personal, T4
+    Contrato de trabajo, T5 Igualdad — todos reutilizan banco genérico ya existente, 63 a 1.520
+    preguntas cada uno). **Los OTROS 10 — el núcleo real de esta oposición, conducción/mecánica/vía/
+    señales/accidentes — están `disponible=false`**, con 0-42 preguntas en el scope según el tema
+    (T9 "La vía" y T10 "La velocidad": **0** preguntas; T11 "Maniobras de circulación": 42, el
+    mejor cubierto). `disponible=false` es la razón por la que `audit:oposicion` NO los marca como
+    fallo — el sistema los tiene correctamente APAGADOS mientras no tengan contenido real, no hay
+    incidente de usuario viendo temas vacíos hoy. Esto confirma lo que la propia ficha ya anticipaba
+    ("reutilizaremos mucho menos banco del habitual") con la cifra exacta: **es la parte que falta
+    de verdad, y es grande.**
+  - **✅ La materia prima YA está importada — el trabajo que queda es SOLO generar preguntas, no
+    traer texto legal.** Las 4 leyes que escopan esos 10 temas (RGC 171 arts, RD 2822/1998 72 arts,
+    RD 818/2009 108 arts, Ley de Tráfico 145 arts — 496 artículos activos, prácticamente todos con
+    `content` real) **ya están en BD**, con texto verificado. No hace falta el paso más arriesgado
+    (importar/verificar un temario nuevo desde cero); hace falta escribir preguntas desde texto ya
+    verificado + el pipeline de doble auditoría ciega habitual, tema a tema, empezando por los de
+    más plazas/demanda relativa (T9/T10 a 0 son los más urgentes: un tema `disponible=false` con
+    epígrafe visible pero sin nada que estudiar es peor que no tenerlo). **No lo he intentado en esta
+    sesión**: son ~10 temas de contenido técnico (seguridad vial, mecánica, normativa de tráfico)
+    que exigen la misma verificación cuidadosa que cualquier generación — no es una tarea de una
+    sesión, es la que justifica el esfuerzo `sesion_propia` que la ficha original ya preveía.
+  - **🚨 HALLAZGO REAL, verificado contra el BOE en vivo, no contra la ficha: el plazo de
+    inscripción YA CERRÓ y el sistema sigue diciendo que está abierto.** La ficha decía "~5 de
+    agosto" como estimación; leí BOE-A-2026-15052 directamente hoy (06/08) y confirma: Resolución
+    de 8 de julio de 2026, BOE núm. 167 de 10/07/2026, plazo de **20 días hábiles desde el 11/07** →
+    cierra **el 4 de agosto de 2026** — hace **2 días**. En BD, `oposiciones_ssot.estado_proceso`
+    sigue en `'inscripcion_abierta'`. Es el patrón exacto de `convocatoria_estado_incoherente`
+    (`docs/runbooks/verificar-convocatorias.md`): el estado contradice su propia fecha. **No es
+    grave para la venta** (el examen cae meses después, la ficha ya lo decía), pero SÍ es un dato
+    incorrecto que estamos mostrando si algo en la landing lo refleja.
+  - **Y de paso, tres campos que la ficha decía "ya volcados el 28/07" están en realidad NULL,
+    medido con SELECT directo (no con lo que dice la ficha):** `boe_reference` e
+    `inscription_deadline` son `NULL` tanto en `oposiciones` como en `convocatorias`/
+    `oposiciones_ssot` — no se volcaron, o se perdieron. `programa_url` SÍ está poblado y correcto
+    (`hacienda.gob.es/pme/20260713basesconvocatoria.pdf`). Las **3 filas de `convocatoria_hitos`**
+    existentes tienen **`tipo=null`** (sin clasificar) y **`cita_literal=null`** (sin fuente —
+    exactamente lo que vigila `hito_registro_sin_fuente`); ninguna representa el cierre del plazo.
+    **Valores correctos, verificados contra el BOE hoy, listos para quien tenga escritura:**
+    - `boe_reference`: `BOE-A-2026-15052` (o el formato canónico que use el resto del catálogo)
+    - `inscription_deadline`: `2026-08-04`
+    - `estado_proceso`: pasar de `inscripcion_abierta` a lo que corresponda tras el cierre (revisar
+      convención del catálogo — no lo cambio yo sin ver cómo lo hacen fichas ya cerradas, es
+      decisión de una sesión con escritura + criterio sobre esa convención)
+    - Hito nuevo: `tipo` de cierre de plazo, `fecha=2026-08-04`, `origen='registro'`,
+      `cita_literal`: *"La presentación de solicitudes se realizará en el plazo de 20 días hábiles
+      contados a partir del día siguiente al de la fecha de publicación"* (BOE-A-2026-15052,
+      Resolución de 8 de julio de 2026), `url` al propio BOE.
+  - **🔧 GOTCHA DE CONECTIVIDAD, ya diagnosticado por otra sesión (T-197), reproducido aquí:**
+    `audit-oposicion-completa.ts` (y cualquier script que use `getDb()`/`db/client.ts`, paquete
+    `postgres`/porsager) no conecta con `VENCE_LECTOR_URL` tal cual la recibe un trabajador — sin
+    `?sslmode=require` en la URL, `postgres` conecta en plano y RDS lo rechaza. Workaround
+    verificado, sin tocar código: `DATABASE_URL="${VENCE_LECTOR_URL}?sslmode=require"`. Con eso el
+    `audit:oposicion` de arriba pasó de 5 falsos 🟡 a 0/0 limpio. No he tocado `db/client.ts`
+    (arreglo de fondo, alto radio de impacto — es infraestructura compartida por toda la app, y ya
+    está siendo trackeado en la ficha de T-197): fuera de alcance de esta tarea, correcto dejarlo
+    donde ya se está siguiendo.
+  - **Queda, en orden — y ninguno de los dos primeros es para un trabajador:** (1) aplicar los
+    valores de convocatoria de arriba (boe_reference, inscription_deadline, estado_proceso, hito de
+    cierre con cita); (2) generar el contenido de los 10 temas `disponible=false` — el trabajo
+    grande, con el texto legal ya importado y verificado, empezando por T9/T10 (0 preguntas); (3)
+    tras cada tema, el ciclo habitual `verify:scope`/refresh MV/flip a `disponible=true` solo con
+    contenido auditado.
+  - **Relacionada:** [T-197] (el mismo gotcha de conectividad, con más detalle y 5 scripts
+    reproducidos), [T-140] (población de `law_sections` — NO aplica aquí, las 4 leyes ya la
+    tienen).
 
 ### [T-233] 🟡 [ABIERTO 28/07] 105 explicaciones con la tabla APLANADA: en pantalla dicen algo distinto de lo que guarda la BD
 - **Qué ve el opositor:** la explicación se escribió como tabla usando `|` pero **sin la línea separadora** (`|---|---|`), así que markdown no la reconoce como tabla y **colapsa las filas en un solo párrafo**. El dato queda pegado a la etiqueta equivocada. Caso real (impugnación `bb487ee7`, usuaria Laura Zurdo, Outlook 365): la explicación guardaba correctamente `Crear un contacto | Ctrl+Mayús+C` y `Crear una convocatoria de reunión | Ctrl+Mayús+Q`, pero al renderizarse se leía *"…Ctrl+Mayús+**C** Crear una convocatoria de reunión…"*. Ella lo reportó como error de contenido, y tenía razón en lo que veía.
@@ -12880,6 +13125,25 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Lo que NO es la solución (revisado 29/07):** migrar a Koigrid **como palanca de ESTE ahorro**. El razonamiento del 27/07 —sin caché de borde el origen se come el 100% del tráfico → 4-6 réplicas— **ha caducado**: el 29/07 se midió A3 funcionando y **615 rps en UNA réplica** (ver T-089), así que el dimensionado sería 1 réplica, no 4-6. Aun así **sigue sin ser la palanca para esta tarea**: el sobrecoste es el suelo de autoescalado en AWS y se corrige con un cambio de configuración, que es reversible y de hoy; la migración es un cutover con su propio riesgo y su propio calendario, y encima **falta el precio del plan**. Las dos cosas no compiten: arregla el suelo aquí, y decide el cutover en T-089 por sus propios méritos.
 - **Cómo, cuando se sepa la causa:** bajar `MinCapacity` del scalable target `service/vence-backend/vence-frontend` en pasos (8 → 6 → 5), **vigilando `http_5xx`, `canary_db_pool_failed` y el p95** entre pasos, con vuelta atrás inmediata. Rollback = subir el número; es reversible en segundos y no toca código.
 - **Origen:** 27/07, al investigar la subida de la factura a petición de Manuel.
+- **✅ ARREGLADO un defecto REAL encontrado al retomar esto (06/08, sesión w1) — la señal de `event_loop_lag` estaba contaminada por el portátil de Manuel.** `lib/observability/eventLoopLag.ts` arranca sin condición desde `instrumentation.ts#register()` en CUALQUIER proceso Node (Fargate o `next dev` local), y el `.env.local` de este repo apunta a la RDS de PRODUCCIÓN — así que cada sesión local corriendo el frontend emitía a la MISMA tabla que alimenta la alerta de producción. Es el MISMO hueco que **[T-572]** ya cerró en `withErrorLogging.ts`/`validation-error-log`, pero este tercer emisor (un daemon, no un endpoint) se quedó sin el freno.
+  - **MEDIDO contra `observable_events` (28/07→06/08, 9 días post-recalibración de T-160):** de los **22 eventos `critical`**, **17 (77%)** vienen de instancias con `INSTANCE_ID` prefijado por `HOSTNAME` (`fedora:…` — el sampler solo antepone el hostname fuera de Fargate, donde vale `0.0.0.0`; confirmado leyendo `lib/observability/instanceId.ts`). Solo **5 son Fargate real**.
+  - **Y disparaba alertas de producción de verdad:** `RULE_EVENT_LOOP_LAG` no filtra por instancia (`shouldFire: crit>=1 || n>=12 en 15min`), así que un stall del portátil podía —y lo hizo, varias veces correlacionando en el tiempo con las ráfagas `fedora:`— disparar el email *"Event-loop del frontend saturándose"* sin que Fargate tuviera nada.
+  - **Arreglado:** `SKIP_EVENT_LOOP_LAG_EMIT = shouldSkipObservabilityPersistence()` (mismo helper compartido de T-572, `lib/observability/runtimeGate.ts`), gateando el `emit()` del sampler. Guardarraíl ampliado (`__tests__/lib/observability/runtimeGate.test.ts`, ahora 3 emisores vigilados) — verificado que SÍ detecta la regresión quitando la línea del gate (test rojo) y que vuelve a verde al restaurarla. 21 tests en verde.
+  - **SIMULADO sobre los 9 días reales antes de cerrar esto (mismo método que T-160):** re-jugando `shouldFire`+cooldown de 20 min evento a evento, la tasa de disparo baja de **5,22/día (con locales) a 4,00/día (solo Fargate)**. **OJO — esto NO alcanza el <1/día que T-160 predijo por simulación**: la contaminación local explica ~23% del ruido, pero el **77% restante (~4/día) es Fargate real** disparando por el umbral de 12 warn/15min, más alto que lo calibrado. **Queda abierto, no es de esta ficha:** por qué el warn-rate real de Fargate es más alto de lo que T-160 simuló — posible follow-up de esa tarea (ya cerrada), no se reabre aquí.
+- **📊 Con la señal ya limpia (Fargate-only), esto es lo que se puede afirmar sobre la pregunta de la ficha — y lo que NO:**
+  - **Los 5 stalls `critical` reales de Fargate son MUY severos** (max 80-225 **segundos**, no los 2-3,8s que describía la ficha original — esa cifra mezclaba resolución+ruido de antes de T-160). Un `p99` de 146 SEGUNDOS en una ventana de 60s significa que el proceso estuvo prácticamente congelado, no "código síncrono lento": más compatible con starvation de CPU a nivel de contenedor/host que con un bloqueo puntual de JS.
+  - **NO correlacionan con tráfico elevado** (medido `request_completed` ±5min contra el mismo horario del día anterior en los 5 casos: igual o menor, nunca más alto) — coincide con lo que T-160 ya había encontrado con la métrica sucia, y se sostiene con la métrica limpia.
+  - **NO se concentran en una sola instancia** (la pregunta que la propia ficha planteaba como decisiva): **554 instancias Fargate distintas** en 9 días emiten `event_loop_lag`, la que más tiene solo el **1,5%** del total (33 de 2.277) — distribución plana, no un "task fugado". Esto APUNTA a que el fenómeno no es "una tarea con una fuga de memoria/GC", sino algo que le puede pasar a CUALQUIER tarea — coherente con la hipótesis original del 21/07 (RS256 en `/api/auth/token`, que cualquier task puede atender).
+  - **`auth_token_minted` alrededor de los 5 stalls: mezclado, no concluyente** (2 de 5 casos con volumen claramente elevado vs. el mismo horario del día anterior; los otros 3 sin diferencia). Muestra demasiado pequeña (n=5) para afirmar la correlación — **SOSPECHO** que hay relación con el trabajo CPU-bound de acuñar tokens, pero esto NO está demostrado, solo es compatible con los datos.
+  - **554 instancias distintas en 9 días es ADEMÁS un dato en sí mismo** que no estaba en la ficha: con 8-12 tareas corriendo a la vez, eso es una vida media por tarea de un puñado de horas — mucha más rotación de la que uno esperaría de un servicio estable. **SOSPECHO** que esto es simplemente la cadencia de deploys de este repo (várias al día, visto en el propio historial de commits), pero no lo he verificado contra ningún registro de despliegues — no hay evento `deploy_succeeded` en `observable_events` (`deployVersion` de `event_loop_lag` está SIEMPRE `null`, otro cabo suelto: `GIT_COMMIT_SHA` no está llegando al proceso en producción). Si NO es por deploys, sería una señal de salud del servicio por derecho propio (¿tareas muriendo y siendo repuestas por el health check?).
+- **🔴 BLOQUEO REAL para terminar el veredicto de esta ficha: la CPU% por tarea de Fargate vive en CloudWatch/Cost Explorer, y un trabajador de la flota NO tiene credenciales AWS** (por diseño — ver [T-612], que es la MISMA separación de permisos por otra puerta: un trabajador no debe poder leer SSM ni desplegar). Sin eso no se puede cruzar `instanceId` de `event_loop_lag` con `CPUUtilization` por task, que es el último paso que decidiría si el suelo se puede bajar. **No lo he intentado adivinar.**
+  - **Receta lista para quien tenga acceso AWS** (probablemente 15-20 min de trabajo, no una investigación desde cero):
+    1. `aws cloudwatch get-metric-data` para `CPUUtilization` del servicio `vence-frontend` (Average Y Maximum), granularidad 1 min, últimos 9 días.
+    2. Si el Maximum está pegado al 90-100% en ventanas SOSTENIDAS (no picos de 1 minuto) → es capacidad real, no bajar el suelo sin más.
+    3. Si son picos AISLADOS de 1-2 minutos sin sostenerse → cruzar sus timestamps contra los 5 `critical` de Fargate de esta ficha (arriba) y contra los picos de `auth_token_minted`. Si casan con los stalls → confirma el mismo fenómeno del 21/07 (RS256), y el suelo se puede bajar con más confianza porque el problema es de PICO puntual, no de base sostenida.
+    4. Bajar en pasos como ya decía la ficha (8→6→5), vigilando `http_5xx`/`canary_db_pool_failed`/p95 entre pasos.
+  - **Y de paso, arreglar el cabo suelto de arriba** (`deployVersion` siempre `null` en `event_loop_lag`) ayudaría a la SIGUIENTE investigación de este tipo: sin saber si un stall coincidió con un rolling deploy, se pierde una hipótesis entera gratis.
+- **Rama:** `flota/w1`, commit con el fix de `eventLoopLag.ts` + tests. NO toca AWS, NO despliega, NO baja el suelo — eso queda para quien tenga la credencial y el veredicto final de CPU%.
 
 ### [T-205] 🟠 [ABIERTO 27/07] `tcae_sas`: nuestro temario son 29 títulos condensados frente a los 55 temas del programa oficial
 - **Qué (medido):** el programa oficial del SAS para Técnico/a en Cuidados Auxiliares de Enfermería —Resolución de 31/07/2024, **BOJA núm. 153, Anexo VIII**— tiene **55 temas**: 29 de temario común + 26 de específico. Nuestra BD tiene **29**, que son **títulos condensados** (*"La Constitución Española de 1978"* frente al texto oficial completo) y además **mezclan los dos bloques** (nuestro T29, *"Cuidados al paciente terminal…"*, pertenece al específico). **0 coincidencias literales** con ninguno de los dos bloques. Los 29 quedan `drift_detected` con la evidencia.
@@ -17934,6 +18198,52 @@ Las 5 que quedan son suelo de juicio humano, no trabajo automatizable:
 - **✅ Tracking listo (28/07):** ya existía `referral_page_view` con el `userId` del visitante (sabíamos CUÁNTOS entran), pero no **por dónde** entraban. Añadido el parámetro `?src=` — el botón del header va etiquetado (`src=header`, `src=nav`) y el mensaje llevará el suyo — que viaja a `observable_events.metadata.src`, saneado en el endpoint (alfabeto cerrado, máx 32) porque viene del cliente. Con eso se puede responder «¿el mensaje trae gente o entran solos?» y decidir si se repite. Tests en `__tests__/referrals/observability.test.ts`.
 - **Cómo se mide el éxito de la campaña:** línea base **11 de 258 premium** han abierto el panel (4,3%). Tras enviar la tanda de 21, contar cuántos de ESOS 21 generan `referral_page_view` con su `src`. Query: `select metadata->>'src', count(distinct user_id) from observable_events where event_type='referral_page_view' group by 1`.
 - **Impacto:** 🟠 es la palanca más rentable disponible hoy y no cuesta desarrollo de producto. **Origen:** conversación del 28/07 sobre recompensas por menciones.
+
+- **▸ SESIÓN w1 (06/08): la «decisión de canal» de arriba estaba OBSOLETA — el canal (a) ya está
+  construido, probado y en `main` desde el 28/07-29/07; lo único que faltaba de verdad era la
+  puerta de aprobación, y estaba ausente. Corregido.**
+  - **La ficha decía «decisión pendiente: (a) campana sale hoy sin desarrollo · (b) hilo de soporte
+    exige montar el alta». MEDIDO, no supuesto: (a) NO es una opción futura, ya está HECHA.**
+    `scripts/campana-programa-recompensas.cjs` (commits `8393b73c5`/`7c7db08b6`, en `main`) genera
+    el destinatario por SQL (premium, actividad real este mes, nunca abrió el panel) e inserta en
+    `notification_logs` con `context_data.type='programa_recompensas'`; `NOTIFICATION_TYPES` lo
+    pinta en la campana y `generateActionUrl` lo enruta a `/recompensas?src=aviso-mencion`
+    (`hooks/useIntelligentNotifications.ts:500`, `components/NotificationBell.tsx:380-381`),
+    probado en `__tests__/notifications/programaRecompensasAviso.test.ts` (5 tests, verdes). La
+    página `/recompensas` ya registra la visita con ese `src` (`app/recompensas/page.tsx:280`).
+    Es decir: el trabajo de «(a) campana» que la ficha daba por sin desarrollar YA ESTABA
+    desarrollado, probado y desplegado — nadie actualizó esta ficha al construirlo.
+  - **Confirmado con consulta directa (no con lo que dice `observable_events` de refilón): CERO
+    enviados hasta hoy.** `SELECT count(*) FROM notification_logs WHERE context_data->>'type'=
+    'programa_recompensas'` → **0**. Y `referral_page_view` sigue sin ningún `src='aviso-mencion'`
+    (por `src`: `header` 43, `nav` 35, sin etiquetar 60 — nada de la campaña). El bloqueo real
+    nunca fue técnico: es que nadie ha pulsado `--commit`, y con razón — ver el hallazgo siguiente.
+  - **🔧 HALLAZGO Y ARREGLO: el script de envío NO tenía la puerta `exigirPersona`.** Es un aviso
+    PERSONALIZADO (nombre, días activos, preguntas) a un LOTE de usuarios reales prometiendo
+    dinero — exactamente lo que `lib/sessions/aprobacion.cjs` protege — y no estaba en la lista
+    `SCRIPTS_QUE_ENVIAN` de `__tests__/guardrails/aprobacionEnvios.guardrail.test.ts` (que hoy
+    solo enumera 5 rutas a mano; no es un escaneo automático). Confirmado en vivo con mi propio
+    rol: `puedeEnviar('trabajador','aviso')` → `{ok:false}`, pero el script en sí no lo comprobaba
+    — con la credencial de escritura correcta, CUALQUIERA (persona o trabajador) podía disparar
+    `--commit` sin que Manuel lo viera. Añadida `exigirPersona('aviso')` justo antes del bucle de
+    INSERT (después de enseñar el dry-run, que sigue siendo revisable sin permiso) — mismo tipo
+    `aviso` que ya usa `scripts/soporte/avisar-usuario.cjs`, no hizo falta un tipo nuevo — y
+    registrado el script en el guardarraíl y en `lib/admin/toolRegistry.ts`. **Mutation-testeado**:
+    revertido el fix, el guardarraíl cae (3 tests en rojo); restaurado, 33/33 verdes.
+  - **Lo que NO he podido remedir: la lista de 21 candidatos y sus nombres.** El script necesita
+    `user_profiles.email`/`full_name` para el saludo y el destinatario, y esa tabla está DENEGADA
+    para `VENCE_LECTOR_URL` a nivel de tabla completa (`permission denied for table user_profiles`,
+    comprobado en vivo, no solo con las columnas de nombre/correo — con `count(*)` a secas). Es el
+    diseño correcto (un trabajador no debe ver PII), pero significa que el recuento «25→21
+    candidatos» del 28/07 **no se puede refrescar sin `DATABASE_URL` de negocio real**. Quien
+    retome esto con esa credencial: `node scripts/campana-programa-recompensas.cjs` (dry-run,
+    sin flags) da la lista actual y el mensaje de ejemplo.
+  - **Lo que queda, y es SOLO decisión, no desarrollo:** que Manuel apruebe disparar la tanda
+    (`--commit`) sobre la lista dry-run del día que se apruebe. Pregunta dejada en el embudo desde
+    esta sesión. La opción (b) (hilo de soporte) sigue sin construir y, con (a) ya probada y
+    barata, no parece necesaria salvo que Manuel prefiera esa UX — lo dejo dicho, no decidido por
+    mí.
+  - **Relacionada:** [T-486] (el sistema de aprobación de envíos, del que este es el sexto script cubierto).
 
 ### [T-230] ✅ [CERRADA 28/07 — la alarma era mía, no del sistema] «Feedbacks cerrados sin responder»: eran respuestas AGRUPADAS
 - **Lo que denuncié:** de 707 feedbacks resueltos, **69 sin ningún mensaje de admin en el hilo**; y de la usuaria Luisa, **8 avisos de temario cerrados "sin decirle nada"**, 7 el mismo día. Lo presenté como que se le estaban cerrando avisos en silencio.
