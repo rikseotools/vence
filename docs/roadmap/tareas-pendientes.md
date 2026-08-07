@@ -6117,6 +6117,82 @@ pero eso hay que comprobarlo, no suponerlo.
 - **Cabo aparte, decisión de producto:** el hero pinta la referencia ENTERA, y con la convención actual eso son párrafos de hasta 858 caracteres en 119 landings. No es un defecto de datos y no se toca sin decidirlo.
 - **Relacionadas:** [T-427] (misma sesión), frases-gatillo *«revisa las plazas sin documento»* y *«revisa los enlaces de convocatoria»*.
 
+> **✅ LAS 3 FILAS DE "QUEDA", MEDIDAS DE NUEVO (07/08) — otra sesión ya las tocó, y ahora quedan
+> VERIFICADAS contra la fuente primaria, no solo limpias de texto.**
+>
+> **CLM (327 y 24): las dos cifras se CONFIRMAN correctas, no solo la nota desaparecida.** Abrí el
+> documento clonado en el hub (`convocatoria_documentos` id `88998c52…`, DOCM nº 240 12/12/2025,
+> `2025_9540.pdf`, 28.314 caracteres extraídos) y busqué las filas exactas de la tabla del Anexo I:
+> - `C2 Cuerpo Auxiliar 305 9 13 327` → coincide EXACTO con lo publicado en `auxiliar-administrativo-clm`
+>   («cupo general 305 · reserva discapacidad 9 + 13 · TOTAL 327»).
+> - `C1 Cuerpo Ejecutivo Administrativa 23 1 – 24` (aparece dos veces en el documento) → coincide
+>   EXACTO con `administrativo-castilla-la-mancha` («cupo general 23 · reserva discapacidad 1 ·
+>   TOTAL 24»).
+> - **El «140 plazas» que preocupaba a la nota vieja NO es la cifra de ningún cuerpo**: el propio
+>   documento dice *«en el anexo I se prevén 140 plazas de personal funcionario de Administración
+>   General»* — es el subconjunto acogido a la tasa EXTRAORDINARIA de reducción de temporalidad (Ley
+>   20/2021), y el total real de «personal funcionario de Administración General» en la misma tabla
+>   es **669**, no 140. Quien escribió la nota original confundió esa cifra parcial con el total de
+>   un cuerpo — el MISMO tipo de error que el caso original del Celador (mirar el número equivocado
+>   del mismo documento). **No hace falta tocar nada aquí: las dos filas ya publican el dato correcto.**
+>
+> **Cantabria: el marcador ya no está (verificado sobre el HTML servido), pero apareció un
+> problema DISTINTO al que describía la nota — de PROVENANCIA, no de cifra.** El texto actual
+> («Decreto 51/2025, OEP 2025 (BOC nº 161)… Bases: 30 plazas, de las que 2 se reservan a
+> discapacidad») es internamente coherente y el "30 plazas (2 Discapacidad)" SÍ está confirmado
+> palabra por palabra en el documento del hub «bases oficial de Administrativo del Gobierno de
+> Cantabria» (`convocatoria_documentos` id `3c032337…`) — **pero ese documento es de la
+> convocatoria 2024/21 (22/10/2024), NO del Decreto 51/2025/OEP 2025 que la misma frase cita como
+> fuente.** La OEP 2025 (documento `723e15e7…`, BOC nº 161, clonado y leído) solo desglosa por
+> SUBGRUPO —confirmado, ningún cuerpo aparece con cifra propia—, así que la cita actual mezcla dos
+> ciclos distintos bajo una sola atribución. Y hay un TERCER ciclo ya en la propia fila
+> (`oep_decreto`): OEP 2026 (Decreto 23/2026, BOC-2026-3453, 35 plazas) marcado *«pendiente de
+> convocatoria»* — ese documento **no está en el hub todavía**, no lo he verificado.
+> **Esto es un hallazgo NUEVO y de otra familia** (cita que mezcla ciclos, no nota interna con
+> marcador) — no lo he tocado ni propuesto texto de sustitución: requiere una redacción que
+> distinga honestamente los tres ciclos, que es una decisión editorial, no una comprobación
+> binaria. Candidato a ficha propia si alguien lo retoma; no lo fiché aparte por presupuesto de
+> este turno — queda escrito aquí con las citas exactas para no repetir la investigación.
+>
+> **🆕 HALLAZGO NUEVO, mismo patrón exacto de esta ficha: `auxiliar-biblioteca-estado`.** Correr
+> el detector real (`clasificarLote` de `lib/convocatoria/notaInternaPublicada.cjs`) contra
+> `oposiciones_ssot` COMPLETA (137 filas) da hoy **1 sola** fila «publicada» — confirmado también
+> en el HTML servido (`curl https://www.vence.es/auxiliar-biblioteca-estado`, la cadena aparece
+> tal cual, dos veces, en el `<h3>` del hero). El campo `boe_reference` lleva un `⚠️` a mitad de
+> frase seguido de razonamiento de analista con jerga interna («ESCALA 5431 COMPLETA», «Sección
+> Bibliotecas (5431J)», «recibió 26 de las 68 de acceso libre») — la misma forma del defecto
+> original, no una nota corta. Corrida la herramienta REAL en simulación (sin `--apply`, solo
+> lectura vía `VENCE_LECTOR_URL`):
+> ```
+> limpio (se conserva): "OEP 2026: Real Decreto 387/2026, de 6 de mayo (BOE núm. 111, de
+>   07/05/2026, BOE-A-2026-9946), Anexo I «Nuevo ingreso» — Escalas de Organismos Autónomos:
+>   «5431 AUXILIAR ARCHIVOS, BIBLIOTECAS Y MUSEOS OO.AA. DEL MCU. 79 7 86» (cupo general 79 +
+>   reserva discapacidad 7 = 86 total)."
+> nota (se muda a needs_human): "⚠️ Esas 86 son de la ESCALA 5431 COMPLETA (Archivos +
+>   Bibliotecas + Museos); el reparto por sección lo fija la convocatoria, no la OEP. En el
+>   ciclo anterior la Sección Bibliotecas (5431J) recibió 26 de las 68 de acceso libre. Por eso
+>   las plazas de esta oposición quedan SIN FIJAR hasta que se publique la convocatoria: publicar
+>   86 diría a un opositor de Bibliotecas algo que la OEP no dice."
+> ```
+> El corte es limpio (la parte que se conserva es una cita factual correcta, ya verificada por
+> otra sesión contra el BOE) y la nota mudada a `needs_human` no se pierde — sigue consultable.
+> **NO PUDE aplicarlo**: `sanear-referencia-publicada.cjs --apply` escribe en `convocatorias`/
+> `oposiciones`, y mi credencial de flota (`DATABASE_URL`, coordinación) no tiene permiso de
+> escritura sobre tablas de negocio — es la regla dura de este turno, no un bloqueo técnico
+> rodeable. **Comando listo para quien tenga la credencial completa:**
+> ```
+> node scripts/convocatoria/sanear-referencia-publicada.cjs --slug auxiliar-biblioteca-estado --apply
+> ```
+> (el corte es automático — no hace falta `--referencia`/`--cita`/`--verificado`, ya hay texto
+> publicable delante del marcador. Después: invalidar caché `landing` + `oposiciones-catalog`.)
+>
+> **Confirmación de que el pipeline sigue vivo, no solo el saneo puntual:** el kind
+> `nota_interna_publicada` SÍ está wireado en `scripts/health-sweep.cjs` (línea ~973) y en el
+> `@Cron` real del backend (línea ~2736) — comprobado leyendo el código, no asumido. Este hallazgo
+> nuevo es exactamente lo que el badge existe para seguir cazando cuando alguien vuelve a escribir
+> una nota de analista en el campo equivocado; no es una regresión del pipeline, es el pipeline
+> haciendo su trabajo con contenido nuevo que nadie había triado todavía.
+
 ### [T-414] 🟠 [IMPLEMENTADO 31/07 — espera datos para calibrar] Medir lo que cuesta de verdad una tarea, y declarar su esfuerzo en cajones
 
 - **ORIGEN.** Manuel (31/07): *«el que escribe la ficha y tarea, ¿debería poner tiempo aprox de esfuerzo y fecha límite para ejecutarla? esas dos variables para hacer mejor triaje»*.
