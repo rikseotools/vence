@@ -133,8 +133,21 @@ async function main() {
   } catch (e) { console.warn('⚠️ techo de timeout no evaluado:', String(e.message || e).slice(0, 120)); }
 
   // ── Escribir snapshot ──
+  //
+  // NO es un TRUNCATE de la tabla entera (arreglado T-455, 07/08/2026): otras herramientas
+  // ON-DEMAND (p.ej. `audit-oposicion-completa.ts`, kind oposicion_incompleta) escriben en
+  // esta MISMA tabla fuera de este barrido, y un TRUNCATE incondicional se las llevaba por
+  // delante cada noche sin que este barrido las volviera a comprobar — la publicación de
+  // T-455 sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC), no hasta que
+  // el problema se arreglara. Medido en vivo (07/08): `content_health_findings` tenía 0 filas
+  // kind oposicion_incompleta (sin comillas) mientras las demás ~37 kinds databan `computed_at` de la
+  // pasada de la noche anterior — el barrido las había borrado y nada las repuso. Ahora solo
+  // se borran los kinds que ESTA pasada evaluó de verdad (`kindsEvaluados`, el mismo objeto
+  // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
+  // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
   if (!NO_WRITE) {
-    await c.query('TRUNCATE content_health_findings');
+    const kindsDeEstaPasada = Object.keys(kindsEvaluados);
+    if (kindsDeEstaPasada.length) await c.query('DELETE FROM content_health_findings WHERE kind = ANY($1::text[])', [kindsDeEstaPasada]);
     for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
     console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
   }

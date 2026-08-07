@@ -678,3 +678,54 @@ describe('barrido — los detectores globales NO viven dentro del bucle por opos
     expect(dentroDelBucle(BACKEND, "'temas_card'")).toBe(true)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// El TRUNCATE se llevaba por delante hallazgos de OTRAS herramientas (T-455, 07/08/2026)
+//
+// `content_health_findings` no la escribe solo este barrido: `audit-oposicion-completa.ts`
+// (kind `oposicion_incompleta`) publica ahí bajo demanda, al crear/auditar una oposición. El
+// paso de escritura de los dos gemelos hacía `TRUNCATE content_health_findings` —la tabla
+// ENTERA, cualquier kind, de cualquier escritor— antes de reinsertar solo lo que ESTE barrido
+// detectó. Como ninguno de los dos gemelos re-evalúa `oposicion_incompleta`, la fila publicada
+// por el gate on-demand sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC),
+// nunca hasta que el problema se arreglara. Medido en vivo el 07/08: 0 filas
+// `kind='oposicion_incompleta'` en `content_health_findings` mientras las demás ~37 kinds
+// tenían `computed_at` de la pasada de la noche anterior — la fila de T-522
+// (`mecanico_conductor_estado`) ya no estaba, borrada por un barrido que nunca la miró.
+//
+// Arreglo: el borrado se acota a los kinds que ESA pasada evaluó de verdad
+// (`Object.keys(kindsEvaluados)`, el mismo objeto del latido de T-529) — un kind ajeno al
+// barrido no se toca nunca, y un barrido `sweep_incompleto` (T-307) tampoco arrasa los kinds
+// que no llegó a evaluar.
+describe('el snapshot NO trunca toda la tabla — solo los kinds de ESTA pasada (T-455)', () => {
+  it('ninguno de los dos gemelos hace TRUNCATE de content_health_findings', () => {
+    expect(SCRIPT).not.toMatch(/TRUNCATE\s+content_health_findings/i)
+    expect(BACKEND).not.toMatch(/TRUNCATE\s+content_health_findings/i)
+  })
+
+  it('el CLI borra por kind, con la lista derivada de kindsEvaluados (no una lista a mano)', () => {
+    expect(SCRIPT).toMatch(/DELETE FROM content_health_findings WHERE kind = ANY\(\$1::text\[\]\)/)
+    expect(SCRIPT).toMatch(/const kindsDeEstaPasada = Object\.keys\(kindsEvaluados\)/)
+  })
+
+  it('el backend borra por kind, y usa pgTextArray — NO la interpolación cruda que ya rompió el barrido antifraude', () => {
+    // sql-arrays.ts documenta el gotcha: `sql`ANY(${arr})`` interpola como parámetros sueltos,
+    // no como array de Postgres, y revienta ("op ANY/ALL (array) requires array on right side").
+    // El barrido antifraude estuvo fallando 7 de 7 noches por esto exacto (21/07/2026).
+    expect(BACKEND).toMatch(/DELETE FROM content_health_findings WHERE kind = ANY\(\$\{pgTextArray\(kindsDeEstaPasada\)\}\)/)
+    expect(BACKEND).toMatch(/import \{ pgTextArray \} from '\.\.\/db\/sql-arrays'/)
+  })
+
+  it('el borrado queda dentro del if (!NO_WRITE) — DRY_RUN sigue sin tocar la tabla', () => {
+    const ifIdx = SCRIPT.indexOf('if (!NO_WRITE)')
+    const delIdx = SCRIPT.indexOf('DELETE FROM content_health_findings')
+    expect(ifIdx).toBeGreaterThan(-1)
+    expect(delIdx).toBeGreaterThan(ifIdx)
+    expect(delIdx).toBeLessThan(SCRIPT.indexOf('await c.end()'))
+  })
+
+  it('con kindsEvaluados vacío no se borra nada (guarda contra un DELETE sin condición real)', () => {
+    expect(SCRIPT).toMatch(/if \(kindsDeEstaPasada\.length\)/)
+    expect(BACKEND).toMatch(/if \(kindsDeEstaPasada\.length\)/)
+  })
+})

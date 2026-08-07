@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { Resend } from 'resend';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
+import { pgTextArray } from '../db/sql-arrays';
 import { detectarReservaSinDeclarar } from './reserva-sin-declarar';
 
 /**
@@ -1114,9 +1115,24 @@ export class ContentHealthSweepService {
     }
 
     // ── Escribir snapshot ──
+    //
+    // NO es un TRUNCATE de la tabla entera (arreglado T-455, 07/08/2026): otras herramientas
+    // ON-DEMAND (p.ej. `audit-oposicion-completa.ts`, kind oposicion_incompleta) escriben en
+    // esta MISMA tabla fuera de este barrido, y un TRUNCATE incondicional se las llevaba por
+    // delante cada noche sin que este barrido las volviera a comprobar — la publicación de
+    // T-455 sobrevivía como mucho hasta el siguiente tick del @Cron (07:30 UTC), no hasta que
+    // el problema se arreglara. Medido en vivo (07/08): `content_health_findings` tenía 0 filas
+    // kind oposicion_incompleta (sin comillas) mientras las demás ~37 kinds databan `computed_at` de la
+    // pasada de la noche anterior — el barrido las había borrado y nada las repuso. Ahora solo
+    // se borran los kinds que ESTA pasada evaluó de verdad (`kindsEvaluados`, el mismo objeto
+    // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
+    // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
     let wrote = false;
     if (!NO_WRITE) {
-      await this.db.execute(sql`TRUNCATE content_health_findings`);
+      const kindsDeEstaPasada = Object.keys(kindsEvaluados);
+      if (kindsDeEstaPasada.length) {
+        await this.db.execute(sql`DELETE FROM content_health_findings WHERE kind = ANY(${pgTextArray(kindsDeEstaPasada)})`);
+      }
       for (const f of F) {
         const detailJson = f.detail ? JSON.stringify(f.detail) : null;
         await this.db.execute(sql`
