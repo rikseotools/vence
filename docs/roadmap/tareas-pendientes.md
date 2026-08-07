@@ -995,7 +995,9 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
   - `supabase/migrations/20260807_rls_question_lifecycle_history_lector.sql`, calcada 1:1 del patrón de `20260805_rls_test_questions_lector.sql` (T-573): política `SELECT` para `vence_lector`, idempotente, con el mismo guard final que aborta la migración si el `GRANT` de tabla no existiera (para que la política nunca dé una falsa sensación de acceso sin él).
   - `scripts/canary-rol-lector.cjs`: `question_lifecycle_history` añadida a `DEBE_LEER`, así el propio canario deja de poder dar un falso verde sobre esta tabla en el futuro.
   - **Capas:** `__tests__/db/rlsQuestionLifecycleHistoryLectorMigration.test.js` (6 tests, mismo patrón que el gemelo de T-573: forma de la migración + que el canario la declare), verdes. Re-corridos también `rlsSelectBlocked.test.js` y `rlsTestQuestionsLectorMigration.test.js` — sin romper nada (20/20 en total).
-  - **NO PUDE aplicar la migración ni comprobar que `SELECT count(*) FROM question_lifecycle_history` deje de dar 0**: ese paso necesita ejecutar SQL de escritura (DDL) contra RDS, que un worker no tiene. Falta que alguien con permiso la aplique y confirme. 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
+  - **NO PUDE aplicar la migración ni comprobar que `SELECT count(*) FROM question_lifecycle_history` deje de dar 0**: ese paso necesita ejecutar SQL de escritura (DDL) contra RDS, que un worker no tiene. Falta que alguien con permiso la aplique y confirme.
+
+### [T-631] 🔴 [ABIERTO 06/08] Universidad de León: el scope sirve la ley ENTERA donde el programa pide 5 títulos (81 preguntas fuera), y 18 de 21 temas siguen sin Paso 1
 
 **Lo destapa un usuario, no un detector.** Impugnación `291ff617` (Jonatan González, free):
 *«El Título III no entra en el temario.»* Tenía razón exacta.
