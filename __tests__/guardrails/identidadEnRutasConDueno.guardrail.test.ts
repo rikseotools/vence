@@ -66,7 +66,13 @@ function ficherosDeCliente(): string[] {
       if (e.isDirectory()) {
         if (e.name === 'node_modules' || e.name === '.next' || p.includes(`${path.sep}app${path.sep}api`)) continue
         anda(p)
-      } else if (/\.tsx?$/.test(e.name)) out.push(p)
+      // `.js`/`.jsx` TAMBIÉN ([T-675]): al ampliar esto a las dos guardas seguían quedando fuera
+      // dos llamadas sin token —`components/UserProfileModal.js` a `/api/v2/user-stats` y
+      // `app/test/aleatorio-examen/page.js` a `/api/exam/resume`— **invisibles solo por su
+      // extensión**. El repo mezcla las cuatro y la extensión no dice nada sobre si el fichero
+      // manda identidad: un barrido que elige por extensión deja un hueco del tamaño de lo que no
+      // mira, y aquí ese hueco tenía dentro un endpoint con dueño.
+      } else if (/\.[jt]sx?$/.test(e.name)) out.push(p)
     }
   }
   for (const d of ['components', 'lib', 'app']) {

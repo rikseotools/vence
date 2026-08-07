@@ -2,6 +2,7 @@
 'use client'
 import Link from 'next/link'
 import { fetchWithChallenge } from '@/lib/api/fetchWithChallenge'
+import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ExamLayout from '@/components/ExamLayout'
@@ -84,8 +85,10 @@ function TestAleatorioExamenContent() {
         message: 'Cargando examen guardado...'
       })
 
-      // Llamar a la API de resume
-      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`)
+      // Llamar a la API de resume. Identidad OBLIGATORIA: la ruta comprueba de quién es el examen
+      // (`requireDuenoDelRecurso`, T-565) y sin token bloquea al propio dueño (T-669/T-675).
+      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`,
+        { headers: await getAuthHeaders() })
       const data = await response.json()
 
       if (!response.ok || !data.success) {

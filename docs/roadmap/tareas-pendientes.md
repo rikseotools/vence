@@ -981,6 +981,68 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-675] 🔴 [ABIERTO 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
+
+**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
+para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
+desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
+desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
+
+Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
+`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
+describe.
+
+#### Medido antes de tocar nada (401 por día, TZ Madrid)
+
+| endpoint | 29/07 – 05/08 | 07/08 |
+|---|---|---|
+| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
+| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
+| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
+
+**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
+no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
+personas en toda la plataforma.
+
+#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
+
+[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
+`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
+son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
+user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
+`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
+
+#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
+
+Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
+`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
+guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
+con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
+es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
+
+#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
+
+- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
+  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
+- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
+  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
+  las cuatro (`.js/.jsx/.ts/.tsx`).
+- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
+  tenía dentro dos endpoints con dueño.
+- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
+  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
+
+#### Lo que NO cubre, y hay que mirarlo aparte
+
+**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
+encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
+Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
+y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
+aquí.**
+
+**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
+correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
+
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
 - **Lo que veía el usuario:** termina el examen, pulsa corregir, y la app dice que **no hay conexión**. No se corrige, no se ve el resultado, no se guarda. **Cuatro usuarias premium lo escribieron el mismo día** (`emmavallejoteijeira`, `rbsc87` ×2, `esthlazar`), y una quinta (`ivangonlezpe`) por otra vía.

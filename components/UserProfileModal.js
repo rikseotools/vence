@@ -40,8 +40,11 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       let publicProfile = null
       let avatarSettings = null
       let todayTests = []
+      // Se resuelven UNA vez y fuera del try: las dos llamadas de abajo van a rutas que
+      // comprueban que pides lo TUYO (`requireUsuarioPropio`, T-565) y sin identidad devuelven 401
+      // (T-675). Declararlas dentro del primer try las dejaba fuera de alcance en la segunda.
+      const headers = await getAuthHeaders()
       try {
-        const headers = await getAuthHeaders()
         const qs = new URLSearchParams({
           userId,
           todayStart: todayBoundary.toISOString(),
@@ -65,7 +68,9 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       // test_questions (11s para heavy users → 504 → cascada de saturación).
       let stats = null
       try {
-        const statsRes = await fetch(`/api/v2/user-stats?userId=${userId}`)
+        // Identidad OBLIGATORIA (`requireUsuarioPropio`, T-565): sin token es un 401 y el modal
+        // sale sin estadísticas. Las cabeceras ya están resueltas arriba (T-675).
+        const statsRes = await fetch(`/api/v2/user-stats?userId=${userId}`, { headers })
         const statsData = await statsRes.json()
         if (statsData) {
           stats = [statsData] // Wrap en array para compatibilidad con el código que lee stats[0]
