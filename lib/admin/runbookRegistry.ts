@@ -294,6 +294,20 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'mira los tres invariantes que emite el barrido sobre `psychometric_questions` activas y los repara UNO A UNO contra la fuente, nunca en lote: sin `section_id` (la pregunta existe pero no cae en ninguna sección, así que NO se sirve a nadie) → asignarle la sección que le corresponde por su categoría; sección de OTRA categoría (los totales por categoría mienten y la pregunta sale donde no toca) → corregir el `section_id`, no la categoría, salvo que la materia diga lo contrario; y `correct_option` fuera de 0-3 o nulo (la pregunta no se puede corregir al responderla) → verificar la clave contra el enunciado y las opciones, y si no se puede determinar, desactivar en vez de adivinar. NUNCA fijar una clave a ojo.',
   },
+  familia_desincronizada: {
+    title: 'El clasificador de familia ya no reproduce lo persistido en BD (deriva de keywords)',
+    triggerPhrase: 'revisa la familia desincronizada',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'compara `classifyFamilia(nombre, administracion)` contra `oposiciones.familia` para cada fila afectada. Si el cambio de keywords es correcto (la familia nueva es mejor) → `node scripts/backfill-familia.cjs --apply` para esa fila. Si la fila persistida es una corrección a mano que el clasificador todavía no sabe reproducir → NO tocar: `degradaFamilia()` ya la protege del backfill, así que si sigue sonando es que el propio criterio de protección necesita revisarse, no la fila.',
+  },
+  familia_cobertura_baja: {
+    title: 'Menos del 80% de las oposiciones con plazo abierto hoy tienen familia útil (no otros/null)',
+    triggerPhrase: 'revisa la cobertura de familia',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'identifica qué oposiciones catalogadas con plazo abierto hoy tienen `familia IS NULL` o `familia=\'otros\'`, y por qué `classifyFamilia()` no las reconoce (nombre atípico, administración sin keyword mapeado). Ampliar el diccionario de keywords en `lib/oposiciones/familia.ts` si el patrón se repite, o corregir la fila a mano si es un caso aislado — y en ambos casos re-correr `scripts/backfill-familia.cjs` para que la BD refleje el cambio.',
+  },
   opciones_duplicadas: {
     title: 'Dos opciones IDÉNTICAS dentro de la misma pregunta (se queda en tres alternativas)',
     triggerPhrase: 'revisa las opciones duplicadas',

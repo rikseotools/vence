@@ -52,6 +52,11 @@ const hasKind = (txt: string, kind: string) =>
 // `explicacion_yuxtaposicion` (T-525, 05/08) es CLI-only por la MISMA razón que `cita_no_literal`:
 // compara, opción por opción, el segmento de la explicación contra el texto de esa opción — no
 // cabe en un `WHERE`. Subproceso `audit-explicacion-yuxtaposicion.cjs --json`.
+// `familia_desincronizada`/`familia_cobertura_baja` (T-384, 07/08) son CLI-only por la MISMA razón
+// que los `shuffle_*`: `classifyFamilia` vive en `lib/oposiciones/familia.ts` (TS del frontend, 200
+// líneas de keywords) y el @Cron es un build NestJS aparte sin acceso a ese `lib/`. Reimplementarlo
+// en el backend sería la tercera copia del mismo clasificador. Consecuencia asumida: el badge no
+// se refresca solo de noche; hace falta correr `scripts/health-sweep.cjs` a mano.
 const CLI_ONLY_KINDS = new Set([
   'shuffle_safe_regressed',
   'shuffle_narrativa_letra_clavada',
@@ -60,6 +65,8 @@ const CLI_ONLY_KINDS = new Set([
   'shuffle_veredicto_criterio_viejo',
   'cita_no_literal',
   'explicacion_yuxtaposicion',
+  'familia_desincronizada',
+  'familia_cobertura_baja',
 ])
 
 // Kinds ON-DEMAND (T-142): los emite `scripts/convocatoria/audit-landing.cjs`, que se corre a mano

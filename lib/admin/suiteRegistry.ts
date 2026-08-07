@@ -362,10 +362,15 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     que: 'position_type presente en BD sin configuración que lo respalde.',
   },
   {
+    ruta: '__tests__/integration/familiaSchemaContract.test.ts',
+    tipo: 'codigo',
+    fixturePropio: false,
+    que: 'Contrato de esquema de familia: la vista la expone, el CHECK rechaza valores fuera de la taxonomía, y nada persistido incumple esa taxonomía. NO depende del CONTENIDO de ninguna fila concreta — el test del CHECK toma prestada una fila arbitraria solo como vehículo (no le importa CUÁL), a diferencia del patrón que rompió [T-336].',
+  },
+  {
     ruta: '__tests__/integration/familiaClassification.test.ts',
-    tipo: 'vigilancia',
-    hueco: 'La taxonomía de familias no tiene detector en el barrido. Parte de lo que comprueba (el CHECK rechaza familia inválida) es contrato de ESQUEMA y no vigilancia — al mudarla hay que separar las dos mitades, no moverla entera.',
-    que: 'La familia declarada de cada oposición concuerda con la BD.',
+    tipo: 'vigilancia', kind: 'familia_desincronizada',
+    que: 'La MITAD de vigilancia de familia (separada del contrato de esquema, T-384): ¿el clasificador sigue de acuerdo con lo persistido? (kind familia_desincronizada) y ¿hay cobertura ≥80%? (kind familia_cobertura_baja, hermano — mismo fichero, dos kinds). YA lo cubre `health-sweep.cjs`, CLI-only.',
   },
   {
     ruta: '__tests__/integration/psychometricDataQuality.test.ts',
