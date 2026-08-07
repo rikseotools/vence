@@ -1197,7 +1197,6 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
-### [T-678] 🟡 [ABIERTO 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
 
 **Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
 producción y probado y simulado. Deberías hacer guardrail o algo.»*
@@ -1325,67 +1324,6 @@ de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método ant
 **Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
 artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
 
-### [T-675] 🔴 [ABIERTO 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
-
-**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
-para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
-desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
-desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
-
-Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
-`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
-describe.
-
-#### Medido antes de tocar nada (401 por día, TZ Madrid)
-
-| endpoint | 29/07 – 05/08 | 07/08 |
-|---|---|---|
-| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
-| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
-| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
-
-**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
-no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
-personas en toda la plataforma.
-
-#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
-
-[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
-`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
-son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
-user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
-`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
-
-#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
-
-Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
-`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
-guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
-con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
-es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
-
-#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
-
-- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
-  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
-- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
-  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
-  las cuatro (`.js/.jsx/.ts/.tsx`).
-- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
-  tenía dentro dos endpoints con dueño.
-- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
-  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
-
-#### Lo que NO cubre, y hay que mirarlo aparte
-
-**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
-encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
-Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
-y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
-aquí.**
-
-**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
-correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
 ### [T-677] 🟠 [ABIERTO 07/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
 
 **Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
@@ -8667,74 +8605,6 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **Contexto de por qué importa vigilarlo:** el mismo día se encontraron cuatro huecos en los detectores que decidían qué es barajable (referencias por posición, el agujero de las tildes en `\b`, opciones que se citan entre sí, razones estructuradas que mencionan otra opción). Que hoy el sweep dé 0 no garantiza que no quede una quinta clase sin descubrir — y el sitio donde se vería es el uso real.
 - **Origen:** encendido del piloto, 28/07.
 
-### [T-237] 🟠 `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
-
-**Qué:** el sensor `llm_semantic` escribe `cron_tick{phase:'start'}` al arrancar y `cron_run` con las
-stats al terminar. El 21, 22 y 27/07 arrancó, emitió algunas señales y **nunca cerró** — las
-oposiciones que quedaban por barrer ese día no se miraron y nada avisó.
-**Por qué (🟠):** es un fallo SILENCIOSO en el sensor de mayor cobertura del radar (2.206 URLs). El
-badge de OEPs parece sano porque sí llegan señales, así que se da por bueno. Causa probable: el
-barrido creció 4,7× (472 → 2.206 URLs al subir la cobertura) y pasó de ~40 min a **~2 h 50 min** sin
-ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206). Falta también una
-alerta `arranques > cierres`.
-**Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
-incluida).
-
-- **▸ SESIÓN w1 (06/08): la ficha estaba desfasada en dos puntos — la alerta que decía "falta"
-  YA EXISTE, y el problema real hoy no es que el cron se cuelgue: es que lleva 10 días PARADO.**
-  - **La alerta `arranques > cierres` ya está construida, y no es de esta tarea.** `RULE_CRON_STARTED_NOT_FINISHED`
-    (`backend/src/alerts/alert-rules.ts:637`, commit `d61f26e86`, T-162, en `main` desde el
-    27/07) compara `cron_tick` vs `cron_run` de CUALQUIER cron con el par y con >= 3 `cron_run`
-    de referencia, dispara `error` con cooldown de 6h, y **respeta explícitamente el caso de un
-    cron en pausa** (des-registrado del `SchedulerRegistry` → desaparece de `listCronJobs()` →
-    la regla no opina). No hacía falta escribirla: ya cubre `detect-oep-llm` cuando esté activo.
-  - **MEDIDO, no de la ficha (`SELECT ts::date, count(*) FILTER (event_type='cron_tick'),
-    count(*) FILTER (event_type='cron_run') FROM observable_events WHERE endpoint='detect-oep-llm'
-    ... GROUP BY 1`, corrido hoy con `VENCE_LECTOR_URL`): el último `cron_tick` de `detect-oep-llm`
-    es del **27/07** — CERO arranques desde entonces, 10 días.** No es que siga muriendo a media
-    pasada: **no corre en absoluto.** Confirmado el porqué en el propio código: commit `75661c268`
-    (28/07, T-cost) añadió `DETECT_OEP_LLM_ENABLED` (default `true`, pero `scripts/deploy-backend.sh`
-    lo fija a `'false'` en el deploy real) — el cron se des-registra del `SchedulerRegistry` al
-    arrancar la app, precisamente para que `cron_overdue`/`cron_started_not_finished` NO disparen
-    por algo apagado a propósito (coste: ~$8/día laborable en Haiku, ~1.700 llamadas/día). **Esto
-    es un problema MÁS GRANDE que el de la ficha, que la ficha no menciona**: 2.206 URLs de
-    cobertura completamente a oscuras desde hace 10 días, no unos pocos días sueltos sin cerrar.
-    No es tarea de T-237 decidir si reactivarlo (haría falta primero el gate de hash que evite
-    re-extraer páginas sin cambios, mencionado en el propio comentario del cron y aún sin
-    implementar — `getOposicionesForLlmScan()` sigue trayendo TODAS las filas con
-    `seguimiento_url`, sin filtro de hash) — se deja anotado para quien decida sobre el coste.
-  - **SOSPECHO (no confirmado, y digo qué falta) sobre la causa de los cuelgues del 21/22/27-07:**
-    las 4 llamadas de `oep-signals-llm.service.ts` a `client.messages.create()` NO pasaban
-    `timeout` — corrían con el default del SDK de Anthropic, **10 minutos, con reintento
-    automático** (verificado leyendo `node_modules/@anthropic-ai/sdk/client.js`, no supuesto).
-    Medido contra `observable_events` (30d, `feature='oep_signals'`, 3.050 llamadas reales):
-    p50=2,3s · p90=3,3s · p99=7,2s · **máximo observado=24,8s** — el default dejaba ~24× de
-    margen antes de considerar una llamada "colgada", y el sensor recorre ~2.200 oposiciones EN
-    SECUENCIA. Es un mecanismo PLAUSIBLE y ahora cerrado, pero **no lo he demostrado**: confirmarlo
-    de verdad exige logs de ECS/CloudWatch de esos 3 días concretos, y un trabajador no tiene esa
-    credencial (mismo límite que T-206). No intenté correlacionar con deploys porque
-    `deploy_runs` (la tabla que lo permitiría) solo tiene datos desde el 31/07 — no existía aún
-    el 21-27/07.
-  - **✅ HECHO: timeout acotado (60s, con la medición arriba) en las 4 llamadas LLM de
-    `oep-signals-llm.service.ts`** (`extractOepFromHtml`, `extractRegionalOeps`,
-    `extractTemarioChanges`, `extractGenericSourceChanges` — comparten el mismo riesgo
-    estructural, las 4 en el mismo fichero). Guardarraíl nuevo
-    `backend/src/oep-signals/oep-signals-llm.timeout.spec.ts` (5 tests) — mutation-testeado:
-    revertido el fix a mano, las 4 llamadas fallan (`opts` sale `undefined`); restaurado, verdes.
-    `npx jest oep-signals detect-oep-llm` → 75/75 verdes, sin regresión.
-  - **🔧 HALLAZGO Y ARREGLO, de paso: `oep_detection_signals` tiene el MISMO bloqueo RLS que
-    `convocatoria_seguimiento_checks` (T-220) — un sexto caso del patrón T-573/T-574/T-038.**
-    `relrowsecurity=true`, cero políticas, `vence_lector` con el GRANT de tabla pero
-    `SELECT count(*)` → 0 siempre, sin error. Bloqueaba mi propia investigación de este sensor
-    (no podía contrastar el histórico real de señales `llm_semantic`). Migración
-    `supabase/migrations/20260806_rls_oep_detection_signals_lector.sql` (dry-run, no aplicada —
-    sin permiso de escritura como trabajador) + test de forma
-    `__tests__/db/rlsOepDetectionSignalsLectorMigration.test.js` (5/5) + añadida a `DEBE_LEER`
-    en `scripts/canary-rol-lector.cjs` (confirmado en rojo hoy, como se espera antes de aplicar).
-  - **Queda, y no es para un trabajador:** (1) aplicar la migración RLS de arriba; (2) decidir si
-    reactivar `detect-oep-llm` — con el timeout ya puesto, o esperar también al gate de hash de
-    coste; (3) si se reactiva, confirmar unos días que `cron_tick`/`cron_run` cierran en pareja.
-
 ### [T-510] 🟡 [ABIERTO 03/08] `law_sections` guarda UN SOLO nivel por ley: 234 leyes con títulos y CERO capítulos
 
 - **Esfuerzo: rato** (el parser y el render ya existen; es soportar el segundo nivel).
@@ -9082,6 +8952,203 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-237] ✅ [HECHA 07/08] `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
+
+**Qué:** el sensor `llm_semantic` escribe `cron_tick{phase:'start'}` al arrancar y `cron_run` con las
+stats al terminar. El 21, 22 y 27/07 arrancó, emitió algunas señales y **nunca cerró** — las
+oposiciones que quedaban por barrer ese día no se miraron y nada avisó.
+**Por qué (🟠):** es un fallo SILENCIOSO en el sensor de mayor cobertura del radar (2.206 URLs). El
+badge de OEPs parece sano porque sí llegan señales, así que se da por bueno. Causa probable: el
+barrido creció 4,7× (472 → 2.206 URLs al subir la cobertura) y pasó de ~40 min a **~2 h 50 min** sin
+ajustar el presupuesto del cron; además va con **24 % de errores** (529/2.206). Falta también una
+alerta `arranques > cierres`.
+**Cómo:** `docs/runbooks/salud-radar.md` § «El sensor que ARRANCA y no TERMINA» (query de diagnóstico
+incluida).
+
+- **▸ SESIÓN w1 (06/08): la ficha estaba desfasada en dos puntos — la alerta que decía "falta"
+  YA EXISTE, y el problema real hoy no es que el cron se cuelgue: es que lleva 10 días PARADO.**
+  - **La alerta `arranques > cierres` ya está construida, y no es de esta tarea.** `RULE_CRON_STARTED_NOT_FINISHED`
+    (`backend/src/alerts/alert-rules.ts:637`, commit `d61f26e86`, T-162, en `main` desde el
+    27/07) compara `cron_tick` vs `cron_run` de CUALQUIER cron con el par y con >= 3 `cron_run`
+    de referencia, dispara `error` con cooldown de 6h, y **respeta explícitamente el caso de un
+    cron en pausa** (des-registrado del `SchedulerRegistry` → desaparece de `listCronJobs()` →
+    la regla no opina). No hacía falta escribirla: ya cubre `detect-oep-llm` cuando esté activo.
+  - **MEDIDO, no de la ficha (`SELECT ts::date, count(*) FILTER (event_type='cron_tick'),
+    count(*) FILTER (event_type='cron_run') FROM observable_events WHERE endpoint='detect-oep-llm'
+    ... GROUP BY 1`, corrido hoy con `VENCE_LECTOR_URL`): el último `cron_tick` de `detect-oep-llm`
+    es del **27/07** — CERO arranques desde entonces, 10 días.** No es que siga muriendo a media
+    pasada: **no corre en absoluto.** Confirmado el porqué en el propio código: commit `75661c268`
+    (28/07, T-cost) añadió `DETECT_OEP_LLM_ENABLED` (default `true`, pero `scripts/deploy-backend.sh`
+    lo fija a `'false'` en el deploy real) — el cron se des-registra del `SchedulerRegistry` al
+    arrancar la app, precisamente para que `cron_overdue`/`cron_started_not_finished` NO disparen
+    por algo apagado a propósito (coste: ~$8/día laborable en Haiku, ~1.700 llamadas/día). **Esto
+    es un problema MÁS GRANDE que el de la ficha, que la ficha no menciona**: 2.206 URLs de
+    cobertura completamente a oscuras desde hace 10 días, no unos pocos días sueltos sin cerrar.
+    No es tarea de T-237 decidir si reactivarlo (haría falta primero el gate de hash que evite
+    re-extraer páginas sin cambios, mencionado en el propio comentario del cron y aún sin
+    implementar — `getOposicionesForLlmScan()` sigue trayendo TODAS las filas con
+    `seguimiento_url`, sin filtro de hash) — se deja anotado para quien decida sobre el coste.
+  - **SOSPECHO (no confirmado, y digo qué falta) sobre la causa de los cuelgues del 21/22/27-07:**
+    las 4 llamadas de `oep-signals-llm.service.ts` a `client.messages.create()` NO pasaban
+    `timeout` — corrían con el default del SDK de Anthropic, **10 minutos, con reintento
+    automático** (verificado leyendo `node_modules/@anthropic-ai/sdk/client.js`, no supuesto).
+    Medido contra `observable_events` (30d, `feature='oep_signals'`, 3.050 llamadas reales):
+    p50=2,3s · p90=3,3s · p99=7,2s · **máximo observado=24,8s** — el default dejaba ~24× de
+    margen antes de considerar una llamada "colgada", y el sensor recorre ~2.200 oposiciones EN
+    SECUENCIA. Es un mecanismo PLAUSIBLE y ahora cerrado, pero **no lo he demostrado**: confirmarlo
+    de verdad exige logs de ECS/CloudWatch de esos 3 días concretos, y un trabajador no tiene esa
+    credencial (mismo límite que T-206). No intenté correlacionar con deploys porque
+    `deploy_runs` (la tabla que lo permitiría) solo tiene datos desde el 31/07 — no existía aún
+    el 21-27/07.
+  - **✅ HECHO: timeout acotado (60s, con la medición arriba) en las 4 llamadas LLM de
+    `oep-signals-llm.service.ts`** (`extractOepFromHtml`, `extractRegionalOeps`,
+    `extractTemarioChanges`, `extractGenericSourceChanges` — comparten el mismo riesgo
+    estructural, las 4 en el mismo fichero). Guardarraíl nuevo
+    `backend/src/oep-signals/oep-signals-llm.timeout.spec.ts` (5 tests) — mutation-testeado:
+    revertido el fix a mano, las 4 llamadas fallan (`opts` sale `undefined`); restaurado, verdes.
+    `npx jest oep-signals detect-oep-llm` → 75/75 verdes, sin regresión.
+  - **🔧 HALLAZGO Y ARREGLO, de paso: `oep_detection_signals` tiene el MISMO bloqueo RLS que
+    `convocatoria_seguimiento_checks` (T-220) — un sexto caso del patrón T-573/T-574/T-038.**
+    `relrowsecurity=true`, cero políticas, `vence_lector` con el GRANT de tabla pero
+    `SELECT count(*)` → 0 siempre, sin error. Bloqueaba mi propia investigación de este sensor
+    (no podía contrastar el histórico real de señales `llm_semantic`). Migración
+    `supabase/migrations/20260806_rls_oep_detection_signals_lector.sql` (dry-run, no aplicada —
+    sin permiso de escritura como trabajador) + test de forma
+    `__tests__/db/rlsOepDetectionSignalsLectorMigration.test.js` (5/5) + añadida a `DEBE_LEER`
+    en `scripts/canary-rol-lector.cjs` (confirmado en rojo hoy, como se espera antes de aplicar).
+  - **Queda, y no es para un trabajador:** (1) aplicar la migración RLS de arriba; (2) decidir si
+    reactivar `detect-oep-llm` — con el timeout ya puesto, o esperar también al gate de hash de
+    coste; (3) si se reactiva, confirmar unos días que `cron_tick`/`cron_run` cierran en pareja.
+
+### [T-675] ✅ [HECHA 07/08] El arreglo de [T-669] dejó fuera `user-stats`: 260 usuarios sin sus datos de progreso, y el guardarraíl no podía verlo
+
+**De dónde sale:** el feedback `e523eabc` (Esther, premium) reportaba **DOS** cosas: *«tengo problemas
+para realizar el estudio tipo examen, no envía la información y se queda pensando»* y *«me han
+desaparecido también mis datos de progreso, los que se indican a la derecha de la web al abrir el
+desplegable»*. [T-669] arregló la primera. **La segunda seguía rota después de su deploy.**
+
+Lo destapó el bloque de RASTRO DE ERRORES del dossier ([T-649], estrenado hoy): sus 54 × 401 en
+`/api/exam/pending` y **26 × 401 en `/api/v2/user-stats`**, que es exactamente el desplegable que ella
+describe.
+
+#### Medido antes de tocar nada (401 por día, TZ Madrid)
+
+| endpoint | 29/07 – 05/08 | 07/08 |
+|---|---|---|
+| `/api/v2/user-stats` | 12-45 usuarios/día | **260 usuarios** · 4.151 eventos |
+| `/api/random-test/user-stats` | — | 16 usuarios · estreno de hoy |
+| `/api/exam/pending` | **cero** | 263 usuarios *(ya cubierto por T-669)* |
+
+**Impacto, que es lo que dice si corre prisa:** de **276 usuarios** con algún 401 en 6 h, **136 (49 %)
+no respondieron ni una pregunta después de su primer 401**. En esas mismas 6 h estudiaron 161
+personas en toda la plataforma.
+
+#### La causa, y por qué el guardarraíl de [T-669] estaba en verde
+
+[T-565] introdujo **DOS** guardas, no una (`lib/api/shared/auth.ts`):
+`requireDuenoDelRecurso` («este examen es tuyo») y **`requireUsuarioPropio`** («estas estadísticas
+son tuyas»). Su commit lo dice en el propio asunto: *«identidad ajena en exam/*, psychometric/* **y
+user-stats**»*. El guardarraíl de [T-669] **solo buscaba la primera**, y además **solo escaneaba
+`.ts`/`.tsx`** — así que `components/UserProfileModal.js` era invisible por su extensión.
+
+#### ⚠️ COLISIÓN: otra sesión llegó a la vez, y la mitad de esto ya no hacía falta
+
+Mientras se arreglaba, **[T-671] entró en `main` con los MISMOS call-sites** (`UserAvatar` ×2,
+`RandomTestClient`, `TemaTestPage`, `estado/tema/[numero]`, `mis-estadisticas`) y ampliando el
+guardarraíl a **las dos guardas**. Al rebasar salieron seis conflictos y se resolvieron **quedándose
+con la versión de `main`**: el arreglo es el mismo y duplicarlo no aporta nada. Queda escrito porque
+es el coste real de dos sesiones sobre el mismo incidente, no un detalle de proceso.
+
+#### ✅ Lo que SÍ quedó, porque [T-671] no podía verlo
+
+- **`components/UserProfileModal.js`** → `/api/v2/user-stats`, y **`app/test/aleatorio-examen/page.js`**
+  → `/api/exam/resume`: las dos llamadas seguían **sin token** después de [T-671].
+- **La razón de que sobrevivieran es el propio guardarraíl:** aun ampliado a las dos guardas,
+  **solo escaneaba `.ts`/`.tsx`**. Esos dos ficheros eran invisibles **por su extensión**. Ahora mira
+  las cuatro (`.js/.jsx/.ts/.tsx`).
+- Un barrido que elige por extensión deja un hueco del tamaño de lo que no mira — y aquí ese hueco
+  tenía dentro dos endpoints con dueño.
+- **Validado por mutación:** con las extensiones ampliadas y antes de tocar los dos `.js`, el
+  guardarraíl se pone rojo señalándolos; después, 26/26 verde. Typecheck verde.
+
+#### Lo que NO cubre, y hay que mirarlo aparte
+
+**Ninguna regla de alerta vigila los 401.** 8.000 respuestas 401 a 261 personas en 6 horas no
+encendieron nada propio: saltaron `client_error_spike` y `auth_token_mint_waste`, las dos genéricas.
+Una regresión que deja a la mitad de los usuarios sin poder estudiar debería tener su propia señal,
+y hoy depende de que alguien escriba a soporte. **Es el hueco más caro de los tres y no se arregla
+aquí.**
+
+**Relacionadas:** [T-669] (el mismo incidente, la mitad de examen) · [T-565] (las dos guardas, ambas
+correctas) · [T-649] (el bloque de rastro del dossier, que es lo que lo hizo visible).
+
+### [T-678] ✅ [HECHA 07/08] Puerta de «está vivo»: el cierre no deja decirle a alguien que su problema está arreglado si el arreglo no está en producción
+
+**Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
+producción y probado y simulado. Deberías hacer guardrail o algo.»*
+
+**El fallo, concreto:** a Esther (feedback `e523eabc`) se le envió *«Las dos venían del mismo fallo y
+ya está corregido. Actualiza la página y vuelve a probar, que no debería volver a pasarte»* con el
+arreglo en `main` y **sin desplegar** — `/api/health` servía `76404f1d` y el commit no era ancestro
+suyo. Si ella entra, le sigue fallando, con un correo nuestro diciendo lo contrario.
+
+**Y el error de método que lo permitió:** se leyó una bajada de 401 como «el arreglo está entrando»
+cuando era **menos tráfico** (a esa hora solo 4 personas respondían preguntas en toda la plataforma).
+Horas punta comparadas con hora valle, sin normalizar por actividad.
+
+#### La regla ya existía a medias, y ese es el punto
+
+[T-392] impide **cerrar una tarea** cuyos commits tocan superficie servida y no están vivos, con
+`lib/deploy/shaVivo.cjs`. El criterio estaba; lo que no tenía puerta era **el punto por donde sale un
+mensaje a una persona**, que es el irreversible. Esto no inventa criterio: **lo reutiliza**.
+
+#### ✅ Construido
+
+- **Núcleo puro** `lib/impugnaciones/promesaDeArreglo.cjs`: `afirmaArreglo(texto)` (la promesa en
+  PRESENTE) + `puedeAfirmarse({texto, shaVivo, commitsPendientes})`.
+- **Puerta IO** `scripts/impugnaciones/lib/puerta-vivo.ts`, cableada en los **dos** cierres
+  (`cerrar.ts` y `cerrar-feedback.ts`), con la forma de las otras tres puertas: anuncia, cuenta el
+  roce dentro de la puerta, y escape **propio** `--vivo-igualmente "<cómo lo comprobaste>"`
+  (compartir escape apagaría cuatro puertas a la vez).
+- **Fail-open** sin sha vivo: hay una persona esperando respuesta, y «no lo sé» no es «no está
+  desplegado».
+
+#### Calibrada contra los mensajes REALES, no a ojo
+
+`npm run sim:promesa-arreglo` mide sobre lo ya enviado. **569 mensajes de admin en 30 días, 134
+(23,6 %) afirman un arreglo.** Ese 23,6 % es el TECHO, no el bloqueo: **la puerta solo para si además
+hay commits que CITAN el caso, tocan superficie servida y no están vivos**. Por eso mira los commits
+del caso y no «cualquier cosa sin desplegar» — la mayoría de esos 134 son arreglos de **contenido**
+(una explicación, una clave, un scope) que viven en la BD y no necesitan deploy: ahí decir «ya está»
+es CIERTO, y bloquearlo convertiría la puerta en un estorbo que se rodea con el escape.
+
+#### El hueco de [T-392] que salió al construirla
+
+La puerta **no bloqueaba** el caso de Esther. Al depurarlo: `importadoEn` devolvía `servidos: []`
+porque los ficheros eran `app/test/aleatorio-examen/page.js` y un componente `.js` — **a una página
+de Next no la importa nadie**, la sirve el framework por su ruta. Es decir, el verificador que
+impide cerrar tareas sin desplegar **era ciego a las páginas y a las rutas de API**. Arreglado en el
+módulo compartido (`servidoPorConvencion` en `scripts/backlog/verificacion.cjs`), no en la puerta
+nueva, para que lo aprovechen los dos. Tras el cambio, `npm run sim:verificacion` sigue verde y el
+alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispara.
+
+#### Capas
+
+- **19 unitarios** (`__tests__/impugnaciones/promesaDeArreglo.test.js`) anclados al **texto exacto**
+  que se envió a Esther, con los contrastes que NO deben marcarse (el futuro honesto, «lo estamos
+  mirando», los mensajes que no hablan de arreglos).
+- **Reproducción del caso real**: con el id de su feedback y su mensaje, la puerta **bloquea** y
+  nombra el commit sin desplegar. Antes del arreglo de `servidoPorConvencion`, no.
+- **Simulación de calibración** contra 30 días de mensajes enviados, con ancla y contraste, y exit
+  code (falla si el ancla deja de dispararla o si el mensaje honesto empieza a marcarse).
+- 311 tests de `__tests__/impugnaciones` + `__tests__/backlog/verificacion` en verde, typecheck verde.
+
+#### Lo que NO cubre
+
+Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
+`shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
+y sin un caso real que lo pida sería adivinar.
 
 ### [T-638] ✅ [HECHA 07/08] `vence_lector` no puede leer `question_lifecycle_history`: RLS activo sin política, mismo mecanismo que T-573
 
@@ -15562,6 +15629,28 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **Cómo cerrarlo:** vigilar la publicación de bases (Correos las anuncia en su portal, no en boletín) y, en cuanto salgan, Paso 1 normal. Mientras tanto, decidir qué enlace merece el botón oficial de la landing: hoy miente.
 - **Detección:** `scripts/convocatoria/sim-programa-url-vigilable.cjs` (simulación on-demand que reutiliza el núcleo de T-165). El patrón de esa redacción de error se aportó al núcleo compartido + su espejo del backend, con test de paridad.
 - **Origen:** T-107, campaña de epígrafes (27/07).
+- **RE-VERIFICADO (07/08, w3), 11 días después — sigue exactamente igual, y la solución ya está identificada, pero es una escritura en BD que este worker no puede aplicar (solo lectura):**
+  - **`programa_url` sigue siendo la página de error, palabra por palabra:** WebFetch a `https://www.correos.es/es/es/personas-y-talento/empleo/index.html` hoy devuelve el mismo título "¡Vaya! Parece que no hemos podido encontrar la página que buscas" que describe la ficha.
+  - **El sitemap lo confirmo de nuevo, con la cifra exacta:** descargado hoy (`curl https://www.correos.es/es/es.sitemap.xml`, `content-length: 3243580` ⇒ los "3,2 MB" de la ficha son literales), **0 coincidencias** de `personas-y-talento` y **0** de `empleo` en las URLs (`grep -c personas-y-talento` → 0).
+  - **`conecta.correos.es` sigue en 401** (WebFetch: "The server returned HTTP 401 Unauthorized") — confirma la ficha.
+  - **HALLAZGO que la ficha no vio: SÍ hay una URL viva y pública que la ficha no miró — `https://empleo.correos.com`.** Es justo la que ya está guardada como `oposiciones.seguimiento_url` (por eso el enlace "🔍 Seguimiento del proceso" de la landing SÍ funciona hoy — la ficha solo diagnosticó el botón roto "📄 Ver convocatoria"). WebFetch: portal público sin login, menciona explícitamente "Perfiles Operativos" ("Reparto, centros de tratamiento y atención al cliente en nuestras oficinas"), con un enlace a `empleo.correos.com/job-invite/40839/` que hoy devuelve "La oferta ya no está disponible" — confirma que sigue sin haber proceso abierto, pero el portal en sí no es un error.
+  - **Comprobé si esa URL sirve como reemplazo del botón oficial, con la herramienta que YA EXISTE para esto (`scripts/convocatoria/repuntar-enlace-convocatoria.cjs`, dry-run, sin `--apply`) — RECHAZADA, medido, no supuesto:**
+    ```
+    DATABASE_URL="$VENCE_LECTOR_URL" node scripts/convocatoria/repuntar-enlace-convocatoria.cjs correos-personal-operativo https://empleo.correos.com
+    → ❌ el enlace no es un documento (portada/sección de portal)
+    → ❌ RECHAZADO: no se escribe un enlace sin confirmar que es el documento de esta convocatoria.
+    ```
+    Es decir: `empleo.correos.com` vale para "sigue el proceso" (ya lo hace, vía `seguimiento_url`) pero NO vale como "Ver convocatoria en BOE" — es un portal genérico, no un documento, y el propio guardarraíl del repuntador lo confirma sin que haga falta criterio nuevo.
+  - **Por qué el arreglo correcto es NULEAR `programa_url`, no repuntarlo, y por qué es seguro (verificado en el código, no supuesto):** `enlaceOficialEfectivo()` (`lib/convocatoria/enlaceOficial.ts`) devuelve `programaUrl ?? null`, y `app/[oposicion]/page.tsx:487` solo pinta el botón `{enlaceOficial && (<a>...)}` — con `null` el botón desaparece SIN dejar hueco (el otro enlace, "Seguimiento del proceso", sigue mostrándose solo). El propio detector de esta ficha ya lo excluye: `sim-programa-url-vigilable.cjs` filtra `WHERE cv.programa_url IS NOT NULL` — con `NULL` deja de flagearlo, correctamente (no hay nada que vigilar si no hay URL que prometer). Los consumidores que sí exigen `programa_url` no truena en silencio: `verify-epigrafe-literality.cjs` lanza `if (!conv.programa_url) throw new Error(...)` con mensaje explícito, y los dos componentes de landing que lo leen ya lo tipan `string | null` con fallback (`HistoricoConvocatorias.tsx`: cae a `boeReference`, y aquí tampoco hay, así que cae a `null` limpio).
+  - **12 temas en `provisional_anterior` con evidencia YA clonada de que no hay fuente:** confirmé `topic_epigrafe_verification` — los 12 apuntan a `source_documento_id=5c30de45-...`, que es un clon de la MISMA página de error (`extracted_text` = el aviso de cookies + "404" de Correos, 4.138 chars, `curado=false`) — o sea que el sistema ya documentó honestamente "no hay nada que clonar", no es un descuido pendiente de esta tarea.
+  - **No pude aplicar el fix: `DATABASE_URL` (coordinación) y `VENCE_LECTOR_URL` (solo SELECT) no permiten UPDATE.** Fix preparado y verificado, para quien tenga escritura de negocio:
+    ```sql
+    UPDATE oposiciones SET programa_url = NULL WHERE id = '624e85b9-b14c-401e-b94d-329edf6c12b6';
+    UPDATE convocatorias SET programa_url = NULL, programa_last_hash = NULL, programa_last_checked = NULL
+      WHERE oposicion_id = '624e85b9-b14c-401e-b94d-329edf6c12b6' AND is_current AND archived_at IS NULL;
+    ```
+    (mismo dual-write que hace `repuntar-enlace-convocatoria.cjs --apply`, solo que a `NULL` en vez de a una URL — el script no soporta ese modo porque su propósito es verificar que la URL NUEVA es válida, y aquí no hay ninguna que lo sea). Tras aplicarlo: purgar caché de la landing (per-instancia) y confirmar visualmente que el botón "Ver convocatoria" desaparece y "Seguimiento del proceso" sigue.
+  - **No cambia nada más:** no toqué `diario_oficial`, ni los 12 temas `provisional_anterior` (siguen así hasta que haya bases reales que verificar), ni `seguimiento_url` (ya es correcta). Sigue pendiente, sin tocar por esta tarea: vigilar cuándo Correos publica las bases (Correos las anuncia en su propio portal, no en boletín) para pasar de `provisional` a verificado.
 
 ### [T-181] 🟡 [ABIERTO 27/07] Documentos clonados en la convocatoria EQUIVOCADA: ruido en la única señal que caza "el programa cambió"
 - **Qué:** el hub cuelga de la convocatoria vigente TODO documento que encuentra en la página de seguimiento, y esas páginas listan varios procesos. Medido al triar los 33 documentos con temario que no son el `programa_url`: el de **`auxiliar-administrativo-estado` (2.179 usuarios), `administrativo-estado` (706) y `tecnico-informatica`** es en realidad la **Orden TDF/568/2025 de Intervención-Tesorería** (otro proceso, portal del INAP), y `tcae-extremadura` tiene 3 PDF de **lectura fácil de otras categorías** (pinche, planchador, celador).

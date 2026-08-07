@@ -190,7 +190,8 @@
     "sim:presencia-flota": "node scripts/flota/sim-presencia.cjs",
     "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs",
     "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs",
-    "audit:corpus-ajeno": "node scripts/convocatoria/audit-corpus-ajeno.cjs"
+    "audit:corpus-ajeno": "node scripts/convocatoria/audit-corpus-ajeno.cjs",
+    "sim:candado-typecheck": "node scripts/hooks/sim-candado-typecheck.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
