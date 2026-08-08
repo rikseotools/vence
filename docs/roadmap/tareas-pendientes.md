@@ -1176,6 +1176,21 @@ fallos conocidos que se irán arreglando uno a uno. Cuando llegue a 0, quitar es
 ejecutarse nunca por `INTEGRATION_DB_WRITABLE`: aunque este triaje quede en verde, esas seguirían
 mudas — no confundir un verde con cobertura).
 
+### [T-689] 🟠 [ABIERTO 08/08] La cola de revisión se muere de hambre justo cuando la flota rinde: solo se reparten revisiones a trabajadores LIBRES
+
+- **Medido en el VPS (08/08, 01:15):** **4 entregas esperando revisión** (T-681, T-679, T-680, T-683) y **CERO encargos de revisión repartidos en 3 horas**. El diario del supervisor dice lo mismo en cada pasada: *«nada que repartir: 4 trabajador(es) vivo(s), todos con tarea»*.
+- **La causa está en el código, no en la suerte:** el reparto de revisiones (`porRevisar` en `scripts/flota/flota.cjs`) vive **DENTRO del bucle `for (const f of libres)`**. Si `libres` está vacío —o sea, si los cuatro trabajadores están ocupados— **no se reparte ninguna revisión**, por muchas entregas que se acumulen.
+- **Por qué es serio y no una lentitud pasajera: EMPEORA CUANTO MEJOR VA LA FLOTA.** Cuantas más tareas coge, menos libres hay; y cuantas más tareas termina, más entregas hay que revisar. Los dos efectos empujan en la misma dirección, así que la cola de revisión se atasca **exactamente cuando más produce**. Con turnos largos (hoy duran horas por [T-682]) no hay un solo hueco.
+- **Es [T-486] otra vez, por otra puerta.** Aquella ficha arregló que `entregada → revisada` esperase a que *«alguien decidiera mirar»* —23 entregas paradas, 15 h de media— poniéndole motor. El motor existe y funciona; lo que falta es que **arranque**: hoy solo lo hace si sobra un trabajador, que es una condición que la propia productividad destruye.
+- **El arreglo, en una frase: la revisión debe competir con la tarea nueva, no ir detrás de ella.** Cuando un trabajador queda libre y hay entregas esperando, **revisar va ANTES de darle una tarea nueva** — si no, la cola de revisión solo se vacía cuando la de tareas se seca, y la de tareas no se seca nunca (203 abiertas). Es una decisión de PRIORIDAD dentro del bucle, no un mecanismo nuevo.
+- **Cuidado al implementarlo, que hay dos trampas:**
+  1. **No dejar la flota sin hacer nada más que revisar.** Si siempre gana la revisión, con 20 entregas los cuatro se pasan el día revisando. Conviene un reparto (p. ej. la revisión gana mientras la cola supere N, o uno de cada dos turnos), y **medirlo**, no elegir el número a ojo.
+  2. **Nadie revisa lo suyo** — la regla ya existe y no se puede perder al reordenar.
+- **Cómo comprobar que funciona:** contar encargos `REVISAR` en el diario del supervisor y la antigüedad de la entrega más vieja (`review_requested_at`). Hoy: 0 encargos en 3 h. El objetivo es que ninguna entrega pase de un par de horas sin veredicto.
+- **Relacionadas:** [T-486] (el ciclo de seis escalones y el motor de revisión), [T-682] (los turnos largos, que es lo que hace que `libres` esté siempre vacío), [T-617].
+
+- **⚠️ CORRECCIÓN (08/08, 02:00): el atasco de esa noche NO lo causó esto, y perseguir la explicación equivocada costó tres vueltas.** Lo que de verdad pasaba: `w4` había **entregado bien** su tarea (`revision --entrega`) y estaba libre con CERO tareas reclamadas —comprobado: un solo sid y ninguna fila `in_progress` suya—, pero el supervisor seguía repitiendo *«4 vivos, todos con tarea»*. Su **clon iba 60 commits por detrás**. Se puso al día y se reinició (la operación documentada, sin tocar a los trabajadores) y **en la PRIMERA pasada repartió revisión**: `🔍 w4 → REVISAR T-679`. La cola llevaba **97 minutos** parada por estado desfasado, no por el diseño del reparto.
+- **Lo que sigue siendo cierto, y por eso la ficha no se cierra:** el reparto de revisiones vive dentro del bucle de trabajadores LIBRES (`for (const f of libres)`), así que **con la flota de verdad llena la cola se muere de hambre igual** — y eso empeora cuanto mejor va, porque más tareas cogidas significan menos libres y más entregas que revisar. La corrección de arriba no lo desmiente: dice que aquella noche había un hueco y no se usó. **Al medir el efecto de un arreglo aquí, descartar primero que el supervisor esté desfasado**, o se atribuirá al reparto lo que era un clon viejo.
 ### [T-688] 🟡 [ABIERTO 07/08] Dos preguntas activas con la explicación defectuosa, encontradas al medir otras impugnaciones
 
 Las dos salieron de las mediciones sistémicas del 07/08 (impugnaciones `3d3dd74e` y `28745372`). **No
@@ -1276,7 +1291,6 @@ escribir después.
   latido. Si el escritor no puede garantizar la escritura, que al menos el comando lo diga.
 
 **Relacionada:** [T-407] (identidad única de sesión), [T-539] (el fail-open es para personas).
-### [T-685] 🟡 [ABIERTO 07/08] Ninguna alerta vigilaba los 401: seis horas de incidente y 261 usuarios sin que se encendiera nada
 
 **Lo destapó una usuaria, no la observabilidad.** El 07/08, [T-565] añadió —con razón— guardas de
 propiedad a `exam/*`, `psychometric/*` y `user-stats`, y varios clientes del navegador llamaban SIN
@@ -1394,71 +1408,41 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
+**🙋 RESUELTO PARCIAL (07/08) — RD 806/2014 y RD 187/2008 verificados y listos para aplicar; las
+otras 4 normas medidas pero sin analizar pregunta a pregunta.** Planes dry-run-validados en
+`scratchpad/t683/plan-rd806-2014.json` (12 re-anclajes + 9 jubilaciones) y
+`plan-rd187-2008.json` (1 jubilación) — detalle completo del método y de cada decisión en
+`scratchpad/t683/RESUMEN.md`. **No los apliqué**: re-anclar/jubilar escribe en `questions`
+(BD de negocio) y mi credencial es solo lectura — el dry-run se hizo puenteando
+`DATABASE_URL` a la de solo-lectura, cero riesgo.
 
-**Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
-producción y probado y simulado. Deberías hacer guardrail o algo.»*
+**Método que dio la talla, caro por pregunta:** el `article_number` viejo NO es de fiar (varias
+preguntas ya estaban mal-etiquetadas ANTES de que la ley se derogase). Comparé las 4 opciones de
+CADA pregunta —no solo `correct_option`— contra el texto real de la norma nueva, y solo re-anclé
+cuando el destino tiene `topic_scope` activo Y todas las opciones verdaderas viven en el MISMO
+artículo (si una opción cierta cuelga de un artículo que ni se sirve en el tema, jubilar en vez de
+forzar un destino sucio — le pasó a `de7adf95`).
 
-**El fallo, concreto:** a Esther (feedback `e523eabc`) se le envió *«Las dos venían del mismo fallo y
-ya está corregido. Actualiza la página y vuelve a probar, que no debería volver a pasarte»* con el
-arreglo en `main` y **sin desplegar** — `/api/health` servía `76404f1d` y el commit no era ancestro
-suyo. Si ella entra, le sigue fallando, con un correo nuestro diciendo lo contrario.
+**Hallazgo que corrige la tabla original:** RD 557/2011 no tiene "8 dentro del scope", tiene
+**75 huérfanas activas en total**, de las que solo 9 caen en el rango 215-257 (Policía Nacional
+T11, ya re-anclado por T-660); las otras ~66 cuelgan de artículos (3, 6, 13, 15, 20, 26, 27, 29,
+31, 32, 37, 42, 43, 44, 49, 60, 72, 123, 124, 129, 130, 142, 143, 162, 166, 174, 175, 196, 206,
+210 + 5 con DA9/DA10) de contenido general de entrada/residencia que no pertenece al capítulo
+sancionador — su tema/oposición de origen no está identificado. Para las 9 del rango sí encontré
+algo útil: la numeración vieja→nueva tiene un **offset constante de −1** en todo el tramo
+214-246 (verificado con 6 títulos exactos), con el aviso de que el borde (OLD 215→NEW 214) puede
+caer FUERA del `topic_scope` actual — comprobarlo, no asumir el offset a ciegas.
 
-**Y el error de método que lo permitió:** se leyó una bajada de 401 como «el arreglo está entrando»
-cuando era **menos tráfico** (a esa hora solo 4 personas respondían preguntas en toda la plataforma).
-Horas punta comparadas con hora valle, sin normalizar por actividad.
+**Pendiente medido, sin tocar:** Ley 8/2015 Cabildos (17), Orden HFP/134/2018 (16, la ficha
+original apunta que la mayoría cita la norma vieja por nombre en el enunciado — sin verificar
+pregunta a pregunta), Ley 4/2005 Igualdad Euskadi (10), RD 557/2011 fuera del rango PN/T11 (66) +
+las 9 del rango con el offset ya identificado. **Total: 109 preguntas** más las 9 con pista.
 
-#### La regla ya existía a medias, y ese es el punto
+**⚠️ Antes de aplicar [T-679] o [T-681]** (generaron preguntas NUEVAS para RD1125/2024 y
+RD1155/2024 respectivamente, ninguna insertada en BD todavía): comparar contra lo re-anclado
+aquí para no duplicar cobertura — es el aviso que esta ficha ya daba y que, al no haberse hecho
+ESTA primero, tocará resolver en el momento de aplicar cualquiera de las tres.
 
-[T-392] impide **cerrar una tarea** cuyos commits tocan superficie servida y no están vivos, con
-`lib/deploy/shaVivo.cjs`. El criterio estaba; lo que no tenía puerta era **el punto por donde sale un
-mensaje a una persona**, que es el irreversible. Esto no inventa criterio: **lo reutiliza**.
-
-#### ✅ Construido
-
-- **Núcleo puro** `lib/impugnaciones/promesaDeArreglo.cjs`: `afirmaArreglo(texto)` (la promesa en
-  PRESENTE) + `puedeAfirmarse({texto, shaVivo, commitsPendientes})`.
-- **Puerta IO** `scripts/impugnaciones/lib/puerta-vivo.ts`, cableada en los **dos** cierres
-  (`cerrar.ts` y `cerrar-feedback.ts`), con la forma de las otras tres puertas: anuncia, cuenta el
-  roce dentro de la puerta, y escape **propio** `--vivo-igualmente "<cómo lo comprobaste>"`
-  (compartir escape apagaría cuatro puertas a la vez).
-- **Fail-open** sin sha vivo: hay una persona esperando respuesta, y «no lo sé» no es «no está
-  desplegado».
-
-#### Calibrada contra los mensajes REALES, no a ojo
-
-`npm run sim:promesa-arreglo` mide sobre lo ya enviado. **569 mensajes de admin en 30 días, 134
-(23,6 %) afirman un arreglo.** Ese 23,6 % es el TECHO, no el bloqueo: **la puerta solo para si además
-hay commits que CITAN el caso, tocan superficie servida y no están vivos**. Por eso mira los commits
-del caso y no «cualquier cosa sin desplegar» — la mayoría de esos 134 son arreglos de **contenido**
-(una explicación, una clave, un scope) que viven en la BD y no necesitan deploy: ahí decir «ya está»
-es CIERTO, y bloquearlo convertiría la puerta en un estorbo que se rodea con el escape.
-
-#### El hueco de [T-392] que salió al construirla
-
-La puerta **no bloqueaba** el caso de Esther. Al depurarlo: `importadoEn` devolvía `servidos: []`
-porque los ficheros eran `app/test/aleatorio-examen/page.js` y un componente `.js` — **a una página
-de Next no la importa nadie**, la sirve el framework por su ruta. Es decir, el verificador que
-impide cerrar tareas sin desplegar **era ciego a las páginas y a las rutas de API**. Arreglado en el
-módulo compartido (`servidoPorConvencion` en `scripts/backlog/verificacion.cjs`), no en la puerta
-nueva, para que lo aprovechen los dos. Tras el cambio, `npm run sim:verificacion` sigue verde y el
-alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispara.
-
-#### Capas
-
-- **19 unitarios** (`__tests__/impugnaciones/promesaDeArreglo.test.js`) anclados al **texto exacto**
-  que se envió a Esther, con los contrastes que NO deben marcarse (el futuro honesto, «lo estamos
-  mirando», los mensajes que no hablan de arreglos).
-- **Reproducción del caso real**: con el id de su feedback y su mensaje, la puerta **bloquea** y
-  nombra el commit sin desplegar. Antes del arreglo de `servidoPorConvencion`, no.
-- **Simulación de calibración** contra 30 días de mensajes enviados, con ancla y contraste, y exit
-  code (falla si el ancla deja de dispararla o si el mensaje honesto empieza a marcarse).
-- 311 tests de `__tests__/impugnaciones` + `__tests__/backlog/verificacion` en verde, typecheck verde.
-
-#### Lo que NO cubre
-
-Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
-`shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
-y sin un caso real que lo pida sería adivinar.
 ### [T-681] 🟠 [ABIERTO 07/08] Generar preguntas del régimen sancionador de extranjería de Policía Nacional T11 tras el re-anclaje al RD 1155/2024 (43 artículos)
 
 **Contexto:** [T-660] retiró el **RD 557/2011 (REx), derogado desde el 20/05/2025** —quince meses
@@ -2164,27 +2148,6 @@ en móvil** (`scrollWidth` 421 vs 393 de pantalla) — defecto real, sin ficha t
 #### Pendiente
 - Desplegar frontend y **volver a correr el journey**: tiene que pasar a VERDE.
 - Contestar a Sara (borrador con OK de Manuel), sin prometer lo que no está demostrado.
-### [T-648] 🟠 [ABIERTO 07/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
-
-- **Medido hoy** al mirar por qué el canario de la cola de PDFs gritaba «219 en DLQ» cada 15 minutos: los **220 jobs fallidos comparten UNA sola causa** (`oposicion_desconocida`), y **192 de ellos son de oposiciones `personalizada_*`** — las que el propio usuario se monta. Afectan a **54 oposiciones distintas**; las tres mayores acumulan 89, 30 y 7 jobs. Hay **7 usuarios** con una personalizada elegida ahora mismo.
-- **Por qué falla, exacto:** `pregenerateTopicPdf` (`lib/temario/pdf/pregenerate.ts:134`) resuelve contra el registro **estático** `OPOSICIONES`, que se deriva de `lib/config/oposiciones.ts` (131 entradas, todas del catálogo). Una personalizada **no está ni puede estar ahí**: vive en la tabla `custom_oposiciones` y la crea el usuario en caliente. O sea que no es un registro desactualizado —el diagnóstico que sugiere la propia alerta— sino **un camino que nunca existió** para este tipo de oposición.
-- **Es el MISMO punto ciego que [T-597]**, y conviene verlo junto: allí las personalizadas no recibían ni una pregunta de examen oficial porque el filtro las resolvía contra `ALL_POSITION_TYPES`. Mismo patrón: **todo lo que resuelve una oposición contra el catálogo estático deja fuera a las personalizadas, en silencio**. Merece la pena barrer qué más lo hace antes de arreglar solo este caso.
-- **Lo que ve el usuario:** pide el PDF de su tema y no llega. **Nadie se queja de un PDF que no llega** — simplemente deja de intentarlo, así que esto puede durar indefinidamente sin una sola incidencia. Los jobs muertos van del 01/08 al 07/08.
-- **Cuidado al arreglarlo, que aquí está la trampa:** el contenido de una personalizada SÍ existe (`topics` tiene sus temas: la mayor tiene 15). Lo que falta es la resolución del identificador, no los datos. Así que el arreglo NO es meterlas en el registro estático —se generaría en cada carga y sería un registro que crece con cada usuario— sino que la pre-generación sepa preguntar por las dos vías.
-- **Y una decisión de producto que hay que tomar antes de construir:** ¿se PRE-generan los PDFs de una personalizada? Son 54 oposiciones de 7 usuarios, cada una con sus temas, y el pre-generado existe para amortizar un render caro entre muchos usuarios. Para una oposición de UNA persona quizá lo correcto es generarlo **bajo demanda** y no encolarlo — que además vaciaría la DLQ por diseño en vez de por parche.
-- **Mientras tanto la DLQ miente:** 192 de sus 220 entradas no son un fallo que se pueda arreglar reintentando, así que el canario seguirá en crítico cada 15 min hasta que se decida qué hacer. Un canario que grita algo que nadie va a poder resolver es un canario que se aprende a ignorar.
-- **Aparte, y ya resuelto:** los otros 25 fallidos eran de `auxiliar_enfermeria_geriatria_diputacion_cadiz`, oposición real y activa, dados de alta el 03/08 — el mismo día que se añadió al registro (commit `3d8da260c`). Ahí sí era la imagen desplegada más vieja que el registro. Reencolados hoy tras desplegar; si vuelven a fallar, el diagnóstico es otro.
-- **Refs:** `lib/temario/pdf/pregenerate.ts`, `lib/api/temario/schemas.ts` (`OPOSICIONES`), `backend/src/canary-pdf-queue/`, tabla `temario_pdf_jobs`, memoria `project-pdf-temario-cola-worker`. Relacionadas: [T-597] (mismo punto ciego en el filtro de oficiales), [T-604] (personalizadas sin temas).
-- **✅ HECHO 07/08 — arreglada la RAÍZ (decisión de Manuel: «haz la primera»), no la cola.** El renderizador ya no rechaza una personalizada: `pregenerateTopicPdf` reutiliza `esObjetivoPersonalizado` —el MISMO criterio que el resolutor de contenido tiene desde [T-327]— en vez de exigir presencia en el registro estático. **No se inventa un criterio nuevo**: un segundo juez de «qué es una oposición» es exactamente cómo nació este defecto.
-  - **Y había una SEGUNDA mitad que sola habría dejado el fallo vivo:** el identificador se «slugificaba» (`replace(/_/g,'-')`), lo cual es correcto para las 131 del catálogo —traduce `position_type` a slug— pero **rompe una personalizada, que no tiene slug**: lo que llega ya ES su `position_type`, y `personalizada_abc` convertido en `personalizada-abc` no existe en ninguna tabla. Arreglar solo el `if` habría cambiado el error por otro, más adentro.
-  - **Lo que NO hizo falta construir**, y conviene decirlo porque era la propuesta obvia: el camino bajo demanda **ya existe**. Los 195 jobs llevaban la firma `hook:scope`, o sea que los encola el trigger de `topic_scope` cuando el usuario edita su temario. El barrido (`bigTopics`) ya filtra bien por slug conocido; el que encolaba a ciegas era el trigger. Con el renderizador arreglado, trigger y renderizador vuelven a decir lo mismo y la DLQ deja de ser el sitio donde se acumula su desacuerdo.
-  - **Capas:** `__tests__/temario/pdfPersonalizadaResolucion.test.ts` (6). Fijan las DOS mitades y —lo que evita el arreglo torcido— que **una oposición inventada se siga rechazando**: sin ese caso, «acepta personalizadas» se podría satisfacer aceptándolo todo. También fija que el UUID pelado sin prefijo no cuela (esas filas son solo etiqueta, sin `topics` detrás — el hueco de [T-508]).
-  - **PENDIENTE de verificar tras desplegar:** reencolar los 195 y comprobar que salen de la DLQ. Hasta entonces el canario seguirá en crítico, y con razón.
-  - **⚠️ Y EL ARREGLO NO FUNCIONÓ A LA PRIMERA, por una SEGUNDA copia de la conversión.** Desplegado el cambio de `pregenerateTopicPdf`, el worker **seguía** mandando personalizadas a la DLQ con `oposicion_desconocida` — 15 en una sola pasada. La causa: **`scripts/pdf-local.ts` (el punto de entrada REAL del worker) tenía su propio `replace(/_/g,'-')`** y lo aplicaba ANTES de llamar a la función arreglada. Lo delató la salida del propio comando: `personalizada-f228…` **con guion**.
-  - **Cómo se encontró, que es lo que hay que repetir:** la prueba directa a `pregenerateTopicPdf` **pasaba** (devolvía `tema_no_encontrado`, o sea que la puerta ya dejaba pasar), y la ruta real **fallaba**. Solo ejecutando el mismo comando que ejecuta el worker (`pdf-local.ts full <oposicion> <tema>`) apareció la diferencia. Un test sobre la función no puede ver una conversión que ocurre **antes** de entrar en ella.
-  - **Verificado de extremo a extremo, no por el estado del job:** `pdf-local.ts full personalizada_f228… 1` → **`outcome=uploaded, 84.458 bytes`**. Hay un PDF de verdad en S3.
-  - **Capa que lo impide en el futuro:** el test nuevo mira el CÓDIGO de **los dos** sitios que slugifican y exige que quien convierta guiones bajos exceptúe antes a las personalizadas. Es la única forma de cazar una tercera copia si alguien la añade.
-
 ### [T-647] 🟠 [ABIERTO 07/08] El VPS de la flota se queda sin memoria: 20 OOM en 6 h matando turnos de trabajadores y al propio supervisor
 
 - **ES LA CAUSA DE FONDO DE TODA LA MAÑANA DEL 07/08**, y no la encontró ninguno de los arreglos de [T-642] — la encontró mirar por qué el supervisor había cambiado de PID. `journalctl` en `flota-1`: **20 eventos OOM en 6 horas**, matando `claude.exe` (los turnos de los trabajadores) y `node` (el propio supervisor, con `Failed with result 'oom-kill'` a las 10:28:57).
@@ -3387,202 +3350,6 @@ Contexto: es un proceso de 196 plazas (98 libre + 98 promoción interna), grupo 
 > home/SEO/banner el día en que el plazo cierra — justo cuando alguien podría estar decidiendo
 > apuntarse en el último momento y no encuentra la convocatoria. Pregunto con `--bloquea` para que
 > se vea arriba.
-### [T-617] 🔴 [ABIERTO 06/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
-
-**Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
-estaban rotos: los cuatro servicios `vence-flota@w*` activos, tmux en pie, `NRestarts=0`. Los
-últimos encargos se escribieron a las **10:45–11:17**. Simplemente **nadie repartía**.
-
-**Por qué.** El turno de un trabajador es un `claude -p` que muere al terminar; quien lanza el
-siguiente es el supervisor. Y el supervisor era un proceso **en primer plano en el portátil de
-Manuel** que alguien tenía que arrancar a mano y mantener vivo. No hay unidad systemd, ni timer, ni
-cron, ni script npm, ni una línea de documentación de cómo mantenerlo vivo — comprobado en el VPS
-(`systemctl list-timers`: ningún timer de flota) y en el portátil (ningún proceso, ninguna unidad).
-
-**Y había DOS programadores, no uno:**
-- `vigilar` (05/08 16:22) — bucle propio, con su copia de la regla de reparto por capacidad.
-- `bucle` (06/08 11:35) — el bueno: no reimplementa la criba, lanza `flota.cjs repartir` como hijo,
-  aísla el fallo de una pasada y detecta turnos atascados.
-
-Dos repartidores con criterios propios entregan cosas distintas según quién corra — el olor de los
-cinco escritores de `seguimiento_url` [T-130], dentro del propio supervisor. **Y el bueno era
-invisible**: la línea de ayuda ofrecía `vigilar` y no mencionaba `bucle` en ningún sitio. La flota
-se quedó parada teniendo el arreglo escrito **18 minutos antes** de que se escribiera el último
-encargo.
-
-#### Lo que se hizo
-
-1. **`local` deja de ser una constante y pasa a ser una pregunta** (`lib/flota/maquinas.cjs`:
-   `esLocal`, `inalcanzable`; resuelto dentro de `maquinaDe`, en UN sitio, para que los once puntos
-   que leen `m.local` no se enteren). Lo declara quien arranca el proceso —`VENCE_FLOTA_AQUI`—,
-   igual que `VENCE_SESSION_ROLE`/`HOME` [T-539]. **Sin declarar, el comportamiento es idéntico al
-   de antes.** Se probó por `hostname` y NO sirve: en un contenedor devuelve un id efímero
-   (`32351262e6ed`), así que el portátil se habría declarado remoto a sí mismo.
-2. **Unidad de systemd** (`scripts/flota/vence-flota-supervisor.service`) para que el supervisor
-   viva **en el VPS**, no en el portátil: un supervisor que solo existe mientras Manuel tiene la
-   tapa abierta reproduce exactamente el fallo que viene a arreglar.
-3. **Un solo programador.** `vigilar` pasa a ser alias de `bucle` y su implementación (113 líneas)
-   se borra. La ayuda nombra `bucle` el primero.
-4. **⚠️ Y al fusionarlos se perdía una capacidad, en silencio: `repartir` NO relanzaba los turnos
-   muertos** — eso vivía SOLO en `vigilar`. Un turno que muere con la tarea cogida la deja
-   bloqueada para todos (el claim la protege) y el sistema entero se para por un trabajador. **Lo
-   cazaron sus propios tests de paridad**, que es justo para lo que estaban. Se llevó a `repartir`,
-   que es donde debe vivir ahora: así el comportamiento es el mismo se llegue por el bucle o por un
-   `repartir` a mano. Se le devuelve SU tarea, nunca otra [T-577].
-
-#### Hallazgo aparte: una cicatriz de merge en `main`
-
-El bloque anti-duplicados de `repartir` (`repartidasHacePoco`) había quedado **fuera de todo
-`if (cmd === …)`**, en el cuerpo principal del `try`, con el comentario de «LANZAR UN TRABAJADOR»
-huérfano encima. Seguía funcionando para el reparto —quedaba en ámbito— pero **lanzaba su consulta
-a `observable_events` en CADA invocación de `flota.cjs`** (`estado`, `lanzar`, `parar`…). Es
-sintácticamente válido, así que `node --check`, el typecheck y los 23.888 tests pasaban: una
-cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
-
-**Capas:** `__tests__/flota/maquinaLocal.test.ts` (nuevo, 20 tests) + los de paridad de
-`encargo.test.ts` actualizados a una sola puerta. **278 en verde** en `__tests__/flota/`.
-
-**Verificado en vivo, no declarado:** `node scripts/flota/flota.cjs repartir` tras el cambio →
-**4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
-clones desfasados (w4 iba 11 commits por detrás).
-
-#### INSTALADO Y CORRIENDO (06/08 18:43) — y arrancarlo de verdad destapó tres fallos más
-
-`vence-flota-supervisor.service` está **activo en el VPS**, repartiendo cada 8 min. Comprobado en
-`journalctl` y en `npm run flota`: tres de los cuatro trabajadores ejecutando, el cuarto recogido
-en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
-
-1. **`ficheroEntorno` deducía la ruta de `m.local`.** Accidentalmente correcto mientras «local»
-   solo podía ser el portátil; en cuanto el supervisor corre EN el VPS, sus trabajadores pasan a
-   ser locales y la deducción manda a buscar `w1.env` a `$HOME/.vence-flota` cuando está en
-   `/etc/vence-flota`. El supervisor no habría encontrado el entorno de nadie, ni el turno vivo
-   (`ficheroEncargo` deriva de esta). La ruta es una convención **de la máquina** → `dirEntorno`,
-   al lado de `arbol`, que ya lo era.
-2. **La telemetría paraba el reparto.** El rol `vence_coordinacion` no tenía GRANT sobre
-   `observable_events`, así que cada pasada moría con «permission denied»: **el supervisor corría
-   y la flota seguía parada**. Los emisores del bus ya fallaban abiertos; la LECTURA de
-   `repartidasHacePoco` no. Arreglado el GRANT (SELECT, INSERT) y, sobre todo, la lectura: avisa y
-   sigue. Una avería de la telemetría no puede impedir GOBERNAR la flota (§9).
-3. **`systemctl restart` tardaba 120 s y acababa en SIGKILL.** Poner `parar = true` no basta: el
-   bucle pasa casi todo su tiempo dormido y no mira la bandera hasta despertar. Y matarlo a media
-   pasada deja un `repartir` huérfano lanzando encargos que ya no vigila nadie — justo lo que la
-   salida limpia existía para evitar. Con la espera cancelable: **2 min → 45 ms**, medido.
-
-**Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
-~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
-
-#### Retomado 07/08 (w4): sobrevivió la noche, y salió un CUARTO fallo — relanzar a ciegas monta un crash-loop contra la cuota
-
-**(1) El servicio sobrevivió la noche — MEDIDO, no supuesto.** `systemctl show -p
-ActiveEnterTimestamp,NRestarts`: activo desde **06/08 19:47:03 UTC sin un solo reinicio desde
-entonces** (`NRestarts=2`, pero los dos ocurrieron ANTES de esa marca, durante el propio arranque
-de ayer — cero desde). 11h+ corridas de un tirón, atravesando la noche entera, con pasadas
-periódicas repartiendo tareas reales (`journalctl`: 4, 7, 3, 6 tareas repartidas en distintas
-pasadas). Contesta el punto 1 de "falta".
-
-**(2) Nuevo fallo, DEMOSTRADO con datos reales — el crash-loop de cuota.** Mirando `npm run flota`
-en vivo apareció `w1` con "T-548 COGIDA Y SIN PROCESO" pese al servicio corriendo perfectamente.
-`tmux capture-pane -t w1` mostró el pane repitiendo el mismo bloque una y otra vez, terminando en:
-```
-You've hit your weekly limit · resets 11pm (UTC)
-```
-Contado en `observable_events` (`flota_turno`, `trabajador=w1`, últimas 6h): **27 "retoma" de la
-MISMA tarea T-548 entre las 04:20 y las 07:04**, una cada ~5-13 min (la cadencia del propio bucle),
-CADA UNA fallando en el mismo instante en que arrancaba porque la credencial es buena pero la
-cuota semanal está a cero hasta las 23:00 UTC. La causa NO es sospecha: se reprodujo leyendo el
-pane en vivo y se contó exacto en la serie de eventos — 27, no "varias".
-
-**Por qué pasaba:** la lógica de "retomar turno muerto" (T-617, punto 4 de arriba) relanza a
-CUALQUIER trabajador vivo con tarea cogida y sin proceso, sin distinguir "el proceso anterior
-murió de verdad" de "el proceso ni siquiera pudo arrancar porque no queda cuota". `T-548` nunca
-avanzaba, y cada intento fallido volvía a dejarlo "sin proceso" para que la SIGUIENTE pasada lo
-repitiera — un bucle que solo se habría roto solo a las 23:00 UTC de hoy, ~19h después del primer
-fallo.
-
-**Arreglado (rama `flota/T-617-supervisor-cuota-agotada`, pusheada):**
-- `lib/flota/autenticacion.cjs`: nuevo estado `cuota_agotada` en `clasificar()` (antes cualquier
-  mensaje de límite de cuota caía en `desconocido`, indistinguible de un fallo de red). Detecta
-  "hit your weekly/daily/5-hour/usage limit" y "reached your usage limit", y extrae el "resets…"
-  cuando el mensaje lo trae (sin inventar una hora si no la trae).
-- `scripts/flota/flota.cjs` (`repartir`, bloque de retomar turno muerto): antes de relanzar, lee
-  la cola del log del turno anterior (`tail -c 4000 ~/flota-<w>.log`, **sin gastar cuota** — es un
-  fichero ya en disco, no una llamada nueva a `claude`) y la clasifica. Si `cuota_agotada`, NO
-  relanza — emite un evento `sin_cuota` distinto y sigue. El evento `muerto` se sigue emitiendo
-  SIEMPRE (antes solo salía si el retomar tenía éxito), así que `saludFlota` (que ya anticipaba
-  "cuota" como causa posible del rojo por turnos muertos en serie, `TURNOS_MUERTOS_ROJO=5`) sigue
-  viendo la serie completa.
-- Tests: 7 nuevos en `__tests__/flota/autenticacion.test.ts` (con la cadena real capturada del
-  incidente) + verificado que los 302 tests de `__tests__/flota/` siguen en verde.
-
-**⚠️ NO desplegado — a propósito, fuera de mi alcance como trabajador.** El fix vive en la rama;
-la unidad systemd sigue corriendo el código de ayer hasta que alguien con acceso al VPS haga
-`git pull && systemctl restart vence-flota-supervisor` en `flota-1`. Hasta entonces, el crash-loop
-de `w1`/T-548 sigue activo (se para solo a las 23:00 UTC cuando repone cuota, o antes si se
-despliega el fix). No lo hice yo mismo: reiniciar el supervisor que gobierna a toda la flota en
-mitad de un incidente es justo el tipo de acción que pide ojos humanos antes, no un despliegue de
-rutina.
-
-**(3) l1-l6 (pregunta original de "falta"):** siguen muertos, ahora ~36h (no ~23h: el tiempo pasó).
-Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darles reparto automático
-para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
-Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
-
-#### Retomado 07/08 (w3): la capa que la revisión encontró que faltaba
-
-**Veredicto de la revisión sobre `cb34e9b4b` (ya mergeado a main): "problemas" — no por un defecto
-en el código, sino por una capa ausente.** El propio revisor lo verificó y confirmó que el fix del
-crash-loop es correcto (27 eventos reproducidos, 323/323 tests verdes), y aun así encontró que
-`grep -rn 'cuota_agotada|sinCuota|logDelTurno' __tests__/flota/` (salvo `autenticacion.test.ts`) daba
-**CERO** — ningún test ejercitaba el CABLEADO real (`mandarEncargo` bloqueando de verdad,
-`logDelTurno` construyendo el comando con `sudo`), solo `AUT.clasificar()` en aislamiento o el TEXTO
-fuente con `grep`. Los dos bugs reales que llegaron a producción (T-642) eran precisamente del tipo
-que esa capa habría cazado.
-
-**Lo que hacía falta para poder testear el cableado, y por qué no existía:** `scripts/flota/flota.cjs`
-no tenía `module.exports` ni guard de `require.main === module` — `main()` se invocaba sin condición
-en la última línea, así que cualquier `require()` del fichero disparaba el CLI entero (conexión a
-RDS incluida). Confirmado que NINGÚN test previo lo requería nunca como módulo: los dos que lo tocan
-(`encargo.test.ts`, `actualizacion.test.ts`) lo leen con `fs.readFileSync` como TEXTO, no con
-`require()` — es la misma causa que explica por qué el grep daba cero.
-
-**Cambio mínimo, sin tocar lógica:** añadido `module.exports = { enMaquina, logDelTurno,
-mandarEncargo, comandoDelPanel, turnosVivosDe }` + `if (require.main === module) { main()... }`
-envolviendo la única línea que antes se ejecutaba sin condición. Verificado que el CLI queda
-IDÉNTICO: `node --check` limpio, y `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/flota/flota.cjs
-estado` corrido de verdad tras el cambio, mismo comportamiento que antes.
-
-**Tests nuevos, `__tests__/flota/mandarEncargoWiring.test.ts` (6), mockeando `child_process.execFileSync`
-— el único punto de E/S real — y usando trabajadores YA REGISTRADOS (`l1`=portátil/local,
-`w1`=VPS/remoto) en vez de mockear `lib/flota/maquinas.cjs`, para no fingir una forma de máquina que
-el registro no tiene:**
-- `logDelTurno('l1')` → el `tail` va SIN `sudo -u flota`, por `bash` (no ssh).
-- `logDelTurno('w1')` → el `tail` va CON `sudo -u flota`, por `ssh` — el bug real de T-642.
-- `logDelTurno` con `execFileSync` lanzando → devuelve `''`, nunca propaga.
-- `mandarEncargo('w1', …)` con panel libre + 0 turnos vivos + log anterior con el mensaje real de
-  cuota (`"You've hit your weekly limit · resets 11pm (UTC)"`, el mismo texto del incidente) →
-  `{ok:false, sinCuota:true}`, **y se comprueba que NO hubo `send-keys` ni `mkdir -p`** (la prueba de
-  que bloqueó DE VERDAD antes de mandar nada, no que casualmente devolvió el valor correcto).
-- el `motivo` devuelto es literalmente `AUT.clasificar(...).detalle` (misma fuente, no reimplementado
-  en el test).
-- panel ocupado → bloquea ANTES de leer el log (no gasta esa llamada de más).
-
-**Mutación verificada, no solo "el test pasa":** para confirmar que el test de bloqueo cazaría una
-regresión de verdad (y no es un tautología que pasa pase lo que pase), se desactivó a propósito el
-`if (auth.estado === 'cuota_agotada')` (`if (false && ...)`) y se re-corrió — **2 de los 6 tests
-fallan exactamente como se espera** (`sinCuota` deja de estar, `motivo` queda `undefined`). Revertido
-el cambio, `node --check` limpio, y confirmado de nuevo en verde.
-
-**Capas:** `__tests__/flota/mandarEncargoWiring.test.ts` (nuevo, 6 tests) + `__tests__/flota/`
-completo sigue en verde: **374/374** (13 suites; antes 373, contando el resto de tests de flota que
-ya existían más los 6 nuevos). No se tocó ninguna lógica de negocio, solo se hizo testeable lo que ya
-funcionaba.
-
-**Rama `flota/T-617-wiring-tests`, pusheada. Sin desplegar** (no aplica: no hay cambio de
-comportamiento del supervisor, solo de testabilidad — nada que instalar en el VPS). Cierro vía
-`revision`, no `done`: es código que gobierna la flota entera y el crash-loop de cuota real seguía
-activo en vivo cuando se revisó por última vez; que alguien con más contexto del incidente en curso
-confirme antes de dar la tarea por cerrada del todo.
-
 ### [T-619] 🔴 [ABIERTO 06/08] El deploy no se dispara nunca: exige la PUNTA de `main` en verde, y con un push cada 2 minutos el CI cancela a los pendientes
 
 **No es un fallo del sistema de sesiones.** Los claims, los leases y los worktrees hacen su trabajo. Es
@@ -9150,6 +8917,231 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 
 ## Hechas
 
+### [T-617] ✅ [HECHA 08/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
+
+**Lo medido (06/08, 18:30).** Los cuatro trabajadores del VPS llevaban **siete horas ociosos**. No
+estaban rotos: los cuatro servicios `vence-flota@w*` activos, tmux en pie, `NRestarts=0`. Los
+últimos encargos se escribieron a las **10:45–11:17**. Simplemente **nadie repartía**.
+
+**Por qué.** El turno de un trabajador es un `claude -p` que muere al terminar; quien lanza el
+siguiente es el supervisor. Y el supervisor era un proceso **en primer plano en el portátil de
+Manuel** que alguien tenía que arrancar a mano y mantener vivo. No hay unidad systemd, ni timer, ni
+cron, ni script npm, ni una línea de documentación de cómo mantenerlo vivo — comprobado en el VPS
+(`systemctl list-timers`: ningún timer de flota) y en el portátil (ningún proceso, ninguna unidad).
+
+**Y había DOS programadores, no uno:**
+- `vigilar` (05/08 16:22) — bucle propio, con su copia de la regla de reparto por capacidad.
+- `bucle` (06/08 11:35) — el bueno: no reimplementa la criba, lanza `flota.cjs repartir` como hijo,
+  aísla el fallo de una pasada y detecta turnos atascados.
+
+Dos repartidores con criterios propios entregan cosas distintas según quién corra — el olor de los
+cinco escritores de `seguimiento_url` [T-130], dentro del propio supervisor. **Y el bueno era
+invisible**: la línea de ayuda ofrecía `vigilar` y no mencionaba `bucle` en ningún sitio. La flota
+se quedó parada teniendo el arreglo escrito **18 minutos antes** de que se escribiera el último
+encargo.
+
+#### Lo que se hizo
+
+1. **`local` deja de ser una constante y pasa a ser una pregunta** (`lib/flota/maquinas.cjs`:
+   `esLocal`, `inalcanzable`; resuelto dentro de `maquinaDe`, en UN sitio, para que los once puntos
+   que leen `m.local` no se enteren). Lo declara quien arranca el proceso —`VENCE_FLOTA_AQUI`—,
+   igual que `VENCE_SESSION_ROLE`/`HOME` [T-539]. **Sin declarar, el comportamiento es idéntico al
+   de antes.** Se probó por `hostname` y NO sirve: en un contenedor devuelve un id efímero
+   (`32351262e6ed`), así que el portátil se habría declarado remoto a sí mismo.
+2. **Unidad de systemd** (`scripts/flota/vence-flota-supervisor.service`) para que el supervisor
+   viva **en el VPS**, no en el portátil: un supervisor que solo existe mientras Manuel tiene la
+   tapa abierta reproduce exactamente el fallo que viene a arreglar.
+3. **Un solo programador.** `vigilar` pasa a ser alias de `bucle` y su implementación (113 líneas)
+   se borra. La ayuda nombra `bucle` el primero.
+4. **⚠️ Y al fusionarlos se perdía una capacidad, en silencio: `repartir` NO relanzaba los turnos
+   muertos** — eso vivía SOLO en `vigilar`. Un turno que muere con la tarea cogida la deja
+   bloqueada para todos (el claim la protege) y el sistema entero se para por un trabajador. **Lo
+   cazaron sus propios tests de paridad**, que es justo para lo que estaban. Se llevó a `repartir`,
+   que es donde debe vivir ahora: así el comportamiento es el mismo se llegue por el bucle o por un
+   `repartir` a mano. Se le devuelve SU tarea, nunca otra [T-577].
+
+#### Hallazgo aparte: una cicatriz de merge en `main`
+
+El bloque anti-duplicados de `repartir` (`repartidasHacePoco`) había quedado **fuera de todo
+`if (cmd === …)`**, en el cuerpo principal del `try`, con el comentario de «LANZAR UN TRABAJADOR»
+huérfano encima. Seguía funcionando para el reparto —quedaba en ámbito— pero **lanzaba su consulta
+a `observable_events` en CADA invocación de `flota.cjs`** (`estado`, `lanzar`, `parar`…). Es
+sintácticamente válido, así que `node --check`, el typecheck y los 23.888 tests pasaban: una
+cicatriz de merge solo se ve leyendo. Devuelto a su sitio.
+
+**Capas:** `__tests__/flota/maquinaLocal.test.ts` (nuevo, 20 tests) + los de paridad de
+`encargo.test.ts` actualizados a una sola puerta. **278 en verde** en `__tests__/flota/`.
+
+**Verificado en vivo, no declarado:** `node scripts/flota/flota.cjs repartir` tras el cambio →
+**4 encargos repartidos**, los cuatro trabajadores trabajando otra vez, y de paso puso al día dos
+clones desfasados (w4 iba 11 commits por detrás).
+
+#### INSTALADO Y CORRIENDO (06/08 18:43) — y arrancarlo de verdad destapó tres fallos más
+
+`vence-flota-supervisor.service` está **activo en el VPS**, repartiendo cada 8 min. Comprobado en
+`journalctl` y en `npm run flota`: tres de los cuatro trabajadores ejecutando, el cuarto recogido
+en la pasada siguiente. **Ninguno de estos tres se veía leyendo el código:**
+
+1. **`ficheroEntorno` deducía la ruta de `m.local`.** Accidentalmente correcto mientras «local»
+   solo podía ser el portátil; en cuanto el supervisor corre EN el VPS, sus trabajadores pasan a
+   ser locales y la deducción manda a buscar `w1.env` a `$HOME/.vence-flota` cuando está en
+   `/etc/vence-flota`. El supervisor no habría encontrado el entorno de nadie, ni el turno vivo
+   (`ficheroEncargo` deriva de esta). La ruta es una convención **de la máquina** → `dirEntorno`,
+   al lado de `arbol`, que ya lo era.
+2. **La telemetría paraba el reparto.** El rol `vence_coordinacion` no tenía GRANT sobre
+   `observable_events`, así que cada pasada moría con «permission denied»: **el supervisor corría
+   y la flota seguía parada**. Los emisores del bus ya fallaban abiertos; la LECTURA de
+   `repartidasHacePoco` no. Arreglado el GRANT (SELECT, INSERT) y, sobre todo, la lectura: avisa y
+   sigue. Una avería de la telemetría no puede impedir GOBERNAR la flota (§9).
+3. **`systemctl restart` tardaba 120 s y acababa en SIGKILL.** Poner `parar = true` no basta: el
+   bucle pasa casi todo su tiempo dormido y no mira la bandera hasta despertar. Y matarlo a media
+   pasada deja un `repartir` huérfano lanzando encargos que ya no vigila nadie — justo lo que la
+   salida limpia existía para evitar. Con la espera cancelable: **2 min → 45 ms**, medido.
+
+**Queda:** que el portátil no reciba reparto automático sigue siendo correcto, pero l1-l6 llevan
+~23 h muertos y nadie los levanta — decidir si se apagan del registro o se relanzan.
+
+#### Retomado 07/08 (w4): sobrevivió la noche, y salió un CUARTO fallo — relanzar a ciegas monta un crash-loop contra la cuota
+
+**(1) El servicio sobrevivió la noche — MEDIDO, no supuesto.** `systemctl show -p
+ActiveEnterTimestamp,NRestarts`: activo desde **06/08 19:47:03 UTC sin un solo reinicio desde
+entonces** (`NRestarts=2`, pero los dos ocurrieron ANTES de esa marca, durante el propio arranque
+de ayer — cero desde). 11h+ corridas de un tirón, atravesando la noche entera, con pasadas
+periódicas repartiendo tareas reales (`journalctl`: 4, 7, 3, 6 tareas repartidas en distintas
+pasadas). Contesta el punto 1 de "falta".
+
+**(2) Nuevo fallo, DEMOSTRADO con datos reales — el crash-loop de cuota.** Mirando `npm run flota`
+en vivo apareció `w1` con "T-548 COGIDA Y SIN PROCESO" pese al servicio corriendo perfectamente.
+`tmux capture-pane -t w1` mostró el pane repitiendo el mismo bloque una y otra vez, terminando en:
+```
+You've hit your weekly limit · resets 11pm (UTC)
+```
+Contado en `observable_events` (`flota_turno`, `trabajador=w1`, últimas 6h): **27 "retoma" de la
+MISMA tarea T-548 entre las 04:20 y las 07:04**, una cada ~5-13 min (la cadencia del propio bucle),
+CADA UNA fallando en el mismo instante en que arrancaba porque la credencial es buena pero la
+cuota semanal está a cero hasta las 23:00 UTC. La causa NO es sospecha: se reprodujo leyendo el
+pane en vivo y se contó exacto en la serie de eventos — 27, no "varias".
+
+**Por qué pasaba:** la lógica de "retomar turno muerto" (T-617, punto 4 de arriba) relanza a
+CUALQUIER trabajador vivo con tarea cogida y sin proceso, sin distinguir "el proceso anterior
+murió de verdad" de "el proceso ni siquiera pudo arrancar porque no queda cuota". `T-548` nunca
+avanzaba, y cada intento fallido volvía a dejarlo "sin proceso" para que la SIGUIENTE pasada lo
+repitiera — un bucle que solo se habría roto solo a las 23:00 UTC de hoy, ~19h después del primer
+fallo.
+
+**Arreglado (rama `flota/T-617-supervisor-cuota-agotada`, pusheada):**
+- `lib/flota/autenticacion.cjs`: nuevo estado `cuota_agotada` en `clasificar()` (antes cualquier
+  mensaje de límite de cuota caía en `desconocido`, indistinguible de un fallo de red). Detecta
+  "hit your weekly/daily/5-hour/usage limit" y "reached your usage limit", y extrae el "resets…"
+  cuando el mensaje lo trae (sin inventar una hora si no la trae).
+- `scripts/flota/flota.cjs` (`repartir`, bloque de retomar turno muerto): antes de relanzar, lee
+  la cola del log del turno anterior (`tail -c 4000 ~/flota-<w>.log`, **sin gastar cuota** — es un
+  fichero ya en disco, no una llamada nueva a `claude`) y la clasifica. Si `cuota_agotada`, NO
+  relanza — emite un evento `sin_cuota` distinto y sigue. El evento `muerto` se sigue emitiendo
+  SIEMPRE (antes solo salía si el retomar tenía éxito), así que `saludFlota` (que ya anticipaba
+  "cuota" como causa posible del rojo por turnos muertos en serie, `TURNOS_MUERTOS_ROJO=5`) sigue
+  viendo la serie completa.
+- Tests: 7 nuevos en `__tests__/flota/autenticacion.test.ts` (con la cadena real capturada del
+  incidente) + verificado que los 302 tests de `__tests__/flota/` siguen en verde.
+
+**⚠️ NO desplegado — a propósito, fuera de mi alcance como trabajador.** El fix vive en la rama;
+la unidad systemd sigue corriendo el código de ayer hasta que alguien con acceso al VPS haga
+`git pull && systemctl restart vence-flota-supervisor` en `flota-1`. Hasta entonces, el crash-loop
+de `w1`/T-548 sigue activo (se para solo a las 23:00 UTC cuando repone cuota, o antes si se
+despliega el fix). No lo hice yo mismo: reiniciar el supervisor que gobierna a toda la flota en
+mitad de un incidente es justo el tipo de acción que pide ojos humanos antes, no un despliegue de
+rutina.
+
+**(3) l1-l6 (pregunta original de "falta"):** siguen muertos, ahora ~36h (no ~23h: el tiempo pasó).
+Es esperado por diseño (`reparte:false`, orden explícita de Manuel de no darles reparto automático
+para no colgarle el portátil) — no es una anomalía técnica que se pueda arreglar desde el VPS.
+Preguntado sin bloquear si se apagan del registro o se dejan (pregunta en el embudo).
+
+#### Retomado 07/08 (w3): la capa que la revisión encontró que faltaba
+
+**Veredicto de la revisión sobre `cb34e9b4b` (ya mergeado a main): "problemas" — no por un defecto
+en el código, sino por una capa ausente.** El propio revisor lo verificó y confirmó que el fix del
+crash-loop es correcto (27 eventos reproducidos, 323/323 tests verdes), y aun así encontró que
+`grep -rn 'cuota_agotada|sinCuota|logDelTurno' __tests__/flota/` (salvo `autenticacion.test.ts`) daba
+**CERO** — ningún test ejercitaba el CABLEADO real (`mandarEncargo` bloqueando de verdad,
+`logDelTurno` construyendo el comando con `sudo`), solo `AUT.clasificar()` en aislamiento o el TEXTO
+fuente con `grep`. Los dos bugs reales que llegaron a producción (T-642) eran precisamente del tipo
+que esa capa habría cazado.
+
+**Lo que hacía falta para poder testear el cableado, y por qué no existía:** `scripts/flota/flota.cjs`
+no tenía `module.exports` ni guard de `require.main === module` — `main()` se invocaba sin condición
+en la última línea, así que cualquier `require()` del fichero disparaba el CLI entero (conexión a
+RDS incluida). Confirmado que NINGÚN test previo lo requería nunca como módulo: los dos que lo tocan
+(`encargo.test.ts`, `actualizacion.test.ts`) lo leen con `fs.readFileSync` como TEXTO, no con
+`require()` — es la misma causa que explica por qué el grep daba cero.
+
+**Cambio mínimo, sin tocar lógica:** añadido `module.exports = { enMaquina, logDelTurno,
+mandarEncargo, comandoDelPanel, turnosVivosDe }` + `if (require.main === module) { main()... }`
+envolviendo la única línea que antes se ejecutaba sin condición. Verificado que el CLI queda
+IDÉNTICO: `node --check` limpio, y `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/flota/flota.cjs
+estado` corrido de verdad tras el cambio, mismo comportamiento que antes.
+
+**Tests nuevos, `__tests__/flota/mandarEncargoWiring.test.ts` (6), mockeando `child_process.execFileSync`
+— el único punto de E/S real — y usando trabajadores YA REGISTRADOS (`l1`=portátil/local,
+`w1`=VPS/remoto) en vez de mockear `lib/flota/maquinas.cjs`, para no fingir una forma de máquina que
+el registro no tiene:**
+- `logDelTurno('l1')` → el `tail` va SIN `sudo -u flota`, por `bash` (no ssh).
+- `logDelTurno('w1')` → el `tail` va CON `sudo -u flota`, por `ssh` — el bug real de T-642.
+- `logDelTurno` con `execFileSync` lanzando → devuelve `''`, nunca propaga.
+- `mandarEncargo('w1', …)` con panel libre + 0 turnos vivos + log anterior con el mensaje real de
+  cuota (`"You've hit your weekly limit · resets 11pm (UTC)"`, el mismo texto del incidente) →
+  `{ok:false, sinCuota:true}`, **y se comprueba que NO hubo `send-keys` ni `mkdir -p`** (la prueba de
+  que bloqueó DE VERDAD antes de mandar nada, no que casualmente devolvió el valor correcto).
+- el `motivo` devuelto es literalmente `AUT.clasificar(...).detalle` (misma fuente, no reimplementado
+  en el test).
+- panel ocupado → bloquea ANTES de leer el log (no gasta esa llamada de más).
+
+**Mutación verificada, no solo "el test pasa":** para confirmar que el test de bloqueo cazaría una
+regresión de verdad (y no es un tautología que pasa pase lo que pase), se desactivó a propósito el
+`if (auth.estado === 'cuota_agotada')` (`if (false && ...)`) y se re-corrió — **2 de los 6 tests
+fallan exactamente como se espera** (`sinCuota` deja de estar, `motivo` queda `undefined`). Revertido
+el cambio, `node --check` limpio, y confirmado de nuevo en verde.
+
+**Capas:** `__tests__/flota/mandarEncargoWiring.test.ts` (nuevo, 6 tests) + `__tests__/flota/`
+completo sigue en verde: **374/374** (13 suites; antes 373, contando el resto de tests de flota que
+ya existían más los 6 nuevos). No se tocó ninguna lógica de negocio, solo se hizo testeable lo que ya
+funcionaba.
+
+**Rama `flota/T-617-wiring-tests`, pusheada. Sin desplegar** (no aplica: no hay cambio de
+comportamiento del supervisor, solo de testabilidad — nada que instalar en el VPS). Cierro vía
+`revision`, no `done`: es código que gobierna la flota entera y el crash-loop de cuota real seguía
+activo en vivo cuando se revisó por última vez; que alguien con más contexto del incidente en curso
+confirme antes de dar la tarea por cerrada del todo.
+
+- **✅ VERIFICADO lo único que no se podía comprobar el mismo día (08/08, 00:45).** El supervisor **ha aguantado la noche repartiendo solo**: activo de forma continua desde las **18:02:54 UTC del 07/08**, con **cero reinicios** del servicio (`NRestarts=0`) y **15 encargos repartidos en 6 horas**, los últimos a w3 y w4 minutos antes de mirar. No solo sobrevivió: siguió trabajando **sin que nadie lo empujara**, que era justo la razón de la ficha — existía por duplicado y no corría en ningún sitio, así que la flota se paraba en cuanto nadie miraba.
+- **El otro punto que citaba (l1-l6 muertos en el portátil) dejó de ser cuestión de esta ficha:** Manuel decidió el 05/08 que el portátil **no reparte automáticamente** (`reparte: false` en el registro de máquinas), así que estar apagados es su estado CORRECTO y no una avería.
+
+### [T-648] ✅ [HECHA 08/08] Los PDFs del temario nunca se generan para una oposición personalizada: 192 jobs muertos y el usuario premium no recibe nada
+
+- **Medido hoy** al mirar por qué el canario de la cola de PDFs gritaba «219 en DLQ» cada 15 minutos: los **220 jobs fallidos comparten UNA sola causa** (`oposicion_desconocida`), y **192 de ellos son de oposiciones `personalizada_*`** — las que el propio usuario se monta. Afectan a **54 oposiciones distintas**; las tres mayores acumulan 89, 30 y 7 jobs. Hay **7 usuarios** con una personalizada elegida ahora mismo.
+- **Por qué falla, exacto:** `pregenerateTopicPdf` (`lib/temario/pdf/pregenerate.ts:134`) resuelve contra el registro **estático** `OPOSICIONES`, que se deriva de `lib/config/oposiciones.ts` (131 entradas, todas del catálogo). Una personalizada **no está ni puede estar ahí**: vive en la tabla `custom_oposiciones` y la crea el usuario en caliente. O sea que no es un registro desactualizado —el diagnóstico que sugiere la propia alerta— sino **un camino que nunca existió** para este tipo de oposición.
+- **Es el MISMO punto ciego que [T-597]**, y conviene verlo junto: allí las personalizadas no recibían ni una pregunta de examen oficial porque el filtro las resolvía contra `ALL_POSITION_TYPES`. Mismo patrón: **todo lo que resuelve una oposición contra el catálogo estático deja fuera a las personalizadas, en silencio**. Merece la pena barrer qué más lo hace antes de arreglar solo este caso.
+- **Lo que ve el usuario:** pide el PDF de su tema y no llega. **Nadie se queja de un PDF que no llega** — simplemente deja de intentarlo, así que esto puede durar indefinidamente sin una sola incidencia. Los jobs muertos van del 01/08 al 07/08.
+- **Cuidado al arreglarlo, que aquí está la trampa:** el contenido de una personalizada SÍ existe (`topics` tiene sus temas: la mayor tiene 15). Lo que falta es la resolución del identificador, no los datos. Así que el arreglo NO es meterlas en el registro estático —se generaría en cada carga y sería un registro que crece con cada usuario— sino que la pre-generación sepa preguntar por las dos vías.
+- **Y una decisión de producto que hay que tomar antes de construir:** ¿se PRE-generan los PDFs de una personalizada? Son 54 oposiciones de 7 usuarios, cada una con sus temas, y el pre-generado existe para amortizar un render caro entre muchos usuarios. Para una oposición de UNA persona quizá lo correcto es generarlo **bajo demanda** y no encolarlo — que además vaciaría la DLQ por diseño en vez de por parche.
+- **Mientras tanto la DLQ miente:** 192 de sus 220 entradas no son un fallo que se pueda arreglar reintentando, así que el canario seguirá en crítico cada 15 min hasta que se decida qué hacer. Un canario que grita algo que nadie va a poder resolver es un canario que se aprende a ignorar.
+- **Aparte, y ya resuelto:** los otros 25 fallidos eran de `auxiliar_enfermeria_geriatria_diputacion_cadiz`, oposición real y activa, dados de alta el 03/08 — el mismo día que se añadió al registro (commit `3d8da260c`). Ahí sí era la imagen desplegada más vieja que el registro. Reencolados hoy tras desplegar; si vuelven a fallar, el diagnóstico es otro.
+- **Refs:** `lib/temario/pdf/pregenerate.ts`, `lib/api/temario/schemas.ts` (`OPOSICIONES`), `backend/src/canary-pdf-queue/`, tabla `temario_pdf_jobs`, memoria `project-pdf-temario-cola-worker`. Relacionadas: [T-597] (mismo punto ciego en el filtro de oficiales), [T-604] (personalizadas sin temas).
+- **✅ HECHO 07/08 — arreglada la RAÍZ (decisión de Manuel: «haz la primera»), no la cola.** El renderizador ya no rechaza una personalizada: `pregenerateTopicPdf` reutiliza `esObjetivoPersonalizado` —el MISMO criterio que el resolutor de contenido tiene desde [T-327]— en vez de exigir presencia en el registro estático. **No se inventa un criterio nuevo**: un segundo juez de «qué es una oposición» es exactamente cómo nació este defecto.
+  - **Y había una SEGUNDA mitad que sola habría dejado el fallo vivo:** el identificador se «slugificaba» (`replace(/_/g,'-')`), lo cual es correcto para las 131 del catálogo —traduce `position_type` a slug— pero **rompe una personalizada, que no tiene slug**: lo que llega ya ES su `position_type`, y `personalizada_abc` convertido en `personalizada-abc` no existe en ninguna tabla. Arreglar solo el `if` habría cambiado el error por otro, más adentro.
+  - **Lo que NO hizo falta construir**, y conviene decirlo porque era la propuesta obvia: el camino bajo demanda **ya existe**. Los 195 jobs llevaban la firma `hook:scope`, o sea que los encola el trigger de `topic_scope` cuando el usuario edita su temario. El barrido (`bigTopics`) ya filtra bien por slug conocido; el que encolaba a ciegas era el trigger. Con el renderizador arreglado, trigger y renderizador vuelven a decir lo mismo y la DLQ deja de ser el sitio donde se acumula su desacuerdo.
+  - **Capas:** `__tests__/temario/pdfPersonalizadaResolucion.test.ts` (6). Fijan las DOS mitades y —lo que evita el arreglo torcido— que **una oposición inventada se siga rechazando**: sin ese caso, «acepta personalizadas» se podría satisfacer aceptándolo todo. También fija que el UUID pelado sin prefijo no cuela (esas filas son solo etiqueta, sin `topics` detrás — el hueco de [T-508]).
+  - **PENDIENTE de verificar tras desplegar:** reencolar los 195 y comprobar que salen de la DLQ. Hasta entonces el canario seguirá en crítico, y con razón.
+  - **⚠️ Y EL ARREGLO NO FUNCIONÓ A LA PRIMERA, por una SEGUNDA copia de la conversión.** Desplegado el cambio de `pregenerateTopicPdf`, el worker **seguía** mandando personalizadas a la DLQ con `oposicion_desconocida` — 15 en una sola pasada. La causa: **`scripts/pdf-local.ts` (el punto de entrada REAL del worker) tenía su propio `replace(/_/g,'-')`** y lo aplicaba ANTES de llamar a la función arreglada. Lo delató la salida del propio comando: `personalizada-f228…` **con guion**.
+  - **Cómo se encontró, que es lo que hay que repetir:** la prueba directa a `pregenerateTopicPdf` **pasaba** (devolvía `tema_no_encontrado`, o sea que la puerta ya dejaba pasar), y la ruta real **fallaba**. Solo ejecutando el mismo comando que ejecuta el worker (`pdf-local.ts full <oposicion> <tema>`) apareció la diferencia. Un test sobre la función no puede ver una conversión que ocurre **antes** de entrar en ella.
+  - **Verificado de extremo a extremo, no por el estado del job:** `pdf-local.ts full personalizada_f228… 1` → **`outcome=uploaded, 84.458 bytes`**. Hay un PDF de verdad en S3.
+  - **Capa que lo impide en el futuro:** el test nuevo mira el CÓDIGO de **los dos** sitios que slugifican y exige que quien convierta guiones bajos exceptúe antes a las personalizadas. Es la única forma de cazar una tercera copia si alguien la añade.
+
+- **✅ CERRADA (08/08 00:24) — la DLQ tenía DOS cosas distintas en el mismo cajón.** Medido antes de tocar nada: **112 `oposicion_desconocida`** del 31/07 al 06/08 (o sea, del defecto que esta misma ficha arregló) con **CERO posteriores**, y **50 `tema_no_encontrado`** de hoy, que es el fallo LEGÍTIMO de una personalizada sin temas y que **ningún reintento arregla**.
+- Los 112 se retiraron con una herramienta cuya **puerta es lo que la hace segura**: aborta si aparece un solo fallo del mismo motivo posterior al arreglo, porque entonces serían una avería y borrarlos destruiría la prueba de que sigue pasando. La puerta se ejecutó y dio cero. **Los 50 NO se borran**: el canario pagina solo por los reintentables y **publica los irrecuperables en su metadata** — separarlos sin esconderlos, porque lo que no se publica deja de mirarse.
+- **VERIFICADO EN PRODUCCIÓN**, no en la BD: tras desplegar backend (`062976c8`, task def 180), el canario pasó de `critical` a **`ok` a las 00:23**, con `dlq: 0` y `dlqIrrecuperable: 50`. Llevaba **días gritando cada 15 minutos**; ahora vuelve a servir para avisar el día que la cola se rompa de verdad.
+- **Capas:** núcleo puro `lib/temario/pdf/dlqTriage.cjs` con lista **CERRADA** (un motivo nuevo sigue paginando: el silencio se declara, no se hereda), 9 tests — **tres de ellos de PARIDAD** entre el núcleo y el SQL del canario, porque el backend no puede importar de `lib/` y dos criterios sobre el mismo hecho divergen en silencio — y la herramienta registrada en `toolRegistry`.
+
 ### [T-670] ✅ [HECHA 07/08] INCIDENTE: al corregir un examen el servidor respondía 403 al propio dueño porque esa llamada no adjuntaba Bearer
 
 **Nota de trazabilidad:** la ficha se reservó y la tarea se trabajó, cerró y archivó el mismo día,
@@ -9203,6 +9195,66 @@ alcanzable por su nombre), así que quedan aquí para quien las lea:
   concreto sí puede ser regresión del día, pero el evento no nació hoy.
 - Sitúa el primer caso en **07/08 17:34**; los `client_error` de ExamLayout de Emma son de las
   **16:33 UTC**, una hora antes.
+### [T-685] ✅ [HECHA 07/08] Ninguna alerta vigilaba los 401: seis horas de incidente y 261 usuarios sin que se encendiera nada
+
+**Lo destapó una usuaria, no la observabilidad.** El 07/08, [T-565] añadió —con razón— guardas de
+propiedad a `exam/*`, `psychometric/*` y `user-stats`, y varios clientes del navegador llamaban SIN
+token. Seis horas de incidente:
+
+- **8.085 respuestas 401** en `/api/exam/pending` a **263 usuarios** y **4.151** en
+  `/api/v2/user-stats` a **260**.
+- De **276 usuarios** con algún 401, **136 (49 %) no respondieron ni una pregunta después del
+  primero**: la mitad se quedó sin poder estudiar.
+- **No se encendió nada propio.** `client_error_spike` **excluye 401/403/404/409/429 a propósito**
+  (son esperados en el wrapper de fetch) y `auth_token_mint_waste` mira las acuñaciones, no los
+  rechazos — su propio comentario dice que se hizo *«para no quedar ciegos ante sesiones válidas
+  reciben 401, nadie mintea»*, y ese hueco seguía abierto.
+- Se supo porque **Esther escribió a soporte** (feedback `e523eabc`).
+
+#### La señal es NORMALIZADA, y esa es toda la lección
+
+El recuento a pelo **no sirve**: baja solo porque hay menos gente. Durante el incidente se leyó una
+bajada de 401 como «el arreglo está entrando» cuando era la hora valle — y **normalizada, esa hora
+era el pico (339 por 100 respuestas)**. La regla mide **401 por cada 100 respuestas guardadas** en
+la misma ventana.
+
+#### Umbral medido sobre el incidente entero, no elegido a ojo
+
+Simulando la ventana real de la regla (15 min) sobre 12 h:
+
+| tramo | por 100 respuestas | usuarios | ¿dispara? |
+|---|---|---|---|
+| antes (09:45-14:45) | **0 – 4,5** | 0-3 | calla en las 20 ventanas |
+| durante (15:00-20:45) | **122 – 1.167** | 19-55 | **dispara en las 24** |
+| tras el deploy (21:00+) | 8,3 → 3,5 | 1-4 | calla |
+
+Corte: **≥25 por 100 respuestas Y ≥15 usuarios distintos** → factor **27** entre el peor tramo sano
+y el más flojo del incidente. Los dos umbrales hacen falta: el ratio solo dispararía con una persona
+y su navegador roto a las 4 de la mañana, y los usuarios solos serían ruido de fondo.
+
+`/api/auth/token` queda **fuera**: su 401 anónimo es contrato conocido y ya está silenciado en
+origen; incluirlo metería miles de eventos sanos y mataría la señal.
+
+#### ✅ Hecho
+
+- `RULE_SESIONES_CON_401_EN_MASA` en `backend/src/alerts/alert-rules.ts`, severidad **critical**
+  (deja a la mitad de los afectados sin estudiar), cooldown 60 min, registrada en la lista activa.
+- El cuerpo del aviso lleva **la causa más probable** (una ruta con guarda de propiedad cuyo cliente
+  no manda token), el guardarraíl que lo cruza y la consulta para ver quién falla — no solo el
+  número.
+- **8 tests** con las cifras REALES del incidente: dispara en el peor tramo (477/100) **y en el más
+  flojo (122/100)**, calla en el peor tramo sano (4,5) y tras el deploy (8,3), y los dos casos
+  degenerados. Más uno que fija por qué no se puede «unificar» con `client_error_spike`.
+- Suite de alertas **636/636** y typecheck del backend en verde.
+
+#### ⏳ NO está viva todavía
+
+Es una regla de **backend**: no vigila nada hasta que se despliegue el backend. Hasta entonces esto
+no protege de nada — y decir lo contrario sería exactamente el error que costó el correo a Esther
+([T-678]).
+
+**Relacionadas:** [T-669] y [T-671] (el incidente), [T-675] (lo que quedó fuera del arreglo),
+[T-678] (la puerta que impide anunciar un arreglo que no está vivo).
 
 ### [T-237] ✅ [HECHA 07/08] `detect-oep-llm` muere a media pasada: 3 de las últimas 7 jornadas sin cerrar
 
@@ -15984,6 +16036,8 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 > - **Sin código de producción sin capa:** `hooks/useVersionCheck.ts` toca únicamente lo tocado
 >   con sus tests (50/50); la migración con su test de forma (6/6); `tsc --noEmit` limpio.
 
+- **✅ ÍTEM (2) HECHO y revisado en verde** (entrega de la flota, en `main`): la ráfaga de recargas —4 en 11 s en el incidente real— tenía causa razonada y arreglada. `window.location.reload()` **mata el estado de MÓDULO**, así que `clientVersion`/`pendingVersion` vuelven a `null` y la página recién recargada relee «versión nueva» si el deploy rodante sirve versiones distintas entre peticiones: **nada recordaba que ACABABA de recargar**. La marca va ahora en `sessionStorage` (sobrevive al reload, a diferencia de una variable) con un cooldown de 20 s, y hay evento propio `version_check_reload_suppressed`. 138 tests verdes.
+- **❌ ÍTEM (1): HIPÓTESIS DESCARTADA (08/08, comprobado).** La ficha suponía que el diferido no aplicó en `/leyes/[ley]/avanzado` porque *«la lista de rutas de test no la incluye»*. **La incluye**, y desde hace meses: `hooks/useVersionCheck.ts:29` lleva el patrón `\/leyes\/[^/]+\/(avanzado|rapido|personalizado|aleatorio|repaso-fallos)` desde el commit `c409f1dec` del **30/04/2026**, casi tres meses ANTES del incidente del 26/07. O sea que la ruta estaba cubierta y aun así hubo recarga: **la causa es otra y sigue sin identificarse**. Quien lo retome que empiece por ahí y no por la lista de rutas — es el tiempo que ahorra saber qué ya se descartó.
 ### [T-166] 🟠 [ABIERTO 27/07] Embudo determinista para `detect-oep-llm` — el cron está EN PAUSA y el radar de OEPs no corre hasta que esto se haga
 - **Estado de partida:** `detect-oep-llm` quedó **PAUSADO en producción el 27/07** (`DETECT_OEP_LLM_ENABLED=false`, task def `vence-backend:112`; commit `75661c268`). ⚠️ **Mientras siga pausado, el sensor semántico del radar NO detecta convocatorias nuevas** — el triaje depende de que Manuel abra sesión. Reactivar es poner el flag a `true` en `scripts/deploy-backend.sh` + desplegar.
 - **Por qué se pausó (medido, no estimado):** mandaba a Haiku el HTML de **las 2.213 oposiciones con `seguimiento_url`** (solo 123 activas), una llamada por oposición → **~1.700 llamadas y ~8 USD por día laborable (~170 USD/mes)**, 169 min por pasada. Última pasada completa (24/07): **2.206 escaneadas → 424 extracciones → 10 señales (0,45%)**.

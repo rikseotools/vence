@@ -1,0 +1,7 @@
+{
+  "motivo": "T-683 — RD 187/2008 (Red Hospitalaria de la Defensa) derogado, retirado del temario por T-660, SIN sustituta importada. La única pregunta huérfana pide identificar el propio RD por número/fecha entre variantes plausibles; sin norma vigente que recoja esa materia no hay artículo al que re-anclar.",
+  "movimientos": [],
+  "retirar": [
+    { "pregunta": "5a4240d1-0fcc-4e51-b7f4-ac2c7adf605d", "reasonCode": "admin_law_derogated", "estadoDestino": "retired_irreparable", "porQue": "RD 187/2008 derogado sin sustituta en el temario (T-660); la pregunta identifica el propio decreto por número/fecha entre variantes, no hay artículo vigente al que re-anclar." }
+  ]
+}
