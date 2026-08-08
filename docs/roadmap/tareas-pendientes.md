@@ -1371,6 +1371,49 @@ mudas — no confundir un verde con cobertura).
 - **Cómo comprobarlo:** contar en el diario las pasadas con `pausaS > cada` mientras había trabajadores ocupados (hoy: varias horas seguidas), y que tras un `motivoSalto` la siguiente pasada llegue en minutos, no en una hora.
 - **Relacionadas:** [T-642] (el criterio, correcto, que este defecto deja sin datos), [T-682] (los typechecks colgados que provocaron el `ETIMEDOUT`), [T-689] (la cola de revisión que se quedó sin drenar por esto), [T-626] (otro rastro del bucle que nunca existió por escribir en una columna inexistente: mismo patrón de «la señal no llega»).
 
+- **✅ VERIFICADO (08/08, w4) — el arreglo ya estaba escrito y mergeado (`f72815597`, 09:46 CEST), solo
+  faltaba comprobarlo y cerrar la ficha. Y verificando salió un hallazgo NUEVO y activo AHORA MISMO:
+  hay un SEGUNDO supervisor zombie repartiendo en paralelo con la misma firma del bug que esta
+  ficha arregla.**
+
+  **El código está completo y correcto** (`lib/flota/bucle.cjs`): `MARCA_PASADA`/`lineaPasada`/
+  `leerPasada` sustituyen el rascado de texto por un JSON en la última línea, con caída al camino
+  viejo si el clon está desactualizado; `repartir` emite la marca en SUS DOS finales (la salida
+  temprana de "nada que repartir" en la línea 1260 de `scripts/flota/flota.cjs`, y la normal en la
+  1375); `siguientePausa` recibe `fallo: !!motivoSalto` y no espacia en avería. **43/43 tests**
+  (`__tests__/flota/ritmoBucle.test.ts` + `bucle.test.ts`), incluidos los que ejercitan las DOS
+  redacciones reales de la salida (justo lo que faltó al arreglar T-642 la primera vez) y uno que
+  reprodujo un "BUC is not defined" real por ejecutar el comando de verdad, no solo leer el texto.
+
+  **VERIFICADO EN VIVO, no solo en tests — con `observable_events` (`flota_bucle_pasada`, 08/08
+  06:57→08:53 UTC):** el proceso etiquetado `host=flota-1` (el correcto, ya con el fix) se mantiene
+  en `pausaS=300` de forma sostenida con `ocupados` entre 1 y 4 — nunca crece hacia los 3.600 s
+  antiguos mientras hay trabajadores ocupados. Es la prueba de que el síntoma original (dormirse una
+  hora con la flota llena) **ya no ocurre** en el proceso corregido.
+
+  **🚨 HALLAZGO NUEVO, midiéndolo: hay un SEGUNDO proceso `bucle` corriendo EN PARALELO, con la firma
+  exacta del bug que esta ficha dice arreglado — y sigue activo ahora mismo (última muestra 08:44
+  UTC, hora de escribir esto ~08:56 UTC).** En el mismo rango de `flota_bucle_pasada` aparecen,
+  intercalados con los de `flota-1`, eventos **SIN el campo `host`** (`metadata ? 'host'` = false)
+  cuyo `pausaS` CRECE exactamente como antes del fix: `300 → 450 → 675 → 1.013` (×1,5 cada vez,
+  camino a los 3.600 del techo). `host: yo` (`yo = process.env.VENCE_FLOTA_AQUI || os.hostname()`,
+  que nunca es falsy) se añadió en [T-642] — commiteado el 07/08, ANTES de hoy — así que un proceso
+  cuyo INSERT no lleva esa clave solo puede ser uno que lleva corriendo **desde antes de T-642**
+  con el código cargado en memoria (Node no recarga código en caliente) y que nunca se reinició.
+  Es decir: mientras `flota-1` reparte bien, **otro supervisor más viejo sigue repartiendo con el
+  bug original**, y encima el propio [T-642] (`otroSupervisorVivo`) está pensado para IMPEDIR que
+  arranque un segundo supervisor cuando ya hay uno vivo — no para matar uno viejo que ya estaba
+  corriendo antes de que naciera esa protección. Dos supervisores repartiendo a la vez es EXACTAMENTE
+  lo que [T-642] existe para evitar, y está pasando.
+  **No puedo arreglarlo desde aquí:** encontrar y reiniciar/matar ese proceso necesita acceso SSH/
+  `systemctl` a la máquina de la flota, que un trabajador no tiene ni debe tener. Lo dejo como
+  pregunta urgente al embudo (`preguntar`) con esta misma evidencia.
+
+  **Con esto, la ficha original de T-693 (los DOS defectos que describe: dato por prosa + fallo que
+  espaciaba) queda cerrada — verificada en tests y en producción.** Lo que queda vivo es el hallazgo
+  nuevo de arriba, que es un cabo suelto DISTINTO (proceso zombie sin reiniciar), no una regresión
+  del fix.
+
 ### [T-689] 🟠 [ABIERTO 08/08] La cola de revisión se muere de hambre justo cuando la flota rinde: solo se reparten revisiones a trabajadores LIBRES
 
 - **Medido en el VPS (08/08, 01:15):** **4 entregas esperando revisión** (T-681, T-679, T-680, T-683) y **CERO encargos de revisión repartidos en 3 horas**. El diario del supervisor dice lo mismo en cada pasada: *«nada que repartir: 4 trabajador(es) vivo(s), todos con tarea»*.
