@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 96.1 de la Constitución Española",
+    "texto": "Los tratados internacionales válidamente celebrados, una vez publicados oficialmente en España, formarán parte del ordenamiento interno."
+  },
+  "intro": "La pregunta distingue dos planos que suelen mezclarse: cómo se obliga España frente a otros Estados (negociación, autorización de las Cortes cuando procede, ratificación) y a partir de qué momento ese tratado es derecho aplicable dentro del país. Lo segundo depende de la publicación oficial.",
+  "options": {
+    "0": "Es lo que exige el artículo 96.1: el tratado válidamente celebrado se incorpora al ordenamiento interno una vez publicado oficialmente en España.",
+    "1": "La firma pertenece a la fase de celebración en el plano internacional y no incorpora por sí sola el tratado al derecho interno.",
+    "2": "La autorización de las Cortes Generales es un requisito previo para prestar el consentimiento en los casos del artículo 94, pero no es el momento en el que el tratado pasa a formar parte del ordenamiento.",
+    "3": "La manifestación del consentimiento del Estado corresponde al Rey conforme al artículo 63.2, y aun así el tratado no se integra en el ordenamiento interno hasta su publicación oficial."
+  },
+  "outro": "**Clave:** el tratado válidamente celebrado forma parte del ordenamiento interno desde su publicación oficial en España."
+}

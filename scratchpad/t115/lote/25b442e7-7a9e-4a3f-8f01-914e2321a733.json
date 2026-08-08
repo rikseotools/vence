@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 53 bis de la Ley Orgánica 3/2018",
+    "texto": "La utilización de estos sistemas se producirá cuando lo determine la Agencia y requerirá la conformidad del inspeccionado en relación con su uso y con la fecha y hora de su desarrollo."
+  },
+  "options": {
+    "0": "Reproduce el precepto: la decisión es de la Agencia y la conformidad, del inspeccionado, tanto sobre el uso como sobre la fecha y la hora.",
+    "1": "Invierte los papeles: quien determina la utilización es la Agencia, y quien presta la conformidad es el inspeccionado.",
+    "2": "La conformidad del inspeccionado sí se exige; el artículo la hace requisito de la utilización del sistema.",
+    "3": "La conformidad del inspeccionado alcanza también al uso del sistema, no solo a la fecha y hora de su desarrollo."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 10.1 de la Constitución Española",
+    "texto": "La dignidad de la persona, los derechos inviolables que le son inherentes, el libre desarrollo de la personalidad, el respeto a la ley y a los derechos de los demás son fundamento del orden político y de la paz social."
+  },
+  "intro": "Aquí se cruzan dos listas que se parecen y no son la misma: los valores superiores del ordenamiento jurídico que proclama el artículo 1.1 (libertad, justicia, igualdad y pluralismo político) y los cuatro fundamentos del orden político y de la paz social del artículo 10.1. La pregunta va de la segunda.",
+  "options": {
+    "0": "Es uno de los valores superiores del ordenamiento jurídico proclamados en el artículo 1.1, no uno de los fundamentos que enumera el artículo 10.1.",
+    "1": "También figura entre los valores superiores del artículo 1.1, junto a la libertad, la igualdad y el pluralismo político.",
+    "2": "Es el cuarto de los fundamentos del artículo 10.1, con la dignidad de la persona, los derechos inviolables que le son inherentes y el libre desarrollo de la personalidad.",
+    "3": "Cierra la enumeración de valores superiores del artículo 1.1 y se proyecta en el sistema de partidos del artículo 6; no está en la lista del artículo 10.1."
+  },
+  "outro": "**Clave:** los cuatro fundamentos del orden político y de la paz social son dignidad, derechos inviolables inherentes, libre desarrollo de la personalidad y respeto a la ley y a los derechos de los demás."
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.1.b) RD 203/2021",
+    "texto": "Los sellos electrónicos de tiempo no cualificados serán asimilables a todos los efectos a las marcas de tiempo."
+  },
+  "options": {
+    "0": "Es la regla literal del precepto: la asimilación a las marcas de tiempo se produce a todos los efectos.",
+    "1": "La asimilación no se limita a los efectos probatorios: el artículo la extiende a todos los efectos.",
+    "2": "El precepto no condiciona su admisibilidad a previsión alguna del Esquema Nacional de Seguridad.",
+    "3": "Lejos de excluirlos, el artículo los asimila a las marcas de tiempo, que son una de las dos modalidades de referencia temporal admitidas."
+  },
+  "frame": "select_correct"
+}

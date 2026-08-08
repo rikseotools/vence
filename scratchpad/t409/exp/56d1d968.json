@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 120.1 de la Ley 39/2015",
+    "texto": "Cuando deban resolverse una pluralidad de recursos administrativos que traigan causa de un mismo acto administrativo y se hubiera interpuesto un recurso judicial contra una resolución administrativa o bien contra el correspondiente acto presunto desestimatorio, el órgano administrativo podrá acordar la suspensión del plazo para resolver hasta que recaiga pronunciamiento judicial."
+  },
+  "intro": "El precepto ordena los recursos en masa: muchos recursos idénticos contra el mismo acto y un pleito ya abierto sobre uno de ellos. La ley permite esperar a la sentencia para no resolver en direcciones contradictorias, pero lo configura como una facultad del órgano, no como un deber, y el acuerdo de suspensión se notifica a los interesados, que pueden recurrirlo.",
+  "options": {
+    "0": "El precepto no impone esperar en todo caso: la suspensión es potestativa, y el órgano puede optar por resolver.",
+    "1": "Tampoco obliga a lo contrario. La ley no manda adelantarse al pronunciamiento judicial; deja en manos del órgano decidir si suspende el plazo o resuelve.",
+    "2": "Abstenerse del conocimiento es otra cosa: la abstención opera cuando concurre en la autoridad o el personal una causa personal que compromete su imparcialidad. Aquí el órgano sigue siendo competente y conserva el asunto.",
+    "3": "Es la solución del artículo 120.1: acordar la suspensión del plazo para resolver hasta que recaiga el pronunciamiento judicial, con la posibilidad de dictar después la resolución sin más trámite que, en su caso, el de audiencia."
+  },
+  "outro": "**Clave:** ante una pluralidad de recursos que traen causa del mismo acto y un recurso judicial ya interpuesto, el órgano PUEDE suspender el plazo para resolver hasta la sentencia."
+}

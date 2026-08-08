@@ -1,0 +1,10 @@
+{
+  "intro": "Los desinfectantes se clasifican por su nivel de actividad. Los de **alto nivel** destruyen todos los microorganismos salvo un número elevado de esporas bacterianas; los de **nivel intermedio** inactivan micobacterias, la mayoría de virus y hongos, pero no esporas; los de **bajo nivel** solo eliminan bacterias vegetativas y algunos hongos y virus.",
+  "options": {
+    "0": "Los compuestos de amonio cuaternario son desinfectantes de bajo nivel: no eliminan micobacterias ni esporas.",
+    "1": "El alcohol etílico al 70 % es un desinfectante de nivel intermedio, sin actividad esporicida y con evaporación rápida que limita su tiempo de contacto.",
+    "2": "El hipoclorito sódico es el único del grupo que alcanza el alto nivel: a concentraciones elevadas y con tiempo de contacto suficiente destruye micobacterias, virus, hongos y formas vegetativas, con acción esporicida.",
+    "3": "Los fenoles son desinfectantes de nivel intermedio, útiles frente a bacterias, hongos y algunos virus, pero sin actividad frente a esporas."
+  },
+  "outro": "**Clave:** de los cuatro, solo el hipoclorito sódico llega a alto nivel, y lo hace en función de la concentración y del tiempo de contacto; los amonios cuaternarios son de bajo nivel y el alcohol y los fenoles, de nivel intermedio."
+}

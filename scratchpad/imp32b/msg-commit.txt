@@ -1,0 +1,25 @@
+docs(T-408, T-421, T-422): la revisión de gemelas con clave contradictoria y los dos cabos que abre
+
+T-408 — la banda `error` de legislativas queda a CERO: 5 grupos / 12 preguntas
+adjudicados contra fuente (Microsoft y BOE) y 7 jubiladas con su motivo en el
+audit trail. Queda escrita la causa raíz, que la ficha no tenía: son clones a
+los que se cambió un detalle del enunciado dejándoles la clave y la explicación
+de la otra variante, así que la explicación contradice a su propio enunciado
+y eso se puede detectar solo.
+
+T-421 — el art. 72 LO 3/2007 falta en 13 topic_scope que sí escopan el 71 (y 17
+tienen los dos). Lo destapó la guarda de reanclar-preguntas.cjs al negarse a
+mover una pregunta que dejaría huérfana en 13 temas.
+
+T-422 — tres impugnaciones resueltas cuyo email nunca se intentó, todas de la
+misma usuaria y del mismo minuto, con la alerta disparando todo el día.
+
+Y la lección al manual de impugnaciones: «esto ya me salió con otra respuesta»
+es la firma de una gemela, ya hay herramienta para buscarla, y la explicación
+delata cuál de las dos es la mala.
+
+Este commit puede arrastrar ediciones EN VUELO de otra sesión sobre el mismo
+fichero (fichas T-406, T-413 y T-415, suyas): el árbol de trabajo es compartido.
+Commit por ruta, sin tocar el índice de nadie.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>

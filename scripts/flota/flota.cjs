@@ -1552,6 +1552,34 @@ async function main() {
         let motivoSalto = null
         let atascados = []
 
+        // ── Y EL SUPERVISOR SE PONE AL DÍA A SÍ MISMO (T-716, 08/08) ───────────────────────
+        // Ponía al día el clon de TODOS los trabajadores antes de cada encargo… y nunca el suyo.
+        // Medido el 08/08 en una tarde de supervisión: hubo que actualizarlo A MANO ocho veces,
+        // y llegó a ir **54 commits por detrás en veinte minutos** — la flota produce más rápido
+        // de lo que un humano se acuerda de hacer `git pull`. No es cosmético: cada pasada lanza
+        // `flota.cjs repartir` COMO HIJO, así que un clon viejo reparte con la criba vieja, y es
+        // el modo de fallo nº1 del sistema (un supervisor desactualizado cuenta mal quién está
+        // libre y deja de repartir).
+        //
+        // Reusa el MISMO criterio que aplica a los demás (`lib/flota/actualizacion.cjs`): nada
+        // de `reset --hard` ni `clean`. Si el árbol está sucio o adelantado NO se toca —lo sin
+        // commitear puede ser el único rastro de un trabajo— y se dice en voz alta.
+        try {
+          const sonda = ACTU.leerSonda(
+            require('child_process').execSync(ACTU.SONDA_GIT(REPO), { encoding: 'utf8', timeout: 60000 }))
+          const v = ACTU.evaluarClon(sonda)
+          if (v.hayQueActualizar) {
+            require('child_process').execSync(ACTU.ORDEN_ACTUALIZAR(REPO), { encoding: 'utf8', timeout: 180000 })
+            console.log(`  ⬆️  supervisor: clon puesto al día (${sonda.atras} commit(s) por detrás)`)
+          } else if (v.estado !== 'al_dia' && v.estado !== 'a_medias') {
+            // Se avisa y se sigue: quedarse sin repartir por no poder actualizar sería peor que
+            // repartir con código de hace un rato.
+            console.log(`  ⚠️  supervisor: no se pudo poner al día (${v.motivo}) — se reparte igual`)
+          }
+        } catch (e) {
+          console.log(`  ⚠️  supervisor: fallo al mirar su propio clon (${String(e.message || e).slice(0, 70)}) — se reparte igual`)
+        }
+
         // ── LA SALUD DE LA MÁQUINA SE MIDE AQUÍ, NO SOLO EN EL PANEL ([T-677]) ──────────────
         // La primera versión solo medía al pintar el panel, o sea **solo cuando una persona
         // ejecutaba `npm run flota` a mano**. Eso no es una alerta proactiva: es una alerta que
@@ -1559,13 +1587,40 @@ async function main() {
         // servicio llevaba horas corriendo con la sonda dentro y había UN solo evento.
         // Aquí corre cada pasada (5 min por defecto), que es lo que da a las reglas material
         // periódico con el que disparar.
-        for (const w of MAQ.trabajadoresQueReciben()) {
+        //
+        // ⚠️ [T-712] `trabajadoresQueReciben()` devuelve `{ trabajador, maquina }`, NO nombres.
+        // La primera versión iteraba `for (const w of …)` y le pasaba el OBJETO a `maquinaDe`,
+        // que devolvía `null`, y el `continue` de la línea siguiente se lo tragaba: 439 pasadas
+        // sin medir una sola vez, mientras el panel —que sí desestructuraba— daba el veredicto
+        // correcto. Ahora `maquinaDe` LANZA ante un tipo que no sea string, así que el error no
+        // puede volver a esconderse detrás de un `continue`.
+        // El verde de la sonda se AFIRMA (va en la metadata de `flota_bucle_pasada`), no se
+        // deduce de que no haya eventos: éste es el defecto que [T-712] acaba de costar, y es el
+        // mismo que ya midió [T-529] — «un cero de un detector no se distingue de un detector
+        // muerto». Sin esto, la única prueba de que la sonda corre es que la máquina se ahogue.
+        const saludPasada = {}
+        for (const { trabajador: w } of MAQ.trabajadoresQueReciben()) {
           const m = MAQ.maquinaDe(w)
           if (!m || medidas.has(m.nombre)) continue
           medidas.set(m.nombre, true) // una sola máquina por pasada, aunque tenga 4 trabajadores
           const medida = medirMaquina(w)
-          if (!medida) continue
+          // ── UNA SONDA QUE NO PUEDE MEDIR NO ES UNA MÁQUINA SANA ([T-712]) ───────────────
+          // Antes esto era un `continue` mudo, y por eso «todo bien» y «no he podido mirar» se
+          // veían igual: cero eventos. Se emite el hueco para que el silencio sea visible.
+          if (!medida) {
+            saludPasada[m.nombre] = 'sin_medida'
+            console.log(`  ⚪ MÁQUINA ${m.nombre}: no se pudo medir`)
+            try {
+              await sql`
+                INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+                VALUES ('fargate', 'warn', 'flota_maquina_salud', 'flota',
+                        ${`máquina ${m.nombre} sin_medida: la sonda no devolvió datos`},
+                        ${sql.json({ maquina: m.nombre, estado: 'sin_medida', trabajadorSondeado: w })})`
+            } catch { /* la telemetría nunca puede parar al supervisor */ }
+            continue
+          }
           const v = SALUD.clasificarMaquina(medida)
+          saludPasada[m.nombre] = v.estado
           if (v.estado === 'ok') continue
           console.log(`  ${v.estado === 'ahogada' ? '🔴' : '🟠'} MÁQUINA ${m.nombre}: ${v.motivos[0]}`)
           try {
@@ -1675,7 +1730,7 @@ async function main() {
             INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
             VALUES ('fargate', ${motivoSalto ? 'warn' : 'info'}, 'flota_bucle_pasada', 'flota',
                     ${motivoSalto || null},
-                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo })})`
+                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo, salud: saludPasada })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
         await dormir(pausa)

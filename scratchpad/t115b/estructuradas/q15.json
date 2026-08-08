@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 148.1 de la Ley 9/2017",
+    "texto": "A los efectos de esta Ley se entenderán comprendidos dentro del «ciclo de vida» de un producto, obra o servicio todas las fases consecutivas o interrelacionadas que se sucedan durante su existencia y, en todo caso: la investigación y el desarrollo que deba llevarse a cabo, la fabricación o producción, la comercialización y las condiciones en que esta tenga lugar, el transporte, la utilización y el mantenimiento, la adquisición de las materias primas necesarias y la generación de recursos; todo ello hasta que se produzca la eliminación, el desmantelamiento o el final de la utilización."
+  },
+  "options": {
+    "0": "El precepto incluye expresamente fases anteriores a la adquisición, como la investigación y el desarrollo o la fabricación.",
+    "1": "El ciclo de vida no termina con la puesta en servicio: llega hasta la eliminación, el desmantelamiento o el final de la utilización.",
+    "2": "La investigación y el desarrollo que deban llevarse a cabo están incluidos en todo caso por el propio precepto.",
+    "3": "Reproduce el precepto: todas las fases consecutivas o interrelacionadas de su existencia, hasta la eliminación, el desmantelamiento o el final de la utilización."
+  },
+  "frame": "select_correct"
+}

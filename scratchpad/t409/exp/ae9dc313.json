@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 13.1 de la Constitución Española",
+    "texto": "Los extranjeros gozarán en España de las libertades públicas que garantiza el presente Título en los términos que establezcan los tratados y la ley."
+  },
+  "intro": "Las cuatro opciones dicen casi lo mismo y solo una reproduce el precepto. Hay que fijarse en dos puntos: QUÉ fija los términos del ejercicio (los tratados y la ley) y a qué Título remite (el Título I, «De los derechos y deberes fundamentales», que es el que contiene esas libertades públicas).",
+  "options": {
+    "0": "La remisión del artículo 13.1 no es a lo que establezca la propia Constitución, sino a los tratados y a la ley.",
+    "1": "Sitúa la remisión en los reglamentos, que no aparecen en el precepto: la norma habla de tratados y ley.",
+    "2": "Es la redacción del artículo 13.1: las libertades públicas del Título I, en los términos que establezcan los tratados y la ley.",
+    "3": "El Título II es el de la Corona; las libertades públicas a las que se refiere el precepto están en el Título I."
+  },
+  "outro": "**Clave:** libertades públicas del Título I, en los términos que fijen los tratados y la ley."
+}

@@ -1,0 +1,15 @@
+{
+  "estilo": "impugnacion",
+  "cita": {
+    "ref": "Artículo 4.1 del Código Civil",
+    "texto": "Procederá la aplicación analógica de las normas cuando éstas no contemplen un supuesto específico, pero regulen otro semejante entre los que se aprecie identidad de razón."
+  },
+  "intro": "El supuesto que describe el enunciado, una laguna legal sumada a la identidad de razón con otro supuesto sí regulado, es exactamente el de la analogía.",
+  "options": {
+    "0": "Es literal del artículo 4.1 del Código Civil, que es justo el supuesto descrito en el enunciado: la norma no contempla el caso, pero regula otro semejante en el que se aprecia identidad de razón.",
+    "1": "Invierte el artículo 3.2 del Código Civil, que dispone que las resoluciones de los Tribunales «sólo podrán descansar de manera exclusiva en ella cuando la ley expresamente lo permita». Cambiar ese «sólo podrán» por «no podrán» hace que la afirmación diga lo contrario de la ley. Además, la equidad es un criterio de ponderación al aplicar las normas, no el mecanismo que cubre una laguna por semejanza.",
+    "2": "No puede serlo: la afirmación sobre la equidad está alterada respecto del artículo 3.2 del Código Civil, así que no es cierta.",
+    "3": "Alude a la supletoriedad del artículo 4.3 del Código Civil (las disposiciones del Código se aplican como supletorias en las materias regidas por otras leyes). Es una regla distinta: designa qué norma se aplica en defecto de otra, no resuelve la laguna por semejanza."
+  },
+  "outro": "**Clave:** la analogía exige que la ley no contemple el supuesto y que exista identidad de razón con otro que sí regula. La equidad es cosa distinta, y la redacción que aquí se ofrece de ella invierte el artículo 3.2."
+}

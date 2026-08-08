@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 192.2 del Real Decreto Legislativo 2/2004",
+    "texto": "Será remitida a la entidad local para su aprobación por su presidente y a los efectos previstos en el artículo siguiente."
+  },
+  "options": {
+    "0": "Reproduce el precepto: aprobación por el presidente de la entidad local y efectos del artículo siguiente.",
+    "1": "Quien aprueba la liquidación según este precepto es el presidente de la entidad local, no el Pleno.",
+    "2": "El artículo no se conforma con una toma de conocimiento: exige la aprobación por el presidente.",
+    "3": "La remisión de efectos es al artículo SIGUIENTE; el anterior es al que se ajusta la propia liquidación."
+  },
+  "frame": "select_correct"
+}

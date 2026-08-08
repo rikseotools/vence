@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 140.4 de la Ley 9/2017",
+    "texto": "Las circunstancias relativas a la capacidad, solvencia y ausencia de prohibiciones de contratar a las que se refieren los apartados anteriores, deberán concurrir en la fecha final de presentación de ofertas y subsistir en el momento de perfección del contrato."
+  },
+  "options": {
+    "0": "Reproduce el precepto: concurrencia en la fecha final de presentación de ofertas y subsistencia en el momento de perfección del contrato.",
+    "1": "El momento inicial que fija el artículo es la fecha final de presentación de ofertas, no la publicación del anuncio.",
+    "2": "La subsistencia se exige hasta la perfección del contrato, no hasta su completa ejecución.",
+    "3": "El artículo sí exige que concurran ya en la fecha final de presentación de ofertas, además de subsistir después."
+  },
+  "frame": "select_correct"
+}

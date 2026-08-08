@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 90.2 del Real Decreto Legislativo 2/2004",
+    "texto": "En particular, los sujetos pasivos a los que no resulte de aplicación la exención prevista en el párrafo c) del apartado 1 del artículo 82 de esta ley, deberán comunicar a la Agencia Estatal de Administración Tributaria el importe neto de su cifra de negocios."
+  },
+  "options": {
+    "0": "El destinatario de la comunicación que fija el precepto es la Agencia Estatal de Administración Tributaria, no el ayuntamiento.",
+    "1": "El dato que debe comunicarse es el importe neto de la cifra de negocios, no el volumen de operaciones del ejercicio anterior.",
+    "2": "Reproduce el precepto: se comunica a la Agencia Estatal de Administración Tributaria el importe neto de la cifra de negocios.",
+    "3": "El destinatario no es la diputación provincial, aunque el recargo provincial forme parte de la matrícula."
+  },
+  "frame": "select_correct"
+}

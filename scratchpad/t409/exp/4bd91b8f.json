@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 85 de la Constitución Española",
+    "texto": "Las disposiciones del Gobierno que contengan legislación delegada recibirán el título de Decretos Legislativos."
+  },
+  "intro": "La Constitución reserva un nombre propio a cada norma con rango de ley que dicta el Gobierno según de dónde venga su habilitación: si las Cortes le han DELEGADO previamente la potestad (artículos 82 a 84), la norma es un Decreto Legislativo; si actúa por extraordinaria y urgente necesidad sin delegación previa, es un decreto-ley del artículo 86.",
+  "options": {
+    "0": "Las leyes ordinarias las aprueban las Cortes Generales, no el Gobierno.",
+    "1": "El decreto-ley es la norma provisional del Gobierno para casos de extraordinaria y urgente necesidad, sometida a convalidación del Congreso; no procede de una delegación previa.",
+    "2": "Es el título que fija el artículo 85 para las disposiciones del Gobierno que contienen legislación delegada.",
+    "3": "La ley orgánica está reservada a determinadas materias del artículo 81 y exige mayoría absoluta del Congreso; además, queda expresamente fuera de lo que puede delegarse."
+  },
+  "outro": "**Clave:** legislación delegada del Gobierno = Decreto Legislativo; sin delegación previa y por urgencia = decreto-ley."
+}

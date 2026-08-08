@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 26.1 de la Ley 40/2015",
+    "texto": "Serán de aplicación las disposiciones sancionadoras vigentes en el momento de producirse los hechos que constituyan infracción administrativa."
+  },
+  "intro": "La norma aplicable se fija por el momento de los HECHOS, no por ningún trámite posterior del expediente. Es la irretroactividad de lo desfavorable, con una excepción expresa en el apartado siguiente: la disposición nueva sí se aplica hacia atrás cuando favorece al presunto infractor o al infractor, incluso respecto de sanciones pendientes de cumplimiento.",
+  "options": {
+    "0": "Si valiera la norma vigente al resolver, la Administración podría empeorar la posición del infractor por el simple paso del tiempo o por su propia demora.",
+    "1": "La notificación del inicio es un trámite del procedimiento y no determina qué disposiciones sancionadoras rigen la conducta.",
+    "2": "El comienzo del procedimiento tampoco marca la norma aplicable: para entonces la infracción ya se ha cometido.",
+    "3": "Es lo que dispone el artículo 26.1: rigen las disposiciones vigentes cuando se producen los hechos constitutivos de infracción."
+  },
+  "outro": "**Clave:** manda la norma vigente al producirse los hechos, salvo que la posterior sea más favorable, en cuyo caso se aplica retroactivamente."
+}

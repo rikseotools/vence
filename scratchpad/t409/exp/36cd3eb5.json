@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 17.2 de la Constitución Española",
+    "texto": "La detención preventiva no podrá durar más del tiempo estrictamente necesario para la realización de las averiguaciones tendentes al esclarecimiento de los hechos, y, en todo caso, en el plazo máximo de setenta y dos horas, el detenido deberá ser puesto en libertad o a disposición de la autoridad judicial."
+  },
+  "intro": "El precepto fija dos límites que operan a la vez: el tiempo estrictamente necesario para las averiguaciones —que puede ser mucho menor— y, en todo caso, un tope infranqueable de setenta y dos horas, transcurrido el cual el detenido ha de quedar en libertad o pasar a disposición judicial.",
+  "options": {
+    "0": "El artículo 17.2 no maneja esa cifra.",
+    "1": "Son las setenta y dos horas que fija el precepto como plazo máximo.",
+    "2": "Superaría el tope constitucional, que no admite prórroga por vía de interpretación.",
+    "3": "Tampoco corresponde al precepto y excede con creces el límite establecido."
+  },
+  "outro": "**Clave:** setenta y dos horas como máximo absoluto, y antes de eso solo el tiempo estrictamente necesario para las averiguaciones."
+}

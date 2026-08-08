@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 52 RD 203/2021",
+    "texto": "De acuerdo con lo previsto en el artículo 53.1.a) de la Ley 39/2015, de 1 de octubre, el derecho de acceso de las personas interesadas que se relacionen electrónicamente con las Administraciones Públicas al expediente electrónico y, en su caso, a la obtención de copia total o parcial del mismo, se entenderá satisfecho mediante la puesta a disposición de dicho expediente."
+  },
+  "options": {
+    "0": "Es la remisión que abre el artículo 52 del Reglamento.",
+    "1": "Ese es el precepto que invoca el artículo 42.1 del Reglamento para la práctica de las notificaciones por medios electrónicos.",
+    "2": "Ese es el precepto que invoca el artículo 47.1 del Reglamento para los requisitos de validez y eficacia de las copias auténticas.",
+    "3": "Ese es el precepto que invoca el artículo 41 del Reglamento cuando la relación del interesado con la Administración debe realizarse por medios electrónicos."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,350 @@
+// T-115 — lote RDL 2/2004 (Haciendas Locales) arts. 183, 192, 43, 90 y 91.
+// Los cinco sirven CERO preguntas y alcanzan 32 temas de 21 oposiciones.
+// Contenedor verificado con `batch:boe`: 5/5 idénticos al BOE vigente.
+//
+// SE EXCLUYEN, y queda anotado por qué:
+//  · arts. 74 y 103 — nuestro `content` es ANTERIOR a la reforma vigente desde 03/2026
+//    (la bonificación de energía solar se extendió a la «energía ambiente»).
+//  · art. 69 — nuestro texto está TRUNCADO: 2.450 caracteres de los 4.805 oficiales.
+//  · art. 72 — el BOE trae nota de vigencia (ampliación de plazo por la Ley 31/2022).
+//  · art. 92 — NO es huérfano: ya tiene 4 preguntas aprobadas.
+
+const LEY =
+  'del texto refundido de la Ley Reguladora de las Haciendas Locales, aprobado por el Real Decreto Legislativo 2/2004, de 5 de marzo'
+
+export const PREGUNTAS = [
+  // ── Art. 183 ──────────────────────────────────────────────────────────────
+  {
+    art: '183',
+    correct: 1,
+    question_text: `Según el artículo 183 ${LEY}, ¿conforme a qué se efectuará la ejecución de los créditos consignados en el presupuesto de gastos de las entidades locales?`,
+    opciones: [
+      'Conforme a lo dispuesto en la presente sección y, supletoriamente, por las normas que dicte la comunidad autónoma y queden plasmadas en las bases de ejecución del presupuesto.',
+      'Conforme a lo dispuesto en la presente sección y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en las bases de ejecución del presupuesto.',
+      'Conforme a lo dispuesto en la presente sección y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en el reglamento orgánico de la corporación.',
+      'Conforme a lo dispuesto en la legislación general presupuestaria del Estado y, complementariamente, por las bases de ejecución del presupuesto de cada entidad.',
+    ],
+    cita: {
+      ref: 'Art. 183 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La ejecución de los créditos consignados en el presupuesto de gastos de las entidades locales se efectuará conforme a lo dispuesto en la presente sección y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en las bases de ejecución del presupuesto.',
+    },
+    razones: [
+      'Las normas complementarias las dicta cada entidad local, no la comunidad autónoma, y el precepto las llama complementarias, no supletorias.',
+      'Reproduce el precepto: la sección y, complementariamente, las normas de cada entidad plasmadas en las bases de ejecución del presupuesto.',
+      'El instrumento donde deben quedar plasmadas esas normas son las bases de ejecución del presupuesto, no el reglamento orgánico.',
+      'La remisión principal del artículo es a la propia sección del texto refundido, no a la legislación general presupuestaria del Estado.',
+    ],
+  },
+  {
+    art: '183',
+    correct: 3,
+    question_text: `De acuerdo con el artículo 183 ${LEY}, ¿dónde deben quedar plasmadas las normas que dicte cada entidad local para la ejecución de los créditos de su presupuesto de gastos?`,
+    opciones: [
+      'En el reglamento orgánico de la entidad local.',
+      'En las ordenanzas fiscales de la entidad local.',
+      'En la memoria explicativa del presupuesto.',
+      'En las bases de ejecución del presupuesto.',
+    ],
+    cita: {
+      ref: 'Art. 183 del Real Decreto Legislativo 2/2004',
+      texto:
+        'Y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en las bases de ejecución del presupuesto.',
+    },
+    razones: [
+      'El reglamento orgánico regula la organización y el funcionamiento de la corporación, no la ejecución de los créditos presupuestarios.',
+      'Las ordenanzas fiscales regulan los tributos propios de la entidad, no la ejecución del presupuesto de gastos.',
+      'La memoria explicativa acompaña al presupuesto pero no es el instrumento que el precepto señala.',
+      'Es el instrumento que designa el artículo: las bases de ejecución del presupuesto.',
+    ],
+  },
+  // ── Art. 192 ──────────────────────────────────────────────────────────────
+  {
+    art: '192',
+    correct: 0,
+    question_text: `Según el artículo 192.1 ${LEY}, la liquidación de los presupuestos de los organismos autónomos se ajustará:`,
+    opciones: [
+      'A lo dispuesto en el apartado 1 del artículo anterior.',
+      'A lo dispuesto en el apartado 2 del artículo anterior.',
+      'A lo dispuesto en el apartado 1 del artículo siguiente.',
+      'A lo que establezcan las bases de ejecución del presupuesto.',
+    ],
+    cita: {
+      ref: 'Art. 192.1 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La liquidación de los presupuestos de los organismos autónomos se ajustará a lo dispuesto en el apartado 1 del artículo anterior.',
+    },
+    razones: [
+      'Es la remisión literal del precepto: el apartado 1 del artículo anterior.',
+      'El apartado al que remite el artículo es el primero, no el segundo.',
+      'La remisión es al artículo ANTERIOR; el siguiente es el que regula los efectos a los que se envía la liquidación ya aprobada.',
+      'El artículo no remite a las bases de ejecución del presupuesto, sino a la regulación del artículo anterior.',
+    ],
+  },
+  {
+    art: '192',
+    correct: 2,
+    question_text: `Conforme al artículo 192.1 ${LEY}, ¿qué se regulará reglamentariamente respecto de los organismos autónomos?`,
+    opciones: [
+      'Las operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al volumen de gasto de los citados organismos.',
+      'Las operaciones de aprobación del presupuesto y de fiscalización previa del gasto, atendiendo al carácter de los citados organismos.',
+      'Las operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al carácter de los citados organismos.',
+      'Las operaciones de cierre del ejercicio económico y de rendición de cuentas al Tribunal de Cuentas, atendiendo al carácter de los citados organismos.',
+    ],
+    cita: {
+      ref: 'Art. 192.1 del Real Decreto Legislativo 2/2004',
+      texto:
+        'Reglamentariamente se regularán las operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al carácter de los citados organismos.',
+    },
+    razones: [
+      'El criterio que manda atender el precepto es el CARÁCTER de los organismos, no su volumen de gasto.',
+      'Las operaciones que el artículo remite al reglamento son las de cierre del ejercicio y liquidación, no las de aprobación y fiscalización previa.',
+      'Reproduce el precepto: operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al carácter de los organismos.',
+      'La rendición de cuentas al Tribunal de Cuentas no es la operación que este apartado remite al reglamento.',
+    ],
+  },
+  {
+    art: '192',
+    correct: 1,
+    question_text: `Según el artículo 192.2 ${LEY}, antes de remitirse a la entidad local, la liquidación de los presupuestos de los organismos autónomos habrá sido:`,
+    opciones: [
+      'Informada por el órgano competente de estos y propuesta por la Intervención correspondiente.',
+      'Informada por la Intervención correspondiente y propuesta por el órgano competente de estos.',
+      'Informada por la Intervención correspondiente y propuesta por el presidente de la entidad local.',
+      'Informada por el Pleno de la entidad local y propuesta por la Intervención correspondiente.',
+    ],
+    cita: {
+      ref: 'Art. 192.2 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La liquidación de los presupuestos de los organismos autónomos, informada por la Intervención correspondiente y propuesta por el órgano competente de estos, será remitida a la entidad local.',
+    },
+    razones: [
+      'Intercambia los dos papeles: informa la Intervención y propone el órgano competente del organismo autónomo.',
+      'Reproduce el precepto: informe de la Intervención correspondiente y propuesta del órgano competente del organismo autónomo.',
+      'El presidente de la entidad local no propone la liquidación: es quien después la aprueba.',
+      'El Pleno de la entidad local no interviene en esta fase; quien informa es la Intervención correspondiente.',
+    ],
+  },
+  {
+    art: '192',
+    correct: 0,
+    question_text: `De acuerdo con el artículo 192.2 ${LEY}, la liquidación de los presupuestos de los organismos autónomos será remitida a la entidad local:`,
+    opciones: [
+      'Para su aprobación por su presidente y a los efectos previstos en el artículo siguiente.',
+      'Para su aprobación por el Pleno y a los efectos previstos en el artículo siguiente.',
+      'Para su mera toma de conocimiento y a los efectos previstos en el artículo siguiente.',
+      'Para su aprobación por su presidente y a los efectos previstos en el artículo anterior.',
+    ],
+    cita: {
+      ref: 'Art. 192.2 del Real Decreto Legislativo 2/2004',
+      texto:
+        'Será remitida a la entidad local para su aprobación por su presidente y a los efectos previstos en el artículo siguiente.',
+    },
+    razones: [
+      'Reproduce el precepto: aprobación por el presidente de la entidad local y efectos del artículo siguiente.',
+      'Quien aprueba la liquidación según este precepto es el presidente de la entidad local, no el Pleno.',
+      'El artículo no se conforma con una toma de conocimiento: exige la aprobación por el presidente.',
+      'La remisión de efectos es al artículo SIGUIENTE; el anterior es al que se ajusta la propia liquidación.',
+    ],
+  },
+  // ── Art. 43 ───────────────────────────────────────────────────────────────
+  {
+    art: '43',
+    correct: 2,
+    question_text: `Según el artículo 43 ${LEY}, ¿quiénes estarán obligados al pago de los precios públicos?`,
+    opciones: [
+      'Quienes soliciten los servicios o actividades por los que deban satisfacerse aquéllos.',
+      'Quienes se beneficien de los servicios o actividades y residan en el término municipal.',
+      'Quienes se beneficien de los servicios o actividades por los que deban satisfacerse aquéllos.',
+      'Los titulares de los bienes de dominio público afectados por los servicios o actividades.',
+    ],
+    cita: {
+      ref: 'Art. 43 del Real Decreto Legislativo 2/2004',
+      texto:
+        'Estarán obligados al pago de los precios públicos quienes se beneficien de los servicios o actividades por los que deban satisfacerse aquéllos.',
+    },
+    razones: [
+      'El criterio que fija el precepto es beneficiarse del servicio o actividad, no solicitarlo.',
+      'El artículo no añade ningún requisito de residencia en el término municipal.',
+      'Reproduce el precepto: están obligados quienes se beneficien de los servicios o actividades por los que deban satisfacerse los precios públicos.',
+      'La obligación no se ancla en la titularidad de bienes de dominio público, sino en beneficiarse del servicio o actividad.',
+    ],
+  },
+  // ── Art. 90 ───────────────────────────────────────────────────────────────
+  {
+    art: '90',
+    correct: 3,
+    question_text: `Según el artículo 90.1 ${LEY}, la matrícula del Impuesto sobre Actividades Económicas, a partir de la cual se gestiona el impuesto:`,
+    opciones: [
+      'Se formará anualmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas máximas y, en su caso, del recargo provincial.',
+      'Se formará trimestralmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, del recargo provincial.',
+      'Se formará anualmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, del recargo autonómico.',
+      'Se formará anualmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, del recargo provincial.',
+    ],
+    cita: {
+      ref: 'Art. 90.1 del Real Decreto Legislativo 2/2004',
+      texto:
+        'El impuesto se gestiona a partir de la matrícula de éste. Dicha matrícula se formará anualmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, del recargo provincial.',
+    },
+    razones: [
+      'Las cuotas que integran los censos son las mínimas, no las máximas.',
+      'La matrícula se forma anualmente, no trimestralmente.',
+      'El recargo que el precepto contempla, en su caso, es el provincial, no uno autonómico.',
+      'Reproduce el precepto: formación anual por término y censos de actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, recargo provincial.',
+    ],
+  },
+  {
+    art: '90',
+    correct: 0,
+    question_text: `Conforme al artículo 90.1 ${LEY}, la matrícula del Impuesto sobre Actividades Económicas:`,
+    opciones: [
+      'Estará a disposición del público en los respectivos ayuntamientos.',
+      'Estará a disposición del público en las respectivas diputaciones provinciales.',
+      'Estará a disposición del público en los respectivos ayuntamientos, previa solicitud motivada.',
+      'Tendrá carácter reservado y solo será accesible para los sujetos pasivos incluidos en ella.',
+    ],
+    cita: {
+      ref: 'Art. 90.1 del Real Decreto Legislativo 2/2004',
+      texto: 'La matrícula estará a disposición del público en los respectivos ayuntamientos.',
+    },
+    razones: [
+      'Reproduce el precepto: la matrícula está a disposición del público en los respectivos ayuntamientos.',
+      'El lugar que fija el artículo son los ayuntamientos, no las diputaciones provinciales.',
+      'El precepto no condiciona el acceso a una solicitud motivada: la matrícula está a disposición del público.',
+      'El artículo no le atribuye carácter reservado, sino todo lo contrario.',
+    ],
+  },
+  {
+    art: '90',
+    correct: 2,
+    question_text: `Según el artículo 90.2 ${LEY}, los sujetos pasivos a los que no resulte de aplicación la exención prevista en el párrafo c) del apartado 1 del artículo 82 deberán comunicar:`,
+    opciones: [
+      'Al ayuntamiento del término en que ejerzan la actividad el importe neto de su cifra de negocios.',
+      'A la Agencia Estatal de Administración Tributaria el volumen de operaciones del ejercicio anterior.',
+      'A la Agencia Estatal de Administración Tributaria el importe neto de su cifra de negocios.',
+      'A la diputación provincial correspondiente el importe neto de su cifra de negocios.',
+    ],
+    cita: {
+      ref: 'Art. 90.2 del Real Decreto Legislativo 2/2004',
+      texto:
+        'En particular, los sujetos pasivos a los que no resulte de aplicación la exención prevista en el párrafo c) del apartado 1 del artículo 82 de esta ley, deberán comunicar a la Agencia Estatal de Administración Tributaria el importe neto de su cifra de negocios.',
+    },
+    razones: [
+      'El destinatario de la comunicación que fija el precepto es la Agencia Estatal de Administración Tributaria, no el ayuntamiento.',
+      'El dato que debe comunicarse es el importe neto de la cifra de negocios, no el volumen de operaciones del ejercicio anterior.',
+      'Reproduce el precepto: se comunica a la Agencia Estatal de Administración Tributaria el importe neto de la cifra de negocios.',
+      'El destinatario no es la diputación provincial, aunque el recargo provincial forme parte de la matrícula.',
+    ],
+  },
+  {
+    art: '90',
+    correct: 1,
+    question_text: `De acuerdo con el artículo 90.4 ${LEY}, el Impuesto sobre Actividades Económicas:`,
+    opciones: [
+      'Se exigirá siempre en régimen de autoliquidación, en los términos que reglamentariamente se establezcan.',
+      'Podrá exigirse en régimen de autoliquidación, en los términos que reglamentariamente se establezcan.',
+      'Podrá exigirse en régimen de autoliquidación cuando así lo acuerde la Agencia Estatal de Administración Tributaria.',
+      'No podrá exigirse en régimen de autoliquidación por gestionarse a partir de la matrícula del impuesto.',
+    ],
+    cita: {
+      ref: 'Art. 90.4 del Real Decreto Legislativo 2/2004',
+      texto:
+        'Este impuesto podrá exigirse en régimen de autoliquidación, en los términos que reglamentariamente se establezcan.',
+    },
+    razones: [
+      'El precepto lo formula como una posibilidad, no como una obligación: dice «podrá exigirse».',
+      'Reproduce el precepto: posibilidad de exigirlo en régimen de autoliquidación en los términos que se establezcan reglamentariamente.',
+      'La remisión del artículo es a lo que se establezca reglamentariamente, no a un acuerdo de la Agencia Estatal de Administración Tributaria.',
+      'La gestión a partir de la matrícula no impide la autoliquidación: el propio artículo la contempla.',
+    ],
+  },
+  // ── Art. 91 ───────────────────────────────────────────────────────────────
+  {
+    art: '91',
+    correct: 0,
+    question_text: `Según el artículo 91.1 ${LEY}, y sin perjuicio de que, tratándose de cuotas municipales, esas funciones puedan delegarse en las entidades locales y comunidades autónomas que lo soliciten, ¿a quién corresponde la formación de la matrícula del Impuesto sobre Actividades Económicas, la calificación de las actividades económicas, el señalamiento de las cuotas y, en general, la gestión censal del tributo?`,
+    opciones: [
+      'La Administración tributaria del Estado.',
+      'Los ayuntamientos del término en que se ejerza la actividad.',
+      'Las diputaciones provinciales, cabildos o consejos insulares.',
+      'Las comunidades autónomas que lo hayan solicitado.',
+    ],
+    cita: {
+      ref: 'Art. 91.1 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La formación de la matrícula del Impuesto, la calificación de las actividades económicas, el señalamiento de las cuotas correspondientes y, en general, la gestión censal del tributo se llevará a cabo por la Administración tributaria del Estado.',
+    },
+    razones: [
+      'Reproduce el precepto: la gestión censal corresponde a la Administración tributaria del Estado. La delegación que el mismo apartado permite para las cuotas municipales no traslada la titularidad de la competencia.',
+      'A los ayuntamientos les corresponde, según el apartado 2, la liquidación y recaudación y la revisión de los actos de gestión tributaria, no la gestión censal.',
+      'Esas entidades pueden recibir la gestión censal por DELEGACIÓN cuando se trate de cuotas municipales, pero la competencia es de la Administración tributaria del Estado.',
+      'Las comunidades autónomas figuran entre las entidades en que puede delegarse, no como titulares de la competencia.',
+    ],
+  },
+  {
+    art: '91',
+    correct: 2,
+    question_text: `Conforme al artículo 91.2 ${LEY}, ¿qué corresponde a los ayuntamientos en el Impuesto sobre Actividades Económicas?`,
+    opciones: [
+      'La formación de la matrícula y la calificación de las actividades económicas, así como la revisión de los actos dictados en vía de gestión censal.',
+      'La liquidación y recaudación del impuesto, quedando la revisión de los actos dictados en vía de gestión tributaria reservada a la Administración del Estado.',
+      'La liquidación y recaudación, así como la revisión de los actos dictados en vía de gestión tributaria de este impuesto.',
+      'La inspección del impuesto y la resolución de los expedientes de devolución de ingresos indebidos derivados de ella.',
+    ],
+    cita: {
+      ref: 'Art. 91.2 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La liquidación y recaudación, así como la revisión de los actos dictados en vía de gestión tributaria de este impuesto se llevará a cabo por los ayuntamientos.',
+    },
+    razones: [
+      'La formación de la matrícula y la calificación de las actividades son gestión CENSAL, que el apartado 1 atribuye a la Administración tributaria del Estado.',
+      'La revisión de los actos dictados en vía de gestión tributaria también corresponde a los ayuntamientos, no queda reservada al Estado.',
+      'Reproduce el precepto: liquidación, recaudación y revisión de los actos dictados en vía de gestión tributaria del impuesto.',
+      'La inspección del impuesto la lleva a cabo, según el apartado 3, la Administración tributaria del Estado, sin perjuicio de las delegaciones.',
+    ],
+  },
+  {
+    art: '91',
+    correct: 1,
+    question_text: `Según el artículo 91.3 ${LEY}, y sin perjuicio de las delegaciones que puedan hacerse en los ayuntamientos, diputaciones provinciales, cabildos o consejos insulares y otras entidades locales reconocidas por las leyes y comunidades autónomas que lo soliciten, la inspección del Impuesto sobre Actividades Económicas se llevará a cabo por:`,
+    opciones: [
+      'Los ayuntamientos del término en que se ejerza la actividad gravada.',
+      'Los órganos competentes de la Administración tributaria del Estado.',
+      'Los órganos competentes de la comunidad autónoma correspondiente.',
+      'Los Tribunales Económico-Administrativos del Estado.',
+    ],
+    cita: {
+      ref: 'Art. 91.3 del Real Decreto Legislativo 2/2004',
+      texto:
+        'La inspección de este impuesto se llevará a cabo por los órganos competentes de la Administración tributaria del Estado, sin perjuicio de las delegaciones que puedan hacerse en los ayuntamientos, diputaciones provinciales, cabildos o consejos insulares y otras entidades locales reconocidas por las leyes y comunidades autónomas que lo soliciten.',
+    },
+    razones: [
+      'Los ayuntamientos pueden recibir la inspección por DELEGACIÓN, pero la competencia que atribuye el precepto es de la Administración tributaria del Estado.',
+      'Reproduce el precepto: la inspección la llevan a cabo los órganos competentes de la Administración tributaria del Estado.',
+      'Las comunidades autónomas aparecen en el precepto como posibles destinatarias de la delegación cuando lo soliciten, no como titulares de la inspección.',
+      'Esos Tribunales conocen, según el apartado 4, de las reclamaciones contra los actos de gestión censal; no realizan la inspección.',
+    ],
+  },
+  {
+    art: '91',
+    correct: 3,
+    question_text: `De acuerdo con el artículo 91.4 ${LEY}, ¿a quién corresponde el conocimiento de las reclamaciones que se interpongan contra los actos de gestión censal dictados por la Administración tributaria del Estado?`,
+    opciones: [
+      'A los ayuntamientos del término en que se ejerza la actividad gravada.',
+      'A los órganos de revisión de la comunidad autónoma correspondiente.',
+      'Al Ministro de Hacienda, en los términos que él mismo disponga.',
+      'A los Tribunales Económico-Administrativos del Estado.',
+    ],
+    cita: {
+      ref: 'Art. 91.4 del Real Decreto Legislativo 2/2004',
+      texto:
+        'En todo caso el conocimiento de las reclamaciones que se interpongan contra los actos de gestión censal dictados por la Administración tributaria del Estado a que se refiere el párrafo primero del apartado 1 de este artículo, así como los actos de igual naturaleza dictados en virtud de la delegación prevista en el párrafo tercero del mismo apartado, corresponderá a los Tribunales Económico-Administrativos del Estado.',
+    },
+    razones: [
+      'A los ayuntamientos les corresponde, según el apartado 2, resolver los recursos contra los actos de gestión tributaria, no contra los de gestión censal.',
+      'El precepto no atribuye esta competencia a órganos autonómicos de revisión.',
+      'El Ministro de Hacienda dispone los términos de la colaboración en materia de inspección, pero no conoce de estas reclamaciones.',
+      'Reproduce el precepto: el conocimiento corresponde en todo caso a los Tribunales Económico-Administrativos del Estado.',
+    ],
+  },
+]

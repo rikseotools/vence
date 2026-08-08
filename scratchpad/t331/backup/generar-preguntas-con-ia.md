@@ -1,0 +1,2236 @@
+# Manual: Generar preguntas con IA (Claude) + auditoría doble
+
+> **Versión 2.6** — 2026-07-24. **Explicación estructurada shuffle-safe (Fase 2 del barajado de opciones, T-080).** El formato §8.1 clava la LETRA en la explicación ("**Por qué B es correcta**", "- **A)** …"), lo que impide barajar las opciones al repetir una pregunta (la letra dejaría de apuntar a lo mismo) y obliga a la coreografía de §2.2-ter (mover la letra al re-permutar). **v2.6 añade §8.2: formato canónico ESTRUCTURADO por-opción SIN letras** (`explanation_data`, razones keadas al CONTENIDO de cada opción; la letra se asigna al render por posición). Toda explicación NUEVA se emite así → nace shuffle-safe y **desaparece la deuda de §2.2-ter** (sin letra, no hay nada que mover). Diseño + simulación (invariante 100% en 29.015 permutaciones reales, migración determinista del histórico 72,5%): `docs/roadmap/barajar-opciones-fase2-explicaciones-estructuradas.md`; módulo `lib/shuffle/structuredExplanation.ts`.
+>
+> **Versión 2.5** — 2026-06-04. **Segundo tell estructural detectado (investigación de Manuel "debe haber un patrón")**: además del de longitud, `correct_option` estaba **sesgado por posición** — en las 1.562 IA-generadas la correcta caía en **B 48,7% · A+B 79% · D 4,4%** (azar 25%; humanos ≈ uniforme), explotable porque la app no baraja opciones. **v2.5 añade**: nueva **§2.2-ter** (posición aleatoria uniforme) + **7º check `answer_position_uniform_ok`** (§2.4 + Paso 6). **Remediación aplicada (04/06)**: 437 preguntas re-permutadas por transposición mínima con relabel determinista de header+bullets → distribución A 25,2/B 25,7/C 24,6/D 24,5% (χ²=0,58, uniforme). Coherencia clave: al reordenar hay que mover la letra en la explicación (header + bullets), no solo `correct_option`.
+>
+> **Versión 2.4** — 2026-06-03. **Hallazgo crítico a raíz del feedback de la usuaria Isa (`5e21fa2d`)**: las preguntas IA-generadas se acertaban eligiendo **"la opción más larga"** — la correcta era la más larga el **71%** de las veces (azar 25%), porque §2.2 exige que la correcta sea cita literal larga del artículo mientras los distractores se redactaban cortos. Es la causa de que las IA midieran más fáciles (global_difficulty 26 vs 33 del banco). **v2.4 añade la regla anti-tell**: nueva **§2.2-bis** (distractores ±30% de longitud de la correcta, construidos con texto legal real alterado) + nuevo **6º check `distractors_balance_ok`** (§2.4 + Paso 6) + Paso 2 reescrito. **Remediación aplicada (03/06)**: 778 preguntas vivas reequilibradas vía workflow (reescritura + auditor independiente) → tell de banco bajó 71%→31% (igual que el banco no-IA). Lección de pipeline: el fichero de entrada del auditor NO debe darle las opciones originales como verdad (le confunde); avisar explícito de que son obsoletas.
+>
+> **Versión 2.3** — 2026-05-25. Basado en **29 batches piloto**: 21 CARM + 8 Aragón. **388 preguntas activas IA-generadas, 0 defectos en producción**. **v2.3 cierra la SECUENCIA T13 completa (6 batches consecutivos sobre Ley 6/1990 Archivos Murcia)** llevándolo de 39 → 96 preguntas (96% del objetivo 100q). **Hallazgo principal**: la curva de rendimiento marginal por batch es **predecible y decreciente** (15 → 11 → 10 → 8 → 8 → 5 preguntas), confirmando empíricamente que el techo natural realista de una ley monotemática está en ~95-96%, no 100%. Forzar el último 5% requiere ángulos artificiales con rendimientos negativos.
+>
+> **Cambios v2.3**: secciones **5.26** (batch 20 redundancia arts con 3q, 8q PERFECT), **5.27** (batch 21 caso límite Art 7 con 7 existentes → 8 nuevas viables tras dedup mental por apartado), **5.28** (batch 22 cierre techo natural T13, 5q tras dedup mental estricto). Métricas acumuladas actualizadas a **29 batches / 388 preguntas** (sección 5.20). **Anti-pattern nuevo**: forzar el último 5% del objetivo cuando los rendimientos marginales caen por debajo de 5 preguntas/batch. Nuevos aprendizajes operativos: (a) **el número de apartados ESTRUCTURALES del artículo determina el techo natural** mejor que su tamaño en caracteres (Art 7 con 8 apartados admite 15q, Art 20 con 3 apartados admite ~6q); (b) **un art aparentemente saturado con 7 existentes puede admitir 8 nuevas** si el análisis dedup mental por apartado revela margen real; (c) **curva rendimiento marginal validada empíricamente**: 15→11→10→8→8→5 preguntas/batch en 6 batches consecutivos sobre la misma ley; (d) **declarar el techo natural a tiempo evita dilución de calidad** — 96/100 es mejor cierre que forzar 100/100 con candidatas dudosas.
+>
+> **Cambios v2.2**: secciones **5.23** (batch 17 cobertura inicial T13, 15q PERFECT directos), **5.24** (batch 18 cobertura extendida T13, 11q tras retirar 1 por modo fallo batch 16 Art 29) y **5.25** (batch 19 redundancia controlada T13, 10q tras descartar 2 candidatas pre-Sonnet por dedup nivel 3 manual). Métricas acumuladas actualizadas a **26 batches / 367 preguntas** (sección 5.20). Nuevos aprendizajes operativos: (a) **descartar candidatas pre-Sonnet por dedup nivel 3 mental ahorra rondas** (en batch 19 descarté 2 antes de generar JSON al ver que la opción correcta planeada ya estaba en la opción correcta de una existente); (b) **detectar duplicados pre-existentes en BD durante el dedup del batch nuevo** (Sonnet flagged Art 4 E1/E2 duplicadas exactas, deuda histórica a limpiar); (c) **la SECUENCIA cobertura inicial → extendida → redundancia es replicable**: T2 CARM siguió implícitamente esa secuencia (batches 8 + 13 + 15 + 16), T13 la siguió explícitamente.
+>
+> **Cambios v2.1**: sección **5.22** con resumen del batch 16 (T2 LO 4/1982 cierre a 100q, 11 preguntas tras retiro de 1 por intruso solapado); métricas acumuladas actualizadas a **23 batches / 331 preguntas**. Nuevo aprendizaje operativo: **arts muy escuetos (<150 chars) tienen un techo más bajo que arts medios — el mecanismo intruso solapa cognitivamente con la enumeración positiva cuando la lista es corta y conocida**. Y: **el enunciado de una existente que cita texto literal del artículo "contamina" el conocimiento adquirido y vacía de valor cualquier nueva pregunta cuya opción correcta coincida con esa cita** (caso #5 batch 16 Art 29).
+>
+> **Cambios v2.0**: sección **5.21** con resumen del batch 15 (T2 LO 4/1982 redundancia controlada en serie, 12 preguntas); métricas acumuladas actualizadas a **22 batches / 320 preguntas** (sección 5.20). Nuevo aprendizaje operativo: **cuando Sonnet flaguea NEEDS_REVIEW por "solapamiento posible" sin tener acceso a las opciones de las existentes, verificar manualmente las respuestas correctas — un solapamiento de tema/apartado NO equivale a solapamiento real si la respuesta evalúa otro dato**.
+>
+> **Cambios v1.10**: nuevo check **`question_text_ok`** (§2.2 + §2.4 + paso 6); §1.bis extendida con cross-tema misma oposición; nuevo **Paso 0bis** "Verificar/reparar `topic_scope`"; sección **5.19** con resumen de los 7 batches Aragón Ley 5/2021 (b2-b8); métricas acumuladas actualizadas a 21 batches (sección 5.20). Nuevo modo de fallo documentado: **drift en enunciado por sumario libre del artículo**.
+>
+> **Cambios v1.9**: nueva sección **§2.6 Redundancia controlada** (5 mecanismos cognitivos, reglas por estructura del artículo, dedup específico de redundancia). Nueva sección **§1.bis Maximizar impacto cross-oposición** (criterios de priorización por ROI). Sección 5.18 con piloto Art 42 LO 4/1982 (3 nuevas preguntas validadas como ortogonales). Las dos lecciones permiten **superar el "techo natural"** documentado en v1.8 cuando la cobertura es prioritaria.
+>
+> **Cambios v1.8**: añadidos Batches 10 (T3 +7 easy win), 11 (T10 +18 r3), 12 (T10 +15 r4) y 13 (T2 +7 techo natural) — secciones 5.13 a 5.16. Métricas acumuladas (5.17). Nueva lección §6 sobre **techo natural del scope** cuando el articulado disponible se agota. Documentado caso #15 batch 11 (sospecha de error de transcripción en `article_content` BD vs BORM oficial: "reparto" probable errata por "reparo").
+>
+> **Cambios v1.7**: añadidos Batches 8 (LO 4/1982 T2) y 9 (Ley 6/2004 + Ley 7/2004 T3) — secciones 5.10 y 5.11. Métricas acumuladas (sección 5.12). Confirmada repetibilidad en quinta tipología (Estatuto de Autonomía) y sexta (leyes orgánicas internas del gobierno autonómico).
+>
+> **Cambios v1.6**: añadido Batch 7 Aragón (sección 5.8); lección crítica — el paso 9 NO siempre redunda con la auditoría doble pre-aplicación: los dos Sonnets pre-transición pueden converger en el mismo sesgo y el Sonnet del paso 9 detectar lo que ambos dejaron pasar (caso Q15 batch 7). Refuerzo §2.4 + nuevo modo de fallo §2.2 (cláusulas coordinadas por "así como") + nuevo anti-pattern §6.
+>
+> **Cambios v1.5**: añadidos batches 5 (sección 5.6) y 6 (sección 5.7); métricas acumuladas actualizadas (5.9); confirmación de drift API/BD por cache de propagación (no error de flujo); lecciones operativas sobre cache-bypass para verificación final.
+>
+> **Cambios v1.4**: añadido Batch 4 (sección 5.4) con primer hallazgo real de la auditoría doble + lección clave §3.2 (omisiones sustantivas en opciones correctas).
+>
+> **Cambios v1.3**: añadido **Paso 9 (re-verificación post-aplicación)** y convención §5.1 de `ai_provider` diferenciado por fase — alineamiento estricto con el flujo v2.1 de `revisar-preguntas-con-agente.md` (§7). Los 3 primeros batches NO aplicaron el Paso 9 — deuda metodológica conocida.
+
+> ⚠️ **DOS AVISOS antes de empezar (23/07/2026):**
+> 1. **BD = RDS, no Supabase.** Los ejemplos de este manual usan `@supabase/supabase-js` → apuntan al **Supabase CONGELADO** (backup post-cutover 04/07). Corre las queries con `postgres`/`pg` + `DATABASE_URL` (RDS). Mismo patrón de tablas, otro cliente.
+> 2. **Para CREAR el contenedor verbatim** (si la ley/artículos no están aún en BD): NO improvises la descarga. La fuente va así — normas ES por `curl` al BOE, reglamentos UE por el **espejo BOE `DOUE-*`** (NO EUR-Lex), guías PDF oficiales por `pdftotext` → ver `monitoreo-boe-y-crear-leyes-nuevas.md` (§curl verbatim). Y el contenido **editorial no-legislativo** va en **ley virtual nombrada por MATERIA, reutilizable cross-oposición** (NUNCA por oposición) → ver el PRINCIPIO en `crear-nueva-oposicion.md` (línea ~703) + §0.bis (normativo vs editorial: el editorial puro sin fuente literal NO se IA-genera). Lección 23/07 (`project-apsp-bloque-ii-build`): se redescubrió a ciegas todo esto que YA estaba documentado.
+> 3. **La TEORÍA se sirve del mismo `articles.content` — cuídalo o `/temario` sale feo.** No hay paso "crear teoría": `TopicContentView` → `MarkdownContent` → `lib/teoria/formatLegalText.ts` renderiza el `content` del artículo escopado. El articulado del BOE viene bien (apartados en línea propia). Pero **un PDF editorial extraído con `pdftotext` trae saltos de línea a mitad de párrafo** (un renglón físico = una línea) → si lo insertas tal cual, la teoría se ve fragmentada. **RE-FLUYE antes de insertar:** une los renglones de cada párrafo en una línea y separa párrafos con `\n\n`; deja las citas literales (`"Art. N…"`, apartados `1.º`, `a)`) como bloques propios. Tras editar `content`, revalida los tags `teoria` + `temario` (+ invalida CloudFront `/<slug>/temario*`). Lección 25/07 (Ujieres T10, material Congreso `TEMA9Ujieres.pdf`): la primera importación insertó el `-layout` crudo y la teoría salía a renglones sueltos; se re-fluyó con heurística de bloques. GOTCHA aparte: `laws.last_verification_summary` es **JSONB** (no le pases texto plano al INSERT del contenedor).
+
+## 1. Cuándo usar este flujo
+
+Generar preguntas con IA tiene sentido cuando se cumplen **todas** estas condiciones:
+
+- Hay un **gap de cobertura demostrable** en BD (ej. ley autonómica con 0-20 preguntas en 50+ artículos).
+- No tenemos scraping disponible o ya agotado para esa fuente.
+- El contenido legal es **literal, no interpretativo** (un decreto autonómico bien redactado, no doctrina ni jurisprudencia).
+- Hay capacidad de auditar (humana + Sonnet) cada lote antes de transicionar a `approved`.
+
+**Cuándo NO usar:**
+
+- Si existe scraping de OpositaTest/TuTestDigital sin importar. Importarlo primero (ver `importar-preguntas-scrapeadas.md`).
+- Para psicotécnicas con figura/tabla. La IA no genera bien `content_data` JSON estructurado.
+- Para exámenes oficiales (deben venir del PDF real con `exam_source` exacto).
+- Para temas con doctrina abundante donde el "texto legal" no es la fuente de verdad (Derecho Civil, Constitucional avanzado).
+- Si no hay tiempo ni capacidad de auditar — el manual de revisión (`revisar-preguntas-con-agente.md`) advierte: una pregunta IA-generada sin auditoría es peor que una scrapeada con verificación.
+
+## 1.bis Maximizar impacto: cobertura cross-oposición (priorización)
+
+Antes de elegir QUÉ ley ampliar, verificar cuántas oposiciones se benefician. **Las preguntas cuelgan del artículo, no del tema** → cualquier `topic_scope` que incluya ese artículo recibe las preguntas automáticamente, sin acción adicional.
+
+**Cómo verificar cobertura cross-oposición de una ley:**
+
+```bash
+node -e "
+require('dotenv').config({path:'.env.local'});
+const { createClient } = require('@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const lawId = '<UUID_LEY>';
+(async () => {
+  const { data: scopes } = await s.from('topic_scope').select('topic_id').eq('law_id', lawId);
+  const topicIds = [...new Set(scopes.map(s => s.topic_id))];
+  const { data: topics } = await s.from('topics')
+    .select('topic_number, title, position_type').in('id', topicIds);
+  const byOpo = {};
+  for (const t of topics) {
+    byOpo[t.position_type] = (byOpo[t.position_type]||[]);
+    byOpo[t.position_type].push('T'+t.topic_number);
+  }
+  for (const [opo, ts] of Object.entries(byOpo)) console.log(opo+': '+ts.join(','));
+})();
+"
+```
+
+**Criterio de priorización:**
+
+| Caso | Acción |
+|---|---|
+| Ley usada solo en 1 oposición | Ampliar **si es la única vía** para esa oposición; ROI bajo |
+| Ley usada en 2-3 oposiciones | Buen ROI — cada pregunta beneficia múltiples temas |
+| Ley estatal usada en 10+ oposiciones (Ley 39/2015, RDL 5/2015, CE, etc.) | ROI máximo — pero suelen estar ya saturadas |
+| Ley autonómica de comunidad pequeña | Verificar si solo aplica a esa CCAA antes de invertir |
+
+**Caso real (validado 2026-05-25)**: LO 4/1982 Estatuto Murcia usada por `auxiliar_administrativo_carm` (T2 + T3) Y `tcae_murcia` (T1). Las 78 preguntas IA-generadas que se añadieron a esta ley benefician automáticamente a las 3 ubicaciones sin trabajo adicional. En cambio, Ley 6/1990 Archivos Murcia (T13 CARM) solo aplica a una oposición — mismo coste de generación, ⅓ de impacto.
+
+**Regla operativa:** antes de un batch nuevo, ejecutar la query de cobertura. Si la ley aparece en múltiples scopes, anotar el multiplicador de impacto en la documentación del batch.
+
+### Cross-tema dentro de la misma oposición (v1.10)
+
+Además del criterio cross-oposición, una **ley grande con secciones temáticamente distintas** puede mapearse a varios temas DE LA MISMA OPOSICIÓN. Antes de batchear, **revisar el sumario de la ley** (Títulos/Capítulos) y mapear cada bloque al tema del epígrafe oficial que corresponda.
+
+**Caso real (validado 2026-05-25)**: Ley 5/2021 Aragón (158 arts) en DGA Aragón:
+- Arts 1-8 + 70-144 (Administración + Sector Público) → **T5** ("órganos de gobierno y administración")
+- Arts 145-158 (relaciones interadm) → **T6** ("derecho administrativo y sus fuentes")
+- Arts 9-34 + 37-58 (competencia/colegiados/abstención/electrónica/actuación) → **T7** ("disposiciones administrativas y acto administrativo")
+- Arts 35-36 + 59-69 (sancionador + régimen jurídico actuación) → **T8** ("eficacia y validez")
+
+→ Las 119 preguntas IA-generadas sobre Ley 5/2021 sirven simultáneamente a 4 temas de la misma oposición. Cada batch generado sobre arts del Título III contribuye a T5; un batch futuro sobre arts 9-22 contribuiría a T7, etc. **El topic_scope se prepara UNA vez (Paso 0bis) y los batches sucesivos aprovechan el reparto.**
+
+**Cuándo el cross-tema es viable:**
+- Ley grande (50+ arts) con estructura por Títulos/Capítulos temáticamente independientes (procedimiento ≠ organización ≠ sancionador, etc.).
+- El epígrafe de cada tema del programa oficial cubre **un bloque distinto** de la ley.
+- NO viable si la ley es monotemática (ej. Ley 6/1990 Archivos: todos los arts giran sobre patrimonio documental → solo T13).
+
+## 2. Principios fundamentales (no negociables)
+
+### 2.1 Importar siempre en `draft` — invisible por construcción
+
+Igual que `importar-preguntas-scrapeadas.md` §"Importar Desactivadas, Activar Tras Revisión":
+
+```javascript
+{
+  // ... otros campos
+  lifecycle_state: 'draft',           // El sync trigger pone is_active=false automáticamente
+  deactivation_reason: 'Pendiente de revisión post-generación IA',
+  topic_review_status: 'pending',
+  tags: ['ia_generada', '<piloto_xxx>'],  // tag específico del batch para poder filtrar/revertir
+}
+```
+
+**NO pasar `is_active` ni `content_hash`:**
+- `is_active` es `GENERATED ALWAYS AS (lifecycle_state IN ('approved','tech_approved'))` — UPDATE directo falla.
+- `content_hash` lo genera la BD vía trigger (MD5, 32 chars).
+
+### 2.1-bis El BATCH_ID tiene que ser ÚNICO (colisión real, 26/07/2026)
+
+El tag suele componerse a mano derivándolo de la fecha (`gen_atc_t222_2026-07-26`), así que **dos
+sesiones trabajando el MISMO tema el MISMO día colisionan en silencio**. Pasó: una sesión insertó
+8 preguntas del T222 a las 01:31 y otra 13 a las 10:06 con el mismo tag → el tag acabó con 21.
+
+Por qué importa: **el tag es la UNIDAD DE APROBACIÓN** de `aprobar-batch-generado.cjs`. Aprobar
+por ese tag habría transicionado a `approved` las 8 ajenas sin auditarlas — con 5 artículos
+solapados entre ambas tandas, además. Y el dedup del Paso 3 no lo caza: compara enunciados
+completos y solo contra preguntas **activas**, y las ajenas estaban en `draft`.
+
+`insertar-batch-generado.cjs` **aborta ahora** si el tag ya existe en BD (Paso 2-bis). Si te salta:
+añade un sufijo de sesión (`…_s26c`) o aleatorio. Y si ya has insertado con un tag compartido,
+re-taguea SOLO lo tuyo con `array_replace(tags, viejo, nuevo)` usando **los ids del fichero
+`<batch>_inserted_ids.json`** que deja el inserter — nunca por fecha ni «los últimos N».
+
+### 2.2 La opción correcta debe ser cita LITERAL del artículo
+
+Esta es **la regla cero**. Si la IA parafrasea, cambia un verbo o estrecha un sujeto, la pregunta ya está rota — el manual de revisión §3.2 advierte que los modos de fallo típicos son:
+
+- Cambiar un verbo: "garantizar" ↔ "defender", "deberá" ↔ "podrá".
+- Estrechar/ampliar un sujeto: "en unos y otros" → "entre las personas responsables".
+- Añadir texto que no existe: "...o desde que deviniesen ejecutivas".
+- Cambiar un plazo o su anclaje: "quince días desde la adopción" → "quince días desde la iniciación".
+- **Omitir cláusulas coordinadas (batch 4 + batch 7)**: si el artículo dice "X o Y", "X, así como Y", "X junto con Y" o "X además de Y" y todo cuelga del mismo predicado preguntado, la opción correcta DEBE incluir Y. Bajo cualquier ambigüedad gramatical de alcance, **incluir la cláusula**. Detectado en batch 4 (Art 17.1 CARM "...o aquellos otros que le sean encargados...") y batch 7 (Art 70 Aragón "principios de A y B, así como otros órganos...").
+- **Drift en el enunciado por sumario libre del artículo (v1.10 — b5 Aragón Q15)**: cuando el enunciado **describe** o **resume** el supuesto del artículo en lugar de citarlo, puede omitir bloques sustantivos silenciosamente. Caso real Art 92 Ley 5/2021 Aragón: el enunciado decía "actividades administrativas y de contenido económico" cuando el artículo dice "actividades administrativas, **sean de fomento, prestación o de gestión de servicios públicos o de producción de bienes de interés público susceptibles de contraprestación**; actividades de contenido económico…". La opción correcta y la explicación estaban impecables, pero el enunciado había hecho una **condensación libre** del artículo omitiendo un bloque material. Las dos pasadas pre-aplicación lo dieron por bueno; el Sonnet del paso 9 lo detectó. **Regla**: si el enunciado menciona "según el artículo X", lo que diga sobre X debe ser cita literal del artículo o usar **puntos suspensivos / paréntesis para señalar elipsis explícita** ("según el artículo X, que regula A (entre otras cuestiones)…"). Nunca resumir.
+
+- **CORRECTA PARCIAL: la opción reproduce solo una parte del precepto que el enunciado pregunta entero (25/07/2026, batch `gen_atc_t207`).** Distinto de la cita truncada: aquí no se corta una cláusula condicionante, se deja fuera **una consecuencia jurídica completa**. Caso real, art. 114.3 LGT sobre el denunciante: el apartado establece TRES efectos (no es interesado · no se le informa · no está legitimado para recurrir) y la opción correcta recogía solo los dos primeros, con un enunciado que preguntaba por el apartado sin acotar. **La señal de alarma es que el blockquote de la propia explicación citaba el texto entero**: si la cita que aportas como prueba dice más que la opción que marcas correcta, o sobra en la cita o falta en la opción. Peor todavía, un distractor cubría más terreno normativo que la correcta. **Regla: antes de cerrar la pregunta, compara la opción correcta con el blockquote que la respalda** — deben abarcar lo mismo, o el enunciado debe acotar explícitamente qué parte se pregunta.
+
+> ⚖️ **EL CHECK MECÁNICO DE LITERALIDAD ES UN PROXY DE §2.2, NO LA REGLA (25/07/2026). Un `NO_LITERAL` NO prueba que haya defecto.** §2.2 admite la **condensación válida**; el script solo sabe comprobar **subcadena contigua**. Entre una cosa y otra hay un hueco permanente, y es grande: al pasar el gate ya arreglado sobre las 139 preguntas aprobadas del 24/07 salieron **72 fallos**, y clasificados uno a uno resultaron ser, en su inmensa mayoría, condensaciones que la propia norma permite:
+>
+> | Lo que el script ve | Lo que realmente es | ¿Defecto? |
+> |---|---|---|
+> | `NO_LITERAL` | **Desanaforización**: el artículo dice *"la entrada de **los mismos**"* y la opción *"la entrada de **los bienes**"* | **No** — §2.2-quater EXIGE que la opción sea autocontenida |
+> | `NO_LITERAL` | **Recast gramatical**: *"sin que la exención **se extienda** a…"* → *"**no se extiende** a…"* para encajar con el enunciado | **No** |
+> | `NO_LITERAL` | **Cláusula ya presente en el enunciado**, omitida en la opción | **No** — es el ejemplo canónico de condensación válida |
+> | `ORTOGRAFIA` | *"periodo"* / *"período"*: ambas grafías correctas | **No** (pase blando desde hoy) |
+> | `NO_LITERAL` en pregunta **intruso** | La correcta es la opción INVENTADA, por construcción | **No** — `resolverMarco` lo exenta |
+> | `MARCO AMBIGUO` | Suena a intruso pero la correcta SÍ es del artículo: o no era un intruso (bien) o **la CLAVE está mal** | **Depende** — hay que adjudicarlo (§5.35) |
+> | `NO_LITERAL` | **Sumario AUTO-REFERENCIAL**: *"adicionar al Valor en Aduana los conceptos **previstos en el artículo**"* | **SÍ** — es circular, no se puede responder por el fondo |
+> | `NO_LITERAL` | **Sumario que SÍ nombra el contenido**: *"…gravámenes y gastos accesorios hasta el primer lugar de destino"* | **No** — condensa una enumeración que no cabe en una opción |
+> | `NO_LITERAL` | **Término abreviado**: el artículo dice *"Impuesto sobre la Renta de las Personas Físicas"* y la opción *"IRPF"* | **SÍ** — abreviar un término del artículo es cambiarlo |
+> | `NO_LITERAL` | Sumario libre del artículo, siglas sin desarrollar, término cambiado | **SÍ** |
+>
+> **Cómo usarlo entonces:** el gate es un **filtro de sospechosos**, no un veredicto. Ante un `NO_LITERAL`, **abre el artículo y compara** — si todas las palabras de la opción están en el artículo y solo cambia el orden, un pronombre o un tiempo verbal, es condensación válida. Lo que sí es defecto duro es que aparezcan **palabras que no están en el artículo**. Un atajo barato para triar en masa: medir el porcentaje de palabras de la opción ausentes del artículo — por debajo del 5% casi siempre es condensación; por encima del 10% conviene mirarlo.
+>
+> **Lo que NO hay que hacer es reescribir en bloque para poner el gate en verde**: se destruirían condensaciones correctas y se rompería la autocontención que §2.2-quater pide.
+
+**Si no se puede formular una opción correcta como cita literal o condensación válida, NO se genera la pregunta sobre ese punto.** Mejor menos cantidad que cualquier alucinación.
+
+**¿Qué es "condensación válida"?** Una omisión de metalenguaje (p.ej. "a efectos de este decreto") o de la cláusula introductoria que ya está en el enunciado. Lo que NO se puede:
+- Cambiar palabra clave.
+- Cambiar sujeto, verbo, complemento.
+- Cambiar plazo, número, referencia normativa.
+- Reformular la cita.
+
+### 2.2-bis Los distractores deben igualar en longitud y forma a la correcta (regla anti-"opción más larga")
+
+Si la opción correcta es cita literal del artículo (texto legal completo, largo) y los distractores son frases cortas inventadas, **la correcta destaca por tamaño y el test se acierta sin saber la respuesta, eligiendo la más larga**.
+
+**Medido en producción (02/06/2026, a raíz del feedback de la usuaria Isa — `5e21fa2d`)**: en las 1.562 IA-generadas activas, la opción correcta era la más larga el **71%** de las veces (azar = 25%; resto del banco ≈ 31-39%), con **132 vs 71 caracteres** de media frente a los distractores. Patrón presente en TODOS los batches (53-87%) → es estructural, consecuencia directa de §2.2.
+
+**Regla:** cada distractor debe construirse **a partir de un fragmento de texto legal real (mismo artículo o norma afín) de longitud comparable a la correcta (±30% de caracteres)**, alterado para hacerlo falso — cambiar un sujeto, un verbo, un plazo o una remisión sobre una cláusula igual de larga. **Nunca** un distractor corto y plano frente a una correcta extensa.
+
+**Prohibido:** correcta de >100 chars con los tres distractores de <60.
+
+> 🧬 **CONSTRUYE CADA DISTRACTOR CAMBIANDO EXACTAMENTE UNA COSA — el resto, copiado literal (25/07/2026).** Medido en el batch `gen_atc_t206`: **8 de 16 preguntas (50%)** con el mismo defecto. Al redactar el distractor "de memoria" a partir del artículo, el generador altera el elemento que quiere hacer falso (el *titular*) y **de paso, sin darse cuenta, trunca una enumeración adyacente, se come una cláusula condicional o añade una justificación inventada** — y luego el bullet de la explicación solo documenta la alteración titular. En el art. 85.2 los TRES distractores truncaron en silencio la letra e) (*"…declaraciones, autoliquidaciones y comunicaciones tributarias"*), cada uno por un sitio distinto.
+>
+> **No es un fallo de clave** (la correcta seguía siendo correcta en las 16) **pero sí de enseñanza**: el opositor descarta el distractor por el motivo equivocado, y la explicación se lo confirma. Y arrastra un segundo efecto medible: como truncar acorta, **la correcta acaba siendo sistemáticamente la más larga** → tell de longitud (§2.2-bis) por la puerta de atrás.
+>
+> **Método que lo evita, y cuesta lo mismo:** parte del texto literal del artículo, pégalo entero en el distractor y **cambia un único elemento** (un sujeto, un verbo, un plazo, una remisión). Si necesitas dos alteraciones para que sea claramente falso, adelante — pero entonces el bullet debe recogerlas **las dos**. Reparar después es peor: en `gen_atc_t206` costó una ronda entera de ocho reparaciones que se habrían ahorrado copiando en vez de recordando.
+
+**Si no hay texto legal suficiente para construir 3 distractores largos *y* claramente falsos sin volverlos ambiguos, NO se genera la pregunta sobre ese punto** (mismo criterio que §2.2: mejor menos cantidad).
+
+> **Contenido conceptual/editorial (no BOE) dispara este tell** — la opción correcta fiel a prosa conceptual suele ser mucho más larga que distractores plausibles. Medido en la tanda editorial UMM del 23/07 (§5.30): **21% de rechazo global por length-tell, 46% en Comunicación** (vs ~5-15% en contenido legal). Construir los distractores largos (banda 0,75×–1,15× de la correcta) **desde la generación**, no en una segunda pasada. Remedio si ya pasó: agente de rebalanceo (alarga los 3 distractores manteniéndolos falsos + actualiza el bullet de la explicación).
+
+### 2.2-ter La posición de la correcta debe ser ALEATORIA UNIFORME (regla anti-"siempre la B")
+
+Segundo tell estructural, independiente del de longitud y de mayor impacto. **Medido en producción (04/06/2026)**: en las 1.562 IA-generadas activas, `correct_option` se distribuía **A 30,2% · B 48,7% · C 16,8% · D 4,4%** (azar = 25% c/u; control humano —exámenes oficiales y banco entero— ≈ 25% uniforme). **Elegir siempre B acertaba el 48,7%; A+B cubría el 79%; la D casi nunca.** Presente en TODOS los batches. Causa: el generador escribe la opción correcta (cita literal) en la 1ª o 2ª posición y rellena los distractores después, sin barajar. La app **no baraja opciones en render** (índice `correct_option` → posición en pantalla 1:1), por lo que el sesgo es directamente explotable.
+
+**Regla:** al construir cada pregunta, **asignar la posición de la correcta (`correct_option`) de forma aleatoria uniforme** entre las opciones disponibles (0-3). No dejar que caiga "donde toque" tras redactar. Si se generan en lote, **comprobar la distribución del batch** antes de insertar: las cuatro posiciones deben repartirse ~25% cada una.
+
+**Regla anti-"ciclo A-B-C-D" (secuencia, no solo distribución) — añadido 2026-07-10 (batch Decreto 19/2011 Canarias):** la distribución uniforme NO basta. Si asignas la posición recorriendo `A,B,C,D,A,B,C,D…` por orden de artículo, el batch pasa el check mecánico (25% c/u, ninguna posición >40% ni <10%) pero la **secuencia** es un patrón predecible: ordenadas por artículo, la correcta cicla. Es de bajo riesgo real (la app **sirve los tests barajados y sueltos**, así que el ciclo no es observable dentro de un test mezclado), pero es gratis evitarlo: **asigna la posición con una permutación sin orden monótono** (p.ej. baraja las posiciones del lote, o intercala D,B,A,C,B,D,C,A…), no con un contador incremental. Comprobación adicional al check de distribución: mirar la **secuencia** de `correct_option` en el orden de generación y confirmar que no describe un ciclo regular. Detectado por el Sonnet del Paso 9 en el batch `gen_dec19_2011_b3` (22q, distribución A6/B6/C5/D5 uniforme pero secuencia cíclica exacta); no se re-permutó porque las preguntas ya estaban vivas y el riesgo de una transposición mal hecha (ver "Recordatorio de coherencia") superaba el beneficio en un canal barajado — pero en generación **es coste cero hacerlo bien de entrada**.
+
+**Recordatorio de coherencia (formato §8.1 letra-anclado):** la explicación nombra la letra correcta (`**Por qué <LETRA> es correcta:**` + bullets `- **<LETRA>)**`). Si se reordena una pregunta ya redactada, hay que **mover la letra del header Y la de los bullets de distractor** en bloque (es una transposición: intercambiar las dos letras en opciones + explicación), nunca solo `correct_option`.
+
+> 🛠️ **NO lo hagas a mano: `npm run simular:batch -- <borrador.json> --equilibrar` (27/07/2026).** El simulador ya DETECTABA el desequilibrio y el ciclo, pero la reparación se dejaba al criterio de quien generase — y hacerla a mano es exactamente lo que falla (ver el caso `gen_atc_t209` justo debajo). Con el flag aplica el plan mínimo de **transposiciones** sobre el propio borrador, mueve con cada una la cabecera y la viñeta afectadas, y vuelve a analizar. Núcleo puro `lib/generacion/transponerPosicion.js` (15 tests); **aborta** si la explicación no está sincronizada con `correct_option` en vez de propagar el desajuste. Registrado en `toolRegistry` como `transponer_posicion_correcta`. Sigue siendo tuyo el único check que ninguna máquina hace: **mirar que cada viñeta describa su opción** (§2.4 `bullets_match_options_ok`).
+>
+> ⚠️ **TRANSPOSICIÓN (2 letras), NUNCA una permutación de 4 (25/07/2026).** Cuando el check de distribución del lote pide mover una correcta de una letra a otra, la tentación es rotar las cuatro opciones. **Hacerlo a mano falla:** en el batch `gen_atc_t209` roté A→C con un ciclo de cuatro y remapeé mal **dos** de los tres bullets — el de B pasó a describir la opción D y viceversa. La clave seguía siendo correcta y el gate mecánico daba verde (comprueba que el header case con `correct_option`, no que cada bullet describa SU opción), así que lo cazó la auditoría ciega. **Regla: intercambia solo DOS posiciones —la de la correcta y la de destino— y deja las otras dos intactas.** Así solo cambian dos bullets, el remapeo es trivial de verificar y el resto de la explicación no se toca. Con 4 opciones, una transposición basta siempre para llevar la correcta a cualquier letra.
+>
+> **Punto ciego que esto revela:** ningún check mecánico valida que el bullet `- **X)**` describa realmente el contenido de la opción X. Es territorio de auditoría LLM — y por eso conviene decírselo explícitamente en el prompt cuando el lote haya sufrido reordenaciones.
+
+> **¿En qué formato escribo la explicación? Escríbela YA en el NUEVO (estructurada).**
+>
+> Se escribe un JSON con una razón por opción —referida al CONTENIDO, nunca a la letra— y el
+> texto de siempre lo **genera** la herramienta.
+>
+> ⚠️ **La regla «nunca la letra» vale IGUAL para el `intro` y el `outro`** (T-262, 29/07). Son los
+> únicos campos que el render emite **verbatim en cualquier orden**: una letra ahí queda clavada y
+> contradice a la que calcula el render («La respuesta correcta es la **C**.» arriba, «Por qué
+> **A** es correcta» debajo). NO abras el `intro` anunciando la clave —esa línea la pone el render
+> con la letra que toque— ni cierres el `outro` con «**Clave:** la B es…»; escríbelos por
+> contenido. El aplicador **rechaza** el JSON si encuentra una letra ahí, así que lo sabrás antes
+> de aplicar. Detalle y reparación (`npm run shuffle:narrativa`):
+> `docs/roadmap/barajar-opciones-verificacion-robusta.md`.
+>
+> ```bash
+> npx tsx --env-file=.env.local scripts/aplicar-explicacion.ts <question_id> <fichero.json> --apply
+> ```
+>
+> Escribe las DOS columnas coherentes: `explanation_data` (la estructura) y `explanation` (el
+> texto renderizado). **Desde el 28/07 producción ya sirve desde la estructura** cuando existe, así
+> que lo que el opositor lee es el render; `explanation` se conserva como red de seguridad y es lo
+> que se sirve en las preguntas que aún no la tienen. La pregunta nace **barajable** y no hay
+> ningún paso que se pueda olvidar.
+>
+> **Por qué así y no al revés:** escribir el texto y parsearlo después es heurístico y falla
+> —medido el 27/07: solo se transcribe el 43,7% del formato de generación y el 15,3% del de
+> impugnaciones—. De la estructura al texto, en cambio, es un render determinista: no puede
+> fallar. El parseo se reserva para el HISTÓRICO, que es lo único que no se puede reescribir.
+>
+> Rechaza razones que digan «la opción A», «como se ha visto en la primera»… porque al barajar
+> dejan de ser ciertas. Y para lo antiguo sigue existiendo el camino inverso:
+> `scripts/backfill-explanation-data.ts`.
+>
+> ⚙️ **ESTADO (27/07/2026): la columna `explanation_data` YA EXISTE y el serve renderiza desde
+> ella.** Lo que faltaba para poder emitir §8.2 está hecho: los dos formatos conviven (sin
+> estructura se sirve el texto de siempre) y el barajado se encenderá cuando la BD esté
+> transcrita. Al generar, **emite el §8.1 como hasta ahora** —el gate mecánico lo exige y el
+> render lo reproduce igual— y **después transcribe el lote**:
+> `npx tsx --env-file=.env.local scripts/backfill-explanation-data.ts --pregunta <id> --apply`
+> (o sin `--pregunta` para el lote entero). La transcripción solo escribe si no cambia ni una
+> coma de lo que ve el opositor.
+>
+> **Esta deuda DESAPARECE con el formato estructurado (§8.2, v2.6):** si la explicación se escribe keada al CONTENIDO de cada opción (sin letras), re-permutar es keaer el índice y el render recompone las letras solo — no hay nada que mover a mano. **Emite siempre el formato §8.2** en generación nueva; §2.2-ter (posición uniforme) sigue aplicando a `correct_option`, pero la coreografía de "mover la letra" queda obsoleta.
+
+**Remediación de la cohorte histórica (04/06/2026):** 437 preguntas re-permutadas (transposición mínima B/A→C/D con relabel determinista del header + bullets + validación per-pregunta + skip-on-fail). Distribución post: A 25,2 / B 25,7 / C 24,6 / D 24,5% (χ²=0,58 vs uniforme, indistinguible). 13 saltadas (9 sin header parseable + 4 con header≠`correct_option`, posible bug de clave a revisar). Backup `/tmp/ia_position_backup.json`.
+
+### 2.2-quater Cada pregunta debe ser autocontenida — desarrolla las siglas de ley
+
+Los tests salen **barajados y sueltos**, así que una pregunta **no puede depender de que la sigla se haya definido en otra**. Al usar una sigla de ley en el enunciado, **desarrolla el nombre en su primera aparición y deja la sigla entre paréntesis**:
+
+> "…según el artículo 179 de la **Ley Orgánica 5/1985, del Régimen Electoral General (LOREG)**…"
+
+A partir de ahí, dentro de esa misma pregunta/explicación, ya puedes usar la sigla a secas.
+
+**Allowlist (pueden ir crudas por universales):** `CE`, `UE`, y las ultraconocidas `TREBEP`, `LOPJ`, `TUE`, `TFUE`. Todo lo demás (`LBRL`, `LGP`, `LPAC`, `LRJSP`, `LOPDGDD`, `EBEP`, `LOREG`…) se desarrolla.
+
+**Excepción:** si la pregunta **pide identificar la ley** (la respuesta es la propia norma), NO desarrolles el nombre en el enunciado — cantaría la solución.
+
+Origen: impugnación de Laura García (02/07/2026) — vio "LBRL" en una pregunta cuando el nombre completo solo aparecía en la anterior. Barrido de normalización aplicado a ~174 preguntas activas de 7 siglas.
+
+**El gate lo comprueba desde el 25/07/2026** (`lib/generacion/siglasSinDesarrollar.js`, cableado en `verificar-batch-generado.cjs`). Antes no lo miraba nadie, y en el lote de Agentes de Tributos de Canarias se colaron **73 enunciados** con `IGIC`/`AIEM` a pelo y **12** citando `DL 1/2025` sin identificar la norma. Los cazó una auditoría LLM **por casualidad**: solo se le habían pasado 19 de las 379 preguntas. La lección no es "auditar más", es que *una regla que solo vigila un juez caro es una regla que se incumple* — si la regla es determinista (¿está el nombre completo en el texto visible?), va al gate.
+
+El detector tiene dos niveles a propósito:
+
+- **`faltan`** (error duro): siglas del diccionario usadas sin su desarrollo. Reconoce como desarrollo tanto el nombre (*"Ley General Tributaria"*) como el número (*"Ley 58/2003"*), y respeta la excepción de arriba (si la respuesta es la propia norma, no exige desarrollarla).
+- **`candidatas`** (aviso): mayúsculas que **van tras artículo** (*"del X"*, *"al X"*, *"el X"*) y no están catalogadas → hay que ampliar el diccionario. El filtro del artículo es lo que evita ahogar el aviso en las mayúsculas enfáticas (*"NINGUNA"*, *"MUY GRAVE"*), que nunca van precedidas de artículo. Así se pescó `DL 1/2025`, que ningún diccionario podía prever.
+
+**Y al desarrollar, cita el título verbatim de la fuente.** Los 12 enunciados del `DL 1/2025` iban acompañados de *"Ley 1/2011, de 21 de enero, del Impuesto de la **CAC** sobre las Labores del Tabaco"* — un título inventado a medias: el oficial (BOE-A-2011-2106) es *"del impuesto sobre las labores del tabaco y otras medidas tributarias"*, sin "CAC" por ningún lado. Abreviar un título es tan grave como abreviar una cita.
+
+### 2.3 Tag obligatorio: `'ia_generada' + '<batch_id>'`
+
+Sin estos tags es imposible:
+- Filtrar las IA-generadas para revisión periódica.
+- Revertir un batch completo si después se detecta un fallo sistemático.
+- Auditar el % de IA-generadas activas vs scrapeadas.
+
+Convención del batch_id: `piloto_<ley>_<año>` o `gen_<ley>_<YYYY-MM-DD>`.
+
+### 2.4 Auditoría doble PRE-aplicación + re-verificación POST-aplicación
+
+El manual de revisión §18.1 advierte que **una sola auditoría tiene ~17% de falsos negativos**. Para IA-generadas el riesgo se multiplica (sesgo del propio generador). El flujo v2.1 de `revisar-preguntas-con-agente.md` exige **además** una re-verificación tras aplicar los cambios sobre la pregunta viva en BD (§7).
+
+**Los 6 checks del workflow** (v2.4 amplía a 6 — antes 5):
+
+| Check | Criterio | Detectable por |
+|---|---|---|
+| `article_ok` (§3.1) | El artículo contiene literalmente el supuesto preguntado | auto + Sonnet ciego + paso 9 |
+| `answer_ok` | La opción marcada es realmente la correcta según la ley | auto + Sonnet ciego + paso 9 |
+| `options_ok` (§3.2) | La opción correcta reproduce fielmente el texto legal (cita literal o condensación válida) | auto + Sonnet ciego + paso 9 |
+| `explanation_ok` (§8.1) | Blockquote literal + "Por qué [LETRA] correcta" + bullets "Por qué las demás" + sin emojis/Truco | auto + Sonnet ciego + paso 9 |
+| **`question_text_ok` (v1.10)** | **El enunciado no condensa libremente el artículo. Si lo menciona, debe citar o usar elipsis explícita.** | **Frecuentemente solo por paso 9** — las dos pasadas pre-aplicación pueden converger en pasarlo por alto (caso b5 Aragón Q15) |
+| **`distractors_balance_ok` (NUEVO v2.4)** | **Ningún distractor es manifiestamente más corto que la correcta (§2.2-bis). Criterio mecánico: la correcta NO debe ser la opción más larga por un margen ≥1,3× sobre la 2ª, y los distractores siguen siendo claramente falsos.** | **Automático (longitudes) + Sonnet (que los distractores reescritos sigan siendo falsos)** |
+| **`answer_position_uniform_ok` (NUEVO v2.5)** | **La posición de la correcta es aleatoria; en lote, las 4 posiciones se reparten ~25% (§2.2-ter). Criterio mecánico por batch: ninguna posición >40% ni <10%.** | **Automático (distribución de `correct_option` del batch)** |
+
+> 🚩 **El aviso CORRECTA PARCIAL NO es un falso positivo por defecto (26/07/2026).** Durante seis lotes se
+> despachó sistemáticamente como ruido «porque el enunciado ya acota la cola». **Dos veces el mismo día
+> resultó tener razón**, y la segunda la cazó una auditoría ciega, no el generador:
+> - **Art. 87 bis.2 LJCA:** la opción cortaba una **disyuntiva legal** por la mitad («devolución de los
+>   autos…» omitiendo «o la resolución del litigio por la Sala»). Se reestructuró la pregunta.
+> - **Art. 19 bis.1 LO 1/2004:** la clave paraba en «hasta su total recuperación» y omitía la **cláusula
+>   limitativa** («en lo concerniente a la sintomatología o las secuelas… derivadas de la violencia
+>   sufrida»), dando a entender un derecho de seguimiento sanitario general. El auditor adversarial lo
+>   levantó por su cuenta.
+>
+> Criterio para decidir: mirar **QUÉ hay en la cola omitida**. Si es una *aposición descriptiva* o un
+> matiz que el enunciado ya fija, es ruido. Si es una **disyuntiva, una excepción, una condición o un
+> límite de alcance**, el aviso es real: o se completa la opción o se reestructura la pregunta. Nunca
+> automatizar el descarte.
+| **`bullets_match_options_ok` (NUEVO 26/07/2026)** | **Cada bullet `- **X)**` describe la opción que hoy ocupa la posición X.** Se comprueba a ojo, opción contra bullet, DESPUÉS de cualquier retoque de las opciones. | **Solo revisión manual — NINGÚN gate lo ve** |
+| **`racional_describe_la_opcion_ok` (NUEVO 26/07/2026)** | **El «Por qué X es correcta» describe lo que la OPCIÓN dice, no lo que dice el artículo entero.** Si la opción es una cita parcial, la glosa no puede atribuirle contenido que su texto no lleva. | **Solo auditoría ciega — ningún gate lo ve** |
+| **`cita_blockquote_literal_ok` (NUEVO 26/07/2026, AUTOMÁTICO)** | **El texto entre comillas del blockquote es subcadena LITERAL del artículo.** El opositor lo lee como transcripción de la ley: una palabra añadida ahí es una cita falseada. | **Automático** — `lib/generacion/citaBlockquote.js`, dentro de `npm run batch:gate` |
+
+> 🤖 **`cita_blockquote_literal_ok` es el único de esta familia que NO necesita auditoría.** Lo cazó una
+> auditoría ciega (26/07/2026): el art. 116 bis.3 de la LBRL dice «La Diputación **provincial** o entidad
+> equivalente **asistirá**…» en su primera frase y «La Diputación o entidad equivalente **propondrá y
+> coordinará**…» en la segunda; el blockquote mezcló las dos y presentó como literal algo que la ley no
+> dice. Una auditoría cuesta minutos y tokens, y esto es una comparación de subcadena: **si la máquina
+> puede, que lo haga la máquina**.
+>
+> Al calibrarlo sobre las 69 preguntas del banco apareció el matiz que lo hace usable: el BOE entrecomilla
+> con **comillas tipográficas** (U+201C/D) y las citas suelen usar **angulares** (U+00AB/BB). Mismo texto,
+> distinto glifo. Sin unificar comillas por punto de código, el check daba un falso positivo y habría
+> acabado ignorado, que es la peor forma de morir para un gate. Tolera además la puntuación perdida en el
+> import y las citas que **saltan de un apartado a otro con puntos suspensivos** (cada tramo se comprueba
+> por separado, porque solo los tramos son contiguos en la ley).
+
+> ⚠️ **`racional_describe_la_opcion_ok` nace de DOS casos del mismo lote, cazados por auditores distintos
+> (26/07/2026, `gen_ljv_bis2_20260726`).** Es sutil porque la pregunta es correcta y la glosa es *verdadera*:
+> lo que falla es que la glosa describe **el artículo** mientras dice estar explicando **la opción**.
+> - La clave citaba el art. 26 octies.1 hasta «…revertir la rectificación registral», y la glosa remataba
+>   «…la solicitud de la persona interesada, **acompañada de sus medios de prueba**» — dato que está en la
+>   frase siguiente del artículo y **no en la opción que el opositor lee**.
+> - La clave del art. 80 ter.2 recogía solo la legitimación del Ministerio Fiscal, y la glosa afirmaba que
+>   «**suma** a los titulares de derechos o intereses legítimos» la del Fiscal: la suma está en el apartado,
+>   no en la opción.
+>
+> Daño: el opositor coteja la explicación con la opción que ha elegido y no cuadran.
+> **Arreglo — y ojo, que el evidente NO vale (26/07/2026):** reatribuir la frase al apartado *dentro* del
+> párrafo «Por qué X es correcta» **no arregla nada**; el Paso 9 volvió a marcar las tres preguntas así
+> «reparadas». El contenido que no viaja en la opción tiene que **SALIR de ese párrafo**. Tres destinos
+> válidos, por orden de preferencia:
+>   1. **Completar la opción** (si no dispara un tell de longitud) o **trasladar la cláusula al enunciado**.
+>   2. **Moverlo al bullet del distractor donde hace falta** — a menudo es justo el contraste que ese
+>      distractor necesita para caerse (caso del art. 80 ter.2: la primera legitimación explica por qué la
+>      opción con «solo» es falsa).
+>   3. **Una línea aparte tras los bullets** («**Además, del mismo apartado:** …»), que enseña sin fingir
+>      que la opción lo dice.
+>
+> 🪞 **Variante que aparece en los bullets de los distractores: atribuir a OTRAS normas lo que regula la
+> propia ley (26/07/2026).** En el art. 29 bis del RDL 1/2013 un bullet descartaba la «lectura fácil»
+> diciendo que *«es un medio que emplean otras normas»* — cuando el **artículo 2 de esa misma ley** dice
+> que la accesibilidad cognitiva *«se despliega y hace efectiva a través de la lectura fácil, sistemas
+> alternativos y aumentativos de comunicación, pictogramas…»*. El distractor seguía siendo falso (la
+> lectura fácil es un **medio**, no una de las tres capacidades que enumera el artículo), pero **el motivo
+> que se le daba al opositor era incorrecto**, y encima sobre la norma que está estudiando.
+> Regla: antes de descartar un distractor por «eso es de otra norma», **búscalo en la ley que se pregunta**.
+> Estas leyes traen un artículo de definiciones (aquí el art. 2) donde suele estar justo lo que se iba a
+> atribuir fuera.
+>
+> 🔁 **Y el patrón REINCIDE dentro del mismo lote: hay que barrer, no parchear.** En ese mismo artículo 29
+> bis, tras reparar el bullet de la «lectura fácil», el Paso 9 encontró **otro bullet con el mismo vicio**:
+> llamaba «principio» a la **vida independiente**, cuando el art. 2 la define como *«la **situación** en la
+> que la persona con discapacidad ejerce el poder de decisión sobre su propia existencia»* — y sí define
+> como «el principio en virtud del cual…» la **normalización** y la **inclusión social**. El contraste es
+> del propio artículo de definiciones.
+>
+> Práctica que se deriva: cuando una ley trae artículo de definiciones y los distractores se toman de él,
+> **contrastar la CALIFICACIÓN de cada noción** (principio / situación / condición / medida / estrategia)
+> una por una, y hacerlo sobre TODOS los bullets del lote a la vez. Reparar el que te señalan y seguir
+> deja los hermanos vivos: aquí el segundo caso estaba a dos preguntas de distancia.
+
+> ⚠️ **`bullets_match_options_ok` nace de dos desajustes reales en el mismo lote (26/07/2026, `gen_lbrl_bis_20260726`).**
+> Cualquier retoque de las opciones **después** de escribir las glosas las desincroniza en silencio, y el
+> resultado no es un fallo mecánico —la pregunta es correcta y el gate la da por buena— sino una
+> **explicación que desmiente a su propia opción**, que es peor: mina la confianza del opositor en el
+> material. Los dos casos:
+> - **Acotar el enunciado sin repasar los bullets:** la pregunta del art. 103 bis se acotó a la letra b)
+>   para poder citar literal, y los bullets siguieron rebatiendo la letra a) (*"exige aportación
+>   mayoritaria"*) y opciones que ya no existían.
+> - **Reescribir distractores y cruzarlos:** en la del art. 116 bis los bullets C y D quedaron
+>   intercambiados respecto a sus opciones.
+>
+> Y el mismo día, un tercer aviso de la misma familia: al **re-permutar por transposición** para romper un
+> ciclo `ABCD`, si se mueve la opción y no las letras de la explicación, se produce el mismo destrozo. El
+> `- **X)**` **no es decorativo: es un puntero a una posición**, y las posiciones se mueven.
+>
+> Comprobación rápida antes de aprobar (imprime opción y bullet enfrentados):
+> ```bash
+> node -e "const qs=require('./scratchpad/<borrador>.json');const L='ABCD';
+> for(const q of qs) q.options.forEach((o,j)=>{ if(j===q.correct_option) return;
+>   const m=q.explanation.match(new RegExp('- \\\\*\\\\*'+L[j]+'\\\\)\\\\*\\\\*([^\\n]*)'));
+>   console.log(L[j],'|',o.slice(0,70),'||',(m?m[1]:'❌ SIN BULLET').slice(0,70))})"
+> ```
+
+**Mínimo (PRE-aplicación):**
+1. **Auto-audit** del propio generador (Claude) re-leyendo desde BD aplicando §3.1 + §3.2 + §8.1 + verificando fidelidad del enunciado.
+2. **Auditoría independiente** con agente Sonnet ciego (no le digas que las generaste tú).
+
+Si las dos pasadas coinciden y son PERFECT → transición a `approved`.
+Si discrepan → adjudicar humano o Opus, no por defecto la auditoría.
+
+**Obligatorio POST-aplicación (paso 7 v2.1, paso 9 de este manual):**
+
+3. **Re-verificación con agente Sonnet NUEVO** (distinto al del paso 2) sobre la pregunta ya viva en BD. Iterar hasta una pasada completamente limpia. El lote no se cierra hasta entonces.
+
+> ⚠️ **El paso 9 NO es siempre una formalidad de "confirmar drift BD"** (como sugirió el batch 4). El batch 7 (Aragón) demostró que **los dos Sonnets pre-aplicación pueden converger en el mismo sesgo gramatical** y dar 15/15 PERFECT con alta confianza, mientras el Sonnet del paso 9 (con prompt re-enmarcado como "están vivas, busca cualquier desviación") detecta un defecto real. Tratar el paso 9 como **tercer auditor independiente**, no como verificación de persistencia.
+
+> 🔁 **CORRECTA PARCIAL: es el defecto MÁS REINCIDENTE de la generación — 3 de 4 lotes de la campaña T-115 (26/07/2026).** Apareció en el art. 28.2 LCSP (*"y además:"* y la opción sin la cláusula de la pyme), en el art. 31.1 a) (sin *"mediante el oportuno acuerdo de encargo"*, el instrumento jurídico) y en el art. 149.3 (sin el inciso de las uniones temporales). En los tres, el gate mecánico daba verde: `citaTruncada.js` solo se dispara si detrás viene una cláusula de una lista cerrada ("salvo", "así como"…), y aquí la continuación era **prosa sustantiva corriente**. Los cazó un auditor LLM distinto en cada lote — y un juez caro por lote no es un guardarraíl.
+>
+> **Desde hoy lo mira el gate** (`lib/generacion/citaVsOpcion.js`, aviso): compara el **blockquote** con la opción marcada correcta, que es la señal de alarma que ya describía §2.2. Comparar contra el ARTÍCULO daba 10,5% de aviso (ruido); exigir que **la cita incluya la cola omitida** lo baja al ~4%, porque ese es el síntoma real: el redactor tenía el texto entero delante y aun así acotó.
+>
+> **Al triarlo, léelo junto al enunciado** — el check no lo ve. Si el enunciado pregunta *"¿con quién…?"* o *"¿qué Administración…?"*, la opción responde lo pedido y el aviso es falso positivo (5 de los 7 avisos sobre los propios lotes de la campaña). **La reparación barata casi siempre es acotar el enunciado, no alargar la opción**: alargarla suele disparar el tell de longitud §2.2-bis contra los distractores.
+
+> 🧨 **OVERCLAIM EN LA EXPLICACIÓN: el razonamiento afirma MÁS que el artículo, y otro artículo de la misma ley lo desmiente (26/07/2026, batch `gen_lbrl_2026-07-26`).** La clave era correcta, la opción correcta era cita literal, el gate mecánico daba verde y **las dos auditorías previas dieron PERFECT** — el defecto no estaba en la pregunta sino en el *"Por qué X es correcta"*. Sobre el art. 5 LBRL (plena capacidad para "enajenar toda clase de bienes") la explicación remataba *"…**sin excluir clase alguna de bienes**"*, cuando el **art. 80 de esa misma ley** declara los bienes comunales y de dominio público **inalienables**. Y no era inocuo: uno de los distractores introducía justamente la salvedad de los bienes de dominio público, así que la explicación le regalaba al opositor un argumento de impugnación contra su propia clave.
+>
+> **Regla: la explicación puede explicar por qué la opción es la del artículo, pero no puede extrapolar a "siempre / sin excepción / sin excluir / en todo caso".** Cuando el artículo enuncia una regla general, el límite suele vivir en OTRO artículo de la misma norma — y el sitio correcto para nombrarlo es la explicación ("se ejerce *de acuerdo con la Constitución y las leyes*, que es donde operan los límites, como la inalienabilidad del art. 80"), no un absoluto inventado.
+>
+> **Dónde se caza:** solo con lectura de la ley COMPLETA, no del artículo suelto. Por eso al agente del paso 9 hay que decirle explícitamente *"contrasta cada distractor con el resto de la ley por si alguno resulta cierto por otra vía"* — con ese encuadre lo encontró; sin él, dos auditores con el artículo delante lo pasaron por alto.
+
+### 2.5 Convención `ai_provider` diferenciado por fase (§5.1 manual de revisión)
+
+`ai_verification_results` tiene constraint único `(question_id, ai_provider)`. Si haces varias rondas con el mismo `ai_provider='claude_code'`, **cada upsert sobrescribe el anterior** y se pierde la traza histórica.
+
+| Fase | `ai_provider` | Cuándo |
+|---|---|---|
+| Auditoría doble pre-aplicación | `claude_code` | Pasos 6+7 (auto-audit + Sonnet ciego antes de transicionar) |
+| Re-verificación post-aplicación | `claude_code_recheck` | Paso 9 (Sonnet nuevo sobre pregunta viva tras transición) |
+| Auditoría final (opcional) | `claude_code_audit` | Si se hace 3ª pasada con criterio estricto extra |
+
+Esto permite que cualquier consulta a BD pueda ver el rastro completo: "esta pregunta pasó auditoría doble → fue transicionada → fue re-verificada", no solo el último registro.
+
+### 2.6 Redundancia controlada — superar el techo natural del scope
+
+**Cuando los artículos sin preguntas se agotan** pero el tema sigue por debajo del umbral de cobertura objetivo (≥100q), se puede generar **varias preguntas por artículo ya cubierto** SIEMPRE QUE cumplan condiciones estrictas. Lo opuesto a "redundancia" es "solapamiento": dos preguntas distintas que en realidad miden lo mismo.
+
+**Validado en piloto Art 42 LO 4/1982 (2026-05-25)**: artículo enumerativo de 10 letras (a-j), 2 preguntas existentes pasaron a 5 sin solapar, todas auditadas como ortogonales por Sonnet.
+
+#### Reglas por estructura del artículo
+
+| Estructura | Máximo de preguntas |
+|---|---|
+| Enumerativo con ≥5 ítems (letras a-e o más) | **4-5 preguntas** |
+| Con cláusula residual ("cualesquiera otros...", "lo demás") o distinción conceptual extra | **+1 más** (hasta 5) |
+| Estructura simple (2-3 ítems, definición única) | **máx. 2** antes de empezar a solapar |
+| Artículo de 1 frase (definición plana) | **1** — no insistir |
+
+#### Los 5 mecanismos cognitivos para diversificar enfoques
+
+Cada pregunta nueva debe usar un mecanismo **distinto** de las existentes. Si dos preguntas del mismo artículo comparten mecanismo, son redundantes aunque cambien la letra preguntada.
+
+| # | Mecanismo | Forma típica | Discrimina sobre |
+|---|---|---|---|
+| 1 | **Intruso/negación** | "¿Cuál NO figura entre los X?" | Memoria del listado completo |
+| 2 | **Reconocimiento literal** | "¿Qué dice la letra Y?" | Memoria de contenido por posición |
+| 3 | **Camino inverso** | "¿Qué letra recoge el contenido Z?" | Memoria de la numeración/estructura |
+| 4 | **Cláusula específica** | "¿Qué dice la cláusula residual?" / "¿Cuál es la salvedad?" | Memoria de elementos no-principales |
+| 5 | **Distinción conceptual** | "¿Sobre qué se establece X?" (diferenciar X de Y dentro del mismo artículo) | Comprensión jurídica profunda, no solo memoria |
+
+**Caveat operativo** (caso N4 del piloto): si una "nueva" usa el mismo mecanismo que una existente pero sobre letra distinta, el valor pedagógico es MEDIO, no ALTO. Aceptable, pero si hay que retirar alguna por exceso, esa es la primera.
+
+#### Dedup específico para redundancia (más estricto que el general §3)
+
+Cuando se generan varias preguntas sobre el mismo artículo, el dedup textual estándar (Jaccard 50%) no basta — comparten contexto. Aplicar 3 niveles:
+
+```javascript
+// Nivel 1: Jaccard de enunciado contra existentes — alerta a >=50%
+// (esperado en redundancia controlada: 30-45% por contexto compartido — normal)
+
+// Nivel 2: Jaccard entre las nuevas — alerta a >=50%
+// (esperado: 35-45% — normal)
+
+// Nivel 3 CRÍTICO: Jaccard de OPCIÓN CORRECTA nueva vs TODAS las opciones existentes
+// (CADA letra A/B/C/D de cada existente) — alerta a >=50%
+// Si hay alerta aquí, la "nueva" en realidad pregunta lo mismo que una existente
+```
+
+El nivel 3 es el que detecta el solapamiento real: dos preguntas pueden tener enunciados distintos pero la misma opción correcta significa que evalúan el mismo conocimiento.
+
+#### Cómo planificar un batch de redundancia
+
+1. **Listar arts ya cubiertos del tema** (1-3 preguntas existentes, contenido ≥800 chars).
+2. **Para cada art candidato**: leer las preguntas existentes y registrar qué mecanismo cognitivo usa cada una (de los 5 anteriores).
+3. **Asignar mecanismos NUEVOS** a las preguntas a generar:
+   - Si las existentes usan solo "reconocimiento literal" → añadir intruso + camino inverso + distinción conceptual
+   - Si ya existe intruso + reconocimiento → añadir camino inverso + cláusula específica
+4. **Generar borrador** + dedup intensivo (los 3 niveles).
+5. **Auditar con Sonnet añadiendo evaluación de redundancia** en el prompt (no solo los 4 checks de calidad). Ejemplo de prompt extra:
+   > "Para cada nueva, evalúa: (1) ¿enfoque genuinamente distinto?; (2) ¿respuesta correcta solapa con existente?; (3) ¿valor pedagógico añadido (ALTO/MEDIO/BAJO/REDUNDANTE)?"
+6. **Si Sonnet marca alguna como REDUNDANTE → no transicionar**, retirar.
+
+#### Cuándo NO insistir con redundancia
+
+- Si un artículo solo admitiría una 5ª pregunta forzando un mecanismo ya usado.
+- Si las opciones correctas posibles se agotan (un artículo con 3 conceptos no admite 10 preguntas — habrá repetición de respuestas).
+- Si el coste de auditar el dedup empieza a superar el valor pedagógico de la pregunta extra.
+
+**Regla de oro**: la redundancia controlada extiende el techo natural, pero NO lo elimina. Cada artículo tiene un máximo absoluto en función de su estructura. Mejor 4 preguntas distintas por art × varios arts que 8 preguntas iterando sobre 1 art.
+
+## 3. Workflow paso a paso
+
+### Paso 0 — Selección de scope estrecho
+
+Empezar siempre por **una ley + 3-5 artículos**. Nunca un batch grande al inicio.
+
+Inventario rápido para detectar gaps:
+
+```bash
+node -e "
+require('dotenv').config({path:'.env.local'});
+const { createClient } = require('@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const lawId = '<UUID_LEY>';
+(async () => {
+  const { data: arts } = await s.from('articles')
+    .select('id, article_number').eq('law_id', lawId);
+  const { data: qs } = await s.from('questions')
+    .select('primary_article_id').in('primary_article_id', arts.map(a=>a.id));
+  const byArt = {};
+  for (const q of qs||[]) byArt[q.primary_article_id] = (byArt[q.primary_article_id]||0)+1;
+  console.log('Total arts:', arts.length, '| con preguntas:', Object.keys(byArt).length, '| sin:', arts.length - Object.keys(byArt).length);
+}) ();
+"
+```
+
+### Paso 0bis — Verificar/reparar `topic_scope` (v1.10, OBLIGATORIO si ley nueva o scope sospechoso)
+
+**Cuándo es necesario este paso:**
+- Acabas de crear una ley en BD a través del flujo del manual `monitoreo-boe-y-crear-leyes-nuevas.md` y la has añadido a `topic_scope` con `article_numbers=null` (toda la ley).
+- El `topic_scope` actual de la ley/tema tiene `article_numbers=null` o un rango anómalo (ej. una ley grande de 158 arts en un solo tema cuando el epígrafe cubre solo una parte).
+- La ley tiene varios Títulos temáticamente distintos pero está mapeada solo a un tema.
+
+**Cómo verificar:**
+
+```bash
+node -e "
+require('dotenv').config({path:'.env.local'});
+const { createClient } = require('@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const lawId = '<UUID_LEY>';
+(async () => {
+  const { data: scopes } = await s.from('topic_scope')
+    .select('topic_id, article_numbers')
+    .eq('law_id', lawId);
+  for (const sc of scopes) {
+    const { data: t } = await s.from('topics')
+      .select('topic_number, title, epigrafe').eq('id', sc.topic_id).single();
+    const cobertura = sc.article_numbers === null ? 'TODA LA LEY' : sc.article_numbers.length + ' arts';
+    console.log('T' + t.topic_number + ': ' + t.title);
+    console.log('  Scope: ' + cobertura);
+    console.log('  Epígrafe: ' + (t.epigrafe || '').slice(0,150));
+  }
+})();
+"
+```
+
+**Cómo reparar (si scope incorrecto):**
+
+1. **Leer el epígrafe oficial del tema** desde `topics.epigrafe`.
+2. **Leer el sumario de la ley** (WebFetch al BOE: "lista los Títulos/Capítulos con sus rangos de artículos").
+3. **Mapear bloques de la ley a temas** según el epígrafe (ver §1.bis cross-tema).
+4. **UPDATE topic_scope con `article_numbers` explícito** restringido al núcleo del epígrafe:
+
+```javascript
+// Caso Ley 5/2021 Aragón → T5 (solo arts 1-8 + 70-144)
+const t5Arts = [];
+for (let i = 1; i <= 8; i++) t5Arts.push(String(i));
+for (let i = 70; i <= 144; i++) t5Arts.push(String(i));
+
+await s.from('topic_scope').update({
+  article_numbers: t5Arts,
+  include_full_title: false,
+}).eq('id', t5ScopeId);
+
+// Y añadir el resto de bloques a otros temas con INSERT separados
+```
+
+5. **Verificar tras reparar** que cada art de la ley aparezca en algún `topic_scope` (sin huérfanos) y que ningún art aparezca duplicado en temas que no corresponda.
+
+**Por qué este paso es CRÍTICO antes del batch piloto:**
+
+Sin reparar el scope, los batches sucesivos contaminan el tema: preguntas sobre procedimiento (Título I/II) aparecerían en T5 ("órganos de gobierno") cuando deberían ir a T7 ("acto administrativo"). El opositor que estudia T5 vería preguntas fuera de tema. **Reparar después es más caro** que hacerlo antes: requiere migrar el scope + invalidar caches + comprobar que los conteos por tema sean coherentes.
+
+**Caso real (validado 2026-05-25, Ley 5/2021 Aragón)**: tras crear la ley con `article_numbers=null` en T5, restringí T5 a 83 arts (1-8 + 70-144) y añadí los otros 75 arts a T6/T7/T8 antes de batchear. Resultado: 7 batches consecutivos sobre arts del núcleo T5 sirvieron al tema correcto sin contaminación.
+
+### Paso 1 — Leer contenido literal de los artículos seleccionados
+
+> 🚨 **ANTES de generar, contrasta el `content` de BD contra el BOE VIGENTE (26/07/2026, campaña T-115).**
+> Todos los gates posteriores comparan la pregunta contra `articles.content`; **nadie comprueba que ese
+> `content` siga siendo la redacción en vigor**. Si el artículo se importó antes de una reforma, el lote
+> entero sale internamente coherente y enseñando Derecho derogado — y pasa las dos auditorías, porque a
+> los auditores se les da el mismo texto.
+>
+> ```bash
+> node scripts/verificar-articulos-vs-boe.cjs <law_slug> <BOE-ID> <art> [<art>…]
+> node scripts/verificar-articulos-vs-boe.cjs lprl BOE-A-1995-24292 10 11 12 32 39
+> # Normas de la UE → EUR-Lex CONSOLIDADO (id CELEX), NO el espejo del BOE:
+> node scripts/verificar-articulos-vs-boe.cjs rgpd-ue-2016-679 CELEX:02016R0679-20160504 9 28 40
+> ```
+>
+> 🇪🇺 **NORMAS DE LA UE: el espejo del BOE (`DOUE-…`) es el texto ORIGINAL, CON erratas** — no incorpora
+> las correcciones de errores posteriores. El RGPD tiene una (DO L 127, 23/05/2018), así que el BOE dice
+> *«la vida sexual o **las orientación sexuales**»* donde el consolidado dice *«o **la orientación
+> sexual**»*. Verificando contra el BOE, **80 de los 99 artículos del RGPD salían "divergentes"** y
+> "arreglarlos" habría metido las erratas en el temario de 49 oposiciones (T-184, 27/07/2026). Pásale un
+> id **CELEX que empiece por 0** (consolidado); si empieza por 3 es el acto publicado y el script te
+> avisa. Núcleo: `lib/laws/eurlexConsolidado.js`.
+>
+> **GOTCHA que lo hace traicionero:** la API del BOE devuelve **una `<version>` por redacción histórica y
+> NO vienen en orden cronológico**. En el art. 2 de la Ley 7/1985 el orden es **1985 → 2013 → 1990**: coger
+> `versiones[versiones.length-1]` (lo natural) devuelve la redacción de **1990**, derogada por la Ley
+> 27/2013 — y el diff contra BD sale "DIFIERE" señalando como malo el texto que en realidad es el bueno.
+> Hay que elegir **por `fecha_vigencia`**, nunca por posición, y podar las notas `<p class="nota_pie">`
+> del `<blockquote>` (si no, el "texto oficial" arrastra una cola de *"Se modifica por la disposición
+> final 1 de la Ley 35/2014…"* que rompe cualquier comparación literal).
+> **SEGUNDO GOTCHA:** el **id de bloque no es siempre `a<N>`**. En la Ley 9/2017 el "Artículo 10" es el
+> bloque `a1-2` y el "Artículo 28" es `a2-10` (la numeración se desordena cuando la norma ha sufrido
+> adiciones o derogaciones). Pedir `a10` devuelve 404 — y en otra norma podría devolver **otro artículo**
+> con apariencia de éxito, comparando tu `content` contra el precepto equivocado. Resuelve el id por el
+> `…/texto/indice` (`mapaBloquesPorArticulo`), con `a<N>` solo como último recurso.
+>
+> **TERCER GOTCHA — los `bis`/`ter` no se encontraban por un ESPACIO (T-146, 26/07/2026).** El índice del
+> BOE rotula «Artículo 6 bis» y nuestra BD guarda `6bis`: la búsqueda literal en el mapa fallaba, el
+> script daba `HTTP 404` y **el Paso 1 era imposible para toda la familia de reforma** — 183 artículos
+> escopados, activos y sin una sola pregunta, entre ellos el de más alcance de la campaña (art. 6 bis de
+> la Ley 19/2013: 17 oposiciones, 5.109 opositores). Lo mismo con la tilde (`367 quáter` vs `quater`) y
+> con los ordinales altos, que ni entraban en el mapa. Se cruza con `bloqueDeArticulo()`, que normaliza
+> espacios, tildes, puntos y paréntesis en los dos lados; si no está, devuelve `null` y el script **avisa**
+> en vez de inventar un `a<N>` que puede devolver otro artículo con apariencia de éxito.
+>
+> Núcleo puro y testeado: `lib/laws/boeBloqueVigente.js` (`bloqueVigente`, `comparaConBd`, `mapaBloquesPorArticulo`, `bloqueDeArticulo`).
+
+```bash
+node -e "
+require('dotenv').config({path:'.env.local'});
+const { createClient } = require('@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async () => {
+  const ids = ['<art_id_1>','<art_id_2>','<art_id_3>'];
+  for (const id of ids) {
+    const { data } = await s.from('articles')
+      .select('article_number, title, content').eq('id', id).single();
+    console.log('=== Art ' + data.article_number + ' — ' + data.title + ' ===');
+    console.log(data.content);
+  }
+})();
+"
+```
+
+### Paso 2 — Generar las preguntas en JSON borrador
+
+**Prompt mental que aplicas a TI MISMO (Claude):**
+
+> Para cada artículo, identifico 1-5 "supuestos" o "reglas" que aparecen literalmente y son evaluables (definiciones, requisitos, plazos, remisiones a otras normas, listas tasadas, exclusiones).
+>
+> Por cada supuesto, formulo UNA pregunta con:
+> - **Opción correcta**: cita literal del artículo (o condensación válida).
+> - **3 distractores**: plausibles pero claramente falsos según el propio artículo. **Cada uno parte de un fragmento de texto legal real (mismo artículo o norma afín) de longitud comparable a la correcta (±30%), alterado para hacerlo falso (cambio de sujeto/verbo/plazo/remisión) — ver §2.2-bis. Prohibido distractor corto y plano frente a correcta larga: delata la respuesta por tamaño.** Si un distractor podría confundirse con otra norma vigente (Ley 39, Ley 40, etc.), añadirlo (trampa pedagógica útil).
+> - **Explicación con formato §8.1 exacto:**
+>   - Blockquote con cita literal del artículo (referencia "Art. X.Y Ley Z").
+>   - "Por qué [LETRA] es correcta: [razón clara]"
+>   - "Por qué las demás son incorrectas:" + bullet por cada opción distractor.
+>   - Sin emojis, sin sección "Truco/Consejo".
+>   - **NO enunciar CIFRAS de alteraciones ("doble/triple/cuádruple alteración", "altera N elementos"): LISTA lo que cambia, sin contarlo.** Patrón de fallo recurrente medido en T-045 (ITPAJD art. 1 ×2, EA Canarias art. 168): el generador dice "triple alteración" y hay cuatro (suele olvidar un sinónimo tipo "de las islas"→"del Archipiélago"). No es mecanizable (exige diff semántico distractor↔artículo) ni afecta a la clave, pero servido en vivo enseña un detalle mal. **Si no das un número, no hay número que equivocar** — y el distractor no pierde nada explicando "cambia X por Y, y Z por W" en vez de "doble alteración: …".
+
+> #### §8.2 — Formato ESTRUCTURADO shuffle-safe (canónico desde v2.6)
+>
+> Para que la pregunta se pueda **barajar al repetirse** (T-080), la explicación se emite ADEMÁS en
+> `explanation_data`: razones **keadas al índice ORIGINAL de cada opción (0=A…3=D), referidas al
+> CONTENIDO, NUNCA a la letra**. La letra se asigna al render por posición. Regla: prohibido "La A es
+> incorrecta"; escribe "No corresponde al órgano de administración electrónica". La opción correcta se
+> identifica con `correct_option` (no se marca dentro del JSON). `frame` = `select_correct` o, para
+> "señale la FALSA", `select_incorrect`. Esquema y render: `lib/shuffle/structuredExplanation.ts`;
+> diseño: `docs/roadmap/barajar-opciones-fase2-explicaciones-estructuradas.md`.
+
+Guardar borrador en `/tmp/<batch_id>_borrador.json` (con AMBOS campos; `explanation` se deriva por
+render del estructurado para lectores legacy):
+
+```json
+[
+  {
+    "primary_article_id": "UUID",
+    "article_label": "Art X Ley Y",
+    "question_text": "...",
+    "option_a": "...",
+    "option_b": "...",
+    "option_c": "...",
+    "option_d": "...",
+    "correct_option": 0|1|2|3,
+    "explanation_data": {
+      "v": 1,
+      "cita": { "ref": "Art. X.Y Ley Z", "texto": "...cita literal..." },
+      "options": {
+        "0": "razón por el CONTENIDO de la opción A (sin nombrar la letra)",
+        "1": "razón por el CONTENIDO de la opción B",
+        "2": "razón por el CONTENIDO de la opción C",
+        "3": "razón por el CONTENIDO de la opción D"
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Art. X.Y**\n> \"...cita literal...\"\n\n**Por qué [LETRA] es correcta:** ...\n\n**Por qué las demás son incorrectas:**\n- **A)** ...\n- **B)** ...\n- **C)** ..."
+  }
+]
+```
+
+### Paso 3 — Dedup pre-inserción contra BD
+
+**OBLIGATORIO** antes de cualquier INSERT. Comparar contra:
+
+- Toda la BD por `content_hash` (exacto).
+- Preguntas existentes de los artículos seleccionados, por similitud Jaccard ≥ 50%.
+- Preguntas que mencionan el código de la norma en `question_text` (ej. `%Decreto 302%`).
+
+Si hay colisión → revisar manualmente. Si la pregunta nueva es idéntica/parafraseada de una existente, descartar.
+
+Ver `importar-preguntas-scrapeadas.md` §"Detección de Duplicados" para el código de las 4 niveles.
+
+### Paso 3.bis — SIMULACIÓN pre-inserción (OBLIGATORIO desde 26/07/2026)
+
+```bash
+npm run simular:batch -- /tmp/<batch_id>_borrador.json <law_slug>
+# exit 0 = limpio para insertar · 1 = hay bloqueantes · 2 = error de uso
+```
+
+> **Pásale la ley igual que al inserter** (`insertar-batch-generado.cjs <fichero> <law_slug> <batch>`).
+> El borrador de un lote de UNA sola ley no lleva `law_slug` por pregunta —es lo que este manual
+> manda escribir— y hasta el 28/07/2026 el simulador solo sabía resolver el artículo por
+> `law_slug` + número: sin la ley, devolvía **"artículo inexistente o inactivo" en TODAS las
+> preguntas** (13 de 13 en el lote de la Ley 7/1985), un bloqueante que parece de datos y era de
+> firma. Cada pregunta puede seguir trayendo su propio `law_slug` para los lotes multi-ley, y ese
+> gana sobre el del CLI. Núcleo puro `aplicarLeyPorDefecto` en `lib/generacion/simularBatch.js`,
+> con tests en `__tests__/lib/generacion/leyPorDefecto.test.js`.
+
+Corre **los mismos cinco núcleos** que el verificador del Paso 5.bis
+(`lib/generacion/*.js`) pero sobre el JSON borrador, leyendo de RDS en **solo lectura**.
+Mismo veredicto, cero escritura: se deja de "insertar para ver".
+
+Añade tres cosas que después ya es tarde o caro de comprobar:
+
+1. **Contrato con el inserter.** Este mismo manual documenta arriba `primary_article_id` y
+   `option_a`…`option_d`, pero `insertar-batch-generado.cjs` lee **`primary_article_number`
+   y `options[]`**. Un borrador escrito según el ejemplo del Paso 2 muere en el INSERT con
+   `UNDEFINED_VALUE: Undefined values are not allowed`, sin decir qué campo falta. El
+   simulador acepta las dos formas y **reclama por nombre** lo que le falte.
+2. **Distribución y secuencia de `correct_option`** del lote (§2.2-ter), incluido el ciclo
+   regular de periodo 4 que pasa el check de distribución.
+3. **Dedup del Paso 3** contra las preguntas ya vivas de esos artículos y dentro del lote.
+
+Una salvedad propia, que el verificador post-inserción no puede hacer: el truncamiento
+**por la cabeza** no bloquea si la cláusula condicionante **ya está en el enunciado** —es
+la condensación válida que §2.2 admite—, se degrada a aviso. Sin eso, el patrón correcto
+("Salvo que la legislación autonómica prevea otra cosa, …" en la pregunta) obligaría a
+duplicar la cláusula en las cuatro opciones.
+
+Núcleo puro: `lib/generacion/simularBatch.js` · tests:
+`__tests__/lib/generacion/simularBatch.test.js` (25). Los tests existen por un motivo
+concreto: la primera versión llamó a los cinco núcleos asumiendo que todos devolvían
+`{ok}` cuando devuelven `{estado}` / `{tell}`, y marcó **12 de 12 preguntas como rotas**,
+incluida una copia verbatim del artículo. Un fallo de contrato entre módulos no se ve
+leyendo el código.
+
+### Paso 4 — Insertar UNA pregunta de prueba
+
+Validar invariantes ANTES de insertar el batch entero. Insertar la primera pregunta y verificar:
+
+| Invariante | Valor esperado |
+|---|---|
+| `lifecycle_state` | `'draft'` |
+| `is_active` | `false` (sync trigger desde lifecycle_state) |
+| `tags` | contiene `'ia_generada'` y el batch_id |
+| `content_hash` | no-null, 32 chars (generado por trigger) |
+| `correct_option` | el del JSON (0-3) |
+| `question_type` | `'single'` (NO `'legislative'` — falla constraint) |
+
+Si TODOS los invariantes pasan → seguir. Si alguno falla → debuggear antes.
+
+### Paso 5 — Insertar el resto del batch
+
+Misma estructura, una a una. Guardar IDs en `/tmp/<batch_id>_inserted_ids.json` para auditoría.
+
+### Paso 5.bis — Verificación MECÁNICA del batch (barata, corre antes de gastar auditoría)
+
+```bash
+node scripts/verificar-batch-generado.cjs <batch_id>   # exit 0 = limpio, 2 = hay fallos
+```
+
+Lee las preguntas **de BD** (no del borrador) y las contrasta contra el `content` real del artículo. Comprueba literalidad, longitudes ±30% (§2.2-bis), opciones distintas, coherencia de la cabecera de la explicación con `correct_option` + bullets (§2.2-ter) y la distribución/secuencia del lote.
+
+**Lo que aporta de nuevo — detección de CITA TRUNCADA (v1.11, piloto ISD 20/07/2026):**
+
+Un check de "¿la correcta es subcadena del artículo?" **no basta**, y este es el agujero por el que se cuela §2.2. La cita puede ser literal y aun así estar **cortada justo antes de la cláusula que la condiciona**, convirtiendo en incondicional lo que la ley matiza. El script localiza la cita dentro del artículo y mira **qué viene inmediatamente después**: si continúa con `salvo`, `excepto`, `sin perjuicio`, `siempre que`, `así como`, `además de`… lo marca.
+
+> 🧭 **La cita truncada tiene DOS lados — desde el 25/07/2026 el script mira los dos.** Hasta ahora solo se comprobaba la **cola** (qué viene detrás de la cita). La auditoría ciega del batch `gen_atc_t205_2026-07-25` encontró la variante por la **CABEZA**: el art. 63.3 LGT dice *"la Administración tributaria, **salvo lo dispuesto en el apartado siguiente**, aplicará el pago a la deuda más antigua"* y la opción arrancaba en *"Aplicará el pago a la deuda más antigua"*, presentando como incondicional una regla que cede ante el apartado 4. **Subcadena literal perfecta, cola limpia (un punto detrás), sentido alterado** — invisible para el check anterior. Nueva regex `PRECEDE` en `lib/generacion/citaTruncada.js`: marca si justo antes de donde arranca la cita hay un inciso condicionante **cerrado por coma** (`, salvo … ,`). El cierre por coma es lo que lo distingue de una cita que simplemente empieza a media frase; con 4 tests, incluidos los dos no-casos (enumeración con comas delante, y el patrón correcto del art. 70.1, donde el *"Salvo lo dispuesto…"* encabeza la frase y NO va pegado a la cita). El resultado ahora indica el `lado`.
+>
+> **Cómo se repara:** o se incorpora el inciso a la opción correcta (y a los distractores, para que sigan paralelos), o se lleva al enunciado — pero **ojo**: llevarlo al enunciado no calla al detector, porque este compara la opción con el artículo. Si la cláusula gobierna lo que se pregunta, lo limpio es que viaje dentro de la opción.
+>
+> **Caso real que motivó el check de cola:** piloto `gen_isd_2026-07-20`, art. 3.1.c) de la Ley 29/1987. La opción correcta reproducía *"La percepción de cantidades por los beneficiarios de contratos de seguros sobre la vida, cuando el contratante sea persona distinta del beneficiario"* y **paraba ahí**, omitiendo *"salvo los supuestos expresamente regulados en el artículo 16.2, a), de la Ley del IRPF y otras Normas Tributarias"*. Subcadena literal perfecta; sentido alterado. Lo cazó la auditoría ciega del Paso 7 — y **ahora lo caza una regex**, gratis y sin falsos negativos de modelo.
+
+**No sustituye a las auditorías LLM.** Lo que NO es mecanizable y sigue siendo territorio de los Pasos 6-7-9: que un distractor sea ambiguo o cierto en otro precepto, que haya **dos** respuestas defendibles, y que la explicación sea **exhaustiva** (en el mismo piloto, una explicación decía "triple alteración" cuando el distractor tenía cuatro — indetectable por regex).
+
+> 🔧 **Corrección del propio gate (25/07/2026): la comprobación de la cabecera daba FALSO POSITIVO en el 100% de los batches bien formados.** Estaba escrita como `explanation.startsWith('**Por qué <LETRA> es correcta:**')`, pero el formato canónico §8.1 arranca con el **blockquote de la cita** y la cabecera va después → todo batch correcto salía en rojo. Medido sobre `gen_atc_t217_2026-07-24` (34 preguntas doblemente auditadas y ya aprobadas): **34/34 en rojo antes, 11/34 después** — y esos 11 restantes son señales de literalidad de verdad, que el ruido tapaba. **Un gate que siempre falla no se lee: se ignora, y con él se ignoran los fallos reales** (de hecho ese batch se aprobó por otra vía, saltándose el Paso 5.bis). Ahora la comprobación vive en el helper puro `lib/generacion/cabeceraExplicacion.js` (`analizarCabecera`, 6 tests): exige que la cabecera EXISTA y nombre la MISMA letra que `correct_option`, y **rechaza que haya otra cabecera con letra distinta** — que es el residuo típico de re-permutar la posición de la correcta tocando solo `correct_option` y olvidando la explicación (§2.2-ter). Lección transversal: al escribir un check mecánico, **córrelo antes contra un lote que sepas bueno**; si sale todo rojo, el defecto está en el check.
+
+> ⚖️ **El tell de longitud también existe INVERTIDO — y desde el 25/07/2026 el detector lo caza.** `analizarLongitud` solo penalizaba que la correcta fuese la MÁS LARGA (§2.2-bis), pero la auditoría ciega lo encontró **siete veces en dos lotes seguidos**: `gen_atc_t202` (arts. 4.1 y 12.1 LGT) y `gen_atc_t214` (arts. 215.1, 222.2, 223.4, 231.1 y 245.2). El vicio es simétrico: la correcta es una remisión o enumeración legal breve y desnuda (*"En Pleno, en Salas y de forma unipersonal."*, 42 ch) frente a **tres distractores de 95-98 ch**. No se explota eligiendo "la más larga" sino **"la rara"**, y se delata igual.
+>
+> **Regla (I) añadida al helper:** marca si la correcta es la MÁS CORTA y **hasta el distractor más breve** la supera en >30%. El umbral se mide sobre el distractor mínimo, no el máximo — basta que UNO iguale el registro para que la correcta deje de destacar; eso es lo que preserva los falsos positivos ya calibrados (Ley 14/1990 art. 27: correcta 27 ch, el distractor más corto la supera solo un 15%). Cubierto por 4 tests nuevos con los casos reales.
+>
+> **Arreglo correcto = ACORTAR los distractores, NUNCA inflar la correcta.** Alargarla con una coletilla que no está en el artículo rompe la literalidad de §2.2, que es la regla cero — y es justo lo que propuso la auditoría en tres de los cinco casos, así que ojo con aplicar sus sugerencias sin filtrarlas. Cuando el artículo responde con una remisión breve, los cuatro textos deben ser igual de breves. Mejor aún: **generar los cuatro en el mismo registro desde el principio**, que cuesta lo mismo.
+
+### Paso 6 — Auditoría 1: auto-audit (Claude generador)
+
+Re-leer cada pregunta DESDE BD junto con el contenido literal del artículo (no desde tu memoria). Aplicar los **5 checks** (v1.10 amplía de 4 a 5):
+
+| Check | Criterio |
+|---|---|
+| `article_ok` (§3.1) | El artículo contiene literalmente el supuesto preguntado + test inverso (¿la respuesta marcada es la correcta SEGÚN LA LEY, no solo según este artículo?) |
+| `answer_ok` | La opción marcada es realmente la correcta según el contenido del artículo |
+| `options_ok` (§3.2) | La opción marcada como correcta reproduce fielmente el texto legal (cita literal o condensación válida sin cambio de sentido) |
+| `explanation_ok` (§8.1) | `isDidactic()` = blockquote + "Por qué [LETRA] correcta" + "Por qué las demás son incorrectas" + markdown |
+| **`question_text_ok` (v1.10)** | El enunciado no condensa libremente el artículo. Si menciona "según el artículo X", lo que diga de X debe ser cita o usar elipsis explícita (puntos suspensivos / paréntesis). Nunca resumir. Caso b5 Aragón Q15 Art 92 documentó este modo de fallo. |
+| **`distractors_balance_ok` (NUEVO v2.4)** | Longitud de la correcta NO ≥1,3× la 2ª opción más larga (§2.2-bis) Y cada distractor sigue siendo claramente falso. Comprobación mecánica de longitudes + verificación de que ningún distractor alargado se ha vuelto verdadero/ambiguo. |
+| **`answer_position_uniform_ok` (NUEVO v2.5)** | Distribución de `correct_option` del batch ~25% por posición (§2.2-ter). Mecánico sobre el batch completo: ninguna posición >40% ni <10%. Si está sesgado, re-permutar por transposición (mover header+bullets de la explicación, no solo `correct_option`) antes de insertar. |
+
+Veredicto por pregunta: `PERFECT` o `NEEDS_REVIEW` con motivo.
+
+### Paso 7 — Auditoría 2: agente Sonnet ciego e independiente
+
+Lanzar agente `general-purpose` con `model='sonnet'`. Prompt que NO mencione:
+- Que las preguntas las generaste tú.
+- Tu auto-audit ni veredictos.
+- Cualquier sesgo positivo.
+
+El agente lee `/tmp/<batch_id>_audit_input.json` (preguntas + article_content), aplica los 4 checks y devuelve su propio veredicto independiente.
+
+
+> 🔧 **Dos bugs del constructor del input que la propia auditoría ciega destapó (26/07/2026).** Los dos
+> tenían el mismo efecto y es el peor posible: **adjuntar el artículo EQUIVOCADO es peor que no adjuntar
+> ninguno**, porque el auditor razona sobre un texto que no es el citado.
+> - **Artículo HOMÓNIMO POR NÚMERO de otra ley.** La guarda que descarta las citas a otra norma exigía que
+>   tras «de la» viniera ya «Ley|Real Decreto|…», así que **«del artículo 31 de la citada Ley Orgánica»**
+>   no casaba: se resolvía contra la ley de la pregunta y adjuntaba el art. 31 de la Ley 19/2013 —régimen
+>   sancionador de altos cargos— como si fuera el art. 31 de la LOPDGDD. Lo cazaron **las dos auditorías
+>   ciegas del mismo lote, por separado**. Ya se aceptan «citada/mencionada/referida/dicha» y la
+>   contracción «del».
+> - **Se perdía el sufijo de reforma.** De «artículo 75 bis.1» se extraía «75», y se adjuntaba el art. 75,
+>   otro precepto. El auditor, sin el texto que la glosa citaba, razonó de memoria y devolvió un **ISSUE
+>   inventado** sobre una glosa que era exacta. (Ojo con el separador de enumeraciones: partir por una «e»
+>   suelta troceaba «127 octies» en «127 octi» + «s»; ahora exige frontera de palabra.)
+>
+> Fijado en `__tests__/scripts/auditarBatchInput.test.js`. **Si un auditor ciego dice que una remisión no
+> es verificable, sospecha primero del constructor**, no de la glosa.
+> 📎 **Adjunta también los ARTÍCULOS QUE CITAN LAS EXPLICACIONES, no solo el preguntado (25/07/2026).** Los bullets de los distractores suelen decir *"eso es la autoliquidación del art. 120"* o *"ese carácter lo reserva el art. 101.3 a otros supuestos"*. Si el auditor no tiene esos artículos, no puede verificarlos: en el batch `gen_atc_t208_2026-07-25` devolvió **4 preguntas como ISSUES por remisiones no verificables** (arts. 120, 134 y 101.3) que, comprobadas después contra BD, eran **exactas las tres** — ruido que consume una ronda de reparación. En el mismo lote, las dos remisiones cuyo artículo SÍ viajaba en el input (125.2→126, 139.1→127) las validó sin más. Coste de adjuntarlos: una consulta. Estructura el input como `{preguntas: [...], articulos_referenciados: [...]}` y dilo en el prompt.
+>
+> ⚠️ **Y AUTOMATÍZALO, porque documentarlo no basta.** Volvió a pasar el mismo 25/07 con el batch de tasas del T215: se montó el input a mano, sin los artículos citados, y el auditor devolvió **4 avisos de "no verificable"** sobre remisiones a los arts. 7.3, 17, 21.4 y 24 del **mismo** texto refundido — las cuatro exactas al comprobarlas. Es la segunda vez en un día que se paga el mismo peaje con la regla ya escrita, así que la regla no estaba fallando: fallaba que dependiera de acordarse. El constructor del input debe **extraer solo los `artículo N` que aparezcan en las explicaciones y adjuntar esos artículos**, sin intervención.
+>
+> **No confundas "no verificable" con "incorrecto".** Un auditor bien calibrado señala lo que no puede comprobar en vez de darlo por bueno — eso es señal de que funciona. La respuesta correcta es **aportarle la fuente y volver a preguntar**, no reescribir el texto para esquivar la duda: quitar el número de artículo de una remisión correcta empobrece la explicación para no incomodar al auditor.
+
+**Comparar resultados:**
+- Si Sonnet coincide al 100% con tu auto-audit → proceder a transición.
+- Si Sonnet flagea preguntas que tú diste por OK → adjudicar manualmente (priorizar la opinión más estricta).
+- Si Sonnet aprueba preguntas que tú diste por NEEDS_REVIEW → no asumir que estaba mal tu auto-audit. Re-revisar.
+
+### Paso 8 — Transición vía función SQL `transition_question_state`
+
+**ÚNICA vía válida.** UPDATE directo a `is_active` falla:
+
+```javascript
+// Para cada pregunta que pasó AUDITORÍA DOBLE:
+
+// 1. Registrar trazabilidad en ai_verification_results (constraint: (question_id, ai_provider))
+await s.from('ai_verification_results').upsert({
+  question_id, article_id, law_id,
+  article_ok: true, answer_ok: true, explanation_ok: true,
+  confidence: 'alta',
+  explanation: 'IA-generada (Claude Opus 4.7). Auditoría doble: auto-audit + Sonnet independiente, ambas PERFECT.',
+  ai_provider: 'claude_code',
+  ai_model: 'claude-opus-4-7',
+  verified_at: new Date().toISOString(),
+}, { onConflict: 'question_id,ai_provider' });
+
+// 2. Transición draft → approved
+await s.rpc('transition_question_state', {
+  p_question_id: questionId,
+  p_expected_state: 'draft',
+  p_new_state: 'approved',
+  p_reason_code: 'ai_verified_perfect',
+  p_changed_by: null,                          // o admin user id
+  p_ai_verification_id: null,
+  p_notes: 'Batch <batch_id> — auditoría doble (claude_code + sonnet independiente)'
+});
+
+// 3. Sync legacy fields para compat con UI admin actual
+await s.from('questions').update({
+  topic_review_status: 'perfect',
+  verification_status: 'ok',
+  verified_at: new Date().toISOString()
+}).eq('id', questionId);
+```
+
+El sync trigger pondrá `is_active=true` automáticamente al transicionar a `approved`. Verificar después que `lifecycle_state='approved'` Y `is_active=true`.
+
+### Paso 9 — Re-verificación POST-aplicación con agente Sonnet NUEVO (OBLIGATORIO)
+
+Este paso es el **paso 7 del flujo v2.1** de `revisar-preguntas-con-agente.md` aplicado a IA-generadas. **Sin este paso el lote NO se cierra.**
+
+**Por qué es crítico:** la auditoría pre-aplicación (pasos 6 + 7) audita los datos del JSON borrador antes de que estén en BD. Tras transicionar a `approved`, la pregunta está viva — visible para usuarios. Verificarla en su forma final (leída desde BD, no desde el borrador) detecta:
+
+- Trigger PG que haya mutado algún campo al insertar (raro pero posible).
+- Diferencias entre lo que "creías que escribiste" y lo que efectivamente quedó en BD.
+- Cualquier acoplamiento entre los datos y el resto del sistema (sync trigger, normalización del content_hash, etc.).
+
+> ⚠️ **HAZLO CON LAS HERRAMIENTAS, no con el snippet de más abajo** (que sigue aquí por trazabilidad y está escrito con el cliente de **Supabase**, obsoleto desde el cutover a RDS). El camino vigente son tres comandos:
+>
+> ```bash
+> node scripts/auditar-batch-input.cjs <batch_id> <input.json>   # lee la pregunta VIVA de BD
+> #  → lanzar el agente del Paso 9 con ese input (agente NUEVO, distinto al del Paso 7)
+> node scripts/registrar-paso9.cjs <batch_id> <veredictos.json> [--apply]   # acredita
+> npm run batch:servido -- <batch_id>                            # cierra: bloquea si falta
+> ```
+>
+> **Por qué se insiste:** el 26/07/2026 se midió que **327 preguntas activas se habían aprobado sin este paso** ([T-155]) y la causa no era el despiste de una sesión — era que **acreditar el paso costaba más que hacerlo**, porque solo existía el `insert` a mano de aquí abajo. En los 11 lotes ATC de esa jornada el Paso 7 estaba registrado y el Paso 9 **en ninguno**, aunque el re-check se había corrido de verdad en siete: el trabajo hecho y sin registrar es, para el sistema, trabajo no hecho.
+>
+> **Y ojo con creerlo cubierto: el Paso 9, cuando se hace, tiende a hacerse PARCIAL** — solo sobre las preguntas que se repararon, que es donde está el rendimiento (ahí se concentran los defectos nacidos al reparar), no sobre el lote entero. Medido en `gen_atc_t204_2026-07-26_s26c`: 5 de 14. `batch:servido` exige cobertura completa, así que un lote con re-check parcial **sigue bloqueado, y hace bien**.
+>
+> **Para saber qué lotes tienes sin acreditar, y por dónde empezar, prioriza por EXPOSICIÓN, no por orden de lote** — unas preguntas están vivas para usuarios reales y otras en temas ocultos:
+>
+> ```sql
+> -- por cada lote: activas, cuántas tienen Paso 9, y si se sirven en algún tema
+> -- disponible de una oposición activa (ahí está la urgencia)
+> SELECT t AS lote, count(*) FILTER (WHERE q.is_active) AS activas,
+>   count(DISTINCT v.question_id) AS con_paso9,
+>   (SELECT string_agg(DISTINCT tp.position_type || ' T' || tp.topic_number, ', ')
+>      FROM topic_scope ts JOIN topics tp ON tp.id = ts.topic_id
+>      JOIN articles a2 ON a2.law_id = ts.law_id
+>        AND (ts.article_numbers IS NULL OR a2.article_number = ANY(ts.article_numbers))
+>      JOIN oposiciones o ON replace(o.slug,'-','_') = tp.position_type
+>     WHERE a2.id = q.primary_article_id AND tp.disponible AND o.is_active) AS expuesto_a
+> FROM questions q, unnest(q.tags) t
+> LEFT JOIN ai_verification_results v
+>   ON v.question_id = q.id AND v.ai_provider LIKE 'claude_code_recheck%'
+> WHERE t LIKE 'gen_%' GROUP BY t, q.primary_article_id ORDER BY t;
+> ```
+>
+> **GOTCHA del join:** `oposiciones` **no** tiene `position_type` (tiene `slug`); se enlaza con `replace(o.slug,'-','_') = topics.position_type` — comprobado, casan las 128.
+
+**Cómo hacerlo** (referencia histórica del snippet original):
+
+1. Releer las preguntas TRANSICIONADAS desde BD (no del borrador `/tmp`) con el contenido literal del artículo. Guardar nuevo input para el agente:
+
+```javascript
+const { data } = await s.from('questions')
+  .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, articles!inner(article_number, content)')
+  .in('id', transitionedIds);
+// → /tmp/<batch>_post_audit_input.json
+```
+
+2. Lanzar agente Sonnet **NUEVO** (distinto al del paso 7) aplicando el mismo prompt de los 4 checks (§3.1, §3.2, §8.1) con la indicación adicional: "Estas preguntas ya están vivas en producción; busca cualquier desviación entre el contenido de BD y el artículo literal".
+
+3. Registrar el resultado en `ai_verification_results` con `ai_provider='claude_code_recheck'` (NO `claude_code` — eso machacaría el registro del paso 7):
+
+
+> 🧰 **Hazlo con el comando, no a mano (26/07/2026):**
+> ```bash
+> npm run batch:registrar -- <batch_id> paso7|paso9|paso9v2|paso9v3 "<nota>"
+> ```
+> Hasta esa fecha no había herramienta y el registro se improvisaba con un `INSERT`… o
+> no se hacía: **327 preguntas activas quedaron sin Paso 9 registrado**, en 24 lotes y de
+> varias sesiones (ficha [T-155]). Va de la mano del guardarraíl de `npm run batch:servido`,
+> que desde entonces **se niega a cerrar un lote** al que le falte cualquiera de los dos
+> registros: uno comprueba y el otro rellena; sin el segundo, el primero solo sabe dar
+> malas noticias.
+>
+> ⚠️ El comando registra un veredicto **LIMPIO**. Si la auditoría encontró defectos, se
+> reparan, se vuelve a pasar con un agente aún más nuevo (`paso9v2`, `paso9v3`) y se
+> registra **la pasada que salió limpia**. Registrar una auditoría con hallazgos sin
+> repararlos es peor que no registrarla: deja una traza diciendo que todo estaba bien.
+```javascript
+await s.from('ai_verification_results').upsert({
+  question_id, article_id, law_id,
+  article_ok, answer_ok, explanation_ok,
+  confidence,
+  explanation: 'Re-verificación post-aplicación batch <batch_id> con agente Sonnet nuevo independiente del paso 7.',
+  ai_provider: 'claude_code_recheck',     // ← clave: diferente al paso 7
+  ai_model: 'claude-sonnet-4-6',
+  verified_at: new Date().toISOString(),
+}, { onConflict: 'question_id,ai_provider' });
+```
+
+4. **Si el recheck encuentra defectos:**
+   - Reparar (UPDATE de los campos editables — NO toca `lifecycle_state`).
+   - Volver a paso 9 con un agente Sonnet AÚN más nuevo (`ai_provider='claude_code_recheck_v2'` si hace falta otro pase).
+   - **Iterar hasta una pasada completamente limpia.**
+   - Si tras 3 iteraciones no se converge → transicionar a `needs_review` y escalar a humano.
+
+5. **Si el recheck pasa limpio:**
+   - Lote oficialmente cerrado.
+   - Anotar en el manual (sección 5) que el batch tiene `claude_code` + `claude_code_recheck` con coincidencia.
+
+### Paso 10 — Verificar impacto
+
+Recalcular el conteo de preguntas activas del tema afectado **considerando `article_numbers=null` como "toda la ley"** (error frecuente: filtrar con `.includes()` sin contemplar null descarta scopes válidos).
+
+```javascript
+let ids;
+if (sc.article_numbers === null) {
+  ids = (allArts || []).map(a => a.id);  // toda la ley
+} else {
+  ids = (allArts || []).filter(a => sc.article_numbers.includes(a.article_number)).map(a => a.id);
+}
+```
+
+Verificar:
+- Conteo de la ley específica: ANTES + N = AHORA
+- Conteo del tema afectado: ANTES + N = AHORA
+- Audit trail: filas en `question_lifecycle_history` con `from_state='draft'`, `to_state='approved'`, `reason_code='ai_verified_perfect'`.
+
+### Paso 11 — Invalidar caches (3 capas obligatorias)
+
+⚠️ **Tras un batch IA hay que invalidar TRES capas, no solo tags Next.js.** Ver `docs/maintenance/cache-revalidation.md` sección «Materialized views Postgres» para el detalle completo. Resumen operativo:
+
+**Las 3 capas:**
+
+1. **Materialized views Postgres** (`topic_law_question_summary` + `topic_official_by_position`) — el endpoint `/api/topics/[numero]` lee de aquí, NO de `questions` directo. El cron Fargate refresca solo 1× al día (03:30 UTC), así que hay que refrescar a mano tras cada batch.
+2. **Redis Upstash** — claves `topic_data:{oposicion}:{topicNumber}:{userId|anon}`, fresh window 5min.
+3. **Next.js ISR + tags** — páginas y data caches.
+
+**Procedimiento completo** (los 3 pasos son necesarios — saltar cualquiera deja datos viejos visibles):
+
+```bash
+set -a; source .env.local; set +a
+
+# 1. Refrescar materialized views (~13s) — contra RDS, que es la BD VIVA.
+#    ⚠️ Este comando usaba `@supabase/supabase-js` con la SERVICE_ROLE_KEY, y desde el cutover
+#    del 04/07/2026 esa ruta apunta a Supabase CONGELADO: "refrescaba" una copia muerta y las
+#    MV de producción se quedaban con el conteo viejo (el tema seguía enseñando N-13 preguntas).
+node -e "require('dotenv').config({path:'.env.local'}); \
+  const pg = require('./backend/node_modules/postgres'); \
+  const s = pg(process.env.DATABASE_URL, {ssl:{rejectUnauthorized:false}, max:1}); \
+  s\`SELECT public.refresh_topic_question_summary()\`.then(() => { console.log('MV refresh OK'); return s.end() })"
+
+# 2. Invalidar Redis claves topic_data:* afectadas
+#    (ajustar oposiciones y temas al alcance del batch)
+node -e "require('dotenv').config({path:'.env.local'}); \
+  (async () => { \
+    const {invalidateMany} = await import('./lib/cache/redis.ts'); \
+    const keys = []; \
+    for (const opo of ['<slug-oposicion>']) \
+      for (const num of [<N1>, <N2>]) \
+        for (const u of ['anon']) /* + user_ids relevantes */ \
+          keys.push('topic_data:' + opo + ':' + num + ':' + u); \
+    await invalidateMany(keys); \
+    console.log('Redis invalidado:', keys.length, 'keys'); \
+  })()"
+
+# 3. Tags Next.js + páginas ISR
+for tag in test-counts laws questions temario landing; do
+  curl -sS -X POST "https://www.vence.es/api/admin/revalidate" \
+    -H "Content-Type: application/json" \
+    -H "x-cron-secret: $CRON_SECRET" \
+    -d "{\"tag\": \"$tag\"}"; echo
+done
+
+for path in \
+  "/<slug-oposicion>" \
+  "/<slug-oposicion>/test" \
+  "/<slug-oposicion>/temario" \
+  "/<slug-oposicion>/test/tema/<N>"; do
+  curl -sS -X POST "https://www.vence.es/api/purge-cache" \
+    -H "Content-Type: application/json" \
+    -H "x-cron-secret: $CRON_SECRET" \
+    -d "{\"path\": \"$path\"}"; echo
+done
+```
+
+> 🛡️ **CIERRE OBLIGATORIO — pregúntaselo a producción, no a la BD que acabas de escribir (26/07/2026):**
+>
+> ```bash
+> npm run batch:servido -- <batch_id> [--muestra 6]     # exit 2 si alguna capa no propagó
+> ```
+>
+> Recomputa el conteo del tema **con la misma semántica que la materialized view** que lee la app y lo
+> compara contra `GET /api/topics/<N>?oposicion=<slug>` en www.vence.es. Comprobar el lote contra la misma
+> BD en la que acabas de insertar no demuestra nada: entre la fila y el opositor hay **tres cachés**
+> (MV Postgres → Redis/ElastiCache → ISR+tags), y el incidente de arriba es exactamente eso.
+>
+> ⚠️ **Al escribirlo se cayó en la trampa que documenta `audit-served-questions.ts`:** la primera versión
+> contaba "parecido" a la MV en vez de "igual" —se le olvidó que la MV excluye `exam_case_id IS NOT NULL`
+> (supuestos prácticos)— y daba un desfase fijo de 3-5 preguntas por tema, es decir **6/6 falsos
+> positivos**. Si tocas la MV, toca también esta consulta.
+>
+> ⏱️ **Si falla NADA MÁS aprobar: espera ~10 minutos y vuelve a correrlo. No purgues nada
+> (26/07/2026, lote `gen_l19_6bis_20260726`).** Medido: **9 minutos** desde la aprobación hasta 6/6 verde,
+> **sin tocar Redis**. La capa que retrasa es `topic_data:<opo>:<tema>:<user>` en ElastiCache, con ventana
+> fresca de 5 min (`FRESH_WINDOW_MS`) + el escalonado por instancia de ECS —cada contenedor necesita su
+> propia primera petición pasada la ventana—, lo que explica que a los 6 minutos aún salieran 1/6 y a los
+> 9 salieran 6/6. **El mensaje del script ("falta propagar (MV → Redis → tags)") manda a buscar una purga
+> que no toca**, y esa clave además no se puede purgar desde fuera de la VPC.
+>
+> ⚠️ **Y aquí se cometió el error de sacar conclusiones a los 6 minutos:** se dio por bueno que "no se
+> curaba", se documentó como cabo abierto y se buscó causa donde no había. Con cachés escalonadas,
+> **una segunda medición pronto no es evidencia**: hay que fijar el horizonte antes de mirar.
+>
+> Lo verificado por el camino, que sí sirve para descartar rápido cuando NO se cure:
+> - **La BD y la MV estaban bien:** `topic_law_question_summary` daba 418 con los cubos de dificultad
+>   sumando 418 — es decir, el `refresh_topic_question_summary()` sí había entrado.
+> - **NO era el CDN:** `curl -D-` devolvía `x-cache: Miss from cloudfront`, o sea que el 416 lo daba el origen.
+> - **NO era un timeout** sirviendo caché viejo a propósito (el `catch` de la ruta lo hace): la respuesta
+>   tardaba 60-180 ms, camino rápido de Redis.
+> - **NO eran los tags:** 60 POST a `/api/admin/revalidate` (20 rondas × 3 tags) no movieron el número.
+> - **Los tags NO tocan esa clave:** `topic_data:<opo>:<tema>:<user>` la escribe `/api/topics/[numero]`
+>   con TTL de 24 h, y `revalidateTag` no la conoce.
+>
+> **Y en todo caso el desfase es de un CONTADOR cacheado, no de la cobertura.** Las
+> preguntas están `approved`/`is_active` y el número escopado está en `topic_scope`, y el camino que sirve
+> preguntas (`getQuestionsForTopic`, `lib/testFetchers.ts`) las selecciona con un `inArray` EXACTO sobre
+> `topic_scope.article_numbers` — sin filtro numérico —, así que **al opositor ya le salen en los tests**
+> aunque la tarjeta del tema tarde en subir el conteo. Distinguir las dos cosas evita "arreglar" a lo bruto
+> lo que solo era caché.
+
+**Verificar que los conteos nuevos aparecen vía API real** antes de cerrar el batch:
+
+```bash
+USER='<un_user_id_de_la_oposicion>'  # necesario para que la API devuelva userProgress
+curl -sS -H "Cache-Control: no-cache" \
+  "https://www.vence.es/api/topics/<N>?oposicion=<slug>&userId=$USER&_t=$(date +%s)" | \
+  node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);console.log('totalQ:',j.userProgress?.totalQuestionsAvailable,'total:',j.totalQuestions)})"
+```
+
+Si el conteo sigue viejo después de los 3 pasos: probablemente la MV no refrescó (timeout), o las claves Redis son distintas (ojo con userIds específicos). Re-ejecutar paso 1+2.
+
+**Caso real de referencia (2026-06-01):** 160 preguntas IA Cat+PV añadidas, BD raw=50q, pero `/api/topics` devolvía 10-28q porque solo se habían invalidado tags. Tras los 3 pasos: 50q correctos.
+
+## 4. Métricas y calibración del prompt
+
+Tras cada batch, registrar:
+
+| Métrica | Cálculo | Acción si... |
+|---|---|---|
+| % PERFECT en auto-audit | preguntas que pasan los 4 checks / total | < 80% → recalibrar prompt antes de seguir |
+| % PERFECT en Sonnet audit | íd. independiente | < 60% → STOP, revisar a fondo |
+| % de coincidencia auto vs Sonnet | preguntas donde ambos veredictos coinciden | < 90% → revisar criterio del prompt |
+| Modos de fallo detectados | listar los tipos (paráfrasis, sujeto cambiado, distractor ambiguo, explicación sin formato) | añadir reglas explícitas al prompt para evitarlos |
+
+**Si el batch sale 100/100/100 (como el piloto Decreto 302/2011)**: viable escalar a más artículos de la misma ley. Mantener tamaño de lote ≤ 20 preguntas/iteración para que la auditoría sea manejable.
+
+## 5. Resultados de los batches piloto
+
+### 5.1 Batch 1 — Decreto 302/2011 CARM (Régimen Jurídico Gestión Electrónica)
+
+**2026-05-25** — Primera prueba del workflow.
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 3 (Art 1, Art 2, Art 10) |
+| Preguntas generadas | 12 (4 + 3 + 5) |
+| Insertadas en draft | 12/12 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 12/12 (100%) |
+| Sonnet audit PERFECT | 12/12 (100%) |
+| Coincidencia | 100% (0 desacuerdos) |
+| Transicionadas a `approved` | 12/12 |
+| Impacto: Decreto 302/2011 activas | 4 → 16 (+12, ×4) |
+| Impacto: T11 CARM activas | 309 → 321 (+12) |
+
+**Observaciones del batch 1:**
+
+- **#5 (Art 2, opción A)**: la opción correcta omitió "a efectos de este decreto" (metalenguaje). Ambas auditorías la marcaron como aceptable (condensación válida). Sirve de referencia: si el agente Sonnet hubiera sido más estricto, habría sido NEEDS_REVIEW.
+- **#4 (Art 1)**: pregunta tipo "¿cuál NO se cita?". La sintaxis "Por qué las demás son incorrectas (sí están en el artículo 1)" evitó falso positivo del regex `hasDemas`. Documentar este tipo invertido en el prompt para que no genere variantes raras.
+- **Bugs del workflow descubiertos**:
+  - `question_type='legislative'` falla constraint (debe ser `'single'`).
+  - `content_hash` lo genera la BD por trigger, NO pasar desde cliente.
+  - Scope con `article_numbers=null` = toda la ley (no descartar al verificar conteos).
+
+### 5.2 Batch 2 — Ley 12/2014 CARM (Transparencia y Participación Ciudadana)
+
+**2026-05-25** — Segundo batch para validar repetibilidad del workflow en una ley distinta (transparencia, contenido más estructurado/definicional).
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 5 (Art 2 Definiciones, Art 3 Principios, Art 5 Ámbito subjetivo, Art 23 Derecho acceso, Art 25 Límites) |
+| Preguntas generadas | 15 (4 + 3 + 3 + 2 + 3) |
+| Insertadas en draft | 15/15 |
+| Dedup colisiones | 0 (4 menciones de "12/2014" en BD eran de otra ley homónima fechada "26/12" — la nuestra es CARM "16/12") |
+| Auto-audit PERFECT | 15/15 (100%) |
+| Sonnet audit PERFECT | 15/15 (100%) |
+| Coincidencia | 100% (0 desacuerdos) |
+| Transicionadas a `approved` | 15/15 |
+| Impacto: Ley 12/2014 CARM activas | 2 → 17 (+15, ×8.5) |
+| Impacto: T16 CARM activas | 1011 → 1026 (+15) |
+
+**Observaciones del batch 2:**
+
+- **#2 (Art 2 b)**: la opción correcta omitió "señaladas en la letra anterior" (refers a la letra a previa del artículo). Detectada por Sonnet pero no por auto-audit. Aceptada por ambas: el sentido se mantiene porque el "señaladas en la letra anterior" es metalenguaje del texto, no contenido sustantivo. **Lección**: Sonnet es más exhaustivo que el auto-audit en detectar paráfrasis menores — útil tenerlo como segunda capa real, no formalismo.
+- **#9 (Art 5.2)**: la opción correcta omitió "aprobado por Ley Orgánica 4/1982, de 9 de junio" tras la cita del art 27 del Estatuto. Detectado por ambas auditorías. Condensación válida (referencia normativa secundaria).
+- **Ley homónima — peligro de dedup**: Decreto/Ley con mismo número (12/2014) en distintas CCAA. El dedup nivel 2 (búsqueda de mención textual en `question_text`) detectó las preguntas de la otra ley, pero al cruzar con `primary_article_id` quedó claro que no había colisión real. **Lección**: al hacer dedup, no quedarse solo en el número de la norma — verificar fecha completa, CCAA y `article_id`.
+
+### 5.3 Batch 3 — Ley 6/1990 CARM (Archivos y Patrimonio Documental)
+
+**2026-05-25** — Tercer batch para validar repetibilidad en una ley de naturaleza distinta: histórica (1990), texto con denominaciones de la época ("Consejería de Cultura, Educación y Turismo", referencias al "artículo 58 de la Ley de Patrimonio Histórico español"), contenido más heterogéneo (definiciones del patrimonio, competencias administrativas, ciclo de vida documental, obligaciones de particulares, depósitos).
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 5 (Art 2 patrimonio, Art 5 competencias Consejería, Art 12 ciclo documental, Art 14 obligaciones propietarios, Art 15 depósitos) |
+| Preguntas generadas | 15 (3 + 3 + 3 + 3 + 3) |
+| Insertadas en draft | 15/15 |
+| Dedup colisiones | 0 (14 menciones de "6/1990" en BD pertenecían a otros arts ya cubiertos) |
+| Auto-audit PERFECT | 15/15 (100%) |
+| Sonnet audit PERFECT | 15/15 (100%) |
+| Coincidencia | 100% (0 desacuerdos) |
+| Transicionadas a `approved` | 15/15 |
+| Impacto: Ley 6/1990 activas | 14 → 29 (+15, ×2.07) |
+| Impacto: T13 CARM activas | 14 → 29 (+15, **tema duplicado en un único batch**) |
+
+**Observaciones del batch 3:**
+
+- **Denominaciones históricas mantenidas con exactitud**: "Consejería de Cultura, Educación y Turismo" se respeta literalmente en las 8 preguntas que la mencionan. Sonnet validó explícitamente que no se sustituye por denominaciones genéricas modernas. **Lección**: para leyes antiguas, mantener el nombre del órgano tal como aparece en el BOE original — aunque hoy se llame distinto, el opositor estudia el texto vigente publicado.
+- **Referencias normativas cruzadas**: la pregunta #8 referencia "el artículo 58 de la Ley de Patrimonio Histórico español". Ambas auditorías validaron que la cita es exacta. **Lección**: las remisiones a otras leyes en leyes históricas son trampa pedagógica útil — sirven como distractores casi-correctos en preguntas futuras.
+- **Tema duplicado en una sola iteración**: T13 CARM tenía 14 preguntas activas; con un solo batch de 15 ha pasado a 29. Esto demuestra el impacto real del workflow cuando se elige bien una ley pequeña con scope concentrado (Ley 6/1990 = único contenido de T13 CARM).
+- **Sin descubrimiento de nuevos modos de fallo**: la auditoría no detectó condensaciones menores como en batches anteriores (#2 y #9 del batch 2). Posiblemente porque el lenguaje de la ley es más directo (instrucciones a propietarios, definiciones taxativas) y deja menos espacio a la paráfrasis.
+
+### 5.4 Batch 4 — DL 1/1999 CARM (Texto Refundido Ley de Hacienda)
+
+**2026-05-25** — Cuarto batch. Primera ley presupuestaria/financiera, contenido más técnico (categorías cerradas de derechos económicos, plazos de prescripción, órganos competentes, intervención). Es también el **primer batch que ejecuta el flujo v2.1 COMPLETO** (auditoría doble pre + reparación + recheck pre-transición + Paso 9 post-aplicación con `ai_provider='claude_code_recheck'`).
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 5 (Art 12 derechos económicos, Art 14 órganos competentes, Art 17 gestión recaudatoria, Art 25 prescripción obligaciones, Art 91 Intervención General) |
+| Preguntas generadas | 15 (3 + 3 + 3 + 3 + 3) |
+| Insertadas en draft | 15/15 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 15/15 (100%) |
+| Sonnet audit PERFECT | **14/15** — primer defecto real |
+| Coincidencia auto vs Sonnet | 14/15 (un desacuerdo: #7) |
+| Reparación tras hallazgo | #7 reparada → recheck PERFECT |
+| Transicionadas a `approved` | 15/15 (incluida #7 reparada) |
+| **Paso 9 v2.1 post-aplicación** | **15/15 PERFECT** con Sonnet nuevo (`claude_code_recheck`) |
+| Impacto: DL 1/1999 activas | 19 → 34 (+15, ×1.79) confirmado en API |
+| Impacto: T10 CARM activas | 19 → 34 (+15, **tema duplicado**) confirmado en API |
+
+**Hallazgo crítico del batch 4 — pregunta #7 (Art 17.1):**
+
+La opción C marcada como correcta omitía la cláusula final del artículo: "...o aquellos otros que le sean encargados, en régimen de concierto, por otras administraciones públicas, entidades o corporaciones."
+
+- Mi auto-audit la dio por PERFECT (me centré en validar el sujeto "Consejería" y el primer complemento, pasé por alto la completitud del ámbito).
+- Sonnet ciego detectó la omisión y la marcó NEEDS_REVIEW.
+- Adjudicación (paso 4 v2.1): Sonnet tiene razón. Es un estrechamiento de sujeto exactamente como advertía §3.2.
+- Reparación: ampliar opción C con la cláusula completa + actualizar blockquote de la explicación.
+- Re-verificación con Sonnet nuevo (paso 7 v2.1 antes de transicionar): PERFECT.
+- Re-verificación POST-aplicación (paso 9 de este manual, leído desde BD): PERFECT.
+
+**Lecciones del batch 4:**
+
+1. **La auditoría doble NO es formalismo.** En 60 preguntas IA-generadas (4 batches) Sonnet detectó 1 defecto real que yo no vi. Tasa de captura adicional ≈ 1.7% — pequeña pero crítica (sin él habría llegado a producción).
+
+2. **El sesgo del generador es real.** Cuando generas la pregunta, automáticamente "rellenas mentalmente" lo que crees que dice y validas contra eso, no contra el texto literal. Sonnet, leyendo a ciegas, no tiene ese sesgo.
+
+3. **Trampa específica detectada: omisión de cláusulas "X o Y".** Si el artículo dice "se aplica a A o B", la opción correcta DEBE incluir ambos. Omitir B estrecha el sujeto. **Nuevo modo de fallo a añadir explícitamente al prompt de generación.**
+
+4. **Paso 9 (post-aplicación) sí funcionó como red de seguridad final.** No detectó nada adicional al recheck pre-transición, pero confirmó que la reparación se aplicó correctamente en BD (no había drift entre el JSON borrador y lo que finalmente queda escrito).
+
+5. **Trazabilidad doble (`claude_code` + `claude_code_recheck`) funcionando**: 15/15 preguntas tienen ambos registros en `ai_verification_results`. Cualquier consulta futura puede ver el rastro completo, no solo el último.
+
+### 5.5 Métricas acumuladas (4 batches)
+
+| Métrica | Acumulado |
+|---|---|
+| Batches ejecutados | 4 |
+| Preguntas generadas y transicionadas | **57** (12 + 15 + 15 + 15) |
+| % éxito en auto-audit (1ª pasada) | 100% (57/57) |
+| % éxito en Sonnet audit (2ª pasada ciega) | **98.3% (56/57)** — 1 defecto real detectado |
+| % coincidencia entre auditorías | 98.3% (1 desacuerdo, adjudicado a favor de Sonnet) |
+| Defectos llegados a producción | **0** (el único defecto fue corregido antes de transicionar) |
+| % éxito en recheck post-aplicación (paso 9) | 100% (15/15 del único batch que lo aplicó) |
+| Leyes con cobertura significativamente mejorada | 4 (Decreto 302/2011: ×4, Ley 12/2014: ×8.5, Ley 6/1990: ×2.07, DL 1/1999: ×1.79) |
+| Temas CARM con impacto medible | T10 (×1.79 duplicado), T11 (+12), T13 (×2.07 duplicado), T16 (+15) |
+
+### 5.6 Batch 5 — DL 1/1999 CARM Hacienda (segunda ronda T10)
+
+**2026-05-25** — Primer batch de tamaño extendido (20 preguntas en vez de 15). 5 batches en total para esta sesión.
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 6 (Art 19 prerrogativas, Art 21 prescripción derechos, Art 37 compromisos plurianuales, Art 51 ordenación pagos, Art 78 operaciones financieras, Art 87 endeudamiento) |
+| Preguntas generadas | 20 (4 + 4 + 4 + 3 + 3 + 2) |
+| Insertadas en draft | 20/20 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 20/20 (100%) |
+| Sonnet audit PERFECT | **17/20** — 3 NEEDS_REVIEW |
+| Adjudicación | #3 rechazado (adaptación gramatical válida a "salvo que"), #13 y #16 reparadas |
+| Reparaciones aplicadas | 2 (#13 sic en blockquote, #16 reformateo a)/b)) |
+| Recheck pre-transición de las 2 reparadas | PERFECT |
+| Transicionadas a `approved` | 20/20 |
+| **Paso 9 v2.1 post-aplicación** | **20/20 PERFECT** (`claude_code_recheck`) |
+| Impacto: DL 1/1999 activas | 34 → 54 (+20, ×1.59) confirmado en API |
+| Impacto: T10 CARM activas | 34 → 54 (+20, ×1.59 acumulado: ×2.84 desde inicio) |
+
+**Hallazgos críticos del batch 5:**
+
+- **#13 (Art 51.1)**: el artículo del BORM contiene un error gramatical original ("competen **al** Dirección General" en lugar de "a la"). El blockquote reproducía el error sin marcarlo. **Reparación**: añadir " *(sic)*" tras "al" para marcar que es fiel al BORM y no error del manual. **Nuevo modo de fallo**: anomalías gramaticales heredadas del texto legal deben marcarse con (sic) para no inducir a confusión al opositor.
+- **#16 (Art 78.1)**: la opción A fusionaba los literales a) y b) del artículo en una sola frase con "o". Aunque incluía ambos contenidos, perdía la estructura tipográfica del artículo. **Reparación**: reformatear como "Mediante: a) ...; b) ..." reproduciendo la estructura del artículo. Es el mismo modo de fallo del batch 4 — confirma que es un patrón recurrente y conviene incluirlo explícitamente en el prompt de generación.
+- **#3 (Art 19.3)**: Sonnet flageó por "inversión gramatical" (pregunta "salvo que" + opción afirmativa). Adjudicación humana: rechazado — es la adaptación natural cuando la pregunta usa "salvo que", no hay error de fondo. Lección: la adjudicación (paso 4 v2.1) **debe hacerse humano/Opus**, no aceptar por defecto el veredicto de Sonnet.
+
+### 5.7 Batch 6 — Ley 6/1990 CARM Archivos (segunda ronda T13)
+
+**2026-05-25** — Sexto batch. Completa la cobertura factible de Ley 6/1990 (arts restantes con contenido sustancial).
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 6 (Art 13 disolución entidades, Art 16 conservación y plan microfilmación, Art 18 responsabilidad propietarios, Art 19 censo, Art 20 difusión y secreto profesional, Art 23 planes edición + recogida) |
+| Preguntas generadas | 10 (1 + 2 + 1 + 2 + 2 + 2) |
+| Insertadas en draft | 10/10 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 10/10 (100%) |
+| Sonnet audit PERFECT | **10/10 (100%)** — 0 defectos |
+| Coincidencia | 100% — 0 desacuerdos |
+| Transicionadas a `approved` | 10/10 |
+| **Paso 9 v2.1 post-aplicación** | **10/10 PERFECT** |
+| Impacto: Ley 6/1990 activas | 29 → 39 (+10, ×1.34) confirmado en API |
+| Impacto: T13 CARM activas | 29 → 39 (×1.34 acumulado: ×2.79 desde inicio) |
+| Cobertura ley | 21/30 arts con preguntas (70% de la ley) |
+
+### 5.8 Batch 7 — Ley 5/2021 Aragón (Organización y Régimen Jurídico del Sector Público Autonómico)
+
+**2026-05-25** — **Primer batch fuera de CARM.** Disparador: feedback de Isabel B (premium DGA Aragón) reportando que T5 no cubría la Ley 5/2021. Reparación previa al batch: crear la ley en BD (158 arts via `sync-all` del BOE-A-2021-12701) + añadirla al `topic_scope` de T5 Aragón + añadir Ley 1/2009 Consejo Consultivo como bonus.
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 5 (Art 2 ámbito subjetivo, Art 70 principios organizativos, Art 71 órganos superiores/directivos, Art 85 sector público institucional, Art 94 personalidad jurídica) |
+| Preguntas generadas | 15 (4 + 2 + 3 + 3 + 3) |
+| Insertadas en draft | 15/15 |
+| Dedup colisiones | 0 (ley recién creada, 0 preguntas existentes) |
+| Auto-audit PERFECT | 15/15 (100%) |
+| **Sonnet ciego pre-aplicación PERFECT** | **15/15 (100%, alta confianza)** |
+| Coincidencia auto vs Sonnet pre | 100% (0 desacuerdos) |
+| Transicionadas a `approved` (1ª ronda) | 15/15 |
+| **Sonnet nuevo post-aplicación (paso 9)** | **14/15 PERFECT + 1 NEEDS_REVIEW (Q15)** con confianza media |
+| Reparación tras hallazgo paso 9 | Q15 ampliada → recheck PERFECT |
+| Impacto: Ley 5/2021 activas | 0 → 15 (ley creada en este batch) |
+| Impacto: T5 Aragón activas | 11 → **73** confirmado vía API |
+
+**Hallazgo crítico del batch 7 — pregunta Q15 (Art 70):**
+
+La opción correcta original era: *"División funcional en departamentos y gestión territorial mediante delegaciones territoriales de ámbito provincial."* El artículo 70 dice: *"...se organizará de acuerdo con los principios de división funcional en departamentos y gestión territorial mediante delegaciones territoriales de ámbito provincial, **así como otros órganos o unidades administrativas de ámbito provincial, supracomarcal, comarcal o local** que se creen de acuerdo con lo establecido en esta ley."*
+
+- Mi auto-audit (claude_code): PERFECT, alta confianza — interpreté que los "principios" eran solo dos.
+- Sonnet ciego pre-aplicación (claude_code): PERFECT, alta confianza — mismo sesgo gramatical.
+- **Sonnet nuevo post-aplicación (claude_code_recheck): NEEDS_REVIEW, confianza media** — detectó que la cláusula "así como C" cuelga del mismo predicado "principios de" y la opción correcta la truncaba.
+- Adjudicación humana (manual §2.4): Sonnet del paso 9 tiene razón → reparar opción B con cláusula completa.
+- Recheck con Sonnet aún más nuevo: PERFECT.
+
+**Lecciones del batch 7 (lecciones únicas, no repetidas de batches anteriores):**
+
+1. **Los Sonnets pre-aplicación pueden converger en el mismo sesgo del generador.** En 4 batches anteriores que aplicaron paso 9 (4, 5, 6), éste solo había confirmado persistencia. Aquí destapó un defecto real que las dos pasadas pre-transición habían dejado pasar con alta confianza. **El paso 9 deja de ser solo "verificación de drift BD" y se promueve a tercer auditor independiente.**
+
+2. **Patrón gramatical más sutil que "X o Y"**: cláusulas coordinadas por **"así como"** (y por extensión "junto con", "además de"). El batch 4 documentó la regla para "X o Y"; este batch confirma que se extiende a cualquier coordinación que cuelgue del mismo predicado. **Bajo ambigüedad de alcance gramatical, la regla es incluir.**
+
+3. **Repetibilidad fuera de CARM confirmada.** Es el primer batch sobre una comunidad autónoma distinta de Murcia. Resultado idéntico a los CARM (workflow opera igual, métricas comparables). La hipótesis de generalizabilidad del manual queda validada empíricamente.
+
+4. **Reparación previa de catálogo posible en flujo único.** El usuario reportó "falta la ley X". En la misma sesión: crear ley en BD (sync-all desde BOE) + topic_scope + batch piloto de preguntas. El bucle "queja → reparación visible para el usuario" se cierra en una sola pasada.
+
+### 5.9 Métricas acumuladas (7 batches)
+
+| Métrica | Acumulado |
+|---|---|
+| Batches ejecutados | 7 |
+| Preguntas generadas y transicionadas | **102** (12 + 15 + 15 + 15 + 20 + 10 + 15) |
+| % éxito en auto-audit (1ª pasada) | 100% (102/102) |
+| % éxito en Sonnet audit (2ª pasada ciega, pre-aplicación) | **96.1% (98/102)** — 4 defectos detectados (3 reparados, 1 adjudicado válido) |
+| % éxito en Sonnet nuevo post-aplicación (paso 9) | **98.3% (59/60)** — 1 defecto adicional atrapado en batch 7 que las dos pasadas anteriores dejaron pasar |
+| Defectos llegados a producción | **0** |
+| Trazabilidad `claude_code` + `claude_code_recheck` | 60/102 (batches 4, 5, 6, 7) |
+| Leyes con cobertura significativamente mejorada | 5 (CARM: Decreto 302/2011, Ley 12/2014, Ley 6/1990, DL 1/1999) + (Aragón: Ley 5/2021 nueva) |
+| Temas con impacto acumulado | T10 CARM ×2.84 (19→54), T11 CARM +12 (309→321), T13 CARM ×2.79 (14→39), T16 CARM +15 (1011→1026), **T5 Aragón ×6.6 (11→73)** |
+
+### 5.10 Batch 8 — LO 4/1982 CARM Estatuto de Autonomía Murcia (T2)
+
+**2026-05-25** — Octavo batch. Primera ley **constitucional autonómica** (Estatuto de Autonomía como Ley Orgánica), estilo numeración "Uno", "Dos" característico de los Estatutos de los años 80. Tag BD: `batch7_lo_4_1982_t2`.
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados | 10 (Art 34 organización judicial, Art 35 competencia órdenes, Art 36 Presidente TSJ, Art 39 Administración de Justicia, Art 41 patrimonio, Art 42 Hacienda CARM, Art 43 administración tributos, Art 44 reclamaciones tributarias, Art 46 Presupuesto, Art 48 instituciones crédito) |
+| Preguntas generadas | 18 (2+2+1+2+2+2+1+2+2+2) |
+| Insertadas en draft | 18/18 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 18/18 (100%) |
+| Sonnet ciego pre-aplicación PERFECT | **16/18** — 2 NEEDS_REVIEW |
+| Adjudicación | #8 reparada (añadir "y acciones" en letra a del Art 41.Uno); #17 rechazada (cita parcial de apartado válida cuando la pregunta acota explícitamente el contenido) |
+| Reparaciones | 1 (#8 Art 41.Uno) |
+| Transicionadas a `approved` | 18/18 |
+| **Paso 9 v2.1 post-aplicación** | **18/18 PERFECT** (`claude_code_recheck`) — reparación confirmada |
+| Impacto: LO 4/1982 activas en T2 | 35 → 53 BD raw (+18); API: 35 → 51 (drift normal) |
+
+**Hallazgo del batch 8 — Q#8 (Art 41.Uno letra a):**
+
+La opción correcta omitía "y acciones" en la enumeración "Los bienes, derechos **y acciones** pertenecientes al Ente Preautonómico y a la Diputación Provincial". Detectado por Sonnet pre-aplicación; mi auto-audit no lo vio. Es el **modo de fallo "lista tripartita reducida a binaria"** — variante del "X o Y" del batch 4, ahora con tres elementos en lugar de dos.
+
+**Lecciones del batch 8:**
+
+1. **Listas de 3+ elementos tasados merecen verificación token a token.** El sesgo del generador con listas tasadas no es exclusivo de pares "X o Y": cualquier coordinación enumerativa (X, Y **y** Z) puede sufrir omisión silenciosa. Extender la regla del batch 4 a listas tripartitas en adelante.
+
+2. **Rechazar veredictos NEEDS_REVIEW formalistas con adjudicación humana.** Sonnet flageó #17 por "cita parcial del apartado Uno"; pero la pregunta acotaba explícitamente "primer párrafo". No hay defecto material — Sonnet a veces es excesivamente conservador. La adjudicación humana del paso 4 v2.1 es necesaria.
+
+3. **Estatutos de Autonomía (años 80) preservar estilo numeración original.** "Uno", "Dos" en lugar de "1.", "2." aparece en LO 4/1982 (y en todos los Estatutos pre-1985). Mantener literal — es parte del texto vigente que el opositor estudia.
+
+### 5.11 Batch 9 — Ley 6/2004 + Ley 7/2004 CARM (T3 Presidente y Consejo + Organización Admin)
+
+**2026-05-25** — Noveno batch. **Doble ley en un solo batch** — primera vez que un batch toca dos leyes distintas (T3 CARM combina Ley 6/2004 del Estatuto del Presidente con Ley 7/2004 de Organización Administrativa). Sexta tipología (leyes orgánicas internas del gobierno autonómico: composición, cese, debates parlamentarios, potestad reglamentaria, organización departamental, contratación). Tag BD: `batch8_t3_carm`.
+
+| Métrica | Resultado |
+|---|---|
+| Artículos seleccionados Ley 6/2004 | 7 (Art 6 delegación, Art 10 incompatibilidad, Art 20 efectos cese, Art 29 cese Consejo, Art 40 debates, Art 46 iniciativa legislativa, Art 52 potestad reglamentaria) → 10 preguntas |
+| Artículos seleccionados Ley 7/2004 | 6 (Art 2 personalidad jurídica, Art 6 convenios, Art 13 estructura Consejerías, Art 24 órganos colegiados, Art 35 órganos contratación, Art 40 organismos públicos) → 10 preguntas |
+| Preguntas generadas | 20 |
+| Insertadas en draft | 20/20 |
+| Dedup colisiones | 0 |
+| Auto-audit PERFECT | 20/20 (100%) |
+| **Sonnet ciego pre-aplicación PERFECT** | **20/20 (100%)** — 2 notas menores autodescartadas por Sonnet tras revisión |
+| Coincidencia auto vs Sonnet | 100% (0 desacuerdos confirmados) |
+| Transicionadas a `approved` | 20/20 |
+| **Paso 9 v2.1 post-aplicación** | **20/20 PERFECT** (`claude_code_recheck`) |
+| Impacto: Ley 6/2004 activas en T3 | 35 → 45 BD raw (+10) |
+| Impacto: Ley 7/2004 activas en T3 | 29 → 39 BD raw (+10) |
+| Impacto: T3 CARM activas | 71 → 93 BD raw (+22); API: 71 → 86 (drift normal) |
+
+**Lecciones del batch 9:**
+
+1. **Doble ley en batch único viable** cuando ambas pertenecen al mismo tema y comparten texturas (en este caso, leyes orgánicas autonómicas, estructura paralela: composición + funciones + procedimientos). No hay penalty operativo por mezclar leyes en un mismo batch siempre que el tag y el seguimiento estén claros.
+
+2. **Sonnet con autorrevisión: no todo NEEDS_REVIEW inicial sobrevive a su propia segunda lectura.** En este batch Sonnet flageó 2 puntos y los descartó él mismo al ampliar el análisis. Modo de funcionamiento útil — no hay que reaccionar mecánicamente al primer flag; leer el razonamiento completo del agente.
+
+3. **Listas tasadas en leyes orgánicas autonómicas son densas** (Art 13 Ley 7/2004: 4 órganos directivos por Consejería; Art 24: 3 categorías de competencias; Art 40.2: 4 letras de contenido mínimo de ley de creación). Disciplina con la enumeración completa = clave del 100% directo.
+
+### 5.12 Métricas acumuladas (9 batches)
+
+| Métrica | Acumulado |
+|---|---|
+| Batches ejecutados | 9 |
+| Preguntas generadas y transicionadas | **140** (12 + 15 + 15 + 15 + 20 + 10 + 15 + 18 + 20) |
+| % éxito en auto-audit (1ª pasada) | 100% (140/140) |
+| % éxito en Sonnet audit (2ª pasada ciega, pre-aplicación) | **95% (133/140)** — 7 defectos detectados (5 reparados, 2 adjudicados válidos) |
+| % éxito en Sonnet nuevo post-aplicación (paso 9) | **98.9% (97/98)** — 1 defecto adicional atrapado solo en batch 7 |
+| Defectos llegados a producción | **0** |
+| Trazabilidad `claude_code` + `claude_code_recheck` | 98/140 (batches 4, 5, 6, 7, 8, 9) |
+| Leyes con cobertura mejorada | **7** (CARM: Decreto 302/2011, Ley 12/2014, Ley 6/1990, DL 1/1999, **LO 4/1982**, **Ley 6/2004**, **Ley 7/2004**) + Aragón: Ley 5/2021 |
+| Temas con impacto acumulado | **T2 CARM +18 (35→53)**, **T3 CARM +22 (71→93)**, T10 CARM ×2.84 (19→54), T11 CARM +12, T13 CARM ×2.79 (14→39), T16 CARM +15, T5 Aragón ×6.6 |
+
+**Resultado para CARM (8 batches, 138 preguntas)**: tras esta sesión, **todos los temas autonómicos puros** con cobertura legislativa (no informática) han pasado a cobertura digna:
+
+- T2 Estatuto Murcia: 35 → 53 BD (+51% incremento)
+- T3 Presidente/Consejo: 71 → 93 BD (+31%)
+- T10 Hacienda Murcia: 19 → 54 BD (+184%)
+- T11 Admin electrónica: 309 → 321 (+4%, ya tenía base estatal)
+- T13 Archivos Murcia: 14 → 39 BD (+179%)
+- T16 Igualdad/Transparencia: 1011 → 1026 (+1%, ya tenía mucha base estatal)
+
+**Pendientes para CARM** (no factibles con IA-gen del workflow actual):
+- T17 PowerPoint 2016, T18 Excel 2016, T20 Word 2016 — informática, requiere otro enfoque (scraping o generación con captura de pantalla).
+
+**Modos de fallo detectados (3 distintos, todos en §3.2 "options_ok"):**
+1. **Omisión de cláusulas "X o Y"** (batches 4 y 5): la opción correcta no incluye todas las alternativas tasadas.
+2. **Anomalía gramatical heredada del BORM** (batch 5): blockquote reproduce error original sin marcar (lección: `(sic)`).
+3. **Listas tripartitas reducidas a binarias** (batch 8): omisión silenciosa de un tercer elemento (caso "bienes, derechos y acciones" → "bienes y derechos"). Variante del modo de fallo 1 extendida a listas de 3+ elementos.
+
+Además del modo de fallo del batch 7 ya documentado: **cláusulas coordinadas por "así como"** que cuelgan del mismo predicado (variante sutil de "X o Y").
+
+**Conclusión tras 9 batches**: el workflow IA-gen es **estable, robusto y aplicable a múltiples tipologías de ley**:
+- Decretos técnicos (302/2011 CARM)
+- Leyes definicionales/transparencia (12/2014 CARM)
+- Leyes históricas (6/1990 CARM)
+- Leyes presupuestarias (DL 1/1999 CARM)
+- Leyes orgánicas autonómicas (5/2021 Aragón)
+- Estatutos de Autonomía constitucionales (LO 4/1982 CARM)
+
+### 5.13 Batch 10 — Easy win T3 CARM (Ley 6/2004 + Ley 7/2004)
+
+**2026-05-25** — Décimo batch. **Mini-batch** de 7 preguntas para alcanzar umbral 100q en T3 (estaba en 93). Tag: `batch10_t3_ge100`.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas generadas | 7 (3 Ley 6/2004 + 4 Ley 7/2004) |
+| Auto-audit + Sonnet ciego pre-app | 7/7 PERFECT (100%, 0 desacuerdos) |
+| Paso 9 post-app | 7/7 PERFECT |
+| T3 BD raw | 93 → **100 ✓** (umbral alcanzado) |
+
+### 5.14 Batch 11 — T10 DL 1/1999 r3 (camino hacia 100)
+
+**2026-05-25** — 18 preguntas en 6 arts no cubiertos (Arts 18, 23, 38, 44, 53, 55). Tag: `batch11_t10_dl1999_r3`.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas generadas | 18 |
+| Auto-audit | 18/18 PERFECT |
+| Sonnet ciego pre-app | **17/18 PERFECT + 1 sospecha** (#15 Art 53.5) |
+| Adjudicación #15 | Aceptada PERFECT — la pregunta es fiel al `article_content` de BD; la sospecha es sobre posible errata de transcripción del BORM oficial (`reparto` vs `reparo`), defecto de la fuente |
+| Paso 9 post-app | 17/18 PERFECT (#15 confirma sospecha sin invalidar la pregunta) |
+| T10 BD raw | 54 → 72 |
+
+**Hallazgo crítico — NUEVO modo de fallo identificado: errata en `article_content` BD.** Sonnet detectó que el texto del artículo almacenado en BD dice "aprobación o **reparto** de la cuenta rendida", pero el término técnico-jurídico correcto en derecho presupuestario español es "**reparo**" (objeción de la Intervención al documento contable). La pregunta y su explicación replican fielmente lo que está en BD; el defecto no es de la generación IA sino del texto fuente. **Acción registrada para revisión posterior del catálogo de leyes (no acción inmediata sobre la pregunta).**
+
+### 5.15 Batch 12 — T10 DL 1/1999 r4 (superar 100)
+
+**2026-05-25** — 15 preguntas en 7 arts (Arts 20, 24, 39, 40, 49, 74, 79). Tag: `batch12_t10_dl1999_r4`.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas generadas | 15 |
+| Auto-audit + Sonnet ciego pre-app | **15/15 PERFECT directo (100%, 0 desacuerdos)** |
+| Paso 9 post-app | (pendiente al cerrar esta sección) |
+| T10 BD raw | 72 → **100 ✓** (umbral alcanzado) |
+
+Cifras numéricas críticas verificadas en este batch: 25% (interés demora tributarias Art 20.3), 15% (desembolso inicial bienes inmuebles Art 39.3), 5%/10% (organismos administrativos/comerciales Art 40.2), 4 anualidades, 20 años (depósitos abandonados Art 79.4).
+
+### 5.16 Batch 13 — T2 LO 4/1982 r2 (techo natural)
+
+**2026-05-25** — 7 preguntas en 4 arts cortos restantes (37, 45, 47, 49). Tag: `batch13_lo_4_1982_t2_r2`. **Confirma techo natural** del scope T2.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas generadas | 7 (máximo factible dado el scope restante: arts 37 359c, 45 432c, 47 670c, 49 593c) |
+| Auto-audit + Sonnet ciego pre-app | **7/7 PERFECT directo** |
+| Paso 9 post-app | (pendiente al cerrar esta sección) |
+| T2 BD raw | 53 → **60** |
+| **Techo natural T2** | **60q (scope solo cubre arts 20-55; quedan 0 arts sin pregs con >=300c)** |
+
+**Conclusión sobre T2:** el epígrafe oficial CARM cubre solo el Título II (órganos institucionales + régimen jurídico + reforma del Estatuto = arts 20-55). El Título I (territorio, símbolos, derechos, competencias) corresponde a otros temas. Para llegar a 100q en T2 con la fuente actual habría que generar redundancia controlada sobre arts ya cubiertos (riesgo: aburrir al usuario). **Aceptar 60q como techo realista** para T2.
+
+### 5.17 Métricas acumuladas (13 batches)
+
+| Métrica | Acumulado |
+|---|---|
+| Batches ejecutados | 13 |
+| Preguntas generadas y transicionadas | **187** (12+15+15+15+20+10+15+18+20+7+18+15+7) |
+| % éxito en auto-audit (1ª pasada) | 100% (187/187) |
+| % éxito en Sonnet audit (2ª pasada ciega, pre-aplicación) | **95.7% (179/187)** — 8 defectos: 5 reparados, 2 adjudicados válidos, 1 sospecha BD (#15 batch 11) |
+| % éxito en paso 9 post-aplicación | **99.1% (113/114)** — el caso #15 batch 11 confirma sospecha BD pero no requiere acción sobre pregunta |
+| Defectos llegados a producción | **0** |
+| Leyes con cobertura mejorada | 7 CARM + 1 Aragón |
+
+**Estado final CARM (umbral 100q) tras 13 batches:**
+
+| Tema | Antes (1ª sesión) | Ahora BD | Umbral 100q | Estado |
+|---|---|---|---|---|
+| T2 Estatuto Murcia | 35 | **60** | 100 | ⚠️ Techo natural (scope arts 20-55 saturado) |
+| T3 Presidente/Consejo | 71 | **100** ✓ | 100 | **✓ Alcanzado** |
+| T10 Hacienda Murcia | 19 | **100** ✓ | 100 | **✓ Alcanzado** |
+| T11 Admin electrónica | 309 | 321 | 100 | ✓ Ya superado |
+| T13 Archivos Murcia | 14 | 39 | 100 | ⚠️ Saturada (ley 30 arts, 21 cubiertos al 70%) |
+| T16 Igualdad/Transparencia | 1011 | 1026 | 100 | ✓ Ya superado |
+| T17 PowerPoint | 50 | 50 | 100 | ❌ Informática, requiere otro flujo |
+| T18 Excel | 92 | 92 | 100 | ❌ Informática |
+| T20 Word | 93 | 93 | 100 | ❌ Informática |
+
+**Modos de fallo detectados (4 distintos, todos en §3.2 "options_ok" salvo el #4):**
+1. **Omisión de cláusulas "X o Y"** (batches 4 y 5)
+2. **Anomalía gramatical heredada del BORM** (batch 5): solución `(sic)`
+3. **Listas tripartitas reducidas a binarias** (batch 8): caso "bienes, derechos y acciones"
+4. **Cláusulas coordinadas por "así como"** (batch 7 Aragón Q15)
+5. **Errata en `article_content` BD vs BORM oficial** (batch 11 #15): la pregunta es fiel a la fuente; defecto es de la base de datos, no de la generación. Acción: registrar para revisión posterior del catálogo de leyes.
+
+**Lecciones nuevas v1.8:**
+
+1. **Techo natural del scope.** Cuando los artículos del scope con contenido sustancial se agotan, no insistir generando redundancia controlada. Mejor aceptar el techo y documentar. Caso T2 (60q vs 100q objetivo): el scope cubre solo arts 20-55, queda saturado, y el resto del Estatuto (arts 1-19) corresponde a otros temas.
+
+2. **Saturación de ley pequeña.** Cuando la ley tiene pocos artículos (Ley 6/1990 Archivos: 30 arts), el techo es bajo por construcción. Aceptar y planificar contenido complementario por otros medios.
+
+3. **Audit Sonnet puede detectar errores de la fuente, no de la generación.** Caso batch 11 #15: Sonnet sospechó "reparto/reparo" y el error es del `article_content` de BD (posible errata de digitalización), no de la generación IA. Reconocer este modo de fallo como **señalamiento útil** que activa revisión del catálogo aunque la pregunta sea válida.
+
+4. **Mini-batches (7-10 preg) son tan robustos como batches grandes** (15-20). El batch 10 con solo 7 preg cerró T3 sobre 100 con 100% éxito directo. Útiles para "easy wins" cuando faltan pocas preguntas para alcanzar un objetivo.
+
+**Pendientes para CARM (decisión consciente):**
+
+- **T13 Archivos Murcia:** saturada (39q/100 con la Ley 6/1990 de solo 30 arts). Llegar a 100 implicaría redundancia. **Reconsiderado en v1.9**: redundancia controlada SÍ es viable (ver §2.6 + sección 5.18 piloto). Estimación: con +2 preg por art ya cubierto con enfoques distintos, T13 puede llegar a ~80-85q. NO se aplicó aún en esta sesión.
+- **T17/T18/T20 informáticos:** el workflow IA-gen del manual §1 explícitamente NO aplica (no hay "artículo literal"). Requieren scraping OpositaTest/TuTestDigital o generación con capturas de pantalla. Pendiente otro flujo.
+
+### 5.18 Piloto redundancia controlada — Art 42 LO 4/1982 (validación del patrón v1.9)
+
+**2026-05-25** — Piloto de 3 preguntas sobre el mismo artículo (Art 42 LO 4/1982, Hacienda CARM, 10 letras a-j) que ya contaba con 2 preguntas existentes (batch 7). Objetivo: validar si el "techo natural" se puede superar generando preguntas adicionales con mecanismos cognitivos distintos.
+
+| Métrica | Resultado |
+|---|---|
+| Existentes en Art 42 | 2 (intruso D + reconocimiento letra e) |
+| Nuevas generadas | 3 (camino inverso letra f + cláusula residual j + distinción conceptual recargos d) |
+| Dedup nivel 1 (Jaccard pregunta nuevas vs existentes) | 30-38% (lejos de 50% umbral) ✓ |
+| Dedup nivel 2 (entre nuevas) | 38-43% (esperable por contexto compartido) ✓ |
+| Dedup nivel 3 (opciones correctas nuevas vs todas opciones existentes) | **0 alertas** ✓ |
+| Auto-audit + Sonnet ciego pre-app | 3/3 PERFECT |
+| Evaluación de redundancia por Sonnet | 2/3 valor pedagógico ALTO + 1/3 MEDIO (N4 cláusula residual repite mecanismo de existente E2, aunque sobre letra distinta) |
+| Paso 9 post-app | 3/3 PERFECT |
+| Art 42 LO 4/1982 activas | 2 → **5** |
+
+**Veredicto Sonnet**: patrón VIABLE. Se confirma que:
+1. La diversificación por mecanismo cognitivo (intruso / camino inverso / distinción conceptual / cláusula residual / reconocimiento literal) genera preguntas no solapadas aunque compartan artículo.
+2. El dedup nivel 3 (opciones correctas vs opciones existentes) es el detector crítico de solapamiento real.
+3. Hay límite: artículos con ≥5 ítems admiten 4-5 preguntas; estructuras simples (2-3 ítems) saturan a 2.
+
+### 5.19 Cobertura intensiva Ley 5/2021 Aragón — 7 batches consecutivos (b2-b8, v1.10)
+
+**2026-05-25** — Continuación del batch 7 (sesión 5.8). Disparador: feedback Isabel (premium DGA Aragón) — la reparación inicial añadió 15 preguntas, pero solo el ~18% del scope T5 (5 arts de 83 relevantes). Decisión consciente: cobertura digna requiere serie de 7 batches consecutivos. **Primer caso documentado de escalabilidad masiva sobre una única ley grande.**
+
+**Paso 0bis previo (v1.10)**: restringir `topic_scope` T5 Aragón a arts 1-8 + 70-144 (núcleo del epígrafe); añadir bloques de procedimiento a T6/T7/T8. Sin esto, los batches sucesivos hubieran contaminado T5 con arts de procedimiento.
+
+| Batch | Bloque ley | Arts | Q | Sonnet pre-app | Paso 9 | Reparaciones |
+|---|---|---|---|---|---|---|
+| b2 | Preliminar (1, 3-8) | 7 | 14 | **13/14** (Sonnet ciego atrapó Q13) | 14/14 PERFECT | 1 (cláusula "así como" Art 3.4) |
+| b3 | Título III pt1 (72-78) | 7 | 15 | 15/15 PERFECT | 15/15 PERFECT | 0 |
+| b4 | Título III pt2 (79-84) | 6 | 15 | 15/15 PERFECT | 15/15 PERFECT | 0 |
+| b5 | Título IV intro (86-93) | 8 | 15 | 15/15 PERFECT | **14/15** (Sonnet paso 9 atrapó Q15) | **1 (drift en ENUNCIADO Art 92 — modo de fallo NUEVO)** |
+| b6 | Título IV OOAA (95-103) | 9 | 15 | 15/15 PERFECT | 15/15 PERFECT | 0 |
+| b7 | Título IV EDP+sociedades (104-117) | 14 | 15 | 15/15 PERFECT | 15/15 PERFECT | 0 |
+| b8 | Título IV consorcios+fund (120-142) | 13 | 15 | 15/15 PERFECT | 15/15 PERFECT | 0 |
+| **Total b2-b8** | **64 arts** | **104** | **103/104 (99.0%)** | **103/104 (99.0%)** | **2 reparaciones** |
+
+**Sumado al batch 7 inicial (5.8)**: **8 batches totales sobre Ley 5/2021 — 119 preguntas activas en una sola ley.**
+
+**Impacto medible:**
+- Ley 5/2021 activas: 0 → **119** (creación de ley nueva en sesión + 8 batches).
+- T5 DGA Aragón vía API: 11 → **177** (×16 cobertura).
+- Cobertura cross-tema preparada: T6/T7/T8 también reciben arts de la Ley 5/2021 cuando batches futuros generen sobre arts 9-69 + 145-158.
+
+**Hallazgo crítico v1.10 — b5 Q15 (Art 92): drift en ENUNCIADO no en opción correcta**
+
+Es el primer caso documentado en el manual de un defecto en el **enunciado** de la pregunta (no en la opción correcta ni en la explicación). El enunciado original decía:
+
+> *"Conforme al artículo 92 de la Ley 5/2021 de Aragón, son organismos públicos autonómicos los creados para la realización de **actividades administrativas y de contenido económico reservadas** a las administraciones públicas, así como la supervisión o regulación de sectores económicos, y cuyas características justifiquen su organización en régimen de:"*
+
+El artículo 92 dice realmente:
+
+> *"…actividades administrativas, **sean de fomento, prestación o de gestión de servicios públicos o de producción de bienes de interés público susceptibles de contraprestación**; actividades de contenido económico reservadas a las administraciones públicas, así como la supervisión o regulación de sectores económicos, y cuyas características justifiquen su organización en régimen de descentralización funcional o de independencia."*
+
+El enunciado había hecho un **sumario libre** del artículo omitiendo el bloque "sean de fomento, prestación o de gestión de servicios públicos o de producción de bienes de interés público susceptibles de contraprestación". La opción correcta (descentralización funcional o independencia) y la explicación estaban impecables.
+
+- Mi auto-audit: PERFECT.
+- Sonnet ciego pre-aplicación: PERFECT, alta confianza.
+- **Sonnet nuevo post-aplicación (paso 9): NEEDS_REVIEW** — detectó la condensación libre del enunciado.
+
+Reparación: ampliar el enunciado incluyendo la enumeración completa entre paréntesis. Recheck PERFECT.
+
+**Modo de fallo nuevo (v1.10): "sumario libre del artículo en el enunciado"** — añadido al §2.2 con regla operativa: si el enunciado menciona "según el artículo X", lo que diga sobre X debe ser cita literal o usar elipsis explícita; nunca resumir.
+
+**Lecciones del lote b2-b8:**
+
+1. **El paso 9 atrapa defectos en el enunciado, no solo en la opción correcta o explicación.** Las 4 columnas que el manual verificaba hasta v1.9 (article_ok, answer_ok, options_ok, explanation_ok) no cubrían el enunciado. v1.10 añade `question_text_ok` como 5º check.
+
+2. **Escalabilidad en serie sobre una sola ley confirmada.** 7 batches consecutivos sin pérdida de calidad. Métricas casi idénticas a las de batches sobre leyes distintas (99% PERFECT primera pasada vs 95.7% acumulado del manual). El factor determinante no es "ley distinta cada batch" sino "calidad del scope inicial + disciplina del workflow".
+
+3. **Reparar el `topic_scope` antes de batchear es paso preparatorio crítico.** Sin restricción explícita de article_numbers, los arts de procedimiento de la Ley 5/2021 hubieran contaminado T5. Paso 0bis nuevo (v1.10).
+
+4. **Cobertura cross-TEMA dentro de la misma oposición es criterio de priorización tan válido como cross-OPOSICIÓN.** Una ley grande con secciones temáticamente distintas puede servir a 3-4 temas de la misma oposición. Lo añadí a §1.bis.
+
+5. **Sesgo convergente entre 2 Sonnets pre-aplicación: recurrencia ~2%.** En 104 preguntas del lote, 2 defectos atrapados solo por Sonnet del paso 9 (b2 Q13 cláusula "así como" + b5 Q15 drift enunciado). El manual v1.6 documentó el primer caso (batch 7); v1.10 confirma que el patrón es estable y justifica que el paso 9 sea obligatorio.
+
+### 5.20 Métricas acumuladas (29 batches, v2.3)
+
+| Métrica | Acumulado |
+|---|---|
+| Batches ejecutados | **29** (22 manual + 7 lote Aragón b2-b8) |
+| Preguntas generadas y transicionadas | **388** (284 manual + 104 lote Aragón) |
+| % éxito en auto-audit (1ª pasada) | 100% (388/388) |
+| % éxito en Sonnet audit pre-aplicación | **94.8% (368/388)** — 20 NEEDS_REVIEW detectados (11 reparados, 7 adjudicados válidos, **2 retirados** — batch 16 Art 20 intruso en art escueto + batch 18 Art 13 correcta-en-correcta-existente) |
+| % éxito en paso 9 post-aplicación | **99.3% (287/289)** — 2 defectos adicionales solo en paso 9 (b5 Aragón Q15 drift enunciado) |
+| Defectos llegados a producción | **0** |
+| Leyes con cobertura mejorada | **8** (CARM: Decreto 302/2011, Ley 12/2014, **Ley 6/1990 (96 activas)**, DL 1/1999, **LO 4/1982 (102 activas)**, Ley 6/2004, Ley 7/2004) + Aragón: Ley 5/2021 (119q en una ley) |
+| Temas con impacto acumulado | T2/T3/T10/T11/T13/T16 CARM (**T2: 35→100 ×2.9**, **T13: 14→96 ×6.9 en 6 batches sobre una sola ley monotemática**) + T5 Aragón ×16 (11→177) + T6/T7/T8 Aragón preparados |
+| **Hitos** | **T2 CARM = 100q exactas** (batches 8+13+15+16); **T13 CARM = 96q tras 6 batches consecutivos** (batches 3+17+18+19+20+21+22), techo natural realista alcanzado |
+
+**Modos de fallo detectados (6 distintos, v1.10 amplía a 6):**
+1. Omisión de cláusulas "X o Y" (batch 4, 5)
+2. Anomalía gramatical heredada del BORM → `(sic)` (batch 5)
+3. Listas tripartitas reducidas a binarias (batch 8)
+4. Cláusulas coordinadas por "así como" / "junto con" / "además de" (batch 7 + b2 Aragón)
+5. Errata en `article_content` BD vs BORM oficial (batch 11)
+6. **Drift en el enunciado por sumario libre del artículo (b5 Aragón Q15 — v1.10)**: no en options_ok ni explanation_ok, sino en el question_text. Detectado solo por paso 9.
+
+**Conclusión tras 21 batches**: el workflow IA-gen es **estable, robusto y escalable**. Las claves del 100% post-reparación sostenido son:
+- 5 checks de fidelidad al artículo (article + answer + options + explanation + **question_text v1.10**).
+- Paso 0bis para reparar topic_scope antes de batchear.
+- Auditoría doble ciega + paso 9 como tercer auditor independiente.
+- Adjudicación humana ante discrepancias (no aceptar Sonnet por defecto).
+- Cross-oposición + cross-tema para maximizar el ROI por pregunta.
+
+**Lecciones nuevas v1.9 derivadas del piloto:**
+
+1. **El "techo natural" del scope NO es definitivo.** Se puede superar con redundancia controlada bajo condiciones (ver §2.6). Re-evaluar T2 y T13 (antes considerados saturados): el techo realista sube de 60→90 (T2) y de 39→80 (T13) si se aplica el patrón.
+
+2. **Cross-oposición es criterio de priorización**: antes de invertir tiempo en ampliar una ley, verificar `topic_scope` para identificar oposiciones que se benefician (§1.bis nueva). Caso real: LO 4/1982 beneficia a CARM Aux Admin + TCAE Murcia automáticamente; Ley 6/1990 Archivos solo a CARM Aux Admin.
+
+3. **Dedup nivel 3 (opciones correctas) es nuevo check añadido al workflow** (§2.6). Sin él, dos preguntas con enunciados distintos pero misma respuesta pasarían como "nuevas" cuando en realidad evalúan el mismo conocimiento.
+
+4. **Evaluación de redundancia en auditoría Sonnet**: al hacer paso 9 sobre batches de redundancia, añadir al prompt el bloque "Para cada nueva, evalúa: (1) enfoque distinto SÍ/NO; (2) respuesta correcta solapa SÍ/NO; (3) valor pedagógico ALTO/MEDIO/BAJO/REDUNDANTE". Sin esto, la auditoría solo evalúa calidad técnica pero no aporta señal de saturación.
+
+El defecto medio detectado es **~5% pre-aplicación** (todos reparados antes de producción). El paso 9 post-aplicación captura adicionalmente ~1% que las dos pasadas pre-transición pueden dejar pasar (caso batch 7). **0 defectos llegados a producción en 140 preguntas activas.**
+
+**Modos de fallo detectados (2 distintos, ambos en §3.2 "options_ok"):**
+1. **Omisión de cláusulas "X o Y"** (batches 4 y 5): la opción correcta no incluye todas las alternativas tasadas del artículo. *Lección*: añadir al prompt regla explícita anti-omisión y verificar token a token.
+2. **Anomalía gramatical heredada del BORM** (batch 5): blockquote reproduce error original sin marcar. *Lección*: usar "(sic)" cuando el texto legal tenga errores tipográficos/gramaticales.
+
+**Conclusión tras 6 batches**: el workflow es **operacional y escalable**. Las claves del 100% post-reparación sostenido son:
+- Auditoría doble verdaderamente ciega (Sonnet sin contexto del generador).
+- Adjudicación humana cuando hay discrepancia (paso 4 v2.1) — no aceptar Sonnet por defecto.
+- Reparación + recheck pre-transición.
+- Paso 9 post-aplicación como red de seguridad final.
+
+**Cache y verificación post-batch (lección operativa)**: tras invalidar `test-counts`/`laws`/`questions` + purgar páginas ISR, **la API puede tardar ~1-2 min en propagar el conteo nuevo** debido a caches intermedios (Vercel CDN). Para verificación inmediata usar header `Cache-Control: no-cache` + parámetro anti-cache (`?_t=$(date +%s)`):
+
+```bash
+curl -sS -H "Cache-Control: no-cache" \
+  "https://www.vence.es/api/topics/N?oposicion=slug&userId=ID&_t=$(date +%s)"
+```
+
+Sin el bypass, la API puede seguir devolviendo el valor antiguo durante un período corto. No es defecto del flujo — es propagación normal de cache.
+
+**Conclusión tras 4 batches**: el workflow es **robusto** y la auditoría doble es **necesaria** (no formalismo). El batch 4 demostró en producción que:
+- El generador puede pasar por alto omisiones sustantivas (caso real, no hipotético).
+- La auditoría ciega del Sonnet sí las detecta.
+- La reparación + recheck cierra el bucle limpiamente.
+- El paso 9 (post-aplicación) no detectó defectos adicionales pero confirmó que la reparación se persistió correctamente.
+
+**Razones del 100% post-reparación sostenido:**
+1. Selección de artículos con contenido sustancial (≥400-500 chars) y bien estructurado.
+2. Selección de leyes autonómicas claras (no doctrina, no jurisprudencia, no derecho civil interpretativo).
+3. Prompt mental con regla cero estricta: "opción correcta = cita literal o no se genera".
+4. Auditoría doble verdaderamente ciega — Sonnet no recibe pistas sobre quién generó.
+5. **Disciplina de reparar + re-verificar cuando hay hallazgo**, no asumir que el primer veredicto es definitivo.
+
+**Recomendación para escalar:**
+- Aumentar tamaño de batch a 25-30 preguntas/iteración para reducir overhead por lote.
+- Probar con una ley estatal pequeña-mediana (ej. articulado puntual de Ley 39/2015 o Ley 40/2015 con gap detectado) para validar fuera del corpus autonómico.
+- **Añadir al prompt de generación una regla explícita anti-omisión: "Si el artículo dice 'X o Y', la opción correcta DEBE incluir ambos. Verificar token a token que no se omite ninguna cláusula sustantiva del ámbito".**
+- Mantener la disciplina de auditoría doble + paso 9 post-aplicación: ningún batch sin Sonnet ciego antes Y después de transicionar.
+- Si en algún batch el % cae por debajo de 90% en auto-audit (no Sonnet), parar y recalibrar el prompt.
+
+### 5.21 Batch 15 — T2 LO 4/1982 redundancia controlada en serie (12q, v2.0)
+
+**2026-05-25** — Aplicación masiva del patrón §2.6 (no piloto): 12 preguntas sobre 8 arts del Estatuto de Murcia que ya contaban con preguntas existentes en BD. Objetivo: validar que la redundancia controlada escala más allá del piloto Art 42 (v1.9, sección 5.18).
+
+**Arts cubiertos**: 27.1 / 27.3 / 27.4 / 27.5 / 30.1 / 30.2 / 30.3 (×2) / 33.1 / 33.3 / 33.4 / 33.5. Todos con ≥1 pregunta existente. Mecanismos cognitivos distintos usados: intruso (Q5, Q7), reconocimiento literal (Q2, Q3, Q4, Q8, Q11), cláusula específica (Q1, Q9, Q12), distinción conceptual (Q6, Q10).
+
+| Métrica | Resultado |
+|---|---|
+| Existentes en BD para esos 8 arts | ≥1 por art, ≥30 total ley |
+| Nuevas generadas | 12 |
+| Dedup nivel 1+2 (Jaccard) | <50% en todas ✓ |
+| Dedup nivel 3 (opciones correctas vs existentes) | 0 alertas ✓ |
+| Auto-audit | 12/12 PERFECT |
+| Sonnet ciego pre-aplicación | **9/12 PERFECT + 3 NEEDS_REVIEW** (Q3 art 27.4, Q6 art 30.2, Q11 art 33.4 por posible solapamiento con existentes E3/E3/E1) |
+| Adjudicación humana de los 3 NEEDS_REVIEW | **3/3 VÁLIDOS** — al consultar las opciones de las existentes se confirmó que las respuestas correctas son distintas (mismo apartado, dato evaluado distinto) |
+| Paso 9 post-app | **12/12 PERFECT** |
+| LO 4/1982 activas | 79 → **91** (+12) |
+| Cross-oposición | CARM Aux Admin (T2+T3) + TCAE Murcia (T1) — multiplicador ×3 |
+
+**Lección operativa v2.0**: Sonnet pre-aplicación no tiene acceso a las **opciones** de las preguntas existentes con las que sospecha solapamiento — solo ve el enunciado. Cuando un pre-existente y un nuevo cubren el **mismo apartado** del artículo, Sonnet flaguea NEEDS_REVIEW por precaución, pero el solapamiento puede ser falso si las **respuestas correctas** evalúan datos distintos.
+
+**Patrón de adjudicación** (aplicar siempre que Sonnet diga "posible solapamiento E_X"):
+
+```bash
+# Cargar la pregunta existente referenciada y comparar respuestas correctas
+node -e "
+require('dotenv').config({path:'.env.local'});
+const {createClient} = require('@supabase/supabase-js');
+const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+(async()=>{
+  // Cargar por primary_article_id + filtrar por prefijo
+  const {data: qs} = await s.from('questions')
+    .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
+    .eq('primary_article_id', '<ART_UUID>').eq('is_active', true);
+  const target = qs.find(q => q.id.startsWith('<PREFIX_8_CHARS>'));
+  console.log('Correcta existente:', ['A','B','C','D'][target.correct_option]);
+})();
+"
+```
+
+**Decisión**: si la respuesta correcta de la nueva es **literalmente distinta** de la respuesta correcta de la existente → válida (no solapan); si coinciden o si la nueva es semánticamente reformulación de la misma → retirar la nueva.
+
+**Conclusión batch 15**: el patrón §2.6 escala. 12 preguntas redundantes sobre apartados ya cubiertos, 0 solapamientos reales detectados tras adjudicación manual, 0 defectos en producción. **T2 LO 4/1982: 35 (pre-IA) → 91 (post-batch15) = ×2.6 cobertura**, validando que el "techo natural" del scope puede multiplicarse cuando se aplica la disciplina de los 5 mecanismos cognitivos + dedup nivel 3.
+
+### 5.22 Batch 16 — T2 LO 4/1982 cierre a 100q (11q, v2.1)
+
+**2026-05-25** — Cierre del objetivo "T2 CARM ≥ 100 preguntas" combinando lo aprendido de los 4 batches anteriores sobre la misma ley. **Selección quirúrgica de arts**: 3 sin preguntas (Art 38, 40, 50) + 10 con solo 1 pregunta + 9 con 2 — priorizando contenido sustancial (≥350 chars) y mecanismos cognitivos distintos a los existentes.
+
+**Borrador inicial**: 12 preguntas sobre 11 arts (Art 25 con 2 preguntas — apartados 2 y 3 distintos del existente apartado 1). Sonnet pre-aplicación: **9/12 PERFECT + 3/12 NEEDS_REVIEW**.
+
+**Adjudicación manual de los 3 NEEDS_REVIEW** (decisiones distintas, no automáticas):
+
+| # | Art | Problema Sonnet | Decisión | Justificación |
+|---|-----|-----------------|----------|---------------|
+| 1 | 20 | "Intruso solapa cognitivamente con enumeración existente — mismo dato evaluado, mecanismo invertido" | **RETIRAR** | Art 20 tiene solo 3 órganos y 108 chars de contenido. La lista es tan corta que el patrón intruso (cuál NO es) y el patrón enumeración (cuáles son) operan sobre el mismo conocimiento — no hay ortogonalidad real. Lección: **arts escuetos no soportan redundancia útil**. |
+| 5 | 29 | "El enunciado de la existente cita literalmente la opción correcta de la nueva" | **REPARAR** | La existente cita el texto completo del art 29 en su enunciado, incluyendo la frase "Todo miembro de la Cámara deberá estar adscrito a un grupo" — exactamente la opción correcta de la nueva. Quien resuelva la existente ya conoce esa frase. **Cambiar el dato evaluado**: reformular para preguntar por la fuente normativa ("se fijarán por el Reglamento"), dato distinto del mismo art que NO aparece en ningún enunciado existente. |
+| 7 | 37 | "Sumario libre 'procesos selectivos' + contexto telegrafía respuesta" | **REPARAR** | El enunciado introducía la expresión "procesos selectivos" que NO es literal del art (que dice "concursos y oposiciones"), y describía tan exactamente el contexto que la respuesta era casi evidente. **Cambiar el ángulo**: pregunta ahora por "a instancia de quién" (las primeras palabras literales del art), con elipsis correcta. Opción correcta = "A instancia de la Comunidad Autónoma" — dato distinto al existente que pregunta "quién convoca". |
+
+**Resultado post-reparación**:
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales en batch | **11** (12 borrador inicial - 1 retirada) |
+| Sonnet recheck post-reparación | **11/11 PERFECT** |
+| Paso 9 post-aplicación | **11/11 PERFECT** |
+| LO 4/1982 activas | 91 → **102** (+11 = match exacto) |
+| **T2 CARM via API** | 89 → **100** (objetivo alcanzado) |
+| Cross-oposición | CARM (T2+T3) + TCAE Murcia (T1) — multiplicador ×3 |
+
+**Lecciones operativas v2.1:**
+
+1. **El retiro pre-inserción es opción legítima**, no fracaso del flujo. En batch 16 retirar 1 de 12 produjo un batch más limpio (11/11 PERFECT) que forzar la reparación de un caso sin ángulo ortogonal viable.
+
+2. **Arts muy escuetos (≤150 chars con enumeración cerrada) tienen techo bajo para redundancia.** El mecanismo intruso solapa con la enumeración positiva cuando la lista es corta y conocida (Art 20: 3 órganos). Regla operativa: si el art tiene <200 chars y ya tiene 1+ pregunta de enumeración, NO intentar intruso — generar sobre otro art con margen real.
+
+3. **El enunciado de la existente puede "contaminar" preguntas futuras.** Si la existente cita literalmente un dato X del artículo en su enunciado, una pregunta nueva cuya opción correcta sea X resulta cognitivamente trivial para quien ya vio la existente. Antes de generar redundancia, **leer el enunciado completo de cada existente** y descartar como posible opción correcta nueva cualquier frase ya citada literalmente allí.
+
+4. **Combinar cobertura inicial + redundancia controlada permite cerrar objetivos numéricos exactos.** T2 CARM pasó de 35 (pre-IA) → 100 (post-batch16) combinando: batch 8 (cobertura inicial), batch 13 (saturación natural), batch 15 (redundancia controlada masiva), batch 16 (cierre quirúrgico). El flujo es **predecible y planificable**.
+
+5. **Cross-oposición consolidada**: las 102 preguntas activas en LO 4/1982 benefician **3 ubicaciones** distintas (CARM T2 + CARM T3 + TCAE Murcia T1). Multiplicador efectivo ×3 sobre el esfuerzo de generación.
+
+**Conclusión batch 16**: primer caso documentado de **objetivo numérico cerrado a través de IA-gen con disciplina del flujo v2.1 completo**. El patrón es replicable a otros temas (T13 CARM Archivos saturado en 39 — siguiente candidato si redundancia controlada da margen).
+
+### 5.23 Batch 17 — T13 LO 6/1990 cobertura inicial (15q, v2.2)
+
+**2026-05-25** — Primer batch sobre Ley 6/1990 (Archivos Murcia) tras los 3 batches iniciales (batches 1-3). Diagnóstico inicial: 13 arts SIN preguntas + 5 arts con 1 pregunta. Decisión: cobertura inicial limpia (sin riesgo de redundancia) sobre los 8 arts vacíos con contenido sustancial (≥350 chars).
+
+**Selección**: Art 8, 11, 17, 21, 24, 26, 27, 28. Distribución 2-2-2-2-2-1-2-2 = 15 preguntas.
+
+| Métrica | Resultado |
+|---|---|
+| Arts cubiertos | **8 nuevos** (de 13 vacíos disponibles) |
+| Preguntas generadas | **15** (todas en arts sin existentes) |
+| Auto-audit | 15/15 PERFECT |
+| Sonnet pre-aplicación | **15/15 PERFECT** sin un solo NEEDS_REVIEW |
+| Paso 9 post-aplicación | **15/15 PERFECT** |
+| Ley 6/1990 activas | 39 → **54** (+15) |
+| T13 CARM via API | 39 → **54** (+15, match exacto — ley monotemática) |
+| Cross-oposición | ×1 (solo CARM Aux Admin T13) — ROI bajo pero única vía |
+
+**Lecciones operativas v2.2:**
+
+1. **Cobertura inicial = "easy win" del flujo.** Cuando hay arts SIN preguntas con contenido sustancial, generar sobre ellos da 100% PERFECT directo (no hay riesgo de solapamiento con existentes ni necesidad de aplicar §2.6). Es el batch más fácil de auditar y validar.
+
+2. **Denominaciones históricas literales** ("Consejería de Cultura, Educación y Turismo", "Ministerio de Cultura") deben mantenerse exactamente como aparecen en el BOE original, aunque hoy se llamen distinto. Sonnet validó esto en las 15 preguntas.
+
+3. **Referencias normativas externas** (art 57.c Ley Patrimonio Histórico Español en el caso de la Q8) son trampa pedagógica útil — sirven como distractores casi-correctos en preguntas futuras y refuerzan el conocimiento de remisiones legales.
+
+### 5.24 Batch 18 — T13 LO 6/1990 cobertura extendida (11q, v2.2)
+
+**2026-05-25** — Tras batch 17, quedaban 4 arts SIN preguntas con contenido corto + 6 arts con 1 pregunta y contenido medio-largo. Decisión: combinar ambos en un batch mixto.
+
+**Selección**: 4 arts sin preguntas (Art 9, 22, 25, 29) + 6 arts con 1 pregunta (Art 1, 6, 10, 13, 18, 26). Borrador inicial = 12 preguntas.
+
+**Sonnet pre-aplicación: 11/12 PERFECT + 1 NEEDS_REVIEW** (Art 13: la opción correcta nueva "en el archivo histórico que se determine, salvo que en el acta de disolución…" estaba **literalmente contenida** en la opción correcta de la existente — modo fallo batch 16 Art 29 reproducido).
+
+**Adjudicación**: **RETIRAR Q7 Art 13**. La existente cubría el supuesto completo (texto largo) y aislar un sub-dato del mismo no aportaba valor. Batch queda en 11 preguntas.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales | **11** (12 borrador - 1 retirada) |
+| Sonnet recheck post-reparación | (no necesario: solo se retiró 1, las otras 11 ya eran PERFECT) |
+| Paso 9 post-aplicación | **11/11 PERFECT** |
+| Ley 6/1990 activas | 54 → **65** (+11) |
+| T13 CARM via API | 54 → **65** (+11) |
+
+**Lecciones operativas v2.2:**
+
+1. **El modo fallo batch 16 Art 29 es recurrente.** Cuando una existente cubre un apartado entero del artículo con cita literal larga en su opción correcta, cualquier nueva pregunta que aísle un sub-dato de esa cita es trivial para quien ya respondió la existente. **No insistir**: retirar y buscar otro ángulo o pasar al siguiente art.
+
+2. **Mezclar cobertura inicial + cobertura extendida en el mismo batch funciona.** Los arts vacíos (cobertura inicial) dan 100% sin riesgo; los arts con 1 pregunta requieren dedup nivel 3 contra la existente. Sonnet evalúa ambos en la misma pasada.
+
+3. **Errata original del BOE en el contenido del artículo** (Art 26 párr 2: "las medida" sin -s) gestionada correctamente: blockquote reproduce la errata literal, opción correcta usa la forma gramaticalmente correcta. Sonnet validó este patrón en paso 9.
+
+### 5.25 Batch 19 — T13 LO 6/1990 redundancia controlada §2.6 (10q, v2.2)
+
+**2026-05-25** — Tercer batch consecutivo sobre la misma ley. Tras batches 17+18, T13 estaba en 65 (faltaban 35 para 100). Ya no quedaban arts SIN preguntas con contenido sustancial → toca redundancia controlada §2.6 sobre arts con 2 preguntas y contenido ≥700 chars.
+
+**Selección**: 6 arts (Art 3, 4, 16, 19, 20, 23) — todos con 2 existentes y contenido medio-largo.
+
+**Borrador inicial planificado = 12 preguntas. Antes de generar JSON, dedup nivel 3 mental detectó 2 candidatas problemáticas:**
+- **Art 23.1 "sin perjuicio de la colaboración exigible"**: ya estaba LITERALMENTE en la opción correcta de E2 [f8b930d3] ("La Consejería…, sin perjuicio de la colaboración exigible a las instituciones de carácter público y a las personas privadas").
+- **Art 23.2 "en su forma original o en cualquier sistema de reproducción gráfica"**: ya estaba LITERALMENTE en la opción correcta de E1 [9d934a60] ("Corresponderá a la Consejería…, ya sea en su forma original o en cualquier sistema de reproducción gráfica").
+
+**Decisión: descartar ambas antes de redactar.** Borrador final = 10 preguntas. Esto ahorra una ronda de Sonnet + reparación.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales | **10** (12 candidatas planificadas - 2 descartadas pre-generación por dedup nivel 3 mental) |
+| Auto-audit | 10/10 PERFECT |
+| Sonnet pre-aplicación | **10/10 PERFECT** sin NEEDS_REVIEW |
+| Paso 9 post-aplicación | **10/10 PERFECT** |
+| Ley 6/1990 activas | 65 → **75** (+10) |
+| T13 CARM via API | 65 → **75** (+10) |
+| Sonnet detectó deuda histórica | **E1+E2 del Art 4 son duplicadas exactas** (mismo enunciado + misma opción correcta) — registrar para limpieza futura |
+
+**Lecciones operativas v2.2 más importantes:**
+
+1. **Descartar candidatas pre-generación por dedup nivel 3 MENTAL es eficiente.** Antes de escribir el JSON del borrador, revisar el `correct_option_text` de cada existente del art. Si la frase planeada como nueva opción correcta YA está literalmente allí → descartar y elegir otro sub-dato del mismo art. Ahorra rondas Sonnet + reparación + recheck. En batch 19 ahorré 2 rondas con 2 descartes pre-generación.
+
+2. **Sonnet detecta duplicados pre-existentes en BD durante el dedup del batch nuevo.** Al auditar Q5 Art 4 del batch 19, Sonnet observó que E1+E2 de la BD son preguntas IDÉNTICAS (mismo enunciado + misma opción correcta = "De oficio o a instancia de parte"). Deuda histórica documentada para limpieza posterior. Aprovechar el batch nuevo como auditoría implícita del corpus existente.
+
+3. **Cuando se generan 2 preguntas sobre el mismo apartado** (caso Q8+Q9 Art 20.2 batch 19), Sonnet debe verificar que el ángulo es genuinamente distinto: Q8 = "quién favorece", Q9 = "a qué se ajusta la consulta". Ambas del mismo apartado pero datos distintos. Patrón válido §2.6.
+
+**Conclusión combinada batches 17+18+19 (T13 CARM):**
+
+| Batch | Tipo | Preguntas | Resultado | T13 acumulado |
+|---|---|---|---|---|
+| 3 (pre-secuencia) | cobertura inicial | 15 | 14 → 29 | 29 |
+| 17 | cobertura inicial | 15 | 39 → 54 | 54 |
+| 18 | cobertura extendida (1 retiro) | 11 | 54 → 65 | 65 |
+| 19 | redundancia controlada (2 descartes pre-gen) | 10 | 65 → 75 | 75 |
+| **Total IA-gen T13** | — | **51** | — | **+61 sobre la base 14 pre-IA = ×5.4** |
+
+**Secuencia validada como replicable**: cobertura inicial → cobertura extendida → redundancia controlada §2.6. Cada batch ~10-15 preguntas, ~30-45 min de trabajo end-to-end (generación + audit doble + paso 9 + sync + cache).
+
+### 5.26 Batch 20 — T13 LO 6/1990 redundancia arts con 3q (8q, v2.3)
+
+**2026-05-25** — Continuación secuencia T13. Tras batches 17+18+19, T13 = 75. Toca redundancia §2.6 sobre arts con 3 preguntas previas y contenido sustancial.
+
+**Selección candidatos**: Art 2, 5, 12, 14, 15 (5 arts con 3q cada uno y contenido ≥800ch).
+
+**Dedup mental pre-generación detectó:**
+- **Art 2 (1025ch, 3q) → DESCARTADO COMPLETO**: las 3 existentes cubren art 2.a sujetos autonómicos, art 2.b sujetos estatales, y "documentos cualquier época". El único sub-dato disponible (testimonio funciones/actividades sociales) está literalmente en el enunciado de E1 → modo fallo batch 16. Saturado.
+
+**Borrador final = 8 preguntas en 4 arts (2 cada uno)**: Art 5 (5.3 colaboración + 5.5 intercambio), Art 12 (12.2 destino + 12.2 conservación permanente), Art 14 (14.b principal + 14.b copia inventario), Art 15 (15.1 catálogo + 15.1 condición recuperar).
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales | **8** (5 arts candidatos - 1 descartado pre-gen = 4 arts × 2q) |
+| Auto-audit | 8/8 PERFECT |
+| Sonnet pre-aplicación | **8/8 PERFECT** sin NEEDS_REVIEW |
+| Paso 9 post-aplicación | **8/8 PERFECT** |
+| Ley 6/1990 activas | 75 → **83** (+8) |
+| T13 CARM via API | 75 → **83** |
+
+**Lecciones operativas v2.3:**
+1. **Pares de preguntas sobre el mismo apartado funcionan** si los ángulos son genuinamente distintos: Q3/Q4 Art 12.2 (destino vs función del archivo histórico una vez recibida), Q5/Q6 Art 14.b (obligación principal vs deber accesorio), Q7/Q8 Art 15.1 (función registral vs condición material para recuperar). Sonnet validó los 3 pares como ortogonales.
+2. **Descartar un art entero pre-gen es legítimo cuando está saturado** (Art 2): preferible a forzar candidatas con riesgo de modo fallo batch 16.
+
+### 5.27 Batch 21 — T13 LO 6/1990 caso límite Art 7 con 7q existentes (8q, v2.3)
+
+**2026-05-25** — Tras batch 20, T13 = 83. Único art "grande" pendiente: Art 7 (2686 chars, 8 apartados, 7q existentes previas — aparentemente saturado).
+
+**Análisis dedup mental por apartado:**
+
+| Apartado | Existentes cubren | ¿Margen? |
+|---|---|---|
+| 7.1 (misión + carácter) | E5 (carácter) + E6 (misión completa) | SATURADO |
+| 7.2 (cuándo remitir) | E3 (semestre) | Sí — falta condición firmes+ejecutados |
+| 7.3 (expedientes sin actos) | — | Sí — totalmente disponible |
+| 7.4 (series uso frecuente) | — | Sí — 2 ángulos disponibles |
+| 7.5 (Secretarios generales) | — | Sí — disponible |
+| 7.6 (régimen disposición) | — | Sí — 2 ángulos disponibles |
+| 7.7 (funciones del Archivo) | E7 (intruso) | Solo 1 ángulo positivo seguro (cuadros clasif.) |
+| 7.8 (>25 años → histórico) | E1 + E4 | SATURADO |
+
+→ **8 candidatas viables** sobre 5 apartados NO cubiertos + 1 sub-elemento del 7.7.
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales | **8** (caso límite con 7 existentes previas) |
+| Auto-audit | 8/8 PERFECT |
+| Sonnet pre-aplicación | **8/8 PERFECT** directos (validó los 3 pares Q3/Q6, Q5/Q7 como ángulos distintos) |
+| Paso 9 post-aplicación | **8/8 PERFECT** |
+| Art 7 acumulado | 7 → **15** preguntas (×2.1 sobre la base, el doble que cualquier otro art del corpus T13) |
+| Ley 6/1990 activas | 83 → **91** (+8) |
+
+**Lección operativa v2.3 más importante**: **el techo natural de un artículo viene determinado por el número de APARTADOS ESTRUCTURALES, no por el tamaño en caracteres ni por el número de preguntas previas**. Art 7 con 8 apartados admite 15 preguntas; Art 20 (3 apartados, 752 chars) admitiría máximo 6. El análisis dedup mental **por apartado** (en lugar de "el art tiene 7q, está saturado") es lo que destapó el margen real.
+
+### 5.28 Batch 22 — T13 LO 6/1990 cierre techo natural (5q, v2.3)
+
+**2026-05-25** — Tras batch 21, T13 = 91/100 (-9 para objetivo). Análisis dedup mental detectó solo **4-5 candidatas viables** en arts no cubiertos exhaustivamente — el resto requeriría forzar ángulos artificiales.
+
+**Selección quirúrgica**: Art 3.2.d (relevancia interés regional), Art 4.3 (definición archivos privados históricos), Art 4.4 ×2 (resolución/impugnación + incoación/obligaciones provisionales), Art 10.3 (formación permanente).
+
+| Métrica | Resultado |
+|---|---|
+| Preguntas finales | **5** (último margen real tras dedup mental estricto) |
+| Auto-audit | 5/5 PERFECT |
+| Sonnet pre-aplicación | **5/5 PERFECT** directos |
+| Paso 9 post-aplicación | **5/5 PERFECT** |
+| Ley 6/1990 activas | 91 → **96** (+5) |
+| T13 CARM via API | 91 → **96** = 96% del objetivo 100q |
+
+**Decisión final T13**: cerrar en 96/100. Los 4 que faltan requerirían ángulos artificiales con rendimiento de calidad decreciente.
+
+### 5.29 SECUENCIA T13 COMPLETA — Análisis de curva rendimiento marginal (v2.3)
+
+**Tabla consolidada de los 6 batches consecutivos sobre Ley 6/1990:**
+
+| Batch | Tipo | Preguntas | T13 acum | Rendimiento/batch |
+|---|---|---|---|---|
+| 3 (pre-secuencia) | cobertura inicial | 15 | 14→29 | 15 |
+| 17 | cobertura inicial (arts vacíos) | 15 | 39→54 | 15 |
+| 18 | cobertura extendida (1 retiro) | 11 | 54→65 | 11 |
+| 19 | redundancia §2.6 arts 2q (2 descartes pre-gen) | 10 | 65→75 | 10 |
+| 20 | redundancia §2.6 arts 3q (1 art descartado) | 8 | 75→83 | 8 |
+| 21 | caso límite Art 7 (7 existentes) | 8 | 83→91 | 8 |
+| 22 | cierre techo natural | 5 | 91→96 | 5 |
+| **TOTAL secuencia** | — | **57** | **39→96 = ×2.5** | — |
+
+**Curva de rendimiento marginal validada empíricamente: 15 → 11 → 10 → 8 → 8 → 5**
+
+**Hallazgo principal**: la curva es **predecible y monótonamente decreciente**. Cada batch sucesivo sobre la misma ley monotemática da menos preguntas porque queda menos margen real ortogonal. Aplicaciones prácticas:
+
+1. **Planificación**: si T_X tiene N preguntas y objetivo es 100, estimar ~5-7 batches consecutivos para llegar al techo natural (no a 100). Tiempo total: ~3-5h de trabajo end-to-end.
+2. **Punto de parada**: cuando un batch genera ≤5 preguntas tras dedup mental estricto, **declarar techo natural** y pasar a otro tema. Forzar más significa generar preguntas con ángulos artificiales y rendimiento de calidad decreciente.
+3. **Techo natural realista**: ~95-96% del objetivo, no 100%. T13 cerró en 96/100 con 6 batches; T2 cerró en 100/100 exactos pero requirió 4 batches sobre una ley con **2 leyes contributorias** (no solo LO 4/1982 sino también con margen cross-temporal), no monotemática estricta.
+4. **Predictor del techo por artículo**: número de APARTADOS ESTRUCTURALES, no tamaño en chars ni preguntas previas. Art 7 (8 apartados) → 15q; Art 25 (148 chars, una sola triple prohibición) → 1q.
+
+**Patrón replicable para otras leyes**: ejecutar `select count(*) from questions where primary_article_id IN (...) and is_active=true group by apartado` antes de cada batch. Si la ratio (preguntas activas / apartados estructurales) está <1.5, hay margen. Si >2.0, saturación cercana al techo.
+
+### 5.21 Batch 30 — LGS (Ley 14/1986) T8 SERMAS «Modalidades de asistencia sanitaria» (2026-06-09)
+
+- **batch_id**: `gen_lgs_2026-06-09`. Scope: LGS arts 18, 59, 60, 62-69 (Título III: áreas de salud, zona básica, atención primaria, Centro de Salud, hospital general). 11 preguntas.
+- **Contexto**: tema `auxiliar_administrativo_sermas` T8 estaba `disponible=false` sin scope. Caso de aprendizaje: primero se creó por error un **contenedor virtual** para T8; se corrigió porque su contenido **está respaldado por ley real** (LGS Tít. III) → regla: virtual solo si NO hay articulado; si lo hay, preguntas respaldadas por ley. El virtual se borró y se scopeó a artículos reales.
+- **Distribución correct_option**: 3A/3B/3C/2D (27/27/27/18%, sin sesgo).
+- **Auditoría doble PRE**: auto-audit 9/11 PERFECT; Sonnet ciego marcó 2 NEEDS_REVIEW (art 68 y art 60: opción correcta más larga que distractores, §2.2-bis). Rebalanceados distractores con funciones/órganos sanitarios plausibles-pero-falsos.
+- **Paso 9 (3er auditor, valor demostrado)**: Sonnet nuevo detectó **3 defectos que las 2 pasadas previas pasaron**: (1) art 64 tipo intruso → explicación boilerplate **factualmente invertida** (decía que A/B/C no figuran en la norma cuando SÍ son funciones del Centro de Salud); (2) art 62 enunciado condensó "en el funcionamiento de"; (3) art 18 opción correcta truncó "del individuo y de la comunidad". Reparados + recheck v2 → 3/3 PERFECT.
+- **Lección nueva**: el **boilerplate genérico de explicación de distractores NO sirve para preguntas de tipo intruso/negación** ("¿cuál NO es?"). En esas, la explicación debe decir que las otras opciones SÍ cumplen (y por eso no son la respuesta). Generarla específica desde el inicio para preguntas con NO/EXCEPTO.
+- **Trazas**: `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en `ai_verification_results`. T8 activado (`disponible=true`), 2→13 preguntas activas. Audit `npm run audit:epigrafe` deja T8 con WRONG_SUBJECT (LGS 100%, nombre no en epígrafe) — **aceptado**: epígrafe descriptivo que no cita la norma (caso documentado en `verificar-epigrafe-topic-scope.md`).
+
+### 5.22 Tanda SERMAS T13/T18/T12/T4 — 4 batches law-backed consecutivos (2026-06-09)
+
+- **batches**: `gen_lprl_2026-06-09` (T13 Ley 31/1995 PRL, 14q), `gen_lopivi_2026-06-09` (T18 LO 8/2021, 13q), `gen_l11_2017_2026-06-09` (T12 Ley 11/2017 SERMAS, 9q), `gen_lgs_t4_2026-06-09` (T4 Ley 14/1986 LGS, 6q). 42 preguntas, todas respaldadas por ley con cita literal.
+- **Resultado**: SERMAS pasó de 26 a 30/31 temas `disponible=true`. Solo queda T26 (plataformas Cibeles/HCE, virtual editorial sin norma ni banco).
+- **Lección DOMINANTE (coste real de la tanda)**: el cuello de botella NO fue la corrección jurídica (las 42 fueron correctas de fondo en answer_ok/article_ok desde la 1ª pasada), sino el **equilibrio de longitud de distractores (§2.2-bis)** y la **fidelidad literal de la opción correcta**. Cuando la correcta es cita literal de un artículo, tiende a ser la más larga → el auditor del Paso 9 (estricto) lo marca una y otra vez. Cada batch necesitó 1-2 iteraciones extra de Paso 9 solo por esto.
+- **Regla operativa derivada (aplicar desde la generación, ahorra iteraciones)**:
+  1. La opción correcta = **texto literal exacto** del artículo (no parafrasear "garantizar" por "debido cumplimiento", no omitir "profesional y ciudadana", no truncar enumeraciones). El Paso 9 estricto marca cualquier condensación como `options_ok` fallido.
+  2. Los **distractores deben medir ≥0,8× la longitud de la correcta** (verificar ratio correcta/2ª-más-larga < 1,3 en el propio script de generación, ANTES de insertar). Si la cita literal es muy larga, alargar los distractores con cláusulas plausibles-pero-falsas, NO acortar la correcta.
+  3. Si la cita literal es larguísima (listas de órganos, enumeraciones), **reencuadrar el enunciado** para preguntar un punto concreto cuya respuesta literal sea corta (ej. art 50 LGS: en vez de "¿qué Servicio se constituye?" → "¿bajo la responsabilidad de quién estará gestionado?" → "La respectiva Comunidad Autónoma"). Más limpio que pelear el balance.
+  4. **Intruso/negación**: header de la explicación = `**Por qué las demás NO son la respuesta (sí figuran en la norma):**` (no "son incorrectas", que es ambiguo). Y cada bullet dice "sí es/figura: art X.Y".
+- Trazas `claude_code` + `claude_code_recheck` en `ai_verification_results` para las 42.
+
+### 5.30 Tanda editorial UMU Aux. Servicios — 6 batches conceptuales (2026-07-23)
+
+- **batches**: `gen_umu_accesos_` (44), `gen_umu_cargas_` (38), `gen_umu_comunicacion_` (40), `gen_umu_maquinas_` (55), `gen_umu_seguridad_` (63), `gen_umu_rebalanced_` (63) — todos `_2026-07-23`. **303 preguntas** sobre 69 artículos **editoriales** nuevos (leyes virtuales por-materia: Máquinas Reproductoras, Seguridad e Incendios, Control de Accesos, Guía INSST Cargas, Conceptos Comunicación y Atención), ampliadas ese día desde un temario editorial como fuente de referencia (redacción propia, no verbatim).
+- **Contexto distinto al resto de §5**: aquí la "fuente de verdad" NO es un artículo BOE sino nuestro propio artículo editorial (prosa normalizada). El pipeline es idéntico (draft → auto/mecánico + Sonnet ciego → GATE → Paso 9), pero el modo de fallo dominante cambia (ver abajo).
+- **Lección DOMINANTE — el contenido conceptual/editorial dispara el length-tell (§2.2-bis)**: cuando la opción correcta es fiel a prosa conceptual (definiciones, "según el texto…"), tiende a ser mucho más larga que distractores plausibles → el guard mecánico (correcta ≥1,3× la 2ª) **rechazó 63/303 = 21%**, y en **Comunicación fue 34/74 = 46%** (mucho más que en contenido legal, ~5-15%). Es estructural del contenido conceptual, no un fallo del generador.
+  - **Remedio validado**: NO descartar — pasar las rechazadas por un **agente de rebalanceo** que alarga los 3 distractores a longitud comparable manteniéndolos claramente falsos (y actualiza el bullet de la explicación). Las 63 se recuperaron 100% y pasaron auditoría + Paso 9.
+  - **Regla para la próxima**: en contenido conceptual, **construir distractores largos DESDE LA GENERACIÓN** (banda 0,75×–1,15× de la correcta), no dejarlo para una segunda pasada. Instruir al generador explícitamente para ello ahorra el ciclo rechazo→rebalanceo.
+- **Paso 9 volvió a demostrar su valor** (2 defectos que las pasadas previas pasaron): distractor cuyo bullet de explicación **añadía un dato externo no presente en el artículo** ("el canutillo se cierra en frío…"; "la descripción física se retiene ante incidencias…"). En contenido editorial el riesgo es "razonamiento externo en la explicación", no drift de BOE. Reescritos ciñéndose al texto + re-registrados.
+- **Distribución correct_option** controlada por batch (~uniforme); la sub-tanda de rebalanceo quedó D=40% (en el límite, aceptable en canal barajado).
+- Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 303. Scripts del pipeline (insert/approve/rebalance/recheck idempotentes) parametrizados por batch.
+
+### 5.31 Batch Código Ético ULE — editorial universitario, length-tell controlado desde generación (2026-07-24)
+
+- **batch**: `gen_codigo_etico_ule_2026-07-24` — **11 preguntas** sobre la **ley editorial nueva** "Código Ético de la Universidad de León" (`slug codigo-etico-ule`, 5 arts verbatim del PDF oficial `unileon.es/files/2022-04/Codigo_Etico_ULe.pdf`, secciones: comunes/PDI/PAS/estudiantado/cargos). Origen: resolvió el `needs_human` de **T4 de `administrativo_universidad_leon`** en el `verify:scope` del 24/07 (el epígrafe pedía literalmente "Código ético de la ULE" y no existía en BD) → creada la ley + escopada + generado el banco de práctica.
+- **Contenido conceptual (como §5.30)**: fuente = principios éticos en prosa, no articulado BOE. Correcta = cita literal del principio; distractores = otros principios del código atribuidos al colectivo/materia equivocada.
+- **Length-tell BAJO (1/11 = 9%) frente al 21% de UMU**, porque se aplicó la lección de §5.30: **se instruyó al generador para construir distractores largos DESDE el borrador** (derivados de otros principios reales, banda comparable). Solo Q8 (art 3.6 «atención a la ciudadanía», principio inherentemente largo de 330 chars) superó el 1,3× (1,34×) → **rebalanceada** alargando un distractor (→ ratio 0,91). Confirma que instruir el largo de entrada casi elimina el ciclo rechazo→rebalanceo.
+- **Convergencia auto-audit (mecánico) + Sonnet ciego**: 10/11 PERFECT + el mismo Q8 por length-tell (ningún fallo de literalidad ni doble-correcta). Validación programática extra en el insert: **la correcta debe ser substring literal del artículo** (0 fallos) — barato y potente para editorial.
+- **Paso 9 (Sonnet NUEVO sobre las vivas): 11/11 PERFECT** incluida Q8 rebalanceada; coherencia letra↔`correct_option`↔header↔bullets verificada 11/11.
+- **Distribución correct_option** A3/B3/C3/D2, secuencia no-cíclica (`CADBACBDACB`). Trazas `claude_code` (PRE) + `claude_code_recheck` (Paso 9) en las 11. Reversible por el tag del batch.
+- **Nota de producto**: el Código Ético no tiene preguntas OFICIALES de examen (es editorial) → material de apoyo. La teoría ya servía; esto añade la capa de práctica.
+
+### 5.32 Batch Workspace (correo + Chat) — Tema 25 Univ. León tras recorte de scope (2026-07-24)
+
+- **batch**: `gen_workspace_leon_2026-07-24` — **10 preguntas** sobre la ley editorial "Google Workspace" (correo/Gmail + Chat) del T25 de `administrativo_universidad_leon`. Contexto: el `verify:scope` confirmó contra el **programa oficial (BOCYL-D-17062026-115-10)** que T25 es **solo Workspace + correo** (nada de internet/redes) → se quitó "La Red Internet" (585 preg fuera de programa) → T25 quedó fino (28) → se generó banco propio.
+- **Contenido creado ANTES de generar (paso 0bis reforzado):** art 1 "Gmail/correo" ampliado de 426 → ~3.000 chars (CC/CCO, responder/reenviar, etiquetas, filtros, contactos/listas) + art 6 "Google Chat" nuevo, desde la ayuda oficial de Google (support.google.com), escopados en T25.
+- **Length-tell 0/10** (lección de §5.30-31 aplicada: distractores largos desde el borrador).
+- **⚠️ GOTCHA de proceso (nuevo y caro):** di al redactor un texto de referencia LIGERAMENTE distinto del artículo de BD (sin markdown, alguna palabra de más) → 8/10 "citas literales" no casaban verbatim con el artículo (fallaron el check de substring). **Lección: dar al generador el CONTENIDO EXACTO del artículo de BD, no una paráfrasis.** Remedio: alinear el artículo a la cita en los casos de palabra + normalizar markdown/puntuación en el validador.
+- **Doble auditoría:** auto-audit (literalidad 10/10) + Sonnet ciego (9 PERFECT + 1 enunciado impreciso reformulado). **Paso 9 (Sonnet nuevo): 10/10 PERFECT**; señaló un matiz factual real (quien está en CCO SÍ ve Para/CC, solo no ve a otros CCO) → precisado artículo + Q1. Nuevo check **`factual_ok`** en contenido de software (verdad real de Gmail/Chat, no solo coincidir con la fuente) — cazó el matiz CCO. Trazas `claude_code` + `claude_code_recheck` en las 10.
+
+### 5.33 Batch LPRL coordinación administrativa — primer batch elegido por RENTABILIDAD medida (2026-07-26)
+
+- **batch**: `gen_lprl_coord_2026-07-26` — **16 preguntas** sobre los arts. **10, 11, 12, 32 y 39** de la Ley 31/1995 de Prevención de Riesgos Laborales, artículos de coordinación administrativa que llevaban 0 preguntas pese a que la ley ya tenía 1.348 en BD. Efecto medido: **455 → 413 temas** disparando `article_no_coverage` y **2 hallazgos de oposición cerrados** (`tcae_canarias`, `tcae_murcia`).
+- **LO NUEVO — el lote se eligió midiendo, no por intuición.** El badge presenta `article_no_coverage` por oposición (104 hallazgos) y eso se lee como 104 trabajos. No lo es: **la pregunta cuelga del ARTÍCULO y el artículo es una fila COMPARTIDA**, así que cubrirlo repara todas las oposiciones que lo escopan. Medido sobre el banco vivo: 6.533 pares (artículo, tema) sobre **3.075 artículos únicos** (reuso 2,1×), y la rentabilidad varía ~8× entre leyes. La LPRL cerraba **19 temas con 6 artículos** (3,17 temas/artículo) frente a una media de ~0,4 → 16 preguntas rindieron lo que en otra ley habrían costado más de cien. Herramienta: **`npm run huerfanos:plan`** (núcleo puro `lib/generacion/huerfanosPlan.js`, en paridad testeada con el detector). ⚠️ **Nota de proceso:** esta sesión construyó un segundo planificador (`cobertura:huerfanos`) sin comprobar que ya existía uno documentado en el runbook. Se retiró y sus dos señales útiles —usuarios alcanzados y aviso de leyes con batch reciente— se fusionaron en el que ya estaba integrado. **Antes de crear utillaje, mirar el runbook del kind.**
+- **Regla que sale de aquí:** antes de elegir ley, **correr el ranking**. Y no optimizar por `temasBajoUmbral`: bajar un tema de 4 a 3 huérfanos apaga el hallazgo sin arreglar nada — es maquillar el badge. La métrica honesta es `temasACero`.
+- **Descarte deliberado — art. 54.** Solo tocaba 4 temas y su remisión literal es a la **Ley 13/1995 de Contratos de las Administraciones Públicas, derogada** (el consolidado del BOE conserva la redacción original). Preguntarlo enseña una referencia muerta e invita a impugnación: **cobertura no justifica enseñar derecho muerto**.
+- **Fallo propio cazado en el auto-audit:** una explicación afirmaba que la potestad sancionadora "se regula en el capítulo VII de la Ley y corresponde a la autoridad laboral" — pero el **art. 52 (*Competencias sancionadoras*) está derogado**. Reescrita sin esa atribución. Lección: al justificar por qué algo NO está en el artículo preguntado, **verificar también el artículo al que remites**, que es donde nadie mira.
+- **Gate: el detector de intruso no reconocía el marco.** El enunciado *"Señale la actuación que el artículo 10 NO **atribuye** a…"* daba `NO_LITERAL` porque `analizarIntruso` solo conocía verbos de **pertenencia** (*no figura*, *no se incluye*…). Se amplió con verbos de **atribución** (`lib/generacion/literalidad.js`), pero exigiendo **además** marco de selección explícito y excluyendo el marco inverso *"señale la opción correcta"*: estos verbos son transitivos y exentar de más sería un **falso negativo silencioso** (una cita alterada colándose). Validado con **simulación bank-wide** (`node scripts/sim-intruso-atribucion.cjs`): sobre 139k preguntas activas cambia el veredicto de **203**, con segunda capa estructural (¿son literales los DISTRACTORES?) que confirma 66 y explica el resto — en los intrusos de competencias los distractores vienen de **artículos hermanos**, así que su literalidad baja por naturaleza; muestra de 8 sobre ley real, 8/8 intrusos legítimos. Ninguna pregunta viva cambia de estado: el gate solo corre sobre batches nuevos.
+- **Triple auditoría, 16/16 limpio en las tres.** Auto-audit releído desde BD (16/16, con la reparación de arriba) + Sonnet ciego con los **artículos referenciados adjuntos** (arts. 9, 13, 21, 35, 38) → 16/16 PERFECT + Paso 9 con Sonnet nuevo sobre la pregunta **ya viva** → 16/16 LIMPIA, verificando también vigencia (art. 32 en redacción post Ley 35/2014). Trazas `claude_code` + `claude_code_recheck` en las 16.
+
+### 5.34 Batch TREBEP arts 47/51/72/99 — y la colisión de dos sesiones sobre la MISMA ley (2026-07-26)
+
+- **batch**: `gen_trebep_2026-07-26` — **10 preguntas** sobre los arts. **47, 51, 72 y 99** del Real Decreto Legislativo 5/2015 (TREBEP), elegidos con `npm run huerfanos:plan`: ratio 1,0 (4 artículos cierran 4 temas) y **~3.100 opositores** detrás. Triple auditoría 10/10 en las tres pasadas. Verificado que el art. 47 va en su redacción vigente tras el **RD-ley 2/2024**.
+- **El gate cazó dos defectos propios ANTES de gastar auditoría**, que es justo para lo que está: (1) una **cita truncada real** — la opción de la finalidad del art. 47.2 cortaba antes del inciso que delimita a qué empleados alcanza la medida, presentando como general lo que la norma acota; (2) una opción no literal por empezar con el artículo *"A las…"* cuando el precepto dice *"Las Administraciones Públicas establecerán…"*.
+- **Falso positivo adjudicado (no todo lo que marca el gate es defecto):** en la pregunta de la edad, la cita *"doce años"* iba seguida en el artículo de *"así como…"* y saltó CITA TRUNCADA. Pero ese *"así como"* **añade un segundo colectivo, no condiciona la edad**. Como `aprobar-batch-generado.cjs` exige el gate en verde y hace bien en no admitir overrides, se **replanteó la pregunta por el otro lado de la frontera** (qué se exige respecto de los hijos MAYORES de doce años): enseña el mismo hecho y su cita no colinda con ninguna cláusula. **Regla: ante un flag, adjudica; si es falso positivo, reformula la pregunta — no toques el gate ni lo saltes.**
+
+> 🚨 **LA LECCIÓN CARA DEL DÍA — dos sesiones generaron sobre los MISMOS cinco artículos con 13 minutos de diferencia.** El batch `gen_lprl_2026-07-26` (13 preguntas, otra sesión, 22:48) y `gen_lprl_coord_2026-07-26` (16 preguntas, esta sesión, 23:01) cubrieron **arts. 10, 11, 12, 32 y 39 de la LPRL, exactamente los mismos**. El dedup del Paso 3 **no lo detectó** porque compara texto normalizado del enunciado y ninguna pareja era idéntica al pie de la letra. Lo que sí lo detectó, después, fue el **dedup de nivel 3 de §2.6** (Jaccard de la OPCIÓN CORRECTA contra las existentes): **9 de mis 16 evaluaban el mismo hecho con la misma respuesta**. Se retiraron esas 9 (`retired_duplicate`, motivo `admin_duplicate_of`, con la pareja anotada en `notes`) por ser las segundas en llegar; los 5 artículos siguen cubiertos (2-7 preguntas activas cada uno).
+>
+> **Causa raíz, y no es del generador:** la campaña de `article_no_coverage` es **T-115**, reclamada por otra sesión, y se trabajó su contenido desde el "bloque 1" de **T-112**, que sí estaba reclamada por esta. Reclamar una tarea **no reserva el trabajo que vive en otra ficha**.
+>
+> **Qué hacer antes de generar, siempre que haya sesiones en paralelo:** (1) comprobar si la campaña tiene ficha propia y quién la tiene; (2) `SELECT unnest(tags), max(created_at) FROM questions WHERE created_at > now() - interval '12 hours' GROUP BY 1` — **los batches recientes de otras sesiones se ven en un segundo**; (3) si la ley elegida ya tiene batch de hoy, cambiar de ley. Cuesta una consulta y ahorra un lote entero.
+
+### 5.35 Batch ITPAJD (T223 ATC Canaria) — y el marco INTRUSO decidido por evidencia (2026-07-26)
+
+- **batch**: `gen_atc_t223_2026-07-26_s26c` — **13 preguntas** sobre los arts. **2, 3, 5, 15, 18, 22 y 24** del Real Decreto Legislativo 1/1993 (ITPAJD), tema 223 de `administrativo-agencia-tributaria-canaria`. Doble auditoría ciega con enfoques distintos (auditor estricto + opositor que busca impugnar): **11 PERFECT / 2 NEEDS_REVIEW / 0 impugnables**.
+- **Artículos descartados a propósito**: el **12** (tabla aplanada en el import — no se inventan cifras), el **17.2** (remite a la Ley 24/1988 del Mercado de Valores, derogada) y el **21** (remite al RDL 4/2004 TRLIS, derogado). Mismo criterio que el descarte del art. 54 LPRL en §5.33: **cobertura no justifica enseñar derecho muerto**.
+- **Lo que cazó cada capa, en orden de coste:** el gate mecánico paró 8 defectos (6 *tells* de longitud en los dos sentidos y 2 citas truncadas por la cola) y **cero errores de letras cruzadas** — porque las viñetas se generaron renderizando desde un mapa `texto de opción → motivo`, no escribiéndolas a mano después de ordenar. Los auditores encontraron lo que ninguna regex ve: un distractor **sinónimo funcional de la clave** (art. 5.3: *"la consolidación del dominio"* y *"la extinción del usufructo"* son el mismo hecho en una desmembración del dominio) y un distractor **truncado que no nombra ninguna figura** (art. 22: *"la agrupación de interés"*), con el agravante de que solo una de sus tres viñetas razonaba de verdad — y esa asimetría delata la respuesta.
+- **Regla nueva que sale de aquí:** al escribir los distractores de una enumeración, comprobar que ninguno **designe el mismo hecho** que la clave con otro nombre. No es un problema de literalidad ni de longitud: las dos opciones son legítimas por separado y solo el que sabe la materia ve el solape — precisamente el opositor que va a impugnar.
+
+> 🔧 **CORRECCIÓN DEL GATE — el marco INTRUSO se decide por EVIDENCIA, no por la redacción del enunciado.**
+>
+> `analizarIntruso` decide si se EXENTA a la pregunta del check de literalidad, y lo decide mirando la forma de la frase. Aquí falló en la dirección contraria a §5.33: el enunciado del art. 5.1 **cita la negación de la propia ley y pide completarla** (*"…no se considerará protegido por la fe pública registral el tercero:"*), así que la pista disparó — pero es una pregunta DIRECTA cuya correcta sí es cita literal. Consecuencias: (a) el gate exigía literalidad a los tres distractores, que son inventados como en cualquier pregunta normal → **rojo absurdo**; y (b) peor, **daba por buena la cita de la correcta sin comprobarla**, que es justo lo que el gate existe para verificar.
+>
+> **El camino muerto, medido:** endurecer el regex de la pista exigiendo marco de selección explícito —lo que ya se hace con los verbos de atribución— volvía a marcar **438 intrusos legítimos**, porque las redacciones reales del banco no siguen plantilla (*"EUROPOL. Indique cual NO forma parte de sus objetivos"*, *"…NO forma parte del contenido del Reglamento"*). **La forma de la frase no es un discriminante fiable en un banco heterogéneo.**
+>
+> **La regla que sí:** si la opción correcta **ES cita literal del artículo, no era un intruso** (en un intruso la correcta es, por construcción, la única inventada). Implementado en `resolverMarco` (`lib/generacion/literalidad.js`), usado **por los dos gates** —`verificar-batch-generado.cjs` y el simulador pre-inserción `lib/generacion/simularBatch.js`, que hasta ahora ni conocía el marco—, así que dejan de discrepar. Medido con `node scripts/sim-marco-intruso.cjs`: de 1.924 preguntas con pista, **1.510 quedan confirmadas (comportamiento idéntico)** y **414 pasan a DIRECTA con su cita verificada por primera vez**. El cambio es **monótono: ninguna pregunta pierde una comprobación.**
+>
+> **Y de rebote, una señal nueva:** cuando la pista dispara, la correcta SÍ es del artículo y los tres distractores no, el gate emite **`MARCO AMBIGUO`** — porque o el enunciado no era un intruso (correcto) o **la CLAVE está mal**, ya que la opción marcada figura en el artículo y por tanto no puede ser la intrusa. Son 135 en el banco (120 activas); el muestreo dice que la mayoría son preguntas directas legítimas, así que es una **cola de revisión, no una lista de defectos**.
+
+### 5.36 Batches ITPAJD-AJD (T224) e Impuesto sobre el Patrimonio (T225) — el distractor «verdadero pero incompleto» (2026-07-26)
+
+> **Resultado de las auditorías:** T224 → estricta 11 PERFECT / 4 NEEDS_REVIEW, opositor **0 impugnables de 15**, re-check 5 LIMPIAS + 1 defecto introducido al reparar. T225 → estricta 9 PERFECT / 7 NEEDS_REVIEW, opositor **1 IMPUGNABLE de 16** (el art. 17.Dos, abajo), re-check 5 LIMPIAS + 2 residuos de la reparación. **31 preguntas aprobadas.** Con un solo auditor se habrían colado los dos defectos de clave.
+
+- **batches**: `gen_atc_t224_2026-07-26_s26c` (**15 preguntas**, RDL 1/1993 arts. 28/32/36/39/42/46/48/52/53/54/57 — Actos Jurídicos Documentados y normas comunes) y `gen_atc_t225_2026-07-26_s26c` (**16 preguntas**, Ley 19/1991 del Impuesto sobre el Patrimonio, arts. 6/7/8/12/14/17/18/19/20/21/22/24/27/33). Todos los artículos elegidos tenían **cero preguntas activas**.
+- **Descartes por remisión muerta, con el mismo criterio del T223:** art. **58** y **56.2** del RDL 1/1993 (penden de la **Ley 21/2001, derogada por la Ley 22/2009**), arts. **50.1** y **57.1** (remiten al *"artículo 64 y siguientes de la Ley General Tributaria"*, que es la LGT de **1963**) y art. **43** (la escala de grandezas y títulos es una **tabla aplanada** en el import). Del art. 26 de la Ley 19/1991 se usó solo el párrafo primero por la misma razón. En cambio el art. 33 de la Ley 19/1991 **sí** cita la Ley 22/2009 vigente: la regla es mirar cada remisión, no descartar por familia.
+
+> 🎯 **EL DEFECTO NUEVO DEL DÍA: el distractor «verdadero pero incompleto».** No es falso, es *parcial*, y por eso no lo caza ningún check mecánico ni lo nota quien redacta.
+>
+> Dos casos, los dos en el mismo lote y los dos cazados por los DOS auditores a la vez:
+> - **art. 28** (*"¿qué documentos notariales están sujetos?"*) → distractor *"las actas de notoriedad y los poderes notariales"*. Un acta de notoriedad **ES** un acta notarial y un poder se otorga en escritura: ambas están sujetas. La opción no era falsa, solo recogía menos que la enumeración. Se sustituyó por *"las copias simples de las escrituras y actas notariales"*, que el **art. 31.1 declara expresamente NO sujetas** — y el art. 28 remite a ese artículo, así que el fundamento está dentro del alcance de la pregunta.
+> - **art. 54.2** (*"¿qué documentos no necesitan presentarse?"*) → el mismo distractor era defendible por **otra letra del mismo apartado**: la c) exime *"las copias de las escrituras y actas notariales que NO tengan por objeto cantidad o cosa valuable"*. Sustituido por *"las primeras copias de escrituras que tengan por objeto cantidad o cosa valuable"*, que son justamente las que sí tributan.
+>
+> **Regla:** al escribir un distractor, no basta preguntarse *"¿está en el artículo?"*; hay que preguntarse **"¿podría un opositor defender que también es cierto, leyendo el resto del precepto?"**. Los sitios donde se cuela: (a) el distractor nombra una **subclase** de lo que la clave enumera; (b) el distractor es una regla REAL del mismo artículo aplicada a **otro supuesto** — legítimo solo si el enunciado acota bien el supuesto; (c) el distractor y la clave son **el mismo hecho con otro nombre** (el caso del T223, art. 5.3).
+
+> 🔴 **Y un defecto de clave real: la segunda frase del apartado.** En el **art. 46.3** la clave recogía el primer inciso (*"cuando el valor declarado fuese superior al comprobado, aquél tendrá la consideración de base imponible"*) y el apartado **continúa**: *"Si el valor resultante de la comprobación **o el valor declarado** resultase inferior al precio o contraprestación pactada, se tomará esta última magnitud como base imponible"*. O sea: existe un supuesto en que el declarado, aun siendo el mayor de los dos, **no** es la base. La clave afirmaba más de lo que la ley sostiene en todo caso. Arreglo: **acotar el enunciado** (*"y ninguno de los dos resultase inferior al precio o contraprestación pactada"*) y citar el apartado entero. Lo vieron los dos auditores por separado. **Cuando un apartado tiene dos frases, la segunda casi siempre condiciona la primera: léela antes de dar la clave por buena.**
+
+> 🔴 **EL OTRO DEFECTO DE CLAVE: la excepción que vive en el MISMO apartado — y el contraste interno que la delata.** En el **art. 17.Dos** de la Ley 19/1991 el enunciado reproducía el supuesto del párrafo primero (*"las rentas temporales o vitalicias constituidas como consecuencia de la entrega de un capital… deberán computarse:"*) sin acotar la excepción que viene **tres líneas después, en el mismo apartado**: *"**No obstante**, cuando se perciban rentas, temporales o vitalicias, procedentes de un seguro de vida, estas se computarán por el valor establecido en el apartado Uno"* — es decir, por valor de rescate, que era **exactamente uno de los distractores**. El argumento que lo mata: *la excepción solo tiene sentido si el supuesto general la habría cubierto*, así que esas rentas caen dentro del enunciado y el distractor es defendible. El auditor-opositor lo dio por **IMPUGNABLE**; el estricto llegó por su cuenta al mismo sitio.
+>
+> **Y lo que hay que aprender del método:** lo que delató el defecto fue un **contraste dentro del propio lote** — la pregunta hermana del art. 17.**Uno** SÍ decía *"con carácter general"* y ésta no. Cuando dos preguntas del mismo artículo tratan la relación regla/excepción con distinta acotación, la que no acota está mal. **Al generar dos preguntas de un artículo con «No obstante», acotar las dos o ninguna.**
+
+- **Un defecto lo introduje AL REPARAR**, que es el riesgo del que avisa este manual: al reescribir las viñetas del art. 39.1 quedó un cierre *"las dos últimas son inferencias razonables, pero el precepto no las formula"* — en una lista A-D con la clave en **D**, "las dos últimas" se lee como C y D, y de D sí lo formula (es la cita literal). Lo cazó el **tercer auditor**, el de re-check. Por eso el re-check de las reparadas no es opcional.
+- **Cero letras cruzadas en 31 preguntas** (T224+T225), renderizando las viñetas desde un mapa `texto de opción → motivo` en vez de escribirlas tras ordenar. Es la tercera tanda seguida con cero de ese defecto: el patrón funciona.
+
+> 🔧 **DOS CORRECCIONES DEL GATE, las dos por ruido.**
+>
+> **1. `CORRECTA PARCIAL` no leía el enunciado.** El módulo `citaVsOpcion.js` lo tenía anotado como limitación de diseño y con la medida hecha (*"7 avisos de 67 preguntas y 5 eran falsos positivos"*), pero el T225 lo puso en evidencia: **6 avisos de 16 preguntas, los seis el mismo patrón inocuo** — la opción completa la frase legal y la continuación es el predicado que YA está en la pregunta (art. 21: *"…se valorarán con arreglo a los criterios señalados en el Impuesto…"*). Ahora se le pasa el enunciado y se reutiliza **`clausulaEnEnunciado`** de `citaTruncada.js`, el helper que el repo ya tenía para esta misma pregunta en el otro check. Medido sobre el banco vivo (32.343 explicaciones con cita): el aviso baja de **1.415 (4,4%) a 1.242 (3,8%)** y **ninguna pregunta pasa a avisar** que antes no avisara. Los dos defectos reales que este check cazó (arts. 46.3 y 2.2 del RDL 1/1993) siguen disparándose, y hay un **test que lo fija como invariante** — porque afinar un gate es de un solo signo: si te pasas, calla defectos.
+>
+> **2. Los dos gates no corrían los mismos núcleos.** El simulador PRE-inserción (`simularBatch.js`) usaba cinco y el verificador de BD **siete**: le faltaban `citaVsOpcion` y `overclaimExplicacion`. Consecuencia real: el `OVERCLAIM` del art. 39.1 del T224 (*"sin excepciones"*) pasó la simulación y solo apareció **después de insertar**. Ya están cableados los siete, y hay tests de paridad anclados a esos casos reales, para que quitar el cableado ponga algo en rojo en vez de degradar el gate en silencio. **Regla: si añades un núcleo al verificador, añádelo al simulador.**
+
+- **Hueco de temario detectado de paso (ficha [T-141]):** el epígrafe del T225 pide *"**Tasas Fiscales sobre el Juego**: hecho imponible, devengo, sujeto pasivo, base imponible y tipo"* y el `topic_scope` **no tiene ninguna norma** de esa materia — solo la Ley 19/1991. Punto ciego de los detectores: `empty_topic`/`low_coverage` no lo ven (el tema tiene artículos y preguntas de la otra mitad) y `scope_titulo_huerfano` busca huecos DENTRO de una ley escopada, no una ley entera que falta. **Leer el epígrafe completo antes de elegir artículos no solo sirve para elegir bien: es cuando se ven las materias que no tienen dónde colgarse.**
+> ⚠️ **Y una errata que NO se arregla: la del propio BOE.** La auditoría del T225 señaló dos defectos en el texto legal almacenado — art. 18 *"tablas de **valor ación** de vehículos usados"* (palabra partida) y art. 14 *"…primas de amortización o reembolso **cualquiera, que** sea su denominación"* (coma espuria, y el art. 13 escribe la misma fórmula sin ella). Se comprobó contra el consolidado del BOE (`curl` a `BOE-A-1991-14392`) antes de tocar nada: **las dos están literalmente en el BOE**. Nuestro `content` es FIEL a la fuente y "corregirlo" habría introducido una divergencia con el texto oficial — justo lo que el import debe evitar. **Regla: una errata en el texto legal se verifica contra la fuente ANTES de arreglarla; si está en el boletín, se queda.** (Lo que sí era basura nuestra es el apóstrofo del art. 46 del RDL 1/1993, que no está en el BOE.)
+
+- **De paso, limpieza de datos:** el `content` del art. 46 del RDL 1/1993 terminaba el apartado 2 con un apóstrofo suelto (*"…Actos Jurídicos Documentados.'"*), basura de import que se le mostraba al usuario al desplegar el artículo. Lo vio la auditoría. Corregido.
+
+### 5.37 Batch T208 gestión tributaria — el *tell* que es de LOTE, y tres defectos introducidos AL REPARAR (2026-07-26)
+
+- **batch**: `gen_atc_t208_2026-07-26_s26c` — **16 preguntas aprobadas** sobre gestión tributaria (13 de la Ley 58/2003, arts. 129/132/133/134/136/138, y 3 del RD 1065/2007, arts. 155/157/165). El tema pasa de **13 a 29** preguntas. Todos los artículos tenían CERO preguntas y **todos se verificaron contra el BOE ANTES de generar** (LGT 8/8, RGGIT 11/11 idénticos al vigente).
+- **Resultado de las auditorías:** estricta 13 PERFECT / 3 NEEDS_REVIEW · opositor **0 impugnables de 16** · re-check 4 LIMPIAS + 3 defectos que introdujo la propia reparación.
+- **El riesgo específico del lote, verificado y superado:** los cuatro procedimientos de gestión (verificación de datos, comprobación de valores, comprobación limitada e iniciado mediante declaración) se parecen y sus reglas se cruzan, y encima Ley y Reglamento regulan lo mismo con distinto detalle. Ninguna clave importó la regla de otro procedimiento. **Y varios distractores la usan a propósito**, que es la forma buena de explotarlo: el mecanismo de autorización del art. 57 del reglamento como distractor del art. 136.3, los 15 días de otro trámite frente a los 10 del art. 155.3, el art. 31 de la LGT frente al 32.2 en el art. 165.
+
+> 🎯 **EL HALLAZGO DEL LOTE: el *tell* de FORMA no se mide pregunta a pregunta, se mide en el LOTE.** El gate comprueba que la correcta no exceda al mayor distractor en más del 30% ni sea la más corta — y un lote puede pasar ese filtro entero teniendo **la clave como opción más larga en la mayoría de las preguntas**. Medido aquí: **13 de 16**, y tras reparar tres, **11 de 16**. Quien no sepa la materia acierta 11 eligiendo la más larga.
+>
+> Segundo patrón, más fino: los **absolutos delatores** se concentraban en los distractores — en 10 preguntas con absolutos, **9 los tenían solo ahí** («únicamente», «exclusivamente», «solo», «siempre», «en exclusiva», «libremente decida»), con la clave como única matizada. La única clave con un absoluto lo tenía porque **la ley lo dice** («en ningún caso», art. 136.3).
+>
+> **Es un sesgo de LOTE, así que arreglarlo pregunta a pregunta no sirve:** se limpió la que tenía los tres distractores con «únicamente/exclusivamente/solo» y el sesgo del lote no se movió. Ficha **[T-150]** con el diseño del check de lote (`analizarLote` ya calcula longitudes y la lista de absolutos ya existe en `overclaimExplicacion`).
+>
+> **Y la trampa al repararlo:** quitarle el absoluto a un distractor puede dejarlo **verdadero-pero-parcial**, que es peor que el tell. Pasó aquí con el art. 136.1: sin el «únicamente», el distractor describía literalmente una actuación del apartado 2 y solo lo descartaba el ancla del enunciado. Hay que sustituir el marcador por un **falsificador de contenido**.
+
+> 🔁 **LOS TRES DEFECTOS QUE INTRODUJO LA REPARACIÓN — el re-check no es opcional.** En este lote, las tres cosas que el tercer auditor devolvió no estaban en el original: las creó el arreglo.
+> 1. **Fuga cruzada.** Al pivotar la pregunta del art. 157.1 del reglamento para que dejara de ser un clon de la del art. 134.1 de la Ley, escribí en su enunciado *«Una son los valores publicados por la propia Administración actuante»*… que es **textualmente la clave de esa otra pregunta**. Se cambió una duplicación por una fuga: quien lee una acierta la otra. **Al reformular una pregunta, comprobar que su enunciado no contiene la clave de otra del mismo lote.**
+> 2. **Verdadero-pero-parcial** (el del art. 136.1, arriba).
+> 3. **Sustituir una afirmación falsa por una INCOMPROBABLE.** Una viñeta despachaba un distractor con «el artículo lo prohíbe sin excepción»; al mejorarla, describí el régimen de un artículo del reglamento **que no estaba aportado al auditor**. Pasó de falsa a no verificable, que en una explicación es igual de malo. La versión final se queda en lo que el propio artículo dice.
+
+- **Lección de método propia, por si le sirve a otra sesión:** en la primera pasada de reparación arreglé un artículo 134 que **no era** el del *tell* — hay tres preguntas de ese artículo y me fié del número en vez del índice que reportaba el gate. Lo delató que el error reaparecía idéntico tras "arreglarlo". **El gate numera por posición en el lote: usar ese índice, no el número de artículo.**
+- **Y una regla de citas que sale de aquí:** en las explicaciones, **nombrar siempre la ley al citar un artículo ajeno**. Escribir «reserva el artículo 31» hizo que el empaquetador de auditoría adjuntara el art. 31 del *reglamento* en vez del de la *Ley* — ver **[T-149]**, que documenta ese límite del anexo. Nombrar la ley arregla el adjunto y además hace la explicación autosuficiente.
+
+### 5.38 Batch T204 declaraciones y autoliquidaciones — la literalidad de la clave NO es adjudicable, y empuja al formato *cloze* (2026-07-26)
+
+- **batch**: `gen_atc_t204_2026-07-26_s26c` — **14 preguntas** sobre la LGT (arts. 23, 37, 119.4, 120 y 122), el tema pasa de **15 a 29**. Los cuatro artículos con cero preguntas eran justo los que nombra el epígrafe (retenciones y pagos a cuenta, autoliquidaciones, complementarias). Verificación previa contra el BOE: **9/9 idénticos al vigente**.
+- **Auditorías:** estricta **10 PERFECTAS / 4 NEEDS_REVIEW / 0 REJECT** · opositor **1 anulable y 4 corregibles de 14** · las dos coincidieron en 4 de los 5 defectos, cada una por su cuenta.
+- 🔴 **EL DEFECTO MÁS GRAVE FUE UN ERROR LEGAL EN UNA EXPLICACIÓN MÍA, no en una clave.** Escribí que las sanciones son obligaciones accesorias «del artículo 25», y el art. 25.2 de la LGT dice literalmente lo contrario: *«Las sanciones tributarias no tienen la consideración de obligaciones accesorias»*. La clave era impecable y el gate estaba verde. **Las viñetas de la explicación se auditan con el mismo rigor que la clave**: son material de estudio, y ésta enseñaba mal una distinción que se pregunta a menudo. Lo cazaron los DOS auditores, cada uno citando el artículo adjunto.
+- ⚙️ **DESCUADRE DE SEVERIDAD ENTRE LOS DOS GATES, ARREGLADO EN ESTE LOTE.** `simularBatch` (pre-inserción) trataba `NO_LITERAL` como **aviso** («PROXY, nunca veredicto») y `verificar-batch-generado.cjs` (BD) como **defecto duro**. Consecuencia medida aquí: la simulación dijo *«Limpio para insertar»* con 5 NO_LITERAL en amarillo y, con las 14 ya en BD, el gate de BD las tumbó (9/14) → **5 preguntas reescritas EN BD en vez de en el borrador**. Un simulador que no adelanta el veredicto del gate real no sirve para nada. Ahora **bloquea, en paridad**, con test de regresión (`__tests__/lib/generacion/simularBatch.test.js`, +3 casos) y sin tocar el marco INTRUSO, donde lo que debe ser literal son los distractores.
+  - **El criterio de fondo, que conviene no confundir:** la adjudicación *«puede ser condensación válida»* nació para **RECLASIFICAR preguntas que ya estaban en el banco** (la cola de literalidad del 25/07). En un borrador que estás escribiendo **no aplica**: anclas la clave al literal y sale mejor pregunta. Las 5 reescritas ganaron precisión.
+- 🎯 **Y el efecto colateral de esa literalidad, que hay que compensar a mano: el formato *cloze*.** Cumplir «clave = subcadena literal» sale fácil poniendo el arranque del precepto en el enunciado y dejando que la clave lo complete → el ítem mide **recordar la letra**, no comprender la figura. Los dos auditores lo señalaron solos (7 de 14 el estricto, 12 de 14 el opositor). **No se arregla aflojando la literalidad** —sin ella la clave deja de ser verificable contra el BOE—, sino cambiando de dónde salen los DISTRACTORES: los dos auditores eligieron por separado la misma pregunta como la mejor del lote (art. 37.3, las cuatro opciones son definiciones auténticas de figuras vecinas —retenedor, pagos fraccionados, sustituto—) y **su clave también es literal**. Ficha con el detalle y la mecanización pendiente: **[T-153]**.
+- **Dos avisos `CORRECTA PARCIAL` adjudicados, y un hueco del check:** la exención por «cláusula ya presente en el enunciado» solo reconoce la cláusula **literalmente** escrita en él, así que un acotamiento **semántico** («en las autoliquidaciones de las que resulta un importe a ingresar…») no puede limpiar el aviso nunca, aunque circunscriba el supuesto correctamente. Se adjudica a mano; conviene saberlo para no dar vueltas.
+- **Confirmación de [T-149] en vivo:** el anexo resolvió bien los 7 artículos adjuntos porque **todas** las remisiones eran a la misma ley. Pero al auditor le faltaron los arts. 117, 123 y 136-140 para refutar un distractor, y mi viñeta los citaba sin tenerlos → dijo *«no verificable»*, no *«incorrecto»*, que es exactamente el comportamiento que se le pide.
+
+### 5.39 Batch RD 203/2021 arts. 50 y 52 — el primero emitido en §8.2 puro, y por qué salió a la primera (2026-07-31)
+
+- **batch**: `gen_rd203_t331_2026-07-31` — **11 preguntas** (6 del art. 50, referencia temporal de los documentos administrativos electrónicos; 5 del art. 52, derecho de acceso al expediente electrónico). Los dos artículos servían **CERO** preguntas siendo los únicos así en todo el rango escopado. Lo reportó una usuaria premium ([T-331]), no un detector.
+- **Multiplicador de impacto ×10 sin trabajo extra:** los dos artículos están escopados en **10 oposiciones activas** con tema disponible (Administrativo del Estado T203, Madrid T22, Seguridad Social T23, CLM T12, Dip. Cuenca T18, Alcalá de Henares T12, Univ. Granada T204, País Vasco T14, Técnico Informática T108 y Aux. Admin. SMS T21). Es el caso de libro de §1.bis: la pregunta cuelga del ARTÍCULO, así que repararlo repara todas a la vez. **Correr la query de cobertura ANTES de elegir el lote cambia la prioridad**, y aquí la subió mucho.
+- **Auditorías:** Paso 6 auto-audit **11/11 PERFECT** · Paso 7 ciego **11/11 PERFECT** · Paso 9 adversarial con agente nuevo **11/11 PERFECT**. Cero reparaciones, cero rondas.
+- 🧬 **La razón de que saliera a la primera es MECÁNICA, no suerte: se escribió la ESTRUCTURA (§8.2) y el texto se RENDERIZÓ con el mismo módulo que usa el serve.** El borrador se construyó con un script de 40 líneas que (a) monta el `explanation_data`, (b) llama a `renderStructuredExplanation` para producir el `explanation` §8.1 y (c) comprueba las longitudes de §2.2-bis ahí mismo. Consecuencias medidas:
+  - **La cabecera y las viñetas no pueden descolocarse.** Las razones van keadas al ÍNDICE de la opción, así que el modo de fallo de §2.2-ter —remapear mal un bullet al mover la correcta— **es inalcanzable por construcción**. Comprobado renderizando una pregunta con el orden invertido: la correcta pasa de B a C y las tres viñetas siguen describiendo su propia letra.
+  - **`aplicar-explicacion.ts --lote` devolvió `680 → 680 caracteres` en las 11**: byte a byte lo mismo que se insertó. Esa igualdad es la prueba de que las dos columnas nacen coherentes, no una comprobación aparte que alguien tenga que acordarse de hacer.
+  - **Nacen `shuffle_safety='safe'` las 11**, sin pasar por el detector ni por una batida posterior. Comparar con T-282/T-324, que son la factura de haber escrito la letra dentro del texto.
+- **Método de distractores que evitó el tell de longitud sin una segunda pasada:** partir del literal y cambiar UN elemento (§2.2-bis), salvo tres distractores que reproducen texto real de OTRO artículo del propio Reglamento (art. 42.1 comparecencia/DEH única, art. 46.2 «los datos necesarios para su acceso», art. 53 «seis meses»). El auditor del Paso 9 los señaló por su cuenta como **bien construidos** precisamente porque la viñeta dice de qué artículo son y por qué no responden a lo que se pregunta. Un distractor con procedencia declarada enseña; uno inventado solo descarta.
+- **Un aviso `CORRECTA PARCIAL` adjudicado a mano, y merece anotarse:** en el art. 52 la Administración «garantiza» DOS cosas coordinadas por «y» (el tiempo de acceso, y el cumplimiento de la normativa de protección de datos, transparencia y patrimonio documental). La clave de una pregunta recoge solo la primera — y es correcto, porque el enunciado acota expresamente (*«garantizará el acceso … durante:»*) y la segunda es el objeto de otra pregunta del mismo lote. **Partir una cláusula coordinada entre dos preguntas es legítimo si cada enunciado acota su mitad**; lo que no vale es acotar en el enunciado y luego preguntar por el todo.
+- 🔧 **Y destapó un fallo del constructor del input (§Paso 7), arreglado en el mismo trabajo: «del Reglamento» se descartaba como OTRA norma.** El anexo adjuntó 7 de los 8 artículos citados por las viñetas; faltó el 41, el único escrito como *«…que invoca el artículo 41 del Reglamento cuando…»*. Los arts. 42 y 47 llevaban la misma forma y **se salvaron de rebote** porque otras viñetas del lote los nombraban sin ese inciso — es decir, el fallo estaba tapado por la redundancia y podía haber pasado inadvertido mucho tiempo. La causa: `OTRA_NORMA` incluye `Reglamento` en su lista de cuerpos ajenos, y **cuando el batch va de un reglamento (todo Real Decreto que aprueba uno) ese «del Reglamento» es el MISMO cuerpo**, igual que el «de esta ley» que la guarda ya exceptuaba. El corte nuevo es conservador y **no toca el guardarraíl del artículo homónimo**: solo pasa el reglamento SIN IDENTIFICAR; en cuanto viene identificado (`(UE) 2016/679`, `General de Protección de Datos`, `de ejecución`, `n.º 1/2005`, `delegado`) sigue descartándose. Verificado sobre el caso real —7 → 8 adjuntos— y fijado con 2 tests nuevos en `__tests__/scripts/auditarBatchInput.test.js`.
+
+## 6. Anti-patterns (qué NO hacer)
+
+| Anti-pattern | Por qué falla |
+|---|---|
+| Generar 100 preguntas de una ley sin piloto previo | Sin calibrar el prompt, % de fallo puede ser alto y la auditoría se vuelve trabajo desperdiciado. |
+| Saltarse la auditoría Sonnet "porque el batch es pequeño" | Manual de revisión §18.1: ~17% de falsos negativos en auditoría única. Para IA el riesgo es mayor. |
+| Activar directamente sin pasar por `draft` | Romperías la invariante "Importar Desactivadas, Activar Tras Revisión". Y `is_active` es GENERATED — fallará el UPDATE. |
+| Generar preguntas sobre artículos derogados o no vigentes | Verificar antes que el artículo está en BD activo (`articles.is_active=true`). |
+| Omitir el tag `ia_generada` | Pierdes la capacidad de filtrar para revisión periódica y de revertir el batch. |
+| Reusar la opción correcta para varios artículos | Si dos preguntas tienen la misma opción correcta (cita literal de artículos distintos), una de las dos tiene mal vinculado el `primary_article_id`. |
+| Generar preguntas tipo "todas las anteriores son correctas" | Manual §3.2: requieren verificar literalidad de CADA sub-opción, no solo la marcada. Mucho más fácil que se cuele un fallo. Evitar este tipo en IA-generadas hasta tener calibración alta. |
+| Omitir cláusulas coordinadas por "así como" / "junto con" / "además de" del predicado preguntado | Batch 7 (Q15 Art 70 Aragón): "principios de A y B, así como C" sin incluir C estrecha el sujeto. Si la cláusula puede leerse como parte del mismo predicado, debe incluirse. Bajo ambigüedad de alcance gramatical, **incluir**. |
+| Asumir que dos pasadas pre-aplicación PERFECT garantizan ausencia de defectos | Batch 7: ambas pasadas pre-transición dieron 15/15 alta confianza; el Sonnet del paso 9 detectó Q15. Los Sonnets pueden converger en el mismo sesgo. El paso 9 es **obligatorio como tercer auditor**, no opcional. |
+| Resumir el contenido del artículo en el enunciado de la pregunta (en lugar de citarlo o usar elipsis) | b5 Aragón Q15 (Art 92): el enunciado decía "actividades administrativas y de contenido económico" cuando el artículo dice "actividades administrativas, sean de fomento, prestación o de gestión de servicios públicos o de producción de bienes de interés público susceptibles de contraprestación; actividades de contenido económico…". Las dos pasadas pre-aplicación lo dieron por bueno; el paso 9 lo detectó. Regla: si el enunciado menciona "según el artículo X", lo que diga sobre X **debe ser cita literal o usar elipsis explícita** (puntos suspensivos / paréntesis "[…]" / "entre otras cuestiones"). Nunca resumir. |
+| Aceptar el veredicto NEEDS_REVIEW de Sonnet por "posible solapamiento" sin verificar respuestas correctas | Batch 15: Sonnet flagueó 3 preguntas por solapamiento aparente con existentes del mismo apartado. Tras consultar las opciones de las existentes, las **3 respuestas correctas eran literalmente distintas** (mismo art, dato distinto). Sonnet ciego no ve las opciones de las existentes — solo enunciados. Regla v2.0: si Sonnet flaguea solapamiento entre nueva y existente, **cargar la existente y comparar respuestas correctas** antes de retirar la nueva. |
+| Aplicar el mecanismo intruso a artículos escuetos (<200 chars) con enumeración cerrada ya cubierta por una existente | Batch 16 Art 20 (108 chars, 3 órganos): la existente preguntaba la enumeración positiva, la nueva pedía identificar el intruso. Sonnet detectó solapamiento cognitivo total — quien sabe los 3 órganos resuelve ambas. Lección: en arts cortos con lista cerrada conocida, intruso y enumeración positiva NO son ortogonales. Generar sobre otro art con margen real. |
+| Generar redundancia ignorando el enunciado de la existente | Batch 16 Art 29: la existente citaba en su enunciado el texto literal "Todo miembro de la Cámara deberá estar adscrito a un grupo" como contexto, luego preguntaba otra cosa. La nueva tenía como opción correcta exactamente esa frase — trivializada para quien ya vio la existente. Regla v2.1: antes de fijar la opción correcta de una redundancia, **leer el enunciado completo de cada existente** y descartar como correcta cualquier frase ya citada literalmente allí. |
+| Aislar un sub-dato cuando la opción correcta de una existente ya lo contiene completo | Batch 18 Art 13: la existente daba como respuesta el supuesto entero del artículo (texto largo de varias líneas). La nueva aislaba el sub-dato "más de 25 años → archivo histórico" que ya estaba literalmente dentro de esa respuesta larga. Sonnet flagueó NEEDS_REVIEW. Retirar. Regla v2.2: si la opción correcta de la nueva está LITERALMENTE contenida en la opción correcta de una existente, retirar — no aporta valor diferencial. |
+| Generar el JSON borrador sin dedup nivel 3 mental previo | Batch 19: al planificar 12 preguntas, identifiqué 2 candidatas cuya opción correcta planeada ya estaba literal en la opción correcta de una existente del mismo art (Art 23.1 "sin perjuicio" y Art 23.2 "forma original"). Descartarlas ANTES de redactar ahorró una ronda completa de Sonnet + reparación + recheck. Regla v2.2: antes de redactar JSON, leer el `correct_option_text` de cada existente del art y descartar cualquier candidata cuyo dato planeado ya esté allí. |
+| Forzar el último 5% del objetivo cuando los rendimientos marginales caen por debajo de 5 preguntas/batch | Batch 22 cerró T13 en 96/100. Los 4 que faltaban requerirían ángulos artificiales sobre apartados ya cubiertos exhaustivamente (Art 25 con 148 chars y una sola triple prohibición; Art 22 con 288 chars y una sola idea; etc.). Generar preguntas forzadas degrada la calidad media del corpus sin valor pedagógico real. Regla v2.3: **declarar techo natural cuando un batch genera ≤5 preguntas tras dedup mental estricto** y pasar a otro tema. 96/100 con calidad sostenida > 100/100 con preguntas dudosas. |
+| Asumir que "art con 7q ya está saturado" sin análisis dedup por apartado | Batch 21 Art 7 (2686 chars, 7 existentes previas, aparentemente saturado): el análisis dedup mental **por apartado estructural** (no por número global de preguntas) reveló 5 apartados sin preguntas + 1 sub-elemento del 7.7 → 8 candidatas viables, las 8 PERFECT en Sonnet y paso 9. Regla v2.3: el predictor del techo natural es el número de APARTADOS ESTRUCTURALES, no chars ni preguntas previas. Art 7 con 8 apartados admite 15q; un art de 1 párrafo con 3q ya estará saturado. |
+
+## 7. Roadmap de mejora
+
+- **Plantilla de prompt en `lib/prompts/`**: encapsular el prompt mental del Paso 2 en una constante reutilizable que pueda usar tanto Claude Code interactivo como agentes batch.
+- **Endpoint `/api/admin/ia-generate-questions`**: pasar al backend la lógica de generación + insert en draft + auto-audit, dejando solo la auditoría Sonnet + transición como paso humano-en-loop.
+- **Dashboard `/admin/ia-generated`**: listar batches con métricas (generadas / pasadas auditoría / activas hoy) para monitorizar drift de calidad si la IA generadora cambia de versión.
+- **Test de regresión**: comparar mensualmente una muestra de IA-generadas activas contra el artículo vigente (detectar derivaciones por reformas legales que invalidarían la opción correcta).
+
+## 8. Manuales relacionados
+
+- **`importar-preguntas-scrapeadas.md`** — Principio "draft → revisar → approved", dedup, formato didáctico, ley virtual.
+- **`revisar-preguntas-con-agente.md`** — Flujo v2.1, criterios §3.1 + §3.2 + §8.1, helper `transitionQuestion`, taxonomía de `reason_code`.
+- **`docs/roadmap/sistema-desactivacion-preguntas.md`** — Diseño del lifecycle, sync trigger, invariante por construcción.
+- **`crear-nueva-oposicion.md`** — Si vas a generar preguntas IA al crear una oposición nueva, leerlo antes para entender topic_scope.
+- **[`verificar-epigrafe-topic-scope.md`](./verificar-epigrafe-topic-scope.md)** — antes de generar, confirma qué artículos cubre el epígrafe del tema (no generes fuera de scope). Este manual se invoca desde ahí cuando un tema tiene scope pero 0 preguntas.
+- **[`monitoreo-boe-y-crear-leyes-nuevas.md`](./monitoreo-boe-y-crear-leyes-nuevas.md)** — si la ley/artículo de origen aún no existe en BD, créalo/sincronízalo desde el BOE antes de generar.
+- **[`importar-examen-oficial-completo.md`](./importar-examen-oficial-completo.md)** — complemento: las preguntas oficiales de exámenes pasados son la fuente preferente; genera con IA solo lo que el examen no cubre.

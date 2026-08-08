@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 55.1 de la Constitución Española",
+    "texto": "Los derechos reconocidos en los artículos 17, 18, apartados 2 y 3, artículos 19, 20, apartados 1, a) y d), y 5, artículos 21, 28, apartado 2, y artículo 37, apartado 2, podrán ser suspendidos cuando se acuerde la declaración del estado de excepción o de sitio en los términos previstos en la Constitución."
+  },
+  "intro": "El derecho de huelga está en el artículo 28.2, que es uno de los preceptos de la lista del artículo 55.1. Esa lista se activa con DOS de los tres estados excepcionales: excepción y sitio. El estado de alarma queda fuera — puede limitar el ejercicio de ciertos derechos, pero no habilita la suspensión de los del artículo 55.1.",
+  "options": {
+    "0": "El estado de excepción permite esa suspensión, pero no es el único supuesto.",
+    "1": "El estado de sitio también la permite, y tampoco agota la respuesta.",
+    "2": "Son los dos estados que menciona el artículo 55.1 para suspender, entre otros, el derecho de huelga del artículo 28.2.",
+    "3": "Incluye el estado de alarma, que no figura en el artículo 55.1 y no habilita la suspensión de esos derechos."
+  },
+  "outro": "**Clave:** la suspensión del artículo 55.1 —el derecho de huelga incluido— procede en los estados de excepción y de sitio, nunca en el de alarma."
+}

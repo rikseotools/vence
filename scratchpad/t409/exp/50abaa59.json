@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 41 de la Constitución Española",
+    "texto": "Los poderes públicos mantendrán un régimen público de Seguridad Social para todos los ciudadanos, que garantice la asistencia y prestaciones sociales suficientes ante situaciones de necesidad, especialmente en caso de desempleo."
+  },
+  "intro": "El mandato constitucional se formula sin condicionar el régimen a la nacionalidad, a la residencia ni a la cotización previa. Esa universalidad es lo que permite que existan prestaciones no contributivas: la Constitución fija el marco y la ley concreta después quién accede a cada prestación y con qué requisitos.",
+  "options": {
+    "0": "El precepto no restringe el régimen a quienes tengan nacionalidad española.",
+    "1": "Tampoco lo condiciona a haber cotizado; si así fuera, no cabrían las prestaciones no contributivas dentro del mismo mandato.",
+    "2": "La residencia en territorio español es un requisito que manejan las leyes de desarrollo para prestaciones concretas, no la fórmula del artículo 41.",
+    "3": "Es lo que dice el artículo 41: un régimen público de Seguridad Social para todos los ciudadanos, con prestaciones suficientes ante situaciones de necesidad y, en especial, en caso de desempleo."
+  },
+  "outro": "**Clave:** el artículo 41 formula el régimen público de Seguridad Social para TODOS los ciudadanos, sin condicionarlo a nacionalidad, residencia ni cotización."
+}

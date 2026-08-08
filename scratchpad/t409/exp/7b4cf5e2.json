@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 1 del Real Decreto 951/2005",
+    "texto": "Este real decreto tiene por objeto establecer el marco general para la mejora de la calidad en la Administración General del Estado y regular los aspectos básicos de los programas que lo integran."
+  },
+  "intro": "Las cuatro opciones juegan con dos parejas de adjetivos que aquí van cruzados: el MARCO es general y los aspectos que se regulan de los programas son BÁSICOS. Cambiar uno por otro invierte el sentido de la norma, que fija un armazón común para toda la Administración General del Estado y deja el detalle a cada programa.",
+  "options": {
+    "0": "Convierte el marco en específico cuando la norma lo define como general.",
+    "1": "Reproduce el objeto tal y como lo formula el precepto: marco general para la mejora de la calidad y regulación de los aspectos básicos de los programas que lo integran.",
+    "2": "Sustituye la mejora de la calidad por su mero análisis y, además, deja fuera la segunda mitad del objeto, la regulación de los programas.",
+    "3": "Cambia los aspectos básicos por específicos y prescinde del establecimiento del marco, que es la primera finalidad de la norma."
+  },
+  "outro": "**Clave:** marco GENERAL para la mejora de la calidad y aspectos BÁSICOS de los programas que lo integran."
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 140.3 de la Ley 9/2017",
+    "texto": "No obstante lo anterior, cuando el empresario esté inscrito en el Registro Oficial de Licitadores y Empresas Clasificadas del Sector Público o figure en una base de datos nacional de un Estado miembro de la Unión Europea, como un expediente virtual de la empresa, un sistema de almacenamiento electrónico de documentos o un sistema de precalificación, y estos sean accesibles de modo gratuito para los citados órganos, no estará obligado a presentar los documentos justificativos u otra prueba documental de los datos inscritos en los referidos lugares."
+  },
+  "options": {
+    "0": "La exención alcanza a los documentos justificativos de los datos inscritos, no a la declaración responsable que la letra a) del apartado 1 exige acompañar a la proposición.",
+    "1": "El precepto no reserva esa salvedad: la exención opera por el hecho de la inscripción accesible de modo gratuito.",
+    "2": "Reproduce el precepto: no está obligado a presentar los documentos justificativos u otra prueba documental de los datos inscritos en los referidos lugares.",
+    "3": "El artículo no fija plazo alguno de antigüedad de la inscripción; lo que exige es que los registros sean accesibles de modo gratuito para los órganos de contratación."
+  },
+  "frame": "select_correct"
+}

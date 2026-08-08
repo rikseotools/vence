@@ -1,0 +1,11 @@
+Hola Laura,
+
+Tenías razón: el máximo que Access puede mostrar en un control de formulario o informe es de 64.000 caracteres. La versión de la pregunta que te salió daba por buena otra cifra y ya está retirada.
+
+Se queda la versión correcta, con la explicación ampliada para distinguir las tres cifras que suelen mezclarse: 64.000 es lo que se ve en un control, 65.535 lo máximo que admite el campo escribiendo desde la interfaz, y 1 GB el almacenamiento por programación.
+
+No debería volver a salirte con la respuesta anterior.
+
+Muchas gracias.
+
+Equipo de Vence

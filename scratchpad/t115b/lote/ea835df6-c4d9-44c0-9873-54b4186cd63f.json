@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 138.2 de la Ley 9/2017",
+    "texto": "En ese caso el anuncio de licitación o la invitación a los candidatos seleccionados advertirán de esta circunstancia; y el plazo de presentación de las proposiciones o de las solicitudes de participación se prolongará cinco días, salvo en el supuesto de tramitación urgente del expediente a que se refiere el artículo 119."
+  },
+  "options": {
+    "0": "La prórroga que fija el precepto es de cinco días, no de quince.",
+    "1": "Reproduce el precepto: cinco días de prórroga, con la excepción de la tramitación urgente del artículo 119.",
+    "2": "Invierte la excepción: la prórroga NO se aplica en el supuesto de tramitación urgente, precisamente el caso que el artículo exceptúa.",
+    "3": "La excepción del precepto es la tramitación urgente del artículo 119; el artículo 133 regula la confidencialidad, que aquí es uno de los motivos del acceso no electrónico."
+  },
+  "frame": "select_correct"
+}
