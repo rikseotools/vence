@@ -24,6 +24,7 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     vacuumFailed: [],
     observableEventsPorParticion: false,
     observableEventsParticionesDropeadas: 0,
+    purgeFailed: [],
   };
 
   function montar(resultado: TelemetryRetentionResult) {
@@ -83,5 +84,25 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     const ev = exito(emit);
     expect(ev.metadata.remaining).toEqual({ observable_events: 4321 });
     expect(ev.metadata.vacuumFailed).toEqual(['observable_events']);
+  });
+
+  /**
+   * [T-360] Reproducido en producción el 08/08: un DELETE que falla ya no tira `run()`
+   * entero (ver el spec del servicio) — pero si el emisor no propagara `purgeFailed`,
+   * el evento seguiría diciendo `status: 'success'` sin ningún rastro de que una tabla
+   * se quedó sin podar esa noche, y `drenaje_atrasado` sería la ÚNICA señal (indirecta,
+   * y solo si el atraso crece lo bastante). `purgeFailed` es el POR QUÉ, no una alerta
+   * nueva — igual criterio que `vacuumFailed`, un escalón más abajo en la cadena.
+   */
+  it('propaga purgeFailed sin bajar el status a failure', async () => {
+    const { cron, emit } = montar({
+      ...resultadoBase,
+      purgeFailed: ['observable_events'],
+    });
+    await cron.handle();
+
+    const ev = exito(emit);
+    expect(ev).toBeDefined();
+    expect(ev.metadata.purgeFailed).toEqual(['observable_events']);
   });
 });

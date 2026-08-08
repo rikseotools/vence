@@ -67,6 +67,14 @@ export class TelemetryRetentionCron {
           // borrado sigue siendo `status: 'success'` aunque esto no esté vacío: VACUUM
           // es higiene, no la medida — ver el comentario en TelemetryRetentionService.
           vacuumFailed: result.vacuumFailed,
+          // [T-360] Tablas cuyo DELETE (o `mantenerParticiones`, si ya está particionada) falló
+          // esta pasada (vacío = todo bien). El evento sigue siendo `status: 'success'` aunque
+          // esto no esté vacío, a propósito: es justo lo que evita que UNA tabla con problemas
+          // tire el `run()` entero y deje a la OTRA sin su propia oportunidad de podar — ver el
+          // comentario de `purgeFailed` en TelemetryRetentionService. `remaining` sigue siendo la
+          // medida de si el drenaje va o no va (la regla `drenaje_atrasado` ya lo vigila); esto es
+          // el POR QUÉ, no una alerta nueva.
+          purgeFailed: result.purgeFailed,
           // [T-360] El día que se aplique el particionado, `observableEventsDeleted` pasa a 0
           // para siempre porque la retención ya no borra filas, dropea particiones. Sin estos
           // dos campos ese evento diría «0 borradas» sin ningún rastro de que sí se está

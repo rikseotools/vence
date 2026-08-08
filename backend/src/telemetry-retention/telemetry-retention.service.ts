@@ -37,10 +37,28 @@ export interface TelemetryRetentionResult {
   observableEventsPorParticion: boolean;
   /** Particiones de `observable_events` dropeadas en este `run()` (solo tiene sentido si `observableEventsPorParticion`). */
   observableEventsParticionesDropeadas: number;
+  /**
+   * Tablas cuyo DELETE por lotes (o `mantenerParticiones`, si ya está particionada) falló esta
+   * pasada — vacío si todo fue bien.
+   *
+   * Reproducido en producción (08/08): el mismo `statement_timeout` de 30 s que ya tumbaba el
+   * VACUUM (ver `vacuumFailed`) tumbó esta vez el DELETE en sí — `purgeTable` no tenía try/catch,
+   * así que la excepción se propagó fuera de `run()` y canceló TODO lo que viene después: el
+   * DELETE de `validation_error_logs` (una tabla SANA, sin ningún problema propio) ni siquiera
+   * llegó a intentarse, y `remaining` —la medida con la que se juzga si el drenaje va o no va—
+   * tampoco se calculó. Mismo defecto de fondo que motivó `vacuumFailed`, un escalón más abajo en
+   * la cadena: una tabla con problemas no puede dejar a las demás sin su propia oportunidad.
+   */
+  purgeFailed: string[];
 }
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
 export const ATRASO_TOPE = 200_000;
+
+/** `error.message` si es un `Error`, o su representación textual si no lo es. */
+function mensajeDe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Retención de las dos tuberías de telemetría (append-only, alto volumen):
@@ -87,6 +105,7 @@ export class TelemetryRetentionService {
       vacuumFailed: [],
       observableEventsPorParticion: false,
       observableEventsParticionesDropeadas: 0,
+      purgeFailed: [],
     };
 
     // [T-360] `observable_events` puede estar particionada por `created_at` (DROP PARTITION en vez
@@ -98,25 +117,51 @@ export class TelemetryRetentionService {
       'observable_events',
     );
 
+    // try/catch a propósito en las DOS ramas, igual criterio que `vacuum()`: reproducido en
+    // producción (08/08) que un DELETE por lotes que supera el `statement_timeout` tira TODO
+    // `run()` — y con eso, `validation_error_logs` (una tabla SANA, sin ningún problema propio)
+    // ni siquiera llega a intentar su propio DELETE, y `remaining` no se calcula para NINGUNA de
+    // las dos. Una tabla con problemas no puede dejar sin oportunidad a la otra.
     if (result.observableEventsPorParticion) {
-      result.observableEventsParticionesDropeadas =
-        await this.mantenerParticiones('observable_events');
+      try {
+        result.observableEventsParticionesDropeadas =
+          await this.mantenerParticiones('observable_events');
+      } catch (error) {
+        result.purgeFailed.push('observable_events');
+        this.logger.warn(
+          `mantenerParticiones(observable_events) falló (no bloqueante): ${mensajeDe(error)}`,
+        );
+      }
     } else {
       // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
       // por la hora del evento: `observable_events.ts` puede venir corrupta (visto un
       // `ts`=2067 de un cliente) y esas filas con fecha futura nunca cumplirían
       // `ts < now()-30d` → crecerían para siempre. `created_at` no tiene ese agujero.
-      result.observableEventsDeleted = await this.purgeTable(
-        'observable_events',
+      try {
+        result.observableEventsDeleted = await this.purgeTable(
+          'observable_events',
+          'created_at',
+          (n) => (result.batches += n),
+        );
+      } catch (error) {
+        result.purgeFailed.push('observable_events');
+        this.logger.warn(
+          `purgeTable(observable_events) falló (no bloqueante): ${mensajeDe(error)}`,
+        );
+      }
+    }
+    try {
+      result.validationErrorLogsDeleted = await this.purgeTable(
+        'validation_error_logs',
         'created_at',
         (n) => (result.batches += n),
       );
+    } catch (error) {
+      result.purgeFailed.push('validation_error_logs');
+      this.logger.warn(
+        `purgeTable(validation_error_logs) falló (no bloqueante): ${mensajeDe(error)}`,
+      );
     }
-    result.validationErrorLogsDeleted = await this.purgeTable(
-      'validation_error_logs',
-      'created_at',
-      (n) => (result.batches += n),
-    );
 
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
     // y refresca stats para que los planes (p.ej. el GROUP BY del panel admin) no
@@ -166,9 +211,8 @@ export class TelemetryRetentionService {
       await this.db.execute(sql`VACUUM (ANALYZE) ${sql.raw(table)}`);
     } catch (error) {
       result.vacuumFailed.push(table);
-      const msg = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `VACUUM (ANALYZE) ${table} falló (no bloqueante): ${msg}`,
+        `VACUUM (ANALYZE) ${table} falló (no bloqueante): ${mensajeDe(error)}`,
       );
     }
   }

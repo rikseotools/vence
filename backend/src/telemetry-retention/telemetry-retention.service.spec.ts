@@ -139,6 +139,79 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.remaining.observable_events).toBe(0);
     expect(res.vacuumFailed).toEqual(['observable_events']);
   });
+
+  /**
+   * Reproducido en producción el 08/08: el DELETE por lotes de `observable_events` superó el
+   * `statement_timeout` y tiró TODO `run()` — `validation_error_logs` (tabla SANA, sin ningún
+   * problema propio) ni siquiera llegó a intentar su propio DELETE esa noche, y `remaining` no
+   * se calculó para NINGUNA de las dos tablas. Mismo defecto de fondo que ya arregló
+   * `vacuumFailed`, un escalón más abajo: aquí falla el DELETE en sí, no el VACUUM posterior.
+   */
+  it('un DELETE que falla en una tabla NO tira el resultado ni deja a la otra sin su turno', async () => {
+    const db = fakeDb({ observable_events: 1_000_000, validation_error_logs: 500_000 });
+    const original = db.execute;
+    db.execute = jest.fn(async (q: unknown) => {
+      const texto = JSON.stringify(q);
+      if (texto.includes('observable_events') && texto.includes('DELETE')) {
+        throw new Error(
+          "Failed query: \n        DELETE FROM observable_events\n        WHERE ctid IN (\n          SELECT ctid FROM observable_events\n          WHERE created_at < now() - interval '30 days'\n          LIMIT $1\n        )\n      \nparams: 50000",
+        );
+      }
+      return original(q);
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    // observable_events no pudo borrar nada esta noche...
+    expect(res.observableEventsDeleted).toBe(0);
+    expect(res.purgeFailed).toEqual(['observable_events']);
+    // ...pero validation_error_logs SÍ tuvo su turno, sin que el fallo de la otra se lo robara.
+    expect(res.validationErrorLogsDeleted).toBe(500_000);
+    // Y `remaining` se calculó para las DOS, no solo para la que funcionó (acotado a
+    // ATRASO_TOPE=200_000, ver `atrasoDe` — el backlog real de 1 M no cabe entero, pero
+    // lo que importa aquí es que el cálculo SE HIZO, no que el número sea exacto).
+    expect(res.remaining.observable_events).toBe(200_000);
+    expect(res.remaining.validation_error_logs).toBe(0);
+  });
+
+  it('un fallo de mantenerParticiones (tabla YA particionada) tampoco tira el resultado', async () => {
+    const restanteValidation = { validation_error_logs: 100_000 };
+    const db = {
+      execute: jest.fn(async (q: unknown) => {
+        const texto = JSON.stringify(q);
+        if (texto.includes('pg_class') && texto.includes('relkind')) {
+          return [{ relkind: 'p' }];
+        }
+        if (texto.includes('run_maintenance_proc')) {
+          throw new Error('Failed query: SELECT partman.run_maintenance_proc()');
+        }
+        if (texto.includes('validation_error_logs') && texto.includes('DELETE')) {
+          const lote = Math.min(50_000, restanteValidation.validation_error_logs);
+          restanteValidation.validation_error_logs -= lote;
+          const arr: unknown[] = [];
+          Object.assign(arr, { count: lote, command: 'DELETE' });
+          return arr;
+        }
+        if (texto.includes('count(*)') && texto.includes('validation_error_logs')) {
+          const arr: unknown[] = [{ n: restanteValidation.validation_error_logs }];
+          Object.assign(arr, { count: 1 });
+          return arr;
+        }
+        const arr: unknown[] = [{ n: 0 }];
+        Object.assign(arr, { count: 1 });
+        return arr;
+      }),
+    };
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsPorParticion).toBe(true);
+    expect(res.observableEventsParticionesDropeadas).toBe(0);
+    expect(res.purgeFailed).toEqual(['observable_events']);
+    expect(res.validationErrorLogsDeleted).toBe(100_000);
+  });
 });
 
 /**
