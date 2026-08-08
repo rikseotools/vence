@@ -61,6 +61,11 @@ export class ArchiveInteractionsCron {
           // propósito: «archivadas» solo se interpreta junto a «pendientes»
           // (T-613). Lo vigila la regla `drenaje_atrasado`.
           remaining: { user_interactions: result.remaining },
+          // Vacío = todo bien. `status: 'success'` se mantiene aunque esto no esté
+          // vacío: lo ya archivado/`remaining` son reales, solo faltó terminar esta
+          // pasada — ver el comentario en ArchiveInteractionsService.
+          archiveFailed: result.archiveFailed,
+          cleanupFailed: result.cleanupFailed,
         },
       });
     } catch (error) {

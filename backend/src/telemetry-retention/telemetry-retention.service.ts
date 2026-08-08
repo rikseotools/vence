@@ -37,6 +37,21 @@ export interface TelemetryRetentionResult {
   observableEventsPorParticion: boolean;
   /** Particiones de `observable_events` dropeadas en este `run()` (solo tiene sentido si `observableEventsPorParticion`). */
   observableEventsParticionesDropeadas: number;
+  /**
+   * Tablas cuyo bucle de borrado se cortó ANTES de tiempo por un error en un lote
+   * (vacío si todo fue bien). Lo ya borrado en lotes anteriores se conserva.
+   *
+   * Reproducido en producción (08/08): un DELETE de `purgeTable` falló a mitad de
+   * pasada (mismo `statement_timeout` del pool que ya tumbaba el VACUUM) y, como el
+   * bucle no tenía try/catch, la excepción se propagó fuera de `purgeTable` — se
+   * perdió el `deleted` acumulado, el VACUUM no llegó a correr y `remaining` (que se
+   * calcula DESPUÉS) nunca se calculó: el cron reportó `status: 'failure'` sin
+   * ningún número, exactamente el mismo modo de fallo que el VACUUM de esta misma
+   * ficha, en el sitio que más importaba y que se había dejado sin blindar. Solo
+   * aplica a la rama DELETE-por-lotes (`observableEventsPorParticion=false`); una
+   * vez particionada, esta tabla ya no pasa por `purgeTable`.
+   */
+  purgeFailed: string[];
 }
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
@@ -87,6 +102,7 @@ export class TelemetryRetentionService {
       vacuumFailed: [],
       observableEventsPorParticion: false,
       observableEventsParticionesDropeadas: 0,
+      purgeFailed: [],
     };
 
     // [T-360] `observable_events` puede estar particionada por `created_at` (DROP PARTITION en vez
@@ -94,9 +110,8 @@ export class TelemetryRetentionService {
     // aplicó. Se comprueba EN CADA `run()`, nunca se asume: así este cambio es seguro desplegarlo
     // ANTES de que la migración exista (sigue tomando la rama DELETE de siempre) y empieza a usar
     // `DROP PARTITION` solo, sin otro deploy, en cuanto la tabla pase a estar particionada.
-    result.observableEventsPorParticion = await this.estaParticionada(
-      'observable_events',
-    );
+    result.observableEventsPorParticion =
+      await this.estaParticionada('observable_events');
 
     if (result.observableEventsPorParticion) {
       result.observableEventsParticionesDropeadas =
@@ -110,12 +125,14 @@ export class TelemetryRetentionService {
         'observable_events',
         'created_at',
         (n) => (result.batches += n),
+        result,
       );
     }
     result.validationErrorLogsDeleted = await this.purgeTable(
       'validation_error_logs',
       'created_at',
       (n) => (result.batches += n),
+      result,
     );
 
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
@@ -234,30 +251,61 @@ export class TelemetryRetentionService {
    * Borra en batches las filas de `table` cuya columna temporal `tsColumn` es más
    * antigua que la retención. `table` y `tsColumn` son literales controlados por el
    * código (nunca input externo) → `sql.raw` es seguro aquí.
+   *
+   * El `ORDER BY tsColumn` del SELECT interno NO es cosmético: sin él, el planificador
+   * elige Seq Scan pese a existir `idx_observable_events_created_at` — la correlación
+   * entre el orden físico de las filas y `created_at` es casi nula (`pg_stats.correlation
+   * ≈ -0.09`), así que sin una pista de orden el coste estimado de un Index/Bitmap Scan
+   * parece peor que barrer la tabla entera. MEDIDO (08/08) con `EXPLAIN (ANALYZE, BUFFERS)`
+   * contra `observable_events` (6,2 M filas), mismo filtro y LIMIT 50.000: sin `ORDER BY`,
+   * Seq Scan, 8.124 ms (145.058 buffers leídos de disco); con `ORDER BY`, Index Scan
+   * usando `idx_observable_events_created_at`, 44 ms — **185× más rápido**, sin forzar
+   * nada (`enable_seqscan` a su valor por defecto). Es la causa más probable de que un
+   * lote supere el `statement_timeout` de 30 s tras 2-3 iteraciones (2-3 × ~8 s de Seq
+   * Scan + la propia DELETE): el fallo reproducido en producción el 08/08 04:11 UTC
+   * (`purgeFailed`, ver arriba) coincide con esa aritmética.
    */
   private async purgeTable(
     table: string,
     tsColumn: string,
     onBatch: (n: number) => void,
+    result: TelemetryRetentionResult,
   ): Promise<number> {
     let deleted = 0;
     for (let i = 0; i < this.maxBatches; i++) {
-      const res = await this.db.execute(sql`
-        DELETE FROM ${sql.raw(table)}
-        WHERE ctid IN (
-          SELECT ctid FROM ${sql.raw(table)}
-          WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
-          LIMIT ${this.batchSize}
-        )
-      `);
-      // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
-      // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
-      const count = filasAfectadas(res);
-      deleted += count;
-      onBatch(1);
-      if (count < this.batchSize) break; // no quedan más filas candidatas
+      try {
+        const res = await this.db.execute(sql`
+          DELETE FROM ${sql.raw(table)}
+          WHERE ctid IN (
+            SELECT ctid FROM ${sql.raw(table)}
+            WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
+            ORDER BY ${sql.raw(tsColumn)}
+            LIMIT ${this.batchSize}
+          )
+        `);
+        // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
+        // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
+        const count = filasAfectadas(res);
+        deleted += count;
+        onBatch(1);
+        if (count < this.batchSize) break; // no quedan más filas candidatas
+      } catch (error) {
+        // No propagar: perderíamos `deleted` (lo ya borrado en lotes previos), el
+        // VACUUM y `remaining` de la tabla. Se corta ESTA tabla por esta pasada —
+        // no se reintenta en el mismo run, para no insistir contra lo que sea que
+        // esté bloqueando— y la próxima noche retoma donde `WHERE` la deje (no hay
+        // estado que llevar: el filtro es siempre "más vieja que la retención").
+        result.purgeFailed.push(table);
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `DELETE ${table} lote ${i + 1} falló (no bloqueante, se retoma la próxima noche): ${msg}`,
+        );
+        break;
+      }
     }
-    this.logger.log(`${table}: ${deleted} filas > ${this.retentionDays}d borradas`);
+    this.logger.log(
+      `${table}: ${deleted} filas > ${this.retentionDays}d borradas`,
+    );
     return deleted;
   }
 }

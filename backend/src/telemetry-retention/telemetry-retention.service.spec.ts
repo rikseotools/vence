@@ -57,7 +57,10 @@ function fakeDb(pendientes: Record<string, number>) {
 
 describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
   it('EL DEFECTO: con 1 M de filas atrasadas NO se para en el primer lote', async () => {
-    const db = fakeDb({ observable_events: 1_000_000, validation_error_logs: 0 });
+    const db = fakeDb({
+      observable_events: 1_000_000,
+      validation_error_logs: 0,
+    });
     const service = new TelemetryRetentionService(db as never);
 
     const res = await service.run();
@@ -69,7 +72,10 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
   });
 
   it('respeta el techo de lotes: un backlog enorme se drena en varias noches', async () => {
-    const db = fakeDb({ observable_events: 10_000_000, validation_error_logs: 0 });
+    const db = fakeDb({
+      observable_events: 10_000_000,
+      validation_error_logs: 0,
+    });
     const service = new TelemetryRetentionService(db as never);
 
     const res = await service.run();
@@ -120,7 +126,10 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
    * funcionado. `filasAfectadas`/`batches` estaban bien: este es un fallo DISTINTO.
    */
   it('un VACUUM que falla NO tira el resultado: el borrado y el atraso se reportan igual', async () => {
-    const db = fakeDb({ observable_events: 1_000_000, validation_error_logs: 0 });
+    const db = fakeDb({
+      observable_events: 1_000_000,
+      validation_error_logs: 0,
+    });
     const original = db.execute;
     db.execute = jest.fn(async (q: unknown) => {
       if (JSON.stringify(q).includes('VACUUM')) {
@@ -139,6 +148,53 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.remaining.observable_events).toBe(0);
     expect(res.vacuumFailed).toEqual(['observable_events']);
   });
+
+  /**
+   * Reproducido en producción el 08/08 (mismo `status: 'failure'` que el VACUUM del
+   * 07/08, pero en el DELETE): con ~119 k filas de atraso (2-3 lotes), el cron falló
+   * con `Failed query: DELETE FROM observable_events WHERE ctid IN (...) LIMIT
+   * $1 params: 50000`, `duration_ms: 83681`. `purgeTable` no tenía try/catch —a
+   * diferencia de `vacuum()`, que ya lo tiene desde el fix anterior de esta misma
+   * ficha— así que la excepción se propagó fuera de `run()` entero: se perdió
+   * `deleted` (lo ya borrado en lotes previos de ESA MISMA pasada), el VACUUM no
+   * llegó a correr, y `remaining` (que se calcula DESPUÉS de purgar) nunca se
+   * calculó. El cron reportó `status: 'failure'` sin un solo número — la alerta
+   * `drenaje_atrasado` se queda ciega esa noche en vez de ver el atraso real.
+   */
+  it('un lote de DELETE que falla NO tira el resultado: lo borrado antes se conserva y el atraso se sigue midiendo', async () => {
+    const db = fakeDb({ observable_events: 120_000, validation_error_logs: 0 });
+    let deletesVistos = 0;
+    const original = db.execute;
+    db.execute = jest.fn(async (q: unknown) => {
+      const texto = JSON.stringify(q);
+      if (texto.includes('DELETE') && texto.includes('observable_events')) {
+        deletesVistos++;
+        if (deletesVistos === 2) {
+          // El 2º lote (de 3: 50k + 50k + 20k) es el que revienta en producción.
+          throw new Error(
+            "Failed query: \n        DELETE FROM observable_events\n        WHERE ctid IN (\n          SELECT ctid FROM observable_events\n          WHERE created_at < now() - interval '30 days'\n          LIMIT $1\n        )\n      \nparams: 50000",
+          );
+        }
+      }
+      return original(q);
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    // El 1er lote (50k) se conserva pese a que el 2º reviente. NO se reintenta en
+    // el mismo run: se corta y se retoma la próxima noche.
+    expect(res.observableEventsDeleted).toBe(50_000);
+    expect(res.purgeFailed).toEqual(['observable_events']);
+    // `remaining` se sigue calculando — no es indistinguible de un `status:'failure'` sin números.
+    expect(res.remaining.observable_events).toBe(70_000);
+    // El VACUUM de esta tabla SÍ se intenta (deleted > 0), aunque el drenaje no terminase del todo.
+    expect(
+      db.sentencias.some(
+        (s) => s.includes('VACUUM') && s.includes('observable_events'),
+      ),
+    ).toBe(true);
+  });
 });
 
 /**
@@ -155,7 +211,9 @@ function fakeDbParticionada(opts: {
   particionesDespues: number;
   validationErrorLogsPendientes?: number;
 }) {
-  const restanteValidation = { validation_error_logs: opts.validationErrorLogsPendientes ?? 0 };
+  const restanteValidation = {
+    validation_error_logs: opts.validationErrorLogsPendientes ?? 0,
+  };
   const sentencias: string[] = [];
   let llamadasInherits = 0;
   return {
@@ -169,7 +227,10 @@ function fakeDbParticionada(opts: {
       }
       if (texto.includes('pg_inherits')) {
         llamadasInherits += 1;
-        const n = llamadasInherits === 1 ? opts.particionesAntes : opts.particionesDespues;
+        const n =
+          llamadasInherits === 1
+            ? opts.particionesAntes
+            : opts.particionesDespues;
         return [{ n }];
       }
       if (texto.includes('run_maintenance_proc')) {
@@ -181,8 +242,13 @@ function fakeDbParticionada(opts: {
         restanteValidation.validation_error_logs -= lote;
         return comoPostgresJs(lote);
       }
-      if (texto.includes('count(*)') && texto.includes('validation_error_logs')) {
-        const arr: unknown[] = [{ n: restanteValidation.validation_error_logs }];
+      if (
+        texto.includes('count(*)') &&
+        texto.includes('validation_error_logs')
+      ) {
+        const arr: unknown[] = [
+          { n: restanteValidation.validation_error_logs },
+        ];
         Object.assign(arr, { count: 1 });
         return arr;
       }
@@ -199,7 +265,10 @@ function fakeDbParticionada(opts: {
 
 describe('TelemetryRetentionService: retención por PARTICIÓN cuando la tabla ya está particionada (T-360)', () => {
   it('detecta la partición y NO intenta un DELETE por lotes sobre observable_events', async () => {
-    const db = fakeDbParticionada({ particionesAntes: 34, particionesDespues: 30 });
+    const db = fakeDbParticionada({
+      particionesAntes: 34,
+      particionesDespues: 30,
+    });
     const service = new TelemetryRetentionService(db as never);
 
     const res = await service.run();
@@ -208,22 +277,32 @@ describe('TelemetryRetentionService: retención por PARTICIÓN cuando la tabla y
     expect(res.observableEventsDeleted).toBe(0);
     // Ningún DELETE sobre observable_events — el camino viejo debe quedar callado del todo.
     expect(
-      db.sentencias.some((s) => s.includes('DELETE') && s.includes('observable_events')),
+      db.sentencias.some(
+        (s) => s.includes('DELETE') && s.includes('observable_events'),
+      ),
     ).toBe(false);
   });
 
   it('reporta cuántas particiones se dropearon comparando antes/después de run_maintenance_proc', async () => {
-    const db = fakeDbParticionada({ particionesAntes: 34, particionesDespues: 30 });
+    const db = fakeDbParticionada({
+      particionesAntes: 34,
+      particionesDespues: 30,
+    });
     const service = new TelemetryRetentionService(db as never);
 
     const res = await service.run();
 
     expect(res.observableEventsParticionesDropeadas).toBe(4);
-    expect(db.sentencias.some((s) => s.includes('run_maintenance_proc'))).toBe(true);
+    expect(db.sentencias.some((s) => s.includes('run_maintenance_proc'))).toBe(
+      true,
+    );
   });
 
   it('si no se dropeó ninguna partición (noche sin nada que expulsar), lo dice como 0, no como error', async () => {
-    const db = fakeDbParticionada({ particionesAntes: 30, particionesDespues: 30 });
+    const db = fakeDbParticionada({
+      particionesAntes: 30,
+      particionesDespues: 30,
+    });
     const service = new TelemetryRetentionService(db as never);
 
     const res = await service.run();

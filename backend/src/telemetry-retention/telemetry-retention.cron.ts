@@ -76,6 +76,11 @@ export class TelemetryRetentionCron {
           observableEventsPorParticion: result.observableEventsPorParticion,
           observableEventsParticionesDropeadas:
             result.observableEventsParticionesDropeadas,
+          // Tablas cuyo bucle de borrado se cortó a mitad de pasada (vacío = todo
+          // bien). También `status: 'success'` aunque esto no esté vacío: lo ya
+          // borrado y `remaining` son reales, solo faltó terminar esta tabla — la
+          // próxima noche retoma. Ver el comentario en TelemetryRetentionService.
+          purgeFailed: result.purgeFailed,
         },
       });
     } catch (error) {
