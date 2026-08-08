@@ -3234,6 +3234,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
   },
 
+  cuota_cuentas_claude: {
+    titulo: '¿A qué cuenta de Claude Code le queda cuota, y mover un panel a la otra sin escribir nada',
+    ruta: 'scripts/sesiones/cuota.cjs',
+    estado: 'vivo',
+    escribe: ['observable_events'],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run cuota` (foto) · `-- --rotar <slug> [--aplicar]` (relanza ese panel de tmux en la ' +
+      'otra cuenta con `--resume`, así que el hilo se conserva y no hay que escribir nada). ' +
+      'SIMULA por defecto: `respawn-pane -k` mata lo que corra en el panel. Criterio en dos ' +
+      'núcleos puros con 19 tests: `lib/sessions/rotacionCuenta.cjs` (cuándo avisar, a dónde ' +
+      'mover) y `lib/observability/cuentaDeSesion.cjs` (de quién es cada consumo). ' +
+      '⚠️ NO hay API de cuota: el proveedor no dice cuánta queda, solo corta — así que la ' +
+      'referencia es EMPÍRICA (lo que esa cuenta gastó la última vez que topó, del evento ' +
+      '`flota_turno` con `fase=sin_cuota`) y la primera vez NO puede avisar, y lo dice. ' +
+      '⚠️ La atribución retroactiva de sesiones locales es IMPOSIBLE: de los 355 transcripts de ' +
+      '`~/.claude/projects`, ninguno guarda la cuenta; se sella en el ingest hacia delante. ' +
+      'Origen [T-709]: «igual me quedo yo ahora sin poder terminar, y eso es un fallo».',
+  },
+
   reparar_correcciones_bloqueadas: {
     titulo: 'Devolver su nota a los exámenes cuya CORRECCIÓN falló (no a los abandonados)',
     ruta: 'scripts/exam/reparar-correcciones-bloqueadas.cjs',

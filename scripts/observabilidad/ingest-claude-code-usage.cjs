@@ -36,6 +36,8 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const postgres = require('postgres')
+const CS = require('../../lib/observability/cuentaDeSesion.cjs')
+const CUENTAS = require('../../lib/flota/cuentas.cjs')
 
 const argv = process.argv.slice(2)
 const DRY = argv.includes('--dry')
@@ -110,6 +112,19 @@ function agregar(desdeIso) {
 }
 
 async function main() {
+  // La cuenta de ESTA máquina en ESTE momento. Los transcripts que se van a ingerir se
+  // atribuyen a ella: es cierto para lo que se acaba de generar, que es el caso normal (el
+  // ingest corre a menudo). Si se ingiere un histórico largo tras haber rotado, la atribución
+  // de la parte vieja será la de ahora — por eso `cuentaVia` queda registrado, para poder
+  // distinguir después una atribución fuerte (`flota`, `env`) de una por defecto (`global`).
+  const { cuenta: cuentaActual, via: cuentaVia } = CS.cuentaDeSesion({
+    trabajador: process.env.VENCE_TRABAJADOR || null,
+    env: process.env,
+    global: CS.cuentaGlobal(),
+    resolverFlota: (n) => CUENTAS.cuentaDe(n, CUENTAS.cuentasDisponibles(process.env)),
+  })
+  console.log(`   cuenta atribuida a lo que se ingiera ahora: ${cuentaActual} (vía ${cuentaVia})`)
+
   const desde = new Date(Date.now() - DIAS * 86400000).toISOString().slice(0, 10)
   console.log(`→ leyendo transcripts de Claude Code desde ${desde} (${RAIZ_TRANSCRIPTS})`)
   const acc = agregar(desde)
@@ -170,6 +185,13 @@ async function main() {
                   respuestas: f.respuestas,
                   sessionId: f.sesion,
                   proyecto: f.proyecto,
+                  // [T-709] DE QUÉ CUENTA salió. Se sella AQUÍ y no se deduce después porque
+                  // los transcripts NO la guardan (medido: 0 de 355), así que este es el único
+                  // momento en que se sabe. Lo anterior a esto se queda sin atribuir para
+                  // siempre — y se marca como tal en vez de suponer la cuenta actual, que es lo
+                  // que invalidaría la medida el día que se rote.
+                  cuenta: cuentaActual,
+                  cuentaVia: cuentaVia,
                   dedupeKey,
                 })}, NOW())`
     })

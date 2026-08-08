@@ -403,8 +403,15 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
   const workflow = readFileSync(join(ROOT, '.github/workflows/frontend-deploy.yml'), 'utf-8')
   const dockerfile = readFileSync(join(ROOT, 'Dockerfile'), 'utf-8')
 
-  /** Entradas `familia|stage|repo` declaradas en el script. */
-  const entradas = [...repin.matchAll(/^\s*"([\w-]+)\|([\w-]+)\|([\w-]+)"/gm)].map((m) => ({
+  /**
+   * Entradas `familia|stage|repo|contexto|dockerfile` declaradas en el script.
+   *
+   * ⚠️ El `stage` es OPCIONAL desde [T-698]: los jobs sociales tienen Dockerfile propio y no
+   * salen de un stage del multi-stage de la raíz. Este parseo exigía los tres primeros campos
+   * NO vacíos y, al añadirlos, se quedó a cero entradas — o sea, el guardarraíl habría pasado
+   * en verde vigilando la lista vacía si no llega a haber un `toBeGreaterThan(0)` debajo.
+   */
+  const entradas = [...repin.matchAll(/^\s*"([\w-]+)\|([\w-]*)\|([\w-]+)\|/gm)].map((m) => ({
     familia: m[1], stage: m[2], repo: m[3],
   }))
 
@@ -414,8 +421,9 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
   })
 
   it('cada stage declarado EXISTE en el Dockerfile', () => {
-    // Un stage inventado haría fallar el build en cada deploy.
-    for (const e of entradas) {
+    // Un stage inventado haría fallar el build en cada deploy. Los que NO declaran stage
+    // ([T-698]: Dockerfile propio) no tienen nada que comprobar aquí.
+    for (const e of entradas.filter((x) => x.stage)) {
       expect(dockerfile).toMatch(new RegExp(`AS ${e.stage}\\b`))
     }
   })
@@ -494,10 +502,14 @@ describe('tareas programadas derivadas (los 2 caminos de deploy)', () => {
     const registry = readFileSync(
       join(ROOT, 'backend/src/cron-schedule/external-jobs.registry.ts'), 'utf-8',
     )
-    const declarados = [...registry.matchAll(/^\s*name:\s*'([^']+)'/gm)].map((m) => m[1])
+    // ⚠️ Los nombres del catálogo NO son homogéneos: `temario-pdf-worker` va sin prefijo y
+    // `vence-content-radar` con él. Se normalizan LOS DOS lados ([T-698]) en vez de renombrar
+    // recursos de AWS para que cuadre un test — eso movería el problema, y el nombre del
+    // catálogo es además el `endpoint` con el que cada job emite su señal de vida.
+    const sinPrefijo = (n: string) => n.replace(/^vence-/, '')
+    const declarados = [...registry.matchAll(/^\s*name:\s*'([^']+)'/gm)].map((m) => sinPrefijo(m[1]))
     for (const e of entradas) {
-      // La familia de la task def lleva el prefijo `vence-`; el job, no.
-      expect(declarados).toContain(e.familia.replace(/^vence-/, ''))
+      expect(declarados).toContain(sinPrefijo(e.familia))
     }
   })
 })
