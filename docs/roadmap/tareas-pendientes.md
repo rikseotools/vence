@@ -1140,6 +1140,64 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
+
+**No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
+**no mandaban** el token. Los tres que llaman a `/api/exam/pending` (`app/Header.tsx:197`,
+`components/UserAvatar.tsx:97`, `components/PendingExams.tsx:64`) **sí** lo mandan hoy — y aun así
+un tercio largo de las llamadas se responde con 401.
+
+#### Lo que lo destapa: `/api/exam/pending` llevaba NUEVE DÍAS a cero
+
+| día | `/api/exam/pending` | `/api/v2/user-stats` |
+|---|---|---|
+| 30/07 – 06/08 | **0,0 %** (0 de ~1.100/día) | 20-36 % |
+| 07/08 (incidente) | 87,3 % | 91,3 % |
+| **08/08 (hoy, post-deploy)** | **44,2 % · 18 usuarios** | 42,9 % · 11 usuarios |
+
+`exam/pending` **no requería identidad** hasta [T-565]; por eso su 401 era literalmente cero. Al
+exigirla, hereda una carrera que `user-stats` **ya tenía y que nadie había mirado**: su 20-36 %
+diario es de siempre, no del incidente. Son dos síntomas del mismo defecto.
+
+#### La causa, medida y no supuesta
+
+`getAuthHeaders()` (`lib/api/authHeaders.ts`) **falla en silencio**: si `auth.getAccessToken()`
+todavía no tiene token, el `catch {}` devuelve `{}` **sin `Authorization`**, y la petición sale
+igualmente. El componente arranca su `fetch` en cuanto `user` existe, que es antes.
+
+- **Mediana de 0 s** desde el primer evento de la sesión; **55 de 87 (63 %)** en los **10 primeros
+  segundos** → es el arranque de página, no un token caducado a media sesión.
+- **No se recupera solo:** de 58 fallos en `exam/pending` solo **7** vuelven a acertar en los 2 min
+  siguientes; en `user-stats`, **0 de 29**. Se pide una vez, se falla y **nadie reintenta**.
+
+#### Lo que ve la persona
+
+Estadísticas a 0, exámenes pendientes vacíos y, según el call-site, tests que no se corrigen — con
+sesión válida y sin un solo mensaje de error. `UserAvatar: v2 stats error: No autorizado` lleva
+**3.704 apariciones desde el 09/07**, con la app dándose por buena.
+
+**Caso real:** María del Mar Rodríguez (feedback `3ca20894`) **pidió darse de baja 7 minutos
+después** de su primer 401, tras 106 en una hora. Siguió media hora intentándolo y hasta miró
+Premium. Free, 22 días de alta, 4 preguntas respondidas en total.
+
+#### Por dónde va el arreglo (a decidir)
+
+El punto es UNO y ya está centralizado, que es lo bueno: `getAuthHeaders()` es el único sitio por
+donde pasan estas cabeceras (guardarraíl `bearerTokenSinglePath.test.ts`). Salidas:
+
+1. **Esperar al token** en vez de salir sin él — que `getAccessToken()` resuelva cuando la sesión
+   esté lista, en lugar de devolver vacío.
+2. **No disparar** el `fetch` hasta que haya token (gatear los tres call-sites por sesión lista).
+3. **Reintentar** el 401 una vez con token fresco.
+
+⚠️ (3) sola **no basta y puede empeorar**: [T-419] es exactamente el daño de reintentar contra un
+401 sin arreglar la causa. La medida de éxito es el **porcentaje diario de 401 de esos dos
+endpoints**, que tiene nueve días de línea base limpia con la que comparar.
+
+**Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
+token), [T-419] (reintento contra 401), [T-685] (la alerta que hoy no dispara: 18 usuarios quedan
+por debajo del umbral de 15… pero el ratio por 100 respuestas no llega a 25).
+
 ### [T-688] 🟡 [ABIERTO 07/08] Dos preguntas activas con la explicación defectuosa, encontradas al medir otras impugnaciones
 
 Las dos salieron de las mediciones sistémicas del 07/08 (impugnaciones `3d3dd74e` y `28745372`). **No
