@@ -55,6 +55,28 @@ describe('ownOfficialPredicate — fuente única de conteo de oficiales (JS)', (
     ]
     expect(rows.filter(isOwn).length).toBe(1)
   })
+
+  // ── T-597 (08/08): el gemelo de conteo se había quedado atrás del filtro SQL ─────────────
+  // buildOfficialExamFilter (SQL) ya admitía cualquier oficial para una personalizada desde
+  // el 07/08, pero este predicado JS —la fuente única del label 🏛️ y de mv-queries— seguía
+  // usando getValidExamPositions a pelo: para una personalizada eso es SIEMPRE [], así que
+  // CUALQUIER oficial (incluida la propia, si existiera) contaba como "ajena". Medido contra
+  // RDS el 08/08: 518 oficiales servibles en la personalizada de Sergio, 0 anunciadas.
+  it('una personalizada cuenta CUALQUIER oficial como propia (antes: ninguna, aunque el serve ya las admitía)', () => {
+    const isOwnPersonalizada = ownOfficialPredicate('personalizada_a92faefaf41b4d36b723c274f90a59f7')
+    expect(isOwnPersonalizada({ isOfficialExam: true, examPosition: 'guardia_civil' })).toBe(true)
+    expect(isOwnPersonalizada({ isOfficialExam: true, examPosition: 'auxiliar_administrativo_estado' })).toBe(true)
+    expect(isOwnPersonalizada({ isOfficialExam: false, examPosition: 'guardia_civil' })).toBe(false)
+    // Sin restricción de exam_position (a diferencia del caso mapeado): buildOfficialExamFilter
+    // tampoco distingue por exam_position para una personalizada, así que ni siquiera un
+    // examPosition null excluye la oficial — solo importa is_official_exam.
+    expect(isOwnPersonalizada({ isOfficialExam: true, examPosition: null })).toBe(true)
+  })
+
+  it('una oposición REAL sin mapeo sigue sin contar ninguna (el caso Laura no se relaja)', () => {
+    const isOwnUnmapped = ownOfficialPredicate('oposicion_inexistente_xyz')
+    expect(isOwnUnmapped({ isOfficialExam: true, examPosition: 'guardia_civil' })).toBe(false)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,6 +112,16 @@ describe('passesOfficialExamFilter — lo que el serve puede DAR (gemelo JS del 
     const sirveGva = passesOfficialExamFilter('subalterno_gva')
     expect(sirveGva({ isOfficialExam: true, examPosition: 'auxiliar_administrativo_valencia' })).toBe(false)
     expect(sirveGva({ isOfficialExam: false, examPosition: null })).toBe(true)
+  })
+
+  // T-597 (08/08): passesOfficialExamFilter deriva de ownOfficialPredicate, así que hereda
+  // el fix sin tocarse — pero se fija aquí explícitamente porque es la función que
+  // topic-data usa para totalQuestions/difficultyStats en el camino sin MV.
+  it('una personalizada admite CUALQUIER oficial (antes: las descartaba todas, igual que una oposición sin mapear)', () => {
+    const sirvePersonalizada = passesOfficialExamFilter('personalizada_a92faefaf41b4d36b723c274f90a59f7')
+    expect(sirvePersonalizada({ isOfficialExam: true, examPosition: 'guardia_civil' })).toBe(true)
+    expect(sirvePersonalizada({ isOfficialExam: true, examPosition: 'auxiliar_administrativo_madrid' })).toBe(true)
+    expect(sirvePersonalizada({ isOfficialExam: false, examPosition: null })).toBe(true)
   })
 
   it('es EXACTAMENTE la negación de "oficial ajena" (no se pueden desincronizar)', () => {
