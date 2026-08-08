@@ -1140,6 +1140,87 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-694] 🟡 [ABIERTO 08/08] El hub cuelga documentos que NO son de esa convocatoria: uno del ciclo anterior y una fila de fixture de test en la oposición de más tráfico
+
+**De dónde sale:** los dos aparecieron trabajando [T-190] (re-clonar documentos con extracción
+pobre) y **ninguno se arregla con esa ficha**: allí el problema es la CALIDAD del texto extraído;
+aquí el documento está perfectamente extraído y lo que falla es **de quién es**.
+
+**Caso 1 — Madrid publica una cifra respaldada por el documento de OTRO ciclo.**
+`auxiliar-administrativo-ayuntamiento-madrid` tiene en su convocatoria `is_current`
+`plazas_libres=111`, y su `landing_description` y su `boe_reference` dicen literalmente *«La OEP
+2025 (Acuerdo de 27/11/2025, BOCM nº 10.017) incorpora 111 plazas de turno libre, **pendientes de
+convocatoria**»*. Pero el documento que tiene adjunto es **`BOE-A-2024-21734`, la convocatoria de
+2024, con 256 plazas** — un ciclo distinto y ya cerrado. No es reserva de discapacidad
+(`plazas_discapacidad` es NULL): son **dos convocatorias distintas**, no la misma cifra mal extraída.
+Re-clonar ese documento (hecho ya en T-190) trae una ficha de análisis perfecta que sigue demostrando
+el número del ciclo equivocado.
+
+**SOSPECHO** que el documento de 2024 quedó enganchado a la fila `is_current` en un rollover sin que
+nadie lo revisara — no confirmado, haría falta mirar el historial de `convocatorias`.
+
+**Y ningún detector lo ve:** comprobado `content_health_findings` para ese slug — 2 hallazgos
+activos (`convocatoria_timeline_caducado`, `article_no_coverage`) y **ninguno sobre esto**.
+`plazas_afirmadas_sin_documento` calla porque SÍ hay documento; `convocatoria_docs_incompletos`
+calla porque el documento está clonado y enlazado. Lo que nadie pregunta es **si el documento
+pertenece al ciclo que la fila describe**.
+
+**Caso 2 — una fila de fixture de test escribiendo contra datos reales.**
+`auxiliar-administrativo-estado` (la oposición de más tráfico del catálogo, 2.179 usuarios) tiene un
+`convocatoria_documentos` con `url` `…/BOE-A-2099-TESTHUB.pdf` (año **2099**), `content_hash='h1'`,
+`titulo='T'` y un `extracted_text` que es, literalmente, la página de error 404 de boe.es
+(`fetched_at` 2026-07-25). Es un fixture de canary/test que apuntó a la convocatoria **REAL** en vez
+de a una de prueba.
+
+**Qué hacer, en este orden:**
+1. **Madrid:** decidir contra el boletín a qué ciclo pertenece cada cosa — o el documento de 2024 se
+   desengancha de la fila `is_current` (y la de 2024 recupera el suyo), o la fila `is_current` está
+   mal y describe un ciclo que no es. **NUNCA** ajustar `plazas_libres` para que cuadre con el
+   documento: eso publica la cifra del ciclo equivocado.
+2. **TESTHUB:** encontrar qué script de test la escribió y hacer que apunte a datos de prueba; sólo
+   entonces borrar la fila. Borrarla sin arreglar el origen la trae de vuelta.
+3. **Y lo que evita el próximo:** valorar un detector que compare el AÑO/ciclo del documento con el de
+   la convocatoria a la que cuelga. Es el hueco que los tres kinds existentes no cubren.
+
+**Relacionadas:** [T-190] (de donde salen), [T-181] (documentos clonados en la oposición equivocada —
+primo hermano: allí es otra OPOSICIÓN, aquí otro CICLO de la misma), [T-152] (campañas a Madrid).
+
+### [T-701] 🟡 [ABIERTO 08/08] El log de un trabajador no crece hasta que termina el turno: sin streaming no se puede mirar en vivo
+
+**De dónde sale:** tercer punto de [T-653], separado a ficha propia al cerrarla. Los otros dos
+(ver *qué* está haciendo un trabajador, y *con qué encargo*) están hechos y desplegados; éste no se
+aplicó **a propósito**, y el porqué es lo que da valor a esta ficha.
+
+**El síntoma, medido en vivo:** el log de un trabajador (`~/flota-<w>.log`) se queda en **0 bytes**
+mientras el turno está activo y sólo se escribe entero al terminar. Así que mirar el log de alguien
+que lleva 40 minutos trabajando no dice nada — y es justo cuando querrías mirarlo.
+
+**La causa está reproducida como CLASE, no como hecho:** un intérprete con buffering de aplicación
+(`python3` sin `-u`) da el MISMO síntoma al pipearlo a `tee`, y **`stdbuf -oL` NO lo arregla**
+(medido); sólo lo arregla asignar una pseudo-terminal (`script -qec "…" /dev/null`, medido: crece en
+vivo). Eso descarta `stdbuf` antes de probarlo contra el trabajador real. Lo que NO se pudo hacer fue
+probar el binario `claude` de verdad: `claude -p` devolvió *«Not logged in»* porque el
+`CLAUDE_CODE_OAUTH_TOKEN` vive en `/etc/vence-flota/<w>.env`, de `root` con permisos 0600. Quien lo
+midió **rehusó ampliarse el permiso**, que es la regla de la casa.
+
+**Y el mecanismo oficial existe:** `claude -p --help` documenta
+`--output-format stream-json --include-partial-messages`. No es una suposición.
+
+**⚠️ POR QUÉ NO SE APLICA SIN MÁS, que es el meollo:** `stream-json` cambia el formato del log de
+texto plano a **NDJSON**, y `AUT.clasificar` —el guardarraíl de cuota de [T-617]— hace **regex plano**
+contra ese log (`/hit your (weekly|daily|5-hour|usage) limit/i`). Cambiar el formato sin re-verificar
+esa detección es tocar a ciegas el mecanismo que evitó **27 relanzamientos** contra una cuota agotada.
+
+**Qué haría falta para cerrarlo** (con la credencial adecuada, que un trabajador no tiene):
+1. Un turno real y corto con `--output-format stream-json --include-partial-messages`, comprobando
+   que el log **crece en vivo**.
+2. Que un mensaje sintético de cuota agotada embebido en el NDJSON **siga casando** con el regex de
+   `AUT.clasificar` — o adaptar el clasificador a JSON si no, con su test.
+3. Sólo entonces cambiar el comando en `mandarEncargo`.
+
+**Relacionadas:** [T-653] (los otros dos puntos, cerrados), [T-617] (el regex de cuota que esto
+podría romper), [T-486] (la flota).
+
 ### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
 
 Índice de lo que quedó a medias o esperando decisión, con dónde está cada cosa. **Lo que ya está
@@ -2291,108 +2372,6 @@ entero solo para que el canario calle.
 - **Diagnóstico del corpus, confirmado por la URL y no por el texto:** los 8 documentos clonados vienen de la carpeta **`admto_a`** (Administrativo, C1) mientras `programa_url` apunta a **`aux_administrativo`**. No fue un enganche a la convocatoria equivocada: **se clonó del proceso vecino**. Por eso el corpus no contiene ni una vez «Auxiliar Administrativ».
 - **Corrige la primera lectura de esta ficha:** NO había que sospechar de la cifra publicada, sino de **cómo está guardada** y de **de dónde salieron los documentos**. Los dos detectores de plazas tenían razón en avisar y el fallo real era de provenance.
 - **Orden para arreglarlo (el segundo paso toca lo que se publica):** (1) clonar el documento correcto al hub por el camino canónico (`backend/scripts/clonar-documento.ts`), que es lo que arregla la provenance de raíz; (2) `plazas_libres=44` + declarar el cupo **DENTRO** con la cita literal de arriba. **El número que ve el usuario no cambia** (44 → 44): lo que cambia es que deja de depender de que dos errores se anulen.
-### [T-653] 🟠 [ABIERTO 07/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
-
-**De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
-Manuel, 07/08). **Sí les llega** —verificado EJECUTANDO `ENC.encargo()` y `ENC.encargoRevision()`, no
-leyendo el código: los dos llevan el bloque «EL MÉTODO DE LA CASA» desde la constante única
-`lib/sessions/recordatorio.cjs` → `METODO`, y el de revisión además manda juzgar contra él («¿le falta
-alguna capa?»)—. Lo que apareció al mirar los logs de verdad son **tres huecos de observabilidad**.
-
-#### Los tres huecos, medidos en el VPS (no supuestos)
-1. **No se ve qué hace un trabajador MIENTRAS trabaja.** `npm run flota` dice *«🟢 ejecutando T-168 ·
-   hace 137 min»* y eso **no distingue trabajando de atascado**. El dato existe: el transcript del
-   turno en curso se escribe EN VIVO
-   (`~/.claude/projects/-home-flota-vence-sessions-w1/*.jsonl`) — leída su última entrada el 07/08,
-   se veía exactamente en qué estaba (esperando un `tsc` en segundo plano). El supervisor **solo lee
-   su TAMAÑO** (`SES.lineaSesion({ tamanoBytes })`), nunca su contenido.
-2. **El log del turno está a 0 bytes hasta que el turno acaba.** Comprobado en w1, w2 y w4 a la vez:
-   `flota-w*.log` en 0 y solo los `.anterior` con contenido (413, 1.616 y 889 bytes). Es efecto de
-   `claude -p`, que escribe al terminar. Mientras dura el turno, el log no sirve de rastro.
-3. **Se guarda el informe del trabajador, NO el encargo que se le dio.** Así que cuando una entrega
-   sale mal no se puede distinguir **«se le explicó mal»** de **«no hizo caso»** — y con 18
-   «problemas» de 63 revisiones en un día (07/08), esa distinción es justo la que decide si hay que
-   arreglar el encargo o al trabajador.
-
-#### El arreglo (por valor/esfuerzo, y sin construir nada nuevo)
-1. **«Qué está haciendo ahora» en `npm run flota`**: una línea por trabajador desde la última entrada
-   de su transcript. Se lee un fichero que ya existe y se pinta en la pantalla que ya se usa — nada
-   de panel aparte.
-2. **Volcar el encargo al log antes de lanzarlo** (`mandarEncargo`): una línea, y cada entrega pasa a
-   ser auditable contra lo que se le pidió.
-3. **Salida en streaming de `claude -p`** para que el log deje de ser un post-mortem.
-
-#### Aviso de tamaño
-Esto es observabilidad de NUESTRA herramienta, no del producto: va **detrás** de la cola de usuarios y
-del merge, que es lo que tiene gente esperando. Encaja bien como encargo de flota (acotado, medible,
-no toca nada que sirva a un usuario).
-
-**Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
-ceguera).
-#### ⚠️ CABO SUELTO OPERATIVO (07/08): w3 está en la cuenta que NO le toca
-Se rotó **w3 a la cuenta A** (la de w1/w2/w4) porque la suya había agotado el **límite SEMANAL**
-(*«hit your weekly limit · resets 11pm (UTC)»*). Es reversible y hay copia:
-`/etc/vence-flota/w3.env.bak-secundaria`. **Cuando la cuenta B reponga, devolverlo** — el reparto de
-`lib/flota/cuentas.cjs` es determinista POR NOMBRE a propósito (si rota, el consumo por cuenta deja
-de ser comparable y no se puede saber a quién le pasó qué).
-
-**Y salió un fallo del propio andamiaje:** tras rotar la cuenta, el gate seguía diciendo «sin cuota»
-porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el veredicto de la cuenta
-vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
-**Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
-motivo que ya no existe.
-=======
-
-#### RESUELTO parcialmente (07/08, w3) — 1 y 2 hechos, 3 investigado y NO aplicado (razón abajo)
-
-**1. «Qué está haciendo ahora».** Núcleo puro `SES.resumenActividad` (`lib/flota/sesionClaude.cjs`):
-busca hacia atrás en un TAIL del transcript la última línea `assistant` con un bloque `tool_use` y
-la resume (`Bash: npx tsc --noEmit -p . …`). Verificado dos veces: 15 tests unitarios (fixtures
-fieles al esquema real, confirmado con Python contra el transcript en vivo de esta misma sesión) Y,
-además, ejecutado contra el transcript REAL de w3 en producción (`tail -c 4000` + `resumenActividad`)
-— devolvió exactamente el último comando Bash que yo mismo acababa de correr. Wireado en
-`scripts/flota/flota.cjs` → `actividadDe(trabajador)`, que solo se pregunta cuando `ejecutando` ya es
-`true` (no hay conversación que leer si está libre o caído), e imprime `↳ <resumen>` bajo la línea del
-trabajador en `npm run flota`.
-
-**2. Encargo en el log ANTES de arrancar.** `mandarEncargo` ahora copia `${enc}` (el mismo fichero que
-recibe `claude -p`, no el texto por la línea de órdenes) a la cabecera del log recién rotado, con un
-separador `===== SALIDA DEL TURNO =====`. Probado el fragmento de shell exacto contra un encargo
-sintético con comillas, `$(subshells)` y saltos de línea — pasa íntegro. Y la cadena `&&` completa
-(rotación + volcado + `tmux send-keys`) pasó `bash -n` (sintaxis válida) con las mismas sustituciones
-que produce el código real.
-
-**3. Streaming — NO aplicado, y esto es un «SOSPECHO», no una causa demostrada:**
-- **Confirmado en producción, en vivo:** mi propio log (`~/flota-w3.log`) medido en 0 bytes mientras
-  yo llevaba un buen rato de turno activo — el síntoma es real, no supuesto.
-- **Reproducida la CLASE de fallo** (no en el binario `claude` — no tengo credencial para lanzarlo
-  limpio, ver abajo): un intérprete con buffering de aplicación (python3 sin `-u`) muestra el MISMO
-  síntoma (0 bytes hasta el final) al pipearlo a `tee`, y **ni `stdbuf -oL` lo arregla** (medido:
-  sigue en 0 hasta el final) — solo lo arregla asignar una pseudo-terminal (`script -qec "…" /dev/null`,
-  medido: crece en vivo). Esto descarta `stdbuf` como arreglo válido sin haberlo probado en vano contra
-  el trabajador real.
-- **Lo que SÍ hay documentado**: `claude -p --help` confirma `--output-format stream-json
-  --include-partial-messages` como el mecanismo OFICIAL de streaming — no es una suposición, está en
-  la ayuda del propio binario.
-- **Por qué NO se aplica sin más:** cambiar a `stream-json` cambia el FORMATO del log de texto plano a
-  NDJSON, y `AUT.clasificar` (el guardarraíl de cuota de [T-617]) hace *regex plano* contra el log
-  (`/hit your (weekly|daily|5-hour|usage) limit/i`) — un cambio de formato sin re-verificar esa
-  detección es tocar a ciegas el mecanismo que evitó 27 relanzamientos contra una cuota agotada.
-- **Por qué no lo probé en vivo:** intenté un `claude -p` real y acotado (prompt de 2 `sleep`) para
-  zanjarlo — **no pude autenticar** (`Not logged in`): mi entorno de shell no trae el
-  `CLAUDE_CODE_OAUTH_TOKEN`, que vive en `/etc/vence-flota/w3.env`, propiedad de `root` con 0600 — no
-  legible por `flota`. Ampliar mi propio permiso para esto sería exactamente lo que las reglas de la
-  casa prohíben («¿meto una credencial de más para que pase? → no. Se acota el permiso»).
-- **Lo que falta para cerrarlo (para quien lo retome, con la credencial adecuada):** un turno real y
-  corto con `--output-format stream-json --include-partial-messages`, comprobando (a) que el log crece
-  en vivo, y (b) que un mensaje sintético de cuota agotada embebido en el NDJSON SIGUE casando con el
-  regex de `AUT.clasificar` (o adaptar el clasificador a JSON si no).
-
-**Entregado:** `lib/flota/sesionClaude.cjs` (+`resumenActividad`), `scripts/flota/flota.cjs`
-(+`actividadDe`, wireado en el panel `estado`, y el volcado del encargo en `mandarEncargo`),
-`__tests__/flota/sesionClaude.test.ts` (+8 tests). 359/359 en verde en toda `__tests__/flota` (10
-suites, sin regresión). Rama `flota/T-653-actividad-visible-log-encargo`.
-
 ### [T-652] 🟡 [ABIERTO 07/08] El TREBEP se sirve con CAPÍTULOS PARTIDOS en 24 temas más: el hueco cae dentro de un título que sí está escopado, y ningún detector lo ve
 
 **Lo destapa una usuaria, no una alerta.** María G. (feedback `b24b1aee`, premium de Madrid, 07/08):
@@ -9427,6 +9406,109 @@ y corregido un error de diseño que tenía.
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-653] ✅ [HECHA 08/08] El supervisor de la flota mira el TAMAÑO del transcript pero nunca su contenido: no se ve qué hace un trabajador mientras trabaja, ni con qué encargo
+
+**De dónde sale:** revisando si a los trabajadores les llega el recordatorio de método (pregunta de
+Manuel, 07/08). **Sí les llega** —verificado EJECUTANDO `ENC.encargo()` y `ENC.encargoRevision()`, no
+leyendo el código: los dos llevan el bloque «EL MÉTODO DE LA CASA» desde la constante única
+`lib/sessions/recordatorio.cjs` → `METODO`, y el de revisión además manda juzgar contra él («¿le falta
+alguna capa?»)—. Lo que apareció al mirar los logs de verdad son **tres huecos de observabilidad**.
+
+#### Los tres huecos, medidos en el VPS (no supuestos)
+1. **No se ve qué hace un trabajador MIENTRAS trabaja.** `npm run flota` dice *«🟢 ejecutando T-168 ·
+   hace 137 min»* y eso **no distingue trabajando de atascado**. El dato existe: el transcript del
+   turno en curso se escribe EN VIVO
+   (`~/.claude/projects/-home-flota-vence-sessions-w1/*.jsonl`) — leída su última entrada el 07/08,
+   se veía exactamente en qué estaba (esperando un `tsc` en segundo plano). El supervisor **solo lee
+   su TAMAÑO** (`SES.lineaSesion({ tamanoBytes })`), nunca su contenido.
+2. **El log del turno está a 0 bytes hasta que el turno acaba.** Comprobado en w1, w2 y w4 a la vez:
+   `flota-w*.log` en 0 y solo los `.anterior` con contenido (413, 1.616 y 889 bytes). Es efecto de
+   `claude -p`, que escribe al terminar. Mientras dura el turno, el log no sirve de rastro.
+3. **Se guarda el informe del trabajador, NO el encargo que se le dio.** Así que cuando una entrega
+   sale mal no se puede distinguir **«se le explicó mal»** de **«no hizo caso»** — y con 18
+   «problemas» de 63 revisiones en un día (07/08), esa distinción es justo la que decide si hay que
+   arreglar el encargo o al trabajador.
+
+#### El arreglo (por valor/esfuerzo, y sin construir nada nuevo)
+1. **«Qué está haciendo ahora» en `npm run flota`**: una línea por trabajador desde la última entrada
+   de su transcript. Se lee un fichero que ya existe y se pinta en la pantalla que ya se usa — nada
+   de panel aparte.
+2. **Volcar el encargo al log antes de lanzarlo** (`mandarEncargo`): una línea, y cada entrega pasa a
+   ser auditable contra lo que se le pidió.
+3. **Salida en streaming de `claude -p`** para que el log deje de ser un post-mortem.
+
+#### Aviso de tamaño
+Esto es observabilidad de NUESTRA herramienta, no del producto: va **detrás** de la cola de usuarios y
+del merge, que es lo que tiene gente esperando. Encaja bien como encargo de flota (acotado, medible,
+no toca nada que sirva a un usuario).
+
+**Relacionadas:** [T-486] (la flota y su supervisor), [T-539] (el fail-open que para un trabajador es
+ceguera).
+#### ⚠️ CABO SUELTO OPERATIVO (07/08): w3 está en la cuenta que NO le toca
+Se rotó **w3 a la cuenta A** (la de w1/w2/w4) porque la suya había agotado el **límite SEMANAL**
+(*«hit your weekly limit · resets 11pm (UTC)»*). Es reversible y hay copia:
+`/etc/vence-flota/w3.env.bak-secundaria`. **Cuando la cuenta B reponga, devolverlo** — el reparto de
+`lib/flota/cuentas.cjs` es determinista POR NOMBRE a propósito (si rota, el consumo por cuenta deja
+de ser comparable y no se puede saber a quién le pasó qué).
+
+**Y salió un fallo del propio andamiaje:** tras rotar la cuenta, el gate seguía diciendo «sin cuota»
+porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el veredicto de la cuenta
+vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
+**Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
+motivo que ya no existe.
+=======
+
+#### RESUELTO parcialmente (07/08, w3) — 1 y 2 hechos, 3 investigado y NO aplicado (razón abajo)
+
+**1. «Qué está haciendo ahora».** Núcleo puro `SES.resumenActividad` (`lib/flota/sesionClaude.cjs`):
+busca hacia atrás en un TAIL del transcript la última línea `assistant` con un bloque `tool_use` y
+la resume (`Bash: npx tsc --noEmit -p . …`). Verificado dos veces: 15 tests unitarios (fixtures
+fieles al esquema real, confirmado con Python contra el transcript en vivo de esta misma sesión) Y,
+además, ejecutado contra el transcript REAL de w3 en producción (`tail -c 4000` + `resumenActividad`)
+— devolvió exactamente el último comando Bash que yo mismo acababa de correr. Wireado en
+`scripts/flota/flota.cjs` → `actividadDe(trabajador)`, que solo se pregunta cuando `ejecutando` ya es
+`true` (no hay conversación que leer si está libre o caído), e imprime `↳ <resumen>` bajo la línea del
+trabajador en `npm run flota`.
+
+**2. Encargo en el log ANTES de arrancar.** `mandarEncargo` ahora copia `${enc}` (el mismo fichero que
+recibe `claude -p`, no el texto por la línea de órdenes) a la cabecera del log recién rotado, con un
+separador `===== SALIDA DEL TURNO =====`. Probado el fragmento de shell exacto contra un encargo
+sintético con comillas, `$(subshells)` y saltos de línea — pasa íntegro. Y la cadena `&&` completa
+(rotación + volcado + `tmux send-keys`) pasó `bash -n` (sintaxis válida) con las mismas sustituciones
+que produce el código real.
+
+**3. Streaming — NO aplicado, y esto es un «SOSPECHO», no una causa demostrada:**
+- **Confirmado en producción, en vivo:** mi propio log (`~/flota-w3.log`) medido en 0 bytes mientras
+  yo llevaba un buen rato de turno activo — el síntoma es real, no supuesto.
+- **Reproducida la CLASE de fallo** (no en el binario `claude` — no tengo credencial para lanzarlo
+  limpio, ver abajo): un intérprete con buffering de aplicación (python3 sin `-u`) muestra el MISMO
+  síntoma (0 bytes hasta el final) al pipearlo a `tee`, y **ni `stdbuf -oL` lo arregla** (medido:
+  sigue en 0 hasta el final) — solo lo arregla asignar una pseudo-terminal (`script -qec "…" /dev/null`,
+  medido: crece en vivo). Esto descarta `stdbuf` como arreglo válido sin haberlo probado en vano contra
+  el trabajador real.
+- **Lo que SÍ hay documentado**: `claude -p --help` confirma `--output-format stream-json
+  --include-partial-messages` como el mecanismo OFICIAL de streaming — no es una suposición, está en
+  la ayuda del propio binario.
+- **Por qué NO se aplica sin más:** cambiar a `stream-json` cambia el FORMATO del log de texto plano a
+  NDJSON, y `AUT.clasificar` (el guardarraíl de cuota de [T-617]) hace *regex plano* contra el log
+  (`/hit your (weekly|daily|5-hour|usage) limit/i`) — un cambio de formato sin re-verificar esa
+  detección es tocar a ciegas el mecanismo que evitó 27 relanzamientos contra una cuota agotada.
+- **Por qué no lo probé en vivo:** intenté un `claude -p` real y acotado (prompt de 2 `sleep`) para
+  zanjarlo — **no pude autenticar** (`Not logged in`): mi entorno de shell no trae el
+  `CLAUDE_CODE_OAUTH_TOKEN`, que vive en `/etc/vence-flota/w3.env`, propiedad de `root` con 0600 — no
+  legible por `flota`. Ampliar mi propio permiso para esto sería exactamente lo que las reglas de la
+  casa prohíben («¿meto una credencial de más para que pase? → no. Se acota el permiso»).
+- **Lo que falta para cerrarlo (para quien lo retome, con la credencial adecuada):** un turno real y
+  corto con `--output-format stream-json --include-partial-messages`, comprobando (a) que el log crece
+  en vivo, y (b) que un mensaje sintético de cuota agotada embebido en el NDJSON SIGUE casando con el
+  regex de `AUT.clasificar` (o adaptar el clasificador a JSON si no).
+
+**Entregado:** `lib/flota/sesionClaude.cjs` (+`resumenActividad`), `scripts/flota/flota.cjs`
+(+`actividadDe`, wireado en el panel `estado`, y el volcado del encargo en `mandarEncargo`),
+`__tests__/flota/sesionClaude.test.ts` (+8 tests). 359/359 en verde en toda `__tests__/flota` (10
+suites, sin regresión). Rama `flota/T-653-actividad-visible-log-encargo`.
+
 
 ### [T-695] ✅ [HECHA 07/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
 
