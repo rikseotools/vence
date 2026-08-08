@@ -13729,31 +13729,22 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   Después: `record_topic_verification` con `verdict='correct'` (sobrescribe el `claude_direct`/`--run`
   falso) y re-purgar caché/MV del tema.
 
-- **T16 — el hueco es real, confirmado leyendo el CONTENIDO (no solo el título) de los dos
-  contenedores actuales.** Busqué "certificad" / "firma electr" dentro de `Informática Básica`
-  (arts 1-5) y `La Red Internet` (arts 1-10): hay 7 menciones, todas DE PASADA y sobre un concepto
-  DISTINTO — certificados **TLS/SSL** de un navegador para HTTPS (`La Red Internet` art 2 y 3) y una
-  mención suelta de que Autofirma "permite la ejecución de operaciones de firma electrónica desde
-  el navegador" (`Informática Básica` art 5). Ninguna trata **certificados de identidad digital /
-  DNIe / FNMT** ni **firma electrónica de persona física** como concepto propio — que es lo que pide
-  el epígrafe. El hueco es real.
-  **Reuso descartado, y por qué:** busqué en TODA la plataforma un contenedor `is_virtual` ya
-  existente sobre "certificados y firma electrónica" (principio de la casa: *"busca si ya existe un
-  contenedor de ese contenido y reúsalo, solo crea uno nuevo si no existe"*,
-  `crear-nueva-oposicion.md` §sobre leyes virtuales). Encontrado **`Herramientas Admin-e JA`**
-  (is_virtual, art. 9 "Certificados electrónicos y FNMT", usado hoy en 2 temas de Andalucía) — pero
-  su texto nombra "Junta de Andalucía" y "@firma de la Junta de Andalucía" en cada párrafo: es
-  contenido de plataforma REGIONAL, no reutilizable verbatim para Aragón sin confundir al opositor.
-  No vale.
-  **Recomendación: NO crear una ley virtual nueva — añadir UN artículo nuevo dentro de
-  `Informática Básica`** (art. 6, siguiente al 0-5 que ya tiene), que es el contenedor que ya sirve
-  a **37 oposiciones** — así el arreglo queda reutilizable de inmediato para cualquier otra
-  oposición con el mismo hueco, en vez de crear un silo solo para Aragón (mismo principio que evitó
-  el problema anterior).
-  **Esqueleto de contenido, con hechos verificados contra ley REAL ya en BD (no inventados — para
-  que quien redacte el artículo final no parta de cero, y para que quede claro qué SÍ está
-  verificado y qué falta pulir a prosa):**
-  - Qué es un certificado electrónico / DNIe / Cl@ve (identificación de personas físicas).
+- **T16 — 🔧 CORREGIDO (08/08, w3): la premisa "hueco total" era FALSA — el grep de palabras clave
+  se comió dos secciones enteras que sí existen. La revisión lo cazó leyendo el contenido completo,
+  no solo el grep, y lo confirmo con la misma lectura.** El párrafo original decía *"ninguna trata
+  certificados de identidad digital/DNIe/FNMT ni firma electrónica de persona física como concepto
+  propio"* tras buscar "certificad"/"firma electr" — pero `Informática Básica` art. 5 tiene una
+  sección propia **"## 7. Certificado digital y firma electrónica"** con 3 subsecciones (7.1
+  Certificado digital: qué es, quién lo emite/CA; 7.2 Firma electrónica: identificar firmante +
+  integridad + Autofirma; 7.3 HTTPS/SSL/TLS), y el art. 2 tiene un párrafo dedicado **"### Certificado
+  electrónico"** específicamente sobre el certificado **FNMT de Ciudadano** (identidad) — exactamente
+  lo que se afirmaba ausente. Confirmado que no es contenido añadido después de la investigación:
+  `created_at`/`updated_at` de los dos artículos = 25/12/2025, más de 7 meses antes de esta ficha.
+  **El hueco real es más estrecho: falta la dimensión LEGAL, no la conceptual/técnica.** Lo que SÍ
+  falta tras releer el artículo entero (grepeado también "DNIe"/"Cl@ve"/"vigencia"/"revoca": cero
+  resultados) es la parte normativa — vigencia del certificado, revocación, marco legal de uso en la
+  Administración — que un aux. administrativo necesita desde el ángulo procedimental, no técnico.
+  Los hechos ya verificados contra ley real en BD (sin cambios, siguen siendo la base del arreglo):
   - Vigencia: **"el período de vigencia de los certificados cualificados no será superior a cinco
     años"** — cita literal de `Ley 6/2020` art. 4 (ya en BD, verificada).
   - Revocación: motivos y quién la ejecuta (prestadores de servicios de confianza) — `Ley 6/2020`
@@ -13762,6 +13753,12 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
     firma electrónica del titular/empleado público — `Ley 40/2015` art. 43 (ya en BD).
   - Sistemas de firma admitidos por las AAPP (avanzada/cualificada, `Ley 39/2015` art. 10.2) — `RD
     203/2021` art. 29 (ya en BD).
+  **Recomendación CORREGIDA: NO crear un artículo 6 nuevo desde cero — extender el §7 que ya
+  existe en `Informática Básica` art. 5** (p.ej. una subsección 7.4 "Marco legal, vigencia y
+  revocación") con los 4 hechos de arriba. Escribir un artículo entero habría duplicado 7.1/7.2
+  (qué es un certificado, qué hace la firma electrónica), que ya están cubiertos. El reuso en 37
+  oposiciones (confirmado por la revisión, `COUNT DISTINCT position_type = 37`) sigue siendo la
+  razón para tocar el contenedor compartido y no crear un silo para Aragón.
   **NO redactado a prosa final ni insertado.** Escribir contenido educativo nuevo (no solo mover
   un artículo existente, como en T6) es un paso distinto — por la propia disciplina de la casa,
   antes de marcarlo `tech_approved` necesita el mismo circuito de doble auditoría que cualquier
@@ -13769,9 +13766,12 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   trabajador de lectura. Dejo el esqueleto sourced para que quien lo redacte no tenga que rehacer
   la búsqueda de fuentes.
 
-- **Falta (todo requiere `DATABASE_URL` de escritura):** 1) aplicar el `UPDATE` de T6 de arriba;
-  2) crear `Informática Básica` art. 6 con el esqueleto de arriba redactado a prosa + doble
-  auditoría; añadirlo al `topic_scope` de T16; 3) `record_topic_verification` en los dos temas
+- **Falta (todo requiere `DATABASE_URL` de escritura):** 1) aplicar el `UPDATE` de T6 de arriba
+  (T6 ya escopa correctamente CC art. 1, `topic_scope` no necesita más artículos — T16 es el que
+  sí necesita contenido nuevo); 2) extender `Informática Básica` art. 5 §7 con la subsección legal
+  (7.4, con los 4 hechos de arriba) redactada a prosa + doble auditoría — **NO crear un art. 6**
+  (recomendación corregida arriba); T16 no necesita tocar `topic_scope` (el artículo 5 ya está
+  escopado en T16, solo cambia su contenido); 3) `record_topic_verification` en los dos temas
   (sobrescribe el `claude_direct`/`--run` falso); 4) purgar caché/MV y comprobar
   `npm run audit:epigrafe -- auxiliar_administrativo_aragon` en verde.
 
