@@ -96,7 +96,7 @@ export default function UserAvatar() {
       // que dejó a 248 usuarios con las estadísticas a 0 y sin poder corregir exámenes ([T-671]).
       const examRes = await fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, {
         signal,
-        headers: await getAuthHeaders(),
+        headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/exam/pending' }),
       })
       if (signal?.aborted) return
       const examData = await examRes.json()
@@ -139,7 +139,7 @@ export default function UserAvatar() {
         setStatsLoading(true)
 
         const res = await fetch(`/api/v2/user-stats?userId=${user.id}`, {
-          headers: await getAuthHeaders(),
+          headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/v2/user-stats' }),
         })
         if (cancelled) return
 

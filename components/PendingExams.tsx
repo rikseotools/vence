@@ -65,7 +65,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
         userId: user.id,
         testType: 'exam',
         limit: limit.toString()
-      })}`, { headers: await getAuthHeaders() })
+      })}`, { headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/exam/pending' }) })
 
       const examData = await examResponse.json()
       setPendingPsychometric([])

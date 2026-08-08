@@ -250,6 +250,50 @@ ORDER BY ts DESC LIMIT 6;
 - El contador vive en UN sitio (`backend/src/db/filasAfectadas.ts` y su espejo `lib/db/`), con
   guardarraíl `__tests__/guardrails/filasAfectadas.guardrail.test.ts`.
 
+### 0.sexies — `sesiones_401_en_masa`: mira PRIMERO si el token llegó a salir (T-692, 08/08/2026)
+
+Cuando dispare la alerta de 401 a sesiones válidas, la pregunta que ordena todo el diagnóstico es
+**si el fallo es del servidor (rechaza un token bueno) o del cliente (no lo manda)**. Se contestan
+distinto y confundirlas cuesta horas.
+
+**El 401 lo ve el servidor, pero el que sabe si la petición salió sin cabecera es el cliente.** Y
+desde el navegador eso era invisible: `requestHadCredentials()` da `true` con **la cookie de
+sesión**, que va sola en cada petición, así que una llamada sin `Authorization` se registra igual
+que una sesión con el token roto. Medido el 08/08: **7.000 rechazos en 24 h sin que el `reason`
+constara en ninguna parte**.
+
+**El orden, y las dos primeras son de un minuto:**
+
+```sql
+-- (1) ¿el cliente se está quedando sin token? Si hay filas, la causa es del CLIENTE.
+SELECT endpoint, count(*), count(DISTINCT user_id)
+FROM observable_events
+WHERE event_type='bearer_ausente' AND created_at > now() - interval '1 hour'
+GROUP BY 1 ORDER BY 2 DESC;
+```
+
+```bash
+# (2) ¿el servidor acepta un token válido? Contrato + % del día contra la línea base + causa.
+npm run sim:bearer-ausente
+```
+
+- **Con `bearer_ausente` → cliente.** Alguna llamada a una ruta con guarda de propiedad
+  (`requireDuenoDelRecurso` / `requireUsuarioPropio`) sale sin `Authorization`. El punto único es
+  `lib/api/authHeaders.ts` y el cruce lo vigila
+  `__tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts`.
+- **Sin `bearer_ausente` y con el paso (1) del sim en rojo → servidor.** Ahí el token sí viaja y lo
+  que falla es la verificación (mirar `reason`: `remote_verify_failed`, `local_*`).
+
+⚠️ **NO leas el recuento de 401 a pelo: normalízalo.** Un porcentaje sobre una ventana que incluye
+el incidente da 88 % y no dice nada del ahora. Y una bajada puede ser el arreglo **o menos gente**
+— ese error concreto ya se cometió el 07/08. Compara **el porcentaje del día contra la línea base**
+del mismo endpoint (`/api/exam/pending` tuvo **nueve días seguidos a 0,0 %**, que es la mejor vara
+de medir que hay en esta zona).
+
+⚠️ **Y dos hipótesis que suenan bien y los datos ya descartaron** (no las repitas): el backoff de
+60 s de `UNAUTH_BACKOFF_MS` (solo 15 de 7.007 fallos tenían un 401 propio de `/api/auth/token`
+antes) y la discrepancia de identidad (esa responde **403**, no 401).
+
 ## 1. Comprobación rápida (30 segundos)
 
 Por humano:

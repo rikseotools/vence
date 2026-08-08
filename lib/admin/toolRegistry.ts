@@ -2923,6 +2923,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
       'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
   },
+  bearer_con_reintento: {
+    titulo: 'El Bearer se pide dos veces antes de rendirse, y si no llega se DICE (`bearer_ausente`)',
+    ruta: 'lib/api/bearerConReintento.ts',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'Núcleo puro que consume el punto único `lib/api/authHeaders.ts` (guardarraíl ' +
+      '`bearerTokenSinglePath.test.ts`: no se abre un segundo camino para conseguir token). ' +
+      'Medición `npm run sim:bearer-ausente` (solo lee: contrato del servidor + % de 401 del ' +
+      'día contra la línea base + señal de causa). Nace de [T-692], 08/08/2026: ' +
+      '`getAuthHeaders()` devolvía `{}` sin token y la petición SALÍA IGUAL; como el navegador ' +
+      'adjunta la cookie, el servidor no lo distingue de una sesión con credenciales malas y el ' +
+      'defecto era invisible — `/api/exam/pending` pasó de NUEVE DÍAS a 0,0 % de 401 al 44,2 % ' +
+      '(18 usuarios/día) y `/api/v2/user-stats` arrastraba un 20-36 % DIARIO de antes. ' +
+      'Un solo reintento a propósito: [T-419] es el daño de martillear y [T-210] el de re-acuñar.',
+  },
+
   dossier_rastro_errores: {
     titulo: 'El dossier de feedback pone delante el RASTRO DE ERRORES del usuario (antes / después de su mensaje)',
     ruta: 'lib/impugnaciones/rastroDeErrores.cjs',

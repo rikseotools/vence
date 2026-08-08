@@ -106,6 +106,12 @@ export type ClientEventType =
   // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
   // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
   | 'storage_unavailable'
+  // La petición a una ruta con guarda de propiedad ([T-565]) salió SIN `Authorization` pese a
+  // haberlo pedido dos veces. Tipo PROPIO por lo mismo que los de arriba: el servidor no puede
+  // distinguirlo de una sesión con credenciales malas (el navegador adjunta la cookie por su
+  // cuenta), así que desde el otro lado se contabiliza como rechazo legítimo y el defecto es
+  // INVISIBLE — 7.000 rechazos en 24 h sin que constara el motivo en ningún sitio ([T-692]).
+  | 'bearer_ausente'
   // Al cerrar un test, la cola de respuestas no drenó dentro de la espera, así que el servidor
   // tuvo que rellenar. Tipo PROPIO por lo mismo que los dos de arriba: interesa CONSERVAR
   // visibilidad —cuánta gente termina un test con el guardado a medias— sin contarlo como error

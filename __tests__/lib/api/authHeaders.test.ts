@@ -111,4 +111,57 @@ describe('getAuthHeaders — ensamblado de cabeceras', () => {
     expect(headers['X-Device-Id']).toBeUndefined()
     expect(headers['X-Hw-Fingerprint']).toBeUndefined()
   })
+
+  /**
+   * [T-692] El reintento va SOLO donde el token es obligatorio.
+   *
+   * La mitad de esto es el arreglo y la otra mitad es el freno. El arreglo: en una ruta con
+   * guarda de propiedad, salir sin cabecera es un 401 garantizado y una pantalla vacía que nadie
+   * reintenta (medido: 0 de 29 recuperaciones en `/api/v2/user-stats`). El freno: reintentar
+   * también en las públicas metería 200 ms a cada llamada anónima sin arreglar nada, y ese
+   * efecto lateral haría imposible atribuir a este cambio la mejora que se vaya a medir.
+   */
+  describe('T-692 — reintento acotado a las rutas que exigen sesión', () => {
+    test('exigeSesion: sin token a la primera, se pide UNA segunda vez y sirve', async () => {
+      mockAuthPort.getAccessToken
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce('tok-tardio')
+      const getAuthHeaders = loadGetAuthHeaders()
+
+      const headers = await getAuthHeaders({ exigeSesion: true, endpoint: '/api/exam/pending' })
+
+      expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(2)
+      expect(headers.Authorization).toBe('Bearer tok-tardio')
+    })
+
+    test('exigeSesion: si tampoco hay a la segunda, se rinde sin lanzar (dos intentos, no más)', async () => {
+      mockAuthPort.getAccessToken.mockResolvedValue(undefined)
+      const getAuthHeaders = loadGetAuthHeaders()
+
+      const headers = await getAuthHeaders({ exigeSesion: true })
+
+      expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(2)
+      expect(headers.Authorization).toBeUndefined()
+    })
+
+    test('SIN exigeSesion: se conserva el camino de siempre — un solo intento, cero latencia extra', async () => {
+      mockAuthPort.getAccessToken.mockResolvedValue(undefined)
+      const getAuthHeaders = loadGetAuthHeaders()
+
+      const headers = await getAuthHeaders()
+
+      expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(1)
+      expect(headers.Authorization).toBeUndefined()
+    })
+
+    test('con token a la primera no se reintenta aunque exija sesión (el 99% del tráfico no paga nada)', async () => {
+      mockAuthPort.getAccessToken.mockResolvedValue('tok-1')
+      const getAuthHeaders = loadGetAuthHeaders()
+
+      const headers = await getAuthHeaders({ exigeSesion: true })
+
+      expect(mockAuthPort.getAccessToken).toHaveBeenCalledTimes(1)
+      expect(headers.Authorization).toBe('Bearer tok-1')
+    })
+  })
 })

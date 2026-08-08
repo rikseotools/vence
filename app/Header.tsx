@@ -195,7 +195,7 @@ export default function HeaderES() {
       try {
         // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
         const examRes = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`, {
-          headers: await getAuthHeaders(),
+          headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/exam/pending' }),
         })
         const examData = await examRes.json()
         if (examData.success) {

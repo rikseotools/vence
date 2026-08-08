@@ -43,7 +43,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       // Se resuelven UNA vez y fuera del try: las dos llamadas de abajo van a rutas que
       // comprueban que pides lo TUYO (`requireUsuarioPropio`, T-565) y sin identidad devuelven 401
       // (T-675). Declararlas dentro del primer try las dejaba fuera de alcance en la segunda.
-      const headers = await getAuthHeaders()
+      const headers = await getAuthHeaders({ exigeSesion: true, endpoint: '/api/v2/user-stats' })
       try {
         const qs = new URLSearchParams({
           userId,

@@ -1140,12 +1140,11 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
-### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
+### [T-692] 🔴 [ABIERTO 08/08] La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve días a cero
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
-**no mandaban** el token. Los tres que llaman a `/api/exam/pending` (`app/Header.tsx:197`,
-`components/UserAvatar.tsx:97`, `components/PendingExams.tsx:64`) **sí** lo mandan hoy — y aun así
-un tercio largo de las llamadas se responde con 401.
+**no mandaban** el token. Los que llaman a `/api/exam/pending` y `/api/v2/user-stats` **sí** lo
+mandan — y aun así un tercio largo de las llamadas se responde con 401.
 
 #### Lo que lo destapa: `/api/exam/pending` llevaba NUEVE DÍAS a cero
 
@@ -1156,47 +1155,84 @@ un tercio largo de las llamadas se responde con 401.
 | **08/08 (hoy, post-deploy)** | **44,2 % · 18 usuarios** | 42,9 % · 11 usuarios |
 
 `exam/pending` **no requería identidad** hasta [T-565]; por eso su 401 era literalmente cero. Al
-exigirla, hereda una carrera que `user-stats` **ya tenía y que nadie había mirado**: su 20-36 %
-diario es de siempre, no del incidente. Son dos síntomas del mismo defecto.
+exigirla hereda un defecto que `user-stats` **ya tenía y que nadie había mirado**: su 20-36 %
+diario es de siempre. Son dos síntomas de lo mismo.
 
-#### La causa, medida y no supuesta
+#### La causa, DEMOSTRADA contra producción (no supuesta)
 
-`getAuthHeaders()` (`lib/api/authHeaders.ts`) **falla en silencio**: si `auth.getAccessToken()`
-todavía no tiene token, el `catch {}` devuelve `{}` **sin `Authorization`**, y la petición sale
-igualmente. El componente arranca su `fetch` en cuanto `user` existe, que es antes.
+Llamando a los dos endpoints desde fuera con un Bearer recién acuñado:
 
-- **Mediana de 0 s** desde el primer evento de la sesión; **55 de 87 (63 %)** en los **10 primeros
-  segundos** → es el arranque de página, no un token caducado a media sesión.
-- **No se recupera solo:** de 58 fallos en `exam/pending` solo **7** vuelven a acertar en los 2 min
-  siguientes; en `user-stats`, **0 de 29**. Se pide una vez, se falla y **nadie reintenta**.
+```
+/api/v2/user-stats    con Bearer válido → HTTP 200
+                      sin Bearer        → HTTP 401 {"reason":"no_bearer_token"}
+/api/exam/pending     con Bearer válido → HTTP 200
+                      sin Bearer        → HTTP 401 {"reason":"no_bearer_token"}
+```
 
-#### Lo que ve la persona
+**El servidor está bien: la petición sale sin la cabecera.** `getAuthHeaders()`
+(`lib/api/authHeaders.ts`) **fallaba en silencio** — si `auth.getAccessToken()` no tenía token, el
+`catch {}` devolvía `{}` y **la petición salía igual**.
 
-Estadísticas a 0, exámenes pendientes vacíos y, según el call-site, tests que no se corrigen — con
-sesión válida y sin un solo mensaje de error. `UserAvatar: v2 stats error: No autorizado` lleva
-**3.704 apariciones desde el 09/07**, con la app dándose por buena.
+**Por qué era invisible, que es lo peor:** el navegador adjunta la cookie de sesión por su cuenta,
+así que `requestHadCredentials()` da `true` y el servidor no lo distingue de una sesión con el
+token roto. Se contabiliza como rechazo legítimo. **7.000 rechazos en 24 h y el `reason` no
+constaba en ningún sitio.**
 
-**Caso real:** María del Mar Rodríguez (feedback `3ca20894`) **pidió darse de baja 7 minutos
-después** de su primer 401, tras 106 en una hora. Siguió media hora intentándolo y hasta miró
-Premium. Free, 22 días de alta, 4 preguntas respondidas en total.
+- **Mediana de 0 s** desde el primer evento de la sesión; **55 de 87 (63 %)** en los 10 primeros
+  segundos → es el arranque de página.
+- **No se recupera solo:** 7 de 58 en `exam/pending`; **0 de 29** en `user-stats`.
 
-#### Por dónde va el arreglo (a decidir)
+⚠️ **Dos hipótesis que los datos DESCARTARON** (anotadas para que nadie las repita): (a) el backoff
+de 60 s de `UNAUTH_BACKOFF_MS` — solo 15 de 7.007 fallos tenían un 401 propio de `/api/auth/token`
+antes; (b) discrepancia de identidad — eso responde **403** y `auth_identidad_ajena_rechazada` solo
+tuvo 238 eventos de 4 usuarios.
 
-El punto es UNO y ya está centralizado, que es lo bueno: `getAuthHeaders()` es el único sitio por
-donde pasan estas cabeceras (guardarraíl `bearerTokenSinglePath.test.ts`). Salidas:
+#### ✅ Hecho
 
-1. **Esperar al token** en vez de salir sin él — que `getAccessToken()` resuelva cuando la sesión
-   esté lista, en lugar de devolver vacío.
-2. **No disparar** el `fetch` hasta que haya token (gatear los tres call-sites por sesión lista).
-3. **Reintentar** el 401 una vez con token fresco.
+- **Núcleo puro `lib/api/bearerConReintento.ts`**: el token se pide, y si no está, se pide **UNA
+  vez más** tras 200 ms. Un solo reintento a propósito — [T-419] es el daño de martillear contra un
+  401 y [T-210] el de re-acuñar (58.400/día). Para un anónimo el segundo intento no cuesta red: el
+  adapter contesta desde su backoff.
+- **El reintento va SOLO donde el token es obligatorio** (`exigeSesion`). En una página pública no
+  tenerlo es lo normal, y reintentar ahí metería 200 ms a cada llamada anónima sin arreglar nada;
+  peor aún, ese efecto lateral haría imposible atribuir a este cambio la mejora que se va a medir.
+  El resto de la app **conserva exactamente el camino de antes** (un intento).
+- **Cableado en el punto ÚNICO** (`getAuthHeaders`), no en los componentes: el guardarraíl
+  `bearerTokenSinglePath.test.ts` existe justo para que no haya un segundo camino.
+- **Señal nueva `bearer_ausente`** (`warn`): se emite cuando la petición a una ruta con dueño se
+  queda sin token tras los dos intentos. **No es una alerta nueva** — dos emisores del mismo hecho
+  divergen; es el dato de CAUSA al que ahora apunta la notificación de [T-685], que es la que suena.
+  Solo se emite si el llamante declara `exigeSesion`: en rutas públicas no tener token es lo normal
+  y emitir ahí ahogaría la señal.
+- **7 call-sites declarados** (`exigeSesion` + endpoint): `Header.tsx`, `UserAvatar.tsx` (×2),
+  `PendingExams.tsx`, `UserProfileModal.js`, `TemaTestPage.tsx` y la página de tema de AGE.
+  `TemaTestPage` **no estaba en el grep inicial** y lo cazó la calibración del guardarraíl.
+- **Capas:** 10 unitarios del núcleo (`__tests__/api/bearerConReintento.test.ts`, con las cifras
+  reales) + 4 en la suite que YA existía de `authHeaders` (donde se fija el acotado, incluido el
+  caso «sin `exigeSesion` no se reintenta») · el guardarraíl `identidadEnRutasConDueno` ampliado
+  con un tercer bloque · un
+  **E2E en navegador de verdad** (`e2e/authed/bearer-en-rutas-con-dueno.spec.ts`) que comprueba que
+  la cabecera VIAJA, que es lo único que ningún unitario puede afirmar · simulación
+  `npm run sim:bearer-ausente` (contrato del servidor + % del día contra la línea base + señal de
+  causa). Suites: 63/63 + alertas del backend 364/364 + typecheck en verde.
+- **Trinquete, no muro:** hay 24 rutas con guarda y 22 llamadas no declaraban `exigeSesion`.
+  Exigirlo a todas nace en rojo y un guardarraíl que nace rojo se ignora (lección de
+  `landing_cifra_sin_respaldo`). Se cierra donde el daño está MEDIDO (las dos rutas) y el resto
+  lleva techo que **solo puede bajar**: 22 → **21**.
 
-⚠️ (3) sola **no basta y puede empeorar**: [T-419] es exactamente el daño de reintentar contra un
-401 sin arreglar la causa. La medida de éxito es el **porcentaje diario de 401 de esos dos
-endpoints**, que tiene nueve días de línea base limpia con la que comparar.
+#### ⏳ Falta: verificar EN PRODUCCIÓN
+
+Nada de esto vale hasta desplegar. `npm run sim:bearer-ausente` sale **en rojo ahora mismo** (38 %
+en `exam/pending`), que es lo correcto: mide el efecto, no la intención. Al desplegar hay que
+volver a correrlo y esperar que `exam/pending` baje hacia su suelo de 0 %.
+
+**La medida de éxito es el porcentaje diario de 401 de esos dos endpoints**, que tiene nueve días
+de línea base limpia. Si aparece `bearer_ausente`, la causa sigue siendo del cliente.
 
 **Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
-token), [T-419] (reintento contra 401), [T-685] (la alerta que hoy no dispara: 18 usuarios quedan
-por debajo del umbral de 15… pero el ratio por 100 respuestas no llega a 25).
+token), [T-419] (reintento contra 401), [T-210] (flood de acuñación), [T-685] (la alerta que suena;
+hoy no dispara porque 18 usuarios quedan por debajo de su umbral de 15 **y** el ratio por 100
+respuestas no llega a 25).
 
 ### [T-690] 🟠 [ABIERTO 08/08] Triar los tests de integración que salen rojos ahora que por fin se ejecutan
 
