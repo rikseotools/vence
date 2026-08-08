@@ -47,22 +47,37 @@
 // LO QUE SÍ SE PUDO MEDIR, y es la base del arreglo: `scraping_force_challenge_set`
 // (que dispara con el MISMO score>=90) SÍ es legible, y da una muestra MÁS ANCHA que
 // las 5 del ficha — 10 usuarias distintas a score exacto 90 entre el 12/07 y el
-// 06/08/2026, TODAS sin una sola fila en `test_questions` (0 respuestas guardadas,
-// nunca). Pero al menos UNA de esas diez (`f7716a15…`, 11 días de actividad, 08/2026)
-// tiene el patrón contrario y mucho más grave: `daily_questions_served` sube a ~800
-// preguntas SERVIDAS en esos 11 días y `daily_question_usage` está VACÍO — la firma
-// exacta de `harvest_no_answer` (cosecha real, con navegador, sin responder nunca).
-// O sea: la muestra ampliada NO confirma "todo son WebViews" — mezcla el falso
-// positivo del ficha con al menos un caso de cosecha real, y sin poder leer
-// `evidence` no se puede separar uno de otro por señal técnica.
+// 06/08/2026.
 //
-// EL ARREGLO, por eso, NO es "esta combinación de evidencia nunca alerta" (eso
-// habría dejado pasar a `f7716a15…`): es el discriminante que la propia ficha ya
-// proponía y que separa los dos casos limpio — **una cuenta que ha respondido de
-// verdad no es un bot, aunque su huella lo parezca; una cuenta servida-pero-nunca-
-// respondida sigue alertando igual que hoy**, y la automatización DURA (webdriver,
-// framework, puppeteer) nunca se exime por actividad: si además responde de verdad,
-// es un caso más serio (granjeo con navegador controlado), no uno más benigno.
+// CORRECCIÓN (08/08/2026, re-verificado independientemente): un pase anterior de
+// esta ficha afirmó que las 10 no tenían NI UNA fila en `test_questions` y que una
+// de ellas (`f7716a15…`) era un "cazador real confirmado" por tener
+// `daily_questions_served` alto con `daily_question_usage` vacío. **Es falso** —
+// re-medido con la MISMA consulta que usa este fichero
+// (`user_answer IS NOT NULL AND <> '' AND <> 'BLANK'`) contra `test_questions`
+// real: **las 10 tienen respuestas reales, entre 16 y 5.734**, ninguna en 0.
+// `f7716a15…` en concreto: 5.734 respuestas reales, actividad continuada hasta HOY
+// (08/08/2026) — el patrón contrario a "cosecha sin responder". SOSPECHO (no
+// confirmado, `user_profiles` es PII y no se puede consultar desde este rol) que
+// la cuenta es PREMIUM y por eso `daily_question_usage` — que solo importa para el
+// tope diario del plan free (ver `lib/api/daily-limit/queries.ts`) — dejó de
+// escribirse para ella, no por cosecha. No hay, en esta muestra de 10, ningún caso
+// que sostenga con datos la existencia de un cazador real a score=90 con este
+// patrón de evidencia blanda.
+//
+// Eso NO invalida el arreglo — al contrario: si el 100% de la muestra medida son
+// falsos positivos, el discriminante de abajo (actividad real ⇒ no abrir
+// expediente) es aún más defendible, no menos. Lo único que cambia es que no hay
+// una prueba empírica de que la automatización DURA + <5 respuestas reales siga
+// cazando algo de verdad hoy — esa rama se mantiene por diseño FAIL-SAFE (preferible
+// seguir alertando sin datos que exentar a ciegas), no porque haya un caso real que
+// lo demuestre:
+//
+// **una cuenta que ha respondido de verdad no es un bot, aunque su huella lo
+// parezca; una cuenta servida-pero-nunca-respondida sigue alertando igual que
+// hoy**, y la automatización DURA (webdriver, framework, puppeteer) nunca se exime
+// por actividad: si además responde de verdad, es un caso más serio (granjeo con
+// navegador controlado), no uno más benigno.
 
 /** Umbral a partir del cual una detección es lo bastante firme para actuar.
  *  Es el MISMO que dispara el reto forzado: no tiene sentido abrir expediente por
@@ -90,14 +105,12 @@ function hasHardAutomationEvidence(evidence: string[] | null | undefined): boole
 
 /**
  * Respuestas reales guardadas a partir de las cuales una cuenta deja de tratarse como
- * "solo fingerprint" para `bot_detected` (T-303). Medido: las dos usuarias reales que
- * originaron esta ficha tenían 25 y 199 respuestas cuando se las marcó; un cazador de
- * preguntas real medido de paso (11 días, ~800 preguntas SERVIDAS, `daily_question_usage`
- * vacío — el patrón exacto de `harvest_no_answer`) tenía CERO respuestas guardadas. El
- * hueco entre 0 y 25 es amplio: 5 es un cuerpo de examen real pequeño, muy por debajo de
- * lo que cualquier caso medido de humana real trae, y muy por encima de lo que cuesta
- * fabricar una respuesta señuelo aislada para "blanquear" futuras detecciones (que además
- * seguiría sin explicar por qué luego no hay ni una más).
+ * "solo fingerprint" para `bot_detected` (T-303). El umbral de 5 es deliberadamente
+ * bajo (cuerpo de examen real pequeño) porque es una decisión FAIL-SAFE, no porque
+ * haya un caso confirmado de cosechador real justo por debajo del corte — re-
+ * verificado el 08/08/2026: de una muestra de 10 cuentas a score exacto 90 (ver el
+ * comentario grande arriba), las 10 tenían actividad real sustancial (16-5.734
+ * respuestas), ninguna con 0.
  */
 export const MIN_REAL_ANSWERS_TO_TRUST = 5
 

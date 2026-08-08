@@ -64,12 +64,15 @@ describe('decideBotAlert — bot_detected + actividad real (T-303, WebView de An
     expect(d.createAlert).toBe(false)
   })
 
-  // f7716a15… (medido 06/08, `scraping_force_challenge_set`): 11 días de actividad,
-  // ~800 preguntas SERVIDAS (`daily_questions_served`), CERO en `test_questions` — la
-  // firma exacta de `harvest_no_answer`. El mismo score/evidencia que el caso de
-  // arriba, pero sin respuestas reales, TIENE que seguir alertando: si no, el arreglo
-  // de los falsos positivos abriría un hueco para la cosecha real.
-  it('SÍ alerta con el mismo patrón blando si la cuenta NUNCA respondió de verdad (cosechador real)', () => {
+  // Caso SINTÉTICO (no un usuario real): el mismo score/evidencia que arriba, pero
+  // sin respuestas reales, TIENE que seguir alertando — si no, el arreglo de los
+  // falsos positivos abriría un hueco para una cosecha real. El caso `f7716a15…`
+  // que un pase anterior de esta ficha citaba como "cazador real confirmado" con
+  // este patrón NO lo era: re-verificado el 08/08/2026 (ver el comentario grande en
+  // botAlertPolicy.ts), esa cuenta tenía 5.734 respuestas reales, no 0 — la rama de
+  // abajo se mantiene por PRECAUCIÓN fail-safe, no porque haya un caso real
+  // confirmado que lo exija hoy.
+  it('SÍ alerta con el mismo patrón blando si la cuenta NUNCA respondió de verdad (caso sintético, fail-safe)', () => {
     const d = decideBotAlert({
       alertType: 'bot_detected', score: 90,
       evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
