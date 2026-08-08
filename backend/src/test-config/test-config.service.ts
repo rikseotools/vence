@@ -13,17 +13,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type DrizzleDB } from '../db/database.module';
-import {
-  articles,
-  laws,
-  lawSections,
-  questions,
-} from '../db/schema';
+import { articles, laws, lawSections, questions } from '../db/schema';
 import {
   applyArticleSectionFilter,
   buildOfficialExamFilter,
   getTopicScopeMappings,
-  getValidExamPositions,
+  getValidExamPositionsOrUnrestricted,
 } from './test-config.helpers';
 import { esDegradacion } from './alcance-de-ley';
 import { ObservabilityService } from '../observability/observability.service';
@@ -104,7 +99,10 @@ export class TestConfigService {
           .limit(1);
 
         if (!lawResult || lawResult.length === 0) {
-          return { success: false, error: `Ley no encontrada: ${lawShortName}` };
+          return {
+            success: false,
+            error: `Ley no encontrada: ${lawShortName}`,
+          };
         }
 
         lawId = lawResult[0].id;
@@ -159,7 +157,12 @@ export class TestConfigService {
 
       // Si se piden conteos oficiales, hacer query adicional
       if (includeOfficialCount) {
-        const validPositions = getValidExamPositions(positionType);
+        // T-597 (08/08): null = personalizada = sin restricción, cualquier oficial cuenta
+        // (mismo criterio que buildOfficialExamFilter). Con lista, se mantiene el fail-safe:
+        // oposición no registrada en EXAM_POSITION_MAP → forzar 0 oficiales (filtro
+        // imposible) en vez de contar oficiales de otras oposiciones (bug Seg. Social).
+        const validPositions =
+          getValidExamPositionsOrUnrestricted(positionType);
 
         const officialConditions = [
           eq(questions.isActive, true),
@@ -173,14 +176,14 @@ export class TestConfigService {
           );
         }
 
-        // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → forzar 0 oficiales (filtro
-        // imposible) en vez de contar oficiales de otras oposiciones (bug Seg. Social).
-        officialConditions.push(
-          inArray(
-            questions.examPosition,
-            validPositions.length > 0 ? validPositions : ['__none__'],
-          ),
-        );
+        if (validPositions !== null) {
+          officialConditions.push(
+            inArray(
+              questions.examPosition,
+              validPositions.length > 0 ? validPositions : ['__none__'],
+            ),
+          );
+        }
 
         const officialData = await this.db
           .select({
@@ -273,9 +276,10 @@ export class TestConfigService {
    * familia `test-config` está enrutada al backend y es este camino el que ejecuta
    * producción; tenerlo solo en el frontend fue exactamente el defecto de T-326.
    *
-   * El conteo de oficiales usa `getValidExamPositions(positionType)` — solo las oficiales
-   * DE ESA oposición, igual que el resto de la app. Contar cross-oposición infla el número
-   * sobre leyes compartidas (CE, LOTC…) y haría mentir a la casilla.
+   * El conteo de oficiales usa `getValidExamPositionsOrUnrestricted(positionType)` — solo
+   * las oficiales DE ESA oposición (o todas, para una personalizada — T-597), igual que el
+   * resto de la app. Contar cross-oposición infla el número sobre leyes compartidas (CE,
+   * LOTC…) y haría mentir a la casilla.
    */
   private async estimateByLaws(
     params: EstimateQuestionsRequest,
@@ -295,12 +299,21 @@ export class TestConfigService {
       return { success: true, count: 0, byLaw: {} };
     }
 
+    // T-597 (08/08): null = personalizada = sin restricción de exam_position, cualquier
+    // oficial cuenta (mismo criterio que buildOfficialExamFilter, que ya la admite). Antes
+    // de esto, "solo oficiales" en una personalizada devolvía 0 aquí SIEMPRE, incluso tras
+    // el fix del filtro de serve — es el defecto exacto que esta ficha pedía comprobar.
     const validPositions = onlyOfficialQuestions
-      ? getValidExamPositions(positionType)
+      ? getValidExamPositionsOrUnrestricted(positionType)
       : [];
-    // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → no tiene oficiales propias.
-    // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría.
-    if (onlyOfficialQuestions && validPositions.length === 0) {
+    // Fail-safe: oposición REAL no registrada en EXAM_POSITION_MAP ([] tras el helper de
+    // arriba) → no tiene oficiales propias. Omitir el filtro contaría las de OTRAS
+    // oposiciones y la casilla mentiría. `null` (personalizada) NO entra aquí.
+    if (
+      onlyOfficialQuestions &&
+      validPositions !== null &&
+      validPositions.length === 0
+    ) {
       return { success: true, count: 0, byLaw: {} };
     }
 
@@ -403,7 +416,10 @@ export class TestConfigService {
 
       if (onlyOfficialQuestions) {
         conditions.push(eq(questions.isOfficialExam, true));
-        conditions.push(inArray(questions.examPosition, validPositions));
+        // null (personalizada) = sin restricción de exam_position, no se empuja el inArray.
+        if (validPositions !== null) {
+          conditions.push(inArray(questions.examPosition, validPositions));
+        }
       }
 
       if (
@@ -566,11 +582,14 @@ export class TestConfigService {
 
         // Filtro de preguntas oficiales por oposición
         if (onlyOfficialQuestions || focusEssentialArticles) {
-          const validPositions = getValidExamPositions(positionType);
+          // T-597 (08/08): null = personalizada = sin restricción, cualquier oficial cuenta.
+          const validPositions =
+            getValidExamPositionsOrUnrestricted(positionType);
 
-          // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → 0 oficiales (no omitir el
-          // filtro, que contaría oficiales de otras oposiciones y mentiría: 94 vs 1 real).
-          if (validPositions.length === 0) continue;
+          // Fail-safe: oposición REAL no registrada en EXAM_POSITION_MAP → 0 oficiales (no
+          // omitir el filtro, que contaría oficiales de otras oposiciones y mentiría: 94 vs
+          // 1 real). `null` (personalizada) NO entra aquí — no hay ley que saltar.
+          if (validPositions !== null && validPositions.length === 0) continue;
 
           if (focusEssentialArticles) {
             // Solo artículos que tengan al menos 1 pregunta oficial.
@@ -583,7 +602,7 @@ export class TestConfigService {
                 : []),
             ];
 
-            if (validPositions.length > 0) {
+            if (validPositions !== null) {
               officialConditions.push(
                 inArray(questions.examPosition, validPositions),
               );
@@ -611,7 +630,7 @@ export class TestConfigService {
           } else {
             // Solo preguntas oficiales
             conditions.push(eq(questions.isOfficialExam, true));
-            if (validPositions.length > 0) {
+            if (validPositions !== null) {
               conditions.push(inArray(questions.examPosition, validPositions));
             }
           }
@@ -699,7 +718,9 @@ export class TestConfigService {
         };
       }
 
-      const validPositions = getValidExamPositions(positionType);
+      // T-597 (08/08): null = personalizada = sin restricción, cualquier oficial cuenta
+      // como "imprescindible" (mismo criterio que buildOfficialExamFilter).
+      const validPositions = getValidExamPositionsOrUnrestricted(positionType);
       const essentialArticles: Array<{
         number: string | number;
         law: string;
@@ -708,10 +729,11 @@ export class TestConfigService {
       let totalQuestions = 0;
       const byDifficulty: Record<string, number> = {};
 
-      // Fail-safe: si la oposición no está registrada en EXAM_POSITION_MAP, validPositions=[].
-      // Devolver 0 imprescindibles en vez de contar oficiales de otras oposiciones (bug Seg.
-      // Social: Tema 2 mostraba 94 oficiales cross-oposición frente a 1 real).
-      if (validPositions.length === 0) {
+      // Fail-safe: si la oposición REAL no está registrada en EXAM_POSITION_MAP,
+      // validPositions=[]. Devolver 0 imprescindibles en vez de contar oficiales de otras
+      // oposiciones (bug Seg. Social: Tema 2 mostraba 94 oficiales cross-oposición frente a
+      // 1 real). `null` (personalizada) NO entra aquí.
+      if (validPositions !== null && validPositions.length === 0) {
         return {
           success: true,
           essentialCount: 0,
@@ -744,7 +766,7 @@ export class TestConfigService {
             : []),
         ];
 
-        if (validPositions.length > 0) {
+        if (validPositions !== null) {
           officialConditions.push(
             inArray(questions.examPosition, validPositions),
           );
