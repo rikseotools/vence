@@ -206,12 +206,20 @@ jobs:
     name: Integration (BD efímera)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: unit
     # ⚠️ [T-644] JOB NUEVO, NUNCA CORRIDO — este worker no tiene docker ni gh en su máquina y no
     # pudo verlo ejecutar ni una vez (comprobado: `which docker`/`which gh` sin salida). Por eso
     # `continue-on-error: true` a nivel de JOB, igual que `integration` de arriba cuando tenía
     # fallos sin triar: NO lo quites hasta que alguien con esas herramientas confirme un run
     # limpio en GHA real. Mientras tanto es un dato, no un gate.
+    #
+    # [Revisión 08/08, w2] La primera versión de este comentario AFIRMABA la clave sin que
+    # estuviera en el YAML — probado con `python3 -c "import yaml; ...jobs['integration-efimera']
+    # .get('continue-on-error')"` dando `None` mientras `jobs['integration']` daba `True`. Sin
+    # esto, el día que el dump exista y `unit` pase, este job (que "nunca se ha visto correr")
+    # SÍ tumbaría el workflow de verdad y dispararía `notify-failure` como si `main` estuviera
+    # roto — la misma alarma-que-se-ignora que el comentario de `integration` explica evitar.
+    continue-on-error: true
+    needs: unit
     #
     # Decisión de Manuel (08/08/2026, #122/#123): estas 10 suites de test:integration ESCRIBEN
     # de verdad (dinero/referidos, borrado GDPR, ciclo de convocatoria, scope/temario) y llevan
