@@ -8,9 +8,11 @@
 // esa línea recibía las preguntas (con su respuesta correcta); sin ella, 403. El banco entero
 // quedaba detrás de un header que cualquiera puede escribir.
 import {
+  CABECERA_CANARY_METRICAS_SECRETO,
   CABECERA_CANARY_SECRETO,
   comparacionSegura,
   esCanaryDeConfianza,
+  esCanaryParaMetricas,
   secretoCanaryEsperado,
 } from '@/lib/api/syntheticTrust'
 
@@ -48,6 +50,45 @@ describe('esCanaryDeConfianza', () => {
     expect(esCanaryDeConfianza(null, SECRETO)).toBe(false)
     expect(esCanaryDeConfianza({}, SECRETO)).toBe(false)
     expect(esCanaryDeConfianza({ headers: null }, SECRETO)).toBe(false)
+  })
+})
+
+describe('esCanaryParaMetricas (T-381: exención SEPARADA, solo para daily_questions_served)', () => {
+  it('EL CASO QUE MOTIVA ESTO: la sonda real de canary-questions-gate (sin cabecera de reto) queda fuera de las métricas con SU PROPIA cabecera', () => {
+    expect(
+      esCanaryParaMetricas(req({ 'x-vence-canary': '1', [CABECERA_CANARY_METRICAS_SECRETO]: SECRETO }), SECRETO),
+    ).toBe(true)
+  })
+
+  it('quien ya demuestra ser canary de confianza (reto) también cuenta para métricas — no hace falta demostrarlo dos veces', () => {
+    expect(esCanaryParaMetricas(req({ [CABECERA_CANARY_SECRETO]: SECRETO }), SECRETO)).toBe(true)
+  })
+
+  it('solo el marcador `x-vence-canary` SIN ninguna de las dos cabeceras de secreto sigue sin eximir (mismo agujero que antes, solo que en el contador)', () => {
+    expect(esCanaryParaMetricas(req({ 'x-vence-canary': '1' }), SECRETO)).toBe(false)
+  })
+
+  it('un secreto de métricas equivocado no exime', () => {
+    expect(
+      esCanaryParaMetricas(req({ [CABECERA_CANARY_METRICAS_SECRETO]: 'otro-secreto-cualquiera-x' }), SECRETO),
+    ).toBe(false)
+  })
+
+  it('sin secreto configurado en el servidor, nadie queda eximido de las métricas tampoco', () => {
+    expect(esCanaryParaMetricas(req({ [CABECERA_CANARY_METRICAS_SECRETO]: SECRETO }), null)).toBe(false)
+  })
+
+  it('demostrar SOLO el reto (canaryDeConfianza) y demostrar SOLO las métricas son cosas DISTINTAS: la de reto no basta para el reto si falta, ni al revés', () => {
+    // Cabecera de métricas presente y válida, cabecera de reto ausente → exento de métricas,
+    // pero esCanaryDeConfianza (el que decide el reto) sigue en false.
+    const r = req({ [CABECERA_CANARY_METRICAS_SECRETO]: SECRETO })
+    expect(esCanaryParaMetricas(r, SECRETO)).toBe(true)
+    expect(esCanaryDeConfianza(r, SECRETO)).toBe(false)
+  })
+
+  it('no revienta con requests raras', () => {
+    expect(esCanaryParaMetricas(null, SECRETO)).toBe(false)
+    expect(esCanaryParaMetricas({}, SECRETO)).toBe(false)
   })
 })
 

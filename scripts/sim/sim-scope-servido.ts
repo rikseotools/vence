@@ -89,7 +89,20 @@ async function main() {
 
   const rutas = arg('--ruta') ? [arg('--ruta')] : ['/test/rapido']
   const navegador = await chromium.launch()
-  const ctx = await navegador.newContext({ baseURL: BASE, locale: 'es-ES' })
+  // T-381: esta simulación usa la sesión de un usuario REAL (`userId` sale de `user_profiles`,
+  // no un canario sintético), así que su tráfico a /api/questions/filtered se contaba en
+  // `daily_questions_served` bajo la identidad de ESA persona — preguntas servidas sin
+  // respuesta, la firma exacta de cosecha, contra un usuario inocente. `x-vence-canary-secret`
+  // (no solo el de métricas) porque además evita el reto anti-scraping, que un navegador sin
+  // persona delante no puede resolver — mismo criterio que `scripts/sim/run.ts`.
+  const secretoCanary = process.env.CANARY_SECRET || process.env.CRON_SECRET || ''
+  const ctx = await navegador.newContext({
+    baseURL: BASE,
+    locale: 'es-ES',
+    ...(secretoCanary.length >= 16
+      ? { extraHTTPHeaders: { 'x-vence-canary': '1', 'x-vence-canary-secret': secretoCanary } }
+      : {}),
+  })
   const cookie = await mintOwnAuthCookie(
     { userId, email: 'sim-scope@vence.es' },
     SECRET,

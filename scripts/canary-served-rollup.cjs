@@ -93,8 +93,13 @@ const MIN_ROWS = Number(process.env.SERVED_CANARY_MIN_ROWS) || 1;
     // contestan → ratio 0,00, que es exactamente la firma de cosecha. El 27/07,
     // en las primeras horas del rollup, `smoke@vence.es` ya acumulaba 1.260
     // servidas y 0 respondidas: el sweep de esa noche habría levantado un
-    // `harvest_no_answer` crítico contra nuestro propio canario. Se exime por el
-    // header `x-vence-canary` en el writer; esto vigila que la exención siga viva.
+    // `harvest_no_answer` crítico contra nuestro propio canario. Se exime con
+    // secreto compartido (T-381): `x-vence-canary-secret` (exento también del
+    // reto) o `x-vence-canary-metrics-secret` (solo de esta medición — la usa
+    // `canary-questions-gate`, que necesita seguir pareciendo tráfico normal de
+    // cara al reto para poder probarlo honestamente). El `x-vence-canary` A
+    // SECAS, sin ninguno de los dos secretos, NUNCA exime — ver
+    // lib/api/syntheticTrust.ts. Esto vigila que la exención siga viva.
     const sinteticos = (await c.query(
       `SELECT s.subject_key, sum(s.served)::int servidas
          FROM daily_questions_served s

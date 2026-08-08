@@ -165,12 +165,16 @@ export class CanaryQuestionsGateService {
       : sujetoSaturado === true
         ? 'omitida_sujeto_saturado'
         : 'omitida_veredicto_no_disponible';
+    const secretoCanary = process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '';
+    // T-381 (07/08/2026): la sonda REAL sigue sin la cabecera que exime del reto (es justo lo
+    // que prueba: que el gate no le retaría), pero eso la dejaba contándose en
+    // `daily_questions_served` como tráfico de un opositor de verdad (numQuestions=1 por
+    // sonda, sin respuesta jamás — la firma exacta de cosecha, medida por
+    // `npm run canary:served-rollup`). La cabecera de MÉTRICAS demuestra que es este canario
+    // sin demostrar (ni fingir) que no haga falta retarlo — ver lib/api/syntheticTrust.ts.
     const exencion: Record<string, string> = sondaReal
-      ? {}
-      : {
-          'x-vence-canary-secret':
-            process.env.CANARY_SECRET ?? process.env.CRON_SECRET ?? '',
-        };
+      ? { 'x-vence-canary-metrics-secret': secretoCanary }
+      : { 'x-vence-canary-secret': secretoCanary };
 
     let res: Response;
     try {
