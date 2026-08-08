@@ -130,6 +130,10 @@ const hasMarcar = (txt: string, kind: string) =>
 // no tendría sujetos que contar, así que se excluye a propósito (igual que CLI_ONLY_KINDS/
 // ON_DEMAND_KINDS de arriba son exclusiones declaradas, no un hueco sin explicar).
 //
+// `sweep_escritura_incompleta` (T-405, 08/08) es el MISMO caso, un escalón más abajo: señal de
+// que la fase de ESCRITURA (no la de detección) rechazó alguna fila — no tiene "sujetos" que
+// contar, se emite fuera del bucle de detectores tras el `for` de escritura.
+//
 // `http_5xx`/`server_render_error`/`webhook_unhealthy` SÍ se marcan en los dos gemelos, pero por
 // un `for (const k of CRIT) marcar(k, …)` — el kind es DINÁMICO (viene de `event_type`), no un
 // literal pegado a `marcar(`, así que `hasMarcar` (que busca el literal) no lo ve. Se comprueba
@@ -141,6 +145,7 @@ const hasMarcar = (txt: string, kind: string) =>
 // aparece entre comillas, sin distinguir código de comentario) las confunde con una emisión real.
 const KINDS_SIN_LATIDO = new Set([
   'sweep_incompleto',
+  'sweep_escritura_incompleta',
   ...CRIT_KINDS_DINAMICOS,
   ...ON_DEMAND_KINDS,
 ])
@@ -941,5 +946,42 @@ describe('mirror del detector pregunta_duplicada — banco PSICOTÉCNICO (núcle
     for (const txt of [SCRIPT, BACKEND]) {
       expect(txt).toMatch(/marcar\('pregunta_duplicada',\s*dupPsicoUniverso\)/)
     }
+  })
+})
+
+describe('escritura resiliente por-fila (T-405, 08/08/2026) — CLI y backend no pueden divergir', () => {
+  // Defecto real: un INSERT rechazado por Postgres tiraba el `for` de escritura entero, y todo
+  // lo que venía DESPUÉS en la lista se quedaba sin insertar en silencio (8 kinds con 0 filas
+  // pese a que sus detectores SÍ corrían). El CLI usa el núcleo compartido
+  // (lib/db/escrituraResiliente.cjs); el backend lo reimplementa en TS a mano porque este
+  // servicio NUNCA importa `lib/` del frontend — mismo patrón que el resto de esta ficha.
+
+  it('el CLI consume el núcleo compartido de escritura resiliente (no una copia inline)', () => {
+    expect(SCRIPT).toContain("require('../lib/db/escrituraResiliente.cjs')")
+    expect(SCRIPT).toMatch(/escribirConAislamiento/)
+  })
+
+  it('el backend aísla cada INSERT con su propio try/catch (no un `for` desnudo)', () => {
+    // La forma exacta: dentro del bucle de escritura, un try envolviendo el INSERT con su
+    // catch justo después — si alguien "simplifica" esto a un for sin try, el patrón deja de
+    // matchear y el test cae, en vez de descubrirse midiendo a mano contra RDS.
+    expect(BACKEND).toMatch(/for \(const f of F\) \{[\s\S]{0,80}try \{[\s\S]{0,200}INSERT INTO content_health_findings[\s\S]{0,200}\} catch \(e\) \{/)
+  })
+
+  it('los dos gemelos emiten sweep_escritura_incompleta cuando algo falla al escribir', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(hasKind(txt, 'sweep_escritura_incompleta')).toBe(true)
+    }
+  })
+
+  it('el backend registra el fallo SIN reintentar (un dato rechazado no se cura repitiendo el INSERT)', () => {
+    // No debe haber un segundo intento del mismo INSERT dentro del catch — solo registrar.
+    expect(BACKEND).toMatch(/catch \(e\) \{[\s\S]{0,250}?fallosEscritura\.push/)
+  })
+
+  it('el núcleo compartido (que usa el CLI) registra el fallo SIN reintentar, mismo criterio', () => {
+    const core = fs.readFileSync(path.join(REPO, 'lib/db/escrituraResiliente.cjs'), 'utf8')
+    expect(core).toMatch(/catch \(e\) \{[\s\S]{0,150}?fallos\.push/)
+    expect(core).not.toMatch(/for\s*\([^)]*\)\s*\{[^}]*await insertar[^}]*await insertar/s)
   })
 })

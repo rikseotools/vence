@@ -50,6 +50,7 @@ const { AUDIT_NOTE_META_RE_SRC, AUDIT_NOTE_ACTO_RE_SRC, AUDIT_NOTE_LITERAL_RE_SR
 const { ARTICLE_AUDIT_NOTE_RE_SRC_SQL } = require('../lib/health/articleAuditNote.cjs');
 const { clasificarLote: clasificarOpcionesDuplicadas, LETRAS: LETRAS_OPCION } = require('../lib/health/opcionesDuplicadas.cjs');
 const { clasificarVeredicto } = require('../lib/health/veredictoRojoInequivoco.cjs');
+const { escribirConAislamiento, mensajeEscrituraIncompleta } = require('../lib/db/escrituraResiliente.cjs');
 // Criterio del banco duplicado ENTERO (distinto de opciones_duplicadas: aquí se repite la
 // PREGUNTA, no una opción dentro de ella). Compartido con scripts/calidad/duplicados-exactos.cjs
 // para que el barrido nocturno y la herramienta manual de jubilar nunca discrepen. Ver T-408.
@@ -158,11 +159,28 @@ async function main() {
   // se borran los kinds que ESTA pasada evaluó de verdad (`kindsEvaluados`, el mismo objeto
   // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
   // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
+  // Hallazgos cuyo INSERT individual falló (T-405, 08/08/2026) — núcleo compartido en
+  // lib/health/escrituraResiliente.cjs (gemelo inline en content-health-sweep.service.ts,
+  // MANTENER EN SYNC — guardarraíl content-sweep-parity). Antes, un registro que Postgres
+  // rechazaba tiraba el `for` entero: todo lo que venía DESPUÉS en `F` se quedaba sin insertar
+  // en silencio, con sus filas viejas ya borradas por el DELETE de arriba y nunca repuestas.
+  // Medido en vivo (08/08): 8 kinds completos con 0 filas pese a que el detector SÍ corría.
+  let fallosEscritura = [];
   if (!NO_WRITE) {
     const kindsDeEstaPasada = Object.keys(kindsEvaluados);
     if (kindsDeEstaPasada.length) await c.query('DELETE FROM content_health_findings WHERE kind = ANY($1::text[])', [kindsDeEstaPasada]);
-    for (const f of F) await c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]);
-    console.log(`✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length})`);
+    fallosEscritura = await escribirConAislamiento(F, (f) =>
+      c.query(`INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ($1,$2,$3,$4,$5,$6)`, [f.category, f.severity, f.slug, f.kind, f.message, f.detail ? JSON.stringify(f.detail) : null]));
+    for (const fallo of fallosEscritura) console.warn(`⚠️ INSERT de '${fallo.kind}' falló (no bloqueante, se sigue con el resto): ${fallo.error}`);
+    if (fallosEscritura.length) {
+      try {
+        await c.query(
+          `INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail) VALUES ('app','error',null,'sweep_escritura_incompleta',$1,$2)`,
+          [mensajeEscrituraIncompleta(fallosEscritura), JSON.stringify({ fallos: fallosEscritura.slice(0, 20) })],
+        );
+      } catch { /* si ni esto se puede escribir, ya queda en el warn de arriba */ }
+    }
+    console.log(`✅ ${stamp} — ${F.length - fallosEscritura.length}/${F.length} hallazgos escritos (app err=${F.filter(x => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter(x => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter(x => x.category === 'content' && x.severity === 'warn').length}${fallosEscritura.length ? `, ${fallosEscritura.length} fallo(s) de escritura` : ''})`);
   }
   console.log(`ℹ️  kinds evaluados esta pasada: ${Object.keys(kindsEvaluados).length} (npm run health:kinds-evaluados lee el latido REAL, el del @Cron)`);
   await c.end();

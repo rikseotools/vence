@@ -63,6 +63,11 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
   // él, un detector que revienta deja el resto del panel con los datos de la pasada anterior y
   // pasa por verde (pasó el 29 y el 30/07: dos días de ceguera con el badge tranquilo).
   sweep_incompleto: { title: 'El barrido de salud se cortó a mitad (panel incompleto)', ...HEALTH_CHECK },
+  // Hermano de sweep_incompleto un escalón más abajo (T-405, 08/08): aquél cubre que la fase de
+  // DETECCIÓN se corte a mitad; este cubre que la fase de ESCRITURA rechace una fila puntual —
+  // antes ninguna de las dos estaba aislada y una fila mala se llevaba por delante todo lo que
+  // venía después en la lista, en silencio (8 kinds con 0 filas medidos en vivo).
+  sweep_escritura_incompleta: { title: 'Un hallazgo del barrido no se pudo escribir (Postgres lo rechazó)', ...HEALTH_CHECK },
   chat_ia_errores: {
     title: 'El chat IA está sirviendo errores',
     triggerPhrase: 'revisa los errores del chat',

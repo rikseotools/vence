@@ -63,6 +63,14 @@ export interface SweepSummary {
    * y el barrido ya es largo.
    */
   kindsEvaluados: Record<string, number>;
+  /**
+   * Hallazgos individuales cuyo `INSERT` fue RECHAZADO por Postgres (T-405, 08/08/2026) —
+   * vacío = todos escritos. El `for` de escritura ahora aísla cada fila (antes, UNA que
+   * Postgres rechazaba tiraba en silencio todo lo que venía después en `F`, con sus filas
+   * viejas ya borradas y nunca repuestas — mismo modo de fallo que `incompleto`, un escalón
+   * más abajo). Cada fallo deja además su propio hallazgo `sweep_escritura_incompleta`.
+   */
+  fallosEscritura: Array<{ kind: string; error: string }>;
 }
 
 const esc = (s: unknown): string =>
@@ -1154,6 +1162,17 @@ export class ContentHealthSweepService {
     // del latido de T-529): un kind ajeno al barrido nunca se toca, y un barrido `sweep_incompleto`
     // (T-307) tampoco arrasa los kinds que no llegó a evaluar.
     let wrote = false;
+    // Hallazgos cuyo INSERT individual falló (T-405, 08/08/2026): antes, UN registro con un
+    // valor que Postgres rechaza (encoding inválido, JSON que no cabe, lo que sea) tiraba la
+    // excepción FUERA de este bucle — que no tenía try/catch propio, a diferencia de
+    // `detectarTodo()` (T-307, justo arriba) — y como el `for` es secuencial y sin aislar, TODO
+    // lo que venía DESPUÉS en `F` se quedaba sin insertar, en silencio: el `DELETE` de arriba ya
+    // había borrado sus filas viejas y nunca llegaban a reponerse. Medido en vivo (08/08): 8
+    // kinds completos (`veredicto_verificacion_rojo` entre ellos, con 393 candidatos reales)
+    // llevaban desde su despliegue con 0 filas en `content_health_findings` pese a que el
+    // detector SÍ corría (`kindsEvaluados` los tenía) — el mismo modo de fallo que T-307 ya
+    // arregló para la FASE de detección, sin extenderlo a la de escritura.
+    const fallosEscritura: Array<{ kind: string; error: string }> = [];
     if (!NO_WRITE) {
       const kindsDeEstaPasada = Object.keys(kindsEvaluados);
       if (kindsDeEstaPasada.length) {
@@ -1161,14 +1180,36 @@ export class ContentHealthSweepService {
       }
       for (const f of F) {
         const detailJson = f.detail ? JSON.stringify(f.detail) : null;
-        await this.db.execute(sql`
-          INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail)
-          VALUES (${f.category}, ${f.severity}, ${f.slug}, ${f.kind}, ${f.message}, ${detailJson}::jsonb)
-        `);
+        try {
+          await this.db.execute(sql`
+            INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail)
+            VALUES (${f.category}, ${f.severity}, ${f.slug}, ${f.kind}, ${f.message}, ${detailJson}::jsonb)
+          `);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          fallosEscritura.push({ kind: f.kind, error: msg.slice(0, 300) });
+          this.logger.warn(`INSERT de '${f.kind}' falló (no bloqueante, se sigue con el resto): ${msg.slice(0, 300)}`);
+        }
       }
       wrote = true;
+      if (fallosEscritura.length) {
+        // Propio, no silencioso: si esto vuelve a pasar, que se VEA en el panel en vez de
+        // descubrirse midiendo a mano contra RDS (como aquí). No se reintenta: un registro que
+        // Postgres rechaza no se cura repitiendo el mismo INSERT.
+        const kindsAfectados = [...new Set(fallosEscritura.map((x) => x.kind))];
+        try {
+          await this.db.execute(sql`
+            INSERT INTO content_health_findings (category, severity, oposicion_slug, kind, message, detail)
+            VALUES ('app', 'error', null, 'sweep_escritura_incompleta',
+              ${`${fallosEscritura.length} hallazgo(s) de ${kindsAfectados.length} kind(s) no se pudieron escribir: ${kindsAfectados.join(', ')}`},
+              ${JSON.stringify({ fallos: fallosEscritura.slice(0, 20) })}::jsonb)
+          `);
+        } catch {
+          // Si ni esto se puede escribir, ya queda en el log de arriba — no insistir más.
+        }
+      }
       this.logger.log(
-        `✅ ${stamp} — ${F.length} hallazgos escritos (app err=${F.filter((x) => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter((x) => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter((x) => x.category === 'content' && x.severity === 'warn').length})`,
+        `✅ ${stamp} — ${F.length - fallosEscritura.length}/${F.length} hallazgos escritos (app err=${F.filter((x) => x.category === 'app' && x.severity === 'error').length}, content err=${F.filter((x) => x.category === 'content' && x.severity === 'error').length}, content warn=${F.filter((x) => x.category === 'content' && x.severity === 'warn').length}${fallosEscritura.length ? `, ${fallosEscritura.length} fallo(s) de escritura` : ''})`,
       );
     }
 
@@ -1189,6 +1230,7 @@ export class ContentHealthSweepService {
       emailsSent,
       incompleto,
       kindsEvaluados,
+      fallosEscritura,
     };
   }
 
