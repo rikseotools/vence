@@ -15718,6 +15718,41 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
     reproducidos), [T-140] (población de `law_sections` — NO aplica aquí, las 4 leyes ya la
     tienen).
 
+- **🔧 CORRECCIÓN (08/08, w3), sobre el hallazgo 🚨 de arriba — la revisión encontró un error de
+  cálculo y lo confirmo, con una vuelta más porque han pasado 2 días desde entonces.**
+  - **El error real:** *"cierra el 4 de agosto — hace 2 días"* está mal calculado. El plazo son
+    **20 días HÁBILES desde el 11/07** (día siguiente a la publicación, 10/07), no 20 días
+    naturales. Usando la función CANÓNICA que ya existe en el repo (`lib/boe/convocatoriasParser.ts`
+    → `addDiasHabiles`), reproducido por mi cuenta:
+    ```
+    import { addDiasHabiles } from 'lib/boe/convocatoriasParser'
+    addDiasHabiles(new Date('2026-07-10'), 20)  // → 2026-08-07
+    ```
+    (corrido con `npx tsx`, importando la función real del repo, no reimplementándola)
+    Y verificado además contra el propio BOE en vivo (`WebFetch` a
+    `boe.es/diario_boe/txt.php?id=BOE-A-2026-15052`): confirma publicación 10/07/2026, Resolución de
+    8 de julio, plazo *"20 días hábiles contados a partir del día siguiente al de la fecha de
+    publicación"*. La fecha correcta es **2026-08-07**, no 2026-08-04.
+  - **Por qué el aviso 🚨 tal cual está ya no aplica, pero no por lo que decía la revisión:** cuando
+    la revisión se escribió (06/08) el plazo correcto (07/08) aún no había llegado, así que
+    `estado_proceso='inscripcion_abierta'` SÍ era correcto ese día — de ahí que la revisión pidiera
+    quitar el aviso. **Hoy (08/08) ya han pasado 2 días desde el 07/08**, así que el plazo SÍ ha
+    cerrado de verdad — solo que 3 días más tarde de lo que la ficha original decía, no porque el
+    aviso de incoherencia fuera correcto por casualidad.
+  - **Y la BD YA REFLEJA la fecha correcta — verificado ahora mismo (`VENCE_LECTOR_URL`), sin que yo
+    la haya tocado:** `oposiciones.inscription_deadline` = `convocatorias.inscription_deadline` =
+    `oposiciones_ssot.inscription_deadline` = **`2026-08-07`**, y `oposiciones_ssot.estado_proceso`
+    = **`'inscripcion_cerrada'`**. Alguien con escritura ya aplicó estos dos valores (con la fecha
+    BUENA, no la de la ficha) entre el 06/08 y hoy — no hace falta que nadie los vuelva a tocar.
+  - **Lo que SIGUE pendiente, sin cambios respecto a lo que ya decía la ficha:** `boe_reference`
+    sigue `NULL` en las 3 tablas (confirmado ahora), y las 3 filas de `convocatoria_hitos` siguen
+    con `tipo=null`/`cita_literal=null`, sin ningún hito de cierre de plazo. Los valores a aplicar
+    son los mismos que ya estaban escritos arriba, con UN cambio: la fecha del hito de cierre es
+    `2026-08-07`, no `2026-08-04`.
+  - **No toco la BD** (regla de trabajador de flota, y en este caso además ya está parcialmente
+    aplicada por otra sesión con permiso). Dejo el cálculo y la verificación por si quien complete
+    `boe_reference` + el hito quiere la fecha exacta sin tener que rehacer la cuenta.
+
 ### [T-233] 🟡 [ABIERTO 28/07] 105 explicaciones con la tabla APLANADA: en pantalla dicen algo distinto de lo que guarda la BD
 - **Qué ve el opositor:** la explicación se escribió como tabla usando `|` pero **sin la línea separadora** (`|---|---|`), así que markdown no la reconoce como tabla y **colapsa las filas en un solo párrafo**. El dato queda pegado a la etiqueta equivocada. Caso real (impugnación `bb487ee7`, usuaria Laura Zurdo, Outlook 365): la explicación guardaba correctamente `Crear un contacto | Ctrl+Mayús+C` y `Crear una convocatoria de reunión | Ctrl+Mayús+Q`, pero al renderizarse se leía *"…Ctrl+Mayús+**C** Crear una convocatoria de reunión…"*. Ella lo reportó como error de contenido, y tenía razón en lo que veía.
 - **Tamaño:** de **771** activas con `|` en la explicación, **666 llevan tabla bien formada** y **105 están aplanadas**. Detección determinista y sin ambigüedad: hay `|` en alguna línea y no existe ninguna línea `^\s*\|?\s*:?-{3,}`.
