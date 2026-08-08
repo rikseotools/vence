@@ -1433,6 +1433,47 @@ es la costumbre.
 **La medida de éxito es el porcentaje diario de 401 de LAS DOS rutas, contra 0.** Si aparece
 `auth_header_sin_token`, la causa sigue siendo del cliente.
 
+#### ❌ VERIFICADO EN PRODUCCIÓN (08/08, w2-vence-flota) — el fix está desplegado y NO ha bajado al suelo
+
+**No cierro esto como resuelto: los datos dicen que sigue roto.** `npm run sim:bearer-ausente` sigue
+en rojo tras el deploy (`fa3367f3`, merge 08:45 UTC), y no es un artefacto de caché de cliente ni de
+medir demasiado pronto — lo mido de dos formas y las dos coinciden:
+
+- **Todo el tráfico post-deploy** (`created_at > '2026-08-08 08:45 UTC'`, misma query que el paso ②
+  de la simulación pero acotada a después del merge del fix): `/api/exam/pending` **29.1%**
+  (34/117, 19 usuarios), `/api/v2/user-stats` **16.1%** (5/31, 5 usuarios). Suelo sano 0%. (La
+  simulación tal cual, que mide TODO el día, dio 30.9%/272 y 29.5%/95 — números parecidos porque
+  la mayoría del tráfico de hoy es posterior al deploy, que fue a media mañana.)
+- **Restringido SOLO a peticiones etiquetadas con el `deploy_version` del propio fix**
+  (`deploy_version='fa3367f3'`, para descartar que sea navegador con bundle viejo en caché):
+  **20 fallos de 83 peticiones = 24.1%**, repartidos en 13+ usuarios distintos, sin tendencia a la
+  baja en los ~100 min medidos (serie de 15 min: 5/22, 6/14, 4/17, 5/18, 7/22, 5/18, 2/6 — plano,
+  no decreciente). El código NUEVO sigue fallando en la cuarta parte de las llamadas.
+
+**Descartada la hipótesis de cobertura de call-sites:** grepeado el repo entero, `/api/exam/pending`
+solo tiene 3 call-sites (`Header.tsx`, `UserAvatar.tsx`, `PendingExams.tsx`) y los 3 YA declaran
+`exigeSesion: true` — no hay un cuarto sitio sin parchear.
+
+**SOSPECHO (no demostrado, requiere decisión de ingeniería) que la ventana de reintento es
+demasiado corta frente a la duración real de la carrera.** Dos datos que apuntan ahí sin cerrarlo:
+(a) la propia medición original de este ficha dice que el 63% de los fallos cae en los 10 primeros
+segundos con mediana 0s — una cola larga hasta 10s es compatible con que 200 ms (`ESPERA_ENTRE_INTENTOS_MS`
+en `lib/api/bearerConReintento.ts`) solo salve la parte más rápida de esa carrera y deje el resto
+igual; (b) la señal `auth_header_sin_token` —que debería dispararse cada vez que el reintento
+fracasa y que depende del mismo `user.id` que ya usan estos call-sites para construir su URL, así
+que no debería tener el mismo punto ciego que el fallo— solo registró **5 eventos y 1 usuario en
+24h**, muy por debajo de los 20-34 fallos crudos medidos bajo el propio `fa3367f3`. Esa discrepancia
+no la he explicado: no sé si es sampling, un fallo al emitir el evento, u otra cosa — lo dejo
+escrito como hueco, no como hallazgo cerrado.
+
+**No he tocado el código.** Ampliar el reintento (más tiempo, más intentos) es exactamente la
+decisión que el propio commit del fix ya sopesó y hay una razón explícita para no hacerlo sin más
+([T-419]: martillear contra un 401 sin arreglar la causa; [T-210]: re-acuñar de más) — cambiar ese
+equilibrio es una decisión de ingeniería con trade-offs ya documentados, no algo para decidir a
+solas verificando. Lo dejo para que alguien con ese criterio decida entre alargar la ventana,
+añadir un backoff acotado, o repensar el mecanismo (bloquear la llamada hasta que la sesión esté
+lista en vez de competir con ella).
+
 **Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
 token), [T-419] (reintento contra 401), [T-210] (flood de acuñación), [T-685] (la alerta que suena;
 hoy no dispara porque 18 usuarios quedan por debajo de su umbral de 15 **y** el ratio por 100
