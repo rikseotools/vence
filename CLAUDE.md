@@ -453,6 +453,41 @@ git push origin main
   - *"revisa el barajado"* → **(b)** pregunta `shuffle_safety='safe'` cuya explicación cita una opción por letra/número/posición (regresión: miss del detector/auditoría LLM, o edición que el trigger no invalidó) → barajarla rompería la explicación → `barajar-opciones-verificacion-robusta.md`. Detección: `scripts/sweep-shuffle-safety-drift.ts` (detector REAL, sin copia) invocado por `health-sweep.cjs` (kind `shuffle_safe_regressed`); comprueba también hash desincronizado (integridad del trigger `tg_questions_shuffle_safety_invalidate`). Remediar: confirmar y bajar a `unsafe` vía `record_shuffle_safety`, o reescribir la explicación a formato sin letras (Fase 2). NUNCA dejar barajable una explicación letra-anclada ni auto-editar la clave.
   - *"revisa el barajado"* → **(c) veredicto con el criterio VIEJO:** el detector mejoró y nadie recalculó el banco. Es la causa INVERSA de (a) y (b): ahí el contenido se fue de su veredicto; aquí el contenido no se ha movido y **el criterio sí**. El trigger no puede verlo (invalida por hash del CONTENIDO), así que el arreglo del detector queda **inerte**: medido dos veces, el endurecimiento de las tildes (28/07) dejó **21 preguntas** mal marcadas ocho días y el de los grados centígrados (T-301) otras **91**. Kind `shuffle_veredicto_criterio_viejo` (`info`: no es defecto de la pregunta, es trabajo de una línea). Remedio: **`npm run shuffle:recriterio`** (dry-run; `-- --apply` para escribir), acotado por SQL a los veredictos que firmó el propio backfill determinista — no puede pisar los de `llm_audit_v1` — con historial en `question_shuffle_safety_history` y **abort pasados 2.000 cambios**: un `safe→unsafe` masivo no es un trámite, es señal de detector roto. NUNCA tocar `shuffle_safety` a mano ni subir el techo para que pase. → `barajar-opciones-verificacion-robusta.md`.
 
+### 🔎 Un guardarraíl no LISTA a quién vigila: lo BUSCA (T-722, 08/08/2026)
+
+**Cuatro veces pagado ya, y siempre igual:** alguien escribe a mano la lista de sitios que tocan un
+recurso compartido, la lista no está mal *ese día*, y **se queda vieja sola**. Entonces el
+guardarraíl da verde sobre un universo que ya no es el real — que es peor que no tenerlo, porque
+tranquiliza.
+
+| caso | cómo se contó | cuántos había |
+|---|---|---|
+| [T-130] `seguimiento_url` | «los escritores que conozco» | **cinco** |
+| [T-339] `target_oposicion` | tres puertas listadas | **cuatro** (y al buscar apareció una quinta) |
+| [T-689] `review_requested_at` | `FUENTES = [tres ficheros]` | **cuatro**; el que faltaba contaba 11 filas ya revisadas como pendientes |
+| [T-722] escritores de `explanation_data` | dos ficheros | **tres**; el tercero marcaba preguntas `safe` sin mirar si sus opciones se citan entre sí, y hay **79 activas** en las que eso importa |
+
+**El patrón que funciona** (implementado en los tres guardarraíles anteriores): recorrer el árbol,
+quedarse con los ficheros que de verdad tocan el recurso **por patrón de escritura real** (no por
+mencionarlo: leerlo no cuenta), y **fallar si encuentra menos de los que ya se sabe que hay**. Ese
+mínimo no es opcional — un descubrimiento que devuelve cero pasaría TODO en verde sin mirar nada,
+que es la forma más silenciosa de perder un guardarraíl.
+
+⚠️ **Y lo que NO hay que convertir, que es la mitad de la regla.** Medido el 08/08: hay **30**
+constantes con lista de rutas en `__tests__`, y solo unas pocas son de este tipo. Los **trinquetes**
+—`ZONA_CIEGA_PENDIENTE` de `user-scoping-c2`, `TECHO_CRUDOS` de `llmInstrumentation`,
+`CACHEABLES_PENDIENTES`— llevan lista fija **a propósito**: es una línea base congelada que solo
+puede ENCOGER, y ahí la lista *es* el mecanismo. Descubrir automáticamente los vaciaría de sentido.
+
+**La regla, entonces, no es «ninguna lista a mano»: es «ninguna lista a mano que pretenda ser
+exhaustiva».** Si la constante se llama `LOS_ESCRITORES`, `CONSUMIDORES`, `PUERTAS` o `TODAS_LAS_X`,
+tiene que buscarlas. Si es una deuda que se está pagando poco a poco, se queda quieta.
+
+Para reconocer a los escritores de un recurso ya hay pieza: `lib/admin/toolWriters.ts` detecta por
+patrón real (`UPDATE … SET`, `INSERT INTO`, `.set({…})`) y es lo que usa `npm run tools:buscar`.
+**No hay que reinventar la detección** — lo que faltaba es que los guardarraíles la usen en vez de
+tener cada uno su lista.
+
 ### 🧰 ¿Esto ya existe? — registro de herramientas (ANTES de construir nada)
 - **Comando:** `npm run tools:buscar -- <palabra>` · **Registro:** `lib/admin/toolRegistry.ts` · **Guardarraíl:** `__tests__/guardrails/toolRegistry.guardrail.test.ts`
 - **Cuándo:** **SIEMPRE antes de escribir una herramienta operativa nueva** (un script que toque datos, un fetcher, un detector, un backfill). Cinco segundos. Busca a la vez en el registro de herramientas, en el de detectores de salud (`runbookRegistry`) y en los manuales de `docs/`.
