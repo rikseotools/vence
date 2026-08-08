@@ -735,7 +735,46 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'una descarga válida. Tras escribir **relee de la BD y compara carácter a carácter** con lo ' +
       'descargado, y aborta si algo no cuadra: importar y declararlo hecho es como se llegó al ' +
       'estado que venía a arreglar. Patrón reutilizable para cualquier norma con anexos mal ' +
-      'importados (cambiar `BOE_ID` y la tabla de bloques).',
+      'importados (cambiar `BOE_ID` y la tabla de bloques). **SUPERADO por `importar_anexos_boe`** ' +
+      '([T-726]): el mismo usuario avisó al día siguiente de la ley de al lado, así que el patrón ' +
+      'dejó de escribirse a mano. Se conserva por su registro de lo que se hizo con esta norma.',
+  },
+  importar_anexos_boe: {
+    titulo: 'Importar los ANEXOS (y disposiciones) de CUALQUIER norma consolidada del BOE, VERBATIM',
+    ruta: 'scripts/oposiciones/importar-anexos-boe.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`node scripts/oposiciones/importar-anexos-boe.cjs --ley "485/1997" [--disposiciones] [--apply]`. ' +
+      'Dry-run por defecto. Generaliza `importar_rd486_anexos` **porque el caso se repitió**: el mismo ' +
+      'usuario (`casterpepe76`) avisó el 07/08 del RD 486/1997 ([T-676]) y el 08/08 del RD 485/1997 ' +
+      '([T-726]), al que le faltaban los SIETE anexos y las 4 disposiciones — 34.714 caracteres, el ' +
+      '85% de la norma. La causa raíz está documentada desde antes: nuestro extractor de leyes **no ' +
+      'toca los anexos** (`monitoreo-boe-y-crear-leyes-nuevas.md`, «Limitación 1»). Descubre los ' +
+      'bloques del **índice consolidado**, así que sirve para la siguiente norma sin tocar código. ' +
+      '⚠️ La API exige `Accept: application/xml` — sin esa cabecera devuelve un 400 de 187 bytes que ' +
+      'parece una descarga válida. **Las tablas se convierten a Markdown, no se aplanan** (núcleo ' +
+      '`lib/boe/bloquesConsolidados.cjs`): una tabla aplanada es el defecto que `detectFlattenedTable` ' +
+      'persigue, y en el Anexo II del RD 485/1997 la tabla ES el contenido examinable (los colores de ' +
+      'seguridad). Tras escribir **relee de la BD y compara carácter a carácter**. Limitación ' +
+      'declarada: los **pictogramas** de los anexos (imágenes del BOE) no se importan.',
+  },
+  medir_anexos_faltantes: {
+    titulo: '¿A qué leyes que servimos les falta un anexo que su fuente SÍ tiene?',
+    ruta: 'scripts/leyes/medir-anexos-faltantes.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`node scripts/leyes/medir-anexos-faltantes.cjs [--limite N] [--json f]`. **No escribe nada.** ' +
+      'Nace de [T-726], para contestar con un número a «¿esto pasa en más sitios?». **La consulta ' +
+      'obvia miente**: «leyes servidas sin ninguna fila de anexo» da 404, pero la Constitución y la ' +
+      'Ley 39/2015 no tienen anexos — contarlas es el error de medida que el manual de impugnaciones ' +
+      'advierte. El hueco real solo se afirma comparando con el **índice consolidado del BOE** de ' +
+      'cada ley. Medido el 08/08 tras reparar el RD 485/1997: **0 huecos** sobre las 406 leyes ' +
+      'servidas con BOE consolidado (395 no tienen anexos en su fuente, 11 sin índice accesible). ' +
+      '**Punto ciego declarado: 635 leyes servidas SIN BOE consolidado** (autonómicas, UE, virtuales) ' +
+      'sobre las que no puede opinar. On-demand a propósito (≈400 peticiones al BOE por pasada, para ' +
+      'una señal que cambia dos o tres veces al año) — mismo criterio que `laws:derogadas`.',
   },
   audit_corpus_ajeno: {
     titulo: '¿Los documentos que respaldan una convocatoria salen del sitio de su fuente oficial?',
