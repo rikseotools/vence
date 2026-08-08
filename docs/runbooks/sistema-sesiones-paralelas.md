@@ -445,7 +445,7 @@ configuración local y sus dependencias.
 ## 6. Escapes, y por qué están nombrados
 
 `BACKLOG_GUARD_SKIP="motivo"` · `INDICE_COMPARTIDO_OK="motivo"` · `ROBUSTEZ_GUARD_SKIP=1` ·
-`PRECOMMIT_TESTS_SKIP=1` · `CONTEXTO_GUARD_SKIP=1`
+`PRECOMMIT_TESTS_SKIP=1` · `CONTEXTO_GUARD_SKIP="motivo"`
 
 Cada guardarraíl tiene el **suyo**, a propósito: si compartieran uno, apagar el que estorba hoy
 apagaría de paso el que protege de otra cosa.

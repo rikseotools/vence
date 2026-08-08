@@ -477,7 +477,7 @@ distintas de sesiones distintas, casi nunca hay que elegir.
 dos casos legítimos que aparecieron al medir la historia—):
 
 ```bash
-CONTEXTO_GUARD_SKIP=1 git push …
+CONTEXTO_GUARD_SKIP="por qué lo borras a propósito" git push …
 ```
 
 Escape **propio**, no el del otro guard: compartirlo apagaría los dos de una vez. Se imprime y se

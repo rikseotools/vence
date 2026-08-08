@@ -1140,6 +1140,21 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-704] 🟠 [ABIERTO 08/08] El tercer guardarraíl del pre-push seguía aceptando un «1» como escape, y por eso su 69% no significaba nada
+
+- **Se quedó atrás.** [T-496] y [T-497] le quitaron el `=1` a `indice-compartido` y a `backlog-push` —*«el escape se usa de prefijo, se copia de un comando a otro»*— pero `contexto-backlog`, que nació después ([T-428]), siguió con `CONTEXTO_GUARD_SKIP=1`. **NO es lo mismo que T-428**, que construye lo que el guard DETECTA (fichas vaciadas al resolver un conflicto); esto es su puerta de ESCAPE.
+- **MEDIDO antes de tocar nada (7 días):** **25 escapes y NI UN motivo escrito** — el `detalle` llegaba vacío en los 25, así que el bus guardaba el nombre de la clase—, y **8 de ellos en 60 segundos** (08/05 21:02-21:03). Eso no son 8 decisiones: es una variable que ya viajaba pegada al comando.
+- **Y el escape cortaba ANTES de evaluar** (`return 0` en la primera línea de `main`), así que el guard no podía saber si había algo que rodear. Es el mismo defecto estructural de [T-702]: sin bloqueos emitidos, el panel deduce restando y da «rodeado el 100%» por aritmética.
+- **ARREGLO — tres cosas, ninguna criterio nuevo:**
+  1. **Pide MOTIVO**, con el validador que YA usan sus dos hermanos (`evaluarEscape` en `lib/observability/friccionSesiones.cjs`). Tres criterios sobre qué vale como motivo acabarían divergiendo, que es como nacieron los cinco escritores de `seguimiento_url` ([T-130]).
+  2. **El escape se resuelve DESPUÉS de evaluar**, así que ahora reporta `evitoBloqueo`: si el push no borraba nada, el escape queda contado como lo que fue — un prefijo.
+  3. Un valor que no vale **NO añade un bloqueo nuevo**: avisa, sigue, y se evalúa como si no lo hubieras puesto. Si no había nada que borrar, el push pasa igual; solo deja de ser una llave maestra. (Mismo criterio que sus hermanos, escrito en `evaluarEscape`.)
+- **CAPAS:** `npm run sim:contexto-guard` **8/8** — el caso 4 pasa a exigir motivo y se añade **4.bis**, que comprueba que el `=1` y un motivo de dos letras YA NO abren la puerta. Es la capa que importa: la simulación monta un repo de verdad y reproduce el incidente, así que el cambio de contrato se ve BLOQUEAR, no se deduce. Más 4 tests de forma en `perdidaDeContexto.test.ts` (criterio compartido, orden de evaluación, reporte al bus, mensaje actualizado). 24.445 unit + typecheck limpio.
+  - **Un test que ya existía tuvo que cambiar** y merece la pena decir por qué: clavaba la llamada exacta `friccion('guard_escape')` sin argumentos, así que se rompía al añadirle un dato. Ahora comprueba que la llamada existe, no su forma.
+- **Documentación actualizada en los 5 sitios** donde estaba la forma vieja (CLAUDE.md, los dos runbooks, `toolRegistry`, y el rescate de la flota, que la usaba en su orden generada).
+- **⏳ FALTA:** volver a mirar su ratio dentro de unos días. Ahora mismo sigue en 🔴 69% con la serie VIEJA; lo que dirá si la puerta estorba de verdad son los escapes NUEVOS, ya con motivo y con `evitoBloqueo`. **No tocar su criterio hasta entonces** — es justo lo que [T-702] vino a evitar.
+- **Relacionadas:** [T-702] (la medición que mandaba borrar puertas con cifras forzosas), [T-496]/[T-497] (los dos hermanos que ya lo exigían), [T-428] (lo que este guard detecta), [T-423] (el bus).
+
 ### [T-694] 🟡 [ABIERTO 08/08] El hub cuelga documentos que NO son de esa convocatoria: uno del ciclo anterior y una fila de fixture de test en la oposición de más tráfico
 
 **De dónde sale:** los dos aparecieron trabajando [T-190] (re-clonar documentos con extracción

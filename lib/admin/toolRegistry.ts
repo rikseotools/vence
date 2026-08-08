@@ -1280,7 +1280,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'dispara en el 0,9% de los commits y en el 91% de las fichas que señala alguien tuvo que ' +
       'restaurarlas a mano. Umbral: pierde ≥600 caracteres Y ≥50% del cuerpo; cerrar con ✅ exime ' +
       '(pero se reporta, para que un borrado no se disfrace de cierre). Fail-open; escape PROPIO ' +
-      '`CONTEXTO_GUARD_SKIP=1` — compartirlo con otro guard apagaría dos de una vez. Mide su ' +
+      '`CONTEXTO_GUARD_SKIP="por qué"` (con MOTIVO desde T-704: el `=1` se había vuelto un prefijo) ' +
+      '— compartirlo con otro guard apagaría dos de una vez. Mide su ' +
       'fricción (bloqueo y escape) vía `friccion-emitir.cjs`, T-423. **NO es el detector de fichas '+
       'huérfanas** (`lib/backlog/fichaHuerfana.cjs`, dentro de `backlog.cjs sync`): aquél parte de la BD '+
       '(fila viva sin ficha), informa y no bloquea; éste parte del markdown, bloquea en el pre-push, y ve '+
