@@ -16234,6 +16234,62 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Impacto real:** la clave de estas preguntas puede ser correcta; lo que está roto es la **prueba** que le damos al opositor. Es exactamente lo que reportó una usuaria el 27/07 (bandera del art. 4.1 CE: la explicación decía citar el artículo y no lo citaba), y es la familia de defecto que más credibilidad cuesta cuando alguien va a la fuente a comprobarlo.
 - **AMPLIACIÓN 28/07 — otras 1.113 que ningún detector podía ver:** al resolver una impugnación de `no_literal` se descubrió que `validar-explicacion.cjs` descartaba como "rótulo" **cualquier línea del blockquote escrita entera en negrita**, y hay un formato muy usado que escribe así la CITA COMPLETA. Resultado: **2.885 activas** (6,8 % de las que tienen blockquote) con la cita **nunca verificada**. Afinada la regla (una referencia tiene que parecerlo: corta y nombrando la norma), **1.113 de ellas resultan no literales**. Detector ya arreglado y con tests (commit `bdeda77bc`); el CONTENIDO sigue sin reparar y entra en este mismo cubo.
 - **Relacionada:** campaña `docs/roadmap/campana-citas-ajenas-2026-07.md` (mismo cubo, detector viejo) · manual §5.1.bis (el check nuevo y su calibración: 3,3% de nuevas detecciones sobre 5.000 tras podar falsos positivos).
+- **▸ SESIÓN w2 (06/08): recontadas 14 AJENAS (no las "quedan 2" del cierre del 28/07 — la ficha
+  estaba desfasada, corregido con lo MEDIDO hoy). Detalle completo en `data/pilotos/t207-citas-w2/`.**
+  - **✅ ARREGLO DE DETECTOR aplicado y con tests (código, ya en la rama) — cross-law.**
+    `refDeclaradaDistinta` reconocía que una explicación declara OTRO ARTÍCULO, pero comprobaba su
+    literalidad SOLO dentro de la MISMA ley que la vinculada — si la cita declaraba además una ley
+    DISTINTA («Art. 4.2.a RP» en una pregunta de LOGP; «TREBEP (RDL 5/2015)» en una de Ley 5/2023
+    Andalucía), la comprobación buscaba el artículo en la ley EQUIVOCADA y una pregunta correcta
+    salía acusada de cita ajena. **4 casos reales verificados uno a uno contra `articles.content`**
+    (`273b6309`→RP, `df5aeb28`→LOGP, `b72000de`→RDL 5/2015, y de rebote `c0defc3f`→Ley 1/2002 CyL,
+    éste sin buscarlo). Nueva función `leyesDeclaradasParaCita()`: extrae candidatos de ley junto
+    al nº de artículo y el CLI prueba cada uno contra `laws.short_name`/`name` reales antes de
+    eximir — un candidato que no exista como ley no resuelve nada, así que el fallo es seguro.
+    **Medido sobre el banco entero (44.751 explicaciones):** declaradas-y-correctas sube de 41 a
+    **49**, AJENAS baja de **14 a 10**. Tests: 22 preexistentes en verde (contrato de
+    `refDeclaradaDistinta` sin tocar) + 4 nuevos con los casos reales. Sin regresión en
+    `__tests__/impugnaciones/` (391 tests) ni en `content-sweep-parity` (172, fija la paridad del
+    kind `cita_no_literal`).
+  - **⚠️ DOS MISLINKS temáticos, plan de reancle listo (dry-run, no aplicado — sin escritura) —
+    CORREGIDO 08/08 (revisión w3): "verbatim carácter por carácter" era FALSO, son paráfrasis.**
+    `ebd70c34` y `b471ef18` cuelgan del art.10 de RD 1372/1986 (Reglamento Bienes EELL); el TEMA de
+    sus explicaciones es el de los arts. **11** y **12** respectivamente (el art.10 solo lista
+    MODOS de adquirir, sin detallar ninguno), pero la CITA en sí no es literal ni siquiera contra
+    el artículo correcto: `solapeConArticulo` da 0,67 y 0,57 (no ~1,0) y `citaAusente` da `true`
+    para las dos, reproducido con las propias funciones de la entrega contra `articles.content`
+    real. Detalle + textos verbatim reales listos para la reescritura en
+    `data/pilotos/t207-citas-w2/README.md` §2. **El arreglo son DOS pasos, no uno:** (1) reanclar
+    con `data/pilotos/t207-citas-w2/plan-reanclaje-reglamento-bienes-eell.json` vía
+    `reanclar-preguntas.cjs` (0 problemas, pérdida de tema declarada: art.10 sirve 4 temas, 11/12
+    solo 2 — Ourense T14 y Huelva T13); (2) reescribir el blockquote citado con el texto verbatim
+    real del art.11.1/12.1-2 (ambos textos ya extraídos y listos en el README). Aplicar solo el
+    paso 1 deja vivo el defecto de cita-no-literal que motivó T-207, solo que contra el artículo
+    correcto en vez del equivocado — por eso NO se cierra como "resuelto" hasta hacer los dos.
+  - **⚠️ TRES citas genuinamente FABRICADAS, mismo Reglamento Bienes EELL, recomendado
+    `needs_human` — NO reescritas.** `f4e51a3b` (art.1), `d2a801b4` (art.3), `1fb9247e` (art.4):
+    sus citas no aparecen en NINGUNA de las 138 filas de artículos de la ley (grep exhaustivo,
+    0 coincidencias), y a diferencia de los dos mislinks de arriba, el ENUNCIADO de las 3 tampoco
+    encaja limpiamente con lo que su artículo real regula (el art.1 real es una lista de fuentes
+    normativas, no "qué bienes están sometidos"; el art.3 real solo enumera qué son bienes de uso
+    público, sin decir "libre y común, sin distinción de personas"; el art.4 real es una
+    enumeración de ejemplos, y el "integran el dominio público" de la clave depende de los
+    arts.2+5 combinados, no del 4 solo). **SOSPECHO que el cluster nació de una generación que
+    alucinó contenido plausible** (mismo estilo en las 5 preguntas de este Reglamento) pero no lo
+    puedo demostrar sin ver el proceso que las creó — por eso NO hay reescritura mía: inventar
+    "la" fuente correcta sería el mismo defecto que se quiere arreglar.
+  - **Ya diagnosticado por sesiones previas, no repetido:** `1719f4e5` (CP art.49, hallazgo real
+    del 28/07, pendiente de reparar) y `f7392e33` (Reglamento 3/1995 Jueces de Paz, sigue sin
+    fuente localizable).
+  - **Dos patrones de detector NUEVOS, documentados pero NO arreglados (fuera de alcance de esta
+    sesión, con motivo):** `f229230e`/`31a955e5` — la cita declarada es del artículo correcto Y de
+    la misma ley, pero OMITE una parte intermedia sin marcar "…", así que ni siquiera contra el
+    artículo bueno es una cadena contigua (arreglo: añadir la elipsis a la cita, no tocar el
+    detector). `aac80b17` — las dos atribuciones viven en PROSA fuera del blockquote (ninguna
+    línea empieza por `>`), invisible para `citasAtribuidas`; las dos citas SON literales
+    verificadas a mano. Detalle y por qué no se tocó cada uno en el README del pilot.
+  - **Rama pusheada por esta sesión, sin mergear ni aplicar** (la parte de código sí es
+    mergeable tal cual; los planes de datos necesitan una sesión con escritura).
 
 ### [T-206] 🟠 [ABIERTO 27/07] Suelo de Fargate: **~285 USD/mes de ahorro** bloqueado por no saber de dónde salen los picos de CPU
 - **Qué:** el **suelo de autoescalado del frontend** está en **8 tareas × 2 vCPU / 4 GB** (min 8, max 12) desde el 21-22/07. Como es un *suelo*, se paga **siempre**: ~**569 USD/mes** solo por existir. Medido en Cost Explorer: la cuenta pasó de **~14 a ~33,5 USD/día** (54 → ~390 vCPU-hora/día), proyección agosto **~1.040 USD/mes** frente a ~434 antes. RDS (6,50/día) y CloudFront (~1,3) están planos: **es todo Fargate**.
