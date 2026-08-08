@@ -482,7 +482,27 @@ async function promoteSignalToConvocatoria(
         })
       }
     } catch (e) {
+      // [T-221, 08/08] Hasta ahora esto SOLO llegaba a `console.warn` — invisible fuera de los
+      // logs de la lambda que lo ejecutó, la MISMA clase de hueco que T-238 ya cerró para el
+      // bloque F3 (`oep_f3_upsert_fallo`) pero que aquí seguía abierta. Medido en producción
+      // (08/08): 45 señales aplicadas desde el 29/07, 0 con `source_documento_id`, y de esas, 21
+      // con una URL que SÍ reconoce `boletin_doc_key_reconocido` — es decir, con documento
+      // esperable — y aun así sin documento ni un solo evento `senal_aplicada_sin_documento` en
+      // `observable_events` (0 histórico). Eso solo cuadra con que `registrarDocumentoDeSenal`
+      // esté LANZANDO en vez de devolver `null` limpio, y ese caso caía aquí, en silencio.
       console.warn('⚠️ [OepSignals] provenance de la señal (no bloqueante):', (e as Error).message)
+      void emit({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'senal_provenance_excepcion',
+        metadata: {
+          signalId,
+          oposicionId,
+          sensorType: (s.sensor_type ?? null) as string | null,
+          sourceUrl: srcUrl,
+          error: (e as Error).message,
+        },
+      })
     }
   }
 

@@ -115,6 +115,36 @@ herramienta y no un cron *por diseño* (elegir el documento bueno pide criterio)
 ahora hay un puntero trazable a su señal que curar, en vez de nada. El tipado fino lo sigue haciendo
 §2.2-bis.
 
+**⚠️ Verificado en producción el 08/08 (10 días tras el deploy) — el arreglo NO estaba completo, y la
+razón es exactamente la misma clase de hueco que ya se cerró en otro sitio.** Las 3 consultas que la
+ficha dejó pendientes para "el 29/07":
+- **(1) las señales nuevas SÍ citan el anuncio:** `boe_api` 3/3 con URL reconocible, `regional_scan`
+  26/35 (74%) — coherente con el 69% simulado. El sensor funciona.
+- **(2) las que se aplican, ¿dejan documento?** **45 aplicadas desde el 29/07, 0 con
+  `source_documento_id`.** De esas 45, **21 tenían una URL que SÍ reconoce
+  `boletin_doc_key_reconocido()`** (BOCYL, DOGV, BOC Canarias, BOME, BOPA, y hasta `boe_api`) — es
+  decir, documento esperable por diseño, y aun así ninguna lo tiene.
+- **(3) el hueco, causa por causa:** `senal_aplicada_sin_documento` en `observable_events` — **0
+  histórico, siempre, desde que existe el evento.** No es que la causa fuera rara: es que el catch
+  que envuelve `registrarDocumentoDeSenal()` (línea ~484 de `queries.ts`) solo hacía
+  `console.warn(...)`, invisible fuera de los logs de la lambda — **la MISMA clase de hueco que
+  [T-238] ya cerró para el bloque F3 hermano** (`oep_f3_upsert_fallo`), pero que aquí, en el bloque
+  general de provenance, seguía sin telemetría. Con `docId=null` no hay excepción y SÍ se emite
+  `senal_aplicada_sin_documento` (el flujo estaba bien); el patrón medido (URL reconocida, cero
+  rastro) solo cuadra con que `registrarDocumentoDeSenal` esté **lanzando**, no devolviendo `null`.
+
+**Arreglado (08/08):** el catch mudo ahora también emite `senal_provenance_excepcion` con el
+`error.message` real, `signalId`, `oposicionId`, `sensorType` y `sourceUrl` — mismo patrón que
+`oep_f3_upsert_fallo`. 2 tests nuevos (`__tests__/lib/api/oep-signals/provenanceExcepcionSenal.test.ts`)
+ejercitan el código real contra un mock de `db.execute` por contenido, igual que
+`f3ObservabilidadClonado.test.ts`. **La causa EXACTA del `throw` sigue sin confirmarse** — no se
+pudo reproducir sin escribir en RDS (fuera del alcance de una sesión de solo lectura) — pero ya no
+hace falta adivinarla: el próximo `throw` real llega con su mensaje a `observable_events`. Hipótesis
+razonada, no confirmada: `ensure_convocatoria_documento()` solo relanza si `p_doc_key`/`p_convocatoria_id`
+son nulos o si el `INSERT` choca con una violación de unicidad que el `EXCEPTION WHEN unique_violation`
+no logra resolver por `doc_key` (hay OTRO índice único, `uq_conv_doc_url_hash`, sobre
+`convocatoria_id+url+hash`, que podría estar disparando el conflicto real).
+
 ### 2.2-bis. Tipar lo YA clonado (`nota` → su tipo real)
 
 El 94% del hub está en `nota` y **sin tipo no se puede usar como fuente**. El núcleo puro
