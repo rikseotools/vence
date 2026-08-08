@@ -98,6 +98,10 @@ export function sortByCoverageLevel<T extends { coverage_level?: string | null }
 
 interface BuiltOposicion {
   name?: string | null
+  // `shortName` es el nombre pensado para UI (badge/botón); `name` es el
+  // oficial de BOE, que puede ser mucho más largo — mismo problema que T-562
+  // arregló en las listas del selector, aquí en el botón de "ya la tenemos".
+  shortName?: string | null
   badge?: string | null
   administracion?: string | null
   aliases?: string[] | null
@@ -123,4 +127,15 @@ export function findBuiltEquivalent<T extends BuiltOposicion>(
 ): T | undefined {
   if (!nombreElegido?.trim()) return undefined
   return built.find((o) => matchesOposicion(o, nombreElegido))
+}
+
+/**
+ * Nombre para UI de una construida — `shortName` cuando existe, si no el
+ * oficial de BOE. Mismo criterio que ya aplican las listas del selector
+ * (T-562): usarlo también donde se OFRECE la equivalente (el botón "Ir a…")
+ * evita reintroducir el mismo problema (nombre de BOE larguísimo) un paso
+ * más allá de donde se arregló la primera vez.
+ */
+export function builtDisplayName(o: BuiltOposicion): string {
+  return o.shortName || o.name || ''
 }

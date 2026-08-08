@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
-import { matchesOposicion, sortByCoverageLevel, findBuiltEquivalent } from '@/lib/utils/searchOposicion'
+import { matchesOposicion, sortByCoverageLevel, findBuiltEquivalent, builtDisplayName } from '@/lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '@/lib/hooks/useOposicionesCatalog'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
@@ -151,7 +151,11 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
       setPendingOposicion({
         id: oposicionId,
         nombre,
-        equivalente: equivalente ? { id: equivalente.id, nombre: equivalente.name } : undefined,
+        // builtDisplayName (T-562): el mismo motivo por el que las listas ya
+        // no usan el nombre de BOE — sin esto sería "Ir a Auxiliar de
+        // Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)"
+        // en vez de "Ir a Auxiliar de Biblioteca (Estado)".
+        equivalente: equivalente ? { id: equivalente.id, nombre: builtDisplayName(equivalente) } : undefined,
       })
       return
     }

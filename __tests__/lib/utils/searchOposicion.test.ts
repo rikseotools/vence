@@ -11,7 +11,7 @@
  * lib/config/oposiciones.ts y centraliza el filtrado aquí.
  */
 
-import { matchesOposicion, coverageLevelRank, sortByCoverageLevel, findBuiltEquivalent } from '@/lib/utils/searchOposicion'
+import { matchesOposicion, coverageLevelRank, sortByCoverageLevel, findBuiltEquivalent, builtDisplayName } from '@/lib/utils/searchOposicion'
 
 describe('matchesOposicion', () => {
   const opo = {
@@ -154,5 +154,27 @@ describe('findBuiltEquivalent (T-562)', () => {
 
   test('lista de construidas vacía no revienta', () => {
     expect(findBuiltEquivalent([], 'Auxiliar de Biblioteca')).toBeUndefined()
+  })
+})
+
+describe('builtDisplayName (T-562)', () => {
+  test('EL CASO REAL: prefiere shortName sobre el nombre largo de BOE', () => {
+    const construida = {
+      name: 'Auxiliar de Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)',
+      shortName: 'Auxiliar de Biblioteca (Estado)',
+    }
+    expect(builtDisplayName(construida)).toBe('Auxiliar de Biblioteca (Estado)')
+  })
+
+  test('sin shortName cae al nombre largo (mejor eso que un botón vacío)', () => {
+    expect(builtDisplayName({ name: 'Administrativo del Estado' })).toBe('Administrativo del Estado')
+  })
+
+  test('shortName vacío ("") también cae al nombre — no muestra un botón "Ir a "', () => {
+    expect(builtDisplayName({ name: 'Administrativo del Estado', shortName: '' })).toBe('Administrativo del Estado')
+  })
+
+  test('sin ninguno de los dos, cadena vacía (nunca undefined/null en un botón)', () => {
+    expect(builtDisplayName({})).toBe('')
   })
 })
