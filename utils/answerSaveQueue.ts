@@ -340,6 +340,16 @@ export function enqueueAnswer(payload: Record<string, unknown>): void {
  */
 export async function flush(): Promise<void> {
   if (flushInProgress) return
+
+  // T-271 (06/08/2026): `flush()` se dispara en 'online'/'visibilitychange' — eventos
+  // globales del navegador que ocurren para CUALQUIER visitante, con o sin sesión y con o
+  // sin nada en cola. Antes pedía el token SIEMPRE, incluso con la cola vacía, así que un
+  // anónimo cambiando de pestaña bastaba para un `console.error` — sin nada que guardar
+  // y sin ningún riesgo. Medido (31/07, 24h): 618 de 642 "Sin token" eran justo esto,
+  // usuarios anónimos con 0 pendientes. No hay nada que sincronizar → no hace falta pedir
+  // token, y no hay error que registrar.
+  if (getPendingCount() === 0) return
+
   flushInProgress = true
 
   try {

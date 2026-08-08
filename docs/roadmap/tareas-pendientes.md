@@ -1754,17 +1754,6 @@ calculando). Bajar el número de trabajadores NO es el arreglo; serializar los b
 
 **PENDIENTE:** desplegar el backend para que
 las dos reglas empiecen a avisar.
-### [T-682] 🔴 [ABIERTO 07/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
-
-- **Cómo se llegó aquí.** El VPS llevaba horas con **carga 18 sobre 4 núcleos** y se atribuyó a falta de CPU. **Era falso.** La medida que lo decide (PSI, `/proc/pressure`): **CPU 0,00 % · disco 0,00 % · memoria `full` 98,73 %**. O sea: **durante el 98,7 % del tiempo TODOS los procesos estaban parados esperando memoria**, y nadie usaba CPU — el proceso más activo era un `sshd` al 3 %. En Linux el *load average* cuenta también a los que esperan; por eso marcaba 18.
-- **El culpable, medido con `ps` ordenado por RSS:** cuatro procesos **`tsc --noEmit`** a la vez — **1,3 + 1,2 + 0,7 + 0,6 = 3,8 GB solo en typechecks**, sobre una máquina de 7,7 GB donde además viven cuatro sesiones de Claude Code. El typecheck de este repo (Next.js grande) pide **más de 1 GB él solo**, y los cuatro turnos coinciden en ese paso porque **todos pasan por el mismo peaje**: el `pre-commit` y el `pre-push`.
-- **Y hay realimentación, que es lo que lo vuelve un pozo:** con la máquina en *thrashing* el typecheck que tardaba ~11 s tarda minutos; al durar más, se solapa con los de los otros; al solaparse, hay más presión; y así. Los turnos pasan de minutos a horas, y con ellos **los trabajadores dejan de latir dentro del lease** (medido: w1 sin señal 9 h 40, w2 4 h, con sus leases vencidos) — o sea que el sistema los da por muertos y `reap` puede devolver al reparto tareas que alguien está haciendo.
-- **Lo ya hecho, y hasta dónde llega:** se añadieron **4 GB de swap** (`swappiness=10`). Alivió de golpe —RAM libre de 385 MB a 2,5 GB, presión del 98,7 % al 48,9 %— pero **se llenó entero en unos diez minutos** y volvió a subir. Confirmado que es *thrashing* y no páginas aparcadas: **+18.699 `pswpin` y +17.759 `pswpout` en 30 segundos**. El swap era necesario (sin él el reclamo no tenía dónde ir) pero **no basta**: el conjunto de trabajo excede la máquina.
-- **El arreglo que NO quita trabajadores — serializar el typecheck.** Un `flock` de máquina alrededor de `tsc --noEmit` en los hooks: **solo uno corre a la vez**, los demás esperan. Pasa de 3,8 GB a ~1,3 GB de pico, que sí cabe. **No quita capacidad**: el typecheck no es el trabajo, es el peaje — y hoy los cuatro lo pagan a la vez y ninguno avanza. El patrón ya existe en la casa (el candado del deploy es un `flock` local, [T-485]), así que no hay que inventarlo.
-- **Alternativas descartadas y por qué:** *bajar a tres trabajadores* — Manuel lo descartó explícitamente, y además no ataca la causa (tres typechecks a la vez siguen sin caber holgadamente); *subir `MemoryHigh`* — está descartado desde [T-647] y devolvería los OOM; *más RAM* — cuesta dinero y es decisión suya.
-- **⚠️ Cuidado al implementarlo:** el `pre-push` ya decide si el push «paga peaje» de typecheck; el candado va DENTRO de esa rama, no envolviendo el hook entero, o se serializarán también los pushes que hoy pasan sin typecheck. Y tiene que ser **por máquina, no por worktree**: el recurso escaso es la RAM de la máquina.
-- **Relacionadas:** [T-647] (el techo de memoria, cuyo ajuste cambió muertes por parálisis), [T-485] (el `flock` del deploy como patrón), [T-486].
-
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
 - **Lo que veía el usuario:** termina el examen, pulsa corregir, y la app dice que **no hay conexión**. No se corrige, no se ve el resultado, no se guarda. **Cuatro usuarias premium lo escribieron el mismo día** (`emmavallejoteijeira`, `rbsc87` ×2, `esthlazar`), y una quinta (`ivangonlezpe`) por otra vía.
@@ -3319,41 +3308,6 @@ actualizados a la fixture correcta. `npm run sim:rescate-flota` (8/8, mecánica 
 sin tocar) y `npx tsc --noEmit` limpios. 587 tests de `__tests__/flota/` + `__tests__/sessions/`
 en verde.
 
-### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
-
-- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
-- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
-  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
-  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
-  enumerar las materias del tema y **no enumera ninguna**.
-- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
-  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
-  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
-  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
-  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
-  simplemente no tienen nada contra lo que comparar.
-- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
-  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
-  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
-  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
-  aislado aparecieron **14**.
-- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
-  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
-  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
-  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
-  continuación, no 14 descuidos independientes.
-- **QUÉ HACER:**
-  1. **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
-     kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro + kind propio en los dos
-     gemelos del sweep. **NO un silo nuevo.** Nace en 14, así que es un trinquete: cualquier subida
-     es una regresión demostrable.
-  2. **Completar los 14** con el texto LITERAL del programa oficial de cada oposición (el hub ya
-     tiene documento en muchas), y re-verificar el Paso 1. NUNCA inventar la continuación ni
-     «redondear» el epígrafe con lo que parezca: eso es exactamente lo que este defecto provoca.
-- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
-  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marcar solo el final, y medir antes
-  de ampliar el patrón.
-- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
 ### [T-626] 🟠 [ABIERTO 06/08] El bucle supervisor de la flota lleva desde que nació sin registrar ni una pasada: su `INSERT` nombra una columna que no existe y el `catch` de telemetría se lo traga
 
 - **Esfuerzo: rato.**
@@ -8886,6 +8840,60 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   - **`UserAvatar` ya no es una anécdota:** 33 usuarios distintos en 24 h con `Usuario no existe`. [T-245] se dio por hecha «falta desplegar» el 28/07; si sigue en esta proporción, o no se desplegó o no cubre este camino. **Comprobarlo es el primer paso, antes que cualquier otra cosa de esta ficha.**
   - ⚠️ **Y un aviso sobre CÓMO medir esto, que me costó llegar a una conclusión falsa:** si agrupas los `console_error` **sin filtrar `severity='error'`**, el ranking lo encabezan GSI_LOGGER y `failed to fetch` —que ya están archivados como `debug`— y parece que el 95 % es ruido sin clasificar. No lo es. **Filtra siempre por severidad**; lo archivado ya tiene dueño y está bien donde está.
 
+- **▸ SESIÓN w1 (06/08): las dos primeras prioridades de la ficha, arregladas y verificadas — y de
+  paso una regresión seria en T-434 que no es de esta ficha, con [T-633] abierta para ella.**
+  1. **`UserAvatar: Usuario no existe` — comprobado el primer paso pedido, y NO era lo que
+     parecía.** [T-245] SÍ está desplegada (`auth_sub_reconciliado` sigue activo hoy, aunque a
+     bajo volumen — el atasco original ya drenó). Pero medido fresco (06/08, `SELECT
+     date_trunc('day',ts), count(distinct user_id), count(*) FROM observable_events WHERE
+     event_type='console_error' AND severity='error' AND error_message ILIKE '%UserAvatar%Usuario
+     no existe%' GROUP BY 1`, 10 días): **30-45 usuarios/día, 39-107 eventos/día, SIN bajar**
+     desde el 28/07 hasta el 05/08. [T-245] cura una vía de identidad (`/api/auth/token`); esta
+     firma pasa por OTRA vía (`/api/v2/user-stats`, que su propio código ya reconoce como "sesión
+     zombie" con `sessionInvalid:true` en el 401 — no es un bug del servidor, está gestionado ahí).
+     **El bug real era del CLIENTE:** `components/UserAvatar.tsx` ignoraba ese flag y hacía
+     `console.error` igual que un fallo genuino, inflando `console_error`/`severity:'error'` con
+     un caso ya reconocido. Arreglado: si `sessionInvalid`, `console.warn` (el pipeline de
+     `lib/observability/client.ts` ya clasifica por nivel de consola: `error`→`severity:'error'`,
+     `warn`→`severity:'warn'` — sin mecanismo nuevo). Un error SIN el flag sigue siendo
+     `console.error`, no se silencia de más. 2 tests nuevos en
+     `__tests__/components/UserAvatar.test.tsx`, mutation-testeados (revertido el fix, el test
+     de `sessionInvalid→warn` cae; restaurado, verde). **No cura la causa de fondo de por qué el
+     perfil no resuelve — solo deja de clasificarla como error crónico cuando el servidor ya la
+     tiene identificada y controlada.**
+  2. **`[answerSaveQueue] Sin token` — la causa que la ficha del 31/07 ya había separado (618/642
+     anónimos, 0 pendientes) estaba en `utils/answerSaveQueue.ts:flush()`: pedía el token SIEMPRE,
+     antes de comprobar si había algo que sincronizar.** `flush()` se dispara en `online`/
+     `visibilitychange` — eventos globales para cualquier visitante, con sesión o sin ella. Con
+     la cola vacía no hay nada en juego y no hace falta ni pedir el token ni loguear su ausencia.
+     Arreglado: `if (getPendingCount() === 0) return` al principio de `flush()`, antes de
+     `getAccessToken()`. Los 24 casos CON usuario (los preocupantes de verdad, per ficha del
+     31/07) siguen intactos: con `pending>0` el flujo no cambia. 2 tests nuevos en
+     `__tests__/utils/answerSaveQueuePurge.test.ts` (con el harness de puerto de auth, no un
+     proveedor concreto), mutation-testeados igual. Con la proporción medida el 31/07 (618/642 =
+     96%), el volumen de esta firma debería caer en ese orden — **queda por remedir tras
+     desplegar**, no lo afirmo sin la cifra de después.
+  3. **NO tocado, y a propósito:** el 403 del cupo gratuito (→ [T-418], ya tiene ficha propia) y
+     `Error cargando notificaciones` (→ [T-419], ya tiene ficha propia). `[CALLBACK] No se
+     estableció sesión` (login que no cuaja, 125/11) tampoco se ha investigado en esta sesión —
+     queda para quien retome esto; primer sitio donde mirar: `app/auth/callback/page.tsx:69-73`,
+     `completeOAuthCallback()` es UN intento sin reintento tras el redirect OAuth.
+  4. **🚨 HALLAZGO SERIO, con ficha propia [T-633] (🔴): la propia telemetría de éxito de [T-434]
+     (`auth_perfil_recuperado`/`auth_alta_sin_perfil`) lleva 5 DÍAS MUDA** mientras el síntoma
+     que debía curar (esta misma firma de `UserAvatar`) sigue activo sin bajar. Verificado que el
+     fix de T-434 SÍ está desplegado (`git merge-base --is-ancestor e6b117b3e 51f96259` → true,
+     deploy de hoy 21:09 UTC) — no es que falte desplegar, es que su propio termómetro no se
+     mueve. SOSPECHO (sin confirmar) que la cohorte actual puede ser distinta de la que T-434
+     arregló (usuarios genuinamente eliminados vs. perfil nunca resuelto) — detalle completo,
+     con los SQL de siguiente paso, en [T-633]. Pregunta #93 dejada en el embudo dado que T-434
+     se abrió con *"hay dinero en juego ahora mismo"*.
+  - **Tests corridos en el área:** `UserAvatar.test.tsx` + `userAvatarStats.test.ts` +
+    `answerSaveQueuePurge.test.ts` + `__tests__/auth/` + `answerValidationRobustness.test.ts` →
+    164/164 verdes. `tsc --noEmit` y `eslint` limpios en los ficheros tocados.
+  - **Relacionadas:** [T-245] (identidad, vía distinta), [T-434]/[T-633] (identidad, regresión
+    encontrada de paso), [T-418] (403 cupo, ficha propia), [T-419] (401 notificaciones, ficha
+    propia).
+
 ### [T-244] 🔴 [ABIERTO 28/07] La cabecera del panel de evolución le dice al usuario lo CONTRARIO de lo que acaba de responder
 - **Qué ve el usuario:** en «Tu Evolución en esta pregunta», el mensaje de arriba contradice a las bolitas de abajo **en el mismo recuadro**. Reportado por MariSol (premium, `auxiliar_administrativo_valencia`, feedback `108cc2a8`, 28/07) con tres capturas: *«creo que sale error en el historial de respuestas… cuando es correcta sale la bolita roja y viceversa»*.
 - **Verificado contra la BD, intento a intento** (`scripts/sim/sim-evolucion-marisol.ts`, replay de sus datos reales por la MISMA función que pinta el panel):
@@ -9327,6 +9335,68 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-625] ✅ [HECHA 08/08] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
+
+- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
+- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
+  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
+  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
+  enumerar las materias del tema y **no enumera ninguna**.
+- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
+  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
+  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
+  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
+  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
+  simplemente no tienen nada contra lo que comparar.
+- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
+  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
+  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
+  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
+  aislado aparecieron **14**.
+- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
+  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
+  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
+  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
+  continuación, no 14 descuidos independientes.
+- **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
+  kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro (`lib/health/epigrafeTruncado.cjs`)
+  + kind propio (`epigrafe_truncado`) en los dos gemelos del sweep. **No un silo nuevo.** Nace en 14,
+  así que es un trinquete: cualquier subida es una regresión demostrable.
+- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
+  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marca solo el final.
+- **✅ VERIFICADO EN PRODUCCIÓN (08/08 ~08:20 UTC):** `content_health_findings` tiene **exactamente
+  14 filas** `kind=epigrafe_truncado`, `computed_at=2026-08-08T07:33:08Z` — posterior a la ventana
+  del @Cron (03:00 UTC) y al deploy backend `269e31e1` (finalizado 08/07 17:05:14 UTC), que sí
+  contiene el commit del detector (`1070b5fc5`, 05:29 UTC 08/07) como ancestro (confirmado con
+  `git merge-base --is-ancestor`). Las 14 filas coinciden con los temas/slugs esperados. El badge de
+  `/admin/salud-sistema` y el chip de `/admin/contenido` no necesitaron código nuevo: leen
+  `content_health_findings` de forma genérica (`app/api/admin/content-health/route.ts`) y la entrada
+  de `lib/admin/runbookRegistry.ts` (frase `"revisa los epígrafes cortados"`, presente en CLAUDE.md)
+  ya estaba wireada. Tests: `epigrafeTruncado.test.ts` 7/7, `runbookRegistry.test.ts` 12/12,
+  `content-sweep-parity.test.ts` 192/192.
+- **Queda, y es Fase 2 declarada aparte:** completar el texto LITERAL del programa oficial de cada
+  oposición para los 14 (el hub ya tiene documento en muchas) y re-verificar el Paso 1. NUNCA
+  inventar la continuación ni «redondear» el epígrafe con lo que parezca: eso es exactamente lo que
+  este defecto provoca.
+- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
+
+### [T-682] ✅ [HECHA 08/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
+
+- **Cómo se llegó aquí.** El VPS llevaba horas con **carga 18 sobre 4 núcleos** y se atribuyó a falta de CPU. **Era falso.** La medida que lo decide (PSI, `/proc/pressure`): **CPU 0,00 % · disco 0,00 % · memoria `full` 98,73 %**. O sea: **durante el 98,7 % del tiempo TODOS los procesos estaban parados esperando memoria**, y nadie usaba CPU — el proceso más activo era un `sshd` al 3 %. En Linux el *load average* cuenta también a los que esperan; por eso marcaba 18.
+- **El culpable, medido con `ps` ordenado por RSS:** cuatro procesos **`tsc --noEmit`** a la vez — **1,3 + 1,2 + 0,7 + 0,6 = 3,8 GB solo en typechecks**, sobre una máquina de 7,7 GB donde además viven cuatro sesiones de Claude Code. El typecheck de este repo (Next.js grande) pide **más de 1 GB él solo**, y los cuatro turnos coinciden en ese paso porque **todos pasan por el mismo peaje**: el `pre-commit` y el `pre-push`.
+- **Y hay realimentación, que es lo que lo vuelve un pozo:** con la máquina en *thrashing* el typecheck que tardaba ~11 s tarda minutos; al durar más, se solapa con los de los otros; al solaparse, hay más presión; y así. Los turnos pasan de minutos a horas, y con ellos **los trabajadores dejan de latir dentro del lease** (medido: w1 sin señal 9 h 40, w2 4 h, con sus leases vencidos) — o sea que el sistema los da por muertos y `reap` puede devolver al reparto tareas que alguien está haciendo.
+- **Lo ya hecho, y hasta dónde llega:** se añadieron **4 GB de swap** (`swappiness=10`). Alivió de golpe —RAM libre de 385 MB a 2,5 GB, presión del 98,7 % al 48,9 %— pero **se llenó entero en unos diez minutos** y volvió a subir. Confirmado que es *thrashing* y no páginas aparcadas: **+18.699 `pswpin` y +17.759 `pswpout` en 30 segundos**. El swap era necesario (sin él el reclamo no tenía dónde ir) pero **no basta**: el conjunto de trabajo excede la máquina.
+- **El arreglo que NO quita trabajadores — serializar el typecheck.** Un `flock` de máquina alrededor de `tsc --noEmit` en los hooks (`lib/hooks/candadoTypecheck.cjs`, commit `2dff08d9a`): **solo uno corre a la vez**, los demás esperan. Pasa de 3,8 GB a ~1,3 GB de pico, que sí cabe. **No quita capacidad**: el typecheck no es el trabajo, es el peaje. El patrón ya existía en la casa (el candado del deploy es un `flock` local, [T-485]).
+- **Alternativas descartadas y por qué:** *bajar a tres trabajadores* — Manuel lo descartó explícitamente, y además no ataca la causa; *subir `MemoryHigh`* — descartado desde [T-647], volvería los OOM; *más RAM* — cuesta dinero y es decisión suya.
+- **✅ VERIFICADO EN EL VPS (08/08, ~08:00 UTC), con datos reales, no solo en test:**
+  - **Presión de memoria:** `cat /proc/pressure/memory` → `full avg300=1.90 %` (era 98,73 %).
+  - **Carga:** `uptime` → `load average 0,32, 0,89, 1,69` sobre 4 núcleos (era 18).
+  - **`ps` en el momento de mirar:** 0 procesos `tsc --noEmit` corriendo; confirmado que el candado está wireado (`scripts/typecheck-push-guard.cjs` usa `conCandado`/`interpretarSalida`).
+  - **Eventos `typecheck_espera` en `observable_events`** desde que el candado está en `main`: **3 en ~10 h** (21:39, 07:12, 07:46), esperas de **33-38 s** cada uno — raros y cortos: el candado basta, el cuello no está más atrás.
+  - **Latido de los workers:** las 9 sesiones activas (`w1,w2,w3,w4,movil,movil2,movil3,movil4,movil-colas`) laten todas dentro de minutos, ninguna cerca de agotar el lease de 90 min (antes: w1 9h40 sin señal, w2 4h).
+  - Capas repetidas en verde: **10/10 unit** (`__tests__/hooks/candadoTypecheck.test.ts`) + `npm run sim:candado-typecheck` (4 procesos reales, EJECUTANDO, confirma que no se solapan: 4 tramos en serie ~2,8 s para 4×700 ms) + `toolRegistry.guardrail` 16/16.
+- **Relacionadas:** [T-647] (el techo de memoria, cuyo ajuste cambió muertes por parálisis), [T-485] (el `flock` del deploy como patrón), [T-486].
 
 ### [T-617] ✅ [HECHA 08/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
 
@@ -15466,6 +15536,83 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Urgencia real, matizada:** el plazo de **solicitud** cierra el 5 de agosto, pero el **examen** cae dentro de meses, así que la ventana de venta NO se cierra esa semana. Lo que sí conviene es tenerla antes de que la gente que se inscriba empiece a buscar dónde preparársela.
 - **Demanda medida:** **1 usuario** la ha pedido (Chema, free, prepara Policía Municipal de Madrid). No hay ninguno con esa oposición fijada en su perfil. Es poca señal — pero 196 plazas con inscripción abierta y cero cobertura nuestra es el otro lado de la balanza.
 
+- **▸ SESIÓN w1 (06/08): la ficha estaba MUY desfasada — la oposición NO está "catalogada y vacía",
+  lleva construida (temario+scope+rutas) desde ANTES de esta ficha, ya está `is_active=true` y
+  `audit:oposicion` pasa 0❌/0🟡. El trabajo real que queda es distinto del que describe la ficha.**
+  - **MEDIDO, no de la ficha:** `oposiciones.is_active=true`, `coverage_level='con_landing'`,
+    `created_at=2026-06-01` (la fila lleva viva desde JUNIO, antes incluso del 28/07). **15 topics**
+    con epígrafe + `topic_scope`, rutas de temario/test, registros en `OnboardingModal`/perfil,
+    `CcaaFlag` resuelto. `npm run audit:oposicion mecanico-conductor-estado` → **0 ❌ / 0 🟡** (con el
+    workaround de conectividad de T-197 más abajo — sin él, falsos 🟡 por un corte de red, no de
+    datos). El nombre ya está resuelto: se llama *"Conducción de Vehículos de Transporte por
+    Carretera del Parque Móvil del Estado"*, no "Mecánico-Conductor" — la duda de la ficha original
+    ya no aplica.
+  - **El reparto real de temas — esto SÍ es la información nueva y útil:** de los 15 temas, **5 están
+    `disponible=true`** y sirven contenido (T1 CE, T2 Gobierno/Admón., T3 Régimen del personal, T4
+    Contrato de trabajo, T5 Igualdad — todos reutilizan banco genérico ya existente, 63 a 1.520
+    preguntas cada uno). **Los OTROS 10 — el núcleo real de esta oposición, conducción/mecánica/vía/
+    señales/accidentes — están `disponible=false`**, con 0-42 preguntas en el scope según el tema
+    (T9 "La vía" y T10 "La velocidad": **0** preguntas; T11 "Maniobras de circulación": 42, el
+    mejor cubierto). `disponible=false` es la razón por la que `audit:oposicion` NO los marca como
+    fallo — el sistema los tiene correctamente APAGADOS mientras no tengan contenido real, no hay
+    incidente de usuario viendo temas vacíos hoy. Esto confirma lo que la propia ficha ya anticipaba
+    ("reutilizaremos mucho menos banco del habitual") con la cifra exacta: **es la parte que falta
+    de verdad, y es grande.**
+  - **✅ La materia prima YA está importada — el trabajo que queda es SOLO generar preguntas, no
+    traer texto legal.** Las 4 leyes que escopan esos 10 temas (RGC 171 arts, RD 2822/1998 72 arts,
+    RD 818/2009 108 arts, Ley de Tráfico 145 arts — 496 artículos activos, prácticamente todos con
+    `content` real) **ya están en BD**, con texto verificado. No hace falta el paso más arriesgado
+    (importar/verificar un temario nuevo desde cero); hace falta escribir preguntas desde texto ya
+    verificado + el pipeline de doble auditoría ciega habitual, tema a tema, empezando por los de
+    más plazas/demanda relativa (T9/T10 a 0 son los más urgentes: un tema `disponible=false` con
+    epígrafe visible pero sin nada que estudiar es peor que no tenerlo). **No lo he intentado en esta
+    sesión**: son ~10 temas de contenido técnico (seguridad vial, mecánica, normativa de tráfico)
+    que exigen la misma verificación cuidadosa que cualquier generación — no es una tarea de una
+    sesión, es la que justifica el esfuerzo `sesion_propia` que la ficha original ya preveía.
+  - **🚨 HALLAZGO REAL, verificado contra el BOE en vivo, no contra la ficha: el plazo de
+    inscripción YA CERRÓ y el sistema sigue diciendo que está abierto.** La ficha decía "~5 de
+    agosto" como estimación; leí BOE-A-2026-15052 directamente hoy (06/08) y confirma: Resolución
+    de 8 de julio de 2026, BOE núm. 167 de 10/07/2026, plazo de **20 días hábiles desde el 11/07** →
+    cierra **el 4 de agosto de 2026** — hace **2 días**. En BD, `oposiciones_ssot.estado_proceso`
+    sigue en `'inscripcion_abierta'`. Es el patrón exacto de `convocatoria_estado_incoherente`
+    (`docs/runbooks/verificar-convocatorias.md`): el estado contradice su propia fecha. **No es
+    grave para la venta** (el examen cae meses después, la ficha ya lo decía), pero SÍ es un dato
+    incorrecto que estamos mostrando si algo en la landing lo refleja.
+  - **Y de paso, tres campos que la ficha decía "ya volcados el 28/07" están en realidad NULL,
+    medido con SELECT directo (no con lo que dice la ficha):** `boe_reference` e
+    `inscription_deadline` son `NULL` tanto en `oposiciones` como en `convocatorias`/
+    `oposiciones_ssot` — no se volcaron, o se perdieron. `programa_url` SÍ está poblado y correcto
+    (`hacienda.gob.es/pme/20260713basesconvocatoria.pdf`). Las **3 filas de `convocatoria_hitos`**
+    existentes tienen **`tipo=null`** (sin clasificar) y **`cita_literal=null`** (sin fuente —
+    exactamente lo que vigila `hito_registro_sin_fuente`); ninguna representa el cierre del plazo.
+    **Valores correctos, verificados contra el BOE hoy, listos para quien tenga escritura:**
+    - `boe_reference`: `BOE-A-2026-15052` (o el formato canónico que use el resto del catálogo)
+    - `inscription_deadline`: `2026-08-04`
+    - `estado_proceso`: pasar de `inscripcion_abierta` a lo que corresponda tras el cierre (revisar
+      convención del catálogo — no lo cambio yo sin ver cómo lo hacen fichas ya cerradas, es
+      decisión de una sesión con escritura + criterio sobre esa convención)
+    - Hito nuevo: `tipo` de cierre de plazo, `fecha=2026-08-04`, `origen='registro'`,
+      `cita_literal`: *"La presentación de solicitudes se realizará en el plazo de 20 días hábiles
+      contados a partir del día siguiente al de la fecha de publicación"* (BOE-A-2026-15052,
+      Resolución de 8 de julio de 2026), `url` al propio BOE.
+  - **🔧 GOTCHA DE CONECTIVIDAD, ya diagnosticado por otra sesión (T-197), reproducido aquí:**
+    `audit-oposicion-completa.ts` (y cualquier script que use `getDb()`/`db/client.ts`, paquete
+    `postgres`/porsager) no conecta con `VENCE_LECTOR_URL` tal cual la recibe un trabajador — sin
+    `?sslmode=require` en la URL, `postgres` conecta en plano y RDS lo rechaza. Workaround
+    verificado, sin tocar código: `DATABASE_URL="${VENCE_LECTOR_URL}?sslmode=require"`. Con eso el
+    `audit:oposicion` de arriba pasó de 5 falsos 🟡 a 0/0 limpio. No he tocado `db/client.ts`
+    (arreglo de fondo, alto radio de impacto — es infraestructura compartida por toda la app, y ya
+    está siendo trackeado en la ficha de T-197): fuera de alcance de esta tarea, correcto dejarlo
+    donde ya se está siguiendo.
+  - **Queda, en orden — y ninguno de los dos primeros es para un trabajador:** (1) aplicar los
+    valores de convocatoria de arriba (boe_reference, inscription_deadline, estado_proceso, hito de
+    cierre con cita); (2) generar el contenido de los 10 temas `disponible=false` — el trabajo
+    grande, con el texto legal ya importado y verificado, empezando por T9/T10 (0 preguntas); (3)
+    tras cada tema, el ciclo habitual `verify:scope`/refresh MV/flip a `disponible=true` solo con
+    contenido auditado.
+  - **Relacionada:** [T-197] (el mismo gotcha de conectividad, con más detalle y 5 scripts
+    reproducidos), [T-140] (población de `law_sections` — NO aplica aquí, las 4 leyes ya la
+    tienen).
 
 ### [T-233] 🟡 [ABIERTO 28/07] 105 explicaciones con la tabla APLANADA: en pantalla dicen algo distinto de lo que guarda la BD
 - **Qué ve el opositor:** la explicación se escribió como tabla usando `|` pero **sin la línea separadora** (`|---|---|`), así que markdown no la reconoce como tabla y **colapsa las filas en un solo párrafo**. El dato queda pegado a la etiqueta equivocada. Caso real (impugnación `bb487ee7`, usuaria Laura Zurdo, Outlook 365): la explicación guardaba correctamente `Crear un contacto | Ctrl+Mayús+C` y `Crear una convocatoria de reunión | Ctrl+Mayús+Q`, pero al renderizarse se leía *"…Ctrl+Mayús+**C** Crear una convocatoria de reunión…"*. Ella lo reportó como error de contenido, y tenía razón en lo que veía.
@@ -16020,6 +16167,101 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Cómo:** para cada una, abrir su boletín y leer la fórmula. La distinción es literal y no se puede inferir por patrón: *«del total de plazas a cubrir, N se reservarán…»* → el cupo va **dentro**; *«además de las N plazas, se convocan M por el cupo de reserva»* → va **aparte**. Córdoba (28/07) es el ejemplo trabajado: mismo aspecto que Aragón y semántica contraria.
 - **Lista y estado:** `npx tsx scripts/convocatoria/sim-frase-plazas.ts --todas` las agrupa; las de este grupo son las que salen bajo «RESERVA OCULTADA».
 - **NUNCA:** rellenarlo por analogía con una convocatoria parecida ni por lo que dé la suma más redonda. Es una cifra de plazas: se lee en el boletín o se deja sin declarar.
+
+#### Décima tanda (08/08, w1) — 2 listas para declarar, 2 propuestas automáticas descartadas por FALSAS, la cola actual
+
+**Estado real medido hoy (`--proponer` con `VENCE_LECTOR_URL`, no con `DATABASE_URL` — ver GOTCHA
+abajo): quedan 19, no 21/33** — otras sesiones avanzaron entre el 28/07 y hoy. De las 19: **2
+"unánimes" que el proponente automático marcó listas** (ambas resultaron FALSAS al leer el
+documento real, ver abajo) y **17 "mudas"** (forma nueva, hay que leer a mano).
+
+**⚠️ GOTCHA de acceso, para la próxima sesión que lo intente: `npm run reserva:declarar --
+--proponer` falla con «permission denied for table oposiciones» con las credenciales de un
+trabajador.** El script usa `pgConfig()` sin argumento → `DATABASE_URL` por defecto, que para un
+trabajador es la de coordinación (4 tablas). El modo `--proponer` es de solo lectura (no escribe
+nada, ni siquiera con propuesta unánime), así que `DATABASE_URL="$VENCE_LECTOR_URL" node
+scripts/convocatoria/declarar-reserva-discapacidad.cjs --proponer` funciona — pero **el propio
+script hace un JOIN a `user_profiles` para ordenar por usuarios afectados**, y esa tabla SÍ está
+bloqueada para `vence_lector` (PII), así que el barrido completo revienta ahí. Reconstruí la
+misma consulta sin ese JOIN (mismo núcleo `evidenciaReserva.cjs`, sin tocar el original) para
+listar las 19 sin el orden por usuarios.
+
+**✅ 2 LISTAS PARA APLICAR — citas verificadas contra el documento clonado, comando exacto:**
+
+- **`celador-sermas-madrid` → `false` (aparte).** Mismo BOCM-20250704-15 que ya resolvió
+  `tcae-sermas-madrid` (T-682/tanda anterior), fila propia. Leído el documento clonado
+  (`convocatoria_documentos`, tipo `convocatoria`, 101.454 caracteres): Anexo I, columnas
+  `GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP.`, fila `CELADOR/A 740 688 52`.
+  688+52=740, coincide al dígito con `plazas_libres=688`/`plazas_discapacidad=52` en BD.
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=celador-sermas-madrid \
+    --incluidas=false --url=https://www.bocm.es/boletin/CM_Orden_BOCM/2025/07/04/BOCM-20250704-15.PDF \
+    --cita="ANEXO I DESCRIPCION DE PLAZAS Y TITULACION EXIGIDA — GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP. — CELADOR/A 740 688 52" \
+    --motivo="BOCM-20250704-15, Anexo I: fila CELADOR/A trae TOTAL 740, CUPO GRAL. 688, CUPO DISCAP. 52 — 688+52=740, coincide con BD (libres=688, cupo=52). Total impreso confirma que el cupo va APARTE." \
+    --apply
+  ```
+
+- **`administrativo-extremadura` → `false` (aparte, cifra_derivada).** No es una forma nueva: es
+  la TERCERA familia (acumulación de OEP) que ya describe la novena tanda para Asturias/La Rioja.
+  El corpus tiene 3 documentos `convocatoria` (DOE 2024, 2025, 2026). El de 2025 (`fa194909…`,
+  DOE núm. 244, 19/12/2025) dice literal: *«Se convocan… 11 plazas… (10 plazas correspondiente a
+  la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de
+  discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo
+  Público… para los años 2022 y 2023)»* y *«el número total de plazas será de 11»*. Turno libre =
+  8+1 = **9** (coincide con `plazas_libres=9`); turno discapacidad = **2** (coincide con
+  `plazas_discapacidad=2`); total impreso = **11** = 9+2. Nuestra cifra (9) no está impresa como
+  un solo número — es la suma de dos anuncios del mismo expediente (8 de 2021 + 1 de 2022/2023) —
+  así que corresponde firmar primero la derivación en `convocatoria_verification` con
+  `cifra_derivada` (§6/§7 del runbook) citando los dos sumandos, y **entonces** declarar:
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=administrativo-extremadura \
+    --incluidas=false --url=https://doe.juntaex.es/pdfs/doe/2025/2440o/25050191.pdf \
+    --cita="Se convocan pruebas selectivas para cubrir... 11 plazas... (10 plazas correspondiente a la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo Público... para los años 2022 y 2023)... el número total de plazas será de 11." \
+    --motivo="DOE núm. 244 (19/12/2025): turno libre = 8 (OEP 2021) + 1 (OEP 2022/2023) = 9 = plazas_libres BD; turno discapacidad = 2 (OEP 2021) = plazas_discapacidad BD; total impreso 11 = 9+2. Cifra derivada de dos anuncios del mismo expediente, firmar antes en convocatoria_verification con cifra_derivada." \
+    --apply
+  ```
+
+**⛔ 2 PROPUESTAS "UNÁNIMES" DEL AUTOMATISMO, DESCARTADAS TRAS LEER EL DOCUMENTO REAL — no declarar:**
+
+- **`auxiliar-administrativo-diputacion-huelva` (libres=3, cupo=2) — el mismo slug que YA avisaba
+  la novena tanda de falsos positivos.** El proponente volvió a marcarlo unánime (`aparte`), pero
+  el propio `boe_reference` dice *«bases pendientes»* y el documento tipo `convocatoria` clonado
+  (el listado de la sede electrónica, no las bases) muestra que Auxiliar de Administración
+  General en Huelva son en realidad **TRES procesos selectivos SEPARADOS** con Bases Específicas
+  propias (BOP nº138, 20/07/2026): proceso 34 «9 PLAZAS» (turno libre general), proceso 35 «3
+  PLAZAS» (turno libre reservado a discapacidad general) y proceso 36 «1 PLAZA» (discapacidad
+  intelectual). No es un desglose dentro/aparte de una sola convocatoria — es un problema de
+  MODELO DE DATOS (¿qué proceso de los tres representa nuestra fila?) que esta ficha no puede
+  resolver sola. La cita que el automatismo usó como «evidencia» es lenguaje genérico sobre
+  acreditación de discapacidad, no una cifra. **No declarar. SOSPECHO que la fila necesita
+  reconciliarse contra los 3 procesos reales antes de nada — anotado para quien lo retome, no
+  investigado más a fondo por no ser el alcance de esta ficha.**
+- **`auxiliar-administrativo-diputacion-segovia` (libres=2, cupo=2) — CORPUS AJENO, no falso
+  positivo de forma.** Los 6 documentos clonados de esta convocatoria son TODOS del proceso
+  «ENFERMERO/A OPE 2026» (listas de admitidos, notas de examen, propuesta de nombramiento) — CERO
+  documentos de «Auxiliar Administrativo». La cita que el automatismo tomó como evidencia
+  («…certificado oficial que acredite tal condición…») es lenguaje boilerplate de un documento del
+  proceso de Enfermero/a, no de éste. Mismo patrón que `npm run audit:corpus-ajeno` caza (T-654),
+  pero ese comando compara la RUTA del `programa_url` contra la de los documentos y aquí el
+  problema es al revés (documentos de OTRO proceso del mismo portal, sin que el `programa_url`
+  esté mal). **No declarar — hace falta re-clonar el corpus real de Auxiliar Administrativo antes
+  de poder proponer nada.**
+
+**Los 17 restantes siguen "mudos" (forma nueva, sin evidencia automática) y necesitan lectura una
+a una, como ya diagnosticó la séptima/octava tanda.** No los leí todos por alcance de este turno
+(cada uno son varios documentos de cientos de KB): `administrativo-diputacion-valencia`,
+`administrativo-la-rioja`, `administrativo-navarra`, `administrativo-universidad-leon`,
+`auxiliar-administrativo-ayuntamiento-marbella`, `auxiliar-administrativo-diputacion-avila`,
+`auxiliar-administrativo-diputacion-ourense`, `auxiliar-administrativo-diputacion-zamora`,
+`auxiliar-administrativo-la-rioja`, `auxiliar-administrativo-universidad-carlos-iii`,
+`auxiliar-administrativo-universidad-leon`, `celador-murcia`, `cuidador-diputacion-cordoba`,
+`tcae-sescam`, más `administrativo-asturias` (ya diagnosticado en la novena tanda como
+`cifra_derivada` pendiente, con el cabo aparte de su `boe_reference` desalineado).
+
+**No pude aplicar nada yo misma: los dos comandos de arriba necesitan `DATABASE_URL` completo
+(escritura de negocio), que un trabajador de la flota no tiene por diseño.** Quedan como comandos
+listos, con cita y URL verificadas contra el documento real, para que una persona los ejecute.
+
 - **Origen:** [T-214], 28/07.
 
 ### [T-199] 🟡 [ABIERTO 27/07] El icono de Embajadores aparece en el MISMO instante en que el usuario paga: la recomendación queda marcada como incentivada
@@ -16691,7 +16933,7 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
   - **Efecto medido:** la simulación bank-wide baja de **81 fuentes ciegas a 46** (las 35 repuntadas pasan a "evidencia no atribuible" hasta el recheck del cron, que es el transitorio normal). Las 38 `pagina_no_encontrada` que quedan son las 37 de SES + `tcae-extremadura`.
 - **Doc:** `docs/maintenance/oeps-convocatorias-seguimiento.md` · `docs/runbooks/salud-radar.md`.
 
-### [T-164] 🟡 [ABIERTO 27/07] Reanudar aquí: 2 verificaciones de reloj que quedaron a medias + 1 fix en `main` sin desplegar
+### [T-164] ✅ [HECHA 07/08] Reanudar aquí: 2 verificaciones de reloj que quedaron a medias + 1 fix en `main` sin desplegar
 - **Qué es esto:** la sesión del barrido de salud del 27/07 se cerró a las ~08:25 UTC con dos comprobaciones **pendientes de que llegara su hora** y un arreglo pusheado sin desplegar. Sin anotarlo, el que retome no sabe qué se verificó y qué no. **Todo lo demás de ese barrido está cerrado o tiene ficha propia** (T-159 PDFs · T-160 event_loop_lag · T-161 TTS · T-162 detect-notas · T-163 chat sin fallback).
 - **(1) ¿Tickeó `check-seguimiento` a las 09:00 UTC del 27/07?** Se reactivó como telemetría el 26/07 21:03 (`8dc1267ae`, T-135) y su último tick real era del **lun 20/07**, así que el `cron_overdue` que disparó 13 veces era por ticks de cuando estaba apagado. El 27/07 a las 09:00 era su **primer tick legítimo** y debía curarse solo. Comprobar:
   ```sql
@@ -16703,6 +16945,27 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **(2) ¿Completó `detect-notas-convocatoria` su ejecución de las 09:30 UTC del 27/07?** Era la **primera del sistema sin LLM** (tras `56bcb7e5d`) y nadie la ha visto terminar. Es el dato que le falta a **T-162** para decidir su detector: **cuánto tarda ahora** (antes 6 h por el LLM) y **si completa**. Misma query con `endpoint='detect-notas-convocatoria'`: un `cron_tick` sin su `cron_run` = el fallo de T-162 repitiéndose por tercer día.
 - **(3) `cron_overdue` arreglado y en `main` SIN DESPLEGAR:** commit **`e92d73a41`** (el guard de "no juzgues un tick anterior al arranque del proceso" ahora se aplica también a los crons con ejecuciones viejas, que es el caso de una reactivación). No corre prisa —el falso positivo del 27/07 se cura solo con el tick de las 09:00— pero **hasta que se despliegue, la próxima reactivación de cualquier cron volverá a inundar el inbox**. Que entre en el próximo deploy del backend; ver `docs/runbooks/pusheo-revision-despliegue.md`.
 - **Origen:** cierre de sesión del barrido de salud del 27/07.
+
+> **✅ VERIFICADAS LAS TRES, 07/08 (w1) — nada roto, cerrando por caducidad + medición, no por
+> suposición.** Han pasado 11 días; las tres preguntas se pueden contestar ya con hechos, no con
+> hipótesis.
+> 1. **`check-seguimiento` SÍ tickeó y SÍ completó a las 09:00 UTC del 27/07.** Corrida la consulta
+>    exacta de la ficha contra RDS (`VENCE_LECTOR_URL`): `cron_tick` a las `09:00:00.409Z` y su
+>    `cron_run` a `09:15:07.233Z` (severity `info`, ~15 min de ejecución). Confirma la hipótesis:
+>    era el primer tick legítimo tras la reactivación y se curó solo.
+> 2. **`detect-notas-convocatoria` SÍ completó su ejecución de las 09:30 UTC del 27/07** —
+>    `cron_tick` a `09:30:00.375Z`, `cron_run` a `09:50:09.480Z` (20 min, no 6 h). Metadata del
+>    evento: `total:123, errors:27, llmCalls:0, llmReused:3, status:success`. **Este dato ya no hace
+>    falta para T-162: esa ficha se cerró el mismo 27/07 con el MISMO número exacto (20 min 09 s /
+>    123 / 27 errores), así que la pregunta que esta ficha dejó abierta ya está contestada por otra
+>    vía — verificación cruzada, no una segunda medición independiente.**
+> 3. **`e92d73a41` YA ESTÁ DESPLEGADO** — comprobado con `git merge-base --is-ancestor e92d73a41
+>    <SHA-vivo>`: el backend vivo hoy (`curl https://api.vence.es/health` → `deploy:"51f96259"`)
+>    contiene ese commit como ancestro. Han pasado 11 días y múltiples deploys de por medio; no
+>    hace falta esperar al "próximo deploy" que pedía la ficha, ya ocurrió.
+>
+> Las tres preguntas de esta ficha están contestadas y las tres respuestas son "todo bien". No hay
+> nada más que reanudar aquí — la deja cerrada quien la retomó.
 
 ### [T-163] 🟡 [ABIERTO 27/07] El chat de IA no tiene fallback de proveedor: si Anthropic cae, el psicotécnico se queda sin respuesta
 - **Qué:** `lib/chat/shared/modelRouter.ts` elige proveedor **por contenido y de forma determinista** (psicotécnicos de series/tablas/cálculo → Anthropic; el resto → OpenAI). No hay cadena de respaldo: si el proveedor elegido falla, la petición muere ahí.
