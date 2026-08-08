@@ -37,16 +37,26 @@ jest.mock('../../../../lib/db/timeout', () => ({
 // tira, ver sink.ts), pero deja una conexión pg abierta que Jest se queja de no poder cerrar
 // ("did not exit one second after..."). Mockearlo aquí también es lo que permite comprobar POR
 // VALOR qué se emite en el momento exacto del abort/fallo del proxy.
+//
+// ⚠️ EL MOCK TIENE QUE DECLARAR **TODO** LO QUE LA RUTA IMPORTA DE ESTE MÓDULO, no solo lo que
+// este fichero mira. [T-735]
+//
+// `emitFireAndForget` lo estrenó T-312 en esta MISMA ruta (desglose de fases auth+antifraude)
+// mientras T-635 vivía en su rama. Cada una pasaba sus tests por separado; al juntarlas, el mock
+// parcial dejaba la función sin definir y la ruta moría con un `TypeError` que el `catch` general
+// traducía a **500**. El ÚNICO test que llega a esa línea es el que simula un reloj lento —el del
+// presupuesto, más abajo—, así que el síntoma era «esperaba 200, recibí 500» y parecía que el
+// arreglo de T-635 no funcionaba, cuando estaba perfectamente bien. Un mock de módulo tiene que
+// declarar TODO lo que la ruta importe, o envejece en cuanto otra rama toca el fichero.
+//
+// Va a un espía PROPIO y no al de `emit` a propósito: son dos contratos distintos (uno espera a
+// que se escriba, el otro no) y con un solo espía no se puede afirmar cuál de los dos se usó —
+// que es justo lo que comprueba el test del presupuesto.
 const mockEmit = jest.fn().mockResolvedValue(undefined)
+const mockEmitFireAndForget = jest.fn()
 jest.mock('../../../../lib/observability/emit', () => ({
   emit: (...args: unknown[]) => mockEmit(...args),
-  // [T-735] `emitFireAndForget` lo estrenó T-312 en esta MISMA ruta (desglose de fases
-  // auth+antifraude) mientras T-635 vivía en su rama. Cada una pasaba sus tests por separado;
-  // al juntarlas, el mock parcial dejaba la función sin definir y la ruta moría con un
-  // TypeError que el catch traducía a 500 — el test de presupuesto veía un 500 donde esperaba
-  // un 200 y parecía que el arreglo de T-635 no funcionaba. Un mock de módulo tiene que
-  // declarar TODO lo que la ruta importe, o envejece en cuanto otra rama toca el fichero.
-  emitFireAndForget: (...args: unknown[]) => mockEmit(...args),
+  emitFireAndForget: (...args: unknown[]) => mockEmitFireAndForget(...args),
 }))
 
 jest.mock('../../../../lib/api/dailyLimit', () => ({
@@ -312,6 +322,11 @@ describe('POST /api/v2/answer-and-save — proxy canary al backend', () => {
       // Y nunca 0 ni negativo: withDbTimeout(fn, 0) no tiene sentido — que corte
       // cuanto antes, no que no llegue a intentarlo.
       expect(primerTimeoutMs).toBeGreaterThanOrEqual(1000)
+
+      // El desglose de ruta lenta (T-312) SALE de verdad en este camino. Se afirma aquí porque es
+      // justo lo que nadie miraba: mientras el mock no lo declaraba, esta línea de la ruta no
+      // estaba «sin probar», estaba REVENTANDO, y el 500 se leía como un fallo del presupuesto.
+      expect(mockEmitFireAndForget).toHaveBeenCalled()
 
       nowSpy.mockRestore()
     })
