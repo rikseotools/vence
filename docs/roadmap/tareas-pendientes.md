@@ -1506,15 +1506,50 @@ scope (23%)**. Quedan **33 artículos** (procedimiento ordinario, preferente, si
 expulsión, multas, vigilancia laboral — arts. 225-257) para batches sucesivos con su propia
 verificación y auditoría cada uno.
 
-**Lo que falta para ESTE batch, además, por permisos:** este worker solo tiene `VENCE_LECTOR_URL`
-(lectura). Para servir estas 17 preguntas, quien tenga escritura de negocio tiene que seguir el
-manual desde el **Paso 4**: insertar (`insertar-batch-generado.cjs
-scratchpad/t681/gen_pn_t11_rex2024_2026-08-07_borrador.json rd-1155-2024-reglamento-extranjeria
-gen_pn_t11_rex2024_2026-08-07`), Paso 5.bis, Paso 8 (transición a `approved` con el veredicto de
-auditoría de arriba), **Paso 9 OBLIGATORIO** (re-verificación con Sonnet nuevo sobre las preguntas
-ya vivas en BD), Paso 11 (invalidar las 3 capas de caché del tema 11 de `policia_nacional`), y
-verificar que el tema pase de 0 a 17 preguntas activas de esta ley (las 251 de la LO 4/2000 no se
-tocan).
+**✅ LOTE INSERTADO Y POST-VERIFICADO EN PRODUCCIÓN (08/08) — esta sección ya NO dice "queda
+insertar" a propósito** (decía eso hasta el 08/08 y era peligroso: quien tuviera escritura y lo
+siguiera al pie de la letra habría duplicado el lote). Verificado independientemente vía
+`VENCE_LECTOR_URL`, no fiado del texto anterior:
+- **17 preguntas vivas**, `lifecycle_state='approved'`, `is_active=true`, artículos 215-224 (10 de
+  los 43 del scope), `created_at` 2026-08-08T11:50:40-41 UTC.
+- **Paso 11 (las 3 capas de caché) ya propagado**: la MV `topic_law_question_summary` para T11 de
+  `policia_nacional` da `REx 2024: total_questions=17, articles_with_questions=10` (`computed_at`
+  2026-08-08T12:30:55, muy posterior a la inserción) junto a las 251 intactas de la LO 4/2000 — nada
+  que invalidar, ya está sirviendo.
+- **El fichero `scratchpad/t681/gen_pn_t11_rex2024_2026-08-07_borrador.json` estaba desincronizado
+  de lo vivo, y no solo en Q9 (art. 220.3, la fecha de la Ley 33/2003) como vio la revisión —
+  sincronizado ahora, comparación campo a campo contra las 17 filas vivas:**
+  - **16 de las 17 preguntas** (todas menos Q1) tenían **"REx 2024" sin desarrollar** en el
+    enunciado, y las 17 filas vivas dicen **"Reglamento de Extranjería (REx 2024)"** — el mismo tipo
+    de arreglo de §2.2-quater que ya se aplicaba al resto del lote, aplicado directamente en BD.
+  - **Q9 (art. 220.3):** opciones A y B y la cita de la explicación decían "Ley 33/2003, de 4 de
+    noviembre" en el fichero; la fila viva ya tiene "de 3 de noviembre" (la fecha real de la ley,
+    verificada BOE-A-2003-20254 — confirmado también por la propia revisión).
+  - **Único registro que NO cambió: Q1** (`updated_at == created_at`, nunca tocada tras insertarse) —
+    es justo la que este mismo lote ya llevaba corregida (commit `4d63cc132`) antes de insertar.
+  - Las 16 filas SÍ tocadas comparten `updated_at` entre 2026-08-08T12:01:46 y 12:01:47 UTC —
+    **una sola pasada, ~11 minutos después de insertar**, no ediciones sueltas.
+  - Reconstruido el fichero campo a campo desde las filas vivas (`question_text`/`options`/
+    `correct_option`/`explanation`) y re-verificado que las 17 coinciden EXACTAS con producción.
+    `simular-batch-preinsercion.cjs` sobre el fichero ya sincronizado: **0 bloqueantes**.
+  - **SOSPECHO, sin poder confirmarlo del todo, qué corrigió la BD:** busqué en `scripts/` y
+    `backend/src/` cualquier herramienta que reescriba `question_text`/`options` desarrollando
+    siglas contra filas ya vivas — no encontré ninguna registrada ni versionada que haga
+    exactamente esto (`grep` de "Reglamento de Extranjería", "expandirSigla" y variantes, y de
+    `UPDATE questions SET question_text` en `scripts/`+`backend/src/`, sin resultado que encaje).
+    Lo que SÍ puedo decir con cifra: el mismo patrón —arreglo de sigla sin desarrollar, aplicado
+    en BD ~10-30 min después de insertar, nunca recomiteado al JSON fuente— apareció también en
+    **[T-679]** (`RD 1125/2024` → `Real Decreto (RD) 1125/2024`, 5 de 10 preguntas, corregido en
+    esa misma revisión el 08/08). Dos lotes distintos con el mismo patrón sugiere un paso del
+    pipeline (probablemente el Paso 9 de re-verificación, que sí tiene escritura sobre las filas
+    vivas) que corrige sobre la marcha y no vuelve a escribir el borrador — pero no lo he
+    REPRODUCIDO ni tengo el commit/log que lo demuestre, así que queda como sospecha, no como
+    causa confirmada. Quien tenga acceso al agente/proceso que corre Paso 9 debería confirmarlo y,
+    si es así, hacer que también recomitee el fix al scratchpad — si no, este mismo hueco se
+    repetirá en cada lote nuevo.
+
+**Los 33 artículos restantes del scope (225-257) siguen pendientes** de un batch nuevo con su
+propia verificación y auditoría — esto no cambia con el cierre de este hallazgo.
 
 **Capas:** simulación (`simular-batch-preinsercion.cjs`) en 3 rondas hasta 0 bloqueantes + auditoría
 doble real (auto-audit + agente Sonnet independiente y ciego) con 16/17 PERFECT y 1 hallazgo
