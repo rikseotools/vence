@@ -43,7 +43,11 @@ async function main() {
   // preguntas activas existentes de este artículo (el motivo mismo de T-356: no añadir otra copia).
   const [artId] = await sql`SELECT art.id FROM articles art JOIN laws l ON l.id = art.law_id
     WHERE l.short_name = 'Ley 39/2015' AND art.article_number = '49' AND art.is_active`
-  const existentes = await sql`SELECT lower(regexp_replace(question_text, '\s+', ' ', 'g')) AS norm
+  // [T-356, revisión 08/08] '\s+' escrito DENTRO del template etiquetado sql`...` se cocina a
+  // 's+' (JS descarta el backslash de un escape no reconocido) — colapsaba letras "s" repetidas,
+  // no espacios. Mismo bug que medir-solo-lectura.cjs, aquí en la comprobación de no-duplicado.
+  const WS_PATTERN = '\\s+'
+  const existentes = await sql`SELECT lower(regexp_replace(question_text, ${WS_PATTERN}, ' ', 'g')) AS norm
     FROM questions WHERE primary_article_id = ${artId.id} AND is_active`
   const normNueva = q.question_text.toLowerCase().replace(/\s+/g, ' ').trim()
   const yaExiste = existentes.some((e: { norm: string }) => e.norm.trim() === normNueva)

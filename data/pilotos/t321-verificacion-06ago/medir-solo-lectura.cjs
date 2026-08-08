@@ -25,13 +25,22 @@ function decidir(miembros) {
   return [orden[0], orden.slice(1)]
 }
 
+// [T-356, revisión 08/08] '\s+' escrito DENTRO del template etiquetado sql`...` se cocina a
+// 's+' (JS descarta el backslash de un escape no reconocido: '\s+'.length === 2, no 3) — el
+// patrón dejaba de matchear espacios y matchear la letra "s" suelta, cambiando el conteo de
+// grupos (217 → 214, medido). Sacarlo a una variable normal ANTES del template hace que JS lo
+// cocine aquí, fuera de la plantilla, con el doble backslash que sí produce un backslash real; y
+// al interpolarlo con ${} viaja como parámetro ligado ($1), no como texto SQL — más robusto que
+// simplemente doblar el backslash in situ (ese es el mismo bug de escapado, un plano por debajo).
+const WS_PATTERN = '\\s+'
+
 async function main() {
   const sql = postgres(process.env.VENCE_LECTOR_URL + '?sslmode=require', { ssl: { rejectUnauthorized: false }, max: 2 })
   const rows = await sql`
     with base as (
       select q.id, q.question_text, q.correct_option, q.created_at, q.is_official_exam,
              q.explanation, q.primary_article_id, q.lifecycle_state,
-             lower(regexp_replace(q.question_text, '\s+', ' ', 'g')) as norm,
+             lower(regexp_replace(q.question_text, ${WS_PATTERN}, ' ', 'g')) as norm,
              (select string_agg(x, '|' order by x) from unnest(array[
                 lower(trim(q.option_a)), lower(trim(q.option_b)),
                 lower(trim(q.option_c)), lower(trim(q.option_d))]) x) as ops

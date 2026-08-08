@@ -47,6 +47,26 @@ preguntas activas hoy (`c4d6f353…`, `ac95728d…`) tienen enunciados y opcione
 distintos — no son duplicados entre sí, así que ese artículo nunca debió estar en la lista.
 Verificado en BD, no solo con el script. Ya no aparece en la lista regenerada.
 
+**⚠️ SEGUNDA CORRECCIÓN (08/08, revisión de w1): el MISMO bug de escapado sobrevivía en DOS
+sitios más, distinto al del `eval()` de arriba.** Ese arreglaba la extracción por regex;
+éste es del propio patrón `'\s+'` escrito DENTRO de un template etiquetado `sql\`...\``
+(paquete `postgres.js`, no `pg`): JS descarta el backslash de un escape no reconocido al
+"cocinar" el template (`'\s+'.length === 2`, no 3 — comprobado con `node -e`), así que el
+patrón que llegaba a Postgres era `s+` (colapsa letras "s" repetidas) en vez de `\s+`
+(colapsa espacios). Afectaba a:
+- `data/pilotos/t321-verificacion-06ago/medir-solo-lectura.cjs` — daba **214 grupos / 199
+  artículos**, CONTRADICIENDO los 217/202 ya corregidos arriba, con el mismo fichero
+  citándose a sí mismo como la reproducción de referencia sin credencial de escritura.
+  Arreglado (patrón sacado a una variable JS normal e interpolado como parámetro ligado, no
+  como texto SQL) y re-verificado DOS VECES: **217 grupos / 202 artículos**, estable,
+  coincide exacto con la cifra ya citada arriba.
+- `validar.ts` (línea 46, la comprobación de no-duplicado de la pregunta nueva) — mismo
+  patrón, mismo bug. **El veredicto NO cambió** (re-corrido antes y después del fix: ✅ en
+  los dos casos, "no duplica ninguna de las 4 activas del artículo") — las 4 preguntas
+  existentes del art. 49 no tienen letras "s" repetidas que la normalización rota pudiera
+  confundir con espacios, así que la comprobación de no-duplicado seguía siendo correcta por
+  casualidad de los datos, no porque el código estuviera bien. Arreglado igual que el otro.
+
 **202 artículos, ordenados por ese proxy. Top 6:**
 
 | ley | artículo | topic_scope que lo referencian |
