@@ -1372,71 +1372,41 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
+**🙋 RESUELTO PARCIAL (07/08) — RD 806/2014 y RD 187/2008 verificados y listos para aplicar; las
+otras 4 normas medidas pero sin analizar pregunta a pregunta.** Planes dry-run-validados en
+`scratchpad/t683/plan-rd806-2014.json` (12 re-anclajes + 9 jubilaciones) y
+`plan-rd187-2008.json` (1 jubilación) — detalle completo del método y de cada decisión en
+`scratchpad/t683/RESUMEN.md`. **No los apliqué**: re-anclar/jubilar escribe en `questions`
+(BD de negocio) y mi credencial es solo lectura — el dry-run se hizo puenteando
+`DATABASE_URL` a la de solo-lectura, cero riesgo.
 
-**Orden de Manuel (07/08/2026):** *«Importante, no vuelvas a decir que está arreglado sin estar en
-producción y probado y simulado. Deberías hacer guardrail o algo.»*
+**Método que dio la talla, caro por pregunta:** el `article_number` viejo NO es de fiar (varias
+preguntas ya estaban mal-etiquetadas ANTES de que la ley se derogase). Comparé las 4 opciones de
+CADA pregunta —no solo `correct_option`— contra el texto real de la norma nueva, y solo re-anclé
+cuando el destino tiene `topic_scope` activo Y todas las opciones verdaderas viven en el MISMO
+artículo (si una opción cierta cuelga de un artículo que ni se sirve en el tema, jubilar en vez de
+forzar un destino sucio — le pasó a `de7adf95`).
 
-**El fallo, concreto:** a Esther (feedback `e523eabc`) se le envió *«Las dos venían del mismo fallo y
-ya está corregido. Actualiza la página y vuelve a probar, que no debería volver a pasarte»* con el
-arreglo en `main` y **sin desplegar** — `/api/health` servía `76404f1d` y el commit no era ancestro
-suyo. Si ella entra, le sigue fallando, con un correo nuestro diciendo lo contrario.
+**Hallazgo que corrige la tabla original:** RD 557/2011 no tiene "8 dentro del scope", tiene
+**75 huérfanas activas en total**, de las que solo 9 caen en el rango 215-257 (Policía Nacional
+T11, ya re-anclado por T-660); las otras ~66 cuelgan de artículos (3, 6, 13, 15, 20, 26, 27, 29,
+31, 32, 37, 42, 43, 44, 49, 60, 72, 123, 124, 129, 130, 142, 143, 162, 166, 174, 175, 196, 206,
+210 + 5 con DA9/DA10) de contenido general de entrada/residencia que no pertenece al capítulo
+sancionador — su tema/oposición de origen no está identificado. Para las 9 del rango sí encontré
+algo útil: la numeración vieja→nueva tiene un **offset constante de −1** en todo el tramo
+214-246 (verificado con 6 títulos exactos), con el aviso de que el borde (OLD 215→NEW 214) puede
+caer FUERA del `topic_scope` actual — comprobarlo, no asumir el offset a ciegas.
 
-**Y el error de método que lo permitió:** se leyó una bajada de 401 como «el arreglo está entrando»
-cuando era **menos tráfico** (a esa hora solo 4 personas respondían preguntas en toda la plataforma).
-Horas punta comparadas con hora valle, sin normalizar por actividad.
+**Pendiente medido, sin tocar:** Ley 8/2015 Cabildos (17), Orden HFP/134/2018 (16, la ficha
+original apunta que la mayoría cita la norma vieja por nombre en el enunciado — sin verificar
+pregunta a pregunta), Ley 4/2005 Igualdad Euskadi (10), RD 557/2011 fuera del rango PN/T11 (66) +
+las 9 del rango con el offset ya identificado. **Total: 109 preguntas** más las 9 con pista.
 
-#### La regla ya existía a medias, y ese es el punto
+**⚠️ Antes de aplicar [T-679] o [T-681]** (generaron preguntas NUEVAS para RD1125/2024 y
+RD1155/2024 respectivamente, ninguna insertada en BD todavía): comparar contra lo re-anclado
+aquí para no duplicar cobertura — es el aviso que esta ficha ya daba y que, al no haberse hecho
+ESTA primero, tocará resolver en el momento de aplicar cualquiera de las tres.
 
-[T-392] impide **cerrar una tarea** cuyos commits tocan superficie servida y no están vivos, con
-`lib/deploy/shaVivo.cjs`. El criterio estaba; lo que no tenía puerta era **el punto por donde sale un
-mensaje a una persona**, que es el irreversible. Esto no inventa criterio: **lo reutiliza**.
-
-#### ✅ Construido
-
-- **Núcleo puro** `lib/impugnaciones/promesaDeArreglo.cjs`: `afirmaArreglo(texto)` (la promesa en
-  PRESENTE) + `puedeAfirmarse({texto, shaVivo, commitsPendientes})`.
-- **Puerta IO** `scripts/impugnaciones/lib/puerta-vivo.ts`, cableada en los **dos** cierres
-  (`cerrar.ts` y `cerrar-feedback.ts`), con la forma de las otras tres puertas: anuncia, cuenta el
-  roce dentro de la puerta, y escape **propio** `--vivo-igualmente "<cómo lo comprobaste>"`
-  (compartir escape apagaría cuatro puertas a la vez).
-- **Fail-open** sin sha vivo: hay una persona esperando respuesta, y «no lo sé» no es «no está
-  desplegado».
-
-#### Calibrada contra los mensajes REALES, no a ojo
-
-`npm run sim:promesa-arreglo` mide sobre lo ya enviado. **569 mensajes de admin en 30 días, 134
-(23,6 %) afirman un arreglo.** Ese 23,6 % es el TECHO, no el bloqueo: **la puerta solo para si además
-hay commits que CITAN el caso, tocan superficie servida y no están vivos**. Por eso mira los commits
-del caso y no «cualquier cosa sin desplegar» — la mayoría de esos 134 son arreglos de **contenido**
-(una explicación, una clave, un scope) que viven en la BD y no necesitan deploy: ahí decir «ya está»
-es CIERTO, y bloquearlo convertiría la puerta en un estorbo que se rodea con el escape.
-
-#### El hueco de [T-392] que salió al construirla
-
-La puerta **no bloqueaba** el caso de Esther. Al depurarlo: `importadoEn` devolvía `servidos: []`
-porque los ficheros eran `app/test/aleatorio-examen/page.js` y un componente `.js` — **a una página
-de Next no la importa nadie**, la sirve el framework por su ruta. Es decir, el verificador que
-impide cerrar tareas sin desplegar **era ciego a las páginas y a las rutas de API**. Arreglado en el
-módulo compartido (`servidoPorConvencion` en `scripts/backlog/verificacion.cjs`), no en la puerta
-nueva, para que lo aprovechen los dos. Tras el cambio, `npm run sim:verificacion` sigue verde y el
-alcance del gate pasa de 36 % a **31 %** de las tareas cerradas — no se dispara.
-
-#### Capas
-
-- **19 unitarios** (`__tests__/impugnaciones/promesaDeArreglo.test.js`) anclados al **texto exacto**
-  que se envió a Esther, con los contrastes que NO deben marcarse (el futuro honesto, «lo estamos
-  mirando», los mensajes que no hablan de arreglos).
-- **Reproducción del caso real**: con el id de su feedback y su mensaje, la puerta **bloquea** y
-  nombra el commit sin desplegar. Antes del arreglo de `servidoPorConvencion`, no.
-- **Simulación de calibración** contra 30 días de mensajes enviados, con ancla y contraste, y exit
-  code (falla si el ancla deja de dispararla o si el mensaje honesto empieza a marcarse).
-- 311 tests de `__tests__/impugnaciones` + `__tests__/backlog/verificacion` en verde, typecheck verde.
-
-#### Lo que NO cubre
-
-Solo mira el **frontend**. Un arreglo de backend sin desplegar no lo detecta todavía (la puerta pide
-`shaVivo('frontend')`); ampliarlo es pequeño pero exige decidir a qué superficie pertenece cada caso,
-y sin un caso real que lo pida sería adivinar.
 ### [T-681] 🟠 [ABIERTO 07/08] Generar preguntas del régimen sancionador de extranjería de Policía Nacional T11 tras el re-anclaje al RD 1155/2024 (43 artículos)
 
 **Contexto:** [T-660] retiró el **RD 557/2011 (REx), derogado desde el 20/05/2025** —quince meses
