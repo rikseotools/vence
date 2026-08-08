@@ -15574,6 +15574,62 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Alcance a medir antes de decidir:** cuántas oposiciones valencianas (`*_gva`, `*_valencia`) tienen su temario oficial solo en valenciano. Son 4 las que hoy tenemos activas.
 - **Origen:** T-107, 27/07, al verificar `auxiliar_enfermeria_gva`.
 
+#### MEDIDO (08/08, w4) — alcance cerrado en las 4, con las fuentes reales abiertas, no solo el estado en BD
+
+**Las 4 activas son estas** (confirmado contra `oposiciones`, filtrando las que de verdad dependen de
+la Generalitat — hay otras 2 con `_valencia` en el slug, `administrativo-diputacion-valencia` y
+`auxiliar-administrativo-ayuntamiento-valencia`, que son de Diputación/Ayuntamiento y no entran en
+este alcance porque su fuente no es una Orde de la Generalitat):
+
+| slug | `topic_epigrafe_verification` hoy | fuente oficial abierta y leída |
+|---|---|---|
+| `administrativo-gva` | `verified_literal` (35 temas) | Anexo IV, DOGV 10345 (20/04/2026): **"TEMARIO PARTE GENERAL"** — el `_es` es realmente castellano |
+| `auxiliar-administrativo-valencia` | `verified_literal` (24 temas) | Anexo IV, DOGV 10331 (27/03/2026): **"TEMARIO PARTE GENERAL"** — el `_es` es realmente castellano |
+| `subalterno-gva` | `verified_literal` (15 temas) | Anexo IV, DOGV 10330 (26/03/2026): **"TEMARIO PARTE GENERAL"** — el `_es` es realmente castellano |
+| `auxiliar-enfermeria-gva` | `drift_detected` (24 temas) | Annex IV, DOGV 10321 (12/03/2026): **"TEMARI PART GENERAL"** — el `_es` sigue en valenciano |
+
+**Verificado descargando y extrayendo texto de los 4 PDF `_es` reales** (`pdfjs-dist`, ya dependencia
+del repo — no una herramienta nueva), no fiándome del sufijo del nombre de fichero ni del estado en
+BD: **los 3 primeros SÍ tienen el Anexo del temario en castellano de verdad dentro del PDF marcado
+`_es`** (no es un falso verde: lo leí línea a línea). Solo `auxiliar-enfermeria-gva` tiene el patrón
+que da origen a esta ficha — confirmado que **persiste hoy**, no es un caso ya cerrado.
+
+**Gotcha real al medir `subalterno-gva`:** su `programa_url` en BD (`sede.gva.es/es/detall-ocupacio-
+publica?id_emp=110254…`) es una página de seguimiento **sin el PDF de bases** enlazado en el HTML
+plano (solo trae el último documento del expediente, del 15/07, sobre composición del tribunal — NO
+las bases con el temario, publicadas el 26/03). Localizado el documento real por búsqueda externa
+(DOGV 10330, `2026_8075_es.pdf`) para poder verificar. **No es del alcance de esta ficha, pero
+queda anotado**: si algún día se re-verifica este epígrafe automáticamente a partir de
+`programa_url`, la herramienta se quedará mirando el documento equivocado. Candidato a su propia
+ficha si nadie lo tiene ya cubierto (no comprobado contra `toolRegistry`).
+
+**Corrección al recuento original, con la cifra medida hoy — no son 3 temas en valenciano, son 2:**
+leídos los 24 epígrafes de `auxiliar-enfermeria-gva` uno a uno y comparados contra el Annex IV
+valenciano real:
+- **T2, sin traducir en absoluto:** `"L'Estatut d'Autonomia de la Comunitat Valenciana: Títol I, La
+  Comunitat Valenciana; Títol II, Dels drets dels valencians; Títol III, La Generalitat; Títol IV, Les
+  competències."` — calcado del original valenciano (solo le falta "i valencianes" al final, un
+  recorte, no una traducción).
+- **T3, traducción PARCIAL — más sutil, y peor:** el epígrafe en BD dice `"La Ley 5/1983 del Consell:
+  Título I, Del President; …"` — todo el resto está en castellano («La Ley», «Título», «Del Consell»)
+  salvo la palabra **«President»**, que en castellano es «Presidente» y se dejó tal cual en
+  valenciano. Es el mismo defecto que el resto de la ficha, pero camuflado dentro de una frase que
+  parece correcta a primera vista.
+- **T1 y T4-T24 (22 de 24), confirmados en castellano correcto**, comparados frase a frase contra el
+  Annex IV valenciano (p. ej. T4 traduce completo "Capítol IV, De la Conselleria i dels Consellers"
+  → "Cap. IV-V" sin dejar ninguna palabra suelta).
+- La ficha original decía "21 en castellano y 3 en valenciano" — **medido hoy: 22 limpios y 2
+  afectados** (T2 y T3). No sé si el recuento original incluía un tercer caso que alguien ya corrigió
+  entre el 27/07 y hoy, o si contaba distinto — lo que hay AHORA, verificado línea a línea, son 2.
+
+**Lo que esta sesión NO decide, porque es de producto (regla de la casa: dos caminos legítimos y
+elegir es criterio de producto, no técnico) — escalado a Manuel vía `preguntar` con las 3 opciones
+de la ficha original y esta medición ya hecha, para que decidir cueste un minuto y no un descubrimiento:**
+las opciones (a)/(b)/(c) siguen siendo las que ya proponía la ficha; lo único nuevo es que ahora se
+sabe que el alcance real es **1 sola oposición de 4** (no las 4), y que dentro de ella son
+**2 epígrafes de 24**, no 3 — así que decida lo que decida Manuel, el trabajo de aplicarlo es
+pequeño: 2 epígrafes de un tema, en una oposición.
+
 ### [T-251] 🟡 [ABIERTO 28/07] Fuga pequeña pero determinista: ~104 preguntas/semana servidas en tests de tema cuyo artículo no está en el `topic_scope` de esa oposición
 - **Qué:** medido el 28/07 sobre 7 días, **41.422 preguntas servidas** en tests **de un tema concreto** (`tests.position_type` y `tests.tema_number` no nulos, que es donde el temario manda): **104 (0,3%)** tenían su artículo FUERA del `topic_scope` de la oposición del test. Al opositor le sale materia que su programa no incluye, y por nuestra propia fuente de verdad no debería llegarle.
 - **Por qué NO lo ve nadie hoy:** todos los detectores de scope razonan sobre el eje **scope ↔ epígrafe** (¿es correcto el temario?): sobre-inclusión, frontera de título, huecos, artículos fantasma. Ninguno mira el eje del **SERVIDO**: ¿la pregunta que recibió este usuario era servible para él? Es una comprobación distinta y puramente mecánica — un `NOT EXISTS` contra `topic_scope`.
