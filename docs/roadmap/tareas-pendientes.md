@@ -1716,71 +1716,6 @@ de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método ant
 **Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
 artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
 
-### [T-677] 🟠 [ABIERTO 07/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
-
-**Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
-tiene bug**: mira si hay proceso en su tmux (lo había, un `claude -p` de 2 h 31 min con T-168) y la
-antigüedad del latido se imprime al lado. Está hecho así a propósito. Lo que no existía era el
-**cruce** entre las dos señales, ni nada que mirase la máquina.
-
-**Lo medido en `flota-1` (07/08) mientras el panel daba los cuatro trabajadores en verde:**
-- **671-702 MB disponibles de 7.751 (9 %)**, y **sin swap**.
-- **carga 17,1-19,7 en 4 núcleos (4,3-4,9×)… con la CPU al 91-98 % OCIOSA.** Esa carga no es
-  cálculo: son procesos encolados esperando disco (8-9 en estado `D`).
-- **Cuatro builds de Node a la vez: 1.574 + 1.383 + 1.295 + 1.213 MB = 5,5 GB.**
-
-**El dato que cambia la conclusión:** el peso **no son los trabajadores**. Los cuatro Claude Code
-juntos ocupaban **menos de 1 GB** (81-330 MB cada uno); son sus **builds** (jest / tsc / next) los
-que pesan 1,2-1,6 GB. La primera reacción —«bajar de cuatro trabajadores a dos»— era **incorrecta**
-y se retiró al medir quién consumía la memoria. Lo que encaja es **serializar los builds** (un
-`flock` compartido, como el que ya serializa los deploys): los cuatro trabajadores siguen, y solo
-hacen cola en el momento en que se pisan. Eso queda PENDIENTE.
-
-**Lo construido (esto sí está hecho):**
-1. **Núcleo puro `lib/flota/saludMaquina.cjs`** — `clasificarMaquina()` y `turnoSinProgreso()`,
-   14 tests. Dos criterios que son los que lo hacen usable:
-   · **Carga alta con la CPU OCUPADA no alerta**: eso es una máquina trabajando. Solo acusa cuando
-     la carga se dispara **con la CPU ociosa**, que es la firma del atasco de E/S.
-   · Se mide **`available`, no `free`**: un Linux sano usa casi toda la RAM en caché.
-2. **Sonda en el supervisor** (`medirMaquina`, una conexión por máquina, no por trabajador) + la
-   máquina sale en el panel cuando no está en verde.
-3. **El cruce que faltaba**: proceso vivo + latido congelado ≥ 2 h → 🟠 con el motivo escrito.
-4. **Dos alertas proactivas** (`flota_maquina_ahogada`, `flota_turno_sin_progreso`) y sus eventos
-   (`flota_maquina_salud`, `flota_turno_sin_progreso`). Entran solos en el panel de salud del
-   sistema por el catch-all de señales `error`/`warn`; el email lo dan las reglas propias.
-   La de máquina exige **dos lecturas en 2 h**: una suelta puede ser un build legítimo.
-
-**GOTCHA que solo apareció al probarlo contra la máquina real** (y por eso se probó, en vez de
-darlo por bueno leyendo el código): la primera versión contaba los builds siguiendo la cadena de
-padres (`node` cuyo ppid es un `npm`) y devolvía **CERO** en una máquina con cuatro builds
-corriendo — el padre ya no siempre está. Se cambió a **`node` con RSS > 500 MB**, umbral que sale
-de la medición: builds 1.213-1.574 MB frente a Claude Code 81-330 MB, dos poblaciones sin solape.
-
-**Verificado contra `flota-1`**: la sonda lee los seis campos y el veredicto sale `ahogada` con los
-cuatro motivos.
-
-**⚠️ LA CAUSA YA TIENE FICHA — NO LA ABRAS OTRA VEZ (comprobado el 08/08):** [T-682] («cuatro
-`tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos», **crítica**) y
-[T-647] («el VPS se queda sin memoria: 20 OOM en 6 h matando turnos»). Esta ficha es la MITAD
-COMPLEMENTARIA: ellas arreglan la causa, esta puso la vigilancia que no existía. Quien coja T-682
-**ya tiene alerta**, no necesita construirla — y lo medido aquí le sirve de partida: los cuatro
-Claude Code ocupan menos de 1 GB entre todos, y el peso son sus builds (1.574 + 1.383 + 1.295 +
-1.213 MB), con la carga a 19,7 en 4 núcleos y la CPU al 97,7 % ociosa (esperando disco, no
-calculando). Bajar el número de trabajadores NO es el arreglo; serializar los builds sí.
-
-**PENDIENTE:** desplegar el backend para que
-las dos reglas empiecen a avisar.
-### [T-682] 🔴 [ABIERTO 07/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
-
-- **Cómo se llegó aquí.** El VPS llevaba horas con **carga 18 sobre 4 núcleos** y se atribuyó a falta de CPU. **Era falso.** La medida que lo decide (PSI, `/proc/pressure`): **CPU 0,00 % · disco 0,00 % · memoria `full` 98,73 %**. O sea: **durante el 98,7 % del tiempo TODOS los procesos estaban parados esperando memoria**, y nadie usaba CPU — el proceso más activo era un `sshd` al 3 %. En Linux el *load average* cuenta también a los que esperan; por eso marcaba 18.
-- **El culpable, medido con `ps` ordenado por RSS:** cuatro procesos **`tsc --noEmit`** a la vez — **1,3 + 1,2 + 0,7 + 0,6 = 3,8 GB solo en typechecks**, sobre una máquina de 7,7 GB donde además viven cuatro sesiones de Claude Code. El typecheck de este repo (Next.js grande) pide **más de 1 GB él solo**, y los cuatro turnos coinciden en ese paso porque **todos pasan por el mismo peaje**: el `pre-commit` y el `pre-push`.
-- **Y hay realimentación, que es lo que lo vuelve un pozo:** con la máquina en *thrashing* el typecheck que tardaba ~11 s tarda minutos; al durar más, se solapa con los de los otros; al solaparse, hay más presión; y así. Los turnos pasan de minutos a horas, y con ellos **los trabajadores dejan de latir dentro del lease** (medido: w1 sin señal 9 h 40, w2 4 h, con sus leases vencidos) — o sea que el sistema los da por muertos y `reap` puede devolver al reparto tareas que alguien está haciendo.
-- **Lo ya hecho, y hasta dónde llega:** se añadieron **4 GB de swap** (`swappiness=10`). Alivió de golpe —RAM libre de 385 MB a 2,5 GB, presión del 98,7 % al 48,9 %— pero **se llenó entero en unos diez minutos** y volvió a subir. Confirmado que es *thrashing* y no páginas aparcadas: **+18.699 `pswpin` y +17.759 `pswpout` en 30 segundos**. El swap era necesario (sin él el reclamo no tenía dónde ir) pero **no basta**: el conjunto de trabajo excede la máquina.
-- **El arreglo que NO quita trabajadores — serializar el typecheck.** Un `flock` de máquina alrededor de `tsc --noEmit` en los hooks: **solo uno corre a la vez**, los demás esperan. Pasa de 3,8 GB a ~1,3 GB de pico, que sí cabe. **No quita capacidad**: el typecheck no es el trabajo, es el peaje — y hoy los cuatro lo pagan a la vez y ninguno avanza. El patrón ya existe en la casa (el candado del deploy es un `flock` local, [T-485]), así que no hay que inventarlo.
-- **Alternativas descartadas y por qué:** *bajar a tres trabajadores* — Manuel lo descartó explícitamente, y además no ataca la causa (tres typechecks a la vez siguen sin caber holgadamente); *subir `MemoryHigh`* — está descartado desde [T-647] y devolvería los OOM; *más RAM* — cuesta dinero y es decisión suya.
-- **⚠️ Cuidado al implementarlo:** el `pre-push` ya decide si el push «paga peaje» de typecheck; el candado va DENTRO de esa rama, no envolviendo el hook entero, o se serializarán también los pushes que hoy pasan sin typecheck. Y tiene que ser **por máquina, no por worktree**: el recurso escaso es la RAM de la máquina.
-- **Relacionadas:** [T-647] (el techo de memoria, cuyo ajuste cambió muertes por parálisis), [T-485] (el `flock` del deploy como patrón), [T-486].
-
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
 - **Lo que veía el usuario:** termina el examen, pulsa corregir, y la app dice que **no hay conexión**. No se corrige, no se ve el resultado, no se guarda. **Cuatro usuarias premium lo escribieron el mismo día** (`emmavallejoteijeira`, `rbsc87` ×2, `esthlazar`), y una quinta (`ivangonlezpe`) por otra vía.
@@ -9376,6 +9311,75 @@ y corregido un error de diseño que tenía.
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-677] ✅ [HECHA 08/08] La flota vigilaba al TRABAJADOR desde cuatro ángulos y nunca la MÁQUINA donde trabaja
+
+**Cómo apareció.** Al mirar por qué `w1` salía 🟢 con el latido de hace 508 min. El semáforo **no
+tiene bug**: mira si hay proceso en su tmux (lo había, un `claude -p` de 2 h 31 min con T-168) y la
+antigüedad del latido se imprime al lado. Está hecho así a propósito. Lo que no existía era el
+**cruce** entre las dos señales, ni nada que mirase la máquina.
+
+**Lo medido en `flota-1` (07/08) mientras el panel daba los cuatro trabajadores en verde:**
+- **671-702 MB disponibles de 7.751 (9 %)**, y **sin swap**.
+- **carga 17,1-19,7 en 4 núcleos (4,3-4,9×)… con la CPU al 91-98 % OCIOSA.** Esa carga no es
+  cálculo: son procesos encolados esperando disco (8-9 en estado `D`).
+- **Cuatro builds de Node a la vez: 1.574 + 1.383 + 1.295 + 1.213 MB = 5,5 GB.**
+
+**El dato que cambia la conclusión:** el peso **no son los trabajadores**. Los cuatro Claude Code
+juntos ocupaban **menos de 1 GB** (81-330 MB cada uno); son sus **builds** (jest / tsc / next) los
+que pesan 1,2-1,6 GB. La primera reacción —«bajar de cuatro trabajadores a dos»— era **incorrecta**
+y se retiró al medir quién consumía la memoria. Lo que encaja es **serializar los builds** (un
+`flock` compartido, como el que ya serializa los deploys): los cuatro trabajadores siguen, y solo
+hacen cola en el momento en que se pisan.
+
+**Lo construido:**
+1. **Núcleo puro `lib/flota/saludMaquina.cjs`** — `clasificarMaquina()` y `turnoSinProgreso()`,
+   14 tests. Dos criterios que son los que lo hacen usable:
+   · **Carga alta con la CPU OCUPADA no alerta**: eso es una máquina trabajando. Solo acusa cuando
+     la carga se dispara **con la CPU ociosa**, que es la firma del atasco de E/S.
+   · Se mide **`available`, no `free`**: un Linux sano usa casi toda la RAM en caché.
+2. **Sonda en el supervisor** (`medirMaquina`, una conexión por máquina, no por trabajador) + la
+   máquina sale en el panel cuando no está en verde.
+3. **El cruce que faltaba**: proceso vivo + latido congelado ≥ 2 h → 🟠 con el motivo escrito.
+4. **Dos alertas proactivas** (`flota_maquina_ahogada`, `flota_turno_sin_progreso`) y sus eventos
+   (`flota_maquina_salud`, `flota_turno_sin_progreso`). Entran solos en el panel de salud del
+   sistema por el catch-all de señales `error`/`warn`; el email lo dan las reglas propias.
+   La de máquina exige **dos lecturas en 2 h**: una suelta puede ser un build legítimo.
+
+**GOTCHA que solo apareció al probarlo contra la máquina real** (y por eso se probó, en vez de
+darlo por bueno leyendo el código): la primera versión contaba los builds siguiendo la cadena de
+padres (`node` cuyo ppid es un `npm`) y devolvía **CERO** en una máquina con cuatro builds
+corriendo — el padre ya no siempre está. Se cambió a **`node` con RSS > 500 MB**, umbral que sale
+de la medición: builds 1.213-1.574 MB frente a Claude Code 81-330 MB, dos poblaciones sin solape.
+
+**⚠️ LA CAUSA YA TIENE FICHA:** [T-682] («cuatro `tsc --noEmit` a la vez no caben en el VPS»,
+ya cerrada esta sesión) y [T-647] («el VPS se queda sin memoria: 20 OOM en 6 h»). Esta ficha es la
+MITAD COMPLEMENTARIA: ellas arreglan la causa, esta puso la vigilancia que no existía.
+
+**✅ VERIFICADO EN VIVO (08/08, w1) — desplegado y funcionando, con dos gaps de método corregidos.**
+- **Las 2 reglas de alerta SÍ están live en el backend ECS**: confirmado con `git merge-base
+  --is-ancestor c186196e4 a0b710ee` — el commit de features es ancestro del último deploy backend
+  exitoso (`a0b710ee`, finalizado 07:41:43 UTC 08/08). `RULE_FLOTA_MAQUINA_AHOGADA` en
+  `backend/src/alerts/alert-rules.ts` usa exactamente el umbral «2 lecturas en 2h»
+  (`shouldFire: n>=2` sobre `INTERVAL '2 hours'`), tal como describe esta ficha. 364/364 tests de
+  `alert-rules.spec.ts` en verde.
+- **El fix de «medir cada pasada, no solo cuando alguien mira el panel» SÍ está corriendo**: es
+  código del supervisor LOCAL del VPS (`scripts/flota/flota.cjs`, systemd, fuera del deploy ECS).
+  Confirmado que el checkout `~flota/vence` lo tiene y que el servicio `vence-flota-supervisor`
+  está activo ejecutando ese código (PID arrancado después del commit). 3 pasadas del bucle
+  observadas sin nuevo evento `flota_maquina_salud` — comprobado en el código (`flota.cjs`: `if
+  (v.estado === 'ok') continue`) que la emisión es DELIBERADAMENTE muda cuando la máquina está
+  sana, y la máquina está sana ahora mismo (verificado `/proc/pressure/memory`: `full avg300=0,41
+  %`; `free -h`: 5,6 GiB disponibles de 7,6) porque [T-682] ya arregló la causa esta misma sesión.
+  No es un bug: es el diseño funcionando tal como debe cuando el problema de fondo está resuelto.
+- **Gap de método corregido:** `lib/flota/saludMaquina.cjs` no estaba registrado en
+  `lib/admin/toolRegistry.ts` ni en ningún runbook (una capacidad nueva y genuina, no un silo, pero
+  invisible para `tools:buscar`). Registrado como `flota_salud_maquina`. Guardarraíl
+  `toolRegistry.guardrail.test.ts` 16/16 en verde con la entrada nueva.
+- **Lo que queda, aparte:** serializar los builds (un `flock` compartido, como el del deploy) — es
+  la mitad que arregla la causa, y la tienen [T-682] (ya cerrada esta sesión con la serialización
+  del typecheck vía `flock`) y [T-647] (el `flock` de builds JS en general, si hace falta más allá
+  de `tsc`, queda para quien la retome).
 
 ### [T-695] ✅ [HECHA 07/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
 
