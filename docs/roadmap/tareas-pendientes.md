@@ -1478,13 +1478,28 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
-**🙋 RESUELTO PARCIAL (07/08) — RD 806/2014 y RD 187/2008 verificados y listos para aplicar; las
-otras 4 normas medidas pero sin analizar pregunta a pregunta.** Planes dry-run-validados en
-`scratchpad/t683/plan-rd806-2014.json` (12 re-anclajes + 9 jubilaciones) y
-`plan-rd187-2008.json` (1 jubilación) — detalle completo del método y de cada decisión en
-`scratchpad/t683/RESUMEN.md`. **No los apliqué**: re-anclar/jubilar escribe en `questions`
-(BD de negocio) y mi credencial es solo lectura — el dry-run se hizo puenteando
-`DATABASE_URL` a la de solo-lectura, cero riesgo.
+**✅ APLICADO EN BD (08/08) — los dos planes ya están escritos y comprobados.** Los preparó un
+trabajador de la flota (07/08) y no pudo ejecutarlos porque su credencial es de solo lectura;
+`w4-vence-flota` los revisó con veredicto **ok** (re-verificó por su cuenta 9 de las 12 preguntas
+contra el texto real de los artículos destino y el offset −1 contra las DOS fuentes del BOE) y una
+sesión local con escritura los aplicó:
+
+- `plan-rd806-2014.json` → **12 preguntas re-ancladas** al RD 1125/2024 (arts. 2, 8, 9, 10) y
+  **9 jubiladas** (`retired_irreparable`, `admin_law_derogated`).
+- `plan-rd187-2008.json` → **1 jubilada** (no hay norma vigente que recoja la materia).
+- **Comprobado sobre la BD después, no supuesto:** las 12 salen `is_active=true` y **cada una cae
+  ya en un `topic_scope`** (0 huérfanas: eran invisibles y ahora se sirven en Guardia Civil T17);
+  las 10 jubiladas están las 10 en `is_active=false` + `retired_irreparable`. Vista materializada
+  refrescada y caché de producción purgada (1.760 rutas).
+
+El dry-run reprodujo EXACTO lo que decían entrega y revisión (7 movimientos · 12 preguntas ·
+9 a jubilar · 0 bloqueantes), que es lo que permitió aplicarlos sin rehacer el análisis.
+
+⚠️ **Al purgar salió un defecto de herramienta, ya arreglado aparte** (commit del 08/08):
+`scripts/purge-all-cache.js` leía `SITE_URL`, que en toda máquina de desarrollo vale
+`http://localhost:3000` → purgaba el portátil. Sin dev server daba 0 OK de 1.760 sin decir a dónde
+llamaba; **con dev server levantado habría cantado «1.760 OK» dejando producción intacta**. Ahora
+falla cerrado (`lib/cache/destinoPurga.cjs`).
 
 **Método que dio la talla, caro por pregunta:** el `article_number` viejo NO es de fiar (varias
 preguntas ya estaban mal-etiquetadas ANTES de que la ley se derogase). Comparé las 4 opciones de
