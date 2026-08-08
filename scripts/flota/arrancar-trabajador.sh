@@ -304,6 +304,25 @@ else
   echo "⚠️  sin /etc/polkit-1/rules.d: el supervisor NO podrá relanzar trabajadores muertos aquí."
 fi
 
+# ── 7.ter. GRUPO systemd-journal (T-647) — para poder DIAGNOSTICAR journalctl a mano ────────
+# La VIGILANCIA real de OOM no depende de esto: vive en lib/flota/oomCgroup.cjs, que lee
+# memory.events de cgroup v2 y es legible sin privilegios especiales — un trabajador nace
+# vigilado aunque nadie corra este bloque. Este grupo es solo para que, si hace falta mirar a
+# mano, journalctl -k funcione en esta máquina: sin él el usuario 'flota' ve el journal VACÍO
+# (ni con --since) aunque haya horas de historial real — así nació ciego el detector anterior.
+# Idempotente (no repite el usermod) y no aborta si la distro no trae este grupo.
+if getent group systemd-journal >/dev/null 2>&1; then
+  if id -nG "$USUARIO" | tr ' ' '\n' | grep -qx systemd-journal; then
+    echo "→ '$USUARIO' ya está en systemd-journal"
+  else
+    usermod -aG systemd-journal "$USUARIO"
+    echo "→ '$USUARIO' añadido a systemd-journal (diagnóstico con journalctl -k)"
+  fi
+else
+  echo "⚠️  esta máquina no tiene el grupo 'systemd-journal': journalctl -k seguirá sin verse a mano"
+  echo "   (no afecta a la vigilancia real, que va por lib/flota/oomCgroup.cjs)"
+fi
+
 # ── 8. EL GATE: si no puede participar del reparto, NO arranca ──────────────────────────────
 echo ""
 echo "→ comprobando que puede participar del reparto…"
