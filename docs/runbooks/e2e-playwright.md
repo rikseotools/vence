@@ -29,7 +29,34 @@ e2e/
   authed/*.spec.ts         # los tests autenticados (reutilizan la sesión)
 ```
 
-## ⚠️ ESTOS SPECS NO LOS EJECUTA CI — léelo antes de escribir uno (T-713, 08/08/2026)
+## ▶ CÓMO SE EJECUTAN (T-713, decidido el 08/08/2026)
+
+**Corren al final de cada despliegue de frontend**, en el paso `[7/7]` de
+`scripts/deploy-frontend.sh`, contra el código recién desplegado. El `AUTH_SECRET` sale de SSM,
+se usa en memoria y no se expone.
+
+**Se descartó llevarlos a GitHub Actions** a propósito: ese secreto **firma sesiones** —quien lo
+tenga puede acuñar la de cualquier usuario— y en un secret del repo queda al alcance de mucha más
+gente. El coste elegido (un par de minutos por deploy) se paga solo cuando despliegas.
+
+**Un fallo NO tumba el deploy.** Cuando esto corre, la imagen ya está viva y verificada; lo que
+hace es cantarlo y dejar el comando de rollback delante. La decisión —arreglar hacia delante o
+revertir— es humana.
+
+### ⏳ Falta una cuenta DESECHABLE para que se enciendan
+
+Sin `E2E_USER_ID` el paso **se salta y lo dice en voz alta**. No es un olvido: una de las 6
+pruebas (`question-evolution`) **responde una pregunta**, así que correrlas contra la cuenta de un
+usuario real le ensuciaría las estadísticas.
+
+```bash
+export E2E_USER_ID=<uuid de una cuenta desechable>   # opcional: E2E_USER_EMAIL
+```
+
+Guardarraíles: `e2ePostDeploy.guardrail` (que el paso siga en el script, con su secreto en SSM y
+el proveedor `own-mint`) y `specsEjecutados.guardrail` (que no nazcan specs nuevos sin ejecutar).
+
+## ⚠️ EL HISTORIAL: por qué esto hacía falta (T-713, 08/08/2026)
 
 **6 de los 8 specs no se ejecutaban nunca**, y no estaban rotos: ningún workflow invoca el
 proyecto que los recoge. `prod` (cron cada 6 h) y `preview-aws` filtran por `smoke-*`; el proyecto
