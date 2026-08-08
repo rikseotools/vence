@@ -45,6 +45,10 @@ interface TransformedQuestion {
   explanation: string | null
   primary_article_id: string | null
   tema?: number | string
+  /** Contenido visual de la pregunta. Si no viaja, `ContentDataRenderer` no pinta nada y una
+   *  pregunta del tipo «¿qué hace el siguiente icono?» se sirve sin el icono. */
+  image_url: string | null
+  content_data: Record<string, unknown> | null
   article: {
     id: string | undefined
     number: string
@@ -395,6 +399,18 @@ export function transformQuestions(supabaseQuestions: SupabaseQuestionAny[] | nu
       
       // 🔥 INCLUIR primary_article_id PARA HOT ARTICLES
       primary_article_id: q.primary_article_id,
+
+      // 🖼️ CONTENIDO VISUAL — sin esto la pregunta se sirve MUDA.
+      // `TestLayout` pinta <ContentDataRenderer contentData={currentQ.content_data} …>, y el
+      // endpoint /api/questions/filtered ya devuelve las dos columnas (queries.ts las mapea a
+      // propósito «para evitar que se olviden campos»). El eslabón que faltaba era este transform:
+      // las tiraba, así que el renderer recibía undefined y no pintaba nada.
+      // Lo encontró una usuaria (impugnación c9339594): «No aparece el icono por lo que no se
+      // puede responder». Eran 13 preguntas activas con la imagen guardada en
+      // content_data.image_base64, servidas 171 veces — varias con CERO aciertos, porque pedían
+      // identificar un icono que nadie llegaba a ver.
+      image_url: q.image_url ?? null,
+      content_data: q.content_data ?? null,
       
       // 🎯 INCLUIR TEMA PARA TESTS ALEATORIOS
       tema: q.tema,
