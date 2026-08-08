@@ -48,14 +48,25 @@ export class TelemetryRetentionCron {
     const startedAt = Date.now();
     try {
       const result = await this.service.run();
+      // [T-733] Si la purga se cortó, esto NO es un éxito y tiene que seguir despertando a
+      // `cron_sin_exito` (que decide por `severity`). Lo que cambia frente al 08/08 es que el
+      // evento ya no es un `{"status":"failure"}` pelado: lleva lo borrado, el atraso que queda
+      // y el error, que es lo que hace falta para saber si esto drena sin reconstruirlo a mano.
+      const purgaRota = result.purgaFallida.length > 0;
       await this.observability.emit({
         source: 'fargate',
-        severity: 'info',
+        severity: purgaRota ? 'error' : 'info',
         eventType: 'cron_run',
         endpoint: 'telemetry-retention',
         durationMs: Date.now() - startedAt,
+        errorMessage: purgaRota
+          ? result.purgaFallida
+              .map((f) => `${f.tabla}: ${f.error}`)
+              .join(' | ')
+          : undefined,
         metadata: {
-          status: 'success',
+          status: purgaRota ? 'partial' : 'success',
+          purgaFallida: result.purgaFallida,
           observableEventsDeleted: result.observableEventsDeleted,
           validationErrorLogsDeleted: result.validationErrorLogsDeleted,
           batches: result.batches,
@@ -76,11 +87,6 @@ export class TelemetryRetentionCron {
           observableEventsPorParticion: result.observableEventsPorParticion,
           observableEventsParticionesDropeadas:
             result.observableEventsParticionesDropeadas,
-          // Tablas cuyo bucle de borrado se cortó a mitad de pasada (vacío = todo
-          // bien). También `status: 'success'` aunque esto no esté vacío: lo ya
-          // borrado y `remaining` son reales, solo faltó terminar esta tabla — la
-          // próxima noche retoma. Ver el comentario en TelemetryRetentionService.
-          purgeFailed: result.purgeFailed,
         },
       });
     } catch (error) {
