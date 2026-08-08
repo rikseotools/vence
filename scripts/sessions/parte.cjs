@@ -42,7 +42,7 @@ async function main() {
   if (!u) { console.error('❌ sin DATABASE_URL'); return 1 }
   const sql = require('postgres')(u, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 15 })
 
-  let tareas, sesiones, preguntas, friccion, listas, preflights, entregadas
+  let tareas, sesiones, preguntas, friccion, listas, preflights, entregadas, esperandoDeploySha
   try {
     tareas = await sql`
       SELECT id, title, claimed_by, claimed_at, lease_until
@@ -59,6 +59,14 @@ async function main() {
              review_requested_at, review_note, review_requested_by,
              reviewed_at, reviewed_by, review_verdict
         FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
+    // ── LA SEGUNDA MIRADA A LAS ESPERAS DE DEPLOY (T-711) ──────────────────────────────
+    // [T-620] ya impide pausar contra un sha INALCANZABLE, pero deja pasar el caso `sin_pushear`
+    // —pausar antes de empujar es legítimo y muy común—. Nadie volvía a mirarlas después: si su
+    // rama nunca se fusiona, el sha jamás llega a `origin/main` y la tarea duerme para siempre.
+    esperandoDeploySha = await sql`
+      SELECT id, title, wake_on_deploy_sha, wake_on_deploy_surface
+        FROM public.backlog_tasks
+       WHERE wake_on_deploy_sha IS NOT NULL AND status <> 'done'`.catch(() => [])
     friccion = await sql`
       SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid,
              -- El motivo vive en error_message y el veredicto medido en evitoBloqueo: sin los
@@ -152,6 +160,41 @@ async function main() {
   if (paraVerificar.length) {
     console.log(`⏰ ${paraVerificar.length} LISTA(S) PARA VERIFICAR (se cierran en minutos):`)
     for (const t of paraVerificar.slice(0, 8)) console.log(`   ${t.id}  ${String(t.title).slice(0, 66)}`)
+    console.log('')
+  }
+
+  // No sale en ninguna otra pantalla: no está entregada, no tiene veredicto, y `list` la pinta
+  // «esperando deploy» igual que una espera sana ([T-711]).
+  const { esperasVaradas } = require(path.join(REPO, 'lib', 'backlog', 'esperasVaradas.cjs'))
+  const { execFileSync } = require('child_process')
+  const gitOk = (args) => {
+    try { execFileSync('git', args, { cwd: REPO, stdio: 'ignore' }); return true } catch { return false }
+  }
+  const medirSha = (sha) => {
+    if (!gitOk(['rev-parse', '--verify', `${sha}^{commit}`])) return { existe: false }
+    return {
+      existe: true,
+      enOriginMain: gitOk(['merge-base', '--is-ancestor', sha, 'origin/main']),
+      enHead: gitOk(['merge-base', '--is-ancestor', sha, 'HEAD']),
+    }
+  }
+  const ramasDe = (sha) => {
+    try {
+      return require('child_process')
+        .execFileSync('git', ['branch', '-r', '--contains', sha, '--format=%(refname:short)'],
+          { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 })
+        .split('\n').map((l) => l.trim()).filter(Boolean)
+    } catch { return [] }
+  }
+  const varadas = esperasVaradas(esperandoDeploySha || [], medirSha, ramasDe)
+  if (varadas.length) {
+    console.log(`🚧 ${varadas.length} TAREA(S) ESPERAN UN DEPLOY QUE NO PUEDE LLEGAR:`)
+    console.log('   su commit NO está en `origin/main`, así que ningún deploy lo va a contener.')
+    for (const t of varadas.slice(0, 8)) {
+      console.log(`   ${t.id}  ${String(t.title).slice(0, 58)}`)
+      console.log(`      ↳ espera ${String(t.wake_on_deploy_sha).slice(0, 9)} · ${t.donde}`)
+    }
+    console.log('   Arreglo: fusiona su rama a `main`, o repunta la espera al sha bueno con `pause --tras-deploy`.')
     console.log('')
   }
 
