@@ -3128,6 +3128,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
       'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
   },
+  anclas_deteccion: {
+    titulo: 'Un detector no publica una cifra sin ANCLAS: casos reales que tiene que cazar y que no puede cazar',
+    ruta: 'lib/calidad/anclas.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'Núcleo puro + guardarraíl `anclasDetectores.guardrail` (trinquete: 24 → 23 detectores sin ' +
+      'anclas, solo puede bajar) + simulación `npm run sim:anclas` contra la BD real. Nace de ' +
+      '[T-718]: el 08/08/2026 tres mediciones plausibles estuvieron a punto de decidir cosas ' +
+      'reales — un 36 % dado por «suelo sano» que era la avería (habría cerrado [T-692] en ' +
+      'falso), un «2 de 21» que eran 21 de 21, y un criterio que marcó la CONSTITUCIÓN (4.606 ' +
+      'preguntas). Ninguno lo cazó un test. LA REGLA QUE SALVA: sin anclas NEGATIVAS no vale, ' +
+      'porque un detector que solo declara positivos se satisface marcándolo TODO — que es la ' +
+      'forma exacta del tercer error. Calibrado de referencia: `lib/health/epigrafeTruncado.cjs` ' +
+      'exporta `ANCLAS` y se ejercitan contra RDS en un test de integración.',
+  },
+
   specs_ejecutados: {
     titulo: 'Un spec de Playwright que ningún proyecto de CI ejecuta NO cuenta como capa',
     ruta: 'lib/calidad/specsEjecutados.cjs',

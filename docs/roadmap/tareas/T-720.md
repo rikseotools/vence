@@ -1,0 +1,48 @@
+### [T-720] 🟠 [ABIERTO 08/08] La cola de revisadas no se cierra al MERGEAR: crece sola y deja de creerse
+
+**Medido el 08/08 al vaciarla: de 36 tareas con veredicto `ok` «esperando merge», 29 ya estaban en
+`main`.** El trabajo estaba integrado desde hacía horas o días; lo único que seguía en pie era la
+fila de la base de datos.
+
+**Por qué pasa.** El ciclo de una tarea tiene un paso que nadie cierra:
+
+| paso | quién lo mueve | ¿se cierra solo? |
+|---|---|---|
+| `open → in_progress` | `claim` | sí |
+| `in_progress → entregada` | `revision` | sí |
+| `entregada → revisada` | `revisado` (otro trabajador) | sí, desde [T-486] |
+| **`revisada → MERGEADA`** | **nadie** | **NO** |
+
+`reviewed_at` y `review_verdict` se ponen y **no se quitan nunca**. Así que una tarea revisada con
+`ok` sale en la lista de «falta que una persona la mergee» **para siempre**, aunque se mergeara en
+el minuto siguiente. Es exactamente el modo de fallo que [T-486] arregló para `entregada` —una cola
+sin salida, no una cola lenta— un escalón más abajo.
+
+**Y empeora cuanto mejor va la flota:** cada revisión con `ok` añade una fila que ya no sale sola.
+
+**El daño no es cosmético, es que la cola deja de creerse.** Con 29 de 36 fantasma, mirar esa lista
+no dice qué falta por integrar: dice cuántas se revisaron alguna vez. Un panel que exagera se
+aprende a ignorar en una semana, y con él se ignora lo que sí estaba pendiente — las 3 reales de
+hoy, que traían código de verdad.
+
+#### Qué hacer
+
+1. **Detectar «ya está en main» en vez de declararlo.** El dato es comprobable sin que nadie lo
+   escriba: `git merge-base --is-ancestor <rama> origin/main`. `list` puede pintar la tarea revisada
+   como **integrada** cuando su rama ya es ancestro, igual que `reap` distingue un lease vivo de uno
+   muerto sin que nadie declare nada. **Se observa, no se declara** es el principio de la casa.
+2. **Un estado explícito para lo mergeado.** Si se prefiere el dato escrito (una tarea puede no
+   tener rama, ver §punto ciego), hace falta el comando que hoy no existe — el gemelo de `revisado`
+   para el otro lado. Ojo: `archive` NO sirve, porque exige que la tarea esté cerrada, y una
+   revisada-con-ok puede seguir abierta esperando verificación en producción.
+3. **Y lo que hace falta antes de elegir:** medir cuántas de las revisadas tienen rama identificable.
+   Hoy `T-218` no tenía ninguna y varias tenían DOS (la original y una de seguimiento), así que la
+   detección por rama tiene su propio punto ciego y conviene saber su tamaño antes de apoyarse en ella.
+
+**Lo que NO hay que hacer:** borrar `reviewed_at` al mergear. Es el registro de que alguien revisó,
+y perderlo dejaría el mismo agujero que [T-155] con el Paso 9 — el trabajo hecho y sin registrar,
+para el sistema, es trabajo no hecho. Lo que falta es un estado MÁS, no borrar el que hay.
+
+**Relacionadas:** [T-486] (el ciclo de seis escalones y la cola sin salida de `entregada`),
+[T-700] (el reparto de las devueltas, el otro escalón que se atascaba), [T-721] (las ramas viejas,
+que es lo que hace peligroso mergear a ciegas esta misma cola).

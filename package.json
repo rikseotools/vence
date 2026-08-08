@@ -182,6 +182,7 @@
     "sim:friccion-puertas": "node scripts/sessions/sim-friccion-puertas.cjs",
     "sim:espera-revision": "node scripts/backlog/sim-espera-revision.cjs",
     "sim:bearer-ausente": "node scripts/sim/sim-bearer-ausente.cjs",
+    "sim:anclas": "node scripts/sim/sim-anclas-deteccion.cjs",
     "sim:embudo-fantasma": "node scripts/backlog/sim-embudo-fantasma.cjs",
     "audit:epigrafe-fuente": "node scripts/temario/audit-epigrafe-vs-fuente.cjs",
     "scope:medir-ley-entera": "node --env-file=.env.local scripts/scope/medir-ley-entera.cjs",

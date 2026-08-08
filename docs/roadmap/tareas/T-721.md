@@ -1,0 +1,50 @@
+### [T-721] 🟠 [ABIERTO 08/08] Una rama revisada puede traer de vuelta la versión ANTERIOR a su propia corrección
+
+**Pasó cuatro veces el mismo día, y en dos de ellas el merge ya estaba hecho cuando se descubrió.**
+Una rama de trabajador se revisa, el veredicto pide un arreglo, **el arreglo se aplica en `main`** (o
+en otra rama que se mergea antes), y la rama original **se queda con el texto viejo**. Al mergearla
+después, git no ve conflicto donde el fichero no coincide: ve dos versiones y, en las líneas que
+solo cambió una de ellas, **gana la vieja sin decir nada**.
+
+#### Los cuatro casos medidos (08/08)
+
+| rama | lo que devolvía | la versión buena |
+|---|---|---|
+| `flota/T-356-articulos-pobres-w2` | lista de **200** artículos priorizados | **202**, con los 3 que la revisión señaló como ausentes (entre ellos `67c75874`, Ley 40/2015 art. 44) |
+| `flota/T-356-…` (mismo merge) | `'\s+'` dentro del template `sql` | `WS_PATTERN` — el bug que CLAUDE.md documenta: se cocina como `s+` y colapsa las eses, no los espacios |
+| `flota/T-634-leon-office-2021-vs-365` | «1.650 preguntas, ~36 oposiciones» | **1.905 y 46**; la ficha en `main` dice literalmente que la primera entrega *subestimaba el alcance* |
+| `flota/T-196-…` y `T-699-…` | fichas de 56 y 25 líneas | 75 y 123 líneas en la ficha fuente |
+
+**Lo que salvó los dos últimos fue una comprobación manual**, no una herramienta: comparar línea a
+línea antes de portar nada. Y lo que salvó a T-356 fueron **dos guardarraíles seguidos** —el de
+sintaxis del `pre-commit` y el `typecheck` del `pre-push`— porque el merge dejó marcadores de
+conflicto. Si el conflicto hubiera sido limpio, habría entrado.
+
+#### Por qué el sistema actual no lo ve
+
+- El **veredicto** dice «ok» y eso se lee como «mergeable». Pero el veredicto se emitió sobre el
+  estado de la rama **en ese momento**; lo que pasó después en `main` no lo sabe nadie.
+- `contexto-push-guard` vigila la pérdida de fichas del backlog, pero solo compara contra
+  `origin/main` **el fichero del backlog**, no el resto del árbol.
+- Y ninguna de las tres puertas mira lo obvio: **¿esta rama contiene `origin/main`?** Si no lo
+  contiene, cada fichero que ambos tocaron es una posible regresión.
+
+#### Qué hacer
+
+1. **Avisar al mergear cuando la rama no contiene `main`** (`git merge-base --is-ancestor
+   origin/main <rama>`). No bloquear: una rama corta y antigua puede mergearse sin problema. Avisar
+   con la lista de ficheros que ambos lados tocaron, que es exactamente donde puede haber regresión.
+2. **Y lo barato que ya se puede hacer hoy, sin herramienta:** antes de mergear una revisada, mirar
+   si `main` tocó esos mismos ficheros después de la fecha del veredicto. Es una orden de git, no un
+   juicio.
+3. Medir primero cuántas de las ramas vivas de la flota NO contienen `main`, para saber si el aviso
+   dispararía en el 5% o en el 90% — un aviso que salta siempre no se lee (lección del gate de la
+   cabecera de explicaciones, que fallaba en el 100% de los lotes buenos).
+
+**Lo que NO hay que hacer:** rebasar automáticamente las ramas de trabajador. Un `rebase` sobre
+trabajo que otra sesión puede estar mirando es peor que el problema, y esta casa ya tiene la regla
+de que nunca se toca a la brava lo que no está commiteado.
+
+**Relacionadas:** [T-720] (la cola de revisadas que invita a mergear en lote), [T-428] (el guard de
+pérdida de contexto, que cubre solo el fichero del backlog), [T-443] (trabajo destruido entre
+sesiones por un commit rancio — el mismo fenómeno, otra puerta).
