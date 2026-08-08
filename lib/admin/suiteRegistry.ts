@@ -100,6 +100,22 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
     que: 'Las ANCLAS de `epigrafeTruncado` contra RDS: el epígrafe cortado que TIENE que marcar y el que lleva «:» en medio y NO puede marcar. Si el criterio se afloja o se amplía, salta aquí.',
   },
   {
+    // [T-718] Mismo patrón. Las negativas son las que pesan: si alguien mete un `lower()` en
+    // `normalizarOpcion` —la «mejora» que ya fabricó 8 preguntas rotas inexistentes— estas dos
+    // pasan de 0 a 1 par y el test se pone rojo con el id delante. Comprobado, no supuesto.
+    ruta: '__tests__/integration/anclasOpcionesDuplicadas.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'Las ANCLAS de `opcionesDuplicadas` contra RDS: el duplicado real que TIENE que ver, y dos preguntas donde la MAYÚSCULA es la respuesta («:n» vs «:N») que NO puede marcar.',
+  },
+  {
+    // [T-718] Sus dos negativas son las EXCLUSIONES que sostienen la precisión: sin ellas el
+    // criterio pasa de 112 hallazgos a 8.938, casi todos correctos. Aflojar el criterio no
+    // rompería ningún otro test — solo multiplicaría el trabajo por ochenta.
+    ruta: '__tests__/integration/anclasExplicacionTruncada.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'Las ANCLAS de `explicacionTruncada` contra RDS: la explicación cortada en coma que TIENE que ver, y dos que NO puede marcar (acaba en URL, cierra con «entre otras»).',
+  },
+  {
     ruta: '__tests__/integration/referrals-queries.test.ts',
     tipo: 'codigo', fixturePropio: true, gateEscritura: true,
     que: 'Circuito de referidos por función (atribuir, calificar, hold, promover). Migrada a usuarios efímeros en T-336.',
