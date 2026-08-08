@@ -1,0 +1,1803 @@
+══ vuelta 1/12 — siguiendo 269e31e1a
+   [1] desplegar — la punta 269e31e1a está verde
+→ desplegando frontend en 269e31e1a (deja fuera 0 commit(s) más nuevos, irán en el siguiente deploy)
+🔒 lock de deploy adquirido (/tmp/vence-deploy.lock).
+→ DEPLOY_SHA: se despliega 269e31e1a (último verde), 0 commit(s) de main se quedan para el siguiente deploy
+→ se desplegará (ancestro elegido) 269e31e1a35201705e3edf4202d5e6d366f43312 = 269e31e1 (el árbol de trabajo no se toca)
+🔒 candado de deploy adquirido (run 83) — visible desde cualquier máquina.
+→ [gate CI] verificando checks de CÓDIGO (unit+typecheck+lint) de GHA para 269e31e1…
+   ✅ CI de código verde (unit+typecheck+lint) para 269e31e1. [integration=failure — informativo, no gatea]
+→ árbol de build efímero: /tmp/vence-build-XoDAhM (se borra al salir, pase lo que pase)
+→ [1/6] build 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-frontend:deploy-269e31e1 (flip: NEXT_PUBLIC_AUTH_PROVIDER=authjs)
+time="2026-08-07T18:39:06+02:00" level=warning msg="missing \"NEXT_PUBLIC_SENTRY_DSN\" build argument. Try adding \"--build-arg NEXT_PUBLIC_SENTRY_DSN=<VALUE>\" to the command line"
+[1/3] STEP 1/5: FROM node:22-alpine AS deps
+[1/3] STEP 2/5: WORKDIR /app
+--> Using cache 07125ca489c9e9b8048a564fd86863481343d09dff7f2b9161a457c62346d554
+--> 07125ca489c9
+[1/3] STEP 3/5: RUN apk add --no-cache libc6-compat
+--> Using cache 5fdfb95a31ef4fb5d574160ae0323996c98f5e87fb9fa97d52daa7e6e4657a1a
+--> 5fdfb95a31ef
+[1/3] STEP 4/5: COPY package.json package-lock.json* ./
+--> Using cache bf56eda86a20716c72ed890756b8db92b5af74a7960e204b19c32436a6d668a9
+--> bf56eda86a20
+[1/3] STEP 5/5: RUN npm ci --prefer-offline --no-audit --no-fund
+--> Using cache 18559d2ca7ea9bd0f408d97d6b6b086e7267415d69c36b3eccc634a42c1806f3
+--> 18559d2ca7ea
+[2/3] STEP 1/59: FROM node:22-alpine AS builder
+[2/3] STEP 2/59: WORKDIR /app
+--> Using cache 07125ca489c9e9b8048a564fd86863481343d09dff7f2b9161a457c62346d554
+--> 07125ca489c9
+[2/3] STEP 3/59: COPY --from=deps /app/node_modules ./node_modules
+--> Using cache c6350cb85978c8a9ca8606191638139ba6d88db861e526409d1b9de9e5bcd725
+--> c6350cb85978
+[2/3] STEP 4/59: COPY . .
+--> 78de2d5dd78d
+[2/3] STEP 5/59: ENV NEXT_TELEMETRY_DISABLED=1
+--> 6fc0b453a23e
+[2/3] STEP 6/59: ARG NEXT_PUBLIC_SUPABASE_URL
+--> 5ffd9583a4f0
+[2/3] STEP 7/59: ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+--> 7fee51b3fe2f
+[2/3] STEP 8/59: ARG NEXT_PUBLIC_SENTRY_DSN
+--> 0e1eaf4572c4
+[2/3] STEP 9/59: ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+--> de404d9a8886
+[2/3] STEP 10/59: ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+--> a6f22338775f
+[2/3] STEP 11/59: ARG NEXT_PUBLIC_STRIPE_PRICE_MONTHLY
+--> 1fb2ff520c07
+[2/3] STEP 12/59: ARG NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY
+--> 8165527077a8
+[2/3] STEP 13/59: ARG NEXT_PUBLIC_STRIPE_PRICE_SEMESTER
+--> 95bd35b04477
+[2/3] STEP 14/59: ARG NEXT_PUBLIC_STRIPE_PRICE_ANNUAL
+--> 9c84d09e2e63
+[2/3] STEP 15/59: ARG NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA
+--> eae469950541
+[2/3] STEP 16/59: ARG NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA
+--> a3ef1204f516
+[2/3] STEP 17/59: ARG NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA
+--> b67964c09dc0
+[2/3] STEP 18/59: ARG NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA
+--> 66e591939cb7
+[2/3] STEP 19/59: ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+--> 314ded61d875
+[2/3] STEP 20/59: ARG NEXT_PUBLIC_GIT_COMMIT_SHA
+--> 30831bd2f540
+[2/3] STEP 21/59: ARG NEXT_PUBLIC_SITE_URL
+--> c00c0c1094cd
+[2/3] STEP 22/59: ARG NEXT_PUBLIC_APP_NAME
+--> 6c65d36c6d47
+[2/3] STEP 23/59: ARG NEXT_PUBLIC_SUPPORT_EMAIL
+--> 2259d156d058
+[2/3] STEP 24/59: ARG NEXT_PUBLIC_USE_CHAT_V2
+--> 5a72f686a0b9
+[2/3] STEP 25/59: ARG NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY
+--> 92f9e89698b2
+[2/3] STEP 26/59: ARG NEXT_PUBLIC_AUTH_PROVIDER
+--> 49ad295957ca
+[2/3] STEP 27/59: ARG NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API
+--> 3bf4ce73deed
+[2/3] STEP 28/59: ARG DATABASE_URL
+--> 2b60c2c5751a
+[2/3] STEP 29/59: ARG DATABASE_URL_REPLICA
+--> cc93fa7733b9
+[2/3] STEP 30/59: ARG SUPABASE_SERVICE_ROLE_KEY
+--> f2877de99669
+[2/3] STEP 31/59: ARG GIT_COMMIT_SHA
+--> d558358bc141
+[2/3] STEP 32/59: ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+--> 993a4acbd5a5
+[2/3] STEP 33/59: ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+--> 42dc55227bef
+[2/3] STEP 34/59: ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+--> d53cde7f9a68
+[2/3] STEP 35/59: ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+--> 0270bf53e639
+[2/3] STEP 36/59: ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+--> 7eff4938358c
+[2/3] STEP 37/59: ENV NEXT_PUBLIC_STRIPE_PRICE_MONTHLY=${NEXT_PUBLIC_STRIPE_PRICE_MONTHLY}
+--> b40447c334d5
+[2/3] STEP 38/59: ENV NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY=${NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY}
+--> 5ece3548d58e
+[2/3] STEP 39/59: ENV NEXT_PUBLIC_STRIPE_PRICE_SEMESTER=${NEXT_PUBLIC_STRIPE_PRICE_SEMESTER}
+--> 53b48947c1ff
+[2/3] STEP 40/59: ENV NEXT_PUBLIC_STRIPE_PRICE_ANNUAL=${NEXT_PUBLIC_STRIPE_PRICE_ANNUAL}
+--> 735a87b88f5b
+[2/3] STEP 41/59: ENV NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA=${NEXT_PUBLIC_STRIPE_PRICE_MONTHLY_NILA}
+--> f36da01e95f8
+[2/3] STEP 42/59: ENV NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA=${NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY_NILA}
+--> b8ddc95d0c8a
+[2/3] STEP 43/59: ENV NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA=${NEXT_PUBLIC_STRIPE_PRICE_SEMESTER_NILA}
+--> 1e5ed732f988
+[2/3] STEP 44/59: ENV NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA=${NEXT_PUBLIC_STRIPE_PRICE_ANNUAL_NILA}
+--> fb5ca8165cea
+[2/3] STEP 45/59: ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
+--> 5a0bac1da071
+[2/3] STEP 46/59: ENV NEXT_PUBLIC_GIT_COMMIT_SHA=${NEXT_PUBLIC_GIT_COMMIT_SHA}
+--> c6976e417251
+[2/3] STEP 47/59: ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+--> 06eaf85056cb
+[2/3] STEP 48/59: ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+--> a41b6236fff4
+[2/3] STEP 49/59: ENV NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL}
+--> e9fd0104ee65
+[2/3] STEP 50/59: ENV NEXT_PUBLIC_USE_CHAT_V2=${NEXT_PUBLIC_USE_CHAT_V2}
+--> cac376979d47
+[2/3] STEP 51/59: ENV NEXT_PUBLIC_AUTH_PROVIDER=${NEXT_PUBLIC_AUTH_PROVIDER}
+--> 1c62b5245efc
+[2/3] STEP 52/59: ENV NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API=${NEXT_PUBLIC_AUTH_LIFECYCLE_VIA_API}
+--> d361a279e3e4
+[2/3] STEP 53/59: ENV NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY}
+--> ce73ecf640d2
+[2/3] STEP 54/59: ENV DATABASE_URL=${DATABASE_URL}
+--> 67eba6b5fd7e
+[2/3] STEP 55/59: ENV DATABASE_URL_REPLICA=${DATABASE_URL_REPLICA}
+--> cbcb30488cb0
+[2/3] STEP 56/59: ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+--> 5625d268edd9
+[2/3] STEP 57/59: ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
+--> c73c6e0bdd25
+[2/3] STEP 58/59: RUN test -n "$NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY" || (   echo "❌ BUILD ABORTADO: NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY vacío." &&   echo "   El gate anti-scraping quedaría OFF en prod. Pásalo como build-arg en" &&   echo "   frontend-deploy.yml y declara su ARG/ENV en este Dockerfile." && exit 1 )
+--> 46ff07f07941
+[2/3] STEP 59/59: RUN npm run build
+
+> vence@0.1.0 build
+> node scripts/check-help-articles.mjs; node scripts/sync-theme-names-from-bd.js; next build
+
+⏭️ [help-articles] Sin GIT_PREVIOUS_SHA, saltando check
+✅ Config ya sincronizado con BD — sin cambios
+▲ Next.js 16.2.6 (Turbopack)
+- Experiments (use with caution):
+  · cssChunking: "strict"
+  ✓ optimizeCss
+
+  Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Turbopack build encountered 2 warnings:
+./lib/api/official-exams/queries.ts:75:22
+The file pattern ('/ROOT/data/examenes-oficiales/auxiliar-administrativo-estado/24-07-09 convocatoria 9 julio 2024 - OEP-2023-2024/Convocatoria 9 julio 2024.json' | '/ROOTdata/examenes-oficiales/auxiliar-administrativo-estado/24-07-09 convocatoria 9 julio 2024 - OEP-2023-2024/Convocatoria 9 julio 2024.json' | '/ROOT/data/examenes-oficiales/auxiliar-administrativo-estado/23-01-20 convocatoria 20 enero 2023 - OEP 2021-2022/20 de enero de 2023.json' | '/ROOTdata/examenes-oficiales/auxiliar-administrativo-estado/23-01-20 convocatoria 20 enero 2023 - OEP 2021-2022/20 de enero de 2023.json' | '/ROOT/data/examenes-oficiales/auxiliar-administrativo-estado/21-05-26 Convocatoria 26  mayo 2021 - OEP 2020/convocatoria 26 mayo 2021.json' | '/ROOTdata/examenes-oficiales/auxiliar-administrativo-estado/21-05-26 Convocatoria 26  mayo 2021 - OEP 2020/convocatoria 26 mayo 2021.json' | '/ROOT/data/examenes-oficiales/auxiliar-administrativo-estado/19-06-14 convocatoria 14 junio  2019 - OEP 2018-2019/convocatoria 14 junio 2019.json' | '/ROOTdata/examenes-oficiales/auxiliar-administrativo-estado/19-06-14 convocatoria 14 junio  2019 - OEP 2018-2019/convocatoria 14 junio 2019.json' | '/ROOT/' <dynamic> | '/ROOT' <dynamic>) matches 12036 files in [project]/
+  [90m73 |[0m     [36mif[0m (!jsonPath) [36mreturn[0m [36mnull[0m
+  [90m74 |[0m
+[31m[1m>[0m [90m75 |[0m     [36mconst[0m fullPath = path.join(process.cwd(), jsonPath)
+  [90m   |[0m                      [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m76 |[0m     [36mif[0m (!fs.existsSync(fullPath)) [36mreturn[0m [36mnull[0m
+  [90m77 |[0m
+  [90m78 |[0m     [36mconst[0m content = fs.readFileSync(fullPath, [32m'utf-8'[0m)
+
+Overly broad patterns can lead to build performance issues and over bundling.
+
+Import trace:
+  App Route:
+    ./lib/api/official-exams/queries.ts
+    ./app/api/v2/official-exams/resume/route.ts
+
+
+./next.config.mjs
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./next.config.mjs
+    ./lib/api/official-exams/queries.ts
+    ./app/api/v2/official-exams/resume/route.ts
+
+
+✓ Compiled successfully in 53s
+  Running TypeScript ...
+  Finished TypeScript in 82s ...
+  Collecting page data using 13 workers ...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+  Generating static pages using 13 workers (0/3166) ...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+✅ Instancia única de Supabase creada exitosamente
+🔄 [LawsAPI] Cargando cache de slugs desde BD...
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+🔧 Creando instancia ÚNICA de Supabase...
+✅ Instancia única de Supabase creada exitosamente
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+✅ [LawsAPI] Cache cargado: 1373 leyes
+  Generating static pages using 13 workers (791/3166) 
+  Generating static pages using 13 workers (1582/3166) 
+🚀 Obteniendo leyes con conteo (Drizzle Query Builder)...
+  Generating static pages using 13 workers (2374/3166) 
+⏱️ getLawsWithQuestionCounts: 254.894ms
+✅ 1134 leyes con preguntas obtenidas
+[home] getOpenConvocatorias falló: Failed query: 
+        SELECT slug, nombre,
+               inscription_start::text AS inscription_start,
+               inscription_deadline::text AS inscription_deadline,
+               plazas_libres, is_active, seguimiento_url, subgrupo, familia
+        FROM oposiciones_ssot
+        ORDER BY inscription_deadline ASC NULLS LAST
+      
+params: 
+✓ Generating static pages using 13 workers (3166/3166) in 13.8s
+  Finalizing page optimization ...
+
+Route (app)                                                                                                Revalidate  Expire
+┌ ○ /                                                                                                              1h      1y
+├ ○ /_not-found
+├ ƒ /.well-known/jwks.json
+├ ƒ /[oposicion]
+├ ƒ /[oposicion]/oposiciones-compatibles
+├ ƒ /[oposicion]/test
+├ ƒ /[oposicion]/test/aleatorio
+├ ƒ /[oposicion]/test/examen-oficial
+├ ƒ /[oposicion]/test/simulacro
+├ ● /[oposicion]/test/tema/[numero]
+├ ● /[oposicion]/test/tema/[numero]/test-examen
+├ ● /[oposicion]/test/tema/[numero]/test-personalizado
+├ ƒ /[oposicion]/test/test-aleatorio-examen
+├ ƒ /[oposicion]/test/test-personalizado
+├ ○ /actualidad/lo-1-2026-multirreincidencia
+├ ○ /admin
+├ ○ /admin/ads
+├ ○ /admin/ai
+├ ○ /admin/ayuda
+├ ○ /admin/calidad
+├ ○ /admin/canary
+├ ○ /admin/cobros
+├ ○ /admin/competidores
+├ ○ /admin/configuracion
+├ ○ /admin/contenido
+├ ○ /admin/conversiones
+├ ○ /admin/despliegues/articulos-problematicos
+├ ○ /admin/engagement
+├ ○ /admin/feedback
+├ ○ /admin/fraudes
+├ ○ /admin/impersonacion
+├ ○ /admin/impugnaciones
+├ ○ /admin/infraestructura
+├ ○ /admin/infraestructura/detalles-pooler
+├ ○ /admin/monitoreo
+├ ○ /admin/newsletters
+├ ○ /admin/notificaciones
+├ ○ /admin/notificaciones/email
+├ ○ /admin/notificaciones/email/subscripciones
+├ ○ /admin/notificaciones/events
+├ ○ /admin/notificaciones/overview
+├ ○ /admin/notificaciones/users
+├ ○ /admin/observability
+├ ○ /admin/oep-signals
+├ ○ /admin/oposiciones
+├ ○ /admin/oposiciones-coverage
+├ ○ /admin/radar-contenido
+├ ○ /admin/radar-salud
+├ ○ /admin/referidos
+├ ƒ /admin/referidos/[userId]
+├ ○ /admin/revision-temas
+├ ƒ /admin/revision-temas/[topicId]
+├ ○ /admin/salud-sistema
+├ ○ /admin/seguimiento-convocatorias
+├ ○ /admin/slos
+├ ƒ /admin/verificar-articulos/[lawId]
+├ ƒ /administrativa-universidad-de-murcia/temario
+├ ƒ /administrativa-universidad-de-murcia/temario/[slug]
+├ ƒ /administrativa-universidad-de-murcia/test
+├ ƒ /administrativa-universidad-de-murcia/test/tema/[numero]
+├ ƒ /administrativa-universidad-de-murcia/test/tema/[numero]/test-examen
+├ ○ /administrativo
+├ ƒ /administrativo-agencia-tributaria-canaria/temario
+├ ƒ /administrativo-agencia-tributaria-canaria/temario/[slug]
+├ ƒ /administrativo-agencia-tributaria-canaria/test
+├ ƒ /administrativo-agencia-tributaria-canaria/test/tema/[numero]
+├ ƒ /administrativo-agencia-tributaria-canaria/test/tema/[numero]/test-examen
+├ ƒ /administrativo-andalucia/temario
+├ ƒ /administrativo-andalucia/temario/[slug]
+├ ƒ /administrativo-andalucia/test
+├ ƒ /administrativo-andalucia/test/tema/[numero]
+├ ƒ /administrativo-andalucia/test/tema/[numero]/test-examen
+├ ƒ /administrativo-aragon/temario
+├ ƒ /administrativo-aragon/temario/[slug]
+├ ƒ /administrativo-aragon/test
+├ ƒ /administrativo-aragon/test/tema/[numero]
+├ ƒ /administrativo-aragon/test/tema/[numero]/test-examen
+├ ƒ /administrativo-asturias/temario
+├ ƒ /administrativo-asturias/temario/[slug]
+├ ƒ /administrativo-asturias/test
+├ ƒ /administrativo-asturias/test/tema/[numero]
+├ ƒ /administrativo-asturias/test/tema/[numero]/test-examen
+├ ƒ /administrativo-canarias/temario
+├ ƒ /administrativo-canarias/temario/[slug]
+├ ƒ /administrativo-canarias/test
+├ ƒ /administrativo-canarias/test/tema/[numero]
+├ ƒ /administrativo-canarias/test/tema/[numero]/test-examen
+├ ƒ /administrativo-cantabria/temario
+├ ƒ /administrativo-cantabria/temario/[slug]
+├ ƒ /administrativo-cantabria/test
+├ ƒ /administrativo-cantabria/test/tema/[numero]
+├ ƒ /administrativo-cantabria/test/tema/[numero]/test-examen
+├ ƒ /administrativo-carm/temario
+├ ƒ /administrativo-carm/temario/[slug]
+├ ƒ /administrativo-carm/test
+├ ƒ /administrativo-carm/test/tema/[numero]
+├ ƒ /administrativo-carm/test/tema/[numero]/test-examen
+├ ƒ /administrativo-castilla-la-mancha/temario
+├ ƒ /administrativo-castilla-la-mancha/temario/[slug]
+├ ƒ /administrativo-castilla-la-mancha/test
+├ ƒ /administrativo-castilla-la-mancha/test/tema/[numero]
+├ ƒ /administrativo-castilla-la-mancha/test/tema/[numero]/test-examen
+├ ƒ /administrativo-castilla-leon/temario
+├ ƒ /administrativo-castilla-leon/temario/[slug]
+├ ƒ /administrativo-castilla-leon/test
+├ ƒ /administrativo-castilla-leon/test/tema/[numero]
+├ ƒ /administrativo-castilla-leon/test/tema/[numero]/test-examen
+├ ƒ /administrativo-diputacion-jaen/temario
+├ ƒ /administrativo-diputacion-jaen/temario/[slug]
+├ ƒ /administrativo-diputacion-jaen/test
+├ ƒ /administrativo-diputacion-jaen/test/tema/[numero]
+├ ƒ /administrativo-diputacion-jaen/test/tema/[numero]/test-examen
+├ ƒ /administrativo-diputacion-valencia/temario
+├ ƒ /administrativo-diputacion-valencia/temario/[slug]
+├ ƒ /administrativo-diputacion-valencia/test
+├ ƒ /administrativo-estado/temario
+├ ƒ /administrativo-estado/temario/[slug]
+├ ○ /administrativo-estado/test
+├ ƒ /administrativo-estado/test/tema/[numero]
+├ ƒ /administrativo-estado/test/tema/[numero]/test-examen
+├ ƒ /administrativo-extremadura/temario
+├ ƒ /administrativo-extremadura/temario/[slug]
+├ ƒ /administrativo-extremadura/test
+├ ƒ /administrativo-extremadura/test/tema/[numero]
+├ ƒ /administrativo-extremadura/test/tema/[numero]/test-examen
+├ ƒ /administrativo-galicia/temario
+├ ƒ /administrativo-galicia/temario/[slug]
+├ ƒ /administrativo-galicia/test
+├ ƒ /administrativo-galicia/test/tema/[numero]
+├ ƒ /administrativo-galicia/test/tema/[numero]/test-examen
+├ ƒ /administrativo-gva/temario
+├ ƒ /administrativo-gva/temario/[slug]
+├ ƒ /administrativo-gva/test
+├ ƒ /administrativo-junta-general-asturias/temario
+├ ƒ /administrativo-junta-general-asturias/temario/[slug]
+├ ƒ /administrativo-junta-general-asturias/test
+├ ƒ /administrativo-junta-general-asturias/test/tema/[numero]
+├ ƒ /administrativo-junta-general-asturias/test/tema/[numero]/test-examen
+├ ƒ /administrativo-la-rioja/temario
+├ ƒ /administrativo-la-rioja/temario/[slug]
+├ ƒ /administrativo-la-rioja/test
+├ ƒ /administrativo-la-rioja/test/tema/[numero]
+├ ƒ /administrativo-la-rioja/test/tema/[numero]/test-examen
+├ ƒ /administrativo-madrid/temario
+├ ƒ /administrativo-madrid/temario/[slug]
+├ ƒ /administrativo-madrid/test
+├ ƒ /administrativo-madrid/test/tema/[numero]
+├ ƒ /administrativo-madrid/test/tema/[numero]/test-examen
+├ ƒ /administrativo-navarra/temario
+├ ƒ /administrativo-navarra/temario/[slug]
+├ ƒ /administrativo-navarra/test
+├ ƒ /administrativo-navarra/test/tema/[numero]
+├ ƒ /administrativo-navarra/test/tema/[numero]/test-examen
+├ ƒ /administrativo-pais-vasco/temario
+├ ƒ /administrativo-pais-vasco/temario/[slug]
+├ ƒ /administrativo-pais-vasco/test
+├ ƒ /administrativo-pais-vasco/test/tema/[numero]
+├ ƒ /administrativo-pais-vasco/test/tema/[numero]/test-examen
+├ ƒ /administrativo-seguridad-social/temario
+├ ƒ /administrativo-seguridad-social/temario/[slug]
+├ ƒ /administrativo-seguridad-social/test
+├ ƒ /administrativo-seguridad-social/test/tema/[numero]
+├ ƒ /administrativo-seguridad-social/test/tema/[numero]/test-examen
+├ ƒ /administrativo-universidad-leon/temario
+├ ƒ /administrativo-universidad-leon/temario/[slug]
+├ ƒ /administrativo-universidad-leon/test
+├ ƒ /administrativo-universidad-leon/test/tema/[numero]
+├ ƒ /administrativo-universidad-leon/test/tema/[numero]/test-examen
+├ ○ /administrativo/test
+├ ƒ /agente-hacienda/temario
+├ ƒ /agente-hacienda/temario/[slug]
+├ ƒ /agente-hacienda/test
+├ ƒ /agente-hacienda/test/tema/[numero]
+├ ƒ /agente-hacienda/test/tema/[numero]/test-examen
+├ ƒ /agrupacion-profesional-servicios-publicos-carm/temario
+├ ƒ /agrupacion-profesional-servicios-publicos-carm/temario/[slug]
+├ ƒ /agrupacion-profesional-servicios-publicos-carm/test
+├ ƒ /agrupacion-profesional-servicios-publicos-carm/test/tema/[numero]
+├ ƒ /agrupacion-profesional-servicios-publicos-carm/test/tema/[numero]/test-examen
+├ ƒ /api/acquisition
+├ ƒ /api/admin/ads
+├ ƒ /api/admin/ai-chat-logs
+├ ƒ /api/admin/ai-config
+├ ƒ /api/admin/ai-config/test
+├ ƒ /api/admin/ai-config/usage
+├ ƒ /api/admin/ai-traces
+├ ƒ /api/admin/ai-traces/[logId]
+├ ƒ /api/admin/anti-scraping/levantar-marca
+├ ƒ /api/admin/canary
+├ ƒ /api/admin/canary/run-now
+├ ƒ /api/admin/competidores
+├ ƒ /api/admin/competidores/changes
+├ ƒ /api/admin/competidores/changes-count
+├ ƒ /api/admin/competidores/oposicion
+├ ƒ /api/admin/competidores/review
+├ ƒ /api/admin/competidores/search
+├ ƒ /api/admin/contenido
+├ ƒ /api/admin/contenido/cobertura/[slug]
+├ ƒ /api/admin/contenido/count
+├ ƒ /api/admin/contenido/epigrafe/[slug]
+├ ƒ /api/admin/content-health
+├ ƒ /api/admin/conversions/user-journey
+├ ƒ /api/admin/conversions/views
+├ ƒ /api/admin/delete-user
+├ ƒ /api/admin/email-events
+├ ƒ /api/admin/embajadores/[userId]/breakdown
+├ ƒ /api/admin/embajadores/[userId]/panel
+├ ƒ /api/admin/embedding-review
+├ ƒ /api/admin/engagement-stats
+├ ƒ /api/admin/feedback
+├ ƒ /api/admin/feedback/status
+├ ƒ /api/admin/funnel-users
+├ ƒ /api/admin/graduated-limits
+├ ƒ /api/admin/health
+├ ƒ /api/admin/health/cache-stats
+├ ƒ /api/admin/health/db-latency
+├ ƒ /api/admin/impersonar
+├ ƒ /api/admin/infra-stats
+├ ƒ /api/admin/lifecycle/apply-fix
+├ ƒ /api/admin/lifecycle/apply-fix-bulk
+├ ƒ /api/admin/lifecycle/queue
+├ ƒ /api/admin/mark-conversation-viewed
+├ ƒ /api/admin/mark-messages-read
+├ ƒ /api/admin/newsletters/audience
+├ ƒ /api/admin/newsletters/history
+├ ƒ /api/admin/newsletters/preview
+├ ƒ /api/admin/newsletters/send
+├ ƒ /api/admin/newsletters/template-stats
+├ ƒ /api/admin/newsletters/templates
+├ ƒ /api/admin/newsletters/templates/[slug]
+├ ƒ /api/admin/newsletters/users
+├ ƒ /api/admin/observability
+├ ƒ /api/admin/oep-consistency
+├ ƒ /api/admin/oep-signals
+├ ƒ /api/admin/oep-signals/pending-count
+├ ƒ /api/admin/oep-signals/trigger-cron
+├ ƒ /api/admin/oposiciones-coverage
+├ ƒ /api/admin/oposiciones-migrate
+├ ƒ /api/admin/oposiciones-stats
+├ ƒ /api/admin/oposiciones/rollover-pending
+├ ƒ /api/admin/pending-counts
+├ ƒ /api/admin/pool-capacity
+├ ƒ /api/admin/question-quality
+├ ƒ /api/admin/questions/lifecycle/transition
+├ ƒ /api/admin/radar-contenido
+├ ƒ /api/admin/radar-contenido/count
+├ ƒ /api/admin/radar-salud
+├ ƒ /api/admin/referrals/payout-requests
+├ ƒ /api/admin/referrals/payouts
+├ ƒ /api/admin/referrals/payouts-pending
+├ ƒ /api/admin/referrals/payouts-pending-count
+├ ƒ /api/admin/referrals/stats
+├ ƒ /api/admin/reset-user-stats
+├ ƒ /api/admin/revalidate
+├ ƒ /api/admin/revalidate-temario
+├ ƒ /api/admin/rewards
+├ ƒ /api/admin/rewards/accumulated
+├ ƒ /api/admin/rewards/issue-giftcard
+├ ƒ /api/admin/rewards/pay
+├ ƒ /api/admin/sales-prediction
+├ ƒ /api/admin/scope-verification/count
+├ ƒ /api/admin/seguimiento-convocatorias
+├ ƒ /api/admin/slos
+├ ƒ /api/admin/stripe-fees-summary
+├ ƒ /api/admin/system-health
+├ ƒ /api/admin/temario/pregenerate
+├ ƒ /api/admin/users-count
+├ ƒ /api/admin/users/subscriptions
+├ ƒ /api/admin/usuarios/buscar
+├ ƒ /api/ai/balance
+├ ƒ /api/ai/chat-v2
+├ ƒ /api/ai/chat/feedback
+├ ƒ /api/ai/chat/suggestions
+├ ƒ /api/ai/create-test
+├ ƒ /api/ai/verify-answer
+├ ƒ /api/answer/psychometric
+├ ƒ /api/answer/spelling
+├ ƒ /api/armando/auth
+├ ƒ /api/armando/logout
+├ ƒ /api/armando/me
+├ ƒ /api/attribution/touch
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/store-registration-ip
+├ ƒ /api/auth/token
+├ ƒ /api/auth/track-session-ip
+├ ○ /api/canary/isr
+├ ƒ /api/cron/audit-estados
+├ ƒ /api/cron/check-exam-integrity
+├ ƒ /api/cron/check-stats-drift
+├ ƒ /api/cron/check-webhook-health
+├ ƒ /api/cron/close-inactive-feedback
+├ ƒ /api/cron/conversion-outbox
+├ ƒ /api/cron/daily-registration-summary
+├ ƒ /api/cron/log-failure
+├ ƒ /api/cron/referrals-promote
+├ ƒ /api/cron/renewal-reminders
+├ ƒ /api/cron/sync-convocatorias
+├ ƒ /api/cursos
+├ ƒ /api/cursos/[slug]
+├ ƒ /api/cursos/hls/[lessonId]/[...seg]
+├ ƒ /api/cursos/progress
+├ ƒ /api/cursos/video-url
+├ ƒ /api/daily-limit
+├ ƒ /api/data-integrity/validate
+├ ƒ /api/debug-email-preferences
+├ ƒ /api/debug-unsubscribe
+├ ƒ /api/debug/category/[categoryId]/questions
+├ ƒ /api/debug/observability-smoke
+├ ƒ /api/debug/psico-images
+├ ƒ /api/debug/question/[id]
+├ ƒ /api/debug/question/test
+├ ƒ /api/debug/shuffle-demo
+├ ƒ /api/debug/validate-answer/[id]
+├ ƒ /api/dispute
+├ ƒ /api/dispute/mark-read
+├ ƒ /api/disputes/mine
+├ ƒ /api/email-tracking/click
+├ ƒ /api/email-tracking/open
+├ ƒ /api/email-unsubscribe
+├ ƒ /api/email/track-click
+├ ƒ /api/email/track-open
+├ ƒ /api/emails/campaign
+├ ƒ /api/emails/queue
+├ ƒ /api/emails/send-admin-notification
+├ ƒ /api/emails/send-automatic
+├ ƒ /api/emails/send-medal-congratulation
+├ ƒ /api/emails/send-welcome-immediate
+├ ƒ /api/emails/test
+├ ƒ /api/emails/test-inactive
+├ ƒ /api/emails/test-unmotivated
+├ ƒ /api/exam/answer
+├ ƒ /api/exam/complete
+├ ƒ /api/exam/discard
+├ ƒ /api/exam/init
+├ ƒ /api/exam/pending
+├ ƒ /api/exam/progress
+├ ƒ /api/exam/resume
+├ ƒ /api/exam/validate
+├ ƒ /api/exam/validate/psychometric
+├ ƒ /api/exams/official-attempts
+├ ƒ /api/feedback
+├ ƒ /api/feedback/message
+├ ƒ /api/finance/transfers
+├ ƒ /api/finance/transfers/auto-confirm
+├ ƒ /api/finance/transfers/confirm
+├ ƒ /api/finance/transfers/mark-sent
+├ ƒ /api/fraud/report
+├ ƒ /api/generate-explanation
+├ ƒ /api/health
+├ ƒ /api/health/db-ready
+├ ƒ /api/impersonacion/salir
+├ ƒ /api/interactions
+├ ƒ /api/internal/isr-apply
+├ ƒ /api/law-changes
+├ ƒ /api/law-changes/check-optimized
+├ ƒ /api/law-changes/quick-check
+├ ƒ /api/law-titles
+├ ƒ /api/laws-configurator
+├ ƒ /api/medals
+├ ƒ /api/meta/track
+├ ƒ /api/notifications/oposicion-alerts
+├ ƒ /api/notifications/problematic-articles
+├ ƒ /api/observability/ingest
+├ ○ /api/oposiciones/catalog                                                                                      10m      1y
+├ ƒ /api/platform-stats
+├ ƒ /api/profile
+├ ƒ /api/profile/avatar-settings
+├ ƒ /api/profile/email-preferences
+├ ƒ /api/profile/seguidas
+├ ƒ /api/profile/subscription-history
+├ ƒ /api/profile/target
+├ ƒ /api/profile/test-favorites
+├ ƒ /api/psychometric-test-data
+├ ƒ /api/psychometric-test-data/questions
+├ ƒ /api/psychometric/complete
+├ ƒ /api/psychometric/completed-sessions
+├ ƒ /api/psychometric/create
+├ ƒ /api/psychometric/discard
+├ ƒ /api/psychometric/pending
+├ ƒ /api/psychometric/resume
+├ ƒ /api/psychometric/review
+├ ƒ /api/purge-cache
+├ ƒ /api/questions/by-id
+├ ƒ /api/questions/failed-by-topic
+├ ƒ /api/questions/filtered
+├ ƒ /api/questions/law-stats
+├ ƒ /api/questions/user-failed
+├ ƒ /api/random-test-data
+├ ƒ /api/random-test-data/check-availability
+├ ƒ /api/random-test-data/theme-details
+├ ƒ /api/random-test/availability
+├ ƒ /api/random-test/config
+├ ƒ /api/random-test/generate
+├ ƒ /api/random-test/user-stats
+├ ƒ /api/ranking
+├ ƒ /api/ranking/streaks
+├ ƒ /api/referrals/attribute
+├ ƒ /api/referrals/badge
+├ ƒ /api/referrals/me
+├ ƒ /api/referrals/payout-request
+├ ƒ /api/referrals/track-copy
+├ ƒ /api/referrals/track-view
+├ ƒ /api/referrals/vouchers
+├ ƒ /api/security/captcha/status
+├ ƒ /api/send-support-email
+├ ƒ /api/sessions/check-active
+├ ƒ /api/sessions/close-others
+├ ƒ /api/sessions/track-block
+├ ƒ /api/setup-email-preferences
+├ ƒ /api/share-events
+├ ƒ /api/soporte
+├ ƒ /api/soporte/messages
+├ ƒ /api/spelling/session
+├ ƒ /api/stats
+├ ƒ /api/stripe/cancel
+├ ƒ /api/stripe/cancel/feedback
+├ ƒ /api/stripe/checkout-sync
+├ ƒ /api/stripe/create-checkout
+├ ƒ /api/stripe/reactivate
+├ ƒ /api/stripe/subscription
+├ ƒ /api/stripe/webhook
+├ ƒ /api/tema-resolver
+├ ƒ /api/temario/[oposicion]/[topic]/pdf
+├ ƒ /api/teoria/[law]/[articleNumber]
+├ ƒ /api/teoria/[law]/[articleNumber]/test-count
+├ ƒ /api/teoria/articles
+├ ƒ /api/teoria/search
+├ ƒ /api/teoria/sections
+├ ƒ /api/test/save-answer
+├ ƒ /api/tests/[testId]/review
+├ ƒ /api/tests/recover
+├ ƒ /api/topic-review
+├ ƒ /api/topic-review/[topicId]
+├ ƒ /api/topic-review/pending-all
+├ ƒ /api/topic-review/update-status
+├ ƒ /api/topic-review/verify
+├ ƒ /api/topics/[numero]
+├ ƒ /api/unsubscribe
+├ ƒ /api/unsubscribe/validate
+├ ƒ /api/upload-avatar
+├ ƒ /api/upload-chat-attachment
+├ ƒ /api/upload-feedback-image
+├ ƒ /api/user/question-history
+├ ƒ /api/user/theme-stats
+├ ƒ /api/v2/access/check
+├ ƒ /api/v2/account/deletion-request
+├ ƒ /api/v2/admin/broadcast
+├ ƒ /api/v2/admin/charts
+├ ƒ /api/v2/admin/conversion-stats
+├ ƒ /api/v2/admin/dashboard
+├ ƒ /api/v2/admin/disputes
+├ ƒ /api/v2/admin/email-logs
+├ ƒ /api/v2/admin/feedback/close
+├ ƒ /api/v2/admin/feedback/conversation-feedback-id
+├ ƒ /api/v2/admin/feedback/create-admin-conversation
+├ ƒ /api/v2/admin/feedback/create-conversation
+├ ƒ /api/v2/admin/feedback/delete-image
+├ ƒ /api/v2/admin/feedback/enrich-profiles
+├ ƒ /api/v2/admin/feedback/feedbacks-list
+├ ƒ /api/v2/admin/feedback/find-user-by-email
+├ ƒ /api/v2/admin/feedback/list
+├ ƒ /api/v2/admin/feedback/mark-viewed
+├ ƒ /api/v2/admin/feedback/messages
+├ ƒ /api/v2/admin/feedback/open-count
+├ ƒ /api/v2/admin/feedback/start-conversation
+├ ƒ /api/v2/admin/feedback/update-feedback
+├ ƒ /api/v2/admin/feedback/upload-image
+├ ƒ /api/v2/admin/feedback/user-conversations
+├ ƒ /api/v2/admin/feedback/waiting-conversations
+├ ƒ /api/v2/admin/fraud/blocked
+├ ƒ /api/v2/admin/fraud/bots
+├ ƒ /api/v2/admin/fraud/multi
+├ ƒ /api/v2/admin/fraud/pending-count
+├ ƒ /api/v2/admin/fraud/premium
+├ ƒ /api/v2/admin/fraud/scripts
+├ ƒ /api/v2/admin/fraud/signals
+├ ƒ /api/v2/admin/fraud/signals/review
+├ ƒ /api/v2/admin/help-articles
+├ ƒ /api/v2/admin/newsletters/resolve-users
+├ ƒ /api/v2/admin/notification-events
+├ ƒ /api/v2/admin/notification-overview
+├ ƒ /api/v2/admin/notification-user-events
+├ ƒ /api/v2/admin/notification-users
+├ ƒ /api/v2/admin/pending-feedback-counts
+├ ƒ /api/v2/admin/problematic-articles-rollout
+├ ƒ /api/v2/admin/unread-sales
+├ ƒ /api/v2/admin/upgrade-messages/impressions
+├ ƒ /api/v2/admin/upgrade-messages/update
+├ ƒ /api/v2/admin/validation-errors
+├ ƒ /api/v2/answer-and-save
+├ ƒ /api/v2/auth/ensure-profile
+├ ƒ /api/v2/auth/process-callback
+├ ƒ /api/v2/auto-assign-target
+├ ƒ /api/v2/avatar/public-profile
+├ ƒ /api/v2/avatar/rotation
+├ ƒ /api/v2/avatar/rotation/mark-read
+├ ƒ /api/v2/banner/open-inscriptions
+├ ƒ /api/v2/banner/open-inscriptions/dismiss
+├ ƒ /api/v2/comparar-temarios
+├ ƒ /api/v2/complete-onboarding
+├ ƒ /api/v2/complete-test
+├ ƒ /api/v2/content-scope-config
+├ ƒ /api/v2/conversion-event
+├ ƒ /api/v2/custom-oposiciones
+├ ƒ /api/v2/custom-oposiciones/popular
+├ ƒ /api/v2/daily-goal/status
+├ ƒ /api/v2/daily-question/increment
+├ ƒ /api/v2/daily-question/status
+├ ƒ /api/v2/devices
+├ ƒ /api/v2/difficulty-insights
+├ ƒ /api/v2/dispute
+├ ƒ /api/v2/dispute/resolve
+├ ƒ /api/v2/disputes/appeal
+├ ƒ /api/v2/disputes/mark-all-read
+├ ƒ /api/v2/disputes/notifications
+├ ƒ /api/v2/feedback/respond
+├ ƒ /api/v2/hot-articles
+├ ƒ /api/v2/hot-articles/check
+├ ƒ /api/v2/law-slugs
+├ ƒ /api/v2/laws/[lawId]/articles
+├ ƒ /api/v2/laws/[lawId]/articles/[articleNumber]
+├ ƒ /api/v2/laws/search
+├ ƒ /api/v2/medals/badge
+├ ƒ /api/v2/motivational-message
+├ ƒ /api/v2/motivational-message/interaction
+├ ƒ /api/v2/motivational/recent-tests
+├ ƒ /api/v2/notifications/mark-conversation-read
+├ ƒ /api/v2/notifications/mark-read
+├ ƒ /api/v2/notifications/system
+├ ƒ /api/v2/official-exams/answer
+├ ƒ /api/v2/official-exams/complete
+├ ƒ /api/v2/official-exams/failed-questions
+├ ƒ /api/v2/official-exams/init
+├ ƒ /api/v2/official-exams/pending
+├ ƒ /api/v2/official-exams/questions
+├ ƒ /api/v2/official-exams/resume
+├ ƒ /api/v2/official-exams/review
+├ ƒ /api/v2/official-exams/save-results
+├ ƒ /api/v2/official-exams/user-stats
+├ ƒ /api/v2/onboarding/save-field
+├ ƒ /api/v2/onboarding/skip
+├ ƒ /api/v2/onboarding/status
+├ ƒ /api/v2/oposicion-personalizada
+├ ƒ /api/v2/oposicion-personalizada/[id]
+├ ƒ /api/v2/oposicion/assign
+├ ƒ /api/v2/oposicion/target
+├ ƒ /api/v2/oposiciones-compatibles/progress
+├ ƒ /api/v2/premium/activate
+├ ƒ /api/v2/premium/mi-oferta
+├ ƒ /api/v2/premium/recuperar-precio
+├ ƒ /api/v2/psychometric-evolution/history
+├ ƒ /api/v2/psychometric-stats
+├ ƒ /api/v2/psychometric/adaptive-select
+├ ƒ /api/v2/psychometric/answered-count
+├ ƒ /api/v2/psychometric/difficulty
+├ ƒ /api/v2/psychometric/first-attempt
+├ ƒ /api/v2/psychometric/questions
+├ ƒ /api/v2/psychometric/sessions
+├ ƒ /api/v2/psychometric/weak-areas
+├ ƒ /api/v2/question-evolution/history
+├ ƒ /api/v2/question-favorites
+├ ƒ /api/v2/share-stats
+├ ƒ /api/v2/shared-question/track
+├ ƒ /api/v2/simulacro/questions
+├ ƒ /api/v2/streak
+├ ƒ /api/v2/studied-topics
+├ ƒ /api/v2/test-config/articles
+├ ƒ /api/v2/test-config/essential-articles
+├ ƒ /api/v2/test-config/estimate
+├ ƒ /api/v2/test-config/sections
+├ ƒ /api/v2/test-questions/saved-orders
+├ ƒ /api/v2/tests
+├ ƒ /api/v2/tests/failed-questions
+├ ƒ /api/v2/tests/favorite-questions
+├ ƒ /api/v2/topic-progress/theme-stats
+├ ƒ /api/v2/topic-progress/weak-articles
+├ ƒ /api/v2/upgrade-message
+├ ƒ /api/v2/upgrade-message/track
+├ ƒ /api/v2/user-public-profile
+├ ƒ /api/v2/user-sessions
+├ ƒ /api/v2/user-stats
+├ ƒ /api/validation-error-log
+├ ƒ /api/verification-queue
+├ ƒ /api/verify-articles
+├ ƒ /api/verify-articles/add-missing
+├ ƒ /api/verify-articles/ai-verify
+├ ƒ /api/verify-articles/ai-verify-article
+├ ƒ /api/verify-articles/all-articles
+├ ƒ /api/verify-articles/apply-fix
+├ ƒ /api/verify-articles/batch-info
+├ ƒ /api/verify-articles/compare
+├ ƒ /api/verify-articles/discard
+├ ƒ /api/verify-articles/errors
+├ ƒ /api/verify-articles/questions
+├ ƒ /api/verify-articles/stats-by-law
+├ ƒ /api/verify-articles/sync-all
+├ ƒ /api/verify-articles/update-titles
+├ ƒ /api/verify-articles/verification-summaries
+├ ƒ /api/version
+├ ƒ /api/webhooks/resend-inbound
+├ ○ /armando
+├ ○ /auth/callback
+├ ƒ /auxiliar-administrativo-andalucia/temario
+├ ƒ /auxiliar-administrativo-andalucia/temario/[slug]
+├ ƒ /auxiliar-administrativo-andalucia/test
+├ ƒ /auxiliar-administrativo-andalucia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-andalucia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-aragon/temario
+├ ƒ /auxiliar-administrativo-aragon/temario/[slug]
+├ ƒ /auxiliar-administrativo-aragon/test
+├ ƒ /auxiliar-administrativo-aragon/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-aragon/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-asturias/temario
+├ ƒ /auxiliar-administrativo-asturias/temario/[slug]
+├ ƒ /auxiliar-administrativo-asturias/test
+├ ƒ /auxiliar-administrativo-asturias/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-asturias/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-alcala-henares/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-alcala-henares/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-alcala-henares/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-alcala-henares/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-alcala-henares/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-badajoz/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-badajoz/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-badajoz/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-badajoz/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-badajoz/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-cordoba/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-cordoba/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-cordoba/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-cordoba/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-cordoba/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-granada/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-granada/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-granada/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-granada/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-granada/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-huesca/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-huesca/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-huesca/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-huesca/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-huesca/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-madrid/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-madrid/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-madrid/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-madrid/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-madrid/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-marbella/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-marbella/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-marbella/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-marbella/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-marbella/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-murcia/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-murcia/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-murcia/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-murcia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-murcia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-salamanca/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-salamanca/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-salamanca/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-salamanca/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-salamanca/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-sevilla/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-sevilla/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-sevilla/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-sevilla/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-sevilla/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-valencia/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-valencia/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-valencia/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-valencia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-valencia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-valladolid/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-valladolid/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-valladolid/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-valladolid/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-valladolid/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ayuntamiento-zaragoza/temario
+├ ƒ /auxiliar-administrativo-ayuntamiento-zaragoza/temario/[slug]
+├ ƒ /auxiliar-administrativo-ayuntamiento-zaragoza/test
+├ ƒ /auxiliar-administrativo-ayuntamiento-zaragoza/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ayuntamiento-zaragoza/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-baleares/temario
+├ ƒ /auxiliar-administrativo-baleares/temario/[slug]
+├ ƒ /auxiliar-administrativo-baleares/test
+├ ƒ /auxiliar-administrativo-baleares/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-baleares/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-canarias/temario
+├ ƒ /auxiliar-administrativo-canarias/temario/[slug]
+├ ƒ /auxiliar-administrativo-canarias/test
+├ ƒ /auxiliar-administrativo-canarias/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-canarias/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-cantabria/temario
+├ ƒ /auxiliar-administrativo-cantabria/temario/[slug]
+├ ƒ /auxiliar-administrativo-cantabria/test
+├ ƒ /auxiliar-administrativo-cantabria/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-cantabria/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-carm/temario
+├ ƒ /auxiliar-administrativo-carm/temario/[slug]
+├ ƒ /auxiliar-administrativo-carm/test
+├ ƒ /auxiliar-administrativo-carm/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-carm/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-catalunya/temario
+├ ƒ /auxiliar-administrativo-catalunya/temario/[slug]
+├ ƒ /auxiliar-administrativo-catalunya/test
+├ ƒ /auxiliar-administrativo-catalunya/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-catalunya/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-clm/temario
+├ ƒ /auxiliar-administrativo-clm/temario/[slug]
+├ ƒ /auxiliar-administrativo-clm/test
+├ ƒ /auxiliar-administrativo-clm/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-clm/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-consell-formentera/temario
+├ ƒ /auxiliar-administrativo-consell-formentera/temario/[slug]
+├ ƒ /auxiliar-administrativo-consell-formentera/test
+├ ƒ /auxiliar-administrativo-consell-formentera/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-consell-formentera/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-cyl/temario
+├ ƒ /auxiliar-administrativo-cyl/temario/[slug]
+├ ƒ /auxiliar-administrativo-cyl/test
+├ ƒ /auxiliar-administrativo-cyl/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-cyl/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-alicante/temario
+├ ƒ /auxiliar-administrativo-diputacion-alicante/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-alicante/test
+├ ƒ /auxiliar-administrativo-diputacion-alicante/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-alicante/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-avila/temario
+├ ƒ /auxiliar-administrativo-diputacion-avila/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-avila/test
+├ ƒ /auxiliar-administrativo-diputacion-avila/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-avila/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-barcelona/temario
+├ ƒ /auxiliar-administrativo-diputacion-barcelona/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-barcelona/test
+├ ƒ /auxiliar-administrativo-diputacion-barcelona/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-barcelona/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-cadiz/temario
+├ ƒ /auxiliar-administrativo-diputacion-cadiz/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-cadiz/test
+├ ƒ /auxiliar-administrativo-diputacion-cadiz/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-cadiz/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-cordoba/temario
+├ ƒ /auxiliar-administrativo-diputacion-cordoba/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-cordoba/test
+├ ƒ /auxiliar-administrativo-diputacion-cordoba/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-cordoba/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-cuenca/temario
+├ ƒ /auxiliar-administrativo-diputacion-cuenca/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-cuenca/test
+├ ƒ /auxiliar-administrativo-diputacion-cuenca/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-cuenca/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-girona/temario
+├ ƒ /auxiliar-administrativo-diputacion-girona/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-girona/test
+├ ƒ /auxiliar-administrativo-diputacion-girona/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-girona/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-huelva/temario
+├ ƒ /auxiliar-administrativo-diputacion-huelva/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-huelva/test
+├ ƒ /auxiliar-administrativo-diputacion-huelva/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-huelva/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-huesca/temario
+├ ƒ /auxiliar-administrativo-diputacion-huesca/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-huesca/test
+├ ƒ /auxiliar-administrativo-diputacion-huesca/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-huesca/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-leon/temario
+├ ƒ /auxiliar-administrativo-diputacion-leon/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-leon/test
+├ ƒ /auxiliar-administrativo-diputacion-leon/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-leon/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-ourense/temario
+├ ƒ /auxiliar-administrativo-diputacion-ourense/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-ourense/test
+├ ƒ /auxiliar-administrativo-diputacion-ourense/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-ourense/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-segovia/temario
+├ ƒ /auxiliar-administrativo-diputacion-segovia/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-segovia/test
+├ ƒ /auxiliar-administrativo-diputacion-segovia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-segovia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-zamora/temario
+├ ƒ /auxiliar-administrativo-diputacion-zamora/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-zamora/test
+├ ƒ /auxiliar-administrativo-diputacion-zamora/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-zamora/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-diputacion-zaragoza/temario
+├ ƒ /auxiliar-administrativo-diputacion-zaragoza/temario/[slug]
+├ ƒ /auxiliar-administrativo-diputacion-zaragoza/test
+├ ƒ /auxiliar-administrativo-diputacion-zaragoza/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-diputacion-zaragoza/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-estado/temario
+├ ƒ /auxiliar-administrativo-estado/temario/[slug]
+├ ƒ /auxiliar-administrativo-estado/test
+├ ○ /auxiliar-administrativo-estado/test/psicotecnico
+├ ○ /auxiliar-administrativo-estado/test/psicotecnicos
+├ ƒ /auxiliar-administrativo-estado/test/psicotecnicos/[categoria]
+├ ○ /auxiliar-administrativo-estado/test/repaso-fallos-oficial
+├ ○ /auxiliar-administrativo-estado/test/revisar-examen
+├ ƒ /auxiliar-administrativo-estado/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-estado/test/tema/[numero]/test-examen
+├ ○ /auxiliar-administrativo-estado/test/ver-fallos
+├ ƒ /auxiliar-administrativo-extremadura/temario
+├ ƒ /auxiliar-administrativo-extremadura/temario/[slug]
+├ ƒ /auxiliar-administrativo-extremadura/test
+├ ƒ /auxiliar-administrativo-extremadura/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-extremadura/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-galicia/temario
+├ ƒ /auxiliar-administrativo-galicia/temario/[slug]
+├ ƒ /auxiliar-administrativo-galicia/test
+├ ƒ /auxiliar-administrativo-galicia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-galicia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-ingesa/temario
+├ ƒ /auxiliar-administrativo-ingesa/temario/[slug]
+├ ƒ /auxiliar-administrativo-ingesa/test
+├ ƒ /auxiliar-administrativo-ingesa/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-ingesa/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-la-rioja/temario
+├ ƒ /auxiliar-administrativo-la-rioja/temario/[slug]
+├ ƒ /auxiliar-administrativo-la-rioja/test
+├ ƒ /auxiliar-administrativo-la-rioja/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-la-rioja/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-madrid-2027/temario
+├ ƒ /auxiliar-administrativo-madrid-2027/temario/[slug]
+├ ƒ /auxiliar-administrativo-madrid-2027/test
+├ ƒ /auxiliar-administrativo-madrid-2027/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-madrid-2027/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-madrid/temario
+├ ƒ /auxiliar-administrativo-madrid/temario/[slug]
+├ ƒ /auxiliar-administrativo-madrid/test
+├ ƒ /auxiliar-administrativo-madrid/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-madrid/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-pais-vasco/temario
+├ ƒ /auxiliar-administrativo-pais-vasco/temario/[slug]
+├ ƒ /auxiliar-administrativo-pais-vasco/test
+├ ƒ /auxiliar-administrativo-pais-vasco/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-pais-vasco/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-scs-canarias/temario
+├ ƒ /auxiliar-administrativo-scs-canarias/temario/[slug]
+├ ƒ /auxiliar-administrativo-scs-canarias/test
+├ ƒ /auxiliar-administrativo-scs-canarias/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-scs-canarias/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-sermas/temario
+├ ƒ /auxiliar-administrativo-sermas/temario/[slug]
+├ ƒ /auxiliar-administrativo-sermas/test
+├ ƒ /auxiliar-administrativo-sermas/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-sermas/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-sms/temario
+├ ƒ /auxiliar-administrativo-sms/temario/[slug]
+├ ƒ /auxiliar-administrativo-sms/test
+├ ƒ /auxiliar-administrativo-sms/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-sms/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-alcala/temario
+├ ƒ /auxiliar-administrativo-universidad-alcala/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-alcala/test
+├ ƒ /auxiliar-administrativo-universidad-alcala/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-alcala/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-almeria/temario
+├ ƒ /auxiliar-administrativo-universidad-almeria/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-almeria/test
+├ ƒ /auxiliar-administrativo-universidad-almeria/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-almeria/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-cadiz/temario
+├ ƒ /auxiliar-administrativo-universidad-cadiz/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-cadiz/test
+├ ƒ /auxiliar-administrativo-universidad-cadiz/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-cadiz/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-carlos-iii/temario
+├ ƒ /auxiliar-administrativo-universidad-carlos-iii/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-carlos-iii/test
+├ ƒ /auxiliar-administrativo-universidad-carlos-iii/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-carlos-iii/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-complutense/temario
+├ ƒ /auxiliar-administrativo-universidad-complutense/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-complutense/test
+├ ƒ /auxiliar-administrativo-universidad-complutense/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-complutense/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-huelva/temario
+├ ƒ /auxiliar-administrativo-universidad-huelva/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-huelva/test
+├ ƒ /auxiliar-administrativo-universidad-huelva/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-huelva/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-leon/temario
+├ ƒ /auxiliar-administrativo-universidad-leon/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-leon/test
+├ ƒ /auxiliar-administrativo-universidad-leon/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-leon/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-universidad-uned/temario
+├ ƒ /auxiliar-administrativo-universidad-uned/temario/[slug]
+├ ƒ /auxiliar-administrativo-universidad-uned/test
+├ ƒ /auxiliar-administrativo-universidad-uned/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-universidad-uned/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-administrativo-valencia/temario
+├ ƒ /auxiliar-administrativo-valencia/temario/[slug]
+├ ƒ /auxiliar-administrativo-valencia/test
+├ ƒ /auxiliar-administrativo-valencia/test/tema/[numero]
+├ ƒ /auxiliar-administrativo-valencia/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-archivos-estado/temario
+├ ƒ /auxiliar-archivos-estado/temario/[slug]
+├ ƒ /auxiliar-archivos-estado/test
+├ ƒ /auxiliar-archivos-estado/test/tema/[numero]
+├ ƒ /auxiliar-archivos-estado/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-biblioteca-estado/temario
+├ ƒ /auxiliar-biblioteca-estado/temario/[slug]
+├ ƒ /auxiliar-biblioteca-estado/test
+├ ƒ /auxiliar-biblioteca-estado/test/tema/[numero]
+├ ƒ /auxiliar-biblioteca-estado/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-clinica-diputacion-sevilla/temario
+├ ƒ /auxiliar-clinica-diputacion-sevilla/temario/[slug]
+├ ƒ /auxiliar-clinica-diputacion-sevilla/test
+├ ƒ /auxiliar-clinica-diputacion-sevilla/test/tema/[numero]
+├ ƒ /auxiliar-clinica-diputacion-sevilla/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-enfermeria-geriatria-diputacion-cadiz/temario
+├ ƒ /auxiliar-enfermeria-geriatria-diputacion-cadiz/temario/[slug]
+├ ƒ /auxiliar-enfermeria-geriatria-diputacion-cadiz/test
+├ ƒ /auxiliar-enfermeria-geriatria-diputacion-cadiz/test/tema/[numero]
+├ ƒ /auxiliar-enfermeria-geriatria-diputacion-cadiz/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-enfermeria-gva/temario
+├ ƒ /auxiliar-enfermeria-gva/temario/[slug]
+├ ƒ /auxiliar-enfermeria-gva/test
+├ ƒ /auxiliar-enfermeria-gva/test/tema/[numero]
+├ ƒ /auxiliar-enfermeria-gva/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-enfermeria-osakidetza/temario
+├ ƒ /auxiliar-enfermeria-osakidetza/temario/[slug]
+├ ƒ /auxiliar-enfermeria-osakidetza/test
+├ ƒ /auxiliar-enfermeria-osakidetza/test/tema/[numero]
+├ ƒ /auxiliar-enfermeria-osakidetza/test/tema/[numero]/test-examen
+├ ƒ /auxiliar-museos-estado/temario
+├ ƒ /auxiliar-museos-estado/temario/[slug]
+├ ƒ /auxiliar-museos-estado/test
+├ ƒ /auxiliar-museos-estado/test/tema/[numero]
+├ ƒ /auxiliar-museos-estado/test/tema/[numero]/test-examen
+├ ƒ /auxilio-judicial/temario
+├ ƒ /auxilio-judicial/temario/[slug]
+├ ƒ /auxilio-judicial/test
+├ ƒ /auxilio-judicial/test/tema/[numero]
+├ ƒ /auxilio-judicial/test/tema/[numero]/test-examen
+├ ƒ /ayuda
+├ ƒ /ayuda/[slug]
+├ ƒ /ayudante-instituciones-penitenciarias/temario
+├ ƒ /ayudante-instituciones-penitenciarias/temario/[slug]
+├ ƒ /ayudante-instituciones-penitenciarias/test
+├ ƒ /ayudante-instituciones-penitenciarias/test/tema/[numero]
+├ ƒ /ayudante-instituciones-penitenciarias/test/tema/[numero]/test-examen
+├ ƒ /ayudantes-ejecucion-penal-pais-vasco/temario
+├ ƒ /ayudantes-ejecucion-penal-pais-vasco/temario/[slug]
+├ ƒ /ayudantes-ejecucion-penal-pais-vasco/test
+├ ƒ /ayudantes-ejecucion-penal-pais-vasco/test/tema/[numero]
+├ ƒ /ayudantes-ejecucion-penal-pais-vasco/test/tema/[numero]/test-examen
+├ ○ /cancelacion-y-devoluciones
+├ ƒ /celador-galicia/temario
+├ ƒ /celador-galicia/temario/[slug]
+├ ƒ /celador-galicia/test
+├ ƒ /celador-galicia/test/tema/[numero]
+├ ƒ /celador-galicia/test/tema/[numero]/test-examen
+├ ƒ /celador-ibsalut/temario
+├ ƒ /celador-ibsalut/temario/[slug]
+├ ƒ /celador-ibsalut/test
+├ ƒ /celador-ibsalut/test/tema/[numero]
+├ ƒ /celador-ibsalut/test/tema/[numero]/test-examen
+├ ƒ /celador-ics/temario
+├ ƒ /celador-ics/temario/[slug]
+├ ƒ /celador-ics/test
+├ ƒ /celador-ics/test/tema/[numero]
+├ ƒ /celador-ics/test/tema/[numero]/test-examen
+├ ƒ /celador-murcia/temario
+├ ƒ /celador-murcia/temario/[slug]
+├ ƒ /celador-murcia/test
+├ ƒ /celador-murcia/test/tema/[numero]
+├ ƒ /celador-murcia/test/tema/[numero]/test-examen
+├ ƒ /celador-sas/temario
+├ ƒ /celador-sas/temario/[slug]
+├ ƒ /celador-sas/test
+├ ƒ /celador-sas/test/tema/[numero]
+├ ƒ /celador-sas/test/tema/[numero]/test-examen
+├ ƒ /celador-scs-canarias/temario
+├ ƒ /celador-scs-canarias/temario/[slug]
+├ ƒ /celador-scs-canarias/test
+├ ƒ /celador-scs-canarias/test/tema/[numero]
+├ ƒ /celador-scs-canarias/test/tema/[numero]/test-examen
+├ ƒ /celador-sermas-madrid/temario
+├ ƒ /celador-sermas-madrid/temario/[slug]
+├ ƒ /celador-sermas-madrid/test
+├ ƒ /celador-sermas-madrid/test/tema/[numero]
+├ ƒ /celador-sermas-madrid/test/tema/[numero]/test-examen
+├ ƒ /celador-sescam-clm/temario
+├ ƒ /celador-sescam-clm/temario/[slug]
+├ ƒ /celador-sescam-clm/test
+├ ƒ /celador-sescam-clm/test/tema/[numero]
+├ ƒ /celador-sescam-clm/test/tema/[numero]/test-examen
+├ ƒ /comparar-temarios
+├ ƒ /correos-personal-operativo/temario
+├ ƒ /correos-personal-operativo/temario/[slug]
+├ ƒ /correos-personal-operativo/test
+├ ƒ /correos-personal-operativo/test/tema/[numero]
+├ ƒ /correos-personal-operativo/test/tema/[numero]/test-examen
+├ ƒ /cuidador-diputacion-cordoba/temario
+├ ƒ /cuidador-diputacion-cordoba/temario/[slug]
+├ ƒ /cuidador-diputacion-cordoba/test
+├ ƒ /cuidador-diputacion-cordoba/test/tema/[numero]
+├ ƒ /cuidador-diputacion-cordoba/test/tema/[numero]/test-examen
+├ ƒ /cursos/[slug]
+├ ○ /debug/batch
+├ ○ /debug/ortografia
+├ ƒ /debug/question/[id]
+├ ○ /debug/review-images
+├ ○ /debug/shuffle
+├ ƒ /enfermero-ics/temario
+├ ƒ /enfermero-ics/temario/[slug]
+├ ƒ /enfermero-ics/test
+├ ƒ /enfermero-ics/test/tema/[numero]
+├ ƒ /enfermero-ics/test/tema/[numero]/test-examen
+├ ƒ /enfermero-sacyl/temario
+├ ƒ /enfermero-sacyl/temario/[slug]
+├ ƒ /enfermero-sacyl/test
+├ ƒ /enfermero-sacyl/test/tema/[numero]
+├ ƒ /enfermero-sacyl/test/tema/[numero]/test-examen
+├ ƒ /enfermero-sas-andalucia/temario
+├ ƒ /enfermero-sas-andalucia/temario/[slug]
+├ ƒ /enfermero-sas-andalucia/test
+├ ƒ /enfermero-sas-andalucia/test/tema/[numero]
+├ ƒ /enfermero-sas-andalucia/test/tema/[numero]/test-examen
+├ ƒ /enfermero-scs-canarias/temario
+├ ƒ /enfermero-scs-canarias/temario/[slug]
+├ ƒ /enfermero-scs-canarias/test
+├ ƒ /enfermero-scs-canarias/test/tema/[numero]
+├ ƒ /enfermero-scs-canarias/test/tema/[numero]/test-examen
+├ ƒ /enfermero-scs-cantabria/temario
+├ ƒ /enfermero-scs-cantabria/temario/[slug]
+├ ƒ /enfermero-scs-cantabria/test
+├ ƒ /enfermero-scs-cantabria/test/tema/[numero]
+├ ƒ /enfermero-scs-cantabria/test/tema/[numero]/test-examen
+├ ƒ /enfermero-sms/temario
+├ ƒ /enfermero-sms/temario/[slug]
+├ ƒ /enfermero-sms/test
+├ ƒ /enfermero-sms/test/tema/[numero]
+├ ƒ /enfermero-sms/test/tema/[numero]/test-examen
+├ ƒ /escala-administrativa-universidad-de-granada/temario
+├ ƒ /escala-administrativa-universidad-de-granada/temario/[slug]
+├ ƒ /escala-administrativa-universidad-de-granada/test
+├ ƒ /escala-administrativa-universidad-de-granada/test/tema/[numero]
+├ ƒ /escala-administrativa-universidad-de-granada/test/tema/[numero]/test-examen
+├ ƒ /etgoa-sanidad-consumo/temario
+├ ƒ /etgoa-sanidad-consumo/temario/[slug]
+├ ƒ /etgoa-sanidad-consumo/test
+├ ƒ /etgoa-sanidad-consumo/test/tema/[numero]
+├ ƒ /etgoa-sanidad-consumo/test/tema/[numero]/test-examen
+├ ƒ /guardia-civil/temario
+├ ƒ /guardia-civil/temario/[slug]
+├ ƒ /guardia-civil/test
+├ ƒ /guardia-civil/test/ortografia
+├ ƒ /guardia-civil/test/tema/[numero]
+├ ƒ /guardia-civil/test/tema/[numero]/test-examen
+├ ○ /icon.svg
+├ ○ /landing/premium-ads-1
+├ ○ /landing/premium-ads-2
+├ ○ /landing/premium-edu
+├ ○ /leyes                                                                                                        30d      1y
+├ ○ /leyes-de-oposiciones
+├ ● /leyes/[law]
+├ ƒ /leyes/[law]/avanzado
+├ ƒ /leyes/[law]/test-rapido
+├ ○ /leyes/test
+├ ○ /login
+├ ○ /manifest.webmanifest
+├ ƒ /mecanico-conductor-estado/temario
+├ ƒ /mecanico-conductor-estado/temario/[slug]
+├ ƒ /mecanico-conductor-estado/test
+├ ƒ /mecanico-conductor-estado/test/tema/[numero]
+├ ƒ /mecanico-conductor-estado/test/tema/[numero]/test-examen
+├ ○ /mis-estadisticas
+├ ○ /mis-estadisticas/psicotecnicos
+├ ○ /mis-impugnaciones
+├ ○ /nuestras-oposiciones
+├ ƒ /oficial-de-gestion-parlamento-de-andalucia/temario
+├ ƒ /oficial-de-gestion-parlamento-de-andalucia/temario/[slug]
+├ ƒ /oficial-de-gestion-parlamento-de-andalucia/test
+├ ƒ /oficial-de-gestion-parlamento-de-andalucia/test/tema/[numero]
+├ ƒ /oficial-de-gestion-parlamento-de-andalucia/test/tema/[numero]/test-examen
+├ ○ /oposicion-personalizada
+├ ƒ /oposicion-personalizada/[id]/temario
+├ ƒ /oposicion-personalizada/[id]/temario/[slug]
+├ ƒ /oposicion-personalizada/[id]/test
+├ ƒ /oposicion-personalizada/[id]/test/aleatorio
+├ ƒ /oposicion-personalizada/[id]/test/tema/[numero]
+├ ƒ /oposicion-personalizada/[id]/test/tema/[numero]/test-examen
+├ ƒ /oposicion-personalizada/[id]/test/tema/[numero]/test-personalizado
+├ ○ /oposiciones                                                                                                   1h      1y
+├ ● /oposiciones/[filtro]
+├ ƒ /ordenanza-ayuntamiento-cordoba/temario
+├ ƒ /ordenanza-ayuntamiento-cordoba/temario/[slug]
+├ ƒ /ordenanza-ayuntamiento-cordoba/test
+├ ƒ /ordenanza-ayuntamiento-cordoba/test/tema/[numero]
+├ ƒ /ordenanza-ayuntamiento-cordoba/test/tema/[numero]/test-examen
+├ ○ /perfil
+├ ƒ /policia-municipal-madrid/temario
+├ ƒ /policia-municipal-madrid/temario/[slug]
+├ ƒ /policia-municipal-madrid/test
+├ ƒ /policia-municipal-madrid/test/tema/[numero]
+├ ƒ /policia-municipal-madrid/test/tema/[numero]/test-examen
+├ ƒ /policia-nacional/temario
+├ ƒ /policia-nacional/temario/[slug]
+├ ƒ /policia-nacional/test
+├ ƒ /policia-nacional/test/ortografia
+├ ƒ /policia-nacional/test/tema/[numero]
+├ ƒ /policia-nacional/test/tema/[numero]/test-examen
+├ ƒ /pregunta/[id]
+├ ○ /premium
+├ ○ /premium/canceled
+├ ○ /premium/personal
+├ ○ /premium/success
+├ ○ /privacidad
+├ ○ /psicotecnicos
+├ ○ /psicotecnicos/secuencias-numericas
+├ ○ /psicotecnicos/series-letras
+├ ○ /psicotecnicos/test
+├ ○ /psicotecnicos/test/ejecutar
+├ ƒ /r/[code]
+├ ○ /recompensas
+├ ƒ /revisar/[testId]
+├ ○ /sitemap-oposiciones.xml                                                                                       1d      1y
+├ ○ /sitemap-static.xml                                                                                            1d      1y
+├ ○ /sitemap.xml                                                                                                   1d      1y
+├ ○ /soporte
+├ ƒ /subalterno-gva/temario
+├ ƒ /subalterno-gva/temario/[slug]
+├ ƒ /subalterno-gva/test
+├ ƒ /subalterno-gva/test/tema/[numero]
+├ ƒ /subalterno-parlamento-andalucia/temario
+├ ƒ /subalterno-parlamento-andalucia/temario/[slug]
+├ ƒ /subalterno-parlamento-andalucia/test
+├ ƒ /subalterno-parlamento-andalucia/test/tema/[numero]
+├ ƒ /subalterno-parlamento-andalucia/test/tema/[numero]/test-examen
+├ ƒ /tcae-aragon/temario
+├ ƒ /tcae-aragon/temario/[slug]
+├ ƒ /tcae-aragon/test
+├ ƒ /tcae-aragon/test/tema/[numero]
+├ ƒ /tcae-aragon/test/tema/[numero]/test-examen
+├ ƒ /tcae-canarias/temario
+├ ƒ /tcae-canarias/temario/[slug]
+├ ƒ /tcae-canarias/test
+├ ƒ /tcae-canarias/test/tema/[numero]
+├ ƒ /tcae-canarias/test/tema/[numero]/test-examen
+├ ƒ /tcae-extremadura/temario
+├ ƒ /tcae-extremadura/temario/[slug]
+├ ƒ /tcae-extremadura/test
+├ ƒ /tcae-extremadura/test/tema/[numero]
+├ ƒ /tcae-extremadura/test/tema/[numero]/test-examen
+├ ƒ /tcae-galicia/temario
+├ ƒ /tcae-galicia/temario/[slug]
+├ ƒ /tcae-galicia/test
+├ ƒ /tcae-galicia/test/tema/[numero]
+├ ƒ /tcae-galicia/test/tema/[numero]/test-examen
+├ ƒ /tcae-murcia/temario
+├ ƒ /tcae-murcia/temario/[slug]
+├ ƒ /tcae-murcia/test
+├ ƒ /tcae-murcia/test/tema/[numero]
+├ ƒ /tcae-murcia/test/tema/[numero]/test-examen
+├ ƒ /tcae-sas/temario
+├ ƒ /tcae-sas/temario/[slug]
+├ ƒ /tcae-sas/test
+├ ƒ /tcae-sas/test/tema/[numero]
+├ ƒ /tcae-sas/test/tema/[numero]/test-examen
+├ ƒ /tcae-sermas-madrid/temario
+├ ƒ /tcae-sermas-madrid/temario/[slug]
+├ ƒ /tcae-sermas-madrid/test
+├ ƒ /tcae-sermas-madrid/test/tema/[numero]
+├ ƒ /tcae-sermas-madrid/test/tema/[numero]/test-examen
+├ ƒ /tcae-sescam/temario
+├ ƒ /tcae-sescam/temario/[slug]
+├ ƒ /tcae-sescam/test
+├ ƒ /tcae-sescam/test/tema/[numero]
+├ ƒ /tcae-sescam/test/tema/[numero]/test-examen
+├ ƒ /tecnico-auxiliar-universidad-de-murcia/temario
+├ ƒ /tecnico-auxiliar-universidad-de-murcia/temario/[slug]
+├ ƒ /tecnico-auxiliar-universidad-de-murcia/test
+├ ƒ /tecnico-auxiliar-universidad-de-murcia/test/tema/[numero]
+├ ƒ /tecnico-auxiliar-universidad-de-murcia/test/tema/[numero]/test-examen
+├ ƒ /tecnico-informatica/temario
+├ ƒ /tecnico-informatica/temario/[slug]
+├ ƒ /tecnico-informatica/test
+├ ƒ /tecnico-informatica/test/tema/[numero]
+├ ○ /temarios
+├ ƒ /teoria
+├ ƒ /teoria/[law]
+├ ● /teoria/[law]/[articleNumber]
+├ ○ /terminos
+├ ○ /test-oposiciones
+├ ƒ /test-oposiciones/procedimiento-administrativo
+├ ● /test-oposiciones/procedimiento-administrativo/[seccion]
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/preambulo-y-titulo-preliminar
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-i-derechos-y-deberes-fundamentales
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ii-de-la-corona
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iii-de-las-cortes-generales
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iv-del-gobierno-y-la-administracion
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ix-del-tribunal-constitucional
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-v-relaciones-gobierno-cortes
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-vi-del-poder-judicial
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-vii-economia-y-hacienda
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial
+├ ƒ /test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-x-de-la-reforma-constitucional
+├ ƒ /test-oposiciones/test-ley-39-2015
+├ ƒ /test-oposiciones/test-ley-39-2015/test-plazos
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-i-capitulo-i-capacidad-obrar-concepto-interesado
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-i-capitulo-ii-identificacion-firma-interesados
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-i-normas-generales-actuacion
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-ii-terminos-plazos
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-i-requisitos-actos-administrativos
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-ii-eficacia-actos
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-iii-nulidad-anulabilidad
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-i-ii-garantias-iniciacion
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-iii-iv-ordenacion-instruccion
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-v-vi-vii-finalizacion-simplificada-ejecucion
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-preliminar
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-v-capitulo-i-revision-oficio
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-v-capitulo-ii-recursos-administrativos
+├ ƒ /test-oposiciones/test-ley-39-2015/titulo-vi-iniciativa-legislativa-potestad-reglamentaria
+├ ○ /test-personalizado
+├ ○ /test-recuperado
+├ ƒ /test/[law]/articulos-dirigido
+├ ○ /test/aleatorio
+├ ○ /test/aleatorio-examen
+├ ○ /test/articulo
+├ ○ /test/desde-chat
+├ ○ /test/explorar
+├ ○ /test/favoritas
+├ ○ /test/mantener-racha
+├ ○ /test/multi-ley
+├ ○ /test/personalizado
+├ ○ /test/por-leyes
+├ ƒ /test/rapido
+├ ○ /test/repaso-fallos
+├ ○ /test/repaso-fallos-v2
+├ ƒ /tramitacion-procesal/temario
+├ ƒ /tramitacion-procesal/temario/[slug]
+├ ƒ /tramitacion-procesal/test
+├ ○ /tramitacion-procesal/test/repaso-fallos-oficial
+├ ○ /tramitacion-procesal/test/revisar-examen
+├ ƒ /tramitacion-procesal/test/tema/[numero]
+├ ƒ /tramitacion-procesal/test/tema/[numero]/test-examen
+├ ○ /tramitacion-procesal/test/ver-fallos
+├ ƒ /ujieres-cortes-generales/temario
+├ ƒ /ujieres-cortes-generales/temario/[slug]
+├ ƒ /ujieres-cortes-generales/test
+├ ƒ /ujieres-cortes-generales/test/tema/[numero]
+├ ƒ /ujieres-cortes-generales/test/tema/[numero]/test-examen
+└ ○ /unsubscribe
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
+npm notice
+npm notice New major version of npm available! 10.9.8 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice
+--> 3678bd54dc56
+[3/3] STEP 1/18: FROM node:22-alpine AS runner
+[3/3] STEP 2/18: WORKDIR /app
+--> Using cache 07125ca489c9e9b8048a564fd86863481343d09dff7f2b9161a457c62346d554
+--> 07125ca489c9
+[3/3] STEP 3/18: ENV NODE_ENV=production
+--> Using cache c05eae631cb6d2644a675211da7b5e1155b7674f50315683d97b63c83201f3b4
+--> c05eae631cb6
+[3/3] STEP 4/18: ENV NEXT_TELEMETRY_DISABLED=1
+--> Using cache 2312da4db4c266b10ab845055a86d0e1768e135075618285c5b00daebdff4ce2
+--> 2312da4db4c2
+[3/3] STEP 5/18: ARG GIT_COMMIT_SHA
+--> Using cache b9c47003a147aea9303231212c9cceeeb7815bcdf801f9c68727ace18210e32c
+--> b9c47003a147
+[3/3] STEP 6/18: ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
+--> Using cache ee6675f717c168d70dcb48a3618903720f24ededbc7c9eefa77ce1521249742d
+--> ee6675f717c1
+[3/3] STEP 7/18: RUN addgroup --system --gid 1001 nodejs
+--> 4015377e8bb3
+[3/3] STEP 8/18: RUN adduser --system --uid 1001 nextjs
+--> f7f398d2d4f0
+[3/3] STEP 9/18: COPY --from=builder /app/public ./public
+--> 951776395e6c
+[3/3] STEP 10/18: RUN mkdir -p .next && chown nextjs:nodejs .next
+--> 5837ea4f754f
+[3/3] STEP 11/18: COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+--> d67856b26f71
+[3/3] STEP 12/18: COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+--> e8cd6e9ddb2a
+[3/3] STEP 13/18: COPY --chown=nextjs:nodejs docker/server-keepalive.cjs ./server-keepalive.cjs
+--> ebee4df8453a
+[3/3] STEP 14/18: USER nextjs
+--> a49f5d1dba50
+[3/3] STEP 15/18: EXPOSE 3000
+--> 2eb06eaa87ca
+[3/3] STEP 16/18: ENV PORT=3000
+--> 36593d793bce
+[3/3] STEP 17/18: ENV HOSTNAME="0.0.0.0"
+--> 933fabc3125b
+[3/3] STEP 18/18: CMD ["node", "server-keepalive.cjs"]
+[3/3] COMMIT 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-frontend:deploy-269e31e1
+--> 376826895363
+Successfully tagged 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-frontend:deploy-269e31e1
+3768268953630d46f2ed181f2f4c44b2621a880ba0c029f89b9e2f66ae228438
+→ [2/6] push ECR
+Getting image source signatures
+Copying blob sha256:2f9381a65e010aa3f8bad788b13d08edd683b677d60cb3e941e1334b87a09839
+Copying blob sha256:5654eeaf04645c03fadc59bca7835753203d173222ab6ad8729f75b3dde98784
+Copying blob sha256:baf2266664bacf240e13831e4192f8c92196c603ce8a20a4a50035ad87f8f2fb
+Copying blob sha256:fe2c6446e3d9c78c5f734536452b9ea4bf7c4c46c4b4a575d2973b79691ec57a
+Copying blob sha256:34884abbe92863fce933ed7c39c0e045631af0ed86d5cc0dfbdf9fdca426ce3c
+Copying blob sha256:ba6ed1b35a48592891a357fbcd716d9d57ee3ce72f00daec1dd42a8f54e18d23
+Copying blob sha256:bef8677d390dcc33e958fe22c3dd086f7f2201dc6231fdd88b3b990c7da65f38
+Copying blob sha256:8ad1b94706c0e5cdf4ee7848af4f59841cd6611f4d9b3118a3413c26a519f125
+Copying blob sha256:2b9538b6842cfeb5c8fd90f3eb79088e4ada20777b07dd53c8f80739e7fb9e0b
+Copying blob sha256:8d29fa9107eb419c5e63a1c4c0a37b5dcd265085fd76ffbb643d1f8b8cabd4f6
+Copying blob sha256:d35f5c76a28075580b19928731cfc6a06f5ee923265fa7791a7a5fb720904c5b
+Copying config sha256:3768268953630d46f2ed181f2f4c44b2621a880ba0c029f89b9e2f66ae228438
+Writing manifest to image destination
+→ [2b] sync _next/static → S3 (assets inmutables, RETENCIÓN: sin --delete)
+upload: ../../../../tmp/tmp.bCbol7dBHg/static/media/icon.0z9r55g41kg~y.svg to s3://vence-frontend-static/_next/static/media/icon.0z9r55g41kg~y.svg
+upload: ../../../../tmp/tmp.bCbol7dBHg/static/media/favicon.0ljbfv63vr6~k.ico to s3://vence-frontend-static/_next/static/media/favicon.0ljbfv63vr6~k.ico
+   ✅ assets en S3 (retención) + verificado
+→ [3/6] resolver digest (imagen pineada, inmutable)
+   349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-frontend@sha256:80e0bfc816e0b72577a90234f79a1e078d184062510cbf15309467eebfac3dc0
+→ [4/6] clonar la task def VIVA (hereda secretos/config) + swap imagen
+   base viva: arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-frontend:630
+   ✅ secretos: los 1 recurso(s) permitidos cubren la task def
+   registrada: arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-frontend:631
+→ [5/6] update-service (rolling) + esperar CONVERGENCIA REAL (mantiene el lock → deploys de uno en uno)
+[
+    {
+        "s": "PRIMARY",
+        "r": "IN_PROGRESS"
+    },
+    {
+        "s": "ACTIVE",
+        "r": "COMPLETED"
+    }
+]
+   ✅ convergido: 1 deployment PRIMARY COMPLETED (10/10 tasks) — lock retenido hasta aquí
+→ construyendo y re-pineando las tareas programadas derivadas (builder: podman)
+   ── vence-temario-pdf-worker (stage 'worker' → vence-temario-pdf-worker)
+      ✅ arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-temario-pdf-worker:77
+→ [6/6] smoke post-deploy
+   home=200  /api/auth/token(sin sesión)=401
+→ verificando que el SHA vivo == 269e31e1 (anti-clobber)
+   ✅ SHA vivo = 269e31e1
+→ invalidando CloudFront (si no, la página cacheada tarda hasta 24 h en cambiar)
+I67NER8K7TCDFLAPDPG0IQEBJ8	InProgress
+   asset /_next/static/chunks/0txgm~iu5jdae.js=200
+→ canary premium (403 de límite a un premium = regresión)
+  daily-limit → isPremium=true dailyLimit=999
+  POST /api/answer/psychometric     → 404  ✅ pasó el gate
+  POST /api/exam/answer             → 422  ✅ pasó el gate
+  POST /api/v2/answer-and-save      → 404  ✅ pasó el gate
+
+✅ CANARY VERDE — ningún endpoint bloquea a un premium.
+→ canaries post-deploy del backend (gate anti-scraping · identidad en pagos)
+   ⚠️⚠️ run-questions-gate ROJO — el backend ya emitió [Vence CRITICAL]. Revisar: {"ok":false,"step":"gate_false_positive","httpStatus":403,"errorMessage":"El gate anti-scraping exigió verificación humana a un usuario normal (servidas 1 de 500). Posible regresión en la policy o el contador Redis.","gateAssertion":"real","durationMs":62}
+   ✅ run-identidad-pago OK
+→ verificación de release en navegador (Vence Sim) contra https://www.vence.es
+▶ Vence Sim — 3 journey(s) contra https://www.vence.es [emit ON]
+
+✅ [high] aviso-convocatorias-hermanas (anon) — 3 invariantes ok · 5942ms
+✅ [medium] contador-articulos-coherente (anon) — 4 invariantes ok · 10156ms
+✅ [high] examen-controles-flotantes (auxiliar_administrativo_estado) — 6 invariantes ok · 8015ms
+
+✅ 3/3 journeys OK · reporte: /home/manuel/vence-sessions/movil3/sim-reports/1786121954834
+
+✅ DEPLOY OK — arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-frontend:631
+(16 esperando deploy, ninguna incluida todavía en 269e31e1)
+
+📐 RECORDATORIO DE MÉTODO (cada 30 min — para que no se olvide a media tarea):
+   · nada de chapuzas: profesional, robusto, escalable y OBSERVABLE, integrado en lo que ya hay
+   · ¿lo que estás construyendo ya existe?  npm run tools:buscar -- <palabra>
+   · nada de silos: engánchalo al runbook o sistema que ya lo cubre
+   · capas: unit · integración · simulación (vence-sim) · canary · guardarraíl — las que hagan falta
+   · si estrenas una herramienta, REGÍSTRALA en lib/admin/toolRegistry.ts
+   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs
+   Rollback: aws ecs update-service --cluster vence-backend --service vence-frontend --task-definition arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-frontend:630 --profile vence --region eu-west-2
+✅ DEPLOY frontend OK (vuelta 1)

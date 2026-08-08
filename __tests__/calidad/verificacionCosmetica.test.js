@@ -8,6 +8,7 @@
 const {
   clasificarFirma,
   soloVerificadaPorPasesCosmeticos,
+  calcularSaneamiento,
 } = require('../../lib/calidad/verificacionCosmetica.cjs')
 
 const FIRMA_REAL =
@@ -80,5 +81,48 @@ describe('preguntas que solo se sostienen sobre pases cosméticos', () => {
 
   it('sin ninguna verificación NO es este problema, es otro', () => {
     expect(soloVerificadaPorPasesCosmeticos([])).toBe(false)
+  })
+})
+
+describe('calcularSaneamiento — el plan de qué limpiar [T-465, decisión de Manuel 08/08]', () => {
+  it('el caso real: una pregunta con SOLO la firma cosmética entra en el plan', () => {
+    const { aLimpiar, preguntasAfectadas } = calcularSaneamiento([
+      { id: 'v1', question_id: 'q1', explanation: FIRMA_REAL, article_ok: true, answer_ok: true },
+    ])
+    expect(preguntasAfectadas).toEqual(new Set(['q1']))
+    expect(aLimpiar).toEqual([{ fila: { id: 'v1', question_id: 'q1', explanation: FIRMA_REAL, article_ok: true, answer_ok: true }, flags: ['article_ok', 'answer_ok'] }])
+  })
+
+  it('una pregunta con verificación real ADEMÁS de la cosmética NO entra: ya está comprobada', () => {
+    const { aLimpiar, preguntasAfectadas } = calcularSaneamiento([
+      { id: 'v1', question_id: 'q1', explanation: FIRMA_REAL, article_ok: true, answer_ok: true },
+      { id: 'v2', question_id: 'q1', explanation: 'Verificado contra el BOE: el art. 32 confirma la clave.', article_ok: true, answer_ok: true },
+    ])
+    expect(aLimpiar).toEqual([])
+    expect(preguntasAfectadas.size).toBe(0)
+  })
+
+  it('un pase cosmético que YA dejó los flags sin firmar (el caso correcto) no entra: nada que limpiar', () => {
+    const { aLimpiar, preguntasAfectadas } = calcularSaneamiento([
+      { id: 'v1', question_id: 'q1', explanation: FIRMA_REAL, article_ok: null, answer_ok: null },
+    ])
+    expect(aLimpiar).toEqual([])
+    expect(preguntasAfectadas.size).toBe(0)
+  })
+
+  it('dos preguntas distintas se cuentan por separado, cada una con su fila', () => {
+    const { aLimpiar, preguntasAfectadas } = calcularSaneamiento([
+      { id: 'v1', question_id: 'q1', explanation: FIRMA_REAL, article_ok: true, answer_ok: true },
+      { id: 'v2', question_id: 'q2', explanation: FIRMA_REAL, article_ok: true, answer_ok: false },
+    ])
+    expect(preguntasAfectadas).toEqual(new Set(['q1', 'q2']))
+    expect(aLimpiar).toHaveLength(2)
+    // q2 solo firmó article_ok=true (answer_ok es false, no true): solo ESE flag se limpia.
+    expect(aLimpiar.find((x) => x.fila.question_id === 'q2').flags).toEqual(['article_ok'])
+  })
+
+  it('sin filas no hay nada que limpiar (no revienta con vacío ni con undefined)', () => {
+    expect(calcularSaneamiento([])).toEqual({ aLimpiar: [], preguntasAfectadas: new Set() })
+    expect(calcularSaneamiento(undefined)).toEqual({ aLimpiar: [], preguntasAfectadas: new Set() })
   })
 })

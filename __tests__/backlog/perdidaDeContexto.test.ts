@@ -192,7 +192,7 @@ describe('cableado: el hook invoca de verdad al guard', () => {
   })
 
   it('el escape está documentado en el hook (si no, se acaba usando --no-verify)', () => {
-    expect(prePush).toContain('CONTEXTO_GUARD_SKIP=1')
+    expect(prePush).toContain('CONTEXTO_GUARD_SKIP')
   })
 
   it('el escape es PROPIO: no lo apaga el de otro guardarraíl', () => {
@@ -203,7 +203,9 @@ describe('cableado: el hook invoca de verdad al guard', () => {
 
   it('el bridge mide su propia fricción (bloqueo y escape) — T-423', () => {
     const bridge = readFileSync(join(ROOT, 'scripts/contexto-push-guard.cjs'), 'utf8')
-    expect(bridge).toMatch(/friccion\('guard_escape'\)/)
+    // Sin fijar los argumentos: desde T-704 el escape va con motivo y con `evitoBloqueo`, y un
+    // test que clava la forma exacta de la llamada rompe cada vez que se le añade un dato.
+    expect(bridge).toMatch(/friccion\('guard_escape'/)
     expect(bridge).toMatch(/friccion\('guard_bloqueo'/)
   })
 
@@ -211,5 +213,38 @@ describe('cableado: el hook invoca de verdad al guard', () => {
     const bridge = readFileSync(join(ROOT, 'scripts/contexto-push-guard.cjs'), 'utf8')
     expect(bridge).toMatch(/origin\/main:\$\{FICHERO\}/)
     expect(bridge).toMatch(/merge-base', '--is-ancestor', 'origin\/main', 'HEAD'/)
+  })
+})
+
+describe('[T-704] el escape del guard de contexto pide MOTIVO, como sus dos hermanos', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const guard = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'scripts', 'contexto-push-guard.cjs'), 'utf8')
+
+  it('usa el criterio COMPARTIDO de qué vale como motivo, no uno propio', () => {
+    // Tres criterios sobre lo mismo acaban divergiendo: es como nacieron los cinco escritores
+    // de `seguimiento_url` (T-130).
+    expect(guard).toContain("require('../lib/observability/friccionSesiones.cjs')")
+    expect(guard).toContain('evaluarEscape')
+    expect(guard).not.toMatch(/CONTEXTO_GUARD_SKIP\s*===\s*'1'/)
+  })
+
+  it('el escape se resuelve DESPUÉS de evaluar, para poder decir si servía de algo', () => {
+    // Saliendo antes (como estaba) el guard no puede saber si habría bloqueado, y entonces el
+    // panel deduce restando bloqueos — con 0 bloqueos eso da 100% forzoso y prescribe borrarlo.
+    const iEval = guard.indexOf('const malos = bloqueantes(hallazgos)')
+    const iEscape = guard.indexOf('if (escape.permitido)')
+    expect(iEval).toBeGreaterThan(-1)
+    expect(iEscape).toBeGreaterThan(iEval)
+  })
+
+  it('reporta al bus si el escape evitó un bloqueo de verdad', () => {
+    expect(guard).toContain('--evito-bloqueo')
+    expect(guard).toContain('--sin-nada-que-rodear')
+  })
+
+  it('el mensaje enseña la forma NUEVA del escape, no el «1»', () => {
+    expect(guard).toMatch(/CONTEXTO_GUARD_SKIP="/)
   })
 })

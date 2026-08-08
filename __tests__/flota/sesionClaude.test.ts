@@ -65,3 +65,66 @@ describe('se VE si arranca de cero o no', () => {
     expect(SES.lineaSesion({ continua: false, id: 'nuevo-999' })).toMatch(/conversación nueva/)
   })
 })
+
+describe('resumenActividad — T-653: qué está haciendo un trabajador AHORA, no solo el tamaño de su log', () => {
+  // Forma real de una línea del transcript, verificada el 07/08 contra el transcript EN VIVO de
+  // w3 con Python (json.loads de la última línea): `type`, `message.role`, `message.content` es
+  // un array de bloques con `type` ('tool_use' | 'text' | ...), y en 'tool_use' van `name` e
+  // `input`. No se copia el JSON real (kilobytes por línea, con rutas de esta máquina) — se
+  // reconstruye con los MISMOS campos, igual que otros fixtures de este repo (p.ej. las secciones
+  // BOE de LOSU en scopeTitleBoundary.test.ts).
+  const lineaAssistantBash = (cmd: string) => JSON.stringify({
+    type: 'assistant',
+    message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: { command: cmd } }] },
+  })
+  const lineaAssistantTexto = (texto: string) => JSON.stringify({
+    type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: texto }] },
+  })
+  const lineaUserToolResult = () => JSON.stringify({
+    type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] },
+  })
+
+  it('caza el último tool_use — el caso real que lo motivó: un tsc corriendo en segundo plano', () => {
+    const tail = [
+      lineaAssistantTexto('voy a comprobar los tipos'),
+      lineaAssistantBash('npx tsc --noEmit -p . 2>&1 | tail -60'),
+    ].join('\n')
+    expect(SES.resumenActividad(tail)).toBe('Bash: npx tsc --noEmit -p . 2>&1 | tail -60')
+  })
+
+  it('usa el ÚLTIMO tool_use, no el primero, cuando hay varios en el tramo', () => {
+    const tail = [
+      lineaAssistantBash('npm test'),
+      lineaUserToolResult(),
+      lineaAssistantBash('git status --porcelain'),
+    ].join('\n')
+    expect(SES.resumenActividad(tail)).toBe('Bash: git status --porcelain')
+  })
+
+  it('la PRIMERA línea del tail suele venir truncada (es un tail, no el fichero entero) — se ignora sin invalidar el resto', () => {
+    const rotoDePorMedio = '{"type":"assistant","mess' // línea cortada por el corte del tail
+    const tail = [rotoDePorMedio, lineaAssistantBash('cat archivo.txt')].join('\n')
+    expect(SES.resumenActividad(tail)).toBe('Bash: cat archivo.txt')
+  })
+
+  it('un tool_use sin campo reconocible en su input cae al nombre de la herramienta', () => {
+    const linea = JSON.stringify({
+      type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'TaskCreate', input: { subtasks: [1, 2] } }] },
+    })
+    expect(SES.resumenActividad(linea)).toBe('TaskCreate: {"subtasks":[1,2]}')
+  })
+
+  it('recorta comandos largos — no imprime el prompt de una tarea entera en una línea del panel', () => {
+    const largo = 'x'.repeat(500)
+    expect(SES.resumenActividad(lineaAssistantBash(largo))?.length).toBeLessThan(120)
+  })
+
+  it('solo texto (sin ninguna herramienta) en todo el tramo: null — no hay ACCIÓN que contar', () => {
+    expect(SES.resumenActividad(lineaAssistantTexto('aquí está mi plan'))).toBeNull()
+  })
+
+  it('tramo vacío o ilegible entero: null, sin lanzar', () => {
+    expect(SES.resumenActividad('')).toBeNull()
+    expect(SES.resumenActividad('esto no es json\n{tampoco esto}')).toBeNull()
+  })
+})

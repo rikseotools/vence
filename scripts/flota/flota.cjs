@@ -38,6 +38,7 @@ const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
 const BUC = require(path.join(REPO, 'lib', 'flota', 'bucle.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
+const CUENTAS = require(path.join(REPO, 'lib', 'flota', 'cuentas.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
 const RESC = require(path.join(REPO, 'lib', 'flota', 'rescate.cjs'))
 // La conversación de un trabajador sobrevive a su turno (T-486): --session-id / --resume.
@@ -50,6 +51,7 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 // dedujera por su cuenta de las columnas, `flota` y `backlog list` acabarían contando distinto.
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 const SALUD = require(path.join(REPO, 'lib', 'flota', 'saludMaquina.cjs'))
+const OOM = require(path.join(REPO, 'lib', 'flota', 'oomCgroup.cjs'))
 const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
 
 // Margen para comprobar que un encargo arrancó de verdad tras el `send-keys` (T-642). Corto a
@@ -270,6 +272,34 @@ function medirMaquina(trabajador) {
 }
 
 /**
+ * Qué está haciendo un trabajador AHORA MISMO, leído de su propia conversación. (T-653, 07/08)
+ *
+ * `npm run flota` ya sabía CUÁNTO llevaba un turno («hace 137 min»), pero eso no distingue
+ * trabajando de atascado. El dato existe: el transcript de la conversación en curso
+ * (`SES.rutaTranscript`) se escribe EN VIVO, y el criterio de qué contar de su última entrada ya
+ * vive en `SES.resumenActividad` (núcleo puro, testeado aparte). Aquí solo el lado impuro: cuál
+ * es su sesión ACTUAL (el `.session` que `mandarEncargo` mantiene al día) y el tail de su
+ * transcript — un tail corto, nunca el fichero entero, que en un turno largo puede pesar decenas
+ * de MB y esto se llama en cada pasada del panel.
+ *
+ * Cadena vacía si no se puede ver (sin sesión registrada, SSH caído, transcript aún sin líneas
+ * de herramienta) — igual que `comandoDelPanel`, «no se pudo ver» no es «no hace nada».
+ */
+function actividadDe(trabajador) {
+  const m = MAQ.maquinaDe(trabajador)
+  if (!m) return ''
+  const como = m.local ? '' : 'sudo -u flota '
+  try {
+    const fSesion = SES.ficheroSesion(ficheroEntorno(trabajador))
+    const id = enMaquina(trabajador, `${como}sh -c 'cat ${fSesion} 2>/dev/null || true'`).trim()
+    if (!id) return ''
+    const ruta = SES.rutaTranscript({ home: '/home/flota', arbol: MAQ.arbolDe(trabajador).replace('~flota', '/home/flota'), id })
+    const tail = enMaquina(trabajador, `${como}sh -c 'tail -c 4000 ${ruta} 2>/dev/null || true'`)
+    return SES.resumenActividad(tail) || ''
+  } catch { return '' }
+}
+
+/**
  * Envuelve un script para que el shell de la máquina lo pase INTACTO a `bash -c`.
  *
  * Con comillas dobles (`JSON.stringify`) el shell de fuera expande los `$(…)` ANTES de que el
@@ -426,6 +456,15 @@ function mandarEncargo(trabajador, texto, { alDia = null, turno = null, fresco =
   enMaquina(trabajador,
     `umask 077 && mkdir -p "$(dirname ${enc})" && cat > ${enc} ${dueno}&& ` +
     `${como}sh -c 'printf %s ${ses.id} > ${fSesion}' && ` +
+    // ── EL ENCARGO QUEDA EN EL LOG ANTES DE ARRANCAR (T-653, 07/08) ────────────────────────
+    // Hasta ahora el log solo guardaba lo que el trabajador CONTESTABA — nunca lo que se le
+    // había pedido. Cuando una entrega salía mal no había forma de distinguir «se le explicó
+    // mal» de «no hizo caso» sin ir a buscar el encargo a otro sitio (con 18 de 63 revisiones en
+    // "problemas" el mismo día, esa distinción es justo la que decide si hay que arreglar el
+    // encargo o al trabajador). Se copia el FICHERO que ya existe (`${enc}`, el mismo que recibe
+    // `claude -p`) — sin volver a mandar el texto por la línea de órdenes, que es lo que
+    // `mandarEncargo` evita a propósito desde el principio (comillas, tamaño, visibilidad en `ps`).
+    `${como}sh -c 'cat ${enc} > ${log} 2>/dev/null; printf "\\n\\n===== SALIDA DEL TURNO =====\\n\\n" >> ${log}' && ` +
     `${como}tmux -L ${trabajador} send-keys -t ${trabajador} 'set -a; . ${env}; set +a; ` +
     `"\${CLAUDE_BIN:-claude}" -p "$(cat ${enc})" ${ses.flags.join(' ')} --permission-mode bypassPermissions 2>&1 | tee -a ~/flota-${trabajador}.log' Enter`,
     { entrada: texto })
@@ -647,6 +686,13 @@ async function main() {
           : t ? `${t.id} — ${String(t.title).slice(0, 60)}`
           : libre ? 'LIBRE, esperando encargo (npm run flota -- repartir)'
           : 'SIN TAREA (dale una: flota -- encargar ' + f.trabajador + ')'}`)
+        // «Ejecutando» solo decía QUE hay un turno vivo, nunca QUÉ hace — la distinción que
+        // separa «trabajando» de «atascado» (T-653). Solo se pregunta cuando ya se sabe que
+        // ejecuta: para libre/caído/abandonado no hay conversación en curso que leer.
+        if (ejecutando) {
+          const actividad = actividadDe(f.trabajador)
+          if (actividad) console.log(`       ↳ ${actividad}`)
+        }
       }
 
       // ── TUS SESIONES ────────────────────────────────────────────────────────────────
@@ -1231,7 +1277,17 @@ async function main() {
           // matando en serie (cuota…)" en el panel.
           emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
           if (auth.estado === 'cuota_agotada') {
-            emitirTurno(trabajador, 'sin_cuota', { tarea: suya.id, motivo: auth.detalle })
+            // [T-709] La CUENTA va en el evento. Es el único dato real con el que se puede
+            // avisar la próxima vez ANTES de topar: el proveedor no publica cuánta cuota
+            // queda, solo corta, así que `npm run cuota` compara el consumo de ahora con el
+            // que tenía esta cuenta cuando se quedó seca. Se mete en el evento que YA existe
+            // en vez de estrenar uno: dos tipos para el mismo hecho se vigilan con dos reglas
+            // y una acaba sin nadie que la mire.
+            emitirTurno(trabajador, 'sin_cuota', {
+              tarea: suya.id,
+              motivo: auth.detalle,
+              cuenta: CUENTAS.cuentaDe(trabajador, CUENTAS.cuentasDisponibles(process.env)),
+            })
             console.log(`   ⏸️  ${trabajador}: ${auth.detalle} — no se relanza ${suya.id} hasta que se reponga`)
             sinCuota++
             continue
@@ -1309,6 +1365,39 @@ async function main() {
             if (r.ok) { console.log(`   🔍 ${f.trabajador.padEnd(4)} → REVISAR ${porRevisar.id}`); n++; continue }
             dadas.delete(porRevisar.id)
           } catch (e) { dadas.delete(porRevisar.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
+        }
+        // ── Y ANTES DE UNA NUEVA, LA QUE VOLVIÓ CON PROBLEMAS (T-700, 08/08) ─────────────
+        // Este escalón NO EXISTÍA, y la cola no se atascaba: no tenía salida. Una devuelta con
+        // `problemas` quedaba fuera de las TRES ramas del reparto a la vez — de `candidatas` por
+        // partida doble (`status='open'` y `review_requested_at IS NULL`, y ella es `in_progress`
+        // con la entrega puesta), de `porRevisar` porque ya tiene `reviewed_at`, y de las
+        // retomadas porque entregar suelta el claim y esa rama busca `claimed_by = sid`. O sea que
+        // el veredicto más caro de producir —otro trabajador reproduciendo el trabajo— era el
+        // único que no podía llegarle a nadie. Medido al encontrarlo: **20 tareas paradas, la más
+        // vieja 28,5 h**, y creciendo cuanto mejor revisa la flota.
+        // Va DESPUÉS de revisar y ANTES de empezar algo nuevo por lo mismo que la de arriba:
+        // terminar lo que está a medias vale más que abrir otro frente.
+        const devuelta = (await sql`
+          SELECT id, title, review_findings, reviewed_by, claimed_by,
+                 review_requested_at, reviewed_at, review_verdict
+            FROM public.backlog_tasks
+           WHERE review_verdict = 'problemas' AND claimed_by IS NULL AND closed_at IS NULL
+           ORDER BY reviewed_at
+           LIMIT 8`)
+          .filter((t) => ENC.esCorreccionPendiente(t) && !dadas.has(t.id) && !repartidasHacePoco.has(t.id))[0]
+        if (devuelta) {
+          dadas.add(devuelta.id)
+          try {
+            const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
+            const r = mandarEncargo(f.trabajador,
+              ENC.encargoCorreccion({ trabajador: f.trabajador, tarea: devuelta,
+                hallazgos: devuelta.review_findings, revisor: devuelta.reviewed_by,
+                puedeDesplegar: MAQ.puedeDesplegar(f.trabajador).puede }),
+              { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tarea: devuelta.id, tipo: 'correccion' }) })
+            if (r.ok) { console.log(`   ↩️  ${f.trabajador.padEnd(4)} → ARREGLAR ${devuelta.id} (devuelta por la revisión)`); n++; continue }
+            dadas.delete(devuelta.id)
+            console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
+          } catch (e) { dadas.delete(devuelta.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
         }
         const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id) && !repartidasHacePoco.has(t.id)), { puedeDesplegar: true })
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
@@ -1446,6 +1535,17 @@ async function main() {
       // Una máquina se mide UNA vez por pasada aunque aloje a cuatro trabajadores: lo que se
       // mide es el host, y sondearlo cuatro veces solo añade cuatro conexiones ssh.
       const medidas = new Map()
+      // ── OOM POR CGROUP, SIN journalctl (T-647, 08/08) ───────────────────────────────────
+      // `journalctl` no sirve aquí: este proceso corre como `User=flota`, sin `adm`/
+      // `systemd-journal`, así que no ve mensajes del kernel — medido: `journalctl -k` daba
+      // «-- No entries --» pese a >15h de historial real, y por eso `flota_sin_memoria` llevaba
+      // CERO eventos en TODA su historia, no porque no hubiera OOM. `memory.events` de cgroup v2
+      // SÍ es legible sin privilegios, así que se lee el contador `oom_kill` del kernel
+      // directamente. Vive en memoria del propio proceso (no en disco): el bucle es de un solo
+      // proceso de larga duración, así que no hace falta persistir entre pasadas — y si el
+      // proceso se reinicia, no tener base previa es exactamente lo correcto (`deltaOomKill`
+      // trata «sin anterior» como «no se sabe», nunca como «cero»).
+      let lecturaOomAnterior = null
       while (!parar) {
         let repartidos = 0
         let ocupados = 0
@@ -1532,6 +1632,31 @@ async function main() {
               VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
                       ${`${oom.muertes} proceso(s) matados por el kernel en los últimos ${desde} min`},
                       ${sql.json({ host: yo, ...oom })})`
+          }
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
+        // ── Y LA VÍA QUE SÍ FUNCIONA SIN PERMISOS DE journalctl (T-647, 08/08) ──────────────
+        // El bloque de arriba es ciego en esta máquina (ver el comentario junto a
+        // `lecturaOomAnterior`), así que se complementa —no se sustituye, por si algún día SÍ
+        // hay permiso— con el contador `oom_kill` de `memory.events` de cada trabajador.
+        try {
+          const maquina = MAQ.MAQUINAS[yo]
+          if (maquina && maquina.systemd && Array.isArray(maquina.trabajadores)) {
+            const lecturaActual = {}
+            for (const w of maquina.trabajadores) lecturaActual[w] = OOM.leerOomKill(w)
+            const { total, nuevos, reiniciados } = OOM.deltaOomKill(lecturaOomAnterior, lecturaActual)
+            if (total > 0) {
+              console.log(`   💀 (cgroup) ${total} OOM-kill nuevo(s) por trabajador: ${JSON.stringify(nuevos)}`)
+              await sql`
+                INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+                VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
+                        ${`${total} OOM-kill nuevo(s) (cgroup memory.events, no journalctl): ${JSON.stringify(nuevos)}`},
+                        ${sql.json({ host: yo, via: 'cgroup', total, nuevos, reiniciados })})`
+            } else if (reiniciados.length) {
+              // No es un OOM confirmado (el contador se perdió con el reinicio), pero SÍ es una
+              // unidad que dejó de ser la que se venía vigilando — se avisa sin afirmar la causa.
+              console.log(`   ⚠️ cgroup reiniciado desde la última pasada, sin base para el delta: ${reiniciados.join(', ')}`)
+            }
+            lecturaOomAnterior = lecturaActual
           }
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa, fallo: !!motivoSalto })

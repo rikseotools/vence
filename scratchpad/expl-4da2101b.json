@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 10.1 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+    "texto": "Los órganos superiores podrán avocar para sí el conocimiento de uno o varios asuntos cuya resolución corresponda ordinariamente o por delegación a sus órganos administrativos dependientes, cuando circunstancias de índole técnica, económica, social, jurídica o territorial lo hagan conveniente."
+  },
+  "intro": "El artículo 10 regula la avocación en dos planos: quién puede avocar y sobre qué asuntos (apartado 1), y cómo se formaliza y qué recursos caben (apartado 2).",
+  "options": {
+    "0": "El artículo 10.1 atribuye la avocación a los órganos superiores, sin exigir en ningún momento que sean colegiados. La composición del órgano es indiferente: lo que habilita para avocar es la posición de superioridad respecto del órgano que tiene atribuido el asunto.",
+    "1": "Reproduce el artículo 10.1 salvo en un punto que lo invierte: el precepto permite avocar tanto los asuntos que corresponden al órgano dependiente de forma ordinaria como los que ejerce por delegación («corresponda ordinariamente o por delegación»). Excluir los delegados deja fuera un supuesto que la ley incluye expresamente. Y cuando la delegación se hizo en un órgano no dependiente jerárquicamente, el propio artículo precisa que la avocación corresponde únicamente al órgano delegante.",
+    "2": "Recoge las cinco circunstancias que el artículo 10.1 enumera como presupuesto de la avocación: técnica, económica, social, jurídica o territorial. Es la única proposición que se ajusta al precepto.",
+    "3": "No pueden ser válidas todas a la vez: restringir la avocación a los órganos colegiados y excluir de ella los asuntos delegados contradicen el artículo 10.1, que ni menciona la naturaleza colegiada ni deja fuera los asuntos ejercidos por delegación."
+  },
+  "outro": "**Clave:** el artículo 10.1 alcanza tanto a los asuntos que corresponden ordinariamente al órgano dependiente como a los que ejerce por delegación; y quien avoca es el órgano superior, sea o no colegiado.",
+  "estilo": "impugnacion"
+}

@@ -26,6 +26,37 @@ describe('analizarSiglas (§2.2-quater: pregunta autocontenida)', () => {
     ).toEqual([])
   })
 
+  it('marca RGC sin desarrollar y la acepta con el nombre completo o el RD (T-278, 06/08/2026)', () => {
+    expect(analizarSiglas('Según el artículo 45 del RGC, todo conductor...').faltan).toEqual(['RGC'])
+    expect(
+      analizarSiglas('Según el artículo 45 del Reglamento General de Circulación (RGC), todo conductor...').faltan
+    ).toEqual([])
+    expect(
+      analizarSiglas('Según el artículo 45 del Real Decreto 1428/2003, todo conductor...').faltan
+    ).toEqual([])
+  })
+
+  // Se coló en el lote de Guardia Civil T17 (T-679) y NINGUNA de las dos auditorías la vio: la
+  // explicación decía «los declara la CETIC según el artículo 10» sin desarrollarla antes en esa
+  // misma pregunta. El gate falló por partida doble — no estaba catalogada, Y el llamante no le
+  // pasaba el campo `explanation`. Por eso el tercer caso de aquí mira la EXPLICACIÓN, no solo el
+  // enunciado: catalogarla sin ejercitar esa vía dejaría medio agujero abierto.
+  it('marca CETIC sin desarrollar, también cuando aparece solo en la explicación (T-679, 08/08/2026)', () => {
+    expect(analizarSiglas('Según el artículo 10, ¿qué declara la CETIC?').faltan).toEqual(['CETIC'])
+    expect(
+      analizarSiglas('Según el artículo 10, ¿qué declara la Comisión de Estrategia TIC (CETIC)?').faltan
+    ).toEqual([])
+    // La sigla NO está en el enunciado: solo en la explicación. Es el caso real de T-679.
+    expect(
+      analizarSiglas('Según el artículo 8, ¿qué determina la Estrategia TIC?',
+        'Los proyectos de interés prioritario los declara la CETIC según el artículo 10.').faltan
+    ).toEqual(['CETIC'])
+    expect(
+      analizarSiglas('Según el artículo 8, ¿qué determina la Estrategia TIC?',
+        'Los proyectos los declara la Comisión de Estrategia TIC (CETIC) según el artículo 10.').faltan
+    ).toEqual([])
+  })
+
   it('acepta el número de la norma como desarrollo (Ley 58/2003 ≡ LGT)', () => {
     const r = analizarSiglas('Según el artículo 1 de la Ley 58/2003, la LGT establece que...')
     expect(r.faltan).toEqual([])

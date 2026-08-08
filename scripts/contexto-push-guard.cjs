@@ -23,12 +23,22 @@
 // pasar. Un guardarraíl que acusa cuando no puede saberlo se acaba apagando entero — y entonces
 // deja de proteger también en los casos en los que sí sabía.
 //
-// Fail-open ante infra (sin git, sin `origin/main`, fichero ausente). Escape: CONTEXTO_GUARD_SKIP=1.
+// Fail-open ante infra (sin git, sin `origin/main`, fichero ausente).
 // Escape PROPIO a propósito: si compartiera el de otro guard, apagar uno apagaría dos.
+//
+// ── EL ESCAPE PIDE MOTIVO, COMO SUS DOS HERMANOS (T-704, 08/08) ────────────────────────────
+//   CONTEXTO_GUARD_SKIP="por qué te lo saltas" git push …
+// Nació aceptando un `=1` y se quedó atrás cuando T-496/T-497 se lo quitaron a `backlog-push` y
+// a `indice-compartido`. El efecto está medido: en 7 días, **25 escapes sin UN SOLO motivo
+// escrito**, y 8 de ellos en 60 segundos — o sea, la variable se copiaba de un comando a otro.
+// Un escape que se satisface con un «1» deja de ser una decisión y pasa a ser un prefijo.
+// El criterio de qué vale como motivo NO se reescribe aquí: es `evaluarEscape`, el mismo que
+// usan los otros dos. Tres criterios para lo mismo acabarían divergiendo.
 
 const path = require('path')
 const { execFileSync, spawn } = require('child_process')
 const { findPerdidaDeContexto, bloqueantes } = require('../lib/backlog/perdidaDeContexto.cjs')
+const { evaluarEscape } = require('../lib/observability/friccionSesiones.cjs')
 
 // El repo es el de este script. `CONTEXTO_GUARD_REPO` existe SOLO para la simulación de
 // `scripts/backlog/sim-contexto-guard.cjs`, que monta un repo de pruebas y reproduce el incidente
@@ -38,10 +48,13 @@ const REPO = process.env.CONTEXTO_GUARD_REPO || path.join(__dirname, '..')
 const FICHERO = 'docs/roadmap/tareas-pendientes.md'
 
 /** Registrar el roce sin bloquear NUNCA: detached y sin esperar (T-423). */
-function friccion(clase, detalle) {
+function friccion(clase, detalle, evitoBloqueo) {
   try {
     const a = ['--clase', clase, '--guard', 'contexto-backlog']
     if (detalle) a.push('--detalle', String(detalle).slice(0, 200))
+    // Tri-estado: sin bandera = «no sé contestarlo», que no es lo mismo que «no evitó nada» (T-702).
+    if (evitoBloqueo === true) a.push('--evito-bloqueo')
+    else if (evitoBloqueo === false) a.push('--sin-nada-que-rodear')
     spawn(process.execPath, [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), ...a],
       { detached: true, stdio: 'ignore' }).unref()
   } catch { /* la telemetría nunca estorba a un push */ }
@@ -52,10 +65,12 @@ function git(args) {
 }
 
 function main() {
-  if (process.env.CONTEXTO_GUARD_SKIP === '1') {
-    console.log('⏭️  contexto-push-guard saltado (CONTEXTO_GUARD_SKIP=1)')
-    friccion('guard_escape')
-    return 0
+  const escape = evaluarEscape(process.env.CONTEXTO_GUARD_SKIP)
+  if (escape.usa && !escape.permitido) {
+    // Que el valor no valga NO añade un bloqueo: sigue adelante y se evalúa como si no lo hubieras
+    // puesto. Si no había nada que borrar, el push pasa igual — solo deja de ser llave maestra.
+    console.log(`⚠️  contexto-push-guard: ${escape.problema}`)
+    console.log('     CONTEXTO_GUARD_SKIP="por qué te lo saltas" git push …')
   }
 
   // Cortocircuito: si el push no toca el fichero, no se paga peaje.
@@ -83,6 +98,20 @@ function main() {
   }
 
   const malos = bloqueantes(hallazgos)
+
+  // El escape se resuelve AQUÍ y no arriba (T-702/T-704): saliendo antes de evaluar, el guard no
+  // podía decir si había algo que rodear, y el panel tenía que deducirlo restando bloqueos — con
+  // 0 bloqueos eso da «rodeado el 100%» por aritmética y prescribe borrar la puerta. Ahora se
+  // mide: `evitoBloqueo` responde si el escape servía para algo o se puso de prefijo.
+  if (escape.permitido) {
+    console.log(`⏭️  contexto-push-guard saltado: ${escape.motivo}`)
+    if (malos.length) {
+      console.log(`     (te saltas ${malos.length} ficha(s) que este guard habría protegido: ${malos.map((h) => h.id).join(', ')})`)
+    }
+    friccion('guard_escape', escape.motivo, malos.length > 0)
+    return 0
+  }
+
   if (!malos.length) return 0
 
   console.error('\n❌ PUSH BLOQUEADO — tu push borra contexto de fichas VIVAS que ya están publicadas:\n')
@@ -97,7 +126,7 @@ function main() {
   console.error(`   Míralo con:  git diff origin/main -- ${FICHERO}`)
   console.error('   Al resolver este fichero se conservan SIEMPRE los dos lados: son fichas distintas.')
   console.error('   Si el borrado es a propósito (renumerar, la entrada no era una tarea):')
-  console.error('     CONTEXTO_GUARD_SKIP=1 git push …\n')
+  console.error('     CONTEXTO_GUARD_SKIP="por qué lo borras a propósito" git push …\n')
   return 1
 }
 

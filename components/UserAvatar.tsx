@@ -42,6 +42,11 @@ interface V2StatsResponse {
   questionsThisWeek?: number
   userCreatedAt?: string
   error?: string
+  // `/api/v2/user-stats` lo pone cuando su FK detecta una sesión zombie (`user_id` borrado,
+  // p.ej. por admin-delete-user) — un caso YA reconocido y gestionado en servidor (401, no
+  // 500; ver el comentario "no es bug del servidor" en la propia ruta). El cliente lo
+  // ignoraba y lo registraba como `console.error` igual que un fallo real (T-271).
+  sessionInvalid?: boolean
 }
 
 interface AvatarDisplay {
@@ -96,7 +101,7 @@ export default function UserAvatar() {
       // que dejó a 248 usuarios con las estadísticas a 0 y sin poder corregir exámenes ([T-671]).
       const examRes = await fetch(`/api/exam/pending?userId=${user!.id}&testType=exam&limit=10`, {
         signal,
-        headers: await getAuthHeaders(),
+        headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/exam/pending' }),
       })
       if (signal?.aborted) return
       const examData = await examRes.json()
@@ -139,14 +144,26 @@ export default function UserAvatar() {
         setStatsLoading(true)
 
         const res = await fetch(`/api/v2/user-stats?userId=${user.id}`, {
-          headers: await getAuthHeaders(),
+          headers: await getAuthHeaders({ exigeSesion: true, endpoint: '/api/v2/user-stats' }),
         })
         if (cancelled) return
 
         const data: V2StatsResponse = await res.json()
 
         if (!data.success) {
-          console.error('UserAvatar: v2 stats error:', data.error)
+          // Sesión zombie (T-271, 06/08/2026): el servidor ya la reconoce y gestiona (401
+          // explícito con `sessionInvalid`, "no es bug del servidor" en su propio comentario) —
+          // no un fallo del cliente. `console.error` la mandaba a observabilidad como
+          // `severity:'error'` igual que un error genuino, inflando el catch-all de
+          // `console_error` (medido: 30-45 usuarios/día, sin bajar tras desplegar T-245, que
+          // ataja un camino distinto de identidad rota). `console.warn` la clasifica como
+          // `severity:'warn'` (mismo pipeline, `lib/observability/client.ts`), visible pero sin
+          // disparar la alerta de errores crónicos.
+          if (data.sessionInvalid) {
+            console.warn('UserAvatar: sesión zombie (user_id sin perfil) — v2 stats:', data.error)
+          } else {
+            console.error('UserAvatar: v2 stats error:', data.error)
+          }
           return
         }
 

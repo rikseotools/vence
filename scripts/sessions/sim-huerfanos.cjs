@@ -90,6 +90,37 @@ caso('scrape-opositatest', 'contenido_unico', 'limpieza a medias SIN COMMITEAR �
   return { ruta: w, rama: 'sesion/scrape' }
 })
 
+// ── Los dos defectos que se encontraron USANDO la herramienta el 08/08 ([T-707]) ────────────
+
+caso('rescatado-y-pusheado', 'solo_desfasado',
+  'commiteado aquí y YA EMPUJADO a origin: no se pierde nada si se borra', () => {
+  // El caso real: `t486-flota` salía como «4 ficheros que solo existen aquí (sin commitear)»
+  // teniendo el árbol LIMPIO y su commit a salvo en `origin/rescate/t486-flota-<sha>` — que es
+  // justo lo que el rescate de una sesión caída deja hecho. Avisar de eso gasta la atención de
+  // quien lee, y con trece worktrees señalados el que SÍ guarda algo pasa desapercibido.
+  const w = nuevoWorktree('rescatado-y-pusheado', 'sesion/rescatado')
+  escribir(w, 'lib/rescatado.js', 'export const y = 2\n')
+  commit(w, 'chore: rescate de una sesion caida')
+  // Publicado: una referencia remota que ya lo contiene.
+  g(['update-ref', 'refs/remotes/origin/rescate/rescatado', 'sesion/rescatado'], w)
+  return { ruta: w, rama: 'sesion/rescatado' }
+})
+
+caso('primer-fichero-intacto', 'contenido_unico',
+  'el nombre del PRIMER fichero sin commitear no se mutila', () => {
+  // `git()` hacía `.trim()` de la salida, así que la primera línea de `--porcelain` perdía su
+  // espacio inicial y `slice(3)` se comía la primera letra: en el informe real salía
+  // `ocs/roadmap/tareas-pendientes.md`, un fichero que no existe. Solo pasaba con la primera
+  // línea y solo con los códigos que empiezan por espacio (` M`), que son los cambios sin
+  // preparar — los más frecuentes.
+  const w = nuevoWorktree('primer-fichero-intacto', 'sesion/primero')
+  escribir(w, 'docs/roadmap/tareas-pendientes.md', 'contenido base\n')
+  commit(w, 'docs: base')
+  g(['update-ref', 'refs/remotes/origin/main', 'sesion/primero'], w)
+  escribir(w, 'docs/roadmap/tareas-pendientes.md', 'contenido base\nlinea nueva sin commitear\n')
+  return { ruta: w, rama: 'sesion/primero', esperaFichero: 'docs/roadmap/tareas-pendientes.md' }
+})
+
 caso('viva-con-trabajo', 'en_uso', 'tiene contenido único y hay un PROCESO real dentro: no se opina', () => {
   const w = nuevoWorktree('viva-con-trabajo', 'sesion/viva')
   escribir(w, 'lib/en-curso.js', 'trabajo en marcha\n')
@@ -142,6 +173,11 @@ function main() {
       `[únicos=${r.ficherosUnicos.length} ahead=${r.commitsAhead} cherry=${r.commitsUnicos}]`)
     console.log(`     ${c.detalle}`)
     if (!ok) console.log(`     ⤷ ${r.motivo} · ${JSON.stringify(r.ficherosUnicos)}`)
+    // Un veredicto correcto con el NOMBRE mal sigue mandando a mirar un fichero que no existe.
+    if (c.esperaFichero && !(r.ficherosUnicos || []).includes(c.esperaFichero)) {
+      fallos++
+      console.log(`     ⤷ ❌ esperaba el fichero ${c.esperaFichero}, salió ${JSON.stringify(r.ficherosUnicos)}`)
+    }
   }
 
   const reales = casos.filter((c) => c.esperado === 'contenido_unico').length

@@ -128,3 +128,45 @@ describe('formatearEmbudo — lo que Manuel lee de un vistazo', () => {
     expect(l.some((x: string) => x.includes('…y 15 más'))).toBe(true)
   })
 })
+
+describe('[T-705] el embudo avisa si ya hay una pregunta abierta sobre la misma tarea', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const cli = fs.readFileSync(path.join(__dirname, '..', '..', 'scripts', 'backlog.cjs'), 'utf8')
+  // El bloque del comando `preguntar`, para no medir coincidencias de otros sitios del CLI.
+  const bloque = cli.slice(cli.indexOf("cmd === 'preguntar'"), cli.indexOf("cmd === 'borrador'"))
+
+  it('consulta las preguntas ABIERTAS de esa tarea antes de insertar la nueva', () => {
+    const iConsulta = bloque.indexOf('session_questions')
+    const iInsert = bloque.indexOf('INSERT INTO public.session_questions')
+    expect(iConsulta).toBeGreaterThan(-1)
+    expect(iInsert).toBeGreaterThan(iConsulta)   // avisa ANTES, o el aviso no sirve de nada
+    expect(bloque).toContain("status = 'open'")
+  })
+
+  it('no cuenta las TUYAS: repreguntar sobre tu propia tarea no es un duplicado', () => {
+    expect(bloque).toContain('sid IS DISTINCT FROM')
+  })
+
+  it('AVISA pero NO bloquea: la segunda pregunta suele ser legítima', () => {
+    // «avisar ≠ bloquear» es uno de los nueve principios del sistema de sesiones. Otra sesión
+    // puede haber medido algo que la primera no tenía.
+    const tras = bloque.slice(bloque.indexOf('YA HAY'))
+    expect(tras).not.toMatch(/process\.exit\(/)
+  })
+
+  it('enseña el id y el texto de la previa, que es lo que permite decidir', () => {
+    expect(bloque).toMatch(/#\$\{p\.id\}/)
+    expect(bloque).toContain('p.question')
+  })
+
+  it('ofrece el camino corto: contestar a la que ya está en vez de abrir otra', () => {
+    expect(bloque).toContain('responder ${previas[0].id}')
+  })
+
+  it('usa la columna que existe (`asked_at`), no una inventada', () => {
+    // Se estrenó con `created_at` y reventó en la primera ejecución real: la tabla no la tiene.
+    expect(bloque).toContain('asked_at')
+    expect(bloque).not.toMatch(/session_questions[\s\S]{0,200}created_at/)
+  })
+})

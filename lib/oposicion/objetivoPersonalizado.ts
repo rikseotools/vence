@@ -81,6 +81,25 @@ export function personalizadaUtilizable(temasActivos: number | null | undefined)
 }
 
 /**
+ * El código y el mensaje que se le da al usuario cuando `personalizadaUtilizable` dice que no.
+ *
+ * UN SOLO SITIO a propósito [T-339]: hasta ahora solo lo emitía `/api/profile/target`
+ * (`PUT`, el botón «Hacer mi oposición objetivo»). El guardado progresivo del onboarding
+ * (`/api/v2/onboarding/save-field`) escribía `target_oposicion` sin pasar por
+ * `personalizadaUtilizable` en absoluto — una SEGUNDA puerta con CERO criterio, no uno
+ * distinto. Medido el 07/08/2026: las 10 personalizadas "más populares" que el onboarding
+ * ofrece (`get_popular_custom_oposiciones`) tienen las 10 CERO temas activos — el mismo
+ * defecto que produjo el 404 de T-508, pero alcanzable sin pasar nunca por el botón que lo
+ * bloquea. Que el texto viva aquí, y no copiado en cada endpoint, es lo que evita que las dos
+ * puertas vuelvan a decir cosas distintas.
+ */
+export const ERROR_PERSONALIZADA_SIN_TEMARIO = {
+  error: 'personalizada_sin_temario',
+  message:
+    'Esa oposición todavía no tiene ningún tema con contenido. Añádele leyes y artículos en el editor y vuelve a elegirla.',
+} as const
+
+/**
  * ¿Es válido este objetivo? Es la pregunta que hoy contesta `ALL_OPOSICION_IDS.includes(id)`.
  *
  * ⚠️ Esto es el camino de LECTURA: contesta «¿sé pintar este objetivo?», no «¿se puede fijar?».

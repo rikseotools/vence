@@ -460,6 +460,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
       '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
   },
+  sanear_verificacion_cosmetica: {
+    titulo: 'El APLICAR del audit de arriba: limpia (article_ok/answer_ok → NULL) lo ya firmado por un pase cosmético',
+    ruta: 'scripts/calidad/sanear-verificacion-cosmetica.cjs',
+    estado: 'vivo',
+    escribe: ['ai_verification_results', 'observable_events'],
+    runbook: 'docs/maintenance/revisar-preguntas-con-agente.md',
+    notas:
+      '`npm run sanear:verificacion-cosmetica [-- --aplicar]`. SIMULA por defecto. Nace de que ' +
+      '`audit_verificacion_cosmetica` es deliberadamente solo-lectura ("limpiar esas firmas es una ' +
+      'decisión aparte") — Manuel la resolvió el 08/08/2026 (pregunta #111 del embudo): OPCIÓN A, ' +
+      'limpiar, con dos condiciones verificadas ANTES de escribir el script: (1) `article_ok`/' +
+      '`answer_ok` viven en `ai_verification_results`, no en `questions`; sin trigger en esa tabla y ' +
+      'con `questions.is_active` GENERATED solo desde `lifecycle_state`, nulear esos dos flags no ' +
+      'puede desactivar ni jubilar nada por sí solo (comprobado contra `information_schema.triggers`, ' +
+      '0 filas). (2) Cada fila limpiada deja traza en `observable_events` con el MISMO `event_type` ' +
+      'que ya usa el trigger de prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un ' +
+      'tipo nuevo, para que el saneamiento retroactivo y la prevención compartan serie temporal. ' +
+      'Núcleo puro compartido: `calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` ' +
+      '(17 tests). Medido el 08/08/2026: 1.705 filas a limpiar (bajó de las 1.713 originales por el ' +
+      'trabajo pregunta-a-pregunta ya hecho de T-465). NUNCA toca `explanation`/`ai_model`/etc.: esos ' +
+      'campos son la firma original del pase cosmético y la evidencia de qué pasó.',
+  },
   explicaciones_bucle_reescritura: {
     titulo: 'Bucle para reescribir explicaciones a escala (gate de citas, volcado para re-verificar, correcciones con rastro)',
     ruta: 'scripts/explicaciones/',
@@ -1258,7 +1280,8 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'dispara en el 0,9% de los commits y en el 91% de las fichas que señala alguien tuvo que ' +
       'restaurarlas a mano. Umbral: pierde ≥600 caracteres Y ≥50% del cuerpo; cerrar con ✅ exime ' +
       '(pero se reporta, para que un borrado no se disfrace de cierre). Fail-open; escape PROPIO ' +
-      '`CONTEXTO_GUARD_SKIP=1` — compartirlo con otro guard apagaría dos de una vez. Mide su ' +
+      '`CONTEXTO_GUARD_SKIP="por qué"` (con MOTIVO desde T-704: el `=1` se había vuelto un prefijo) ' +
+      '— compartirlo con otro guard apagaría dos de una vez. Mide su ' +
       'fricción (bloqueo y escape) vía `friccion-emitir.cjs`, T-423. **NO es el detector de fichas '+
       'huérfanas** (`lib/backlog/fichaHuerfana.cjs`, dentro de `backlog.cjs sync`): aquél parte de la BD '+
       '(fila viva sin ficha), informa y no bloquea; éste parte del markdown, bloquea en el pre-push, y ve '+
@@ -2608,6 +2631,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'usuarios) — aunque lo que de verdad protege es la credencial, no el texto. **Antes de cada ' +
       'encargo pone su clon al día y comprueba que no esté ya trabajando** (ver `flota_clon_al_dia`).',
   },
+  flota_reparto_devueltas: {
+    titulo: 'Que una entrega devuelta con PROBLEMAS pueda llegarle a alguien',
+    ruta: 'scripts/flota/sim-reparto-devueltas.cjs',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:reparto-devueltas`. ' +
+      'Comprueba, contra la BD real, que toda tarea que el criterio compartido ' +
+      '(`lib/backlog/revision.cjs` → `devueltaConProblemas`) considera una devolución sin dueño ' +
+      'está al alcance del reparto de la flota. **Nace de una AUSENCIA, no de un fallo** ([T-700], ' +
+      '08/08): el repartidor tenía tres ramas —revisar, retomar lo propio, tarea nueva— y una ' +
+      'devolución se caía de las tres a la vez (de `candidatas` por `status=\'open\'` y por ' +
+      '`review_requested_at IS NULL`; de `porRevisar` por tener ya `reviewed_at`; de las retomadas ' +
+      'porque entregar suelta el claim). Nada fallaba ni avisaba: **25 tareas paradas, la más vieja ' +
+      '37,2 h**, y el veredicto más caro de producir —otro trabajador reproduciendo el trabajo— era ' +
+      'el único que no podía llegarle a nadie. Ningún unit podía verlo (el criterio puro estaba ' +
+      'bien; el hueco estaba ENTRE las consultas), de ahí la simulación. **Se autocalifica**: mide ' +
+      'también lo que el reparto anterior alcanzaba y avisa de NO CONCLUYENTE si no hay ' +
+      'devoluciones o si el verde no distingue el arreglo de su ausencia — un verde que no ' +
+      'ejercita nada es peor que no tenerlo (lección de `sim:espera-revision`). Solo lectura. ' +
+      'El encargo que se les manda es `ENC.encargoCorreccion`, distinto del normal a propósito: ' +
+      'con «tu tarea es T-nnn» el trabajador la REHACE desde cero y tira el veredicto.',
+  },
   flota_rescate: {
     titulo: 'Sacar de la máquina de un trabajador el trabajo que solo existe ahí (y empujarlo aunque él no pueda)',
     ruta: 'lib/flota/rescate.cjs',
@@ -2620,22 +2665,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama por tarea y luego vuelve a `main`, así que lo entregado nunca es `HEAD` — mirar ahí ' +
       'daba «nada que salvar» con 22 commits atrapados (05/08). La ref de destino lleva el sha ' +
       'dentro, así que rescatar dos veces escribe la MISMA ref: idempotente sin comprobar nada. ' +
-      '**SEGUNDA FASE (T-628):** en el VPS el push del propio rescate falla SIEMPRE —los ' +
-      'trabajadores no tienen credenciales de git— así que el trabajo quedaba identificado y ' +
-      'quieto (medido el 06/08: 11 ramas atrapadas, una con un bug de producción, y 6 tareas que ' +
-      'el panel presentaba como «esperando tu decisión» cuando solo esperaban esto). Ahora el ' +
-      'rescate emite `ORIGEN=<rama>|<destino>` y el PORTÁTIL —único sitio con SSH a la máquina Y ' +
-      'credenciales del repo— se trae las refs y las empuja **con el nombre que ya calculó el ' +
-      'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
+      '**SEGUNDA FASE (T-628, histórica — YA NO DISPARA en el VPS desde el 08/08):** el 06/08 el ' +
+      'push del propio rescate fallaba SIEMPRE en el VPS —los trabajadores no tenían credenciales ' +
+      'de git— así que el trabajo quedaba identificado y quieto (medido: 11 ramas atrapadas, una ' +
+      'con un bug de producción, y 6 tareas que el panel presentaba como «esperando tu decisión» ' +
+      'cuando solo esperaban esto). El mecanismo se conserva por si una máquina vuelve a carecer ' +
+      'de credenciales: el rescate emite `ORIGEN=<rama>|<destino>` y una máquina CON credenciales ' +
+      '(el portátil, o cualquier otra) se trae las refs y las empuja **con el nombre que ya ' +
+      'calculó el rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
       '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión. ' +
       '**Gotcha corregido (07/08):** la decisión "¿hace falta rematar?" miraba `.local` — "¿quien ' +
       'llama está en la misma máquina que el trabajador?" — no "¿esa máquina tiene con qué ' +
       'empujar?". El supervisor systemd corre CON `VENCE_FLOTA_AQUI=flota-1`, así que para él ' +
-      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba, aunque el push de ' +
-      'esa máquina nunca funciona. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una ' +
-      'propiedad DE LA MÁQUINA (`lib/flota/maquinas.cjs`), no de quien pregunta.',
+      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba con el criterio ' +
+      'viejo. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una propiedad DE LA MÁQUINA ' +
+      '(`lib/flota/maquinas.cjs`), no de quien pregunta — y esa propiedad se REVIRTIÓ a `true` ' +
+      'el 08/08 (T-486/T-628) tras medir en vivo que el VPS SÍ tiene una clave SSH funcional ' +
+      '(`ssh -T git@github.com` autentica, `git fetch` funciona, y esta misma sesión empujó ' +
+      'con éxito más de una decena de veces en su propio worktree con esa credencial). No se ' +
+      'pudo probar un push real desde el clon BASE compartido específicamente (el guard de "una ' +
+      'sesión por directorio" lo bloquea, correctamente) — la autorización es por usuario del ' +
+      'sistema operativo, no por directorio, así que se infiere del mismo par cuenta/clave.',
   },
 
   flota_presencia_trabajador: {
@@ -2773,6 +2825,64 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'más a costa del tiempo de Manuel es perder. Usa MEDIANA (una entrega olvidada desplaza la ' +
       'media y esconde el resto) y **dice «no medido» en vez de rellenar** (`worked_seconds` solo ' +
       'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`, y **serie duradera** en la tabla `flota_productividad_historico` — el bus NO sirve como historia y se comprobó antes de decidirlo (10,8 M de filas y solo 32 días: se poda). Guarda las ENTRADAS del cálculo, no solo el veredicto, para poder re-juzgar la historia si se recalibran los umbrales; y compara con la medida anterior métrica a métrica con ±10 % tratado como ruido. 30 tests. **Y da PREVISIÓN** (`--ventana <h>`), con dos trampas esquivadas a propósito: (a) el ritmo NO sale de `worked_seconds`, que mide tiempo con la tarea COGIDA y no esfuerzo —hay entregas de «22 h» que son una tarea reclamada de un turno a otro—, sino de **entregas por hora de reloj**, que ya incluye paradas y reintentos; (b) si se revisa más despacio de lo que se entrega, **la previsión la manda la REVISIÓN** y añadir trabajadores no acorta nada, solo alarga la cola. Con menos de 3 entregas medidas se niega a dar un número.',
+  },
+  flota_salud_maquina: {
+    titulo: '¿Puede la MÁQUINA de la flota con el trabajo que se le manda? — vigilaba al trabajador, nunca a la máquina',
+    ruta: 'lib/flota/saludMaquina.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`clasificarMaquina(medida)` / `turnoSinProgreso(...)`. Nace de medir `flota-1` (07/08) con el ' +
+      'panel pintando los cuatro trabajadores en verde: 702 MB disponibles de 7.751 (9 %), sin swap, ' +
+      'carga 19,7 en 4 núcleos con la CPU al 97,7 % OCIOSA (procesos en `D`, esperando disco) y ' +
+      'CUATRO builds de Node a la vez (1,3-1,6 GB cada uno; los cuatro Claude Code juntos ocupaban ' +
+      'menos de 1 GB). Los trabajadores no estaban trabajando, estaban esperando disco — y nada lo ' +
+      'medía. Dos criterios que lo hacen usable: carga alta con CPU OCUPADA no alerta (máquina ' +
+      'trabajando de verdad); se mide `available`, no `free` (un Linux sano usa casi toda la RAM en ' +
+      'caché). Distingue build de trabajador por RSS del proceso `node` (>500 MB): la primera versión ' +
+      'seguía la cadena de padres (`node` cuyo ppid es un `npm`) y daba CERO en una máquina con ' +
+      'cuatro builds corriendo — el padre no siempre está. `turnoSinProgreso` es el cruce que ' +
+      'faltaba: proceso vivo + latido de presencia congelado ≥2h, que hasta entonces el panel no unía. ' +
+      'La sonda corre en el supervisor UNA VEZ POR MÁQUINA, en CADA pasada del bucle (no solo cuando ' +
+      'alguien mira el panel a mano — ese fue el propio bug del estreno, verificado en vivo: el ' +
+      'servicio llevaba horas con la sonda dentro y solo había UN evento). Emite `flota_maquina_salud` ' +
+      '(deliberadamente silencioso cuando el estado es `ok`) y `flota_turno_sin_progreso`, con dos ' +
+      'reglas proactivas (`RULE_FLOTA_MAQUINA_AHOGADA`, `RULE_FLOTA_TURNO_SIN_PROGRESO`) que exigen ' +
+      '2 lecturas en 2h antes de disparar — una suelta puede ser un build legítimo. **No es el ' +
+      'arreglo de la causa** ([T-682]/[T-647] la tienen: son los builds simultáneos, no el número de ' +
+      'trabajadores — bajar de cuatro a dos habría sido la reacción incorrecta y se retiró al medir ' +
+      'quién consumía la memoria de verdad). 14 tests en `__tests__/flota/saludMaquina.test.ts`.',
+  },
+  flota_oom_cgroup: {
+    titulo: 'Detectar OOM-kill de la flota SIN journalctl — el detector que T-647 construyó era ciego él mismo',
+    ruta: 'lib/flota/oomCgroup.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`leerOomKill(trabajador)` / `deltaOomKill(anterior, actual)`. Nace de medir (08/08) que ' +
+      '`flota_sin_memoria` (T-647, «Capa 4», construida para dejar de ser ciego a los OOM) llevaba ' +
+      '**CERO eventos en TODA su historia** — no porque no hubiera OOM (el 07/08 tuvo 20 en 6h), ' +
+      'sino porque su detector corre `journalctl … | grep Killed` DENTRO del supervisor, y el ' +
+      'supervisor corre como `User=flota` (confirmado con `systemctl show … -p User`), que NO ' +
+      'pertenece a `adm` ni `systemd-journal`. Reproducido en vivo con el comando EXACTO que usa el ' +
+      'supervisor: `journalctl --no-pager --since … 2>/dev/null` da vacío pese a que ' +
+      '`journalctl --list-boots` confirma >15h de historial real, y `journalctl -k` imprime el aviso ' +
+      '«Users in groups adm, systemd-journal can see all messages» — el detector nunca pudo ver nada. ' +
+      '**La alternativa:** cgroup v2 expone `memory.events` con un contador `oom_kill` que escribe el ' +
+      'KERNEL directamente y que SÍ es legible sin privilegios (confirmado con `cat` como `flota` en ' +
+      'la máquina real, para los cuatro `vence-flota@wN.service`). Mejor señal que journalctl, no solo ' +
+      'alternativa: viene atribuida por trabajador de fábrica y es un contador, no texto que parsear. ' +
+      '**El contador es ACUMULATIVO y se reinicia a 0 si la unidad se reinicia**, así que solo se ' +
+      'puede afirmar un DELTA frente a la lectura anterior — `deltaOomKill` distingue tres formas de ' +
+      '«no se sabe» (sin lectura actual, sin lectura anterior, contador que BAJÓ = unidad reiniciada) ' +
+      'y ninguna cuenta como delta 0, para no fingir salud donde solo hay falta de dato. Wireado en ' +
+      '`scripts/flota/flota.cjs` como COMPLEMENTO del bloque de journalctl (no sustituto: por si algún ' +
+      'día sí hay permiso), guardando la lectura anterior en memoria del propio proceso del bucle (de ' +
+      'larga duración; un reinicio del supervisor pierde la base y eso es lo correcto, no un fallo). ' +
+      '15 tests en `__tests__/flota/oomCgroup.test.ts`, incluida la lectura real de un ' +
+      '`memory.events` de la máquina.',
   },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
@@ -2975,6 +3085,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
       'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
   },
+  bearer_con_reintento: {
+    titulo: 'El Bearer se pide dos veces antes de rendirse, y si no llega se DICE (`auth_header_sin_token`)',
+    ruta: 'lib/api/bearerConReintento.ts',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/health-check.md',
+    notas:
+      'Núcleo puro que consume el punto único `lib/api/authHeaders.ts` (guardarraíl ' +
+      '`bearerTokenSinglePath.test.ts`: no se abre un segundo camino para conseguir token). ' +
+      'Medición `npm run sim:bearer-ausente` (solo lee: contrato del servidor + % de 401 del ' +
+      'día contra la línea base + señal de causa). Nace de [T-692], 08/08/2026: ' +
+      '`getAuthHeaders()` devolvía `{}` sin token y la petición SALÍA IGUAL; como el navegador ' +
+      'adjunta la cookie, el servidor no lo distingue de una sesión con credenciales malas y el ' +
+      'defecto era invisible — `/api/exam/pending` pasó de NUEVE DÍAS a 0,0 % de 401 al 44,2 % ' +
+      '(18 usuarios/día) y `/api/v2/user-stats` arrastraba un 20-36 % DIARIO de antes. ' +
+      'Un solo reintento a propósito: [T-419] es el daño de martillear y [T-210] el de re-acuñar.',
+  },
+
   dossier_rastro_errores: {
     titulo: 'El dossier de feedback pone delante el RASTRO DE ERRORES del usuario (antes / después de su mensaje)',
     ruta: 'lib/impugnaciones/rastroDeErrores.cjs',
@@ -3104,6 +3232,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'caía era un artículo. ON-DEMAND a propósito: 606 llamadas al BOE por pasada para una señal ' +
       'que cambia dos o tres veces al año. Origen: feedback `1627e0d4`, un usuario premium que ' +
       'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
+  },
+
+  cuota_cuentas_claude: {
+    titulo: '¿A qué cuenta de Claude Code le queda cuota, y mover un panel a la otra sin escribir nada',
+    ruta: 'scripts/sesiones/cuota.cjs',
+    estado: 'vivo',
+    escribe: ['observable_events'],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run cuota` (foto) · `-- --rotar <slug> [--aplicar]` (relanza ese panel de tmux en la ' +
+      'otra cuenta con `--resume`, así que el hilo se conserva y no hay que escribir nada). ' +
+      'SIMULA por defecto: `respawn-pane -k` mata lo que corra en el panel. Criterio en dos ' +
+      'núcleos puros con 19 tests: `lib/sessions/rotacionCuenta.cjs` (cuándo avisar, a dónde ' +
+      'mover) y `lib/observability/cuentaDeSesion.cjs` (de quién es cada consumo). ' +
+      '⚠️ NO hay API de cuota: el proveedor no dice cuánta queda, solo corta — así que la ' +
+      'referencia es EMPÍRICA (lo que esa cuenta gastó la última vez que topó, del evento ' +
+      '`flota_turno` con `fase=sin_cuota`) y la primera vez NO puede avisar, y lo dice. ' +
+      '⚠️ La atribución retroactiva de sesiones locales es IMPOSIBLE: de los 355 transcripts de ' +
+      '`~/.claude/projects`, ninguno guarda la cuenta; se sella en el ingest hacia delante. ' +
+      'Origen [T-709]: «igual me quedo yo ahora sin poder terminar, y eso es un fallo».',
   },
 
   reparar_correcciones_bloqueadas: {
@@ -3664,6 +3812,32 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'GOTCHA nº2: detecta pantallas de captcha/WAF (el BORM devuelve 810 chars con incident id ' +
       'variable) y las marca `inaccesible`, que NO es un cambio. Frase-gatillo: «revisa los ' +
       'cambios de fuentes legales».',
+  },
+  // ── Particionar observable_events: retención por DROP PARTITION, no DELETE ────────────────
+  particionar_observable_events: {
+    titulo: '`observable_events` (6,9 GB) → particionada por día (`created_at`), retención = DROP PARTITION (T-360)',
+    ruta: 'scripts/db/particionar-observable-events.cjs',
+    estado: 'vivo',
+    runbook: 'docs/roadmap/particionado-telemetria.md',
+    notas:
+      'node scripts/db/particionar-observable-events.cjs <plan|create|backfill|swap|verify> ' +
+      '[--apply]. Dry-run por defecto en TODOS los subcomandos. `plan` es de solo lectura y funciona ' +
+      'con VENCE_LECTOR_URL (lo puede correr un `trabajador`); `create`/`backfill`/`swap` necesitan ' +
+      'DATABASE_URL de escritura y — a fecha 07/08/2026 — SIN EJECUTAR ni probar contra un Postgres ' +
+      'real (esta máquina no tiene psql/Docker): revisar el DDL que imprime `plan` antes de aplicar. ' +
+      'DIARIA, no mensual (la 1ª versión del roadmap proponía mensual, error con retención EXACTA ' +
+      'de 30 días: una partición mensual no se puede DROP hasta que TODA quede fuera de la ventana, ' +
+      'hasta ~60 días de retención real). Partición por `created_at` (hora de inserción), NO por ' +
+      '`ts` (hora del evento, puede venir corrupta desde el cliente) — mismo criterio que ya usa ' +
+      '`telemetry-retention.service.ts`. Núcleo puro `lib/db/particionadoObservableEvents.cjs` ' +
+      '(14 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
+      'disponible en RDS SIN activar el background worker (evita tocar `shared_preload_libraries` ' +
+      'del parameter group + reboot, el mismo tipo de operación que costó el gotcha de ' +
+      '`hot_standby_feedback` en la réplica): `create_parent`/`run_maintenance_proc` se llaman por ' +
+      'SQL desde el cron existente, sin bgw. `telemetry-retention.service.ts` ya detecta ' +
+      '`pg_class.relkind` en cada `run()` y usa `partman.run_maintenance_proc()` en cuanto la tabla ' +
+      'pase a estar particionada — desplegable HOY sin riesgo, sigue la rama DELETE de siempre ' +
+      'mientras la migración no se aplique.',
   },
 }
 

@@ -8,10 +8,12 @@
 // Uso:  node scripts/import-tcae-pilot.cjs            # DRY-RUN (construye y muestra, NO inserta)
 //       node scripts/import-tcae-pilot.cjs --apply    # inserta de verdad (a draft)
 //       node scripts/import-tcae-pilot.cjs --limit 50 # cuántas (default 50)
+//       node scripts/import-tcae-pilot.cjs --permitir-placeholder "<motivo>"  (ver T-374 abajo)
 
 const fs = require('fs')
 const crypto = require('crypto')
 const path = require('path')
+const { esContenidoPlaceholder } = require(path.join(process.cwd(), 'lib', 'generacion', 'articuloPlaceholder'))
 
 const APPLY = process.argv.includes('--apply')
 const arg = (name, def) => { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : def }
@@ -19,6 +21,11 @@ const LIMIT = parseInt(arg('--limit', '500'), 10)
 // Subject + contenedor SE PASAN POR ARGUMENTO (el mapeo lo decide el humano, no el script).
 const SUBJECT = arg('--subject', '31. SISTEMA RENAL')
 const CONTAINER = arg('--container', 'Eliminacion y sondajes')
+// T-374 (07/08/2026): la generalización de este script (import-aulaplus-clinico.cjs) coló
+// 7.202 preguntas sobre artículos «⏳ Teoría pendiente…» porque nada comprobaba el contenido
+// del artículo antes de vincular. Aquí `pickArticle` puede repartir entre varios artículos
+// del mismo contenedor, así que el bloqueo mira TODOS los que este run vaya a usar de verdad.
+const PERMITIR_PLACEHOLDER = arg('--permitir-placeholder', null)
 
 function loadDbUrl() {
   const line = fs.readFileSync(path.join(process.cwd(), '.env.local'), 'utf8').split('\n').find(l => l.startsWith('DATABASE_URL='))
@@ -78,7 +85,7 @@ function pickArticle(text, arts) {
   // 1. contenedor + artículos
   const law = (await sql`SELECT id FROM laws WHERE short_name = ${CONTAINER} LIMIT 1`)[0]
   if (!law) throw new Error('contenedor no encontrado')
-  const arts = await sql`SELECT id, article_number, title FROM articles WHERE law_id = ${law.id} ORDER BY article_number`
+  const arts = await sql`SELECT id, article_number, title, content FROM articles WHERE law_id = ${law.id} ORDER BY article_number`
 
   // 2. preguntas nuevas del subject (del JSON ya reconciliado)
   const all = require('/tmp/tcae_nuevas.json')
@@ -140,6 +147,22 @@ function pickArticle(text, arts) {
     console.log(`  A)${r.option_a.slice(0,30)} B)${r.option_b.slice(0,30)} C)${r.option_c.slice(0,30)} D)${r.option_d.slice(0,30)}`)
     console.log(`  correcta=${'ABCD'[r.correct_option]} | art=${r._art} | exp=${r._hasExp ? 'sí' : 'no'}`)
   })
+
+  // T-374: qué artículos, de los que este run REALMENTE usa, siguen en placeholder.
+  const artsUsados = new Map()
+  rows.forEach(r => { if (!artsUsados.has(r._art)) artsUsados.set(r._art, arts.find(a => a.article_number === r._art)) })
+  const placeholders = [...artsUsados.values()].filter(a => a && esContenidoPlaceholder(a.content))
+  if (placeholders.length) {
+    const lista = placeholders.map(a => `  art. ${a.article_number}: "${(a.content || '').slice(0, 60)}" (${(a.content || '').length} car.)`).join('\n')
+    console.log(`\n🛑 ${placeholders.length} artículo(s) de este run siguen con contenido placeholder:\n${lista}`)
+    if (!PERMITIR_PLACEHOLDER) {
+      console.log(`Vincular preguntas ahí repite T-374. Redacta el contenido primero (§11 de\n` +
+        `importar-preguntas-scrapeadas.md), o pásalo explícito: --permitir-placeholder "<por qué>"`)
+      if (APPLY) { await sql.end(); process.exit(1) }
+    } else {
+      console.warn(`⚠️  Importando contra artículo(s) placeholder a propósito. Motivo: "${PERMITIR_PLACEHOLDER}"`)
+    }
+  }
 
   if (!APPLY) {
     console.log('\n🔍 DRY-RUN — nada insertado. Repite con --apply para insertar a DRAFT.')

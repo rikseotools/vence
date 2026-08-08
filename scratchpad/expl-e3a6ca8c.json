@@ -1,0 +1,16 @@
+{
+  "frame": "select_incorrect",
+  "cita": {
+    "ref": "Art. 39.1 y 39.2 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+    "texto": "Los actos de las Administraciones Públicas sujetos al Derecho Administrativo se presumirán válidos y producirán efectos desde la fecha en que se dicten, salvo que en ellos se disponga otra cosa. (...) La eficacia quedará demorada cuando así lo exija el contenido del acto o esté supeditada a su notificación, publicación o aprobación superior."
+  },
+  "intro": "El artículo 39 fija una regla general (presunción de validez y eficacia inmediata) y sus excepciones (los supuestos en que la eficacia se demora).",
+  "options": {
+    "0": "Recoge la regla general del apartado 1, incluida la salvedad de que el propio acto disponga otra cosa.",
+    "1": "La presunción de validez está expresamente enunciada en el apartado 1.",
+    "2": "Contradice el apartado 2, que menciona la notificación y la publicación entre los supuestos que demoran la eficacia, junto a la aprobación superior y al contenido del propio acto.",
+    "3": "Es uno de los supuestos de demora que enumera el apartado 2: que así lo exija el contenido del acto."
+  },
+  "outro": "**Clave:** la eficacia se demora en cuatro supuestos (contenido del acto, notificación, publicación y aprobación superior); negar cualquiera de ellos es negar el artículo 39.2.",
+  "estilo": "impugnacion"
+}

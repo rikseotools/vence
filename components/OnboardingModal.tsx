@@ -2186,6 +2186,49 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
     }
   }
 
+  // 💾 Guardar SOLO target_oposicion, sin tragarse el rechazo. [T-339]
+  //
+  // A diferencia de `saveField` (guardado en background, error silencioso a propósito: age/
+  // gender/ciudad/horas nunca bloquean nada), el objetivo SÍ puede ser rechazado por el
+  // servidor con un 409 `personalizada_sin_temario` (misma puerta que ya bloqueaba el botón
+  // «Hacer mi oposición objetivo» de MisOposiciones — ver `ERROR_PERSONALIZADA_SIN_TEMARIO`).
+  // Si eso se guarda en silencio aquí también, el usuario cree que eligió su oposición y en
+  // realidad su perfil se quedó con el objetivo anterior (o sin objetivo): el mismo vacío que
+  // motiva esta tarea, solo que un paso antes.
+  const saveTargetOposicion = async (
+    oposicionId: string
+  ): Promise<{ ok: boolean; blocked?: boolean; message?: string }> => {
+    if (!user?.id || !profileLoaded) return { ok: false }
+
+    try {
+      setSaving('target_oposicion')
+      const headers = await getAuthHeaders()
+      const res = await fetch('/api/v2/onboarding/save-field', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'target_oposicion', value: oposicionId }),
+      })
+
+      if (res.status === 409) {
+        const body = await res.json().catch(() => null)
+        return {
+          ok: false,
+          blocked: true,
+          message:
+            body?.message ||
+            'Esa oposición todavía no tiene ningún tema con contenido. Elige otra o crea la tuya con temario.',
+        }
+      }
+      if (!res.ok) throw new Error(`save-field target_oposicion -> ${res.status}`)
+      return { ok: true }
+    } catch (err) {
+      console.error('Error guardando target_oposicion:', err)
+      return { ok: false }
+    } finally {
+      setSaving(null)
+    }
+  }
+
   // Auto-save edad cuando es válida
   useEffect(() => {
     if (!formData.age || !profileLoaded) return
@@ -2268,7 +2311,18 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
   }
 
   // Seleccionar oposición custom
-  const handleSelectCustom = (oposicion: any) => {
+  const handleSelectCustom = async (oposicion: any) => {
+    setError(null)
+
+    // [T-339] Se guarda PRIMERO y se pinta la selección solo si el servidor la acepta — al
+    // revés que antes (optimista y en segundo plano), porque aquí SÍ hay un rechazo posible
+    // (personalizada sin temario) y pintar la selección antes de saberlo mentiría al usuario.
+    const resultado = await saveTargetOposicion(oposicion.id)
+    if (!resultado.ok) {
+      if (resultado.blocked && resultado.message) setError(resultado.message)
+      return
+    }
+
     const oposicionData: SelectedOposicion = {
       id: oposicion.id,
       nombre: oposicion.nombre,
@@ -2281,10 +2335,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       ...formData,
       selectedOposicion: oposicionData
     })
-    setError(null)
 
-    // 💾 Guardar inmediatamente
-    saveField('target_oposicion', oposicion.id)
     saveField('target_oposicion_data', oposicionData)
   }
 
@@ -2335,6 +2386,20 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
       if (!res.ok) throw new Error(`custom-oposiciones ${res.status}`)
       const data = await res.json()
 
+      // [T-339] Una oposición RECIÉN creada nace con 0 temas por construcción — la misma
+      // puerta que bloquea re-seleccionar una personalizada vacía en MisOposiciones (T-508)
+      // bloquea también fijarla aquí. Es la MISMA decisión ya tomada, no una nueva: se guarda
+      // la etiqueta igualmente (queda en "Mis oposiciones", editable), pero no se convierte en
+      // objetivo activo hasta que tenga al menos un tema.
+      const resultado = await saveTargetOposicion(data.oposicionId)
+      if (!resultado.ok) {
+        if (resultado.blocked && resultado.message) setError(resultado.message)
+        setShowCreateForm(false)
+        setCustomOposicionData({ nombre: '', categoria: '', administracion: '' })
+        loadCustomOposiciones()
+        return
+      }
+
       // Seleccionar la oposición recién creada
       const oposicionData: SelectedOposicion = {
         id: data.oposicionId,
@@ -2351,7 +2416,6 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }: On
 
       // 💾 Guardar inmediatamente - NOTA: Para custom seguimos guardando UUID
       // porque no hay un slug oficial para oposiciones personalizadas
-      saveField('target_oposicion', data.oposicionId)
       saveField('target_oposicion_data', oposicionData)
 
       setShowCreateForm(false)

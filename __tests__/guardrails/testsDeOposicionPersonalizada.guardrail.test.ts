@@ -110,6 +110,18 @@ describe('una personalizada vacía no es un 404', () => {
   const rutaTests = leer('app/oposicion-personalizada/[id]/test/page.tsx')
   const boton = leer('components/oposicionPersonalizada/MisOposiciones.tsx')
   const endpoint = leer('app/api/profile/target/route.ts')
+  // [T-339] TERCERA puerta: el guardado progresivo del onboarding escribía `target_oposicion`
+  // directo, sin pasar por `personalizadaUtilizable` — la misma forma en que esto se rompió la
+  // primera vez, un escalón más abajo (dos puertas con criterios distintos no protegen: se
+  // contradicen). Medido el 07/08/2026: las 10 personalizadas "más populares" que el propio
+  // onboarding ofrece (`get_popular_custom_oposiciones`) tienen las 10 CERO temas.
+  const onboarding = leer('app/api/v2/onboarding/save-field/route.ts')
+  // [T-339, revisión 08/08] CUARTA puerta, encontrada al revisar la entrega que cerró la
+  // tercera: `/api/v2/oposicion/assign` acepta cualquier string de 255 caracteres y hacía el
+  // UPDATE sin mirar nada. Su único llamante hoy manda solo ids del catálogo, así que desde la
+  // UI no es alcanzable — pero el endpoint no lo impide, y ese matiz es justo el que hace que
+  // una puerta se quede fuera del barrido.
+  const assign = leer('app/api/v2/oposicion/assign/route.ts')
 
   it('la ruta del temario decide ELLA si está vacía, en vez de heredar el 404 del componente', () => {
     expect(rutaTemario).toContain('personalizadaUtilizable')
@@ -132,17 +144,75 @@ describe('una personalizada vacía no es un 404', () => {
   const sinComentarios = (src: string) =>
     src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '')
 
-  it('las DOS puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
-    for (const [nombre, fuente] of [['botón', boton], ['endpoint', endpoint]] as const) {
+  it('las CUATRO puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
+    for (const [nombre, fuente] of [
+      ['botón', boton],
+      ['endpoint', endpoint],
+      ['onboarding', onboarding],
+      ['assign', assign],
+    ] as const) {
       const codigo = sinComentarios(fuente)
       expect(`${nombre}:${codigo.includes('personalizadaUtilizable')}`).toBe(`${nombre}:true`)
       expect(`${nombre}:${/\.temas\s*>\s*0/.test(codigo)}`).toBe(`${nombre}:false`)
     }
   })
 
+  it('las TRES puertas de escritura server-side comparten la MISMA consulta, no una copia', () => {
+    // `buscarPersonalizada` vive en un solo sitio (lib/api/oposicionPersonalizada/consultas.ts).
+    // Si alguna la reescribe con su propio SELECT, vuelven a poder divergir.
+    for (const [nombre, fuente] of [
+      ['endpoint', endpoint],
+      ['onboarding', onboarding],
+      ['assign', assign],
+    ] as const) {
+      expect(`${nombre}:${fuente.includes("from '@/lib/api/oposicionPersonalizada/consultas'")}`).toBe(
+        `${nombre}:true`,
+      )
+    }
+  })
+
   it('el rechazo del servidor deja rastro: sin evento no nos enteraríamos otra vez', () => {
     expect(endpoint).toContain('objetivo_personalizado_vacio')
     expect(rutaTemario).toContain('objetivo_personalizado_vacio')
+    expect(onboarding).toContain('objetivo_personalizado_vacio')
+    expect(assign).toContain('objetivo_personalizado_vacio')
+  })
+
+  it('NINGUNA ruta que escriba target_oposicion se queda fuera de la lista de arriba', () => {
+    // Las cuatro se encontraron de una en una, y cada vez por el mismo motivo: nadie había
+    // buscado TODAS las que escriben esa columna. Esto lo busca, para que la quinta no exista.
+    const rutas: string[] = []
+    const recorrer = (dir: string) => {
+      for (const e of readdirSync(join(raiz, dir), { withFileTypes: true })) {
+        const p = join(dir, e.name)
+        if (e.isDirectory()) recorrer(p)
+        else if (e.name === 'route.ts') rutas.push(relative('.', p))
+      }
+    }
+    recorrer('app/api')
+    const escriben = rutas.filter((r) =>
+      /UPDATE\s+user_profiles[\s\S]{0,400}?target_oposicion\s*=|\.set\(\{[\s\S]{0,200}?targetOposicion\s*:/i.test(
+        leer(r),
+      ),
+    )
+    const conocidas = [
+      'app/api/profile/target/route.ts',
+      'app/api/v2/onboarding/save-field/route.ts',
+      'app/api/v2/oposicion/assign/route.ts',
+      // Migración admin, no un objetivo elegido por el usuario: reescribe en masa de un
+      // identificador a otro. Su puerta es `requireAdmin`, no `personalizadaUtilizable`.
+      'app/api/admin/oposiciones-migrate/route.ts',
+      // QUINTA puerta, y NO necesita el gate — comprobado leyéndola, no supuesto: solo escribe
+      // el `positionType` que sale de `SLUG_TO_POSITION_TYPE`, construido desde el catálogo
+      // ESTÁTICO `OPOSICIONES`. Un slug que no esté en el mapa se ignora sin escribir nada, así
+      // que es estructuralmente incapaz de guardar un `personalizada_*`. Se declara aquí, con el
+      // motivo, en vez de dejarla fuera de la búsqueda: la próxima sesión tiene que poder
+      // comprobar el razonamiento sin volver a encontrarla por sorpresa.
+      'app/api/v2/auto-assign-target/route.ts',
+    ]
+    expect({ escritoresNoDeclarados: escriben.filter((r) => !conocidas.includes(r)) }).toEqual({
+      escritoresNoDeclarados: [],
+    })
   })
 })
 

@@ -471,6 +471,49 @@ describe('mirror del detector enunciado_norma_sin_nombrar (núcleo ↔ backend @
   })
 })
 
+describe('mirror del detector veredicto_verificacion_rojo (núcleo ↔ backend @Cron)', () => {
+  const core = require('@/lib/health/veredictoRojoInequivoco.cjs')
+
+  /** Evalúa el valor REAL de un `const X = /…/i;` del fuente (backend en TS). */
+  function evalRegex(src: string, name: string): RegExp {
+    const m = src.match(new RegExp(`const ${name} = (\\/(?:\\\\\\/|[^/])+\\/[a-z]*);`))
+    if (!m) throw new Error(`no se encontró const ${name} en el fuente`)
+    // eslint-disable-next-line no-new-func
+    return new Function(`return (${m[1]})`)()
+  }
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia de los patrones)', () => {
+    expect(SCRIPT).toContain("require('../lib/health/veredictoRojoInequivoco.cjs')")
+    expect(SCRIPT).not.toMatch(/const PATRON_ETIQUETA\s*=/)
+  })
+
+  it('los TRES patrones del backend son IDÉNTICOS a los del núcleo (misma fuente y flags)', () => {
+    for (const name of ['PATRON_ETIQUETA', 'PATRON_NO_RESPONDE', 'PATRON_OTRA_PREGUNTA']) {
+      const enBackend = evalRegex(BACKEND, name)
+      expect(enBackend.source).toBe(core[name].source)
+      expect(enBackend.flags).toBe(core[name].flags)
+    }
+  })
+
+  it('los dos gemelos filtran la ÚLTIMA verificación no descartada por pregunta (DISTINCT ON), no cualquiera', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/DISTINCT ON \(v\.question_id\)/)
+      expect(txt).toMatch(/discarded IS NOT TRUE/)
+    }
+  })
+
+  it('los dos gemelos excluyen lo ya atendido (fix_applied) del pool', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/COALESCE\(fix_applied, false\) = false/)
+    }
+  })
+
+  it('los dos gemelos emiten el kind', () => {
+    expect(hasKind(SCRIPT, 'veredicto_verificacion_rojo')).toBe(true)
+    expect(hasKind(BACKEND, 'veredicto_verificacion_rojo')).toBe(true)
+  })
+})
+
 describe('mirror del detector audit_note_explanation (núcleo ↔ backend @Cron)', () => {
   const core = require('@/lib/health/auditNoteExplanation.cjs')
 

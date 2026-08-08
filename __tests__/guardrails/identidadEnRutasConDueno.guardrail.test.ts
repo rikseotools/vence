@@ -132,3 +132,51 @@ describe('[T-671] quien llama a una ruta de usuario propio manda identidad', () 
     expect(fallan).toEqual([])
   })
 })
+
+/**
+ * [T-692] Mandar el token no basta: hay que ENTERARSE cuando no se pudo mandar.
+ *
+ * Los dos bloques de arriba comprueban que el código PIDE el token. Este comprueba que, si no
+ * lo hay, la petición no sale a morir en silencio. `getAuthHeaders()` devolvía `{}` y la llamada
+ * salía igual; como el navegador adjunta la cookie por su cuenta, el servidor no lo distingue de
+ * una sesión con credenciales malas, así que el 401 se contabiliza como rechazo legítimo y el
+ * defecto es INVISIBLE. Medido el 08/08/2026: `/api/exam/pending` pasó de NUEVE DÍAS a 0,0 % de
+ * 401 al 44,2 % (18 usuarios/día) y `/api/v2/user-stats` llevaba un 20-36 % DIARIO de antes;
+ * 7.000 rechazos en 24 h sin que constara el motivo en ninguna parte.
+ *
+ * ── POR QUÉ TRINQUETE Y NO «TODAS AHORA» ────────────────────────────────────────────────────
+ * Hay 24 rutas con guarda y, al medirlo, 22 llamadas no lo declaraban. Exigirlo a todas de golpe
+ * pone esto en rojo el día que nace, y un guardarraíl que nace rojo se ignora (la misma lección
+ * que mató de aviso a `landing_cifra_sin_respaldo`). Así que se cierra donde el daño está MEDIDO
+ * —las dos rutas del incidente— y para el resto se pone un techo que solo puede BAJAR.
+ */
+describe('[T-692] la llamada a una ruta con dueño avisa si se queda sin token', () => {
+  /** Las dos del incidente medido: aquí se exige, no se tolera. */
+  const RUTAS_MEDIDAS = ['/api/exam/pending', '/api/v2/user-stats']
+
+  /**
+   * Cuántas llamadas a rutas con guarda siguen SIN declarar `exigeSesion`. Eran 22 al empezar
+   * [T-692] y quedan **21** tras cubrir las dos rutas del incidente; este número **solo puede
+   * bajar**: al cubrir una, se baja el techo. Si sube, es que alguien añadió una llamada nueva
+   * sin la declaración — que es exactamente cómo nacieron [T-671] y [T-675].
+   */
+  const TECHO_SIN_DECLARAR = 21
+
+  const declara = (f: string) => /exigeSesion/.test(fs.readFileSync(f, 'utf8'))
+
+  it.each(RUTAS_MEDIDAS)('%s: todos sus clientes declaran exigeSesion', (ruta) => {
+    const llamantes = clientesQueLlaman(ruta)
+    // Sin llamantes esto no mide nada y pasaría en verde por vacío.
+    expect(llamantes.length).toBeGreaterThan(0)
+    expect(llamantes.filter((f) => !declara(f))).toEqual([])
+  })
+
+  it(`el resto no crece (techo ${TECHO_SIN_DECLARAR}, solo puede bajar)`, () => {
+    const todas = [...new Set([...rutasConDueno(), ...rutasDeUsuarioPropio()])]
+    const sin = new Set<string>()
+    for (const ruta of todas) {
+      for (const f of clientesQueLlaman(ruta)) if (!declara(f)) sin.add(`${f} → ${ruta}`)
+    }
+    expect(sin.size).toBeLessThanOrEqual(TECHO_SIN_DECLARAR)
+  })
+})
