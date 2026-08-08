@@ -172,8 +172,11 @@ async function barridoLegislativas(c) {
       .filter((x) => x.queda < 4)
       .sort((a, b) => a.queda - b.queda)
     console.log(`  artículos que se quedarían por debajo de 4 preguntas: ${criticos.length}`)
-    criticos.slice(0, 8).forEach((x) =>
+    criticos.slice(0, LIMITE || 8).forEach((x) =>
       console.log(`     · ${String(x.aid).slice(0, 8)} — quedan ${x.queda} (se van ${x.quita})`))
+    if (criticos.length > (LIMITE || 8)) {
+      console.log(`     … y ${criticos.length - (LIMITE || 8)} más (usa --limite N para ver otros).`)
+    }
   }
 
   if (!APLICAR) {

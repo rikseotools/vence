@@ -441,6 +441,15 @@ describe('Guardrail C2-builder — el query builder de Drizzle no es una zona fr
       expect(enZonaCiega).not.toContain(r)
     }
   })
+
+  it('oposiciones-migrate (T-077) ya NO está en la zona ciega — UPDATE masivo, ahora admin-only', () => {
+    // Trinquete explícito: la revisión de T-077 encontró este endpoint SIN autenticar (podía
+    // migrar target_oposicion de cualquier usuario con un POST directo, sin token). Si alguien
+    // revierte el requireAdmin, esto lo dice por su nombre en vez de reaparecer como "nuevo".
+    const r = 'app/api/admin/oposiciones-migrate/route.ts'
+    expect(read(r)).toMatch(/requireAdmin\(/)
+    expect(enZonaCiega).not.toContain(r)
+  })
 })
 
 describe('C2-builder — meta: la detección funciona', () => {
