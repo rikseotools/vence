@@ -46,6 +46,29 @@ describe('después, lo que cuesta tiempo de Manuel', () => {
     expect(v.detalle).toMatch(/8 h/)
   })
 
+  // [T-689] El conteo (≥8) no ve una cola CORTA pero VIEJA: 1-3 entregas reales esperaron horas
+  // sin que el semáforo se moviera, medido contra backlog_tasks (T-612, T-163…). La edad tiene
+  // que disparar ámbar POR SU CUENTA, sin depender del conteo.
+  it('una sola entrega vieja ya es ámbar, aunque el conteo no llegue a 8', () => {
+    const v = S.saludFlota({
+      sesiones: vivo(10), esperados: 10,
+      entregas: [{ review_requested_at: hace(3 * 60) }],
+      ahora: AHORA,
+    })
+    expect(v.estado).toBe('ambar')
+    expect(v.esperaMaxH).toBe(3)
+    expect(v.detalle).toMatch(/objetivo de 2 h/)
+  })
+
+  it('pero una entrega reciente (menos de 2h) no dispara nada por sí sola', () => {
+    const v = S.saludFlota({
+      sesiones: vivo(10), esperados: 10,
+      entregas: [{ review_requested_at: hace(90) }],
+      ahora: AHORA,
+    })
+    expect(v.estado).toBe('verde')
+  })
+
   // Un borrador es distinto de una entrega: espera un PERMISO, no una revisión. Y mientras espera,
   // hay una persona que escribió y no ha recibido respuesta.
   it('un solo borrador ya es ámbar, y dice que no se ha enviado nada', () => {

@@ -816,7 +816,15 @@ async function _GET(request: NextRequest) {
   const flotaResult = await run(async () => {
     const [ses, entregas, borradores, muertos] = await Promise.all([
       db.execute(sql`SELECT slug, last_signal_at FROM worktree_sessions WHERE rol = 'trabajador'`),
-      db.execute(sql`SELECT review_requested_at FROM backlog_tasks WHERE review_requested_at IS NOT NULL AND status <> 'done'`),
+      // `reviewed_at IS NULL` NO es opcional: «entregada» son DOS estados y esta consulta solo
+      // miraba el primero, así que contaba como pendiente todo lo que YA tiene veredicto. Medido
+      // el 08/08/2026: 12 filas, 11 de ellas ya revisadas, y la espera máxima que pintaba el panel
+      // era 4,1 h cuando la cola real llevaba 0,2 h — veinte veces inflada. Con el umbral de
+      // [T-689] (ámbar a las 2 h) eso es un ámbar permanente por trabajo que ya está hecho, que es
+      // como una alerta se vuelve ruido y se deja de mirar.
+      // Mismo criterio que `porRevisar` en `scripts/flota/flota.cjs` y que `esperaRevision` en
+      // `lib/backlog/revision.cjs`: quien lee esta cola la lee igual en los tres sitios.
+      db.execute(sql`SELECT review_requested_at, reviewed_at FROM backlog_tasks WHERE review_requested_at IS NOT NULL AND reviewed_at IS NULL AND status <> 'done'`),
       db.execute(sql`SELECT count(*)::int AS n FROM session_questions WHERE kind = 'borrador' AND status = 'open'`),
       db.execute(sql`SELECT count(*)::int AS n FROM observable_events WHERE event_type = 'flota_turno' AND metadata->>'fase' = 'muerto' AND created_at > NOW() - INTERVAL '3 hours'`),
     ])

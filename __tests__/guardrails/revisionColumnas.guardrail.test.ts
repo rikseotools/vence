@@ -22,12 +22,41 @@ import path from 'path'
 
 const REPO = path.resolve(__dirname, '..', '..')
 
-/** Ficheros que consultan el backlog. Se listan a mano: son pocos y así añadir uno es deliberado. */
-const FUENTES = [
-  'scripts/backlog.cjs',
-  'scripts/flota/flota.cjs',
-  'scripts/sessions/parte.cjs',
-]
+// ── LOS CONSUMIDORES SE BUSCAN, NO SE LISTAN (08/08/2026) ───────────────────────────────────
+// Esta lista estaba escrita a mano con tres ficheros «porque son pocos y así añadir uno es
+// deliberado». El cuarto nació invisible: `app/api/admin/system-health/route.ts` —el que alimenta
+// el semáforo de la flota en /admin/salud-sistema— traía `review_requested_at` sin `reviewed_at`,
+// y el guardarraíl no lo miraba porque no estaba en la lista. Medido al encontrarlo: **12 filas
+// contadas como pendientes, 11 de ellas YA revisadas**, y una espera máxima de 4,1 h donde la cola
+// real llevaba 0,2 h.
+//
+// Es el patrón que esta casa ya pagó con los cinco escritores de `seguimiento_url` ([T-130]) y con
+// las cuatro puertas de `target_oposicion` ([T-339]): contar a ojo los sitios que tocan algo es
+// exactamente cómo se deja uno fuera. Así que se BUSCAN.
+const RAICES = ['app', 'lib', 'scripts', 'backend/src']
+const IGNORAR = /(^|\/)(node_modules|\.next|dist|coverage)(\/|$)/
+
+function ficherosDeCodigo(dir: string, out: string[] = []): string[] {
+  const abs = path.join(REPO, dir)
+  if (!fs.existsSync(abs)) return out
+  for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+    const rel = path.join(dir, e.name)
+    if (IGNORAR.test(rel)) continue
+    if (e.isDirectory()) ficherosDeCodigo(rel, out)
+    else if (/\.(ts|tsx|js|cjs|mjs)$/.test(e.name)) out.push(rel)
+  }
+  return out
+}
+
+/** Todo fichero de código que consulte `backlog_tasks` trayendo la columna de la entrega. */
+function fuentes(): string[] {
+  return RAICES.flatMap((r) => ficherosDeCodigo(r)).filter((rel) => {
+    const src = fs.readFileSync(path.join(REPO, rel), 'utf8')
+    return src.includes('review_requested_at') && /FROM\s+(public\.)?backlog_tasks/i.test(src)
+  })
+}
+
+const FUENTES = fuentes()
 
 /**
  * Trocea por sentencia SELECT … FROM para no juzgar el fichero entero: un fichero puede tener un
@@ -38,7 +67,9 @@ function selectsCon(texto: string, columna: string): string[] {
   // `[^`]*?` y no `[\s\S]*?`: cada consulta vive dentro de su propia plantilla de JS, así que la
   // comilla invertida es la frontera natural. Sin ella, el emparejamiento saltaba de una consulta
   // a la siguiente y acusaba a un SELECT de `worktree_sessions` de no traer columnas del backlog.
-  const re = /SELECT[^`]*?FROM\s+public\.backlog_tasks/gi
+  // `public.` OPCIONAL: el panel escribe `FROM backlog_tasks` a secas y quedaba fuera del
+  // troceo, así que ni siquiera se examinaban sus SELECT.
+  const re = /SELECT[^`]*?FROM\s+(?:public\.)?backlog_tasks/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(texto)) !== null) {
     if (m[0].includes(columna)) out.push(m[0])
@@ -47,15 +78,33 @@ function selectsCon(texto: string, columna: string): string[] {
 }
 
 describe('nadie le pregunta al núcleo de revisión con media fila', () => {
+  it('encuentra consumidores (si esto falla, el guardarraíl se quedó ciego)', () => {
+    // Un descubrimiento que devuelve cero pasaría TODO en verde sin mirar nada — la forma más
+    // silenciosa de perder un guardarraíl.
+    expect(FUENTES.length).toBeGreaterThanOrEqual(4)
+    expect(FUENTES).toContain('app/api/admin/system-health/route.ts')
+  })
+
   it.each(FUENTES)('%s trae el veredicto siempre que trae la entrega', (rel) => {
     const abs = path.join(REPO, rel)
     if (!fs.existsSync(abs)) return                       // el fichero puede moverse; eso no es este fallo
     const src = fs.readFileSync(abs, 'utf8')
     const conEntrega = selectsCon(src, 'review_requested_at')
     for (const sel of conEntrega) {
-      // Un SELECT que solo COMPRUEBA si hay entrega (p.ej. `(review_requested_at IS NOT NULL) AS …`)
-      // no alimenta al núcleo: no le pasa la fila, le pasa un booleano ya resuelto.
-      if (/review_requested_at\s+IS\s+(NOT\s+)?NULL/i.test(sel)) continue
+      // La exención es SOLO para el booleano ya resuelto —`(review_requested_at IS NOT NULL) AS
+      // tiene_entrega`—, que no le pasa la fila al núcleo sino una respuesta.
+      //
+      // Antes bastaba con que la columna apareciese en un `IS NULL` EN CUALQUIER SITIO, y eso es
+      // justo la forma del SELECT del panel (`SELECT review_requested_at … WHERE
+      // review_requested_at IS NOT NULL`): filtraba por ella Y la proyectaba cruda, o sea que sí
+      // alimentaba el cálculo, y aun así quedaba exento. Un guardarraíl con una exención más ancha
+      // que su regla no protege de nada.
+      const proyeccion = sel.slice(0, sel.search(/\bFROM\b/i))
+      // Se QUITAN primero los booleanos ya resueltos y solo entonces se busca la columna cruda.
+      // Mirarlo al revés daba falso rojo en los tres sitios legítimos: dentro de
+      // `(review_requested_at IS NOT NULL) AS pedida` la columna también «aparece», claro.
+      const sinBooleanos = proyeccion.replace(/\(\s*review_requested_at\s+IS\s+(NOT\s+)?NULL\s*\)/gi, '')
+      if (!/review_requested_at/i.test(sinBooleanos)) continue
       expect(sel).toMatch(/reviewed_at/)
     }
   })
