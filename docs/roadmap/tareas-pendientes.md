@@ -1221,6 +1221,59 @@ esa detección es tocar a ciegas el mecanismo que evitó **27 relanzamientos** c
 **Relacionadas:** [T-653] (los otros dos puntos, cerrados), [T-617] (el regex de cuota que esto
 podría romper), [T-486] (la flota).
 
+### [T-703] 🟡 [ABIERTO 08/08] La verificación IA de preguntas promueve a `tech_approved` sin comprobar si el artículo primario tiene contenido real
+
+- **Esfuerzo: rato.**
+- **De dónde sale:** al retomar [T-374] (7.202 preguntas de enfermería colgadas de artículos vacíos), la revisión pidió identificar cómo las 68 preguntas de "Museología (editorial)" (el 1% que NO es del lote de Aula Plus) llegaron a `tech_approved` sin pasar por ningún camino conocido. La entrega original (w4) y la revisión (w1) coincidían en que `question_lifecycle_history` estaba bloqueado por RLS para `vence_lector` y dejaron la pregunta como "SOSPECHO, sin poder confirmar" (probable script ad-hoc fuera del repo).
+- **✅ AHORA SÍ SE PUEDE LEER (08/08): [T-638] arregló la RLS de `question_lifecycle_history` para `vence_lector` y ya está en vivo** — confirmado en directo, sin permission denied. Con eso, la pregunta que ambas sesiones dejaron abierta tiene respuesta, y NO es la que se sospechaba:
+  - **Las 68 de Museología:** su historial completo son exactamente DOS filas por pregunta —
+    `null → draft` (`reason_code='created'`) y **`draft → tech_approved`
+    (`reason_code='ai_verified_tech_perfect'`)** — 68/68 con ese patrón exacto, medido con
+    `question_lifecycle_history WHERE question_id = ANY(<68 ids>)`. **No hay ningún
+    `bypass_detected`, ni ninguna transición manual.** Pasaron por la función legítima
+    `transition_question_state`, con veredicto de un pase de verificación IA.
+  - **Las 7.134 de Aula Plus (enfermería) — mismo patrón, mismo mecanismo:** de sus 21.202
+    transiciones `created→draft`, **17.594 pasan a `tech_approved` con el MISMO
+    `reason_code='ai_verified_tech_perfect'`** (el resto se reparte en `needs_human`/`approved`/
+    `retired_irreparable`, la vía normal de verificación). Es decir: el "SOSPECHO" original de
+    [T-374] sobre cómo el lote de enfermería pasó de `draft` a `tech_approved` también queda
+    resuelto — mismo mecanismo, no un salto sin registrar.
+- **LA CAUSA RAÍZ REAL, y por qué importa más que el script de importación:** el pase de
+  verificación IA que asigna `ai_verified_tech_perfect` juzga la pregunta (enunciado, opciones,
+  clave, explicación) pero **no comprueba si el artículo al que está vinculada tiene contenido
+  real** — de otro modo nunca habría aprobado 7.202 preguntas colgadas de un placeholder de
+  44-73 caracteres. Es la misma familia de fallo que [T-465] (*"quien REESCRIBE no puede FIRMAR
+  que ha verificado"*): un pase que evalúa una cosa (calidad de la pregunta) certifica también
+  otra que nunca miró (que el artículo exista de verdad).
+- **Por qué esto es más grave que "faltaba un guard en 2 scripts de import":** el fix de [T-374]
+  (guard en `import-aulaplus-clinico.cjs` e `import-tcae-subject.cjs`) cierra la puerta de
+  ENTRADA para esos dos scripts — bien, y suficiente para no repetir ESTOS dos incidentes. Pero
+  **no encontramos el script que insertó las 68 de Museología** (búsqueda exhaustiva: `git log
+  --all` sin ningún commit que mencione "museo"/"Museología", grep en `scripts/`+`lib/` sin
+  resultado, el scaffolder `create-oposicion.cjs` no inserta preguntas) — así que el guard de
+  [T-374] NO cubre lo que sea que las creó. Y aunque se parcheen esos 2 scripts (o incluso TODOS
+  los scripts de importación conocidos), el verificador de `ai_verified_tech_perfect` seguiría
+  aprobando placeholders si algún script FUTURO (o uno ya olvidado) vuelve a colgar preguntas de
+  un artículo vacío — porque el filtro real está en la PROMOCIÓN, no en cada puerta de entrada
+  por separado.
+- **SOSPECHO, sin poder confirmarlo aún, qué script insertó las 68 de Museología** (no cambia la
+  causa de la promoción, que sí está demostrada): dado que `auxiliar_museos_estado` se construyó
+  formalmente el 16/07 (commit `32d7d4acc`, un día DESPUÉS de estas 68, con scaffold completo y
+  ~10.130 preguntas reales) y estas 68 comparten un patrón de contenido-placeholder = título del
+  tema copiado tal cual, es plausible que fuera una prueba de scaffolding/piloto previa al import
+  real, corrida fuera del repo o con un script ya borrado/renombrado. No lo afirmo como causa:
+  es la explicación que mejor encaja, sin evidencia que la confirme.
+- **Arreglo propuesto (no soy yo quien decide si se implementa — esto es diagnóstico, análogo a
+  como [T-374] dejó sus puntos 1/2 para Manuel):** que el pase de verificación IA (o la función
+  `transition_question_state` misma, que es el ÚNICO camino legítimo de cambio de estado)
+  compruebe `esContenidoPlaceholder` del artículo primario ANTES de permitir la transición a
+  `tech_approved`/`approved` — igual que ya hace el guard de import, pero en el punto de
+  PROMOCIÓN en vez de en el punto de INSERCIÓN, que es donde de verdad se puede cerrar la puerta
+  para cualquier vía de entrada, conocida o no.
+- **Relacionadas:** [T-374] (el incidente que lo destapó, con su fix de importación ya cerrado),
+  [T-638] (la RLS que hizo posible esta medición), [T-465] (mismo patrón: un pase que verifica
+  una cosa firma también otra que no miró).
+
 ### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
 
 Índice de lo que quedó a medias o esperando decisión, con dónde está cada cosa. **Lo que ya está
