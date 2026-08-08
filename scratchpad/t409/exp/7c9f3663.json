@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 9.3 de la Constitución Española",
+    "texto": "La Constitución garantiza el principio de legalidad, la jerarquía normativa, la publicidad de las normas, la irretroactividad de las disposiciones sancionadoras no favorables o restrictivas de derechos individuales, la seguridad jurídica, la responsabilidad y la interdicción de la arbitrariedad de los poderes públicos."
+  },
+  "intro": "Aquí se cruzan dos listas que se estudian casi seguidas y no son la misma: los principios que garantiza el artículo 9.3, que son de ORDENAMIENTO (cómo se hacen y se aplican las normas), y los del artículo 103.1, que son de ORGANIZACIÓN administrativa (eficacia, jerarquía, descentralización, desconcentración y coordinación). Los distractores están tomados de la segunda.",
+  "options": {
+    "0": "Eficacia, objetividad, transparencia, cooperación y coordinación son principios de actuación y organización administrativa, propios del artículo 103.1 y de la legislación de régimen jurídico del sector público.",
+    "1": "Jerarquía, descentralización y coordinación pertenecen igualmente al plano organizativo, no a las garantías del ordenamiento.",
+    "2": "Es la enumeración del artículo 103.1 sobre la Administración Pública, no la del 9.3.",
+    "3": "Son garantías que enuncia el artículo 9.3, junto a la irretroactividad de las disposiciones sancionadoras no favorables y la interdicción de la arbitrariedad de los poderes públicos."
+  },
+  "outro": "**Clave:** el artículo 9.3 garantiza legalidad, jerarquía normativa, publicidad de las normas, irretroactividad de lo sancionador desfavorable, seguridad jurídica, responsabilidad e interdicción de la arbitrariedad; eficacia, jerarquía, descentralización, desconcentración y coordinación son del artículo 103.1."
+}

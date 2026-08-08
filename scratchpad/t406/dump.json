@@ -1,0 +1,893 @@
+[
+  {
+    "id": "67678bfc-da33-45f5-b759-80d6257fb598",
+    "question_text": "Una mujer en periodo de lactancia materna exclusiva (>6 semanas posparto) solicita anticoncepción hormonal. Según los criterios de elegibilidad de la OMS (6ª edición), ¿cómo se clasifica el uso de píldoras de solo progestágeno (POP)?",
+    "option_a": "Categoría 1 (Sin restricción).",
+    "option_b": "Categoría 2 (Las ventajas superan los riesgos).",
+    "option_c": "Categoría 2 (Las ventajas superan los riesgos).",
+    "option_d": "Categoría 4 (Riesgo inaceptable).",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 24 y 26 — Obstetricia y Ginecología: Sexualidad y Reproducción; Cuidados en el Climaterio",
+    "art_content": "# Tema 24 y 26 — Obstetricia y Ginecología: Sexualidad y Reproducción; Cuidados en el Climaterio\n\n## Introducción\n\nEste tema aborda dos bloques relacionados dentro de la salud de la mujer: la **sexualidad y reproducción** (anatomía y fisiología reproductiva, ciclo menstrual, anticoncepción, ITS, disfunción sexual, género y violencia de género) y los **cuidados de enfermería a la mujer en el climaterio**, etapa de transición fisiológica marcada por el cese de la función ovárica. En ambos, el papel de enfermería es clave en la **educación para la salud**, la **prevención de riesgos** y el **acompañamiento integral** a lo largo del ciclo vital.\n\n---\n\n## Anatomía y fisiología del aparato reproductor\n\n### Aparato reproductor femenino\n\n- **Genitales externos (vulva):** monte de Venus, labios mayores y menores, clítoris, vestíbulo vaginal, meato uretral e introito vaginal.\n- **Genitales internos:**\n  - **Vagina:** conducto músculo-membranoso que comunica el útero con el exterior; órgano de la cópula y canal del parto.\n  - **Útero:** órgano muscular hueco (miometrio) revestido por el **endometrio**, mucosa que se descama cíclicamente en la menstruación. Se divide en cuerpo, istmo y cérvix (cuello uterino).\n  - **Trompas de Falopio:** conducen el óvulo desde el ovario hasta el útero; lugar habitual de la **fecundación**.\n  - **Ovarios:** gónadas femeninas responsables de la producción de **óvulos** (gametogénesis) y de **hormonas sexuales** (estrógenos y progesterona).\n- **Mamas:** glándulas relacionadas con la lactancia y con importante valor en la prevención oncológica (autoexploración, cribado poblacional).\n\n### Aparato reproductor masculino\n\n- **Testículos:** producción de espermatozoides y de testosterona.\n- **Vías espermáticas:** epidídimo, conducto deferente, conductos eyaculadores.\n- **Glándulas anejas:** próstata y glándulas de Cowper, que aportan el líquido seminal.\n- **Pene y uretra:** función de cópula y excreción urinaria/seminal.\n\n---\n\n## Ciclo menstrual\n\nEl ciclo menstrual es el conjunto de cambios cíclicos, de duración media de **28 días** (con variabilidad fisiológica de 21-35 días), regulado por el eje **hipotálamo-hipófisis-ovario**.\n\n### Fases del ciclo\n\n1. **Fase folicular (o proliferativa):** desde el primer día de la menstruación hasta la ovulación. La **FSH** (hormona foliculoestimulante) estimula el crecimiento de los folículos ováricos, que producen **estrógenos**, responsables de la proliferación del endometrio.\n2. **Ovulación:** hacia el",
+    "ley": "Obstetricia y ginecología",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "d9cd4255-cd9f-4955-ae29-fd73aa82aa36",
+    "question_text": "La prueba de talón se realiza para el diagnóstico precoz de:",
+    "option_a": "Síndrome de Down.",
+    "option_b": "Fenilcetonuria e hipotiroidismo congénito.",
+    "option_c": "Estado nutricional.",
+    "option_d": "Estado nutricional.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "El objetivo es instaurar el tratamiento adecuado antes de que aparezcan lesiones irreversibles. Es importante tener presente que se debe realizar en todo neonato, a partir del 3 día de vida (o tras 48h de iniciar la alimentación) y los 5 días de vida, mediante la punción de talón y extensión sobre papel secante y una muestra de orina. Se detectan más de 30 trastornos del metabolismo, destacando El Hipotiroidismo congénito Primario, la fenilcetonuria y la Fibrosis quística.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 27-29. Enfermería Pediátrica: el niño sano, el niño enfermo y la adolescencia",
+    "art_content": "# Tema 27-29. Enfermería Pediátrica: el niño sano, el niño enfermo y la adolescencia\n\n## Introducción\n\nLa enfermería pediátrica abarca la atención integral al niño desde el nacimiento hasta el final de la adolescencia, en tres dimensiones: la **promoción de la salud en el niño sano** (desarrollo, alimentación, vacunación, prevención), la **atención al niño enfermo** (valoración y patologías prevalentes) y los **cuidados en la adolescencia** (hábitos saludables, trastornos alimentarios, conductas de riesgo, educación sexual). Es un enfoque **biopsicosocial**, centrado en la familia como unidad de cuidado, con un papel esencial de la enfermera en la educación para la salud y la detección precoz.\n\n---\n\n## 1. Valoración y medidas para el fomento de la salud en el niño sano\n\n### 1.1 El Programa del Niño Sano\n\nEl **Programa de Salud Infantil** es el conjunto de actividades preventivas realizadas periódicamente desde el nacimiento hasta la adolescencia. Objetivos: **vigilar** crecimiento y desarrollo psicomotor; **detectar precozmente** enfermedades congénitas, metabólicas y sensoriales; **promover** hábitos saludables; **completar el calendario vacunal**; y **apoyar** a la familia en la crianza (consejo anticipatorio).\n\nLos controles se concentran en el **primer año** (neonatal, 15 días, 1, 2, 4, 6, 9 y 12 meses, con variaciones autonómicas) y se espacian después (15-18 meses, 2, 3, 4, 6 años y edad escolar/adolescencia).\n\n### 1.2 Parámetros de crecimiento y desarrollo\n\n**Crecimiento** es el aumento cuantificable de tamaño (peso, talla, perímetro craneal); **desarrollo** es la adquisición progresiva de funciones y habilidades.\n\n**Parámetros antropométricos:**\n- **Peso**: en cada control, comparado con **percentiles** por sexo y edad.\n- **Talla/longitud**: en decúbito hasta los 2 años; en bipedestación después.\n- **Perímetro craneal (PC)**: clave en los dos primeros años, refleja el crecimiento cerebral (cinta métrica sobre cejas y occipucio).\n- **IMC**: a partir de los 2 años, para el estado nutricional.\n\nSe registran en **curvas de percentiles** (normal entre P3 y P97), siendo más relevante el **cambio de canal de crecimiento** que un valor puntual.\n\n**Hitos del desarrollo psicomotor** (orientativos): **1-2 m** sonrisa social; **4-6 m** sostén cefálico completo, prensión, volteo; **6-8 m** sedestación; **9-12 m** gateo, bipedestación con apoyo, pinza fina, primeras palabras; **12-18 m** marcha autónoma; **2 a** frases de dos palabras; **3 a** control de esfínte",
+    "ley": "Pediatría",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "e8d1767e-f2d0-4bc8-a257-950aad76ef36",
+    "question_text": "Las siglas URL corresponden a:",
+    "option_a": "Universal Resource Library",
+    "option_b": "Uniform Resource Locator",
+    "option_c": "Universal Resource Library",
+    "option_d": "Uniform Resource Library",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": [
+      "auxiliar_biblioteca_estado",
+      "especifica",
+      "T218",
+      "opositatest:531348",
+      "epigrafe:1. Identificadores"
+    ],
+    "explanation": "¿Qué es una URL?\n\nURL es una sigla del idioma inglés correspondiente a Uniform Resource Locator (Localizador Uniforme de Recursos). Se trata de la secuencia de caracteres que sigue un estándar y que permite denominar recursos dentro del entorno de Internet para que puedan ser localizados.\n\nEl URL es, por lo tanto, es el conjunto de caracteres que posibilita la asignación de una dirección exclusiva a un recurso que se encuentra disponible en el espacio virtual. En otras palabras, el URL es una dirección de Internet que, al ser encontrada y visualizada por un navegador, muestra un recurso de información al usuario.\n\nhttps://ecdisis.com/que-es-una-url/",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "218",
+    "art_title": "Números de identificación bibliográfica: ISBN, ISSN y otros",
+    "art_content": "El ISBN (International Standard Book Number) identifica las monografías o libros. Desde el 1 de enero de 2007 tiene trece dígitos (antes tenía diez) y se compone de cinco elementos: el prefijo (978 o 979), el identificador de grupo o país, el identificador de editor, el identificador de la publicación y un dígito de control. El ISSN (International Standard Serial Number) identifica las publicaciones seriadas y consta de ocho dígitos: siete de numeración y un dígito de control, que puede ser la letra X. Lo asigna una red de centros nacionales coordinados por el Centro Internacional del ISSN, con sede en París, creado en 1974. El ISMN (International Standard Music Number) identifica la música impresa o partituras; desde 2008 tiene trece dígitos con el prefijo 979-0. El DOI (Digital Object Identifier) identifica de forma persistente los objetos digitales y se compone de un prefijo y un sufijo separados por una barra.",
+    "ley": "Biblioteconomía",
+    "pares": [
+      [
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "77021af6-64fc-4aa0-9351-539519074ce4",
+    "question_text": "El uso de cuestionarios, test e índices en la valoración de pacientes y cuidadores familiares es necesario para conocer la situación de cada persona valorada con respecto a un estándar de salud. Si María tiene un Barthel de 55, ¿a que nos estamos refiriendo?",
+    "option_a": "Tiene una dependencia moderada en las actividades básicas de la vida diaria (ABVD).",
+    "option_b": "Tiene una dependencia severa en las ABVD.",
+    "option_c": "Tiene una dependencia severa en las actividades instrumentales de la vida diaria (AIVD).",
+    "option_d": "Tiene una dependencia severa en las actividades instrumentales de la vida diaria (AIVD).",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "PREGUNTA ANULADA POR EL TRIBUNAL Y MODIFICADA por el equipo docente\r\n- El uso de cuestionarios, test e índices en la valoración de pacientes y cuidadores familiares es necesario para conocer la situación de cada persona valorada con respecto a un estándar de salud. Si María tiene un Barthel de 55, ¿a que nos estamos refiriendo?: \r\n1) Tiene una dependencia moderada en las actividades básicas de la vida diaria (ABVD).\r\n2) Tiene una dependencia severa en las ABVD.\r\n3) Tiene una dependencia severa en las actividades instrumentales de la vida diaria (AIVD).\r\n4) Tiene una dependencia severa en las actividades instrumentales de la vida diaria (AIVD).\r\nEsta pregunta fue anulada porque en el enunciado no especifica si hace referencia al Índice de Barthel original o al modificado, aunque esa puntuación en ambos hace referencia a una dependencia moderada. \r\nÍndice de Barthel original: \r\nDependencia total < 20\r\nDependencia severa: 20-35 \r\nDependencia moderada: 40-60\r\nDependencia leve > 60\r\nAutonomía: 100\r\n\r\nÍndice de Barthel modificado: \r\nDependencia total: 0-20 puntos\r\nDependencia severa: 21-40 puntos\r\nDependencia moderada: 41-60 puntos\r\nDependencia leve: 61-99 puntos",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "GERIATRÍA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "GERIATRÍA ENF",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "159283e1-52a7-4950-8742-7e945e9defe9",
+    "question_text": "Las quemaduras o escaldaduras por inmersión voluntaria en agua caliente de un lactante:",
+    "option_a": "Afectan de modo simétrico a ambos lados del cuerpo.",
+    "option_b": "Producen lesiones por salpicadura.",
+    "option_c": "Producen lesiones por salpicadura.",
+    "option_d": "Todas las opciones de respuesta son verdaderas.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 27-29. Enfermería Pediátrica: el niño sano, el niño enfermo y la adolescencia",
+    "art_content": "# Tema 27-29. Enfermería Pediátrica: el niño sano, el niño enfermo y la adolescencia\n\n## Introducción\n\nLa enfermería pediátrica abarca la atención integral al niño desde el nacimiento hasta el final de la adolescencia, en tres dimensiones: la **promoción de la salud en el niño sano** (desarrollo, alimentación, vacunación, prevención), la **atención al niño enfermo** (valoración y patologías prevalentes) y los **cuidados en la adolescencia** (hábitos saludables, trastornos alimentarios, conductas de riesgo, educación sexual). Es un enfoque **biopsicosocial**, centrado en la familia como unidad de cuidado, con un papel esencial de la enfermera en la educación para la salud y la detección precoz.\n\n---\n\n## 1. Valoración y medidas para el fomento de la salud en el niño sano\n\n### 1.1 El Programa del Niño Sano\n\nEl **Programa de Salud Infantil** es el conjunto de actividades preventivas realizadas periódicamente desde el nacimiento hasta la adolescencia. Objetivos: **vigilar** crecimiento y desarrollo psicomotor; **detectar precozmente** enfermedades congénitas, metabólicas y sensoriales; **promover** hábitos saludables; **completar el calendario vacunal**; y **apoyar** a la familia en la crianza (consejo anticipatorio).\n\nLos controles se concentran en el **primer año** (neonatal, 15 días, 1, 2, 4, 6, 9 y 12 meses, con variaciones autonómicas) y se espacian después (15-18 meses, 2, 3, 4, 6 años y edad escolar/adolescencia).\n\n### 1.2 Parámetros de crecimiento y desarrollo\n\n**Crecimiento** es el aumento cuantificable de tamaño (peso, talla, perímetro craneal); **desarrollo** es la adquisición progresiva de funciones y habilidades.\n\n**Parámetros antropométricos:**\n- **Peso**: en cada control, comparado con **percentiles** por sexo y edad.\n- **Talla/longitud**: en decúbito hasta los 2 años; en bipedestación después.\n- **Perímetro craneal (PC)**: clave en los dos primeros años, refleja el crecimiento cerebral (cinta métrica sobre cejas y occipucio).\n- **IMC**: a partir de los 2 años, para el estado nutricional.\n\nSe registran en **curvas de percentiles** (normal entre P3 y P97), siendo más relevante el **cambio de canal de crecimiento** que un valor puntual.\n\n**Hitos del desarrollo psicomotor** (orientativos): **1-2 m** sonrisa social; **4-6 m** sostén cefálico completo, prensión, volteo; **6-8 m** sedestación; **9-12 m** gateo, bipedestación con apoyo, pinza fina, primeras palabras; **12-18 m** marcha autónoma; **2 a** frases de dos palabras; **3 a** control de esfínte",
+    "ley": "Pediatría",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "26676b34-baed-471d-852f-ca4cdb1c8067",
+    "question_text": "El esguince es una lesión traumática que afecta a los ligamentos de una articulación y se clasifica en grados según el nivel de daño estructural y la repercusión funcional. Un esguince de segundo grado se caracteriza por:",
+    "option_a": "Rotura parcial de fibras ligamentarias con dolor, inflamación, limitación funcional y posible inestabilidad articular leve.",
+    "option_b": "Distensión del ligamento con elongación sin rotura, dolor moderado y escasa limitación funcional.",
+    "option_c": "Rotura completa del ligamento con inestabilidad manifiesta y dolor intenso.",
+    "option_d": "Rotura completa del ligamento con inestabilidad manifiesta y dolor intenso.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 44. Valoración y cuidados de enfermería a personas con problemas en el sistema musculoesquelético",
+    "art_content": "# Tema 44. Valoración y cuidados de enfermería a personas con problemas en el sistema musculoesquelético\n\n## 1. Introducción\n\nEl sistema musculoesquelético sostiene el cuerpo y permite el movimiento. Sus alteraciones —degenerativas, inflamatorias, traumáticas o tumorales— son causa muy frecuente de dependencia funcional, sobre todo en mayores. La enfermería debe **prevenir complicaciones de la inmovilidad y del propio proceso** (UPP, TVP, síndrome compartimental, infección) y **favorecer la recuperación funcional**.\n\nValoración común a estos procesos:\n\n- **Anamnesis**: mecanismo lesional, dolor (escala EVA), antecedentes (osteoporosis, caídas previas, corticoides, anticoagulantes), autonomía previa.\n- **Valoración neurovascular distal (\"5 P\")**: **P**ain-dolor, **P**allor-palidez, **P**aresthesia-parestesias, **P**aralysis-parálisis, **P**ulselessness-ausencia de pulso; junto con relleno capilar, temperatura, edema y movilidad.\n- **Valoración funcional**: índice de Barthel, riesgo de caídas (Downton) y de UPP (Norton/Braden), por el papel central de la inmovilidad en todos estos procesos.\n\n## 2. Osteoporosis\n\n**Fisiopatología**: enfermedad metabólica ósea sistémica con disminución de la masa ósea y deterioro de la microarquitectura por predominio de la resorción osteoclástica sobre la formación osteoblástica, lo que aumenta la fragilidad y el riesgo de fractura. Se clasifica en **primaria** (tipo I postmenopáusica, hueso trabecular: vértebras/muñeca; tipo II senil, cortical y trabecular: cadera) y **secundaria** (corticoterapia, inmovilización, hipertiroidismo). Es **asintomática** hasta que aparece su complicación: la **fractura por fragilidad** (vertebral, cadera, Colles).\n\n**Valoración**: factores de riesgo (sexo femenino, menopausia precoz, bajo peso, sedentarismo, dieta pobre en calcio/vitamina D, tabaco, alcohol, corticoides, antecedentes familiares); densitometría ósea (DEXA).\n\n**Cuidados**:\n- Educación: dieta rica en calcio/vitamina D, exposición solar moderada, ejercicio con carga, abandono de tabaco y alcohol.\n- **Prevención de caídas**: eliminar barreras arquitectónicas, calzado adecuado, revisión de fármacos sedantes/hipotensores, ayudas técnicas.\n- Adherencia a bifosfonatos (tomar en ayunas, con agua abundante y permanecer incorporado 30 minutos por riesgo de esofagitis).\n\n## 3. Tumores óseos\n\n**Fisiopatología**: **primarios** (osteoma, osteocondroma benignos; **osteosarcoma**, **condrosarcoma** y **sarcoma de Ewing** malignos, típicos de hues",
+    "ley": "Traumatología",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "6ebca38f-06ab-4e7e-8bf0-8c09918eb858",
+    "question_text": "¿Cuál sería un desinfectante de alto nivel (DAN)?:",
+    "option_a": "Amonio cuaternario.",
+    "option_b": "Amonio cuaternario.",
+    "option_c": "Hipoclorito sódico.",
+    "option_d": "Fenol.",
+    "correct_option": 2,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "La pregunta presenta dos errores: (1) las opciones A y B son idénticas (\"Amonio cuaternario\"), lo que invalida la estructura de la pregunta; (2) el hipoclorito sódico (C) es un desinfectante de NIVEL INTERMEDIO, no de alto nivel. Los desinfectantes de alto nivel (DAN) clásicos son: glutaraldehído, formaldehído, ácido peracético y peróxido de hidrógeno. Esta pregunta requiere corrección o retiro.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - TCAE exámenes oficiales",
+    "article_number": "1",
+    "art_title": "Antisepticos y desinfectantes",
+    "art_content": "# Antisépticos y desinfectantes\n\nLa lucha contra los microorganismos en el entorno sanitario se basa en un conjunto de conceptos, niveles y productos que el/la TCAE debe dominar con precisión. Este artículo cubre de forma exhaustiva la terminología, la **clasificación de Spaulding**, los principales **antisépticos** y **desinfectantes**, y los factores que condicionan su eficacia.\n\n---\n\n## 1. Conceptos fundamentales\n\nEs imprescindible no confundir estos términos, ya que son la base de la mayoría de las preguntas de examen:\n\n| Concepto | Definición | ¿Sobre qué actúa? |\n|----------|-----------|-------------------|\n| **Limpieza** | Eliminación física (mecánica) de suciedad, materia orgánica y microorganismos mediante agua, detergente y arrastre. NO destruye microorganismos, los reduce/arrastra. | Cualquier superficie/objeto |\n| **Descontaminación** | Conjunto de procesos (limpieza + desinfección/esterilización) que hacen seguro el manejo de un objeto contaminado. | Material e instrumental |\n| **Sanitización / saneamiento** | Reducción del número de microorganismos hasta niveles considerados seguros por las normas de salud pública (no busca eliminación total). | Superficies, locales, utensilios |\n| **Asepsia** | Conjunto de medidas y técnicas destinadas a **prevenir** la llegada de microorganismos a una zona u objeto (ausencia de gérmenes). Es preventiva. | Campo, técnica, ambiente |\n| **Antisepsia** | Destrucción o inhibición de los microorganismos presentes sobre **tejidos vivos** (piel, mucosas, heridas) mediante antisépticos. | Tejido vivo |\n| **Desinfección** | Destrucción de la mayoría de los microorganismos patógenos (NO necesariamente esporas) sobre **objetos inanimados / superficies**. | Material inerte |\n| **Esterilización** | Destrucción o eliminación **TOTAL** de toda forma de vida microbiana, **incluidas las esporas bacterianas** (la forma más resistente). Es el nivel máximo. | Material inerte |\n\n> **Regla de oro (muy preguntada):** el **ANTISÉPTICO** se aplica sobre **tejido vivo** (piel, mucosas, heridas); el **DESINFECTANTE** se aplica sobre **material inerte / superficies**. Algunas sustancias (p. ej. clorhexidina, alcohol, agua oxigenada) pueden actuar como ambas cosas según concentración y formulación, pero NUNCA debe usarse un desinfectante de superficies (p. ej. lejía concentrada, glutaraldehído) sobre la piel del paciente.\n\n### Asepsia médica vs. asepsia quirúrgica\n- **Asepsia médica (técnica limpia):** reduce el número de microorganismo",
+    "ley": "Esterilizacion y desinfeccion",
+    "pares": [
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "2c250fb2-83ca-4958-9e2d-2f754cbc38ef",
+    "question_text": "El concepto de patología dual se refiere a:",
+    "option_a": "La existencia simultánea de un trastorno adictivo (relacionado o no con sustancias) junto con un Trastorno Mental Grave.",
+    "option_b": "La presencia de un trastorno adictivo en el que hay dependencia a dos o más sustancias.",
+    "option_c": "La presencia de un trastorno adictivo en el que hay dependencia a dos o más sustancias.",
+    "option_d": "Hace referencia a las dos fases del Trastorno Bipolar.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "SALUD MENTAL ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "SALUD MENTAL ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "92277697-6a5d-4224-a967-e27fbdebd163",
+    "question_text": "¿Cual es el valor en binario del decimal 456?",
+    "option_a": "110001001",
+    "option_b": "111001000",
+    "option_c": "010001000",
+    "option_d": "010001000",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": [
+      "tecnico_informatica",
+      "Bloque II",
+      "T201",
+      "opositatest:227539"
+    ],
+    "explanation": "Para convertir **456** a binario se descompone en potencias de 2:\n\n456 = 256 + 128 + 64 + 8 = 2⁸ + 2⁷ + 2⁶ + 2³.\n\nColocando un 1 en esas posiciones y 0 en el resto (posiciones 8 a 0): **111001000**. La respuesta correcta es **B**.\n\nComprobación: 256+128+64+8 = 456. Las opciones C y D están duplicadas y valen 010001000₂ = 136, y la A (110001001₂) = 393, por lo que ninguna coincide con 456.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "1",
+    "art_title": "Representación y comunicación de la información",
+    "art_content": "## Representación y comunicación de la información\n\nEl ordenador es una máquina digital que solo distingue dos estados físicos (presencia/ausencia de tensión), por lo que toda la información —números, texto, imagen, sonido— se codifica internamente en **sistema binario**. La unidad mínima de información es el **bit** (BInary digiT), que toma valor 0 o 1. El estudio de esta materia abarca los sistemas de numeración, las unidades de medida de la información y la lógica (álgebra de Boole y puertas lógicas) que gobierna los circuitos.\n\n## Sistemas de numeración posicionales\n\nUn sistema posicional representa un número mediante dígitos cuyo peso depende de la **base**. Los cuatro sistemas relevantes en informática son:\n\n| Sistema | Base | Dígitos |\n|---|---|---|\n| Binario | 2 | 0-1 |\n| Octal | 8 | 0-7 |\n| Decimal | 10 | 0-9 |\n| Hexadecimal | 16 | 0-9 y A-F |\n\nEn hexadecimal las letras equivalen a: A=10, B=11, C=12, D=13, E=14, F=15.\n\n**Conversión a decimal (teorema fundamental de la numeración):** se multiplica cada dígito por la base elevada a su posición y se suman. Ejemplos verificables de la práctica de examen:\n- Octal 23 → 2·8 + 3 = **19** en decimal.\n- Octal 231 → 2·64 + 3·8 + 1 = **153** en decimal.\n- Hexadecimal 1C9 → 1·256 + 12·16 + 9 = **457** en decimal.\n\n**Conversión de decimal a otra base (divisiones sucesivas):** se divide repetidamente entre la base y se leen los restos de abajo arriba.\n- 342 en octal: 342/8=42 r6, 42/8=5 r2, 5/8=0 r5 → **526**.\n- 51 en octal → **63**.\n- 140 en hexadecimal → **8C** (140 = 8·16 + 12).\n- 303 en hexadecimal → **12F**.\n- 456 en binario → **111001000**; 607 en binario → **1001011111**.\n\n**Binario ↔ hexadecimal (agrupación de 4 bits).** Cada grupo de 4 bits (nibble) equivale a un dígito hexadecimal, lo que hace la conversión inmediata:\n\n| Binario | Hex | | Binario | Hex |\n|---|---|---|---|---|\n| 10001110 | 8E | | 10110101 | B5 |\n| 10111011 | BB | | 11100010 | E2 |\n| 11101011 | EB | | 11010111 | D7 |\n| 10011010 | 9A | | 11110000 | F0 |\n| 11001010 | CA | | 10100101 | A5 |\n\nEl binario **1011101** (7 bits) se completa a 01011101 → **5D** hexadecimal. Para el **binario ↔ octal** se agrupan bits de 3 en 3. El octal se convierte a hexadecimal pasando por binario o decimal; por ejemplo, octal 372 = 250 decimal = **FA** hexadecimal.\n\nAl **comparar magnitudes** expresadas en bases distintas hay que llevarlas a una base común. Así, 1010110100₂ = 692 decimal supera a los otros candidatos; y entre varios números, 1A0 hexadecimal (=4",
+    "ley": "Arquitectura de Ordenadores",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "2980141f-905a-4091-9bb2-af0852b5f493",
+    "question_text": "Entre los efectos del edadismo para las personas mayores y la sociedad es cierto que:",
+    "option_a": "Los adultos mayores con actitudes negativas hacia el envejecimiento pueden vivir varios años menos que los que tienen actitudes positivas.",
+    "option_b": "Incrementa la participación social de las personas mayores.",
+    "option_c": "Incrementa la participación social de las personas mayores.",
+    "option_d": "Mejora la calidad de los cuidados a medio plazo.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "31e3b957-3d8e-44b9-b267-f7e29f5f6fdf",
+    "question_text": "La inmunidad producida por la formación de anticuerpos en el curso de una enfermedad es la:",
+    "option_a": "Inmunidad natural activa.",
+    "option_b": "Inmunidad artificial pasiva.",
+    "option_c": "Inmunidad natural pasiva.",
+    "option_d": "Inmunidad artificial pasiva.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "La inmunidad natural puede ser activa o pasiva, siendo la activa la que se produce tras el contacto con los antígenos dando lugar así la la creación de anticuerpos específicos",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 18. Inmunizaciones: concepto. Clasificación y tipos de vacunas. Contraindicaciones. Complicaciones. Conservación, administración y pautas de vacunación",
+    "art_content": "# Tema 18. Inmunizaciones: concepto. Clasificación y tipos de vacunas. Contraindicaciones. Complicaciones. Conservación, administración y pautas de vacunación\n\n## 1. Introducción\n\nLas inmunizaciones son una de las intervenciones de salud pública más eficaces junto con el acceso al agua potable. Gracias a los programas de vacunación se ha logrado la erradicación mundial de la viruela, la práctica eliminación de la poliomielitis y un descenso drástico de la morbimortalidad por sarampión, difteria, tétanos, tos ferina o enfermedad invasora por *Haemophilus influenzae* tipo b. La enfermera es clave en todo el proceso: información, administración correcta, mantenimiento de la cadena de frío, vigilancia de reacciones adversas y registro fiable de cada dosis.\n\n## 2. Concepto de inmunidad\n\nLa **inmunidad** es la capacidad del organismo para reconocer y defenderse frente a antígenos, evitando o limitando la enfermedad. Se distingue:\n\n- **Inmunidad innata o inespecífica**: presente desde el nacimiento, inmediata y no específica (piel, mucosas, fagocitos, complemento).\n- **Inmunidad adquirida o específica**: se desarrolla tras el contacto con un antígeno concreto; es más lenta pero genera **memoria inmunológica**, base de la eficacia vacunal.\n\n### 2.1 Inmunidad activa\n\nEl propio organismo fabrica anticuerpos y células de memoria. Es duradera (a menudo de por vida) aunque de instauración lenta (días-semanas).\n\n- **Natural**: tras padecer la enfermedad.\n- **Artificial**: tras la administración de una vacuna.\n\n### 2.2 Inmunidad pasiva\n\nTransferencia de anticuerpos ya formados, sin síntesis propia. Es inmediata pero **transitoria** (semanas-meses), ya que no genera memoria.\n\n- **Natural**: paso de IgG materna transplacentaria e IgA a través de la lactancia.\n- **Artificial**: inmunoglobulinas específicas o inespecíficas, sueros hiperinmunes o anticuerpos monoclonales (p. ej. inmunoglobulina antitetánica, antirrábica o anti-VHB tras exposición).\n\n## 3. Concepto de vacuna e inmunización\n\nUna **vacuna** es una preparación biológica que contiene antígenos (microorganismos vivos atenuados, inactivados, fracciones o productos derivados) capaz de inducir una respuesta inmunitaria específica y protectora, similar a la infección natural pero sin causar la enfermedad ni sus complicaciones. La **inmunización** es el proceso por el que una persona se hace resistente a una enfermedad, habitualmente mediante una vacuna.\n\nAdemás del antígeno, las vacunas contienen **adyuvantes** (potenc",
+    "ley": "Inmunizaciones y vacunas",
+    "pares": [
+      [
+        1,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "ac638b91-2c7d-4005-a1c6-6f7aec60b861",
+    "question_text": "El trastorno narcisista de la personalidad se caracteriza por:",
+    "option_a": "Tendencia a la grandiosidad, autoimportancia e hipersensibilidad a la valoración de los demás.",
+    "option_b": "Una pauta generalizada de inestabilidad respecto a la vivencia de la propia imagen.",
+    "option_c": "Una pauta generalizada de inestabilidad respecto a la vivencia de la propia imagen.",
+    "option_d": "Tendencia a la normatividad, perseverancia y parsimonia, estando muy preocupados por los rendimientos.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "Los sujetos con trastorno narcisista de la personalidad son egoístas y requieren atención y admiración constantes. Tienden a una autoimagen grandiosa, son pretenciosos y soberbios y, a menudo, se muestran envidiosos de los éxitos ajenos. Ello se traduce en incapacidad de sentir empatía y en incapacidad para comprender o respetar los sentimientos e ideas del otro.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "SALUD MENTAL ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "SALUD MENTAL ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "99bb3711-35e0-4fca-bb0b-ed88165f5946",
+    "question_text": "Henderson dice refiriéndose al entorno que:",
+    "option_a": "El ambiente está ligado directamente al individuo, formando un sistema integrado e interactivo.",
+    "option_b": "Es el conjunto de las condiciones y factores externos que afectan a la vida y al desarrollo de un organismo.",
+    "option_c": "Es un campo de energía irreductible que manifiesta un cambio continuo.",
+    "option_d": "Es un campo de energía irreductible que manifiesta un cambio continuo.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "Para Virginia Henderson el entorno son los factores externos que tienen un efecto positivo o negativo sobre la persona.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Metodología de Enfermería: Modelos y Teorías",
+    "art_content": "# Metodología de Enfermería: Modelos y Teorías\n\n## Introducción\n\nLa Enfermería, como disciplina científica y profesión, se sustenta en un **cuerpo de conocimientos propio** que le permite explicar su objeto de estudio (el cuidado de la persona, la familia y la comunidad) y guiar su práctica de forma sistemática. Ese cuerpo de conocimientos se organiza en **paradigmas, modelos y teorías**, y se aplica en la práctica diaria a través de una **metodología de trabajo propia: el Proceso de Atención de Enfermería (PAE)**. Comprender esta estructura teórica es imprescindible para entender *por qué* la enfermera valora, diagnostica, planifica, ejecuta y evalúa los cuidados de una manera determinada, y no de otra.\n\n## Paradigmas de la Enfermería\n\nUn **paradigma** es una cosmovisión, un conjunto de creencias y valores compartidos por una comunidad científica que orienta la forma de entender los fenómenos de su disciplina. En Enfermería, siguiendo la clasificación clásica de **Kérouac** y colaboradores, se distinguen tres grandes paradigmas:\n\n- **Paradigma de la categorización:** concibe la salud y la enfermedad como categorías opuestas; el cuidado se centra en la enfermedad, el factor causal y la reparación del daño. Enfoque biomédico y reduccionista, propio de los inicios de la profesión (Nightingale).\n- **Paradigma de la integración:** la persona se concibe como un ser **bio-psico-social**, un todo formado por la suma de sus partes, en interacción constante con un entorno del que puede aislarse cuando es necesario para el cuidado. Aquí se enmarcan Henderson, Orem o Roy.\n- **Paradigma de la transformación (interacciones recíprocas):** la persona es un **ser unitario e indivisible**, en interacción recíproca y simultánea con un entorno igualmente cambiante; ninguno de los dos puede entenderse por separado. Paradigma humanista y holístico, representado por Watson o Rogers.\n\n## El metaparadigma enfermero\n\nEl **metaparadigma** es el conjunto de conceptos globales que identifican los fenómenos de interés de una disciplina y las relaciones entre ellos. Todas las teorías y modelos de Enfermería, con independencia del paradigma en el que se inscriban, giran en torno a **cuatro conceptos metaparadigmáticos**: la **persona** (receptor de los cuidados —individuo, familia, grupo o comunidad—, concebida como un ser bio-psico-social-espiritual único), el **entorno** (factores internos y externos, físicos, familiares, culturales y sociales, que rodean e influyen en la persona), la",
+    "ley": "MODELOS TEÓRICOS EN ENFERMERÍA ENF",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "ac031628-af4f-4276-bf6b-0201a235c707",
+    "question_text": "Según los datos que presenta el estudio de la Unión Europea, sobre el perfil sanitario de España 2017, los factores de riesgo por comportamiento, son determinantes importantes para la salud en España. Señale la respuesta correcta:",
+    "option_a": "No hay un impacto positivo de las políticas de control del tabaco entre los jóvenes de 15 años.",
+    "option_b": "El consumo excesivo de alcohol es relativamente más bajo entre los adultos, pero alto en adolescentes con un porcentaje cercano a la media de la Unión Europea (25%).",
+    "option_c": "No existe diferencia sustancial en las tasas de obesidad según el nivel de educación siendo nuestras tasas de sobrepeso y obesidad más bajas que la media de la Unión Europea.",
+    "option_d": "No existe diferencia sustancial en las tasas de obesidad según el nivel de educación siendo nuestras tasas de sobrepeso y obesidad más bajas que la media de la Unión Europea.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "El consumo excesivo de alcohol es relativamente bajo entre los adultos pero alto entre los adolescentes.\r\nEn 2014, algo más del 9 % de los adultos declararon un alto consumo de alcohol habitual en forma de consumo masivo ocasional, muy por debajo de la media del 20 % de la UE. No obstante, una mayor proporción de adolescentes aseguraron haberse emborrachado varias veces a lo largo de su vida: más del 20 % de los chicos y chicas de 15 años declararon en 2013-2014 haberse emborrachado más de una vez, un porcentaje cercano a la media de la UE (25 %).",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 15. Epidemiología: concepto. Enfermedades transmisibles de mayor incidencia",
+    "art_content": "# Tema 15. Epidemiología: concepto. Enfermedades transmisibles de mayor incidencia\n\n## 1. Concepto de epidemiología\n\nLa **epidemiología** es la disciplina científica que estudia la **distribución, frecuencia y determinantes** de los problemas de salud en las poblaciones humanas, y la **aplicación** de ese conocimiento al control y la prevención de dichos problemas.\n\nDe esta definición se extraen tres elementos clave:\n\n- **Distribución**: *quién* enferma, *dónde* y *cuándo* (variables de persona, lugar y tiempo).\n- **Determinantes**: factores causales o de riesgo que explican *por qué* aparece la enfermedad.\n- **Aplicación**: el conocimiento se pone al servicio de la **salud pública** (prevención, control, planificación).\n\n### 1.1. Usos de la epidemiología\n\n1. **Describir** el estado de salud de las poblaciones (epidemiología descriptiva).\n2. **Identificar factores de riesgo y causas** de la enfermedad (epidemiología analítica).\n3. **Evaluar la eficacia** de tratamientos, programas y políticas sanitarias.\n4. **Vigilar** la evolución de las enfermedades, detectando brotes y epidemias.\n5. **Planificar y priorizar recursos** sanitarios según necesidades reales.\n6. Establecer la **historia natural de la enfermedad**: su evolución desde la exposición hasta la curación, cronificación o muerte sin intervención.\n7. Servir de base a la **docencia e investigación** en ciencias de la salud.\n\n### 1.2. Ramas de la epidemiología\n\n- **Descriptiva**: describe frecuencia y distribución según persona, lugar y tiempo; genera hipótesis, sin establecer causalidad.\n- **Analítica**: contrasta hipótesis de asociación causa-efecto (cohortes, casos-controles).\n- **Experimental**: el investigador manipula la exposición (ensayos clínicos) para comprobar su efecto.\n\n## 2. La cadena epidemiológica\n\nLa **cadena epidemiológica** explica cómo se transmite un agente infeccioso desde una fuente hasta un huésped susceptible. Romper cualquiera de sus eslabones permite prevenir y controlar la enfermedad.\n\n### 2.1. Agente causal\nMicroorganismo capaz de producir enfermedad: **bacterias, virus, hongos, parásitos o priones**. Propiedades clave: **infectividad** (capacidad de invadir), **patogenicidad** (de producir enfermedad clínica), **virulencia** (gravedad) e **inmunogenicidad** (de generar respuesta inmune).\n\n### 2.2. Reservorio\nHábitat natural donde el agente vive y se multiplica: **humano** (enfermo o portador asintomático), **animal** (zoonosis: rabia, brucelosis) o **ambiental** (agua, sue",
+    "ley": "Salud pública y epidemiología",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "48c47379-f03f-4444-a601-95111f23e5a5",
+    "question_text": "El principio basado en que tiene que haber un trato equitativo para todos, en la medida de lo posible, se denomina:",
+    "option_a": "Principio de Justicia.",
+    "option_b": "Principio de Autonomía.",
+    "option_c": "Principio de Beneficencia.",
+    "option_d": "Principio de Beneficencia.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "Principio de justicia. También se le conoce como justicia distributiva, y hace referencia a la distribución equitativa de los recursos, de tal manera que ante casos iguales se den tratamientos iguales, sin discriminaciones. Define a la institución sanitaria.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "3de7a508-7e3b-48b7-991e-13e3c71c97a5",
+    "question_text": "En la evaluación de una prueba diagnóstica, ¿qué parámetro indica la probabilidad de que un paciente con resultado negativo esté realmente libre de la enfermedad?",
+    "option_a": "Sensibilidad.",
+    "option_b": "Especificidad.",
+    "option_c": "Especificidad.",
+    "option_d": "Valor predictivo negativo.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "b30ad9fd-758f-4956-95fd-17bdef494571",
+    "question_text": "De las siguientes afirmaciones referidas a la hiperplasia benigna de próstata, ¿Cuál es FALSA?",
+    "option_a": "La diabetes y las enfermedades cardiacas aumentan el riesgo.",
+    "option_b": "La presión en la vejiga debido a la incapacidad para orinar puede dañar los riñones o permitir que las infecciones en la vejiga lleguen a los riñones.",
+    "option_c": "La presión en la vejiga debido a la incapacidad para orinar puede dañar los riñones o permitir que las infecciones en la vejiga lleguen a los riñones.",
+    "option_d": "Tener un pariente consanguíneo con problemas de próstata no incrementa el riesgo.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "478aac1d-f798-4d43-89cd-8eda03ba038c",
+    "question_text": "¿Cuál de las siguientes afirmaciones sobre Microsoft ActiveSync es correcta?",
+    "option_a": "ActiveSync requiere la instalación de un cliente adicional en dispositivos móviles modernos con Android o iOS.",
+    "option_b": "ActiveSync solo permite la sincronización de correos electrónicos y no admite la sincronización de calendarios o contactos.",
+    "option_c": "ActiveSync solo permite la sincronización de correos electrónicos y no admite la sincronización de calendarios o contactos.",
+    "option_d": "ActiveSync permite la sincronización en tiempo real de correos electrónicos, contactos, calendarios y tareas entre dispositivos móviles y servidores de Exchange.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": [
+      "tecnico_informatica",
+      "Bloque II",
+      "T204",
+      "opositatest:660677"
+    ],
+    "explanation": "ActiveSync (mediante Exchange ActiveSync) permite la **sincronización en tiempo real de correo, contactos, calendarios y tareas** entre dispositivos móviles y servidores Exchange (opción D). Es falso que se limite solo al correo (opciones B y C, además duplicadas), y los dispositivos modernos Android/iOS incorporan soporte EAS nativo sin cliente adicional obligatorio (A).",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "4",
+    "art_title": "Sistemas operativos para dispositivos móviles",
+    "art_content": "## Sistemas operativos para dispositivos móviles\n\nUn **sistema operativo móvil** gestiona los recursos de smartphones y tablets. Frente a los de escritorio, son **más sencillos y están orientados a la interacción táctil** (manipulación por contacto) y a la **conectividad inalámbrica**, optimizando la experiencia de usuario para tareas concretas y un uso eficiente de recursos limitados (batería, memoria). El diseño simplificado busca precisamente esa optimización, no una menor capacidad. Los dos ecosistemas dominantes son **Android** (Google) e **iOS** (Apple).\n\n## Android\n\nAndroid es un sistema operativo **de código abierto** que **permite a programadores y fabricantes realizar modificaciones**; esta filosofía facilita que cada fabricante adapte el sistema a sus dispositivos y personalice la interfaz, lo que ha sido clave para llegar a más dispositivos. Es, además, la distribución de Linux más utilizada en **sistemas embebidos**.\n\n- **Núcleo:** Android se basa en un **kernel Linux** (modificado). Una característica técnica que lo diferencia significativamente de un kernel Linux estándar es el uso de un **subsistema IPC exclusivo llamado Binder** para la comunicación entre procesos.\n- **Máquina virtual:** desde **KitKat (Android 4.4)**, las aplicaciones y servicios del sistema se ejecutan sobre **ART (Android Runtime)**, que sustituyó a Dalvik.\n- **Aplicaciones:** se distribuyen en paquetes con extensión **.apk**. El lenguaje empleado para desarrollar aplicaciones **nativas** es **Java**. El **Android NDK** permite programar en C/C++ y **sí permite la reutilización de código**, pudiendo usar bibliotecas de otros desarrolladores.\n- **Capas de personalización:** modificaciones propias que los fabricantes crean sobre Android (One UI, MIUI, etc.). **PenPoint OS NO es una capa de personalización** (era un antiguo SO de lápiz óptico).\n- Android **no exige conexión física (por cable)** para sincronizarse con un ordenador.\n\n### Versiones de Android (nombre en clave ↔ número)\n\n| Versión | Nombre en clave | Novedad destacada |\n|---|---|---|\n| 2.0 | Eclair (2009) | Primer soporte multi-touch |\n| 3.0 | **Honeycomb** | **Exclusiva para tablets** |\n| 4.1 | Jelly Bean | Asistente **Google Now** |\n| 4.4 | KitKat | Mejoras de gestión de RAM; llega **ART** |\n| 6.0 | Marshmallow | Ahorro de energía **Doze** |\n| 7.0 | Nougat | **Seamless Updates** (actualización en segundo plano sin interrumpir al usuario); pantalla dividida |\n| 8.0 | Oreo | Primer **Picture-in-Picture (PiP)**",
+    "ley": "Sistemas Operativos (técnico)",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "bb2e2bcc-ec3a-4b43-b2bf-036efd0ec7ae",
+    "question_text": "Cuando existe la obligación de mantener oculto lo que afecta directamente a la profunda intimidad de la persona y cuya divulgación es dañina para la misma, nos referimos al tipo de secreto profesional:",
+    "option_a": "Secreto prometido.",
+    "option_b": "Secreto natural.",
+    "option_c": "Secreto presumido.",
+    "option_d": "Secreto presumido.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "Desde el punto de vista moral existen tres clases de secretos:\r\n\r\na) El secreto natural: es independiente de todo contrato, se extiende a todo lo que, ya sea descubierto por casualidad, por investigación personal o por confidencia, y no puede divulgarse. Aunque el depositario del secreto no haya prometido guardar sigilo, ni antes ni después de habérsele manifestado el hecho o de haberlo descubierto, está obligado a callar, en virtud del precepto moral que prohíbe perjudicar o disgustar a los demás sin motivo razonable. Su manifestación está vedada por la misma ley natural y su divulgación entrañaría un daño injusto a la persona. Al no especificar en el enunciado, que nazca de un pacto o promesa, la correcta sería la opción de secreto natural.\r\nb) El secreto prometido: nace de un contrato, de la promesa de guardar silencio después de haber conocido el hecho, ya sea por casualidad, por investigación personal o por confidencia espontánea o provocada. Un mismo secreto puede ser a la vez natural y prometido. Será natural cuando la cosa de suyo requiera sigilo, pero si además va acompañado de una promesa, también será prometido. Comprende aquellas noticias que hay que mantener ocultas, por la palabra que se ha dado e ello, aun cuando nada obligue al secreto.\r\nc) El secreto confiado: también dimana de una promesa explícita o tácita hecha antes de recibir la confidencia de lo que se oculta. Se le comunica que previamente ha prometido, expresa tácitamente por la razón de su oficio o al menos de las circunstancias, guardar silencio, y le es participado lo que se mantenía oculto, añadiendo que se le revela confiado en su promesa bajo el sello del secreto. El secreto pasa entonces a ser estrictamente confidencial o profesional; confidencial, cuando la confidencia se ha hecho a un hombre que está obligado por razón de su oficio a prestar ayuda o a dar consejo. Profesional cuando se ha confiado, ya de palabra, ya en sus acciones, a un hombre a quien su profesión obliga a asistir a los demás con sus consejos o cuidados, por ejemplo: abogado, contador, médico, sacerdote, consejeros de oficio",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "4d0f2602-2d89-4a22-b92f-83b90818e2dc",
+    "question_text": "Desde el enfoque biopsicosocial, ¿cuál es la intervención de enfermería más adecuada ante un paciente hospitalizado que presenta ansiedad persistente sin causa orgánica evidente?",
+    "option_a": "Administrar ansiolíticos según prescripción médica.",
+    "option_b": "Administrar ansiolíticos según prescripción médica.",
+    "option_c": "Valorar factores emocionales, sociales y ambientales que influyen en su conducta.",
+    "option_d": "Registrar la ansiedad como respuesta normal a la hospitalización.",
+    "correct_option": 2,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "4c431818-5e0e-4aca-bf29-22e5f92874fa",
+    "question_text": "Ordena las siguientes notaciones de la CDU:\r\nA) 22\r\nB) 512\r\nC) 003\r\nD) 7",
+    "option_a": "C, A, B, D",
+    "option_b": "A, D, C, B",
+    "option_c": "C, B, D, A",
+    "option_d": "A, D, C, B",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": [
+      "auxiliar_biblioteca_estado",
+      "especifica",
+      "T301",
+      "opositatest:606207",
+      "epigrafe:Ordenación"
+    ],
+    "explanation": "003\n\n22\n\n512\n\n7\n\n2.1.2. ORDENACIÓN DE LOS NÚMEROS DE LA CDU\n\n2.1.2.1. PRINCIPIOS GENERALES\n\nPara la ordenación de las fichas y de los números de la CDU en los catálogos, vale, siempre que se trate de números principales de la CDU, el principio fundamental de que tienen un valor de números decimales, delante de los cuales se considera siempre escrito el 0. Los números de la CDU se ordenan, pues, como los decimales. Quiere esto decir que detrás, por ejemplo, de un número de la CDU con tres cifras, se colocan primero todos los números de la CDU más largos que comienzan con las mismas tres cifras, antes de pasar a otro que tenga un número más alto en el tercer lugar. Para la ordenación no hay que tener en cuenta la longitud del número, sino la secuencia de las cifras.\n\n2. En segundo lugar, sólo en caso de igualdad con otros números, ordenaremos los números compuestos, primero los unidos con el signo [+] y luego los unidos con barra [/], antes de los números simples y después los número unidos por colon [:] y doble colon [::].\n\n3. En tercer lugar se ordenan, en caso de igualdad los números con auxiliares como sufijos, en este orden:\n\nnúmero simple=\n\nnúmero simple(0...)\n\nnúmero simple(1/9)\n\nnúmero simple(=...)\n\nnúmero simple\"...\"\n\nnúmero simple*\n\nnúmero simpleA/Z\n\nnúmero simple.00\n\nnúmero simple-0\n\nnúmero simple-1/-9\n\nnúmero simple.0\n\nnúmero simple'\n\nsiguiente número simple\n\nhttp://www.bibliopos.es/doc-ordenacion/curso-ordenacion.pdf",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "301",
+    "art_title": "Ordenación y conservación de fondos (parte práctica)",
+    "art_content": "La ordenación de los fondos puede seguir el sistema de numerus currens, que asigna a cada documento un número correlativo según su orden de llegada con independencia de la materia, idóneo para los depósitos cerrados; o la ordenación sistemática, que ordena por materias mediante una clasificación como la CDU, propia del libre acceso. La signatura topográfica es el código que indica la localización física del documento y se coloca en el tejuelo, en el lomo. La conservación preventiva es la actuación indirecta sobre el entorno y la manipulación para evitar el daño antes de que se produzca, frente a la restauración, que es la intervención directa sobre el documento ya deteriorado. Los principales agentes de deterioro son la humedad (que favorece los hongos por encima del 65-70 por ciento de humedad relativa), la luz ultravioleta (acumulativa e irreversible), la temperatura elevada y los agentes biológicos. El recuento es la comprobación física periódica de los fondos; el inventario añade el cotejo con el catálogo. El expurgo es la retirada crítica de fondos, procedimiento distinto del recuento.",
+    "ley": "Biblioteconomía",
+    "pares": [
+      [
+        1,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "c21c054d-30ee-47a7-9b74-341e29582bdc",
+    "question_text": "Los principales cuidados de enfermería en las urgencias psiquiátricas se centran en:",
+    "option_a": "Apoyarse en un equipo multidisciplinar.",
+    "option_b": "Administrar medicamentos específicos para el control de los síntomas agudos.",
+    "option_c": "Administrar medicamentos específicos para el control de los síntomas agudos.",
+    "option_d": "La evaluación minuciosa del paciente, la contención emocional y física y la administración de medicación en caso necesario.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "805ed6e2-de1f-4ca5-8d82-d0747de29cbf",
+    "question_text": "¿Qué principio fundamental de la Bioética, protege el respeto a la libertad de las personas y su derecho a decidir?.",
+    "option_a": "Autonomía.",
+    "option_b": "Beneficencia.",
+    "option_c": "Beneficencia.",
+    "option_d": "Justicia.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "a3c9fdce-6a66-460a-bccf-704090d5b778",
+    "question_text": "Respecto de la conservación de las vacunas:",
+    "option_a": "El registro de temperatura de las neveras será semanal.",
+    "option_b": "El registro de temperatura de las neveras será semanal.",
+    "option_c": "No deben almacenarse vacunas en los estantes situados en la puerta de la nevera.",
+    "option_d": "Las vacunas disponibles en España frente a Meningitis B pueden congelarse.",
+    "correct_option": 2,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 18. Inmunizaciones: concepto. Clasificación y tipos de vacunas. Contraindicaciones. Complicaciones. Conservación, administración y pautas de vacunación",
+    "art_content": "# Tema 18. Inmunizaciones: concepto. Clasificación y tipos de vacunas. Contraindicaciones. Complicaciones. Conservación, administración y pautas de vacunación\n\n## 1. Introducción\n\nLas inmunizaciones son una de las intervenciones de salud pública más eficaces junto con el acceso al agua potable. Gracias a los programas de vacunación se ha logrado la erradicación mundial de la viruela, la práctica eliminación de la poliomielitis y un descenso drástico de la morbimortalidad por sarampión, difteria, tétanos, tos ferina o enfermedad invasora por *Haemophilus influenzae* tipo b. La enfermera es clave en todo el proceso: información, administración correcta, mantenimiento de la cadena de frío, vigilancia de reacciones adversas y registro fiable de cada dosis.\n\n## 2. Concepto de inmunidad\n\nLa **inmunidad** es la capacidad del organismo para reconocer y defenderse frente a antígenos, evitando o limitando la enfermedad. Se distingue:\n\n- **Inmunidad innata o inespecífica**: presente desde el nacimiento, inmediata y no específica (piel, mucosas, fagocitos, complemento).\n- **Inmunidad adquirida o específica**: se desarrolla tras el contacto con un antígeno concreto; es más lenta pero genera **memoria inmunológica**, base de la eficacia vacunal.\n\n### 2.1 Inmunidad activa\n\nEl propio organismo fabrica anticuerpos y células de memoria. Es duradera (a menudo de por vida) aunque de instauración lenta (días-semanas).\n\n- **Natural**: tras padecer la enfermedad.\n- **Artificial**: tras la administración de una vacuna.\n\n### 2.2 Inmunidad pasiva\n\nTransferencia de anticuerpos ya formados, sin síntesis propia. Es inmediata pero **transitoria** (semanas-meses), ya que no genera memoria.\n\n- **Natural**: paso de IgG materna transplacentaria e IgA a través de la lactancia.\n- **Artificial**: inmunoglobulinas específicas o inespecíficas, sueros hiperinmunes o anticuerpos monoclonales (p. ej. inmunoglobulina antitetánica, antirrábica o anti-VHB tras exposición).\n\n## 3. Concepto de vacuna e inmunización\n\nUna **vacuna** es una preparación biológica que contiene antígenos (microorganismos vivos atenuados, inactivados, fracciones o productos derivados) capaz de inducir una respuesta inmunitaria específica y protectora, similar a la infección natural pero sin causar la enfermedad ni sus complicaciones. La **inmunización** es el proceso por el que una persona se hace resistente a una enfermedad, habitualmente mediante una vacuna.\n\nAdemás del antígeno, las vacunas contienen **adyuvantes** (potenc",
+    "ley": "Inmunizaciones y vacunas",
+    "pares": [
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "516bf5c8-84b4-4523-90b0-e13ad8858833",
+    "question_text": "¿Qué característica específica de Linux Mint facilita la instalación y el manejo de controladores propietarios en comparación con otras distribuciones basadas en Ubuntu?",
+    "option_a": "Uso exclusivo del Kernel LTS con compatibilidad extendida para hardware antiguo.",
+    "option_b": "Herramienta \"Driver Manager\" para detectar y configurar automáticamente controladores propietarios.",
+    "option_c": "Integración con Snap para gestionar paquetes propietarios de manera predeterminada.",
+    "option_d": "Integración con Snap para gestionar paquetes propietarios de manera predeterminada.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": [
+      "tecnico_informatica",
+      "Bloque II",
+      "T204",
+      "opositatest:662444"
+    ],
+    "explanation": "**Respuesta correcta: B (Driver Manager).**\n\nLinux Mint incorpora la herramienta **Driver Manager**, que detecta el hardware y permite instalar y configurar automáticamente controladores propietarios (por ejemplo, de NVIDIA o adaptadores Wi-Fi).\n\n- **A** El uso de un kernel LTS no es la característica que gestiona controladores.\n- **C/D** Snap es un formato de empaquetado de aplicaciones, no un gestor de controladores; además Mint lo trae desactivado por defecto.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "3",
+    "art_title": "Sistemas Unix y Linux",
+    "art_content": "## Sistemas Unix y Linux\n\n**Unix** es una familia de sistemas operativos multiusuario y multitarea. **GNU/Linux** es un sistema operativo libre y de código abierto de tipo Unix: la parte GNU aporta las herramientas y el compilador, y **Linux es estrictamente el *kernel* (núcleo)**. Una **distribución de GNU/Linux** es un sistema operativo construido sobre el núcleo Linux al que se añade un conjunto de aplicaciones, gestor de paquetes y entorno de escritorio.\n\n### El kernel y su papel\n\nEl **kernel** es la parte fundamental del sistema operativo: es el **software que reside en memoria y actúa como interfaz entre el hardware y los procesos**, indicando a la CPU qué debe hacer. Sus funciones esenciales son **controlar los procesos, la memoria y la administración de los dispositivos**. Como Linux es el kernel, define las capacidades centrales y el rendimiento de todos los sistemas operativos basados en él. Las características del núcleo se **añaden o quitan compilando el núcleo y reiniciando el sistema**.\n\nLa memoria se divide en **espacio del kernel** y **espacio del usuario** para separar los privilegios de seguridad. El *espacio del usuario* es donde se encuentran los archivos y programas visibles para el usuario. Un **demonio (*daemon*)** es un proceso que se ejecuta en **segundo plano**.\n\n### Procesos\n\nCada proceso tiene un **PID**, un **UID** (identificador de usuario propietario), un identificador de grupo y de sesión. El **UID 0** corresponde al superusuario (root); es falso afirmar que el UID efectivo 1 sea privilegiado. El proceso **init** es el primer proceso del arranque (PID 1), no el arranque de un usuario.\n\n- **`fork()`**: crea un proceso hijo duplicando al padre. Al padre le devuelve el **PID del hijo** y al hijo le devuelve **0**; tras la llamada padre e hijo **no comparten la misma memoria** (tienen copias independientes). Es falso que devuelva al hijo el PID del padre.\n- **`clone()`**: crea procesos hijos especificando **qué partes del contexto comparte** con el hijo.\n- En el núcleo, `do_fork` (en `fork.c`) invoca a **`copy_process`**, que crea la `task_struct` del nuevo proceso.\n\nEl comando **`ps`** (*Process Status*) muestra los procesos. Opciones habituales: **`-e`** lista todos los procesos del sistema; **`-f`** genera un listado completo (información detallada); **`-x`** elimina la restricción BSD de listar solo procesos con tty (lista todos los del usuario, mismo EUID); **`-j`** muestra identificador de sesión y de grupo. `ps -ef | grep",
+    "ley": "Sistemas Operativos (técnico)",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "b0a06f71-1f92-40b9-ab04-3c182cd8c8ce",
+    "question_text": "Qué fórmula es la correcta para medir el indicador:¿Personas a las que se les realiza cribado inicial en atención primaria para identificación de ansiedad y depresión?",
+    "option_a": "Número de personas a las que se les realiza entrevista en atención hospitalaria para ansiedad y depresión según los criterios que aparecen en el PAI x 100 / Número de personas que acuden a consulta al mes.",
+    "option_b": "Número de personas incluidas en el PAI ansiedad, depresión, somatizaciones/Número total de pacientes vistos en la unidad.",
+    "option_c": "Número de personas a las que se les realiza cribado inicial en atención primaria para ansiedad y depresión según los criterios que aparecen en el PAI x 100 / Número de personas incluidas en el PAI.",
+    "option_d": "Número de personas a las que se les realiza entrevista en atención hospitalaria para ansiedad y depresión según los criterios que aparecen en el PAI x 100 / Número de personas que acuden a consulta al mes.",
+    "correct_option": 2,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "PERSONAS A LAS QUE SE LES REALIZA CRIBADO INICIAL EN ATENCIÓN PRIMARIA PARA IDENTIFICACIÓN DE ANSIEDAD Y DEPRESIÓN:\r\n\r\nFórmula: Número de personas a las que se les realiza cribado inicial en AP para ansiedad y depresión según los criterios que aparecen en el PAI x 100 / Nº de personas incluidas en el PAI.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 16. Salud Pública: Concepto. Salud y Enfermedad: Concepto. Indicadores de Salud. Demografía Sanitaria",
+    "art_content": "# Tema 16. Salud Pública: Concepto. Salud y Enfermedad: Concepto. Indicadores de Salud. Demografía Sanitaria\n\n## 1. Concepto de Salud Pública\n\nLa **Salud Pública** es la ciencia y el arte de prevenir la enfermedad, prolongar la vida y fomentar la salud mediante los esfuerzos organizados de la sociedad. Definición clásica de **Winslow (1920)**:\n\n> \"Ciencia y arte de prevenir las enfermedades, prolongar la vida y fomentar la salud y la eficiencia física y mental, mediante el esfuerzo organizado de la comunidad para el saneamiento del medio, el control de las enfermedades transmisibles, la educación sanitaria, la organización de los servicios médicos y de enfermería, y el desarrollo de mecanismos sociales que aseguren a cada individuo un nivel de vida adecuado para el mantenimiento de la salud.\"\n\n**Características esenciales:**\n\n- Actúa sobre **poblaciones**, no sobre individuos aislados (a diferencia de la clínica).\n- Enfoque **multidisciplinar**: epidemiología, estadística, medicina preventiva, enfermería comunitaria.\n- Se basa en el **esfuerzo organizado y colectivo** de la comunidad e instituciones.\n- Finalidad: **prevenir, promocionar y proteger** la salud, no solo curar.\n\n**Funciones esenciales de Salud Pública** (OMS/OPS): vigilancia y análisis del estado de salud de la población; vigilancia epidemiológica y control de riesgos; promoción de la salud; participación social; desarrollo de políticas y capacidad institucional; garantía de calidad de los servicios; desarrollo de recursos humanos; investigación en salud pública; reducción del impacto de emergencias y desastres.\n\n## 2. Concepto de Salud y Enfermedad\n\n### 2.1. Salud según la OMS\n\nLa **Organización Mundial de la Salud (OMS)**, en su Constitución (1946), define la salud como:\n\n> \"Un estado de completo bienestar físico, mental y social, y no solamente la ausencia de afecciones o enfermedades.\"\n\nSupuso una ruptura con el modelo **biomédico** (salud = ausencia de enfermedad) al introducir una visión **positiva e integral**. Se le critica ser utópica y estática; por ello se complementa con enfoques más dinámicos:\n\n- **Concepto dinámico**: la salud como proceso continuo de adaptación del individuo a su entorno cambiante.\n- **Carta de Ottawa (1986)**: la salud como **recurso para la vida cotidiana**, no como objetivo en sí mismo; recurso que aporta capacidades físicas, sociales y personales.\n\n### 2.2. Enfermedad\n\nLa **enfermedad** es la pérdida de la salud, la alteración del bienestar físico, mental o ",
+    "ley": "DEMOGRAFÍA SANITARIA ENF",
+    "pares": [
+      [
+        0,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "54073e7a-93a8-4881-b44c-ac035ec35132",
+    "question_text": "El Sistema de Información de Atención Primaria (SIAP) del Sistema Nacional de Salud, es un sistema de información estadístico establecido por consenso con todas las comunidades autónomas y el INGESA y se nutre de los datos que anualmente aportan según criterios comunes previamente normalizados. Contiene, básicamente, información sobre:",
+    "option_a": "La actividad asistencial llevada a cabo, solo en el horario habitual de funcionamiento (actividad ordinaria).",
+    "option_b": "Información sobre la población que tienen asignada los profesionales de Atención Primaria durante el horario de mañanas, siempre cambiante y diferenciada de la actividad de tarde.",
+    "option_c": "Información sobre la población que tienen asignada los profesionales de Atención Primaria durante el horario de mañanas, siempre cambiante y diferenciada de la actividad de tarde.",
+    "option_d": "La actividad asistencial llevada a cabo, ya se produzca en los centros sanitarios de Atención Primaria o en los domicilios de los pacientes.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "⏳ Explicación pendiente de redactar.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "BIOÉTICA ENF",
+    "art_content": "⏳ Teoría pendiente (contenedor enfermería).",
+    "ley": "BIOÉTICA ENF",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "665bfc82-b4ba-4dba-8f13-1f44a1783caa",
+    "question_text": "El autoclave de vapor es:",
+    "option_a": "Un método de esterilización en el que se emplea vapor saturado para producir la desnaturalización de las proteínas y lípidos en las membranas de las células microbianas.",
+    "option_b": "Un método de desinfección en el que se emplea vapor saturado para producir la hidratación, coagulación e hidrólisis de las albúminas y las proteínas en las células microbianas.",
+    "option_c": "Un método de desinfección en el que se emplea vapor saturado para producir la dilatación e hidrólisis de las albúminas y las proteínas en las células microbianas.",
+    "option_d": "Un método de desinfección en el que se emplea vapor saturado para producir la dilatación e hidrólisis de las albúminas y las proteínas en las células microbianas.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "El **autoclave de vapor** es un método de **ESTERILIZACIÓN por calor húmedo** (vapor saturado a presión, típicamente 121 ºC / 1 atm durante ~15-20 min o 134 ºC en ciclos rápidos). Su mecanismo de acción es la **desnaturalización y coagulación de las proteínas** y la **destrucción de los lípidos de la membrana** de las células microbianas. Es el método de **elección** siempre que el material lo permita, porque es rápido, no deja residuos tóxicos y **destruye toda forma de vida microbiana, incluidas las esporas** (a diferencia de la desinfección).\n\n- **A (CORRECTA):** define correctamente el autoclave como método de **esterilización** con vapor saturado que produce **desnaturalización de proteínas y lípidos** de la membrana. Es la única opción que emplea el término \"esterilización\", que es lo que realmente logra el autoclave.\n- **B (INCORRECTA):** error conceptual clave: lo clasifica como **\"desinfección\"**. El autoclave esteriliza (elimina esporas), no solo desinfecta. El mecanismo descrito (hidratación/coagulación) es impreciso.\n- **C (INCORRECTA):** de nuevo lo llama **\"desinfección\"** y describe \"dilatación e hidrólisis de albúminas\", mecanismo inexacto para el autoclave.\n- **D (INCORRECTA):** idéntica a la C y con el mismo doble error: término \"desinfección\" y mecanismo impreciso.\n\n**Regla de oro:** el autoclave = **esterilización por calor húmedo** (destruye esporas); la ebullición a 100 ºC solo alcanza **desinfección** de alto nivel.\n\n**Fuente:** Clasificación de Spaulding y manuales de esterilización/desinfección de material sanitario (calor húmedo como método de elección).",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "approved",
+    "exam_source": "Aula Plus - TCAE exámenes oficiales",
+    "article_number": "2",
+    "art_title": "Metodos de esterilizacion segun tipo de material",
+    "art_content": "MÉTODOS DE ESTERILIZACIÓN SEGÚN EL TIPO DE MATERIAL\n\nESTERILIZACIÓN frente a DESINFECCIÓN\nLa ESTERILIZACIÓN es el proceso que destruye o elimina TODA forma de vida microbiana, incluidas las esporas bacterianas (las formas de resistencia más difíciles de eliminar). Es un concepto absoluto: un objeto está estéril o no lo está. La DESINFECCIÓN, en cambio, reduce el número de microorganismos patógenos hasta un nivel que no resulta dañino, pero NO garantiza la destrucción de todas las esporas; es un concepto relativo y se aplica habitualmente sobre superficies, mobiliario o material no crítico. Regla práctica de clasificación (Spaulding): el material CRÍTICO (penetra tejidos estériles o el sistema vascular: instrumental quirúrgico) debe ESTERILIZARSE; el SEMICRÍTICO (contacta mucosas) requiere al menos desinfección de alto nivel; el NO CRÍTICO (contacta piel intacta) admite desinfección de bajo/intermedio nivel. A diferencia de los métodos de esterilización descritos a continuación, procedimientos como la EBULLICIÓN del material en agua a 100 ºC durante unos minutos consiguen una DESINFECCIÓN de alto nivel (destruyen las formas vegetativas) pero NO garantizan la eliminación de todas las esporas, por lo que no son esterilización.\n\nLa elección del método de esterilización depende del tipo de material: si es TERMORRESISTENTE (soporta calor: instrumental metálico, vidrio) se prefieren los métodos por calor, más baratos, rápidos y sin residuos tóxicos; si es TERMOSENSIBLE (se daña con el calor o la humedad: plásticos, gomas, ópticas, material electrónico, endoscopios) se recurre a métodos químicos a baja temperatura.\n\n1) MÉTODOS FÍSICOS POR CALOR\n\na) CALOR SECO — ESTUFA POUPINEL (esterilizador de aire caliente)\nDestruye los microorganismos por OXIDACIÓN de sus componentes celulares. Parámetros típicos: 170 ºC durante 60 minutos o 180 ºC durante 30 minutos (a 160 ºC se requieren unos 120 minutos). Requiere temperaturas más altas y tiempos más largos que el autoclave porque el aire caliente transmite el calor con menos eficacia que el vapor. El material debe entrar limpio y SECO. Indicado para materiales que el vapor podría dañar o que el vapor no penetra bien: vidrio, polvos, aceites, ceras, e instrumental metálico que no se oxide. Es un método menos usado en la actualidad que el autoclave.\n\nb) CALOR HÚMEDO — AUTOCLAVE DE VAPOR (vapor de agua saturado a presión)\nDestruye los microorganismos por COAGULACIÓN/desnaturalización de sus proteínas. Es el método de esteriliz",
+    "ley": "Esterilizacion y desinfeccion",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "d4206cec-ec69-4990-b1c2-990678958778",
+    "question_text": "En el formato Marc 21 para información de fondos, el campo 852 recoge información sobre:",
+    "option_a": "La localización física de un objeto dentro de la colección",
+    "option_b": "La localización y el acceso electrónico a un recurso",
+    "option_c": "Las condiciones de uso y reproducción de un objeto",
+    "option_d": "Las condiciones de uso y reproducción de un objeto",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": [
+      "auxiliar_biblioteca_estado",
+      "especifica",
+      "T216",
+      "opositatest:741010",
+      "epigrafe:7. La descripción bibliográfica"
+    ],
+    "explanation": "Formato MARC 21 para registros bibliográficos de la BNE\n\n852 - Localización (R)\n\nhttps://www.bne.es/export/sites/BNWEB1/webdocs/Inicio/Perfiles/Bibliotecarios/MARC21_registros-bibliograficos.pdf",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": null,
+    "article_number": "216",
+    "art_title": "La descripción bibliográfica y el control de autoridades",
+    "art_content": "La descripción bibliográfica es el conjunto de datos que identifican un documento sin ambigüedad. La ISBD (Descripción Bibliográfica Internacional Normalizada) es la norma de IFLA que fija los elementos, su orden y una puntuación prescrita común; su Edición Consolidada de 2011 tiene nueve áreas, numeradas del 0 al 8, y el Área 0 (forma del contenido y tipo de medio) se añadió en 2011 sustituyendo a la designación general del material. RDA (Recursos, Descripción y Acceso) es un estándar de contenido publicado en 2010 que sustituye a las AACR2; se basa en los modelos de entidades de IFLA. El modelo FRBR, publicado por IFLA en 1998, define cuatro entidades del Grupo 1: Obra, Expresión, Manifestación e Ítem. El modelo IFLA-LRM, aprobado en 2017, consolida FRBR, FRAD y FRSAD. El control de autoridades es la normalización de los puntos de acceso controlados (nombres de personas, entidades, materias y títulos uniformes) para desambiguar homónimos y unificar variantes. El formato MARC lo desarrolló la Library of Congress; MARC 21 armoniza USMARC y CAN/MARC. En España, la BNE cataloga bajo RDA desde 2019.",
+    "ley": "Biblioteconomía",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "8f0dfcb3-8cfc-4150-9f86-ed74ecf41116",
+    "question_text": "¿Qué persona tiene gran riesgo de deshidratación?",
+    "option_a": "Un auxiliar de enfermería.",
+    "option_b": "Un auxiliar de enfermería.",
+    "option_c": "Un paciente colostomizado.",
+    "option_d": "Un paciente con sonda vesical.",
+    "correct_option": 2,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "**El paciente colostomizado tiene gran riesgo de deshidratación.** A través de la colostomía se pierde el contenido intestinal antes de que el intestino grueso reabsorba el agua.\n\n> Intestino grueso. De mayor calibre que el delgado; reabsorbe agua y electrolitos y forma, almacena y elimina las heces.\n\n**Por qué C) es correcta:** la colostomía deriva el contenido intestinal al exterior; al perderse parte de la reabsorción de agua y electrolitos que normalmente realiza el colon, el paciente está expuesto a un balance hídrico negativo.\n\n**Por qué las demás son incorrectas:** A) y B) un auxiliar de enfermería sano no presenta un riesgo especial de deshidratación. D) un paciente con sonda vesical elimina la orina de forma controlada, pero la sonda no provoca por sí misma una pérdida anómala de agua. El TCAE debe vigilar el balance hídrico y los signos de deshidratación especialmente en pacientes ostomizados.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - TCAE exámenes oficiales",
+    "article_number": "1",
+    "art_title": "Diuresis / eliminacion urinaria",
+    "art_content": "# Diuresis y defecación\n\nLa **eliminación** es una de las necesidades básicas del ser humano (recogida en el modelo de Virginia Henderson como la necesidad de *\"eliminar los desechos del organismo\"*). El Técnico en Cuidados Auxiliares de Enfermería (TCAE) participa de forma directa en la valoración, recogida de muestras, ayuda a la eliminación y registro de las características de la orina y las heces, siempre bajo la supervisión del personal de enfermería y respetando la **intimidad y dignidad** del paciente. *Fuente: modelo de necesidades de Virginia Henderson; temario TCAE.*\n\nEste artículo aborda los dos grandes procesos de eliminación: la **eliminación urinaria (diuresis)** y la **eliminación intestinal (defecación)**.\n\n---\n\n## 1. DIURESIS / ELIMINACIÓN URINARIA\n\n### 1.1. Concepto\n\nLa **diuresis** es el proceso de formación y eliminación de orina por parte del organismo. En sentido clínico, el término se utiliza también para referirse al **volumen de orina excretado en un periodo de tiempo determinado** (habitualmente 24 horas). La **micción** es el acto de expulsar la orina almacenada en la vejiga al exterior a través de la uretra. *Fuente: temario TCAE; nefrología básica.*\n\nLa orina se forma en los **riñones** (unidad funcional: la **nefrona**) mediante tres procesos: filtración glomerular, reabsorción tubular y secreción tubular. Desde los riñones, la orina desciende por los **uréteres** hasta la **vejiga**, donde se almacena, y se elimina al exterior por la **uretra**.\n\n### 1.2. Volumen normal de orina (diuresis normal)\n\nEn un adulto sano con una ingesta hídrica adecuada, el volumen normal de orina se sitúa en torno a **1.200–1.500 ml en 24 horas** (rango fisiológico amplio que, según las fuentes, puede oscilar entre los **800 y los 2.000 ml/día**). *Fuente: [Tena – Diuresis, valores normales](https://www.tena.com.mx/incontinencia/noticias/diuresis-normal/); [Omnicalculator – Calculadora de diuresis](https://www.omnicalculator.com/es/salud/calculadora-diuresis).*\n\nEl volumen depende de factores como la **ingesta de líquidos**, la temperatura ambiental, la sudoración, la dieta, la actividad física, la edad y la toma de fármacos (p. ej., diuréticos).\n\n### 1.3. Alteraciones de la CANTIDAD de orina\n\n| Alteración | Definición | Volumen orientativo |\n|---|---|---|\n| **Oliguria** | Disminución de la cantidad de orina eliminada | **< 500 ml/día** (algunas fuentes < 400 ml/día) |\n| **Anuria** | Ausencia casi total o total de eliminación de orina | **< 100 ml",
+    "ley": "Eliminacion y sondajes",
+    "pares": [
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "id": "6a7ec873-2309-4467-ad25-862321c1c0db",
+    "question_text": "En relación con la gestión de servicios sanitarios, los CMBD, hacen referencia a:",
+    "option_a": "Conjunto Mínimo Básico de Datos.",
+    "option_b": "Complicación Mínima Basada en el Diagnóstico.",
+    "option_c": "Complicación Mínima Basada en el Diagnóstico.",
+    "option_d": "Complicación Mínima Basada en el registro de Datos.",
+    "correct_option": 0,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "El CMBD es la estructuración de la información clínica relativa a un paciente que se considera necesaria en el sistema de salud, a efectos de trayectoria de salud, y con el propósito administrativo y de gestión. Se toman tanto en la AP como en la especializada.",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Organización de los Cuidados de Enfermería en Atención Primaria y Especializada. Valoración y Atención Domiciliaria",
+    "art_content": "# Organización de los Cuidados de Enfermería en Atención Primaria y Especializada. Valoración y Atención Domiciliaria\n\n## Introducción\n\nEl Sistema Nacional de Salud (SNS) español, configurado por la **Ley 14/1986 General de Sanidad**, se estructura en dos niveles asistenciales complementarios y no jerárquicos: la **Atención Primaria (AP)** y la **Atención Especializada u Hospitalaria (AE/AH)**. Ambos niveles comparten un objetivo común —la atención integral, continuada y de calidad a la persona, familia y comunidad— pero se diferencian en su ámbito de actuación, en la complejidad tecnológica que emplean y en el perfil de los problemas de salud que abordan. La enfermería, como profesión integrada en ambos niveles, es la disciplina que garantiza en la práctica la **continuidad asistencial**, entendida como la coherencia y el enlace de los cuidados que recibe el paciente a lo largo de su proceso de salud-enfermedad, con independencia del dispositivo o profesional que le atienda en cada momento.\n\n## Atención Primaria de Salud\n\n### Concepto y principios\n\nLa Atención Primaria fue definida en la **Declaración de Alma-Ata (1978)** como la asistencia sanitaria esencial, basada en métodos y tecnologías prácticas, científicamente fundamentadas y socialmente aceptables, puesta al alcance de todos los individuos y familias de la comunidad, mediante su plena participación, y a un coste que la comunidad y el país puedan soportar. Sus principios rectores son:\n\n- **Accesibilidad**: geográfica, económica y cultural.\n- **Integralidad**: atención biopsicosocial, no solo curativa sino también preventiva, de promoción de la salud y de rehabilitación.\n- **Continuidad**: seguimiento longitudinal del individuo a lo largo de su vida.\n- **Coordinación**: con otros niveles asistenciales y recursos comunitarios.\n- **Participación comunitaria**: implicación activa de la población en la planificación y evaluación.\n- **Trabajo en equipo**: abordaje multidisciplinar mediante el Equipo de Atención Primaria (EAP).\n\n### El Equipo de Atención Primaria (EAP)\n\nRegulado por el **Real Decreto 137/1984**, sobre estructuras básicas de salud, el EAP constituye la unidad organizativa funcional básica del primer nivel asistencial. Está integrado por profesionales de medicina de familia, pediatría, enfermería, trabajo social, así como personal administrativo y, en su caso, matronas, fisioterapeutas y odontólogos. Su ámbito de actuación es la **Zona Básica de Salud**, y su sede física es el **Centro de ",
+    "ley": "Atención primaria y especializada",
+    "pares": [
+      [
+        1,
+        2
+      ]
+    ]
+  },
+  {
+    "id": "6462d24b-fce1-4105-9082-30c590d00184",
+    "question_text": "La primera causa de incontinencia urinaria en la mujer es:",
+    "option_a": "Por rebosamiento.",
+    "option_b": "Por esfuerzo, estrés o tensión.",
+    "option_c": "Por pseudoincontinencia.",
+    "option_d": "Por pseudoincontinencia.",
+    "correct_option": 1,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "IU de ESFUERZO o de ESTRÉS: se debe al aumento repentino de la presión intraabdominal (toser, levantar pesos, defecar o reír). Residuo postmiccional mínimo. La incontinencia de esfuerzo es la más frecuente en las mujeres. Los músculos del suelo pélvico y el esfínter urinario pueden perder fuerza debido a:\r\n- Parto. En las mujeres, se puede producir una función deficiente de los músculos del suelo pélvico o del esfínter por una lesión a los nervios o al tejido durante el parto.\r\n- Cirugía de próstata. En los hombres, el factor más frecuente que provoca la incontinencia de esfuerzo es la extracción quirúrgica de la glándula prostática (prostatectomía) para tratar el cáncer de próstata. (Menos frecuente).",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 42. Valoración y cuidados de enfermería a personas con problemas en el sistema renal y urológico",
+    "art_content": "# Tema 42. Valoración y cuidados de enfermería a personas con problemas en el sistema renal y urológico\n\n## 1. Introducción\n\nLas alteraciones renales y urológicas presentan alta prevalencia, especialmente en personas mayores, y requieren una valoración de enfermería sistemática, la formulación de **diagnósticos NANDA** y una planificación de cuidados basada en evidencia. Este tema desarrolla: incontinencia urinaria, insuficiencia renal aguda, infección urinaria, prostatitis, cáncer de próstata, litiasis renoureteral, el cateterismo vesical y los tratamientos sustitutivos de la función renal.\n\n## 2. Insuficiencia renal aguda (IRA)\n\n### 2.1 Concepto y clasificación\n\nDeterioro brusco (horas/días) de la función renal, con caída del filtrado glomerular, acúmulo de urea y creatinina y alteraciones hidroelectrolíticas y ácido-base (criterios **KDIGO/AKIN**). Etiológicamente:\n\n- **Prerrenal (60-70%)**: hipoperfusión sin daño estructural (hipovolemia, shock, insuficiencia cardiaca). Reversible si se corrige a tiempo.\n- **Renal o parenquimatosa**: lesión estructural (necrosis tubular aguda, glomerulonefritis, nefrotóxicos: AINEs, contrastes, aminoglucósidos).\n- **Posrenal u obstructiva**: obstrucción del flujo (litiasis, HBP, tumores, vejiga neurógena).\n\n### 2.2 Fases\n\n**Inicio** → **oligúrica** (diuresis <400 ml/día; riesgo de hiperpotasemia, acidosis y sobrecarga hídrica) → **diurética/poliúrica** (riesgo de deshidratación e hipopotasemia) → **recuperación** progresiva.\n\n### 2.3 Clínica\n\nOliguria/anuria, edemas, hipertensión, náuseas y vómitos, encefalopatía urémica, prurito, disnea, arritmias por hiperpotasemia.\n\n### 2.4 Valoración de enfermería\n\nBalance hídrico estricto (diuresis horaria, peso diario), constantes vitales, analítica (creatinina, urea, **potasio**, gasometría), nivel de conciencia, auscultación cardiopulmonar (crepitantes, arritmias), piel y mucosas.\n\n### 2.5 Diagnósticos NANDA\n\n**Exceso de volumen de líquidos**, **Riesgo de desequilibrio electrolítico**, **Deterioro del intercambio gaseoso**, **Riesgo de disminución del gasto cardiaco** (hiperpotasemia), **Náuseas**, **Desequilibrio nutricional por defecto**, **Ansiedad**.\n\n### 2.6 Cuidados\n\nControl estricto de ingresos/pérdidas y restricción hídrica; vigilancia y tratamiento de hiperpotasemia (ECG, resinas de intercambio, insulina-glucosa, gluconato cálcico); ajuste de fármacos nefrotóxicos; dieta hipoproteica, hiposódica y controlada en potasio; preparación para posible tratamiento sustitutivo ",
+    "ley": "Nefrología y urología",
+    "pares": [
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  {
+    "id": "68bb1c3f-68c8-46ad-aaf3-3b76160303ea",
+    "question_text": "El proceso de Atención de Enfermería incluye varias fases. Indique las correctas:",
+    "option_a": "Valoración, Planificación, Entrevista, Diagnóstico y Ejecución.",
+    "option_b": "Valoración, Planificación, Entrevista, Diagnóstico y Ejecución.",
+    "option_c": "Planificación, Estudio, Ejecución, Valoración, Diagnóstico.",
+    "option_d": "Valoración, Diagnóstico, Planificación, Ejecución, Evaluación.",
+    "correct_option": 3,
+    "is_official_exam": false,
+    "tags": null,
+    "explanation": "Las fases del proceso enfermero son cinco y se llevan a cabo por este orden:\r\n1. VALORACIÓN: Obtención de datos, validación de datos, organización de la información, registro.\r\n2. DIAGNÓSTICO: Análisis de datos, identificación del problema, formulación de problemas.\r\n3. PLANIFICACION: Priorización del problema, establecer objetivos y selección de acciones, registro.\r\n4. EJECUCIÓN: Planificación de la acción, favorecer la relación de ayuda.\r\n5. EVALUACIÓN: Valoración paciente, comparación datos y objetivos, modificar plan (si precisa).",
+    "has_ed": false,
+    "explanation_data": null,
+    "lifecycle_state": "tech_approved",
+    "exam_source": "Aula Plus - Enfermería",
+    "article_number": "1",
+    "art_title": "Tema 11. Plan de cuidados enfermeros",
+    "art_content": "# Tema 11. Plan de cuidados enfermeros\n\n## Introducción\n\nEl **Proceso de Atención de Enfermería (PAE)** es el método sistemático y organizado mediante el cual la enfermera identifica, previene y trata los problemas de salud reales o potenciales de la persona, familia o comunidad. Constituye la aplicación del **método científico** a la práctica enfermera y es la base del **plan de cuidados**, documento que recoge de forma estructurada los diagnósticos, objetivos e intervenciones dirigidos a cada paciente.\n\nEl PAE se caracteriza por ser:\n\n- **Sistemático**: consta de fases ordenadas y secuenciales.\n- **Dinámico**: las fases se retroalimentan continuamente entre sí.\n- **Centrado en el paciente**: parte de sus necesidades y respuestas humanas, no de la enfermedad.\n- **Interpersonal y de colaboración**: implica al paciente, familia y equipo multidisciplinar.\n- **Universal y flexible**: aplicable a cualquier ámbito, edad o nivel asistencial.\n\nClásicamente se describen **cinco etapas**: **valoración, diagnóstico, planificación, ejecución y evaluación**.\n\n---\n\n## 1. Valoración\n\nLa **valoración** es la primera etapa del PAE y consiste en la **recogida, validación y organización de datos** sobre el estado de salud de la persona. Su finalidad es obtener una base de datos completa que permita identificar respuestas humanas alteradas o en riesgo.\n\n### 1.1. Recogida de datos\n\nLos datos pueden ser:\n\n- **Subjetivos**: lo que la persona refiere (síntomas, sensaciones, creencias). Se obtienen mediante la **entrevista**.\n- **Objetivos**: datos observables y medibles (signos), obtenidos mediante la **observación, la exploración física** (inspección, palpación, percusión, auscultación) y **pruebas complementarias**.\n\nLas **fuentes de información** pueden ser:\n\n- **Primarias**: el propio paciente.\n- **Secundarias**: familia, otros profesionales, historia clínica previa, otros registros.\n\n### 1.2. Modelos de valoración\n\nPara organizar la recogida de datos de forma sistemática se emplean **modelos o marcos conceptuales enfermeros**. Los dos más utilizados en la práctica son:\n\n**A) Patrones Funcionales de Salud de Marjory Gordon**\n\nMarjory Gordon propuso once patrones que permiten valorar de forma integral a la persona, su familia y la comunidad, facilitando además la vinculación directa con los diagnósticos NANDA:\n\n1. Percepción-manejo de la salud.\n2. Nutricional-metabólico.\n3. Eliminación.\n4. Actividad-ejercicio.\n5. Sueño-descanso.\n6. Cognitivo-perceptual.\n7. Autopercepción-auto",
+    "ley": "Proceso de atención de enfermería",
+    "pares": [
+      [
+        0,
+        1
+      ]
+    ]
+  }
+]

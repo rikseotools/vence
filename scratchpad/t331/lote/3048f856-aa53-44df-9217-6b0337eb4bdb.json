@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.1.a) RD 203/2021",
+    "texto": "Marca de tiempo, entendiendo por tal la asignación por medios electrónicos de la fecha y, en su caso, la hora a un documento electrónico."
+  },
+  "options": {
+    "0": "La hora se asigna «en su caso», no en todo caso: el artículo la deja condicionada, y sustituir esa reserva por una exigencia absoluta cambia el precepto.",
+    "1": "Reproduce la definición del artículo: fecha y, en su caso, hora asignadas por medios electrónicos a un documento electrónico.",
+    "2": "La referencia temporal se asocia al documento electrónico, no al expediente administrativo electrónico, que es una agrupación de documentos regulada en el artículo 51.",
+    "3": "Esa es la definición del sello electrónico cualificado de tiempo, que se distingue precisamente por la intervención de un prestador cualificado de servicios de confianza."
+  },
+  "frame": "select_correct"
+}

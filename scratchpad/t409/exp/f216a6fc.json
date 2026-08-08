@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 20.5 de la Constitución Española",
+    "texto": "Sólo podrá acordarse el secuestro de publicaciones, grabaciones y otros medios de información en virtud de resolución judicial."
+  },
+  "intro": "El artículo 20 protege la libertad de expresión y de información con dos garantías que se completan: prohíbe cualquier censura previa (apartado 2) y, cuando la medida es el secuestro de lo ya publicado o grabado, la reserva en exclusiva a los jueces (apartado 5). La medida existe, pero solo puede adoptarla un órgano judicial.",
+  "options": {
+    "0": "El secuestro sí cabe: lo que la Constitución hace no es prohibirlo, sino reservarlo a la autoridad judicial.",
+    "1": "Es la garantía del apartado 5: solo podrá acordarse en virtud de resolución judicial.",
+    "2": "Una decisión del Gobierno o de un Ministerio no basta. Excluir a la Administración de esta medida es precisamente el sentido de la reserva.",
+    "3": "Las Cámaras no adoptan esta clase de medidas restrictivas sobre medios de información; el artículo 20.3 les reserva otra función, el control parlamentario de los medios de titularidad pública."
+  },
+  "outro": "**Clave:** el secuestro de publicaciones, grabaciones y otros medios de información exige resolución judicial, y ninguna otra autoridad puede acordarlo."
+}

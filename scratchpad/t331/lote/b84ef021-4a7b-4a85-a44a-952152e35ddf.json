@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.3 RD 203/2021",
+    "texto": "La relación de prestadores cualificados de servicios de confianza que prestan servicios de sellado de tiempo en el sector público deberá estar incluida en la «Lista de confianza de prestadores cualificados de servicios de confianza»."
+  },
+  "options": {
+    "0": "Ese registro es el que el artículo 48.2 exige para el personal funcionario habilitado que expide copias auténticas, no para los prestadores de servicios de confianza.",
+    "1": "Es el instrumento que designa el precepto para dar publicidad a esos prestadores.",
+    "2": "El Esquema Nacional de Interoperabilidad determina cómo se asocia la información de las marcas y sellos al documento, pero no es donde se relacionan los prestadores.",
+    "3": "El archivo electrónico único sustenta la custodia y recuperación de documentos y expedientes finalizados conforme al artículo 55, no la publicidad de los prestadores."
+  },
+  "frame": "select_correct"
+}

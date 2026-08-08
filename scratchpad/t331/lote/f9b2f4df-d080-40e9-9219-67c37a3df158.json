@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 52 RD 203/2021",
+    "texto": "La Administración destinataria de la solicitud remitirá al interesado o, en su caso a su representante, la dirección electrónica o localizador que dé acceso al expediente electrónico puesto a disposición."
+  },
+  "options": {
+    "0": "El precepto no obliga a remitir una copia auténtica del expediente, sino el medio de acceso a este; la copia auténtica se rige por los artículos 47 y 48.",
+    "1": "El acceso se da al expediente electrónico puesto a disposición, no al archivo electrónico único, que custodia los expedientes ya finalizados según el artículo 55.",
+    "2": "Esa es la sustitución que permite el artículo 46.2 cuando el órgano actuante debe facilitar un ejemplar de un documento administrativo electrónico, no la respuesta a la solicitud de acceso al expediente.",
+    "3": "Es lo que el artículo ordena remitir: la dirección electrónica o localizador que dé acceso al expediente electrónico puesto a disposición."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 76.1 de la Constitución Española",
+    "texto": "El Congreso y el Senado, y, en su caso, ambas Cámaras conjuntamente, podrán nombrar Comisiones de investigación sobre cualquier asunto de interés público."
+  },
+  "intro": "La facultad de investigar es de las Cámaras, no del Ejecutivo ni de sus presidencias, y el precepto contempla expresamente las tres posibilidades: cada Cámara por separado y las dos juntas. Conviene recordar además que sus conclusiones no vinculan a los Tribunales, aunque el resultado puede comunicarse al Ministerio Fiscal.",
+  "options": {
+    "0": "El Gobierno no nombra comisiones de investigación parlamentarias: es, precisamente, uno de los sujetos a los que el Parlamento controla.",
+    "1": "Es lo que dispone el artículo 76.1, que incluye también la posibilidad de que las dos Cámaras las nombren conjuntamente.",
+    "2": "Excluye justo lo que el precepto admite de forma expresa, las comisiones conjuntas.",
+    "3": "La facultad corresponde a las Cámaras como órganos, no a quienes las presiden."
+  },
+  "outro": "**Clave:** Congreso, Senado o ambas Cámaras conjuntamente, sobre cualquier asunto de interés público y con conclusiones no vinculantes para los Tribunales."
+}

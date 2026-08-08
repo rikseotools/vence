@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 9 del Tratado de la Unión Europea",
+    "texto": "Será ciudadano de la Unión toda persona que tenga la nacionalidad de un Estado miembro. La ciudadanía de la Unión se añade a la ciudadanía nacional sin sustituirla."
+  },
+  "intro": "La ciudadanía de la Unión no se concede ni se solicita: deriva automáticamente de tener la nacionalidad de un Estado miembro, y se suma a esa nacionalidad sin sustituirla. Por eso el criterio no es geográfico ni institucional, sino de vínculo nacional con un Estado que forme parte de la Unión.",
+  "options": {
+    "0": "La proximidad geográfica no otorga la ciudadanía de la Unión; un país vecino que no sea Estado miembro queda fuera.",
+    "1": "Es la definición del artículo 9 del Tratado: la nacionalidad de un Estado miembro determina la ciudadanía de la Unión, que se añade a la nacional sin reemplazarla.",
+    "2": "Ser nacional de un Estado europeo no basta: hay Estados europeos que no pertenecen a la Unión, y sus nacionales no son ciudadanos de la Unión.",
+    "3": "El Consejo Europeo es una institución de la Unión, no un Estado, y por tanto no tiene nacionales."
+  },
+  "outro": "**Clave:** ciudadano de la Unión es quien tiene la nacionalidad de un Estado miembro; la ciudadanía europea se añade a la nacional, no la sustituye."
+}

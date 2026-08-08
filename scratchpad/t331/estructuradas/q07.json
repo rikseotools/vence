@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 52 RD 203/2021",
+    "texto": "El derecho de acceso de las personas interesadas que se relacionen electrónicamente con las Administraciones Públicas al expediente electrónico y, en su caso, a la obtención de copia total o parcial del mismo, se entenderá satisfecho mediante la puesta a disposición de dicho expediente en el Punto de Acceso General electrónico de la Administración competente o en la sede electrónica o sede electrónica asociada que corresponda."
+  },
+  "options": {
+    "0": "El lugar de puesta a disposición que fija el precepto es el Punto de Acceso General electrónico; el archivo electrónico único es donde se custodian los expedientes ya finalizados según el artículo 55.",
+    "1": "La comparecencia y la Dirección Electrónica Habilitada única son los sistemas con los que el artículo 42 regula la práctica de las notificaciones, no el ejercicio del derecho de acceso al expediente.",
+    "2": "Reproduce el precepto: el derecho queda satisfecho con la puesta a disposición del expediente en el Punto de Acceso General electrónico o en la sede electrónica o sede electrónica asociada que corresponda.",
+    "3": "Añade una condición que el artículo no contempla: no se exige solicitud expresa de puesta a disposición, y además omite la sede electrónica como alternativa."
+  },
+  "frame": "select_correct"
+}

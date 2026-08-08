@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 52 RD 203/2021",
+    "texto": "Garantizando aquella el acceso durante el tiempo que determine la correspondiente política de gestión de documentos electrónicos siempre de acuerdo con el dictamen de valoración emitido por la autoridad calificadora correspondiente."
+  },
+  "options": {
+    "0": "Reproduce el precepto: el tiempo lo fija la política de gestión de documentos electrónicos, de acuerdo con el dictamen de valoración de la autoridad calificadora correspondiente.",
+    "1": "Quien emite el dictamen de valoración es la autoridad calificadora correspondiente, no el órgano instructor del procedimiento.",
+    "2": "Ese es el plazo que el artículo 53 fija para conservar a disposición del interesado los documentos en papel o en dispositivo que no se le pudieron devolver, no para el acceso al expediente.",
+    "3": "El Esquema Nacional de Interoperabilidad determina la forma de asociar la referencia temporal a los documentos; el tiempo de acceso lo fija la política de gestión de documentos electrónicos."
+  },
+  "frame": "select_correct"
+}

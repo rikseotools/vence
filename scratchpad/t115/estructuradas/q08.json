@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 61.1 de la Ley Orgánica 3/2018",
+    "texto": "Cuando se refiera a un tratamiento previsto en el artículo 57 de esta ley orgánica que se llevara a cabo por un responsable o encargado del tratamiento de los previstos en el artículo 56 del Reglamento (UE) 2016/679."
+  },
+  "options": {
+    "0": "Intercambia las dos remisiones: el tratamiento es el del artículo 57 de la ley orgánica y el responsable o encargado, el del artículo 56 del Reglamento.",
+    "1": "Reproduce las dos remisiones del precepto: tratamiento del artículo 57 de la ley orgánica y responsable o encargado del artículo 56 del Reglamento.",
+    "2": "El artículo 60 del Reglamento es el que establece el procedimiento en el que se interviene, no el que identifica al responsable o encargado.",
+    "3": "El precepto no alcanza a cualquier tratamiento transfronterizo ni usa como criterio el establecimiento en el territorio de la comunidad autónoma."
+  },
+  "frame": "select_correct"
+}

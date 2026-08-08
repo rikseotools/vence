@@ -1,0 +1,16 @@
+{
+  "frame": "select_incorrect",
+  "estilo": "impugnacion",
+  "cita": {
+    "ref": "Artículo 40.2 de la Ley 39/2015",
+    "texto": "Toda notificación deberá ser cursada dentro del plazo de diez días a partir de la fecha en que el acto haya sido dictado, y deberá contener el texto íntegro de la resolución, con indicación de si pone fin o no a la vía administrativa, la expresión de los recursos que procedan, en su caso, en vía administrativa y judicial, el órgano ante el que hubieran de presentarse y el plazo para interponerlos"
+  },
+  "intro": "El artículo 40.2 enumera lo que toda notificación debe contener, y lo que aquí se pide es localizar lo que NO figura en esa enumeración.",
+  "options": {
+    "0": "Está en el artículo 40.2: la notificación debe contener el texto íntegro de la resolución, con indicación de si pone fin o no a la vía administrativa.",
+    "1": "Está en el artículo 40.2: debe expresar los recursos que procedan, en su caso, en vía administrativa y judicial.",
+    "2": "El artículo 40.2 no exige nada parecido. La Administración informa de qué recursos caben, ante quién se presentan y en qué plazo, pero no valora si prosperarían: esa decisión es del interesado, y anticiparla supondría prejuzgar el asunto.",
+    "3": "Está en el artículo 40.2: debe indicar el órgano ante el que hubieran de presentarse los recursos y el plazo para interponerlos."
+  },
+  "outro": "**Clave:** los tres contenidos que reproducen el artículo 40.2 son exigencias reales de la ley; el que introduce una valoración sobre si el recurso prosperaría no aparece en ninguna parte."
+}

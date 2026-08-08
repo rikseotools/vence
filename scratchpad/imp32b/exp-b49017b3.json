@@ -1,0 +1,11 @@
+{
+  "intro": "El artículo 71 prohíbe considerar el sexo como factor de cálculo de primas y prestaciones. La consecuencia de incumplir esa prohibición no está en ese precepto, sino en el artículo 72.2, que es el que responde a esta pregunta.",
+  "options": {
+    "0": "Es exactamente lo que dispone el artículo 72.2: el perjudicado puede reclamar la asimilación de sus primas y prestaciones a las del sexo más beneficiado, y el contrato se mantiene válido y eficaz en todo lo demás.",
+    "1": "El contrato no cesa. La ley ordena lo contrario: la corrección afecta al cálculo de primas y prestaciones, y en los restantes extremos se mantiene su validez y eficacia.",
+    "2": "La asimilación y el mantenimiento del contrato son correctos, pero el precepto termina ahí: no añade esa reserva de indemnización al enunciar la consecuencia de la prohibición del artículo 71.",
+    "3": "Reducir la consecuencia a una indemnización deja fuera lo que la ley concede en este caso, que es la asimilación de las primas y prestaciones a las del sexo más beneficiado."
+  },
+  "outro": "**Clave:** el contrato no se anula. Se corrige el cálculo asimilándolo al del sexo más beneficiado y sigue siendo válido y eficaz en lo demás.",
+  "estilo": "impugnacion"
+}

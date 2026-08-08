@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 139.1 de la Constitución Española",
+    "texto": "Todos los españoles tienen los mismos derechos y obligaciones en cualquier parte del territorio del Estado."
+  },
+  "intro": "El precepto abre el Capítulo I del Título VIII y garantiza que la organización territorial no fragmente la posición jurídica de los españoles: los derechos y obligaciones no cambian por cruzar de una Comunidad Autónoma a otra. Está referido a los españoles; la posición de los extranjeros se rige por el artículo 13, en los términos que establezcan los tratados y la ley.",
+  "options": {
+    "0": "El acuerdo de Schengen regula la supresión de controles en las fronteras interiores, no la igualdad de derechos y obligaciones dentro de España.",
+    "1": "Es la fórmula del artículo 139.1: todos los españoles, en cualquier parte del territorio del Estado.",
+    "2": "La nacionalidad de otro Estado miembro de la Unión da acceso a los derechos propios de la ciudadanía europea, pero el precepto no se formula en esos términos.",
+    "3": "El artículo 139.1 no dice «todos los ciudadanos» sino «todos los españoles»; la situación de los extranjeros la remite el artículo 13 a los tratados y a la ley."
+  },
+  "outro": "**Clave:** el artículo 139.1 iguala a TODOS LOS ESPAÑOLES en derechos y obligaciones en cualquier parte del territorio del Estado."
+}

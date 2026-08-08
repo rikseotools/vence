@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 26 de la Ley Orgánica 3/2018",
+    "texto": "Será lícito el tratamiento por las Administraciones Públicas de datos con fines de archivo en interés público."
+  },
+  "options": {
+    "0": "El fin que el artículo declara lícito es el de archivo en interés público, no el de investigación científica e histórica.",
+    "1": "El precepto acota el sujeto a las Administraciones Públicas, no lo extiende a cualquier responsable o encargado.",
+    "2": "El fin que el artículo declara lícito es el de archivo en interés público, no el estadístico.",
+    "3": "Reproduce el supuesto del precepto: tratamiento por las Administraciones Públicas con fines de archivo en interés público."
+  },
+  "frame": "select_correct"
+}

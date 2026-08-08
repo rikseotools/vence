@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 192.2 del Real Decreto Legislativo 2/2004",
+    "texto": "La liquidación de los presupuestos de los organismos autónomos, informada por la Intervención correspondiente y propuesta por el órgano competente de estos, será remitida a la entidad local."
+  },
+  "options": {
+    "0": "Intercambia los dos papeles: informa la Intervención y propone el órgano competente del organismo autónomo.",
+    "1": "Reproduce el precepto: informe de la Intervención correspondiente y propuesta del órgano competente del organismo autónomo.",
+    "2": "El presidente de la entidad local no propone la liquidación: es quien después la aprueba.",
+    "3": "El Pleno de la entidad local no interviene en esta fase; quien informa es la Intervención correspondiente."
+  },
+  "frame": "select_correct"
+}

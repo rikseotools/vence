@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Access 365 — Fundamentos, §16.2 Límites de tablas y campos",
+    "texto": "un campo Texto largo puede contener hasta un gigabyte de texto, aunque los controles de formularios e informes solo pueden mostrar los primeros 64.000 caracteres"
+  },
+  "intro": "El tipo **Texto largo** (antes llamado *Memo*) tiene dos límites que conviene no mezclar: lo que el campo puede **almacenar** y lo que un control de formulario o informe puede **mostrar** en pantalla. La pregunta va por lo segundo.",
+  "options": {
+    "0": "8.000 caracteres no es un límite de Access; se corresponde con el tamaño máximo de un campo varchar en SQL Server.",
+    "1": "64.000 caracteres es lo máximo que un control de formulario o informe puede mostrar de un campo Texto largo, según las especificaciones de Access.",
+    "2": "32.000 caracteres no figura entre los límites de Access; se confunde a veces con el rango del subtipo numérico Entero (hasta 32.767).",
+    "3": "16.000 caracteres no aparece en las especificaciones técnicas de Access."
+  },
+  "outro": "**Clave:** el campo almacena hasta 1 GB por programación y admite 65.535 caracteres escritos desde la interfaz, pero en un control solo se ven los 64.000 primeros. Las tres cifras miden cosas distintas y en el test suelen aparecer mezcladas.",
+  "estilo": "impugnacion"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 96.1 de la Constitución Española",
+    "texto": "Los tratados internacionales válidamente celebrados, una vez publicados oficialmente en España, formarán parte del ordenamiento interno."
+  },
+  "intro": "La incorporación de un tratado al derecho español no depende de que se convierta en ley ni de un acto posterior del Rey: la Constitución la anuda a un hecho concreto, la publicación oficial en España, una vez el tratado se ha celebrado válidamente.",
+  "options": {
+    "0": "Ese plazo pertenece a la entrada en vigor de las leyes cuando no se dispone otra cosa, regla del Código Civil, y no a la integración de un tratado en el ordenamiento interno.",
+    "1": "Es lo que dispone el artículo 96.1: publicados oficialmente en España, los tratados válidamente celebrados forman parte del ordenamiento interno.",
+    "2": "Mezcla dos fuentes distintas. Las directivas son derecho de la Unión Europea con su propio régimen de transposición, y nada tienen que ver con la incorporación de un tratado internacional.",
+    "3": "La sanción regia es un trámite de las leyes aprobadas por las Cortes (artículo 91). En los tratados, el Rey manifiesta el consentimiento del Estado conforme al artículo 63.2, pero la incorporación al derecho interno la produce la publicación oficial."
+  },
+  "outro": "**Clave:** tratado válidamente celebrado más publicación oficial en España; desde ese momento forma parte del ordenamiento interno."
+}

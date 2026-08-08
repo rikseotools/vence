@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 61.1 de la Ley Orgánica 3/2018",
+    "texto": "Las autoridades autonómicas de protección de datos ostentarán la condición de autoridad de control principal o interesada en el procedimiento establecido por el artículo 60 del Reglamento (UE) 2016/679 cuando se refiera a un tratamiento previsto en el artículo 57 de esta ley orgánica que se llevara a cabo por un responsable o encargado del tratamiento de los previstos en el artículo 56 del Reglamento (UE) 2016/679, salvo que desarrollase significativamente tratamientos de la misma naturaleza en el resto del territorio español."
+  },
+  "options": {
+    "0": "La salvedad se activa cuando los tratamientos se desarrollan de forma significativa y son de la misma naturaleza; cambiar ambos términos la vacía de contenido.",
+    "1": "El precepto no atiende a dónde esté el establecimiento principal del responsable, sino a si este desarrolla significativamente tratamientos de la misma naturaleza en el resto del territorio.",
+    "2": "Reproduce la salvedad del artículo: que se desarrollasen significativamente tratamientos de la misma naturaleza en el resto del territorio español.",
+    "3": "El artículo no condiciona la salvedad a que la Agencia haya iniciado actuaciones previas."
+  },
+  "frame": "select_correct"
+}

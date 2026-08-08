@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 18.4 de la Constitución Española",
+    "texto": "La ley limitará el uso de la informática para garantizar el honor y la intimidad personal y familiar de los ciudadanos y el pleno ejercicio de sus derechos."
+  },
+  "intro": "El apartado 4 encarga la tarea a una norma con rango de ley, no a un órgano concreto. De ese mandato nace toda la legislación de protección de datos, y el Tribunal Constitucional derivó de él un derecho autónomo, el de protección de datos personales.",
+  "options": {
+    "0": "El precepto sí impone un límite: encarga expresamente a la ley que lo establezca.",
+    "1": "El flagrante delito es la excepción del apartado 2, referida a la entrada en el domicilio, y no tiene nada que ver con el uso de la informática.",
+    "2": "Es lo que dispone el apartado 4: la ley limitará ese uso para garantizar el honor, la intimidad personal y familiar y el pleno ejercicio de los derechos.",
+    "3": "El Defensor del Pueblo es el alto comisionado de las Cortes Generales para la defensa de los derechos del Título I (artículo 54); supervisa la actuación de la Administración, pero no impone esos límites."
+  },
+  "outro": "**Clave:** el límite lo pone LA LEY, y su finalidad es el honor, la intimidad personal y familiar y el pleno ejercicio de los derechos."
+}

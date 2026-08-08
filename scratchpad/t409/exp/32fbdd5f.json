@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 139.2 de la Constitución Española",
+    "texto": "Ninguna autoridad podrá adoptar medidas que directa o indirectamente obstaculicen la libertad de circulación y establecimiento de las personas y la libre circulación de bienes en todo el territorio español."
+  },
+  "intro": "El precepto es la garantía de la unidad de mercado dentro del Estado autonómico y enumera tres cosas en una sola frase: circulación de personas, establecimiento de personas y circulación de bienes. La prohibición alcanza además tanto a los obstáculos directos como a los indirectos.",
+  "options": {
+    "0": "Es una de las libertades protegidas, pero no la única que menciona el artículo 139.2.",
+    "1": "El establecimiento aparece expresamente junto a la circulación de las personas, así que también está protegido, pero tampoco agota el precepto.",
+    "2": "La libre circulación de bienes es el tercer elemento de la enumeración; señalarla en solitario deja fuera las otras dos.",
+    "3": "El artículo 139.2 protege las tres a la vez: circulación y establecimiento de las personas y circulación de bienes en todo el territorio español."
+  },
+  "outro": "**Clave:** el artículo 139.2 prohíbe obstaculizar, directa o indirectamente, la circulación y el establecimiento de personas y la circulación de bienes."
+}

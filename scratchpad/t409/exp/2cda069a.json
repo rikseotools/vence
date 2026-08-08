@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 100 de la Constitución Española",
+    "texto": "Los demás miembros del Gobierno serán nombrados y separados por el Rey, a propuesta de su Presidente."
+  },
+  "intro": "El nombramiento de los ministros combina dos voluntades y en un orden que no se puede alterar: la propuesta es del Presidente del Gobierno, que es quien elige, y el nombramiento formal corresponde al Rey. Las Cortes no intervienen aquí; su papel está antes, en la investidura del Presidente.",
+  "options": {
+    "0": "El Congreso otorga su confianza al Presidente en la investidura, pero no nombra a los ministros.",
+    "1": "Es lo que dispone el artículo 100: los nombra y separa el Rey a propuesta del Presidente del Gobierno.",
+    "2": "El Presidente propone y puede pedir su cese, pero el acto de nombramiento no es suyo.",
+    "3": "La propuesta corresponde al Presidente del Gobierno, no a las Cortes Generales."
+  },
+  "outro": "**Clave:** ministros nombrados y separados por el Rey a propuesta del Presidente del Gobierno."
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 13.2 de la Constitución Española",
+    "texto": "Solamente los españoles serán titulares de los derechos reconocidos en el artículo 23, salvo lo que, atendiendo a criterios de reciprocidad, pueda establecerse por tratado o ley para el derecho de sufragio activo y pasivo en las elecciones municipales."
+  },
+  "intro": "Tres opciones repiten casi el mismo texto y solo cambian el alcance de la excepción. El precepto la limita a un único tipo de comicios: los MUNICIPALES. Fue, además, el objeto de la primera reforma de la Constitución, en 1992, que añadió las palabras «y pasivo» para permitir que los extranjeros no solo votaran, sino que pudieran ser elegidos.",
+  "options": {
+    "0": "Extiende la excepción a las elecciones nacionales, que quedan fuera: el sufragio en ellas sigue reservado a los españoles.",
+    "1": "Añade las autonómicas, que el precepto tampoco contempla.",
+    "2": "Reproduce el artículo 13.2: la salvedad, por tratado o ley y con criterios de reciprocidad, alcanza solo al sufragio activo y pasivo en las elecciones municipales.",
+    "3": "Invierte la regla del apartado 1, que remite las libertades públicas de los extranjeros en España a los tratados y a la ley española, no a la legislación de sus países de origen."
+  },
+  "outro": "**Clave:** la excepción del artículo 13.2 se ciñe al sufragio activo y pasivo en elecciones MUNICIPALES, por tratado o ley y con reciprocidad."
+}

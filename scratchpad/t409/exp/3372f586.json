@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 29.1 de la Constitución Española",
+    "texto": "Todos los españoles tendrán el derecho de petición individual y colectiva, por escrito, en la forma y con los efectos que determine la ley."
+  },
+  "intro": "La forma escrita no es un detalle accesorio: figura en el propio texto constitucional y permite acreditar qué se pide y ante quién. El precepto añade una particularidad para los miembros de las Fuerzas o Institutos armados y demás Cuerpos sometidos a disciplina militar, que solo pueden ejercerlo de forma individual y conforme a su legislación específica.",
+  "options": {
+    "0": "Es lo que exige el artículo 29.1: el derecho se ejerce por escrito, individual o colectivamente.",
+    "1": "La alternativa oral no está prevista: la Constitución impone la forma escrita.",
+    "2": "Tampoco cabe la petición puramente oral, por la misma razón.",
+    "3": "No se exigen las dos formas a la vez; la única que contempla el precepto es la escrita."
+  },
+  "outro": "**Clave:** derecho de petición, individual o colectivo, y siempre POR ESCRITO; los sometidos a disciplina militar, solo individualmente."
+}

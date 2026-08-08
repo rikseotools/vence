@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 62.2 de la Ley Orgánica 3/2018",
+    "texto": "La Agencia Española de Protección de Datos será asistida por un representante de la autoridad autonómica interesada en su intervención ante el mencionado comité."
+  },
+  "options": {
+    "0": "Reproduce el precepto: la asistencia la presta un representante de la autoridad autonómica interesada.",
+    "1": "Quien asiste a la Agencia es un representante de la autoridad autonómica interesada, no del ministerio.",
+    "2": "El artículo prevé expresamente esa asistencia autonómica, de modo que la Agencia no actúa en exclusiva.",
+    "3": "La autoridad autonómica asiste a la Agencia; no la sustituye en su intervención ante el comité."
+  },
+  "frame": "select_correct"
+}
