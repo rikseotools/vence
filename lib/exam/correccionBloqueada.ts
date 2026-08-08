@@ -50,17 +50,29 @@ export const MINIMO_RESPONDIDO = 0.8
 export function estadoDeExamen(t: {
   isCompleted: boolean
   totalQuestions: number
-  /** Filas guardadas en `test_questions` para este test. */
-  guardadas: number
-  /** De las guardadas, cuántas tienen `is_correct` decidido. */
+  /**
+   * Filas de `test_questions` con una respuesta DE VERDAD.
+   *
+   * ⚠️ Contar filas NO vale, y costó una reparación mal hecha (08/08/2026, corregida el mismo
+   * día): al abrir un examen se pre-crean las filas con `user_answer = ''` —cadena VACÍA, no
+   * NULL— e `is_correct = false`. Con «filas guardadas» como medida, un examen que **nadie
+   * tocó** salía como 73 respondidas y 73 corregidas, o sea, perfectamente reparable. Se
+   * marcaron 8 exámenes como terminados con un 0 sobre 73, 97 y 80 a gente que solo los había
+   * abierto. Un cero inventado en el historial de alguien es exactamente el daño que este
+   * módulo existe para evitar, y la primera versión lo causó.
+   *
+   * `''` no es una respuesta. Quien filtre por `IS NOT NULL` vuelve a caer.
+   */
+  respondidas: number
+  /** De las respondidas, cuántas tienen `is_correct` decidido. */
   corregidas: number
 }): EstadoDeExamen {
   if (t.isCompleted) return 'ya_completo'
-  if (t.guardadas === 0) return 'vacio'
+  if (t.respondidas === 0) return 'vacio'
   // Si queda algo sin corregir, el examen no llegó al final por este camino: no es el fallo
   // que esto repara y no se puede saber qué nota le correspondía.
-  if (t.corregidas < t.guardadas) return 'abandonado'
-  if (t.totalQuestions > 0 && t.guardadas / t.totalQuestions < MINIMO_RESPONDIDO) return 'abandonado'
+  if (t.corregidas < t.respondidas) return 'abandonado'
+  if (t.totalQuestions > 0 && t.respondidas / t.totalQuestions < MINIMO_RESPONDIDO) return 'abandonado'
   return 'correccion_bloqueada'
 }
 

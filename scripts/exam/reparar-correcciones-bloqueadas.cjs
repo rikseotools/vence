@@ -55,9 +55,12 @@ if (!EMAIL && !DESDE) {
   // el núcleo puro, no el WHERE: así el SQL no puede divergir de lo que dicen los tests.
   const { rows } = await c.query(`
     SELECT t.id, t.user_id, u.email, t.created_at, t.tema_number, t.total_questions,
-           count(q.id)::int                                        AS guardadas,
-           count(q.id) FILTER (WHERE q.is_correct IS NOT NULL)::int AS corregidas,
-           count(q.id) FILTER (WHERE q.is_correct IS TRUE)::int     AS aciertos
+           -- OJO: user_answer se pre-crea como cadena VACIA al abrir el examen, no como NULL.
+           -- Filtrar por IS NOT NULL cuenta como respondido lo que nadie toco: costo marcar
+           -- 8 examenes con un 0 sobre 73/97/80 a gente que solo los habia abierto (08/08).
+           count(q.id) FILTER (WHERE coalesce(q.user_answer, '') <> '')::int AS respondidas,
+           count(q.id) FILTER (WHERE coalesce(q.user_answer, '') <> '' AND q.is_correct IS NOT NULL)::int AS corregidas,
+           count(q.id) FILTER (WHERE q.is_correct IS TRUE)::int              AS aciertos
       FROM tests t
       JOIN user_profiles u ON u.id = t.user_id
       LEFT JOIN test_questions q ON q.test_id = t.id
@@ -74,7 +77,7 @@ if (!EMAIL && !DESDE) {
     estado: estadoDeExamen({
       isCompleted: false,
       totalQuestions: r.total_questions,
-      guardadas: r.guardadas,
+      respondidas: r.respondidas,
       corregidas: r.corregidas,
     }),
   }))
@@ -86,7 +89,7 @@ if (!EMAIL && !DESDE) {
 
   for (const r of reparables) {
     console.log(`   ${r.email} · tema ${r.tema_number ?? '?'} · ${r.created_at.toISOString().slice(0, 16)}` +
-      ` → ${r.aciertos}/${r.guardadas}`)
+      ` → ${r.aciertos}/${r.respondidas}`)
   }
   // Lo NO reparado también se canta: un recuento que solo enseña lo que hace es un recuento
   // que oculta lo que deja fuera.
