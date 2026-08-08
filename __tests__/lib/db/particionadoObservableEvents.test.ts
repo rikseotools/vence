@@ -28,6 +28,15 @@ const mod = require('@/lib/db/particionadoObservableEvents.cjs') as {
   ddlParticion: (f: string, t?: string) => string
   ddlGrants: (t?: string) => string[]
   instanteUtc: (f: string) => string
+  evaluarGrantsTrasSwap: (
+    vistos: Array<{ grantee: string; privilege_type: string }>,
+    rolActual: string,
+    esperados?: Array<{ rol: string; privilegio: string }>,
+  ) => {
+    confirmados: Array<{ rol: string; privilegio: string }>
+    faltantesConfirmados: Array<{ rol: string; privilegio: string }>
+    noVisibles: Array<{ rol: string; privilegio: string }>
+  }
   COLUMNAS: Array<{ nombre: string }>
   INDICES: Array<{ nombreOriginal: string }>
   GRANTS: Array<{ rol: string; privilegio: string }>
@@ -153,5 +162,50 @@ describe('particionadoObservableEvents: ddlGrants (T-360)', () => {
   it('acepta un nombre de tabla explícito, igual que ddlParticion/ddlIndices', () => {
     const grants = mod.ddlGrants('observable_events')
     expect(grants.every((g) => g.includes('observable_events') && !g.includes('_new'))).toBe(true)
+  })
+})
+
+describe('particionadoObservableEvents: evaluarGrantsTrasSwap (T-360, hallazgo de revisión 08/08)', () => {
+  // Caso REAL medido contra RDS (VENCE_LECTOR_URL, 08/08/2026): consultando
+  // information_schema.role_table_grants COMO vence_lector, la vista solo devuelve la fila de
+  // vence_lector — el GRANT INSERT a vence_coordinacion (que sí existe, confirmado por archivo)
+  // es invisible desde esta conexión. Cualquier diseño que tratara eso como "falta" mentiría.
+  const vistoReal = [{ grantee: 'vence_lector', privilege_type: 'SELECT' }]
+
+  it('el caso real medido: SELECT de vence_lector confirmado, INSERT de vence_coordinacion NO VISIBLE (no "falta")', () => {
+    const r = mod.evaluarGrantsTrasSwap(vistoReal, 'vence_lector')
+    expect(r.confirmados).toEqual([{ rol: 'vence_lector', privilegio: 'SELECT' }])
+    expect(r.faltantesConfirmados).toEqual([])
+    expect(r.noVisibles).toEqual([{ rol: 'vence_coordinacion', privilegio: 'INSERT' }])
+  })
+
+  it('si el propio grant del rol que consulta falta de verdad, SÍ lo confirma como faltante', () => {
+    const r = mod.evaluarGrantsTrasSwap([], 'vence_lector')
+    expect(r.faltantesConfirmados).toEqual([{ rol: 'vence_lector', privilegio: 'SELECT' }])
+    expect(r.confirmados).toEqual([])
+  })
+
+  it('consultando como el OTRO rol (vence_coordinacion), la visibilidad se invierte', () => {
+    const r = mod.evaluarGrantsTrasSwap([{ grantee: 'vence_coordinacion', privilege_type: 'INSERT' }], 'vence_coordinacion')
+    expect(r.confirmados).toEqual([{ rol: 'vence_coordinacion', privilegio: 'INSERT' }])
+    expect(r.noVisibles).toEqual([{ rol: 'vence_lector', privilegio: 'SELECT' }])
+    expect(r.faltantesConfirmados).toEqual([])
+  })
+
+  it('una fila con privilegio distinto al esperado no cuenta como confirmación (INSERT no es SELECT)', () => {
+    const r = mod.evaluarGrantsTrasSwap([{ grantee: 'vence_lector', privilege_type: 'INSERT' }], 'vence_lector')
+    expect(r.faltantesConfirmados).toEqual([{ rol: 'vence_lector', privilegio: 'SELECT' }])
+  })
+
+  it('acepta una lista de esperados propia, sin depender del GRANTS global', () => {
+    const esperados = [{ rol: 'otro_rol', privilegio: 'DELETE' }]
+    const r = mod.evaluarGrantsTrasSwap([{ grantee: 'otro_rol', privilege_type: 'DELETE' }], 'otro_rol', esperados)
+    expect(r.confirmados).toEqual(esperados)
+  })
+
+  it('ignora columnas extra de la fila real (p.ej. "grantor"), solo mira grantee/privilege_type', () => {
+    const conGrantor = [{ grantee: 'vence_lector', privilege_type: 'SELECT', grantor: 'venceadmin' }]
+    const r = mod.evaluarGrantsTrasSwap(conGrantor, 'vence_lector')
+    expect(r.confirmados).toEqual([{ rol: 'vence_lector', privilegio: 'SELECT' }])
   })
 })
