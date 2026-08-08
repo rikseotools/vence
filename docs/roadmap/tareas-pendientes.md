@@ -5310,36 +5310,85 @@ listo para ejecutar por quien tenga la credencial (Manuel u otra sesión con `DA
 | `auxiliar-administrativo-diputacion-cordoba` | 2 | 0 | ✅ **ya completo** (ídem) |
 | `tramitacion-procesal` | 3 | 0 | provenance OK, pero **defecto distinto**: ver abajo |
 
-**`auxiliar-administrativo-madrid` — el único con un documento REAL por clonar.** Los 2 hitos sin enlazar
-(`convocatoria_hitos.url`) apuntan los dos a `comunidad.madrid/servicios/empleo/auxiliares-administracion-general-c2-2026`,
-que es un PORTAL/índice (verificado abriéndolo: WebFetch + `curl` del HTML), no un documento — coincide con lo
-que dice [T-147] sobre no confundir portal con documento. Dentro de ese portal:
-- Hito "Convocatoria publicada en BOCM" (18/02/2026) → el documento YA está clonado
-  (`BOCM-20260218-2.PDF`, curado=true, 80.449 caracteres extraídos — **coincide byte a byte con lo que
-  extrae `pdf-parse` en local, contiene BASES + ANEXO III/IV con el TEMARIO completo dentro del mismo PDF, no
-  hay "bases"/"temario" que clonar aparte**). Solo falta ENLAZAR el hito a ese documento, cero fetch.
-- Hito "Lista provisional de admitidos y excluidos" (04/06/2026) → **documento sin clonar, encontrado y
-  verificado**: `https://www.bocm.es/boletin/CM_Orden_BOCM/2026/06/04/BOCM-20260604-1.PDF` (HTTP 200,
-  845.428 bytes, `Last-Modified: 04/06/2026` — coincide con la fecha del hito). El HTML del portal lo etiqueta
-  "LISTADOS PROVISIONALES — Resolución de 22 de mayo (BOCM de 4 de junio) — Admitidos provisionales / Excluidos
-  provisionales". Comando listo (sin ejecutar — necesita el `DATABASE_URL` completo):
-  ```
-  cd backend && NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
-    --slug=auxiliar-administrativo-madrid \
-    --url=https://www.bocm.es/boletin/CM_Orden_BOCM/2026/06/04/BOCM-20260604-1.PDF \
-    --tipo=lista_admitidos \
-    --titulo="Resolución de 22 de mayo de 2026, por la que se aprueban las listas provisionales de personas admitidas y excluidas" \
-    --boletin=BOCM --ref=BOCM-20260604-1 --fecha=2026-06-04
-  ```
-  Después: `node scripts/backfill-hito-source-documento.cjs --apply` enlaza los dos hitos por URL exacta (dry-run
-  por defecto, ya lo hace determinista y sin red — no hace falta re-verificar).
+**⚠️ CORRECCIÓN (08/08, revisión de w4 + arreglo de w2) — el "comando exacto listo" de abajo NO cierra los
+hitos como prometía, y el documento de la lista de admitidos no hacía falta clonarlo: YA estaba en el corpus.**
 
-**`auxiliar-administrativo-madrid-2027` — 0 documentos nuevos, solo enlazado.** 6 hitos con URL: 3 apuntan a
-`BOCM-20260713-2.PDF` (**el único documento ya clonado**, curado=true) → los enlaza el mismo
-`backfill-hito-source-documento.cjs --apply` sin tocar nada más. Las otras 2 (plazo de solicitudes) apuntan a
-`sede.comunidad.madrid/oferta-empleo/auxiliar-administracion-general-3` — es la SEDE ELECTRÓNICA (portal de
-trámite, no documento oficial descargable) → **no clonar como documento**; si se quiere provenance ahí, el
-sitio correcto es `seguimiento_url` de la oposición, no `convocatoria_documentos`.
+**Lo que estaba mal:** `backfill-hito-source-documento.cjs` enlaza **solo por coincidencia EXACTA de string**
+(`WHERE d.url = h.url`, leído en el propio fichero). Los 2 hitos de Madrid tienen `url` = el PORTAL
+(`comunidad.madrid/servicios/empleo/...`); el documento clonado tiene `url` = el PDF del BOCM. Son cadenas
+distintas → `--apply` enlaza **0 filas**, no las 2 que el relato daba a entender (confirmado con la propia
+vista: `convocatoria_docs_coverage` da `hitos_enlazables=0` para esta convocatoria). Quien ejecutara el
+comando tal cual estaba escrito habría clonado bien el documento, corrido el backfill, visto "0 hitos
+enlazados" y se habría quedado sin saber por qué.
+
+**La vía correcta ya existe y es otra:** `scripts/convocatoria/acreditar-hito.cjs --hito <id> --url <pdf>
+--cita "<frase literal que nombre la fecha>" [--documento <uuid>] --apply` — es, según su propio comentario de
+cabecera, la ÚNICA vía legítima para escribir `url`+`cita_literal`(+`source_documento_id`) de un hito. Su
+validador (`lib/convocatoria/hitoAcreditacion.js`) EXIGE que la cita nombre la fecha del hito (mín. 40
+caracteres) — los dos hitos de Madrid tienen `cita_literal=NULL` hoy, así que hacía falta redactarla, no solo
+enlazar. Aquí van las dos, con el texto YA extraído y verificado contra la fuente real (`articles.content`/PDF
+del BOCM, no contra lo que dijera la ficha), y con `validarAcreditacion()` (el validador REAL, no uno
+reimplementado) ejecutado sobre ambas dando `ok:true`:
+
+- **Hito "Convocatoria publicada en BOCM"** (`633e0f5b-a409-426c-bbcd-e37050727c64`, 18/02/2026) → el documento
+  YA está clonado y curado (`c54bcd0d-0e8d-408e-8ca5-e671f0d6576b`, `BOCM-20260218-2.PDF`, curado=true, 80.449
+  caracteres — contiene BASES + ANEXO III/IV con el temario completo, no hay "bases"/"temario" que clonar
+  aparte). **Ojo:** hay una SEGUNDA fila con la misma URL pero `tipo='nota'`/`curado=false`
+  (`a441714c-3e35-4b0a-a426-c3c67848fa76`) — usar la primera (`c54bcd0d…`), no ésta.
+  ```
+  node scripts/convocatoria/acreditar-hito.cjs \
+    --hito 633e0f5b-a409-426c-bbcd-e37050727c64 \
+    --url "https://www.bocm.es/boletin/CM_Orden_BOCM/2026/02/18/BOCM-20260218-2.PDF" \
+    --documento c54bcd0d-0e8d-408e-8ca5-e671f0d6576b \
+    --cita "MIÉRCOLES 18 DE FEBRERO DE 2026 — B.O.C.M. Núm. 41 — ORDEN 264/2026, de 4 de febrero, de la Consejería de Economía, Hacienda y Empleo, por la que se convocan pruebas selectivas para el ingreso, por el sistema general de acceso libre y de promoción interna, en el Cuerpo de Auxiliares, de Administración General, Grupo C, Subgrupo C2, de la Comunidad de Madrid." \
+    --apply
+  ```
+
+- **Hito "Lista provisional de admitidos y excluidos"** (`30e43315-0294-4a27-8f70-10fba35eb0a4`, 04/06/2026) →
+  **el documento NO hacía falta clonarlo: YA está en el corpus**, solo que MISFILED. Verificado
+  (`convocatoria_documentos` id `d50dc903-b877-4a5d-8160-c96fbca6eca0`): mismo `url`
+  (`BOCM-20260604-1.PDF`), **`extracted_text` ya presente (97.725 caracteres)**, pero colgado de la
+  convocatoria de **`auxiliar-administrativo-madrid-2027`** (`convocatoria_id=9d95261b…`), no de la vigente de
+  `auxiliar-administrativo-madrid` — es exactamente el patrón de [T-181] ("documentos clonados en la
+  convocatoria equivocada"; probablemente lo trajo el cron de notas leyendo la página de seguimiento, que
+  lista varios procesos, y lo atribuyó al que estaba vigente ENTONCES). Contenido verificado con `pdfjs-dist`
+  en local (845.428 bytes, coincide con lo que ya midió la revisión): *"JUEVES 4 DE JUNIO DE 2026 … RESOLUCIÓN
+  de 22 de mayo de 2026, de la Dirección General de Función Pública, por la que se aprueban las relaciones
+  provisionales de personas aspirantes admitidas y excluidas…"*. **No existe hoy una herramienta que reasigne
+  `convocatoria_id` de un documento ya clonado** (es justo el hueco que describe T-181, sin tooling propio
+  todavía) — para no inventar un script de un solo uso, el arreglo es una corrección puntual de la fila mal
+  filiada, con quien tenga escritura completa:
+  ```sql
+  UPDATE convocatoria_documentos
+     SET convocatoria_id = (SELECT id FROM convocatorias WHERE oposicion_id =
+           (SELECT id FROM oposiciones WHERE slug = 'auxiliar-administrativo-madrid') AND is_current = true),
+         tipo = 'lista_admitidos', curado = true, updated_at = NOW()
+   WHERE id = 'd50dc903-b877-4a5d-8160-c96fbca6eca0';
+  ```
+  Y entonces:
+  ```
+  node scripts/convocatoria/acreditar-hito.cjs \
+    --hito 30e43315-0294-4a27-8f70-10fba35eb0a4 \
+    --url "https://www.bocm.es/boletin/CM_Orden_BOCM/2026/06/04/BOCM-20260604-1.PDF" \
+    --documento d50dc903-b877-4a5d-8160-c96fbca6eca0 \
+    --cita "JUEVES 4 DE JUNIO DE 2026 — B.O.C.M. Núm. 131 — RESOLUCIÓN de 22 de mayo de 2026, de la Dirección General de Función Pública, por la que se aprueban las relaciones provisionales de personas aspirantes admitidas y excluidas en las pruebas selectivas para el ingreso, por el sistema general de acceso libre y de promoción interna, en el Cuerpo de Auxiliares de Administración General." \
+    --apply
+  ```
+  (Si se prefiere no tocar la fila existente, la alternativa es clonarla de nuevo con el comando de
+  `clonar-documento.ts` que ya traía esta ficha — pero eso deja DOS filas con el mismo contenido, el mismo
+  defecto que el hallazgo 3 de abajo ya señala para `tramitacion-procesal`; mejor corregir la que ya existe.)
+
+**`auxiliar-administrativo-madrid-2027` — 0 documentos nuevos, solo enlazado — CORRECCIÓN ARITMÉTICA: son 4
+hitos con URL, no 6.** De los 6 hitos totales, **4 tienen `url`** (2 sin URL: "Convocatoria publicada en el
+BOCM" —duplicado de título, nunca rellenado— y "Primer ejercicio", fecha futura sin BOE aún) — de esos 4: **2**
+apuntan a `BOCM-20260713-2.PDF` (**el único documento ya clonado**, curado=true, `url` idéntica byte a byte a
+la del hito) → **estos SÍ los enlaza bien** `backfill-hito-source-documento.cjs --apply` sin tocar nada más
+(aquí NO hay el problema del caso anterior: la url del hito es la del PDF, no la del portal). Los otros **2**
+(plazo de solicitudes) apuntan a `sede.comunidad.madrid/oferta-empleo/auxiliar-administracion-general-3` — es
+la SEDE ELECTRÓNICA (portal de trámite, no documento oficial descargable) → **no clonar como documento**; si
+se quiere provenance ahí, el sitio correcto es `seguimiento_url` de la oposición, no `convocatoria_documentos`.
+La conclusión práctica (Madrid-2027 no necesita clonar nada nuevo) sigue siendo correcta pese al mal conteo
+original.
 
 **`tramitacion-procesal` — provenance de hitos OK, pero el corpus tiene DOS defectos que `docs_por_clonar` no ve:**
 1. Los 3 documentos existentes (`convocatoria` 126.221 car., `oep_decreto` 80.786 car., y una fila **tipo `nota`
