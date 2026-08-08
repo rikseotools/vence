@@ -6975,6 +6975,10 @@ ponerse a verificar una por una.
   - **REPRODUCIDO, no solo razonado:** `__tests__/hooks/useDisputeNotifications401.test.tsx` (6 tests) monta el hook de verdad (`renderHook` + timers falsos), simula un 401 sostenido y comprueba que tras 10 ticks de 60s **sigue en 1 sola petición** (antes del fix habrían sido 11 — confirmado revirtiendo el fix a mano: 3 de los 6 tests fallan exactamente como se espera, y vuelven a pasar con el fix puesto). Cubre también: visibilitychange no reintenta, una sesión nueva (`user` distinto) SÍ vuelve a intentar, un 500 SÍ sigue reintentando (para no convertir esto en "para ante cualquier error"), el sondeo normal (200) no cambia, y sin usuario no arranca (comportamiento previo intacto). Typecheck limpio; 224/224 en toda la carpeta `__tests__/hooks`.
   - **Pendiente de verificar EN VIVO tras el deploy del frontend** (no puedo desplegar desde aquí): que la query de la ficha (`disputes/notifications 401` agrupada por `user_id`) deje de mostrar rachas de decenas/cientos de eventos seguidos con el mismo `user_id`, y que el volumen total baje de forma sostenida (no solo un día bueno).
 
+- **✅ SEGUNDO FIX (07/08) — un mecanismo real de identidad de objeto, corregido tras revisión el 08/08 porque la narrativa de "verificado en producción" no se sostenía.**
+  - **El mecanismo de código es real y está REPRODUCIDO en test, no solo razonado:** el `useEffect` del hook dependía de `[user]` (el objeto completo, comparado por referencia), y `AuthContext` puede reconstruir ese objeto (mismo `id`, referencia NUEVA) sin que sea un login real — cada reconstrucción reiniciaba `sessionInvalidRef.current = false`, deshaciendo el corte del primer fix. Arreglo: depender de `userId = user?.id` en vez de `user`. Confirmado independientemente revirtiendo SOLO el hook a `origin/main` y comprobando que el test nuevo (`__tests__/hooks/useDisputeNotifications401.test.tsx`, "re-hidratación, no login") falla con 2 llamadas en vez de 1; restaurando el fix, pasa. 7/7 tests, eslint limpio.
+  - **⚠️ Lo que NO se sostuvo al revisar (08/08): la afirmación "verificado en producción, no supuesto" de que el primer fix, ya desplegado, seguía fallando.** El comentario original citaba deploy_version/eventos como prueba, pero al comprobar los timestamps: `c0f110243` (primer fix) se commiteó `2026-08-07T02:57:29Z`; el primer `deploy_version` que lo contiene como ancestro no aparece hasta `2026-08-07T11:39:52Z` (~8h42m después). **Los eventos citados como "el fix ya desplegado seguía fallando" vienen de `deploy_version` que empezaron a servir HORAS ANTES de que ese commit existiera** (uno desde las 21:24Z del día anterior) — son contenedores pre-fix, no evidencia de que el fix desplegado fallara. Y en sentido contrario: en las ~20h de datos posteriores al primer deploy_version que sí contiene el fix, no aparece ninguna racha de 60s nueva — indicio de que el primer fix SÍ funcionó una vez vivo. **No se revierte este segundo fix** (el mecanismo de identidad de objeto es real, reproducido y una mejora legítima independiente de esta narrativa), pero la causa "el primer fix falló en producción" queda como NO DEMOSTRADA — corregido el comentario del test y esta ficha para no dejarlo documentado como hecho confirmado. Detalle completo: revisión `revisado T-419` de esta misma fecha.
+
 
 ### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
 
@@ -7187,6 +7191,35 @@ pero eso hay que comprobarlo, no suponerlo.
   - **Los 22 falsos positivos** eran paráfrasis correctas, preguntas de NEGACIÓN que el filtro no reconocía, o claves cortas. **`RE_NEGATIVA` se amplió TRES veces durante la propia revisión** (`no atribuye`, `entre los que no se encuentra`, `no se considera`, `no se constituyen`) — cada enunciado nuevo destapaba otro hueco de la lista cerrada. Todos fijados en `__tests__/health/vinculoArticuloVecinoNegacion.test.js` con sus contraejemplos.
 - **⏳ QUEDA — la decisión sobre el resto de las 1.713 firmadas:** No hay atajo determinista: cada una exige abrir su norma y aplicar §3.1 (test directo + test inverso). Lista en `scratchpad/t465-medibles.json` (filtrar `real:true`). Empezar por las de más exposiciones.
 - **NOTA:** Limpiarles los flags (ponerlos a NULL) las devuelve a la cola de revisión de golpe; dejarlas las mantiene figurando como comprobadas. Opción intermedia: limpiar solo las que además salgan en los detectores deterministas. **NO son necesariamente preguntas malas** — es que nadie ha mirado su contenido.
+
+**RESUELTAS las 2 últimas `needs_human` (08/08) — verificadas contra fuente oficial, no aplicadas (credencial de solo lectura). Plan completo en `scratchpad/t465/plan-needs-human.md`:**
+- **`8b5d00f1` (Galicia, gerencia de área sanitaria) → RETIRAR.** El único artículo de la Ley 8/2008 que cruza gerencia+nombramiento (el 121.7) es una cláusula de remisión genérica, no nombra a la Consellería de Sanidad; revisado el banco entero, no hay decreto de estructura orgánica del SERGAS/áreas sanitarias importado que lo atribuya. `admin_content_not_in_law`.
+- **`eab05295` (Andalucía, competencia del BOJA) → la clave ES correcta, RESTAURAR a `approved`.** El diagnóstico de la sesión anterior era acertado (nuestra copia del art. 1 es un resumen de 370 caracteres, no el texto legal) pero quedaba sin comprobar contra el BOJA real. Hecho ahora: fetch RAW (no resumen de LLM — lección de T-679) de `https://www.juntadeandalucia.es/boja/2025/513/1` (Decreto 168/2025, BOJA Extraordinario nº 13/2025) — el art. 1.k) dice literalmente *«La dirección, edición y publicación del Boletín Oficial de la Junta de Andalucía en su sede electrónica»*, EXACTO a la opción correcta. Artículo 1 completo re-extraído y formateado, listo para reemplazar el resumen: `scratchpad/t465/decreto168-2025-articulo1-verbatim.txt`.
+- **Hallazgo NUEVO, medido, fuera de alcance de esta ficha:** el Decreto 168/2025 entero (21 artículos) está importado como resúmenes parafraseados (215-386 caracteres cada uno) en vez de texto literal — el art. 1 real mide 4.650. Cuelgan 8 preguntas (7 activas). Muestreadas 5 de las 6 del art. 2 contra el texto real (también extraído, `scratchpad/t465/decreto168-2025-articulo2-raw.txt`): las 5 tienen clave correcta, mismo patrón (resumen malo, clave buena). La sexta (`20c697b1`, departamentos del SAS) no encaja con el art. 2 que sí tengo — puede estar mal vinculada o necesitar un artículo posterior no comprobado. Y el `laws.boe_url` de este decreto apunta a OTRO documento (una Orden de incendios forestales, verificado con WebFetch) — la URL correcta es la de arriba. No re-importo los 20 artículos restantes: son fuera del "rato" declarado para los 2 `needs_human`, quedan anotados con cifras para quien lo retome.
+
+**✅ DECISIÓN DE MANUEL (08/08, pregunta #111): OPCIÓN A — limpiar los flags a NULL.** *«El falso verde
+es peor que el hueco declarado, y "no lo sé" tiene que poder decirse — es uno de los nueve principios
+del andamiaje de sesiones (…) Dejarlas en B es exactamente lo contrario: el banco seguiría AFIRMANDO
+que 1.680 preguntas están verificadas sabiendo nosotros que la firma fue cosmética.»* Dos condiciones,
+ambas verificadas ANTES de escribir nada:
+1. **Que nulear `article_ok`/`answer_ok` no desactive ni jubile nada por sí solo.** Comprobado: esos
+   flags viven en `ai_verification_results`, NO en `questions`; `information_schema.triggers` da
+   **0 filas** para esa tabla, y `questions.is_active` es `GENERATED` solo desde `lifecycle_state` —
+   no hay ruta de cascada. El único cron que degrada por antigüedad sin verificar
+   (`lifecycle_grandfather_expire`, aún SIN programar) mira `questions.verified_at`, un campo distinto.
+2. **Dejar rastro de que fue saneamiento, no verificación nueva.** El script nuevo inserta un
+   `observable_events` por fila limpiada con el MISMO `event_type` que ya usa el trigger de
+   prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un tipo nuevo, para que
+   saneamiento retroactivo y prevención compartan serie temporal.
+
+**Construido: `scripts/calidad/sanear-verificacion-cosmetica.cjs`** (`npm run
+sanear:verificacion-cosmetica [-- --aplicar]`), SIMULA por defecto. Núcleo puro compartido
+`calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` (17 tests, 5 nuevos). Registrado en
+`toolRegistry.ts`. **Medido en dry-run (08/08): 1.705 filas a limpiar** (bajó de las 1.713 originales
+por el trabajo pregunta-a-pregunta ya hecho arriba). **NO aplicado**: mi credencial (`VENCE_LECTOR_URL`)
+es de solo lectura — necesita `--aplicar` de alguien con escritura, y entonces la cifra exacta que
+quede en NULL se conocerá con certeza (debería ser 1.705, salvo que algo cambie entretanto).
+
 - **Relacionadas:** [T-458] (las 8 impugnaciones que lo destaparon), [T-462] (otro guardarraíl desalineado del mismo flujo).
 
 ### [T-464] 🟢 [ABIERTO 01/08] Importar el I Plan de Igualdad de la Junta 2023-2027 como contenido propio (celador SAS se quedó sin ese temario)
@@ -8993,6 +9026,26 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
 - **CONSECUENCIA para el plan, y es distinta de la de [T-488]:** allí la oposición nació sirviendo 19.605 preguntas porque todo existía. Aquí el andamiaje (fila, temas, scope, rutas, landing) es igual de barato, **pero las 20 específicas nacen sin banco**: se montan con su scope y su teoría —que sí se puede leer— y `disponible=false` hasta generar preguntas contra el articulado ya importado (pipeline `generar-preguntas-con-ia.md` + doble auditoría ciega). **NUNCA poner `is_active=true` con temas disponibles a cero.**
 - **Relacionadas:** [T-326], [T-327], [T-397] (las tres cuelgan de que esta oposición no exista), [T-488] (el precedente de construcción por reutilización).
 
+- **🔴 (08/08, w2) — LA FICHA SE EQUIVOCABA: NO ESTÁ "CONSTRUIDA". Falta la fila `oposiciones` entera, y eso es MÁS grave que las 6 (no 7) temas sin banco.**
+  - **DEMOSTRADO, no supuesto:** corrí el gate oficial de la casa, `npx tsx scripts/audit-oposicion-completa.ts agente-hacienda` (con `VENCE_LECTOR_URL`, solo lectura, nada escrito) y da **1 ❌ / 0 🟡 — "fila oposiciones NO existe"**. `SELECT * FROM oposiciones WHERE slug ILIKE '%hacienda%' OR slug ILIKE '%agente%'` → **0 filas** de 125 en catálogo. Esto **contradice directamente** el mensaje del commit que mergeó esto a `main` (`aa7f8e6f2`, autor `Test <test@example.com>`, texto: *"GATES: audit:oposicion 0❌/0🟡"*) — ese gate no pudo haber pasado con la fila ausente; o se corrió contra otra cosa, o no se corrió.
+  - **Lo que SÍ existe y funciona de verdad** (medido pregunta por pregunta contra `topics`+`topic_scope`+`questions`, semántica real confirmada en `backend/src/test-config/test-config.helpers.ts:287` — `articleNumbers === null` = ley completa en scope, NO "cero artículos" como asumí en un primer barrido erróneo): **32 filas en `topics` para `position_type='agente_hacienda'`**, todas con scope y sirviendo contenido salvo 6. El servible real por tema:
+    | Tema | disponible | preguntas servibles |
+    |---|---|---|
+    | T14 AEAT (Ley 31/1990) | false | 0 |
+    | T21 extinción deuda (I) | **true** | **8** |
+    | T27 IRPF (I) | false | 0 |
+    | T28 IRPF (II) | false | 0 |
+    | T29 Sociedades | false | 0 |
+    | T30 IVA (I) | false | 0 |
+    | T31 IVA (II) | false | 0 |
+    | T32 La Aduana | true | 104 |
+    - **Corrección a la propia ficha:** dice "7 sin banco (…y extinción de la deuda (I))" — **T21 no está vacío, sirve 8 preguntas y está bien publicado** (`disponible=true`). Los realmente vacíos y correctamente despublicados son **6**, no 7: T14+T27+T28+T29+T30+T31. Las 12 Materias Comunes (T1-T12) y el resto de las específicas sirven con normalidad (777-1826 preguntas en las comunes, 8-81 en las específicas con banco).
+  - **Por qué la fila que falta importa MÁS que las 6 preguntas-tema pendientes:** `topics`/`topic_scope`/rutas viven fuera de `oposiciones`, así que el test EN SÍ funciona (confirmado: `/agente-hacienda/test` da 200 y sirve preguntas reales). Pero **`app/[oposicion]/page.tsx`** (la landing) solo tiene datos porque `getOposicion()` cae al config ESTÁTICO (`lib/config/oposiciones.ts`, que sí tiene la entrada) — la parte dinámica (`getOposicionLandingDataCached`, que lee de `oposiciones`/`oposiciones_ssot`) no tiene fila que leer, así que la landing sirve **sin plazas/BOE/hitos/timeline reales**. Y — esto es lo que de verdad importa — **absolutamente NINGÚN detector de salud del contenido la ve**: los ~70 kinds de este mismo CLAUDE.md que barren "oposiciones activas" iteran `FROM oposiciones`, así que esta oposición es invisible para salud-contenido, rollover, OEP, ads/SEO, familia, todo. 16 usuarios (2 premium) estudian sobre una oposición que ningún sistema de vigilancia sabe que existe.
+  - **Por qué no lo arreglo yo:** crear la fila (+ convocatoria SSOT + hitos, FASE 2/2c/5b del scaffolder) es un `INSERT` en `oposiciones`/`convocatorias` — tabla de negocio con escritura, y como worker de la flota solo tengo `VENCE_LECTOR_URL` (solo lectura) + `DATABASE_URL` de coordinación (4 tablas propias, sin permiso ni siquiera de lectura sobre `oposiciones`: probado, `permission denied for table oposiciones`). Tampoco puedo generar las preguntas de los 6 temas vacíos por la misma razón — insertar en `questions` es la misma clase de escritura.
+  - **Lo que SÍ dejo verificado y listo para quien tenga permiso:** todos los datos de convocatoria que hacen falta para el `INSERT` YA están verificados contra el BOE en el cuerpo de esta misma ficha (BOE-A-2025-27056, 1.000 turno libre + 400 promoción interna, `plazas_discapacidad_incluidas=true`, `estado_proceso='oep_aprobada'`) — no hace falta reverificar nada, solo aplicar `scripts/create-oposicion.cjs` (FASE 2/2c) o el INSERT equivalente con esos datos, y luego re-correr `audit-oposicion-completa.ts agente-hacienda` hasta que dé 0❌.
+  - **Pregunta lanzada a Manuel** (`node scripts/backlog.cjs preguntar`, sin bloquear): dado que ya hay 16 usuarios reales (2 premium) sobre una oposición invisible para todo el sistema de vigilancia, ¿prioriza alguien con escritura crear la fila que falta antes de que yo (u otro worker) me meta horas generando preguntas para los 6 temas vacíos? Generar contenido real para IRPF/IS/IVA/AEAT con la doble auditoría ciega del manual es trabajo de sesión propia completa, y no tiene sentido rematarlo mientras la oposición sigue sin existir para el catálogo.
+  - **Relacionadas añadidas:** el propio commit `aa7f8e6f2` (gates falsos) — revisar quién/qué lo generó, porque "GATES: 0❌/0🟡" en un mensaje de commit que no se corresponde con la realidad es una segunda ficha en sí misma si se repite en otras oposiciones creadas por el mismo camino.
+
 ### [T-456] 🟠 [ABIERTO 01/08 · IMPLEMENTADO 01/08, falta verlo vivo] El recordatorio de renovación envía con Resend crudo: sin filtro de preferencias y sin rastro en `email_events`
 
 - **ORIGEN.** Manuel, al revisar [T-448]: *«sendEmailV2 no sé por qué usas eso, en los otros correos usan resend, investiga eso a fondo»*. La investigación dio la vuelta a la pregunta: el que se sale del carril no es la campaña nueva, es este recordatorio.
@@ -9250,6 +9303,42 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **LO QUE QUEDA, y es lo estructural:** particionar por tiempo (`pg_partman`), donde la retención pasa a ser `DROP PARTITION` — instantáneo, sin DELETE ni VACUUM. Ya está en la escalera de `docs/runbooks/contencion-rds-paneles-admin.md` §4 como el arreglo de fondo para tablas de append masivo. **Leer antes `supabase/migrations/20260727_observable_events_cron_covering_idx.sql`**: documenta que el índice cubridor de crons SOLO funcionó tras el `VACUUM (ANALYZE)` (sin él, el index-only scan iba al heap y tardaba MÁS que el barrido), y que esa optimización está acoplada al VACUUM nocturno del cron de retención.
 - **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
 - **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
+
+#### 🔧 Diseño cerrado + código listo, migración SQL SIN aplicar (07/08, w2)
+
+**Ya había un roadmap** (`docs/roadmap/particionado-telemetria.md`, 11/07, "planificada, sin
+implementar") — no se ha rehecho, se ha EJECUTADO lo que un `trabajador` de lectura puede ejecutar
+y corregido un error de diseño que tenía.
+
+- **Corrección al roadmap: partición DIARIA, no mensual.** Con retención EXACTA de 30 días (la de
+  hoy), una partición mensual no se puede `DROP` hasta que TODA caiga fuera de la ventana — hasta
+  ~60 días de retención real, justo lo contrario de lo que se busca. Medido contra RDS sin escanear
+  la tabla (`pg_stats.histogram_bounds`, gratis): 85 k-1,27 M filas/día, 8.464.499 filas vivas
+  (07/08; bajó de los 10,7 M de la ficha original porque la retención sigue drenando sola) —
+  volumen que no acerca a ningún problema de "demasiadas particiones" con partición diaria.
+- **Construido (empujado, con tests):**
+  - `lib/db/particionadoObservableEvents.cjs` — núcleo puro (nombres/rangos/DDL), 14 tests.
+  - `scripts/db/particionar-observable-events.cjs` — dry-run por defecto, subcomandos
+    `plan|create|backfill|swap|verify`. **`plan` ejecutado de verdad contra RDS real** (vía
+    `VENCE_LECTOR_URL` — lo único que un rol trabajador puede correr) y **un bug real cazado al
+    ejecutarlo**: reusar `$1` para `pg_total_relation_size($1)` Y `WHERE relname = $1` en la misma
+    query da `operator does not exist: name = regclass` (Postgres unifica el tipo de un parámetro
+    en TODA la sentencia) — corregido con dos placeholders. `create/backfill/swap` generan DDL/DML
+    correcto en apariencia pero **sin ejecutar ni probar contra un Postgres real** (esta máquina no
+    tiene `psql` ni Docker).
+  - `backend/src/telemetry-retention/telemetry-retention.service.ts` — comprueba
+    `pg_class.relkind` de `observable_events` EN CADA `run()`: sigue sin particionar hoy → toma la
+    rama DELETE de siempre (los 5 tests originales pasan sin tocarlos, confirmando cero cambio de
+    comportamiento); en cuanto la migración se aplique y pase a `relkind='p'`, la MISMA ejecución
+    (sin otro deploy) llama a `partman.run_maintenance_proc()`. **Seguro desplegar esta pieza HOY**,
+    antes de que exista la migración. 4 tests nuevos de la rama particionada (9 en total).
+  - Registrado en `toolRegistry.ts`. Detalle completo, incluida la decisión de usar `pg_partman`
+    SIN el background worker (evita tocar `shared_preload_libraries` + reboot de RDS), en
+    `docs/roadmap/particionado-telemetria.md` §7.
+- **Falta, y requiere `DATABASE_URL` de escritura que este rol no tiene:** aplicar `create` →
+  `backfill` (repetible) → `swap` → `verify` contra RDS, idealmente probado antes contra una
+  instancia de prueba (no hay una a mano en esta sesión). El `plan` ya deja el DDL exacto para
+  revisar antes de aplicar. Detalle paso a paso en el roadmap §7.4.
 
 ### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
 

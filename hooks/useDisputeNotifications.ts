@@ -106,6 +106,17 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
   // confianza, no hereda el bloqueo de la anterior.
   const sessionInvalidRef = useRef(false)
 
+  // [T-419, verificación 07/08] El fix de arriba seguía reproduciéndose EN PRODUCCIÓN tras
+  // desplegarlo: 3 usuarios reales, el mismo día del deploy, con la firma exacta del bucle
+  // (deltas de 60.000ms repetidos 6-8 veces). Reproducido en test (no solo sospechado):
+  // `AuthContext` puede reconstruir el objeto `user` — misma identidad, referencia NUEVA — sin
+  // que sea un login real; el efecto de abajo dependía de `[user]` (el objeto), así que CADA
+  // referencia nueva reiniciaba `sessionInvalidRef.current = false` y disparaba otra petición,
+  // exactamente como si fuera una sesión distinta. `user?.id` es la identidad ESTABLE que sí
+  // distingue "sigue siendo el mismo login" de "sesión nueva" — es lo único que el efecto y
+  // `loadNotifications()` necesitan (el token sale de `auth.getAccessToken()`, no de este objeto).
+  const userId = user?.id
+
   useEffect(() => {
     sessionInvalidRef.current = false
 
@@ -162,7 +173,9 @@ export function useDisputeNotifications(): UseDisputeNotificationsReturn {
       stopPolling()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [user])
+    // userId (no `user`) a propósito — ver el comentario junto a `sessionInvalidRef` de arriba.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   async function loadNotifications(): Promise<void> {
     try {

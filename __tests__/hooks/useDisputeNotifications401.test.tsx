@@ -104,6 +104,46 @@ describe('useDisputeNotifications — el sondeo se para en el primer 401 (T-419)
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
   })
 
+  // [T-419, mecanismo REPRODUCIDO aquí, no solo razonado.] El efecto original dependía de `[user]`
+  // (el objeto completo, comparado por referencia). El mock de `useAuth` de este fichero mantenía
+  // la MISMA referencia entre ticks —la única forma de cambiarla era reasignar `mockUser` a mano,
+  // como en "sesión NUEVA" arriba—, así que ningún test anterior ejercitaba el caso real:
+  // `AuthContext` puede reconstruir `user` (mismo `id`, referencia NUEVA) sin que sea un login
+  // distinto, y cada referencia nueva reiniciaba `sessionInvalidRef.current = false`. Antes de
+  // este segundo fix (depender de `userId`, no de `user`), este mismo test fallaba: 2 llamadas
+  // tras el re-render en vez de 1.
+  //
+  // SOBRE LA "VERIFICACIÓN EN PRODUCCIÓN": una revisión posterior (T-419, 08/08) comprobó los
+  // deploy_version de los eventos citados como prueba de que el primer fix (c0f110243, commiteado
+  // 2026-08-07T02:57Z) ya desplegado seguía fallando, y NO se sostiene — los eventos citados vienen
+  // de deploy_version que empezaron a servir HORAS antes de que c0f110243 existiera como commit
+  // (el primer deploy_version que sí lo contiene no aparece hasta las 11:39Z, ~8h42m después). En
+  // el resto de datos disponibles tras ese deploy (~20h), no aparece ninguna racha nueva. La causa
+  // de código de este commit (identidad de objeto vs id) es real y está reproducida arriba; lo que
+  // NO está demostrado es que el primer fix, una vez desplegado, siguiera fallando en producción.
+  test('un `user` con el MISMO id pero referencia NUEVA (re-hidratación, no login) NO reinicia el bloqueo', async () => {
+    mockFetchResponse(401)
+    const { rerender } = renderHook(() => useDisputeNotifications())
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1) // circuito cortado, como debe ser
+
+    // "Re-hidratación" de sesión: MISMO id, objeto NUEVO — no es un login distinto.
+    mockUser = { id: 'user-1' }
+    rerender()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // Si el efecto tratara esto como sesión nueva, habría una 2ª llamada aquí — es la regresión
+    // que este test fija.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   test('un 500 (no 401) SÍ se sigue reintentando — solo el 401 corta el circuito', async () => {
     mockFetchResponse(500)
     renderHook(() => useDisputeNotifications())
