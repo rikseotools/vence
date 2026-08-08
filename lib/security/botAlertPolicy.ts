@@ -22,6 +22,62 @@
 // PRINCIPIO: alertar solo con la confianza con la que actuaríamos. Lo que queda
 // por debajo no se pierde — se emite como evento de observabilidad para ver
 // tendencia, pero no ensucia la cola de revisión humana.
+//
+// SEGUNDA VUELTA (T-303, medido el 06/08/2026): subir el umbral a 90 no bastó. Las
+// cinco alertas dismissed de este ficha (29-30/07, 5 usuarias reales con 25-199
+// respuestas) suman EXACTAMENTE 90 con solo 3 señales: `no_plugins` (0 puntos desde
+// el 15/04) + `zero_dimensions` (+30) + `botd:headless_chrome` (+60) — justo el
+// umbral, así que subirlo más las habría dejado fuera pero también habría dejado
+// pasar automatización real con el mismo total. El patrón (Chrome/Android,
+// `outerWidth`/`outerHeight` en 0) encaja con los navegadores EMBEBIDOS de Android
+// (el WebView que abre Instagram/Facebook/Gmail al pinchar un enlace): comparten
+// con un headless real la falta de chrome UI y ciertas APIs, y es EXACTAMENTE por
+// donde entra la publicidad — down-priorizar esta señal existe para acertar en el
+// tráfico bueno.
+//
+// SOSPECHO que esa es la causa de fondo (encaja con el patrón técnico y con que
+// venga siempre por publicidad/redes), pero NO lo he podido demostrar con datos:
+// `fraud_alerts` tiene RLS activo y CERO políticas para `vence_lector` (mismo
+// mecanismo ya diagnosticado en T-573/T-574), así que el `evidence`/`userAgent` de
+// cada alerta real es ilegible para un trabajador de la flota — devuelve 0 filas
+// SIN error, indistinguible de "no hay alertas". Confirmarlo del todo requeriría la
+// migración de política que T-573 ya dejó pendiente (fuera del alcance de esto: esa
+// tabla probablemente se queda bloqueada a propósito, `details.ip` es PII).
+//
+// LO QUE SÍ SE PUDO MEDIR, y es la base del arreglo: `scraping_force_challenge_set`
+// (que dispara con el MISMO score>=90) SÍ es legible, y da una muestra MÁS ANCHA que
+// las 5 del ficha — 10 usuarias distintas a score exacto 90 entre el 12/07 y el
+// 06/08/2026.
+//
+// CORRECCIÓN (08/08/2026): un pase anterior de esta ficha afirmó que las 10 no
+// tenían NI UNA fila en `test_questions` y que una de ellas (`f7716a15…`) era un
+// "cazador real confirmado" por tener `daily_questions_served` alto con
+// `daily_question_usage` vacío. Re-verificado con la MISMA consulta que usa este
+// fichero (`user_answer IS NOT NULL AND <> '' AND <> 'BLANK'`) contra datos reales:
+// **ES FALSO — las 10 tienen respuestas reales**, entre 16 y 5.734, con patrones de
+// `time_spent_seconds`/`created_at` consistentes con actividad humana (no una
+// ráfaga de inserciones). `f7716a15…` en concreto: 5.734 respuestas reales, ya
+// tenía 115 el mismo día del primer aviso (12/07). SOSPECHO (no confirmado, porque
+// `user_profiles` es PII y no se puede consultar desde este rol) que la cuenta es
+// PREMIUM y por eso `daily_question_usage` — que solo importa para el tope diario
+// del plan free (ver `lib/api/daily-limit/queries.ts`, "Premium users: no limit")
+// — dejó de escribirse para ella, no por cosecha. No hay ningún caso, en esta
+// muestra de 10, que sostenga con datos la existencia de un cazador real a
+// score=90 con este patrón de evidencia blanda.
+//
+// Eso NO invalida el arreglo — al contrario: si el 100% de la muestra medida son
+// falsos positivos, el discriminante de abajo (actividad real ⇒ no abrir
+// expediente) es aún más defendible de lo que parecía, no menos. Lo único que
+// cambia es que NO hay una prueba empírica confirmada de que la automatización
+// DURA + <5 respuestas reales siga cazando algo de verdad — se mantiene por
+// diseño fail-safe (mejor seguir alertando sin datos que exentar a ciegas), no
+// porque haya un caso real que lo demuestre hoy:
+//
+// **una cuenta que ha respondido de verdad no es un bot, aunque su huella lo
+// parezca; una cuenta servida-pero-nunca-respondida sigue alertando igual que
+// hoy**, y la automatización DURA (webdriver, framework, puppeteer) nunca se
+// exime por actividad: si además responde de verdad, es un caso más serio
+// (granjeo con navegador controlado), no uno más benigno.
 
 /** Umbral a partir del cual una detección es lo bastante firme para actuar.
  *  Es el MISMO que dispara el reto forzado: no tiene sentido abrir expediente por
@@ -32,6 +88,33 @@ export const BOT_ALERT_MIN_SCORE = 90
  *  sujeto y tipo. Sin esto el detector reincide: hay usuarias legítimas con 9 y 12
  *  alertas acumuladas del mismo patrón ya descartado. */
 export const ABSOLVED_TTL_DAYS = 30
+
+/**
+ * Evidencia INEQUÍVOCA de automatización (T-303, 06/08/2026): un `navigator.webdriver`
+ * o un framework de automatización detectado en el propio `window` no tiene explicación
+ * de navegador legítimo — a diferencia de `botd:headless_chrome`/`zero_dimensions`, que
+ * SÍ la tienen (ver comentario grande más abajo). Si aparece cualquiera de estos, la
+ * cuenta NUNCA se exenta por actividad real: un agente automatizado que además rellena
+ * respuestas de verdad (granjeo de rachas/recompensas) es un caso MÁS grave, no menos.
+ */
+const HARD_AUTOMATION_EVIDENCE = new Set(['webdriver_detected', 'automation_framework', 'puppeteer_detected'])
+
+function hasHardAutomationEvidence(evidence: string[] | null | undefined): boolean {
+  return Array.isArray(evidence) && evidence.some((e) => HARD_AUTOMATION_EVIDENCE.has(e))
+}
+
+/**
+ * Respuestas reales guardadas a partir de las cuales una cuenta deja de tratarse como
+ * "solo fingerprint" para `bot_detected` (T-303). Medido: las dos usuarias reales que
+ * originaron esta ficha tenían 25 y 199 respuestas cuando se las marcó. El umbral de 5
+ * es deliberadamente bajo (cuerpo de examen real pequeño, por debajo de cualquier caso
+ * medido de humana real, por encima de lo que cuesta fabricar una respuesta señuelo
+ * aislada) porque es una decisión FAIL-SAFE, no porque haya un caso confirmado de
+ * cosechador real justo por debajo del corte — re-verificado el 08/08/2026 (ver el
+ * comentario grande arriba): de una muestra de 10 cuentas a score exacto 90, las 10
+ * tenían actividad real sustancial (16-5.734 respuestas), ninguna con 0.
+ */
+export const MIN_REAL_ANSWERS_TO_TRUST = 5
 
 /** Señales de comportamiento REALES, recalculadas en servidor sobre datos
  *  confirmados — nunca las que manda el cliente. */
@@ -52,6 +135,12 @@ export interface BotAlertInput {
   recentlyDismissed?: boolean
   /** Solo para `suspicious_behavior`: lo que dice la BD, no el cliente. */
   server?: ServerBehaviour | null
+  /** Solo para `bot_detected`: el `evidence` que mandó el cliente (huella.js). */
+  evidence?: string[] | null
+  /** Solo para `bot_detected`: respuestas REALES guardadas en servidor (nunca del
+   *  cliente). `null`/`undefined` = no se pudo consultar → no cambia el veredicto
+   *  de antes (fail-safe: preferible seguir alertando a exentar sin haber mirado). */
+  realAnswers?: number | null
 }
 
 export interface BotAlertDecision {
@@ -124,6 +213,18 @@ export function decideBotAlert(input: BotAlertInput): BotAlertDecision {
   // bot_detected (huella de automatización). Solo se abre expediente con la
   // confianza con la que además retaríamos.
   if (score >= BOT_ALERT_MIN_SCORE) {
+    // T-303: la automatización DURA nunca se exime por actividad — si además
+    // responde de verdad es un caso MÁS grave (navegador controlado granjeando
+    // respuestas reales), no uno más benigno. Se exige conocer AMBOS datos nuevos
+    // (evidencia Y respuestas reales) para eximir — un llamador antiguo que solo
+    // manda uno de los dos se queda con el comportamiento de siempre, nunca con uno
+    // nuevo sin haberlo pedido.
+    const evidenciaConocida = Array.isArray(input.evidence)
+    const dura = hasHardAutomationEvidence(input.evidence)
+    const respuestasReales = Number.isFinite(input?.realAnswers) ? Number(input.realAnswers) : null
+    if (evidenciaConocida && !dura && respuestasReales !== null && respuestasReales >= MIN_REAL_ANSWERS_TO_TRUST) {
+      return { createAlert: false, forceChallenge: false, severity, reason: `actividad_real_confirmada_${respuestasReales}_respuestas` }
+    }
     return { createAlert: true, forceChallenge: true, severity, reason: 'huella_de_automatizacion_firme' }
   }
   return { createAlert: false, forceChallenge: false, severity, reason: `score_${score}_bajo_umbral_${BOT_ALERT_MIN_SCORE}` }
