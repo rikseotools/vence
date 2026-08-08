@@ -759,6 +759,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'seguridad). Tras escribir **relee de la BD y compara carácter a carácter**. Limitación ' +
       'declarada: los **pictogramas** de los anexos (imágenes del BOE) no se importan.',
   },
+  arreglar_interlineado_writer: {
+    titulo: 'Reparar el interlineado de LibreOffice Writer (teoría + pregunta con clave falsa)',
+    ruta: 'scripts/calidad/arreglar-interlineado-writer.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`node scripts/calidad/arreglar-interlineado-writer.cjs [--aplicar]`. Simula por defecto. Sale ' +
+      'de la impugnación `52c5ae85` (Laura Simar, premium), que decía que dos opciones eran válidas ' +
+      '**porque nuestra explicación lo afirmaba**. Al medir el sistémico salieron tres defectos y una ' +
+      'sola causa: **el artículo de teoría afirmaba que «Regleta» NO es una opción de interlineado**, ' +
+      'y lista opciones inventadas («Al menos», «Mínimo», sin «1,15 renglones»). Es FALSO — la ayuda ' +
+      'oficial es-ES la incluye entre «Por lo menos» y «Fijo». De esa teoría salieron las preguntas: ' +
+      '`165fee45` (explicación falsa, corregida), `c8d9dbb7` (duplicada exacta, jubilada) y ' +
+      '`d99afeef` (clave equivocada, reescrita). **Lección reutilizable: cuando varias preguntas de ' +
+      'un artículo mienten igual, el defecto está en el ARTÍCULO, no en las preguntas** — arreglar ' +
+      'solo las preguntas deja la fábrica intacta. Fuente verificada el 08/08/2026: ' +
+      'help.libreoffice.org/latest/es/text/shared/01/05030100.html',
+  },
   medir_anexos_faltantes: {
     titulo: '¿A qué leyes que servimos les falta un anexo que su fuente SÍ tiene?',
     ruta: 'scripts/leyes/medir-anexos-faltantes.cjs',
