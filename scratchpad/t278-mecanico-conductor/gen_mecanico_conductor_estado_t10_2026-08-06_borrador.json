@@ -420,7 +420,7 @@
       "v": 1,
       "cita": {
         "ref": "Art. 48.1.c).1º RGC",
-        "texto": "Para vehículos especiales y conjuntos de vehículos, también especiales: 1.º Si carecen de señalización de frenado, llevan remolque o son motocultores: 25 kilómetros por hora."
+        "texto": "Para vehículos especiales y conjuntos de vehículos, también especiales (...): 1.º Si carecen de señalización de frenado, llevan remolque o son motocultores: 25 kilómetros por hora."
       },
       "options": {
         "0": "El artículo fija 25 km/h para ese supuesto, no 40 km/h (que es la del resto de vehículos especiales del mismo apartado).",
@@ -430,7 +430,7 @@
       },
       "frame": "select_correct"
     },
-    "explanation": "> **Art. 48.1.c).1º Reglamento General de Circulación (RGC)**\n> \"Para vehículos especiales y conjuntos de vehículos, también especiales: 1.º Si carecen de señalización de frenado, llevan remolque o son motocultores: 25 kilómetros por hora.\"\n\n**Por qué C es correcta:** Es la cita literal del artículo 48.1.c).1º RGC.\n\n**Por qué las demás son incorrectas:**\n- **A)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 40 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 40 km/h (que es la del resto de vehículos especiales del mismo apartado).\n- **B)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 15 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 15 km/h.\n- **D)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 35 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 35 km/h.",
+    "explanation": "> **Art. 48.1.c).1º Reglamento General de Circulación (RGC)**\n> \"Para vehículos especiales y conjuntos de vehículos, también especiales (...): 1.º Si carecen de señalización de frenado, llevan remolque o son motocultores: 25 kilómetros por hora.\"\n\n**Por qué C es correcta:** Es la cita literal del artículo 48.1.c).1º RGC.\n\n**Por qué las demás son incorrectas:**\n- **A)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 40 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 40 km/h (que es la del resto de vehículos especiales del mismo apartado).\n- **B)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 15 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 15 km/h.\n- **D)** \"Si carecen de señalización de frenado, llevan remolque o son motocultores: 35 kilómetros por hora.\" - El artículo fija 25 km/h para ese supuesto, no 35 km/h.",
     "tags": [
       "ia_generada",
       "gen_mecanico_conductor_estado_t10_2026-08-06"
