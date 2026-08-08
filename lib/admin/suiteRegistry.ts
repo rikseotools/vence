@@ -91,6 +91,15 @@ export const SUITE_REGISTRY: EntradaSuite[] = [
   // CÓDIGO con fixture propio — ya deterministas. Van tal cual a la BD efímera.
   // ─────────────────────────────────────────────────────────────────────────────────────────
   {
+    // [T-718] No comprueba datos: comprueba que un DETECTOR sigue coincidiendo con los dos casos
+    // reales que se leyeron a mano al calibrarlo. Lee `topics` pero no escribe nada ni necesita
+    // fixture — las anclas son filas de producción a propósito, porque una calibración contra
+    // datos inventados no dice si el detector sigue midiendo el banco de verdad.
+    ruta: '__tests__/integration/anclasEpigrafeTruncado.integration.test.ts',
+    tipo: 'codigo_datos_prestados',
+    que: 'Las ANCLAS de `epigrafeTruncado` contra RDS: el epígrafe cortado que TIENE que marcar y el que lleva «:» en medio y NO puede marcar. Si el criterio se afloja o se amplía, salta aquí.',
+  },
+  {
     ruta: '__tests__/integration/referrals-queries.test.ts',
     tipo: 'codigo', fixturePropio: true, gateEscritura: true,
     que: 'Circuito de referidos por función (atribuir, calificar, hold, promover). Migrada a usuarios efímeros en T-336.',
