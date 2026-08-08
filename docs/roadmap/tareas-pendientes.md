@@ -1140,6 +1140,76 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
+
+Índice de lo que quedó a medias o esperando decisión, con dónde está cada cosa. **Lo que ya está
+cerrado NO se repite aquí**: [T-657] (cupo/huella), [T-237], [T-671] (los 401) y las doce revisadas
+están cerradas y desplegadas.
+
+**1. ESPERAN DECISIÓN DE MANUEL — nadie más las va a mover**
+- **Las dos aportaciones de Laura Simar del 06/08.** Ella reclamó que no le generaron recompensa y
+  **tiene razón en los hechos**: la impugnación `a1a6e998` es `explicacion_confusa` (motivo
+  subjetivo, no paga sola — evento `reward_skipped_subjective_type`) y el bug `7847ff3e` de una
+  premium **sí puede pagarse pero exige orden explícita** que nadie dio. Ya tiene 2 recompensas
+  cobradas (04 y 05/08), no es alguien que reclame sin fundamento. **Si se conceden, se crean en
+  SILENCIO**: el mensaje ya se le envió y no las menciona, como manda la regla.
+
+**2. ESPERAN EL DESPLIEGUE (se despiertan solas)**
+- **[T-677]** — que el supervisor del VPS emita `flota_maquina_salud` de forma PERIÓDICA.
+- **[T-691]** — que el barrido nocturno emita el kind con el patrón nuevo de figuras rotuladas.
+
+**3. LA CAUSA DEL VPS AHOGADO NO ES MÍA — ya tiene ficha, NO abrir otra**
+[T-682] (crítica, «cuatro `tsc --noEmit` a la vez no caben en el VPS») y [T-647] (20 OOM en 6 h).
+Lo medido, para quien las coja: los cuatro Claude Code ocupan **menos de 1 GB entre todos**; el peso
+son sus **builds** (1.574 + 1.383 + 1.295 + 1.213 MB). Carga 17-19 en 4 núcleos **con la CPU al
+91-98 % ociosa** = esperando disco, no calculando. **Bajar trabajadores NO es el arreglo**
+(conclusión que yo mismo propuse y retiré al medir quién consumía la memoria); serializar los builds
+sí.
+
+**4. ERRATA CONOCIDA**
+El commit del validador de mensajes está pusheado como `feat(T-678)` y **T-678 es una ficha ajena ya
+cerrada**: se eligió el id sin `reserve`. El código y el manual ya citan **[T-695]**, que es la ficha
+buena. Quien busque el origen por el mensaje de commit llegará a la ficha equivocada.
+
+**5. CABO MENOR, SIN FICHA PROPIA**
+El payload de `/api/v2/daily-question/status` se contradice consigo mismo: devuelve `questions_today`
+ya corregido con el cupo del aparato, pero `questions_remaining` e `is_limit_reached` siguen
+calculados solo con las respuestas propias (visto en vivo: `today:25`, `remaining:25`,
+`limit_reached:false`). Viene de [T-418], **no se introdujo aquí**, y la interfaz funciona porque
+decide con `questions_today`. Cerrarlo es barato.
+
+**6. COLAS**
+Las tres contestadas por esta sesión (Diego, y Laura ×2: feedback e impugnación). Lo demás está en
+otras sesiones: los dos bugs de `rbsc87` en `movil-colas`, dos `other` y dos bajas de cuenta en
+`136e28c4` y `movil2`. **No reabrir sin mirar el claim.**
+
+### [T-695] 🟠 [ABIERTO 08/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
+
+**Manuel: «pon guardarraíl porque se te olvida».** Y tenía la prueba delante: en un MISMO borrador
+para Laura Simar se colaron DOS reglas ya escritas — la mención al apartado de recompensas
+(prohibida desde el 24/07) y un «tienes razón» que él acababa de retirar ese mismo día.
+
+**Hecho:**
+- Criterio en UN sitio: `lib/feedback/validarMensaje.cjs`, cada regla con su porqué y su
+  alternativa. Cubre: recompensa mencionada · conceder la razón · proclamar la culpa («no era cosa
+  tuya», «el fallo era nuestro») · disculpas por la espera · afirmar el arreglo en vez del
+  condicional · decir que lo hace una IA.
+- Se hace cumplir en tres sitios: el dossier lo canta antes de redactar (`revisar-feedback.cjs`),
+  un comando para pasarle el borrador, y una puerta que aborta el envío (`responder-*.cjs`).
+- 11 tests (`__tests__/feedback/validarMensaje.test.ts`) con los borradores REALES como casos: los
+  dos que fallaron y los dos aprobados (Diego y Laura, ambos ya enviados).
+- Manual endurecido: el ejemplo ✅ que otra sesión escribió horas antes («Tienes razón: al pulsar
+  para corregir…») **ya no vale**. Memoria actualizada, que decía justo lo contrario.
+
+**⚠️ ERRATA A SABIENDAS:** el commit que lo introduce está pusheado como `feat(T-678)`, y **T-678 es
+otra ficha ajena YA CERRADA** («Puerta de "está vivo"»). Se eligió el id sin `reserve`, que es
+justo lo que CLAUDE.md prohíbe. El código y el manual ya citan T-695; el mensaje de commit no se
+puede reescribir porque está en `main`. Si alguien busca el origen por el commit, llega a la ficha
+equivocada.
+
+**PENDIENTE:** nada funcional. Cerrarla cuando se confirme que el dossier lo imprime en el uso real
+de otra sesión.
+
 ### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
