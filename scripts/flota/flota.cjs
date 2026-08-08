@@ -761,7 +761,17 @@ async function main() {
         for (const clase of ['criterio', 'solo_mergear', 'solo_cerrar']) {
           if (!porClase[clase].length) continue
           console.log(`\n   ${titulos[clase]} — ${porClase[clase].length}`)
-          for (const e of porClase[clase]) console.log(REV.lineaRevisada(e))
+          for (const e of porClase[clase]) {
+            console.log(REV.lineaRevisada(e))
+            // ── LA RAMA, NO SOLO «hay una rama» ([T-647], 08/08) ─────────────────────────
+            // El cajón decía «hay rama sin fusionar que las declara» y no CUÁL, así que quien
+            // iba a mergear tenía que volver a preguntarle a git tarea por tarea — y el índice
+            // ya lo sabe, se acaba de construir tres líneas más arriba. Medido hoy juntando 19
+            // ramas: sin esto hace falta un script aparte para sacar exactamente este dato.
+            if (clase === 'solo_mergear') {
+              for (const r of (RAMAS.hechosDeGit(e.id, idx).ramas || [])) console.log(`         ↳ ${r}`)
+            }
+          }
         }
       }
       if (sinMirar.length) {

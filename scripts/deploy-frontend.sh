@@ -553,5 +553,50 @@ echo "✅ DEPLOY OK — $NEWTD"
 # que alguien tenga que acordarse. Best-effort — nunca puede tumbar un deploy que ya salió bien.
 node "$(dirname "$0")/backlog.cjs" deployed "$FULL_SHA" --superficie frontend 2>/dev/null || true
 
+# ── [T-713] Las pruebas de NAVEGADOR con sesión, contra lo que se acaba de desplegar ────────
+#
+# POR QUÉ AQUÍ Y NO EN GITHUB ACTIONS (decisión de Manuel, 08/08/2026). Estas 6 pruebas
+# necesitan entrar como un usuario, y para eso hace falta `AUTH_SECRET`, que **firma sesiones**:
+# quien lo tenga puede acuñar la de cualquiera. En GitHub sería un secret más al alcance de
+# cualquiera con acceso al repo; aquí sale de SSM, se usa en memoria y no se expone. El coste es
+# un par de minutos por deploy, y se paga solo cuando despliegas.
+#
+# POR QUÉ HACÍA FALTA: estos 6 specs **no los ejecutaba nadie, nunca** — ningún workflow invoca
+# el proyecto `authenticated`. Y son justo los que se escribieron porque un fallo se había
+# escapado de todas las demás capas: el registro de IP roto **27 días en silencio** ([T-314]),
+# el envío explícito de impugnaciones ([T-198]), el configurador de leyes (regresión `442bc679`).
+#
+# NO tumba el deploy: cuando esto corre, la imagen ya está viva y verificada. Un fallo aquí se
+# canta fuerte y deja el comando de rollback delante, pero no cambia el hecho de que el deploy
+# salió. Y NO se ejecuta contra una cuenta cualquiera: una de las pruebas RESPONDE una pregunta,
+# así que ensuciaría las estadísticas de quien la preste. Sin `E2E_USER_ID` no corre y lo dice.
+echo "→ [7/7] pruebas de navegador con sesión (T-713)"
+if [ -z "${E2E_USER_ID:-}" ]; then
+  echo "   ⏭️  NO SE EJECUTAN: falta E2E_USER_ID (uuid de una cuenta DESECHABLE, no la de un usuario"
+  echo "      real: una de las pruebas responde una pregunta y le ensuciaría las estadísticas)."
+  echo "      Para activarlas:  export E2E_USER_ID=<uuid>   (y opcional E2E_USER_EMAIL)"
+elif [ "${E2E_POSTDEPLOY_SKIP:-}" = "1" ]; then
+  echo "   ⏭️  saltadas a propósito (E2E_POSTDEPLOY_SKIP=1)"
+else
+  E2E_SECRET=$(aws --profile "$P" --region "$R" ssm get-parameter \
+    --name /vence-frontend/AUTH_SECRET --with-decryption \
+    --query Parameter.Value --output text 2>/dev/null || true)
+  if [ -z "$E2E_SECRET" ]; then
+    echo "   ⚠️  no se pudo leer AUTH_SECRET de SSM — las pruebas de navegador NO se han ejecutado."
+  else
+    if AUTH_SECRET="$E2E_SECRET" E2E_SESSION_PROVIDER=own-mint \
+       E2E_BASE_URL="${E2E_BASE_URL:-https://www.vence.es}" \
+       npx playwright test --project=authenticated --reporter=line; then
+      echo "   ✅ las 6 pruebas de navegador pasan contra $FULL_SHA"
+    else
+      echo ""
+      echo "   ❌ FALLAN LAS PRUEBAS DE NAVEGADOR contra el código recién desplegado."
+      echo "      El deploy SÍ salió (la imagen está viva y verificada arriba), pero algo que"
+      echo "      un usuario con sesión hace por pantalla se ha roto. Mira el informe y decide:"
+      echo "      arreglar hacia delante o revertir con el comando de abajo."
+    fi
+  fi
+fi
+
 echo "   Gate de auth (recomendado): node scripts/fase-b-auth-surfaces-check.cjs"
 echo "   Rollback: aws ecs update-service --cluster vence-backend --service vence-frontend --task-definition $LIVE_TD --profile vence --region eu-west-2"
