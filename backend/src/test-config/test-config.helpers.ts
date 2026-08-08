@@ -136,7 +136,12 @@ export const EXAM_POSITION_MAP: Record<string, string[]> = {
     'cuerpo auxiliar administracion publica comunidad autonoma canarias',
   ],
   auxilio_judicial: ['auxilio_judicial', 'auxilio judicial'],
-  ayudante_instituciones_penitenciarias: ['ayudante_instituciones_penitenciarias', 'ayudantes de instituciones penitenciarias', 'ayudantes instituciones penitenciarias', 'cuerpo de ayudantes de instituciones penitenciarias'],
+  ayudante_instituciones_penitenciarias: [
+    'ayudante_instituciones_penitenciarias',
+    'ayudantes de instituciones penitenciarias',
+    'ayudantes instituciones penitenciarias',
+    'cuerpo de ayudantes de instituciones penitenciarias',
+  ],
   gestion_procesal: ['gestion_procesal', 'gestión procesal'],
   auxiliar_administrativo_andalucia: [
     'auxiliar_administrativo_andalucia',
@@ -209,6 +214,27 @@ export function getValidExamPositions(positionType: string): string[] {
   if (!positionType) return [];
   const normalized = positionType.toLowerCase().replace(/-/g, '_');
   return EXAM_POSITION_MAP[normalized] || [];
+}
+
+/**
+ * Como {@link getValidExamPositions}, con la excepción de T-597 (08/08/2026): una
+ * PERSONALIZADA no está en `EXAM_POSITION_MAP` por diseño, así que no hay lista con la
+ * que restringir — cualquier oficial admitida por `buildOfficialExamFilter` cuenta.
+ * `null` = "sin restricción" (frente a `[]` = "ninguna oficial es propia", el caso de
+ * una oposición real sin mapeo, que SÍ debe seguir bloqueando).
+ *
+ * Gemelo de `getValidExamPositionsOrUnrestricted` (frontend `lib/config/exam-positions.ts`).
+ * FUENTE ÚNICA para todo CONTEO de oficiales en este servicio — `buildOfficialExamFilter`
+ * ya tenía su propio early-return, pero cada contador de `test-config.service.ts` leía
+ * `getValidExamPositions` a pelo y repetía el hueco (medido 08/08: `estimateByPosiciones`
+ * seguía devolviendo 0 para "solo oficiales" de una personalizada tras el fix del filtro).
+ */
+export function getValidExamPositionsOrUnrestricted(
+  positionType: string,
+): string[] | null {
+  if (positionType && positionType.toLowerCase().startsWith('personalizada_'))
+    return null;
+  return getValidExamPositions(positionType);
 }
 
 /**

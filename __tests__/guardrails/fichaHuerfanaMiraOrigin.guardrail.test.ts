@@ -17,12 +17,17 @@ const CLI = readFileSync(join(RAIZ, 'scripts', 'backlog.cjs'), 'utf8')
 const REGLAS = readFileSync(join(RAIZ, 'backend', 'src', 'alerts', 'alert-rules.ts'), 'utf8')
 
 describe('la clasificación de fichas huérfanas se apoya en origin/main', () => {
+  // T-532: «una ficha = un fichero» cambió CÓMO se piden los hechos (por PATH, con
+  // `hechosDeOrigenFichero`/`enAlgunaRamaFichero`/`commitQueLaQuitoFichero` en vez de pickaxe
+  // sobre el monolito), no la GARANTÍA que este guardarraíl protege: que `sync` mira
+  // `origin/main`, no solo la rama local. Las funciones VIEJAS (`hechosDeOrigin`, etc.) siguen
+  // en `gitFichas.cjs` para investigar historia previa a la migración; el CLI ya no las llama.
   it('el CLI pasa los hechos de ORIGIN al clasificador, no solo el historial local', () => {
     // Si esto se rompe, el aviso vuelve a leer «sin pushear» sobre una ficha que acaban de borrar.
-    expect(CLI).toContain('hechosDeOrigin(')
+    expect(CLI).toContain('hechosDeOrigenFichero(')
     const llamada = CLI.slice(CLI.indexOf('clasificarHuerfanas('), CLI.indexOf('clasificarHuerfanas(') + 500)
     expect(llamada).toContain('origen:')
-    expect(llamada).toContain('hechosDeOrigin(')
+    expect(llamada).toContain('hechosDeOrigenFichero(')
   })
 
   it('pasa el claim propio: sin eso, mi ficha ausente se anuncia como trabajo de otro', () => {
@@ -37,17 +42,15 @@ describe('la clasificación de fichas huérfanas se apoya en origin/main', () =>
     expect(CLI).toContain('refrescarOrigin(')
   })
 
-  it('el CLI NO reimplementa el pickaxe por su cuenta: los hechos de git viven en su módulo', () => {
+  it('el CLI NO reimplementa la búsqueda por su cuenta: los hechos de git viven en su módulo', () => {
     // Tener dos lectores de git con criterios distintos es exactamente cómo nació el punto ciego
     // (y cómo nacieron las seis copias del session-id de T-407). El CLI usa git para otras cosas
     // (huella de ficheros, ancestros de un deploy) y eso está bien; lo que no puede es volver a
     // tener SU propia búsqueda de fichas en el historial.
     expect(CLI).toContain("require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'))")
-    // El pickaxe COMO ARGUMENTO (`'-S'`) es lo que se movió al módulo. Ojo: el CLI sí imprime un
-    // `git log -S'### [T-NNN]'` como pista para recuperar la ficha a mano — eso es texto para una
-    // persona, no un lector de git paralelo, y tiene que seguir estando.
-    expect(CLI).not.toContain("'-S'")
-    expect(CLI).toContain("recupérala:  git log -S")
+    // El CLI sí imprime un `git log --follow` como pista para recuperar la ficha a mano — eso es
+    // texto para una persona, no un lector de git paralelo, y tiene que seguir estando.
+    expect(CLI).toContain("recupérala:  git log --follow")
   })
 })
 

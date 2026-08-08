@@ -340,7 +340,9 @@ Además del bloque CRÍTICOS, mirar SIEMPRE (añadidos 05/07/2026 — cerraron u
    grid a propósito: una flota parada NO SE NOTA** — sigue apareciendo en el registro, nadie recibe
    una queja y puede estar así horas. Rojo = todos sin señal, o **≥5 turnos muertos en 3 h** (eso ya
    no es azar: apunta a cuota agotada, un guardarraíl que no pueden satisfacer o una tarea fuera de
-   su alcance). Ámbar = cola de revisión ≥8, algún borrador esperando OK, o faltan trabajadores.
+   su alcance). Ámbar = cola de revisión ≥8, **la entrega más vieja esperando ≥2 h** (T-689: el
+   conteo solo no ve una cola CORTA pero VIEJA — 1-3 entregas reales esperaron 2,5-7,9 h sin mover
+   el semáforo, porque nunca llegaban a 8), algún borrador esperando OK, o faltan trabajadores.
    - **Lo que esta tarjeta NO dice, y no lo finge:** si un proceso está ejecutando de verdad. El
      panel es una página web y no entra en las máquinas; eso lo sabe `npm run flota` mirando el
      tmux. Aquí solo consta lo que está en la BD.

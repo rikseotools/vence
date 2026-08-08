@@ -16,7 +16,7 @@ function getOposicionScopeDb() {
 }
 import { laws, questions, topicScope, topics, userProfiles, validationErrorLogs } from '@/db/schema'
 import { and, eq, gte, inArray, or, sql } from 'drizzle-orm'
-import { getValidExamPositions, isExamPositionRegistered } from '@/lib/config/exam-positions'
+import { getValidExamPositions, getValidExamPositionsOrUnrestricted, isExamPositionRegistered } from '@/lib/config/exam-positions'
 import { ALL_POSITION_TYPES, getOposicionByPositionType, EXCLUSIVE_QUESTION_TAGS } from '@/lib/config/oposiciones'
 import { logValidationError } from '@/lib/api/validation-error-log'
 
@@ -301,9 +301,16 @@ export function buildQuestionTagFilter(positionType: string) {
 export function ownOfficialPredicate(
   positionType: string,
 ): (q: { isOfficialExam?: boolean | null; examPosition?: string | null }) => boolean {
-  const valid = new Set(getValidExamPositions(positionType))
+  // T-597 (08/08): una PERSONALIZADA no tiene lista de exam_position (null = sin
+  // restricción, ver getValidExamPositionsOrUnrestricted) — cualquier oficial cuenta como
+  // propia, igual que buildOfficialExamFilter la admite sin restringir por exam_position.
+  const valid = getValidExamPositionsOrUnrestricted(positionType)
+  if (valid === null) {
+    return (q) => q.isOfficialExam === true
+  }
+  const validSet = new Set(valid)
   return (q) =>
-    q.isOfficialExam === true && q.examPosition != null && valid.has(q.examPosition)
+    q.isOfficialExam === true && q.examPosition != null && validSet.has(q.examPosition)
 }
 
 /**

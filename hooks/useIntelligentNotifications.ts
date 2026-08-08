@@ -1377,7 +1377,11 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             borderColor: 'border-blue-200 dark:border-blue-800'
           })
         }
-      }).filter(notif => !dismissedNotifications.has(notif.id)) || []
+      }).filter(notif => !dismissedNotifications.has(notif.id))
+        // [T-378] Las respuestas de soporte salen de la campana y tienen su propio badge
+        // en el botón de Soporte (useSupportUnreadBadge) — antes se sumaban aquí y el
+        // badge de la campana nunca bajaba a 0 si había alguna sin leer.
+        .filter(notif => notif.type !== 'feedback_response') || []
 
       const unreadNotifications = filterUnreadNotifications(systemNotifs)
       console.log('📧 System notifications después de filtros:', unreadNotifications.length, unreadNotifications)
