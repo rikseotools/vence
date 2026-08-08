@@ -22,6 +22,8 @@
 import { testDbConfig } from '../helpers/db'
 import { Client } from 'pg'
 import dotenv from 'dotenv'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { UMBRAL_PLACEHOLDER } = require('../../lib/generacion/articuloPlaceholder')
 
 dotenv.config({ path: '.env.local', override: true })
 
@@ -54,7 +56,7 @@ describeIfDb('Guardarraíl: temario placeholder en leyes virtuales', () => {
     JOIN laws l ON l.id = a.law_id
     WHERE q.is_active = true
       AND l.is_virtual = true
-      AND length(a.content) < 120
+      AND length(a.content) < ${UMBRAL_PLACEHOLDER}
       AND a.article_number <> '0'
   `
 
@@ -66,7 +68,7 @@ describeIfDb('Guardarraíl: temario placeholder en leyes virtuales', () => {
       const { rows: top } = await client.query<{ short_name: string; nq: number }>(`
         SELECT l.short_name, count(q.id)::int AS nq
         FROM questions q JOIN articles a ON a.id = q.primary_article_id JOIN laws l ON l.id = a.law_id
-        WHERE q.is_active = true AND l.is_virtual = true AND length(a.content) < 120 AND a.article_number <> '0'
+        WHERE q.is_active = true AND l.is_virtual = true AND length(a.content) < ${UMBRAL_PLACEHOLDER} AND a.article_number <> '0'
         GROUP BY l.short_name ORDER BY nq DESC LIMIT 10
       `)
       const detalle = top.map((r) => `  ${r.short_name}: ${r.nq}`).join('\n')

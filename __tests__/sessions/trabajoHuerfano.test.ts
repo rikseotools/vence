@@ -163,3 +163,47 @@ describe('puedeBorrarse — el guard del borrado usa EXACTAMENTE el mismo criter
     expect(puedeBorrarse(null).borrable).toBe(true)
   })
 })
+
+describe('[T-707] el desglose viaja hasta el informe, y no cambia ninguna decisión', () => {
+  const { clasificarWorktree } = require('../../lib/sessions/trabajoHuerfano.cjs')
+
+  it('devuelve las dos categorías por separado', () => {
+    // Se arreglan distinto: lo sin commitear hay que commitearlo; lo commiteado y no publicado
+    // hay que EMPUJARLO. Llamar «sin commitear» a las dos cosas mandaba a mirar un árbol limpio.
+    const c = clasificarWorktree({
+      slug: 'w', ficherosUnicos: ['a.js', 'b.js'],
+      sinCommitear: ['a.js'], soloCommiteadoAqui: ['b.js'],
+      minSinSenal: 999, procesos: 0,
+    })
+    expect(c.sinCommitear).toEqual(['a.js'])
+    expect(c.soloCommiteadoAqui).toEqual(['b.js'])
+  })
+
+  it('el veredicto sigue saliendo de `ficherosUnicos`, no del desglose', () => {
+    // El desglose es para EXPLICAR, no para decidir. Si un día decidiera, dos worktrees iguales
+    // se clasificarían distinto según cómo se hubiera repartido la misma lista.
+    const conDesglose = clasificarWorktree({
+      slug: 'w', ficherosUnicos: ['a.js'], sinCommitear: ['a.js'], minSinSenal: 999, procesos: 0,
+    })
+    const sinDesglose = clasificarWorktree({
+      slug: 'w', ficherosUnicos: ['a.js'], minSinSenal: 999, procesos: 0,
+    })
+    expect(conDesglose.veredicto).toBe(sinDesglose.veredicto)
+  })
+
+  it('sin desglose no revienta: los worktrees viejos siguen clasificándose', () => {
+    const c = clasificarWorktree({ slug: 'w', ficherosUnicos: [], minSinSenal: 999, procesos: 0 })
+    expect(c.sinCommitear).toEqual([])
+    expect(c.soloCommiteadoAqui).toEqual([])
+  })
+
+  it('descarta entradas vacías, igual que hace con `ficherosUnicos`', () => {
+    const c = clasificarWorktree({
+      slug: 'w', ficherosUnicos: ['a.js'],
+      sinCommitear: ['a.js', '', null], soloCommiteadoAqui: [undefined],
+      minSinSenal: 999, procesos: 0,
+    })
+    expect(c.sinCommitear).toEqual(['a.js'])
+    expect(c.soloCommiteadoAqui).toEqual([])
+  })
+})
