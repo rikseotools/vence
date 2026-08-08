@@ -908,7 +908,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'de todo el mundo en el punto de servicio); esta es la versión bajo demanda, para contestar ' +
       'una impugnación concreta («¿le va a volver a pasar?») sin esperar días de telemetría. ' +
       'Usada el 06/08 para cerrar `dba485dc`/`410025b4` (Lucia, UC3M): 50 servidas por Test Rápido y ' +
-      '32 por el examen de su tema, 0 fuera.',
+      '32 por el examen de su tema, 0 fuera. ' +
+      '[T-381, 08/08] Corría contra la sesión de un usuario REAL sin ninguna cabecera de canario: ' +
+      'contra `SIM_BASE` de producción por defecto, cada tanda contaba en `daily_questions_served` ' +
+      'como servidas-sin-responder BAJO LA IDENTIDAD DE ESA PERSONA — la firma exacta de cosecha, ' +
+      'contra alguien inocente. No lo cazaba el canario `served-rollup` (que busca el patrón ' +
+      '`smoke@`, y aquí el JWT lleva un `userId` real). Arreglado con `x-vence-canary-secret` en el ' +
+      'contexto de Playwright (mismo patrón que `scripts/sim/run.ts`), que además evita el reto ' +
+      'anti-scraping.',
   },
   // ── un modal abierto en móvil, ¿se puede TOCAR entero? ────────────────────────────────────
   sim_modal_tocable: {

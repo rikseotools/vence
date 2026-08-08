@@ -28,7 +28,17 @@ describe('/api/questions/filtered — el gate anti-scraping exime canaries que l
 
   it('usa el canary de CONFIANZA (con secreto), no el marcador falsificable', () => {
     expect(route).toMatch(/import\s*\{[^}]*esCanaryDeConfianza[^}]*\}\s*from\s*['"]@\/lib\/api\/syntheticTrust['"]/)
-    expect(route).toMatch(/esCanaryDeConfianza\(\s*request\s*,\s*secretoCanaryEsperado\(/)
+    // [T-381] `secretoCanaryEsperado(process.env)` puede llegar INLINE a `esCanaryDeConfianza`
+    // o pasar por una variable (necesaria desde T-381: la reutiliza también
+    // `esCanaryParaMetricas`, así que calcularla dos veces sería el propio patrón que este
+    // fichero evita en otros sitios). Las dos formas demuestran lo mismo — que el secreto
+    // real alimenta la comprobación, no un valor inventado — así que se acepta cualquiera de
+    // las dos, capturando el nombre de la variable si la hay.
+    const variable = route.match(/const\s+(\w+)\s*=\s*secretoCanaryEsperado\(/)?.[1]
+    const usaInline = /esCanaryDeConfianza\(\s*request\s*,\s*secretoCanaryEsperado\(/.test(route)
+    const usaVariable =
+      !!variable && new RegExp(`esCanaryDeConfianza\\(\\s*request\\s*,\\s*${variable}\\b`).test(route)
+    expect(usaInline || usaVariable).toBe(true)
   })
 
   it('el gate (isCaptchaEnabled) NO se aplica al canary de confianza', () => {
