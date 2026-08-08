@@ -27,7 +27,7 @@
 const path = require('path')
 const { execFileSync, spawnSync } = require('child_process')
 const { needsTypecheck, needsBackendTypecheck } = require('../lib/hooks/typecheckRelevance.cjs')
-const { conCandado, interpretarSalida } = require('../lib/hooks/candadoTypecheck.cjs')
+const { conCandado, interpretarSalida, MARCA_ENTORNO } = require('../lib/hooks/candadoTypecheck.cjs')
 const { emitirFriccion } = require('../lib/sessions/friccion.cjs')
 
 /** ¿Existe `flock` en esta máquina? Sin él no se serializa, pero tampoco se impide nada. */
@@ -117,7 +117,13 @@ function main() {
     const r = spawnSync(inv.comando, inv.args, {
       cwd: p.cwd,
       stdio: 'inherit',
-      env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim() },
+      // La marca impide que el `npm run typecheck` de dentro vuelva a pedir el MISMO candado:
+      // `flock` no es reentrante entre procesos y el hijo esperaría a su propio padre (T-708).
+      env: {
+        ...process.env,
+        [MARCA_ENTORNO]: inv.conCandado ? '1' : (process.env[MARCA_ENTORNO] || ''),
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim(),
+      },
     })
     const seg = ((Date.now() - t0) / 1000).toFixed(0)
 
@@ -135,7 +141,13 @@ function main() {
       const r2 = spawnSync('npm', ['run', 'typecheck'], {
         cwd: p.cwd,
         stdio: 'inherit',
-        env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim() },
+        // La marca impide que el `npm run typecheck` de dentro vuelva a pedir el MISMO candado:
+      // `flock` no es reentrante entre procesos y el hijo esperaría a su propio padre (T-708).
+      env: {
+        ...process.env,
+        [MARCA_ENTORNO]: inv.conCandado ? '1' : (process.env[MARCA_ENTORNO] || ''),
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=6144`.trim(),
+      },
       })
       r.status = r2.status
       r.error = r2.error

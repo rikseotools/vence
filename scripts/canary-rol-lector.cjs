@@ -84,6 +84,9 @@ const DEBE_LEER = [
   // es la métrica que la propia ficha pide para medir el daño real de un reload en caliente.
   // Ver 20260807_rls_user_interactions_lector.sql.
   ['user_interactions', 'los eventos de interacción (version-check, tests…), para medir daño de reloads'],
+  // [T-530] antifraude por dispositivo (T-372, T-418, T-304): sin esto no se puede medir por qué
+  // la huella de hardware no reconoce la misma máquina. Ver 20260807_rls_user_devices_lector.sql.
+  ['user_devices', 'huella de hardware y etiquetas de dispositivo, para diagnosticar el antifraude'],
 ]
 
 /** Dónde vive un identificador directo. Esto es lo que NO puede ver. */

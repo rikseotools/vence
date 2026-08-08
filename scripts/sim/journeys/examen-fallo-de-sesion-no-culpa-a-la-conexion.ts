@@ -56,12 +56,17 @@ const journey: Journey = {
     await ctx.page.waitForTimeout(4000)
 
     // Responder lo que haya en pantalla: en modo examen están todas visibles a la vez.
+    // Las opciones del modo examen son botones de fila con el texto «A) …», NO los botones
+    // cuadrados A/B/C/D del test normal (ese selector, el primero que probé, daba CERO y
+    // dejaba el journey «verde por no haber ejercitado nada»). Se responde UNA por pregunta:
+    // pinchar las cuatro dejaría marcada la última, que da igual para lo que se mide, pero
+    // multiplica las llamadas a /api/exam/answer sin motivo.
     const respondidas = await ctx.step('responder el examen', async () => {
-      const opciones = ctx.page.getByRole('button', { name: /^[ABCD]$/ })
-      const n = await opciones.count()
+      const primeras = ctx.page.locator('button').filter({ hasText: /^\s*A\)/ })
+      const n = await primeras.count()
       for (let i = 0; i < n; i++) {
-        await opciones.nth(i).click({ timeout: 3000 }).catch(() => {})
-        await ctx.page.waitForTimeout(150)
+        await primeras.nth(i).click({ timeout: 3000 }).catch(() => {})
+        await ctx.page.waitForTimeout(200)
       }
       return n
     })
