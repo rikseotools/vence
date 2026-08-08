@@ -3968,6 +3968,60 @@ noches en drenar del todo, que es el diseño.
   `remaining` con números reales igualmente); (2) `drenaje_atrasado` no vuelve a aparecer en
   `alert_rule_failed`; (3) el conteo de filas fuera de retención sigue bajando noche a noche.
 
+- **✅ DESPLIEGUE CONFIRMADO (08/08) + REGRESIÓN 3 encontrada y arreglada. Rama nueva:
+  `flota/T-613-purge-loop-resiliencia` (pusheada, NO desplegada).**
+
+  **El deploy del fix anterior SÍ está vivo:** confirmado con `shaVivo('backend')` = `a0b710ee`
+  (consulta directa a `/health`, no supuesto) y `git merge-base --is-ancestor 1a5803669 a0b710ee`
+  → sí. El merge que lo llevó a producción (`165b6e5d`, commiteado 07/08 22:33 UTC) ya estaba vivo
+  antes del cron de esta noche (08/08 04:11 UTC) — la comparación de timestamps lo confirma, no es
+  una suposición.
+
+  **`archive-interactions` sigue sano:** `cron_run` 08/08 03:31 UTC → `batches:20, deleted:20008,
+  archived:200000, status:'success'`. `user_interactions` con **0 filas > 90 días** — completamente
+  drenado.
+
+  **`telemetry-retention` (08/08 04:11:23 UTC) volvió a fallar, pero con un error DISTINTO** al del
+  07/08 (aquel era el VACUUM, ya arreglado): `error_message` = `"Failed query: DELETE FROM
+  observable_events WHERE ctid IN (SELECT ctid FROM observable_events WHERE created_at < now() -
+  interval '30 days' LIMIT $1) params: 50000"`, `duration_ms: 83681`. **Encontré la causa exacta
+  leyendo `purgeTable()`: el bucle de DELETE no tenía try/catch — a diferencia de `vacuum()`, que sí
+  lo tiene desde el fix del 07/08 —, así que un lote que falla revienta `run()` entero de nuevo, con
+  el mismo daño: se pierde `deleted` acumulado, el VACUUM no llega a correr y `remaining` (que se
+  calcula DESPUÉS) nunca se calcula.** El backlog real siguió bajando pese al fallo (confirmado con
+  `pg_stat_user_tables`: `observable_events` a 6.201.590 filas vivas, `last_autovacuum` 1 min después
+  del fallo del cron — el autovacuum de Postgres limpió lo que sí se había borrado antes de reventar)
+  y el conteo de filas > 30 días es ahora **118.798** (bajado desde los millones originales) —
+  el drenaje funciona noche a noche pese a estos dos fallos puntuales de reporte.
+
+  **Arreglado igual que el VACUUM:** `purgeTable()` envuelve el DELETE por lote en try/catch; si un
+  lote falla, se registra en `result.purgeFailed` (vacío = todo bien), se corta ESA tabla para esa
+  pasada (no se reintenta en el mismo run) y lo ya borrado + `remaining` se conservan y se reportan
+  igual — `status` sigue siendo `'success'` en el `cron_run`, así que `drenaje_atrasado` puede seguir
+  evaluando esa noche con datos reales en vez de quedarse ciego. **`archive-interactions.service.ts`
+  (el fichero del que se copió el patrón, según su propio comentario) tenía el MISMO hueco en sus dos
+  fases** (mover a archivo, limpiar el archivo) — no ha fallado aún en producción pero comparte el
+  riesgo, así que se arregló igual por prevención, con los mismos campos `archiveFailed`/
+  `cleanupFailed`.
+
+  **Reproducido antes de tocar código, no solo razonado:** en cada fichero, revertí el `.service.ts`
+  a `origin/main` con `git stash`, corrí el test nuevo → falló propagando la excepción exacta de
+  producción fuera de `run()` (confirmado con la traza: `at TelemetryRetentionService.purgeTable` →
+  `at TelemetryRetentionService.run`); restauré el fix → los 7 (telemetry-retention) y 5
+  (archive-interactions) tests pasan, 12/12 en total + los 16 ya existentes de
+  `alert-rules.drenaje.spec.ts` (28/28 conjunto). `tsc --noEmit` y `eslint` limpios en los 4 ficheros
+  de producción tocados (los errores de lint en los `.spec.ts` son prettier/`require-await`
+  PRE-EXISTENTES en `origin/main`, confirmado revirtiendo y relanzando eslint — no introducidos aquí,
+  fuera de alcance de esta ficha).
+
+  **Falta:** desplegar backend. Tras el deploy, a la noche siguiente confirmar: (1) si
+  `telemetry-retention` vuelve a fallar un lote, el `cron_run` mantiene `status:'success'` con
+  `purgeFailed` no vacío (en vez de `status:'failure'` sin números); (2) el conteo de filas > 30d en
+  `observable_events` sigue bajando (ya en 118.798, debería llegar a 0 en 1-2 noches más); (3)
+  `drenaje_atrasado` sigue sin reaparecer en `alert_rule_failed`. **Sigue pendiente, sin tocar:** la
+  migración RLS de `user_interactions`/`user_interactions_archive`
+  (`flota/T-613-rls-user-interactions-w2`), necesita `DATABASE_URL` de escritura.
+
 ### [T-608] 🔴 [ABIERTO 06/08/2026] El banner de cookies (`z-[9999]`) se come el cuarto inferior de cualquier modal en móvil: se ve, pero no se puede tocar
 
 **Lo que reporta la usuaria** (Laura Simar, premium, Dip. Zaragoza, feedback `7847ff3e`):
