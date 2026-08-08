@@ -26,6 +26,16 @@ describe('analizarSiglas (§2.2-quater: pregunta autocontenida)', () => {
     ).toEqual([])
   })
 
+  it('marca RGC sin desarrollar y la acepta con el nombre completo o el RD (T-278, 06/08/2026)', () => {
+    expect(analizarSiglas('Según el artículo 45 del RGC, todo conductor...').faltan).toEqual(['RGC'])
+    expect(
+      analizarSiglas('Según el artículo 45 del Reglamento General de Circulación (RGC), todo conductor...').faltan
+    ).toEqual([])
+    expect(
+      analizarSiglas('Según el artículo 45 del Real Decreto 1428/2003, todo conductor...').faltan
+    ).toEqual([])
+  })
+
   it('acepta el número de la norma como desarrollo (Ley 58/2003 ≡ LGT)', () => {
     const r = analizarSiglas('Según el artículo 1 de la Ley 58/2003, la LGT establece que...')
     expect(r.faltan).toEqual([])
