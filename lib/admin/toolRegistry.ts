@@ -1391,7 +1391,15 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'sirve como señal, ya probado (T-296): la fecha del directorio** (una sesión viva pasa horas sin ' +
       'tocar su worktree), **el `cwd` de las transcripciones** (dice siempre el repo principal) y la ' +
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
-      '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
+      '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro. ' +
+      '**Un fallo dentro de `main()` YA NO desaparece sin rastro (T-687).** Sigue sin fallar hacia fuera ' +
+      '(regla 1: el comando padre nunca se entera), pero deja una marca local en ' +
+      '`os.tmpdir()/vence-latido/<sid>` (núcleo puro `lib/sessions/latidoFallo.cjs`) que el PRÓXIMO ' +
+      'latido con éxito lee, borra y convierte en un evento `sesion_friccion`/`latido_fallido` con ' +
+      'cuántos intentos y cuántos minutos estuvo callado. `backlog.cjs heartbeat` la lee también en ' +
+      'caliente: renovar el lease de las TAREAS (`backlog_tasks`) no dice nada del latido de PRESENCIA ' +
+      '(`worktree_sessions`, otro escritor) — son dos señales distintas y el caso real que abrió esta ' +
+      'ficha fue justo esa confusión.',
   },
   parte_de_sesiones: {
     titulo: 'El PARTE: qué hace cada sesión, quién está parado y qué espera decisión — en una pantalla',

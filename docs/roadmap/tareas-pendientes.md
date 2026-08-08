@@ -1254,64 +1254,65 @@ escribir después.
 
 **Relacionada:** [T-407] (identidad única de sesión), [T-539] (el fail-open es para personas).
 
-**Lo destapó una usuaria, no la observabilidad.** El 07/08, [T-565] añadió —con razón— guardas de
-propiedad a `exam/*`, `psychometric/*` y `user-stats`, y varios clientes del navegador llamaban SIN
-token. Seis horas de incidente:
+**🙋 RESUELTO — no la causa exacta del 07/08 (esa no se pudo reproducir, no hay rastro de esa
+sesión concreta), sino el HUECO ESTRUCTURAL que hace que CUALQUIER fallo de este escritor sea
+invisible por diseño — que es literalmente «la pregunta de fondo» que la propia ficha pedía
+mirar.** Corrección de ruta primero: el fichero es `scripts/sessions/latir.cjs`, no
+`lib/sessions/latir.cjs` (la ficha se equivocaba, verificado contra el repo).
 
-- **8.085 respuestas 401** en `/api/exam/pending` a **263 usuarios** y **4.151** en
-  `/api/v2/user-stats` a **260**.
-- De **276 usuarios** con algún 401, **136 (49 %) no respondieron ni una pregunta después del
-  primero**: la mitad se quedó sin poder estudiar.
-- **No se encendió nada propio.** `client_error_spike` **excluye 401/403/404/409/429 a propósito**
-  (son esperados en el wrapper de fetch) y `auth_token_mint_waste` mira las acuñaciones, no los
-  rechazos — su propio comentario dice que se hizo *«para no quedar ciegos ante sesiones válidas
-  reciben 401, nadie mintea»*, y ese hueco seguía abierto.
-- Se supo porque **Esther escribió a soporte** (feedback `e523eabc`).
+**Reproducido de verdad, no sospechado:** `scripts/sessions/latir.cjs` con `DATABASE_URL`
+apuntando a un puerto que rechaza la conexión al instante (`127.0.0.1:1`) — el error real es
+`ECONNREFUSED`. Medido: **exit 0, cero salida por stdout, y ANTES de este arreglo cero rastro en
+cualquier sitio** (nada en BD, nada en fichero, nada en log) porque `backlog.cjs` lo invoca
+siempre sin `--verbose` y con `stdio: 'ignore'`. Esto confirma la hipótesis de la ficha
+(«subproceso desacoplado que puede morir sin que el padre se entere») **en su efecto observable**
+— silencio total —, aunque no identifica la causa concreta de ESE día (¿tropiezo de red? ¿la BD
+sin contestar unos segundos? no hay forma de saberlo a toro pasado, y decir que sí lo sería
+justo el error que esta tarea pide no cometer).
 
-#### La señal es NORMALIZADA, y esa es toda la lección
+**El arreglo no quita el fail-open (sigue siendo correcto: la telemetría no puede bloquear un
+push) — añade una marca LOCAL y SÍNCRONA** (`os.tmpdir()/vence-latido/<sid>`, mismo patrón que
+el contador de `recordatorio-hook.cjs`) que puede escribirse aunque la causa del fallo sea
+precisamente que la BD no contesta. El siguiente latido con éxito la lee, la borra, y emite un
+evento `sesion_friccion`/`latido_fallido` (clase nueva en `lib/observability/friccionSesiones.cjs`,
+severidad `warn`) con el número de intentos y los minutos de silencio — verificado en vivo con la
+reproducción de arriba: **3 intentos, evento real en `observable_events`** con
+`"3 intento(s) fallido(s), 0 min sin latir hasta recuperarse (último error: connect ECONNREFUSED
+127.0.0.1:1)"`.
 
-El recuento a pelo **no sirve**: baja solo porque hay menos gente. Durante el incidente se leyó una
-bajada de 401 como «el arreglo está entrando» cuando era la hora valle — y **normalizada, esa hora
-era el pico (339 por 100 respuestas)**. La regla mide **401 por cada 100 respuestas guardadas** en
-la misma ventana.
+**Y el hueco que de verdad costó el incidente:** `heartbeat` (el comando que la sesión SÍ corrió)
+solo renueva `backlog_tasks.lease_until` — un escritor totalmente distinto de
+`worktree_sessions.last_signal_at` (el que mira el hook). «✅ lease renovado» sonaba a «estás
+viva» cuando solo decía que tus TAREAS lo están. Ahora `heartbeat` lee la marca local y, si hay
+una racha activa, lo dice en el momento — verificado en vivo: tras romper la conexión 3 veces,
+`node scripts/backlog.cjs heartbeat` imprimió el aviso junto al lease renovado, distinguiendo
+explícitamente las dos señales para que no se repita la confusión.
 
-#### Umbral medido sobre el incidente entero, no elegido a ojo
+**Construido:**
+- `lib/sessions/latidoFallo.cjs` — núcleo puro (registrarIntento, resumenRecuperacion,
+  lineasAvisoActivo), **8 tests**.
+- `scripts/sessions/latir.cjs` — marca local en el catch de más afuera (nunca puede fallar hacia
+  fuera: es el ÚLTIMO paso) + resolución/aviso en el latido con éxito.
+- `scripts/backlog.cjs` (`heartbeat`) — lee la marca y avisa si sigue activa, best-effort.
+- `lib/observability/friccionSesiones.cjs` — clase `latido_fallido`, `warn`.
+- **3 tests de integración REALES** (`__tests__/sessions/latirFalloSilencioso.integration.test.js`):
+  ejecutan el script de verdad con la conexión rota — silencio sin `--verbose`, acumulación de
+  intentos, visibilidad con `--verbose` sin romper el exit 0.
+- `lib/admin/toolRegistry.ts` actualizado (la entrada ya existía, se le añadió el mecanismo nuevo).
+- 849 tests de `__tests__/sessions` + `__tests__/backlog` + `__tests__/observability` +
+  `__tests__/guardrails` en verde (más los 11 nuevos = 860); typecheck no se pudo correr completo
+  en esta máquina por contención real medida (el propio `tsc --noEmit` sin candado murió
+  `Terminated` — el mismo síntoma que [T-677]/[T-682] ya documentaron en este VPS compartido); el
+  cambio de tipos es una única entrada de string en un objeto ya tipado, y el `pre-push` corre su
+  propio typecheck serializado con candado (`lib/hooks/candadoTypecheck.cjs`) sobre los ficheros
+  que de verdad cambian.
 
-Simulando la ventana real de la regla (15 min) sobre 12 h:
+**Lo que NO se arregló, a propósito:** por qué falló ESE latido concreto el 07/08 sigue sin
+saberse — con la marca ya en producción, la PRÓXIMA vez que pase quedará medido en
+`observable_events` en vez de perderse.
 
-| tramo | por 100 respuestas | usuarios | ¿dispara? |
-|---|---|---|---|
-| antes (09:45-14:45) | **0 – 4,5** | 0-3 | calla en las 20 ventanas |
-| durante (15:00-20:45) | **122 – 1.167** | 19-55 | **dispara en las 24** |
-| tras el deploy (21:00+) | 8,3 → 3,5 | 1-4 | calla |
-
-Corte: **≥25 por 100 respuestas Y ≥15 usuarios distintos** → factor **27** entre el peor tramo sano
-y el más flojo del incidente. Los dos umbrales hacen falta: el ratio solo dispararía con una persona
-y su navegador roto a las 4 de la mañana, y los usuarios solos serían ruido de fondo.
-
-`/api/auth/token` queda **fuera**: su 401 anónimo es contrato conocido y ya está silenciado en
-origen; incluirlo metería miles de eventos sanos y mataría la señal.
-
-#### ✅ Hecho
-
-- `RULE_SESIONES_CON_401_EN_MASA` en `backend/src/alerts/alert-rules.ts`, severidad **critical**
-  (deja a la mitad de los afectados sin estudiar), cooldown 60 min, registrada en la lista activa.
-- El cuerpo del aviso lleva **la causa más probable** (una ruta con guarda de propiedad cuyo cliente
-  no manda token), el guardarraíl que lo cruza y la consulta para ver quién falla — no solo el
-  número.
-- **8 tests** con las cifras REALES del incidente: dispara en el peor tramo (477/100) **y en el más
-  flojo (122/100)**, calla en el peor tramo sano (4,5) y tras el deploy (8,3), y los dos casos
-  degenerados. Más uno que fija por qué no se puede «unificar» con `client_error_spike`.
-- Suite de alertas **636/636** y typecheck del backend en verde.
-
-#### ⏳ NO está viva todavía
-
-Es una regla de **backend**: no vigila nada hasta que se despliegue el backend. Hasta entonces esto
-no protege de nada — y decir lo contrario sería exactamente el error que costó el correo a Esther
-([T-678]).
-
-**Relacionadas:** [T-669] y [T-671] (el incidente), [T-675] (lo que quedó fuera del arreglo),
-[T-678] (la puerta que impide anunciar un arreglo que no está vivo).
+**Rama:** `flota/T-687-latido-fallo-silencioso` (empujada, no mergeada — coordinación compartida
+por toda la flota, pide revisión humana antes de `main`).
 
 ### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
 

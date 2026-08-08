@@ -885,6 +885,19 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         RETURNING id`;
       console.log(rows.length ? `✅ lease renovado (${LEASE_MIN} min): ${rows.map((r) => r.id).join(', ')}`
                               : 'No tienes tareas cogidas.');
+      // El lease de arriba y el LATIDO DE PRESENCIA (worktree_sessions.last_signal_at) son DOS
+      // escritores distintos (T-687): heartbeat renueva el primero, pero el segundo lo escribe
+      // SIEMPRE `latir.cjs` como subproceso detached, y puede fallar en silencio. Sin este aviso,
+      // "✅ lease renovado" suena a "estás viva" cuando solo dice que TUS TAREAS lo están — el
+      // reparto puede seguir dándote por muerta por la otra señal. Lee la marca local (best-effort,
+      // nunca puede fallar el comando).
+      try {
+        const { lineasAvisoActivo } = require(path.join(__dirname, '..', 'lib', 'sessions', 'latidoFallo.cjs'));
+        const marcaFichero = path.join(require('os').tmpdir(), 'vence-latido', String(sid || 'sin-sid').replace(/[^a-zA-Z0-9-]/g, '_'));
+        const marca = JSON.parse(fs.readFileSync(marcaFichero, 'utf8'));
+        const lineas = lineasAvisoActivo(marca, new Date().toISOString());
+        if (lineas.length) { console.log(''); for (const l of lineas) console.log(l); }
+      } catch { /* sin marca (caso sano) o sin poder leerla: no estorbar el heartbeat por esto */ }
       // El OTRO momento en que la regla es aplicable AHORA (T-495): renovar el lease significa que
       // llevas rato con la misma tarea, o sea que el recordatorio del `claim` ya está sepultado.
       // El umbral lo decide el núcleo puro; aquí solo se le pasa cuánto llevas.
