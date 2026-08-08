@@ -13426,6 +13426,21 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 
 - **📏 ESTADO REAL medido HOY (07/08), no el de esta ficha (última cifra del 26/07) — la ficha estaba MUY desfasada.** `topic_scope_verification` sobre 3.844 temas activos: `verified_correct` 2.067 · `never_verified` 560 · `stale` 285 · `verified_issues` 78 · **`needs_human` 4** (la ficha decía 107 el 20/07 — bajó a 4 por trabajo de otras sesiones/tareas entre medias, T-518/T-556/T-631 principalmente). Trabajado como `trabajador` (sin permiso de escritura en BD de negocio: `DATABASE_URL`=coordinación, todo lo de abajo verificado por lectura contra `VENCE_LECTOR_URL` y contra el BOE directo, cero escritura intentada).
 
+  **🔧 CORRECCIÓN (08/08, w3): el `never_verified 560` de arriba está MAL — la revisión lo cazó y
+  lo confirmo, con cifra fresca.** El `560` solo contaba filas con `state='never_verified'`
+  EXPLÍCITO en `topic_scope_verification`, pero un tema **sin ninguna fila** en esa tabla está
+  igual o MENOS verificado — y el INNER JOIN implícito de la consulta original los dejaba fuera
+  sin querer. Prueba de que el número no cuadraba: `2.067 + 560 + 285 + 78 + 4 = 2.994`, que **no**
+  suma los 3.844 temas activos que la propia entrega cita — señal de que algo faltaba.
+  Re-medido ahora (08/08, dos días después, cifras naturalmente movidas por el resto de la flota):
+  **3.847 temas activos** · `verified_correct` 2.060 · `never_verified` (fila explícita) 560 ·
+  `stale` 292 · `verified_issues` 78 · `needs_human` 4 · **sin ninguna fila: 853**. El
+  **nunca-verificado real es 560 + 853 = 1.413** (2.060+1.413+292+78+4 = 3.847, cuadra exacto).
+  Query: `LEFT JOIN topic_scope_verification … WHERE t.is_active` en vez de `JOIN` implícito,
+  contando aparte los `topic_id` sin fila (`NOT EXISTS`). No cambia nada del resto de esta
+  sección — los 4 `needs_human`, la cola de 27 (11 bookkeeping + 16 recortes reales) y el caso
+  ULE T4 se remidieron por separado y coinciden con lo que ya dice la ficha.
+
   **Los 4 `needs_human` de hoy, uno por uno:**
   1. **`administrativo_castilla_leon` T509** y **`administrativo_castilla_leon` T508** (Explorador de Windows / Office 365 vs Escritorio) y **`auxiliar_administrativo_madrid_2027` T16** (Explorador de Windows: hermana `auxiliar_administrativo_madrid` sirve Windows 10, ésta pide Windows 11 sin que el epígrafe lo diga) — **los 3 son el mismo patrón §5-bis ya documentado arriba** (variante de versión de software que el epígrafe no distingue): bloqueados esperando nota informativa oficial del tribunal o decisión de producto, **no accionables por verificación de fuente**. No tocados.
   2. **`auxiliar_administrativo_universidad_leon` T4 (LO 3/2018, «Título II: Principios de protección de datos. Título III: Derechos de las personas») — RESUELTO, queda solo aplicar.** Su `findings` decía literalmente `a_decidir: ["1","2","3"]` sin ninguna prosa — un placeholder inútil hasta que se entiende que son los NÚMEROS de artículo en duda: el scope actual es LO 3/2018 arts **1-18**, y el epígrafe (ya `verified_literal` desde el 06/08 por [T-631], contra BOE-A-2026-4150 Anexo II punto 4) solo nombra Título II y Título III — la duda era si los arts. 1-3 (Título I «Disposiciones generales») debían quedarse.
