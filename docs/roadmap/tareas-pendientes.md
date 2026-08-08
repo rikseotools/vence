@@ -6975,6 +6975,10 @@ ponerse a verificar una por una.
   - **REPRODUCIDO, no solo razonado:** `__tests__/hooks/useDisputeNotifications401.test.tsx` (6 tests) monta el hook de verdad (`renderHook` + timers falsos), simula un 401 sostenido y comprueba que tras 10 ticks de 60s **sigue en 1 sola petición** (antes del fix habrían sido 11 — confirmado revirtiendo el fix a mano: 3 de los 6 tests fallan exactamente como se espera, y vuelven a pasar con el fix puesto). Cubre también: visibilitychange no reintenta, una sesión nueva (`user` distinto) SÍ vuelve a intentar, un 500 SÍ sigue reintentando (para no convertir esto en "para ante cualquier error"), el sondeo normal (200) no cambia, y sin usuario no arranca (comportamiento previo intacto). Typecheck limpio; 224/224 en toda la carpeta `__tests__/hooks`.
   - **Pendiente de verificar EN VIVO tras el deploy del frontend** (no puedo desplegar desde aquí): que la query de la ficha (`disputes/notifications 401` agrupada por `user_id`) deje de mostrar rachas de decenas/cientos de eventos seguidos con el mismo `user_id`, y que el volumen total baje de forma sostenida (no solo un día bueno).
 
+- **✅ SEGUNDO FIX (07/08) — un mecanismo real de identidad de objeto, corregido tras revisión el 08/08 porque la narrativa de "verificado en producción" no se sostenía.**
+  - **El mecanismo de código es real y está REPRODUCIDO en test, no solo razonado:** el `useEffect` del hook dependía de `[user]` (el objeto completo, comparado por referencia), y `AuthContext` puede reconstruir ese objeto (mismo `id`, referencia NUEVA) sin que sea un login real — cada reconstrucción reiniciaba `sessionInvalidRef.current = false`, deshaciendo el corte del primer fix. Arreglo: depender de `userId = user?.id` en vez de `user`. Confirmado independientemente revirtiendo SOLO el hook a `origin/main` y comprobando que el test nuevo (`__tests__/hooks/useDisputeNotifications401.test.tsx`, "re-hidratación, no login") falla con 2 llamadas en vez de 1; restaurando el fix, pasa. 7/7 tests, eslint limpio.
+  - **⚠️ Lo que NO se sostuvo al revisar (08/08): la afirmación "verificado en producción, no supuesto" de que el primer fix, ya desplegado, seguía fallando.** El comentario original citaba deploy_version/eventos como prueba, pero al comprobar los timestamps: `c0f110243` (primer fix) se commiteó `2026-08-07T02:57:29Z`; el primer `deploy_version` que lo contiene como ancestro no aparece hasta `2026-08-07T11:39:52Z` (~8h42m después). **Los eventos citados como "el fix ya desplegado seguía fallando" vienen de `deploy_version` que empezaron a servir HORAS ANTES de que ese commit existiera** (uno desde las 21:24Z del día anterior) — son contenedores pre-fix, no evidencia de que el fix desplegado fallara. Y en sentido contrario: en las ~20h de datos posteriores al primer deploy_version que sí contiene el fix, no aparece ninguna racha de 60s nueva — indicio de que el primer fix SÍ funcionó una vez vivo. **No se revierte este segundo fix** (el mecanismo de identidad de objeto es real, reproducido y una mejora legítima independiente de esta narrativa), pero la causa "el primer fix falló en producción" queda como NO DEMOSTRADA — corregido el comentario del test y esta ficha para no dejarlo documentado como hecho confirmado. Detalle completo: revisión `revisado T-419` de esta misma fecha.
+
 
 ### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
 
@@ -7187,6 +7191,35 @@ pero eso hay que comprobarlo, no suponerlo.
   - **Los 22 falsos positivos** eran paráfrasis correctas, preguntas de NEGACIÓN que el filtro no reconocía, o claves cortas. **`RE_NEGATIVA` se amplió TRES veces durante la propia revisión** (`no atribuye`, `entre los que no se encuentra`, `no se considera`, `no se constituyen`) — cada enunciado nuevo destapaba otro hueco de la lista cerrada. Todos fijados en `__tests__/health/vinculoArticuloVecinoNegacion.test.js` con sus contraejemplos.
 - **⏳ QUEDA — la decisión sobre el resto de las 1.713 firmadas:** No hay atajo determinista: cada una exige abrir su norma y aplicar §3.1 (test directo + test inverso). Lista en `scratchpad/t465-medibles.json` (filtrar `real:true`). Empezar por las de más exposiciones.
 - **NOTA:** Limpiarles los flags (ponerlos a NULL) las devuelve a la cola de revisión de golpe; dejarlas las mantiene figurando como comprobadas. Opción intermedia: limpiar solo las que además salgan en los detectores deterministas. **NO son necesariamente preguntas malas** — es que nadie ha mirado su contenido.
+
+**RESUELTAS las 2 últimas `needs_human` (08/08) — verificadas contra fuente oficial, no aplicadas (credencial de solo lectura). Plan completo en `scratchpad/t465/plan-needs-human.md`:**
+- **`8b5d00f1` (Galicia, gerencia de área sanitaria) → RETIRAR.** El único artículo de la Ley 8/2008 que cruza gerencia+nombramiento (el 121.7) es una cláusula de remisión genérica, no nombra a la Consellería de Sanidad; revisado el banco entero, no hay decreto de estructura orgánica del SERGAS/áreas sanitarias importado que lo atribuya. `admin_content_not_in_law`.
+- **`eab05295` (Andalucía, competencia del BOJA) → la clave ES correcta, RESTAURAR a `approved`.** El diagnóstico de la sesión anterior era acertado (nuestra copia del art. 1 es un resumen de 370 caracteres, no el texto legal) pero quedaba sin comprobar contra el BOJA real. Hecho ahora: fetch RAW (no resumen de LLM — lección de T-679) de `https://www.juntadeandalucia.es/boja/2025/513/1` (Decreto 168/2025, BOJA Extraordinario nº 13/2025) — el art. 1.k) dice literalmente *«La dirección, edición y publicación del Boletín Oficial de la Junta de Andalucía en su sede electrónica»*, EXACTO a la opción correcta. Artículo 1 completo re-extraído y formateado, listo para reemplazar el resumen: `scratchpad/t465/decreto168-2025-articulo1-verbatim.txt`.
+- **Hallazgo NUEVO, medido, fuera de alcance de esta ficha:** el Decreto 168/2025 entero (21 artículos) está importado como resúmenes parafraseados (215-386 caracteres cada uno) en vez de texto literal — el art. 1 real mide 4.650. Cuelgan 8 preguntas (7 activas). Muestreadas 5 de las 6 del art. 2 contra el texto real (también extraído, `scratchpad/t465/decreto168-2025-articulo2-raw.txt`): las 5 tienen clave correcta, mismo patrón (resumen malo, clave buena). La sexta (`20c697b1`, departamentos del SAS) no encaja con el art. 2 que sí tengo — puede estar mal vinculada o necesitar un artículo posterior no comprobado. Y el `laws.boe_url` de este decreto apunta a OTRO documento (una Orden de incendios forestales, verificado con WebFetch) — la URL correcta es la de arriba. No re-importo los 20 artículos restantes: son fuera del "rato" declarado para los 2 `needs_human`, quedan anotados con cifras para quien lo retome.
+
+**✅ DECISIÓN DE MANUEL (08/08, pregunta #111): OPCIÓN A — limpiar los flags a NULL.** *«El falso verde
+es peor que el hueco declarado, y "no lo sé" tiene que poder decirse — es uno de los nueve principios
+del andamiaje de sesiones (…) Dejarlas en B es exactamente lo contrario: el banco seguiría AFIRMANDO
+que 1.680 preguntas están verificadas sabiendo nosotros que la firma fue cosmética.»* Dos condiciones,
+ambas verificadas ANTES de escribir nada:
+1. **Que nulear `article_ok`/`answer_ok` no desactive ni jubile nada por sí solo.** Comprobado: esos
+   flags viven en `ai_verification_results`, NO en `questions`; `information_schema.triggers` da
+   **0 filas** para esa tabla, y `questions.is_active` es `GENERATED` solo desde `lifecycle_state` —
+   no hay ruta de cascada. El único cron que degrada por antigüedad sin verificar
+   (`lifecycle_grandfather_expire`, aún SIN programar) mira `questions.verified_at`, un campo distinto.
+2. **Dejar rastro de que fue saneamiento, no verificación nueva.** El script nuevo inserta un
+   `observable_events` por fila limpiada con el MISMO `event_type` que ya usa el trigger de
+   prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un tipo nuevo, para que
+   saneamiento retroactivo y prevención compartan serie temporal.
+
+**Construido: `scripts/calidad/sanear-verificacion-cosmetica.cjs`** (`npm run
+sanear:verificacion-cosmetica [-- --aplicar]`), SIMULA por defecto. Núcleo puro compartido
+`calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` (17 tests, 5 nuevos). Registrado en
+`toolRegistry.ts`. **Medido en dry-run (08/08): 1.705 filas a limpiar** (bajó de las 1.713 originales
+por el trabajo pregunta-a-pregunta ya hecho arriba). **NO aplicado**: mi credencial (`VENCE_LECTOR_URL`)
+es de solo lectura — necesita `--aplicar` de alguien con escritura, y entonces la cifra exacta que
+quede en NULL se conocerá con certeza (debería ser 1.705, salvo que algo cambie entretanto).
+
 - **Relacionadas:** [T-458] (las 8 impugnaciones que lo destaparon), [T-462] (otro guardarraíl desalineado del mismo flujo).
 
 ### [T-464] 🟢 [ABIERTO 01/08] Importar el I Plan de Igualdad de la Junta 2023-2027 como contenido propio (celador SAS se quedó sin ese temario)

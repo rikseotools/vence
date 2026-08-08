@@ -127,6 +127,7 @@
     "llm:ab-notas": "node scripts/observabilidad/ab-modelo-notas.cjs",
     "docs:bandeja": "node scripts/convocatoria/bandeja-documentos.cjs",
     "audit:verificacion-cosmetica": "node --max-old-space-size=3000 scripts/audit-verificacion-cosmetica.cjs",
+    "sanear:verificacion-cosmetica": "node scripts/calidad/sanear-verificacion-cosmetica.cjs",
     "audit:instrumento-derivado": "node --max-old-space-size=3000 scripts/audit-instrumento-derivado.cjs",
     "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs",
     "audit:literalidad-clave": "node --max-old-space-size=3000 scripts/audit-literalidad-clave.cjs",

@@ -460,6 +460,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
       '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
   },
+  sanear_verificacion_cosmetica: {
+    titulo: 'El APLICAR del audit de arriba: limpia (article_ok/answer_ok → NULL) lo ya firmado por un pase cosmético',
+    ruta: 'scripts/calidad/sanear-verificacion-cosmetica.cjs',
+    estado: 'vivo',
+    escribe: ['ai_verification_results', 'observable_events'],
+    runbook: 'docs/maintenance/revisar-preguntas-con-agente.md',
+    notas:
+      '`npm run sanear:verificacion-cosmetica [-- --aplicar]`. SIMULA por defecto. Nace de que ' +
+      '`audit_verificacion_cosmetica` es deliberadamente solo-lectura ("limpiar esas firmas es una ' +
+      'decisión aparte") — Manuel la resolvió el 08/08/2026 (pregunta #111 del embudo): OPCIÓN A, ' +
+      'limpiar, con dos condiciones verificadas ANTES de escribir el script: (1) `article_ok`/' +
+      '`answer_ok` viven en `ai_verification_results`, no en `questions`; sin trigger en esa tabla y ' +
+      'con `questions.is_active` GENERATED solo desde `lifecycle_state`, nulear esos dos flags no ' +
+      'puede desactivar ni jubilar nada por sí solo (comprobado contra `information_schema.triggers`, ' +
+      '0 filas). (2) Cada fila limpiada deja traza en `observable_events` con el MISMO `event_type` ' +
+      'que ya usa el trigger de prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un ' +
+      'tipo nuevo, para que el saneamiento retroactivo y la prevención compartan serie temporal. ' +
+      'Núcleo puro compartido: `calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` ' +
+      '(17 tests). Medido el 08/08/2026: 1.705 filas a limpiar (bajó de las 1.713 originales por el ' +
+      'trabajo pregunta-a-pregunta ya hecho de T-465). NUNCA toca `explanation`/`ai_model`/etc.: esos ' +
+      'campos son la firma original del pase cosmético y la evidencia de qué pasó.',
+  },
   explicaciones_bucle_reescritura: {
     titulo: 'Bucle para reescribir explicaciones a escala (gate de citas, volcado para re-verificar, correcciones con rastro)',
     ruta: 'scripts/explicaciones/',
