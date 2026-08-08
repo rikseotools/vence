@@ -16,7 +16,7 @@
 // edits de questions (ver migration `20260531_fase_d_bis_iter15_*`).
 import { sql } from 'drizzle-orm'
 import type { getDb } from '@/db/client'
-import { getValidExamPositions } from '@/lib/config/exam-positions'
+import { getValidExamPositionsOrUnrestricted } from '@/lib/config/exam-positions'
 import { pgIntArray, pgTextArray } from '@/lib/api/sqlArrays'
 import type {
   ArticlesByLaw,
@@ -144,10 +144,15 @@ export async function getTopicAggregatesFromMV(
   // Se resta también cubo a cubo porque la ficha del tema pinta el total como
   // suma de `difficultyStats` (TemaTestPage) — restar solo del total dejaría el
   // rótulo diciendo 39 igualmente.
-  const validPositions = getValidExamPositions(positionType)
+  // T-597 (08/08): una PERSONALIZADA no tiene exam_position propia (null = sin
+  // restricción) — cualquier oficial cuenta, igual que buildOfficialExamFilter la sirve
+  // sin restringir. Sin esto, esta MV restaba TODAS las oficiales del total (y dejaba
+  // officialQuestionsCount en 0) para las 8 personalizadas activas, contradiciendo lo que
+  // el serve ya daba tras el fix: 518 oficiales servibles y ninguna en el anuncio.
+  const validPositions = getValidExamPositionsOrUnrestricted(positionType)
   let officialQuestionsCount = 0
   for (const r of officialRows) {
-    if (validPositions.includes(r.exam_position)) {
+    if (validPositions === null || validPositions.includes(r.exam_position)) {
       officialQuestionsCount += Number(r.official_questions)
       continue
     }

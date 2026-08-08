@@ -301,6 +301,26 @@ export function getValidExamPositions(positionType: string): string[] {
 }
 
 /**
+ * Como {@link getValidExamPositions}, con la excepción de T-597 (08/08/2026): una
+ * PERSONALIZADA no está en `EXAM_POSITION_MAP` por diseño (el usuario eligió el temario a
+ * mano, no hay "examen propio" del que ser dueño) así que no hay lista con la que
+ * restringir — cualquier oficial admitida por `buildOfficialExamFilter` cuenta. Devuelve
+ * `null` para decir "sin restricción" (a diferencia de `[]`, que dice "ninguna oficial es
+ * propia" — el caso de una oposición real sin mapeo, que SÍ debe seguir bloqueando).
+ *
+ * FUENTE ÚNICA para todo CONTEO de "oficiales propias" (label 🏛️, estimaciones del
+ * configurador, agregados de tema). `buildOfficialExamFilter` (el filtro SQL del SERVE)
+ * ya tiene su propio early-return para personalizadas; este es su gemelo para los sitios
+ * que cuentan en vez de servir, y evita que cada uno reinvente la excepción por su cuenta
+ * — que es exactamente cómo nació este hueco (el early-return de `buildOfficialExamFilter`
+ * se olvidó de sus 4 gemelos de conteo).
+ */
+export function getValidExamPositionsOrUnrestricted(positionType: string): string[] | null {
+  if (positionType && positionType.toLowerCase().startsWith('personalizada_')) return null
+  return getValidExamPositions(positionType)
+}
+
+/**
  * True si el positionType está REGISTRADO en EXAM_POSITION_MAP (aunque con
  * array vacío). Permite distinguir "oposición sin oficiales aún (caso conocido,
  * silenciar warn)" de "positionType nuevo no registrado (caso real, warn)".
