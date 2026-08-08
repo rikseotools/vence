@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface PendingExam {
   id: string
@@ -82,7 +83,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
       }
 
       // Verificar si estos exámenes fueron cerrados antes
-      const dismissedIds: string[] = JSON.parse(localStorage.getItem('pendingExamsDismissedIds') || '[]')
+      const dismissedIds: string[] = JSON.parse(safeGet('pendingExamsDismissedIds') || '[]')
       const currentIds = exams.map(e => e.id)
 
       const allPendingIds = currentIds
@@ -92,7 +93,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
       if (!hasNewExams && exams.length > 0) {
         // Todos los exámenes fueron cerrados antes, verificar timeout
-        const dismissedUntil = localStorage.getItem('pendingExamsDismissedUntil')
+        const dismissedUntil = safeGet('pendingExamsDismissedUntil')
         if (dismissedUntil && Date.now() < parseInt(dismissedUntil)) {
           setDismissed(true)
           setPendingExams(exams)
@@ -114,11 +115,11 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
   function handleDismiss() {
     // Guardar IDs de exámenes cerrados (incluye psicotécnicos)
     const currentIds = [...pendingExams.map(e => e.id), ...pendingPsychometric.map(s => s.id)]
-    localStorage.setItem('pendingExamsDismissedIds', JSON.stringify(currentIds))
+    safeSet('pendingExamsDismissedIds', JSON.stringify(currentIds))
 
     // Ocultar por 1 hora
     const dismissUntil = Date.now() + (60 * 60 * 1000)
-    localStorage.setItem('pendingExamsDismissedUntil', dismissUntil.toString())
+    safeSet('pendingExamsDismissedUntil', dismissUntil.toString())
     setDismissed(true)
   }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, createContext, useContext, useCallback, ReactNode } from 'react'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // Constantes
 const COOKIE_CONSENT_KEY = 'vence_cookie_consent'
@@ -58,7 +59,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
   // Cargar consentimiento del localStorage al montar
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(COOKIE_CONSENT_KEY)
+      const stored = safeGet(COOKIE_CONSENT_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as CookieConsentData
         // Verificar que la versión coincide
@@ -102,7 +103,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
     }
 
     try {
-      localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify(consentData))
+      safeSet(COOKIE_CONSENT_KEY, JSON.stringify(consentData))
       // Notifica a cualquier componente que escuche cambios de consentimiento.
       window.dispatchEvent(new CustomEvent('cookieConsentChanged', { detail: consentData }))
     } catch (e) {
@@ -114,7 +115,7 @@ export function CookieConsentProvider({ children }: CookieConsentProviderProps) 
   const resetConsent = useCallback(() => {
     setConsent(null)
     try {
-      localStorage.removeItem(COOKIE_CONSENT_KEY)
+      safeRemove(COOKIE_CONSENT_KEY)
     } catch (e) {
       console.warn('Error removing cookie consent:', e)
     }

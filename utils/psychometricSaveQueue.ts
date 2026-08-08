@@ -3,6 +3,7 @@
 
 import { logClientError } from '@/lib/logClientError'
 import { emitClientEvent } from '@/lib/observability/client'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const QUEUE_KEY = 'vence_psychometric_queue'
 const MAX_RETRIES = 3
@@ -31,9 +32,9 @@ interface QueueState {
 
 function loadQueue(): QueueState {
   if (typeof window === 'undefined') return { answers: [] }
+  const raw = safeGet(QUEUE_KEY)
+  if (!raw) return { answers: [] }
   try {
-    const raw = localStorage.getItem(QUEUE_KEY)
-    if (!raw) return { answers: [] }
     return JSON.parse(raw) as QueueState
   } catch {
     return { answers: [] }
@@ -42,16 +43,14 @@ function loadQueue(): QueueState {
 
 function saveQueue(state: QueueState): void {
   if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(state))
-  } catch {
-    const dropped = state.answers.length - 10
-    if (state.answers.length > 1) {
-      console.warn(`⚠️ [psychometricSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
-      state.answers = state.answers.slice(-10)
-      try { localStorage.setItem(QUEUE_KEY, JSON.stringify(state)) } catch {
-        console.error('❌ [psychometricSaveQueue] No se pudo guardar ni con 10 respuestas.')
-      }
+  if (safeSet(QUEUE_KEY, JSON.stringify(state))) return
+  // safeSet falló (típicamente cuota llena): descartar las más antiguas y reintentar una vez.
+  const dropped = state.answers.length - 10
+  if (state.answers.length > 1) {
+    console.warn(`⚠️ [psychometricSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
+    state.answers = state.answers.slice(-10)
+    if (!safeSet(QUEUE_KEY, JSON.stringify(state))) {
+      console.error('❌ [psychometricSaveQueue] No se pudo guardar ni con 10 respuestas.')
     }
   }
 }

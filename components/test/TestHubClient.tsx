@@ -81,6 +81,7 @@ interface ExamStat {
 }
 
 import { sortTopics, type SortOption } from './hubSorting'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface Props {
   oposicion: string
@@ -148,7 +149,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>(() => {
     if (typeof window === 'undefined') return {}
     try {
-      const cached = localStorage.getItem(`theme-stats:${oposicion}`)
+      const cached = safeGet(`theme-stats:${oposicion}`)
       if (cached) return JSON.parse(cached)
     } catch { /* ignore */ }
     return {}
@@ -189,7 +190,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(storageKey)
+        const saved = safeGet(storageKey)
         if (saved) return JSON.parse(saved)
       } catch {
         // localStorage bloqueado
@@ -240,7 +241,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
         console.log('📊 [TestHubClient] Stats cargadas:', Object.keys(themeStats).length, 'temas. Ejemplo T1:', themeStats[1] ? 'acc=' + themeStats[1].accuracy + ' acc30d=' + themeStats[1].accuracy30d : 'sin datos')
         setUserStats(themeStats)
         // Persistir en localStorage para carga instantánea en siguiente visita
-        try { localStorage.setItem(`theme-stats:${oposicion}`, JSON.stringify(themeStats)) } catch { /* ignore */ }
+        try { safeSet(`theme-stats:${oposicion}`, JSON.stringify(themeStats)) } catch { /* ignore */ }
       }
     } catch (error) {
       console.warn('Error cargando estadísticas:', error)
@@ -304,7 +305,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     setExpandedBlocks(prev => {
       const newState = { ...prev, [blockId]: !prev[blockId] }
       try {
-        localStorage.setItem(storageKey, JSON.stringify(newState))
+        safeSet(storageKey, JSON.stringify(newState))
       } catch {
         // localStorage bloqueado
       }

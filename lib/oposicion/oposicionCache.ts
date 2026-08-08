@@ -8,6 +8,7 @@
 // reutilizable. SSR-safe (no toca window en el servidor). NUNCA cachea un id inválido y
 // NUNCA devuelve uno que ya no esté en el catálogo (anti datos-sucios).
 import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 const OPO_CACHE_KEY = 'vence_opo_cache_v1'
 
@@ -20,7 +21,7 @@ export interface CachedOposicion {
 export function readOposicionCache(): CachedOposicion | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(OPO_CACHE_KEY)
+    const raw = safeGet(OPO_CACHE_KEY)
     if (!raw) return null
     const p = JSON.parse(raw) as { id?: unknown; data?: unknown }
     if (p && typeof p.id === 'string' && ALL_OPOSICION_IDS.includes(p.id)) {
@@ -37,7 +38,7 @@ export function writeOposicionCache(id: string, data: unknown): void {
   if (typeof window === 'undefined') return
   if (!ALL_OPOSICION_IDS.includes(id)) return
   try {
-    window.localStorage.setItem(OPO_CACHE_KEY, JSON.stringify({ id, data }))
+    safeSet(OPO_CACHE_KEY, JSON.stringify({ id, data }))
   } catch {
     /* quota / modo privado */
   }
@@ -47,7 +48,7 @@ export function writeOposicionCache(id: string, data: unknown): void {
 export function clearOposicionCache(): void {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.removeItem(OPO_CACHE_KEY)
+    safeRemove(OPO_CACHE_KEY)
   } catch {
     /* noop */
   }

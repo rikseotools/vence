@@ -21,6 +21,7 @@ import { auth } from '@/lib/auth'
 import { formatDateLarga, formatNumber } from '../lib/utils/format'
 import { emitClientEvent, flushClientObservability } from '@/lib/observability/client'
 import { isBannerSnoozed, latestDismiss } from '@/lib/oposiciones/bannerSnooze'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 type OpenInscription = {
   slug: string
@@ -52,7 +53,7 @@ const LAST_DISMISS_KEY = 'vence_inscription_banner_last_dismiss'
 function readLocalLastDismiss(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return window.localStorage.getItem(LAST_DISMISS_KEY)
+    return safeGet(LAST_DISMISS_KEY)
   } catch {
     return null
   }
@@ -61,7 +62,7 @@ function readLocalLastDismiss(): string | null {
 function writeLocalLastDismiss(iso: string) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(LAST_DISMISS_KEY, iso)
+    safeSet(LAST_DISMISS_KEY, iso)
   } catch {
     // localStorage no disponible: ignorar (el cooldown server lo tapa en logueados).
   }
@@ -70,7 +71,7 @@ function writeLocalLastDismiss(iso: string) {
 function readLocalDismisses(): string[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = window.localStorage.getItem(LOCALSTORAGE_KEY)
+    const raw = safeGet(LOCALSTORAGE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? parsed.filter((s) => typeof s === 'string') : []
@@ -82,7 +83,7 @@ function readLocalDismisses(): string[] {
 function writeLocalDismisses(slugs: string[]) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(slugs))
+    safeSet(LOCALSTORAGE_KEY, JSON.stringify(slugs))
   } catch {
     // localStorage no disponible (modo privado Safari, cuota llena): ignorar.
   }

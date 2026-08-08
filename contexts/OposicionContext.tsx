@@ -12,6 +12,7 @@ import { decideOposicionLoad } from '@/lib/oposicion/decideLoad'
 import { resolveUserOposicion, extractOposicionId } from '@/lib/oposicion/resolveUserOposicion'
 import { esObjetivoValido } from '@/lib/oposicion/objetivoPersonalizado'
 import { readOposicionCache, writeOposicionCache, clearOposicionCache } from '@/lib/oposicion/oposicionCache'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // ============================================
 // TIPOS
@@ -359,7 +360,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
   // Verificar si hay notificación de cambio de oposición pendiente
   useEffect(() => {
     // Notificación de onboarding (asignación inicial)
-    const newAssignment = localStorage.getItem('newOposicionAssigned')
+    const newAssignment = safeGet('newOposicionAssigned')
     if (newAssignment) {
       const data = JSON.parse(newAssignment) as { timestamp: number }
       const timeDiff = Date.now() - data.timestamp
@@ -369,22 +370,22 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
         setNotificationData(data as NotificationData)
 
         setTimeout(() => {
-          localStorage.removeItem('newOposicionAssigned')
+          safeRemove('newOposicionAssigned')
           setShowNotification(false)
         }, 10000)
       } else {
-        localStorage.removeItem('newOposicionAssigned')
+        safeRemove('newOposicionAssigned')
       }
     }
 
     // Notificación de cambio de oposición desde breadcrumbs
-    const oposicionChanged = localStorage.getItem('oposicionChanged')
+    const oposicionChanged = safeGet('oposicionChanged')
     if (oposicionChanged) {
       const data = JSON.parse(oposicionChanged) as { timestamp: number; message?: string }
       const timeDiff = Date.now() - data.timestamp
 
       if (timeDiff < 30 * 1000) {
-        localStorage.removeItem('oposicionChanged')
+        safeRemove('oposicionChanged')
         setShowNotification(true)
         setNotificationData({
           type: 'oposicionChanged',
@@ -395,7 +396,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
           setShowNotification(false)
         }, 5000)
       } else {
-        localStorage.removeItem('oposicionChanged')
+        safeRemove('oposicionChanged')
       }
     }
   }, [pathname])
@@ -423,7 +424,7 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
       setNeedsOposicionFix(false)
 
       if (showNotificationFlag && oposicionName) {
-        localStorage.setItem('oposicionChanged', JSON.stringify({
+        safeSet('oposicionChanged', JSON.stringify({
           name: oposicionName,
           timestamp: Date.now()
         }))
@@ -438,8 +439,8 @@ export function OposicionProvider({ children }: { children: ReactNode }) {
 
   const dismissNotification = () => {
     setShowNotification(false)
-    localStorage.removeItem('newOposicionAssigned')
-    localStorage.removeItem('oposicionChanged')
+    safeRemove('newOposicionAssigned')
+    safeRemove('oposicionChanged')
   }
 
   const showOposicionChangeNotification = (oposicionName: string) => {

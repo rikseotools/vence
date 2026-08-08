@@ -19,6 +19,7 @@ import type {
   TestMode,
   UserThemeStats,
 } from '@/lib/api/random-test/schemas'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // Type for useAuth hook from JS context
 interface AuthContextValue {
@@ -135,7 +136,7 @@ export default function RandomTestClient({
 
   // Cargar preferencia de modo
   useEffect(() => {
-    const savedMode = localStorage.getItem('preferredTestMode') as TestMode | null
+    const savedMode = safeGet('preferredTestMode') as TestMode | null
     if (savedMode === 'practica' || savedMode === 'examen') {
       setTestMode(savedMode)
     }
@@ -225,7 +226,7 @@ export default function RandomTestClient({
 
   const handleTestModeChange = (newMode: TestMode) => {
     setTestMode(newMode)
-    localStorage.setItem('preferredTestMode', newMode)
+    safeSet('preferredTestMode', newMode)
     // La dificultad se mantiene al cambiar de modo (funciona en ambos)
   }
 

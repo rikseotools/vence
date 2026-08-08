@@ -80,6 +80,7 @@ import type {
   HotArticleInfo,
   CompactStats,
 } from './TestLayout.types'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // Type guard para distinguir entre TestQuestion[] y AdaptiveQuestionsInput
 function isAdaptiveInput(q: TestQuestion[] | AdaptiveQuestionsInput): q is AdaptiveQuestionsInput {
@@ -507,7 +508,7 @@ export default function TestLayout({
         savedAt: Date.now(),
         pageUrl: pathname
       }
-      localStorage.setItem(PENDING_TEST_KEY, JSON.stringify(pendingTest))
+      safeSet(PENDING_TEST_KEY, JSON.stringify(pendingTest))
       console.log('💾 Test guardado en localStorage para usuario anónimo')
     } catch (e) {
       console.warn('⚠️ Error guardando test en localStorage:', e)
@@ -517,7 +518,7 @@ export default function TestLayout({
   // Limpiar test pendiente (cuando se completa o el usuario se loguea)
   const clearPendingTest = (): void => {
     try {
-      localStorage.removeItem(PENDING_TEST_KEY)
+      safeRemove(PENDING_TEST_KEY)
       console.log('🗑️ Test pendiente eliminado de localStorage')
     } catch (e) {
       console.warn('⚠️ Error limpiando test pendiente:', e)
@@ -529,7 +530,7 @@ export default function TestLayout({
     if (user) {
       // No limpiar inmediatamente - el callback lo procesará
       // Solo limpiar si ya pasaron 5 minutos (test ya fue procesado o abandonado)
-      const pendingTest = localStorage.getItem(PENDING_TEST_KEY)
+      const pendingTest = safeGet(PENDING_TEST_KEY)
       if (pendingTest) {
         try {
           const parsed = JSON.parse(pendingTest)
@@ -546,7 +547,7 @@ export default function TestLayout({
 
   // 🎯 Cargar preferencia de scroll automático desde localStorage
   useEffect(() => {
-    const savedPreference = localStorage.getItem('autoScrollEnabled')
+    const savedPreference = safeGet('autoScrollEnabled')
     if (savedPreference !== null) {
       setAutoScrollEnabled(savedPreference === 'true')
     }
@@ -915,7 +916,7 @@ export default function TestLayout({
   const toggleAutoScroll = (): void => {
     const newValue = !autoScrollEnabled
     setAutoScrollEnabled(newValue)
-    localStorage.setItem('autoScrollEnabled', String(newValue))
+    safeSet('autoScrollEnabled', String(newValue))
     console.log('🎯 Scroll automático:', newValue ? 'ACTIVADO' : 'DESACTIVADO')
 
     // 🎯 Mostrar feedback temporal

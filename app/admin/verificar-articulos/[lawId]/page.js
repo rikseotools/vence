@@ -5,6 +5,7 @@ import { adminFetch } from '@/lib/api/adminFetch'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // Spinner component
 const Spinner = ({ size = 'sm' }) => {
@@ -270,13 +271,13 @@ export default function VerificarArticulosPage() {
   const [aiConfigs, setAiConfigs] = useState([])
   const [aiProvider, setAiProvider] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('verifyAiProvider') || 'anthropic'
+      return safeGet('verifyAiProvider') || 'anthropic'
     }
     return 'anthropic'
   })
   const [aiModel, setAiModel] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('verifyAiModel')
+      const saved = safeGet('verifyAiModel')
       // Lista de modelos válidos actuales
       const validModels = [
         'claude-3-haiku-20240307', 'claude-sonnet-4-20250514', 'claude-sonnet-4-5-20250929',
@@ -287,7 +288,7 @@ export default function VerificarArticulosPage() {
         return saved
       }
       // Si el modelo guardado no es válido, limpiar y usar default
-      localStorage.removeItem('verifyAiModel')
+      safeRemove('verifyAiModel')
       return 'claude-3-haiku-20240307'
     }
     return 'claude-3-haiku-20240307'
@@ -328,7 +329,7 @@ export default function VerificarArticulosPage() {
   // Guardar proveedor y modelo en localStorage cuando cambien
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('verifyAiProvider', aiProvider)
+      safeSet('verifyAiProvider', aiProvider)
       // Si el modelo actual no pertenece al proveedor o está fallido, usar el primero que funcione
       const workingModels = getProviderModels(aiProvider)
       if (workingModels.length > 0) {
@@ -341,7 +342,7 @@ export default function VerificarArticulosPage() {
   }, [aiProvider, aiConfigs])
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('verifyAiModel', aiModel)
+      safeSet('verifyAiModel', aiModel)
     }
   }, [aiModel])
   const [verifyingWithAI, setVerifyingWithAI] = useState(false)

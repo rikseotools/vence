@@ -12,16 +12,28 @@
  *
  * Al migrar un fichero a `lib/storage/safeLocalStorage`, se borra su línea de la lista Y se baja el
  * número de aquí. Nunca al revés.
+ *
+ * [T-203, 08/08/2026] 41 de los 45 originales migrados de verdad (violación AST real) + 2 que no
+ * tenían nada que migrar (uno usa sessionStorage, no localStorage; el otro solo toca localStorage
+ * dentro de un <Script> de texto plano, invisible para el AST y ya protegido por su propio
+ * try/catch). Queda solo `lib/api/authHeaders.ts`, en uso por otra sesión viva a la vez.
  */
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-/** Excepciones vivas cuando se instaló el trinquete. Este número NO puede subir. */
-const DEUDA_INICIAL = 45
+/**
+ * Excepciones vivas. Este número NO puede subir. Incluye el helper (permanente: es el único
+ * sitio que puede tocar el API real) + `lib/api/authHeaders.ts` (T-203, pendiente).
+ */
+const DEUDA_INICIAL = 2
 
 function excepcionesDeclaradas(): string[] {
   const cfg = readFileSync(join(process.cwd(), 'eslint.config.mjs'), 'utf-8')
-  const bloque = cfg.slice(cfg.indexOf('lib/storage/safeLocalStorage.ts",   // es el helper'))
+  // Ancla al comentario de sección (único) en vez de al texto del helper: así se captura
+  // también la PRIMERA entrada del array, que antes quedaba fuera del slice por accidente.
+  const start = cfg.indexOf('// ── localStorage solo a través de')
+  const ignoresStart = cfg.indexOf('ignores: [', start)
+  const bloque = cfg.slice(ignoresStart)
   const ignores = bloque.slice(0, bloque.indexOf('rules:'))
   return [...ignores.matchAll(/^\s*"([^"]+)",/gm)].map((m) => m[1])
 }

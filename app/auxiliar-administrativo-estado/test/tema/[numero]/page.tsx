@@ -12,6 +12,7 @@ import ArticleModal from '@/components/ArticleModal'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 import { getBlockForTopic } from '@/lib/config/oposiciones'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // Tipos para el componente principal
 interface PageProps {
@@ -138,7 +139,7 @@ export default function TemaPage({ params }: PageProps) {
 
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
-    const savedMode = localStorage.getItem('preferredTestMode')
+    const savedMode = safeGet('preferredTestMode')
     if (savedMode === 'practica' || savedMode === 'examen') {
       setTestMode(savedMode)
     }
@@ -147,7 +148,7 @@ export default function TemaPage({ params }: PageProps) {
   // Función helper para cambiar modo y guardar preferencia
   const handleTestModeChange = (newMode: 'practica' | 'examen') => {
     setTestMode(newMode)
-    localStorage.setItem('preferredTestMode', newMode)
+    safeSet('preferredTestMode', newMode)
   }
 
   // FUNCIÓN CONSOLIDADA: Cargar todos los datos del tema desde API

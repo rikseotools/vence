@@ -12,6 +12,8 @@
 // ni el schema de práctica (camino crítico cubierto por canary_answer_save), solo persiste
 // el mapa questionIndex→opción por testId. Puro y SSR-safe (no rompe en el servidor).
 
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
+
 /** questionIndex (0-based) → opción marcada ('a' | 'b' | 'c' | 'd'). */
 export type ExamAnswers = Record<number, string>
 
@@ -45,7 +47,7 @@ export function saveLocalExamAnswers(
   if (!hasStorage() || !testId) return
   try {
     const payload: StoredExam = { v: CURRENT_VERSION, answers: answers || {}, updatedAt: now }
-    window.localStorage.setItem(keyFor(testId), JSON.stringify(payload))
+    safeSet(keyFor(testId), JSON.stringify(payload))
   } catch {
     // localStorage lleno / modo privado / cuota: la pérdida del espejo no debe romper el
     // examen (el estado React sigue vivo). No reintentamos ni desalojamos otras claves.
@@ -62,7 +64,7 @@ export function loadLocalExamAnswers(
 ): ExamAnswers | null {
   if (!hasStorage() || !testId) return null
   try {
-    const raw = window.localStorage.getItem(keyFor(testId))
+    const raw = safeGet(keyFor(testId))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredExam>
     if (!parsed || parsed.v !== CURRENT_VERSION || typeof parsed.answers !== 'object' || parsed.answers === null) {
@@ -89,7 +91,7 @@ export function loadLocalExamAnswers(
 export function clearLocalExamAnswers(testId: string): void {
   if (!hasStorage() || !testId) return
   try {
-    window.localStorage.removeItem(keyFor(testId))
+    safeRemove(keyFor(testId))
   } catch {
     // no-op
   }

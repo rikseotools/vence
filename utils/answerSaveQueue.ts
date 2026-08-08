@@ -7,6 +7,7 @@ import { answerAndSaveRequestSchema } from '@/lib/api/v2/answer-and-save/schemas
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
 import { getOrCreateDeviceId } from '@/hooks/useDeviceTracking'
 import { dispatchDailyLimitEvent } from '@/hooks/useDailyLimitEvent'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const QUEUE_KEY = 'vence_answer_queue'
 const MAX_RETRIES = 5 // Subido de 3 a 5 para dar más oportunidades
@@ -40,9 +41,9 @@ interface QueueState {
 
 function loadQueue(): QueueState {
   if (typeof window === 'undefined') return { answers: [] }
+  const raw = safeGet(QUEUE_KEY)
+  if (!raw) return { answers: [] }
   try {
-    const raw = localStorage.getItem(QUEUE_KEY)
-    if (!raw) return { answers: [] }
     return JSON.parse(raw) as QueueState
   } catch {
     return { answers: [] }
@@ -51,16 +52,14 @@ function loadQueue(): QueueState {
 
 function saveQueue(state: QueueState): void {
   if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(state))
-  } catch {
-    const dropped = state.answers.length - 10
-    if (state.answers.length > 1) {
-      console.warn(`⚠️ [answerSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
-      state.answers = state.answers.slice(-10)
-      try { localStorage.setItem(QUEUE_KEY, JSON.stringify(state)) } catch {
-        console.error('❌ [answerSaveQueue] No se pudo guardar ni con 10 respuestas.')
-      }
+  if (safeSet(QUEUE_KEY, JSON.stringify(state))) return
+  // safeSet falló (típicamente cuota llena): descartar las más antiguas y reintentar una vez.
+  const dropped = state.answers.length - 10
+  if (state.answers.length > 1) {
+    console.warn(`⚠️ [answerSaveQueue] localStorage lleno, descartando ${dropped > 0 ? dropped : 0} respuestas antiguas`)
+    state.answers = state.answers.slice(-10)
+    if (!safeSet(QUEUE_KEY, JSON.stringify(state))) {
+      console.error('❌ [answerSaveQueue] No se pudo guardar ni con 10 respuestas.')
     }
   }
 }

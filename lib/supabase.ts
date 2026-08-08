@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { safeSet } from '@/lib/storage/safeLocalStorage'
 
 declare global {
   interface Window {
@@ -240,12 +241,10 @@ export const signInWithGoogle = async (options: { funnel?: string; callbackUrl?:
 
     // 🎯 BACKUP EN LOCALSTORAGE
     if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('auth_return_url_backup', relativeUrl)
-        localStorage.setItem('auth_return_timestamp', Date.now().toString())
+      if (safeSet('auth_return_url_backup', relativeUrl) && safeSet('auth_return_timestamp', Date.now().toString())) {
         console.log('💾 URL de retorno guardada:', relativeUrl)
-      } catch (e) {
-        console.warn('⚠️ No se pudo guardar backup:', e)
+      } else {
+        console.warn('⚠️ No se pudo guardar backup')
       }
     }
 

@@ -46,6 +46,7 @@ import { isBearerFresh, TOKEN_SKEW_SEC } from '../tokenFreshness'
 import { clearLegacySupabaseSession, esClaveSesionLegacy } from '../legacySupabaseStorage'
 import { deriveMintReason, MINT_REASON_HEADER, type MintReason } from '../mintReason'
 import { backoffTrasUnauth, puedeIntentarAcunar } from '../backoffAcunado'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NextSessionUser = any
@@ -103,7 +104,7 @@ function getLegacySupabaseAccessToken(): string | null {
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i)
       if (!esClaveSesionLegacy(k)) continue
-      const raw = window.localStorage.getItem(k)
+      const raw = safeGet(k)
       if (!raw) continue
       const parsed = JSON.parse(raw)
       const sess =
@@ -409,7 +410,7 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
       clearLegacySupabaseSession()
       // Avisar a las otras pestañas para que invaliden su caché al instante.
       if (typeof window !== 'undefined') {
-        try { window.localStorage.setItem(LOGOUT_BROADCAST_KEY, String(Date.now())) } catch { /* ignore */ }
+        safeSet(LOGOUT_BROADCAST_KEY, String(Date.now()))
       }
       await nextSignOut({ redirect: false })
     },

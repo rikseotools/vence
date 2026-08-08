@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react'
 import type { OposicionItem } from '@/components/OnboardingModal'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // v2 (01/06/2026): el id de cada item pasó de UUID de BD a position_type
 // (slug con underscores). Bump de versión para invalidar caches v1 cuyos
@@ -83,7 +84,7 @@ function mapApiToOposicionItem(api: ApiOposicionEntry): OposicionItem {
 function readLocalStorageCache(): CacheEntry | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY)
+    const raw = safeGet(CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as CacheEntry
     if (typeof parsed?.expiresAt !== 'number' || !Array.isArray(parsed?.data)) return null
@@ -96,7 +97,7 @@ function readLocalStorageCache(): CacheEntry | null {
 function writeLocalStorageCache(entry: CacheEntry): void {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify(entry))
+    safeSet(CACHE_KEY, JSON.stringify(entry))
   } catch {
     // localStorage puede estar lleno o deshabilitado — ignorar.
   }

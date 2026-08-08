@@ -37,6 +37,7 @@ import MarkdownExplanation from './MarkdownExplanation'
 import MarkdownQuestionText from './MarkdownQuestionText'
 import { validateExam, validateExamPsychometric } from '@/lib/api/exam/client'
 import ContentDataRenderer from './ContentDataRenderer'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // =====================================================
 // TYPES
@@ -434,7 +435,7 @@ export default function OfficialExamLayout({
   // Cargar preferencia persistida (localStorage)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('simulacro-timer-display')
+      const saved = safeGet('simulacro-timer-display')
       if (saved === 'expanded' || saved === 'minimized' || saved === 'hidden') {
         setTimerDisplay(saved)
       }
@@ -443,7 +444,7 @@ export default function OfficialExamLayout({
 
   // Persistir preferencia al cambiar
   useEffect(() => {
-    try { localStorage.setItem('simulacro-timer-display', timerDisplay) } catch { /* ignore */ }
+    try { safeSet('simulacro-timer-display', timerDisplay) } catch { /* ignore */ }
   }, [timerDisplay])
 
   // Cronometro

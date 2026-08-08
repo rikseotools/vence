@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import { getOposicionConfig, getAllThemes, getAvailableOposiciones, slugToPositionType } from '@/lib/config/oposiciones'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 function TestAleatorioContent() {
   const { user, loading } = useAuth()
@@ -115,7 +116,7 @@ function TestAleatorioContent() {
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
     try {
-      const savedMode = localStorage.getItem('preferredTestMode')
+      const savedMode = safeGet('preferredTestMode')
       if (savedMode === 'practica' || savedMode === 'examen') {
         setTestMode(savedMode)
       }
@@ -127,7 +128,7 @@ function TestAleatorioContent() {
   const handleTestModeChange = (newMode) => {
     setTestMode(newMode)
     try {
-      localStorage.setItem('preferredTestMode', newMode)
+      safeSet('preferredTestMode', newMode)
     } catch (e) {}
 
     if (newMode === 'examen' && difficulty !== 'mixed') {

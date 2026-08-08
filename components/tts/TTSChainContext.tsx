@@ -28,6 +28,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 export type ChainMode = 'single' | 'topic'
 const TTS_MODE_STORAGE_KEY = 'vence_tts_mode'
@@ -69,7 +70,7 @@ export function TTSChainProvider({ children }: { children: ReactNode }) {
   // Hidratar mode desde localStorage en mount.
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(TTS_MODE_STORAGE_KEY)
+      const saved = safeGet(TTS_MODE_STORAGE_KEY)
       if (saved === 'single' || saved === 'topic') {
         setModeState(saved)
       }
@@ -81,7 +82,7 @@ export function TTSChainProvider({ children }: { children: ReactNode }) {
   const setMode = useCallback((m: ChainMode) => {
     setModeState(m)
     try {
-      localStorage.setItem(TTS_MODE_STORAGE_KEY, m)
+      safeSet(TTS_MODE_STORAGE_KEY, m)
     } catch {
       /* Safari private mode */
     }

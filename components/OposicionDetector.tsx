@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import { auth } from '@/lib/auth' // puerto agnóstico para auth.*
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
+import { safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface OposicionData {
   id: string
@@ -271,7 +272,7 @@ function showAssignmentNotification(oposicionName: string) {
 
   // Guardar en localStorage para mostrar mensaje en header
   if (typeof window !== 'undefined') {
-    localStorage.setItem('newOposicionAssigned', JSON.stringify({
+    safeSet('newOposicionAssigned', JSON.stringify({
       name: oposicionName,
       timestamp: Date.now()
     }))

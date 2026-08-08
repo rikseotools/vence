@@ -10,6 +10,7 @@ import type {
   PsychometricSection,
   GetPsychometricCategoriesResponse,
 } from '@/lib/api/psychometric-test-data/schemas'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 export default function PsicotecnicosTestClient() {
   const { loading, user, userProfile } = useAuth()
@@ -28,7 +29,7 @@ export default function PsicotecnicosTestClient() {
 
   const [numQuestionsPsico, setNumQuestionsPsico] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('psychometric_numQuestions')
+      const saved = safeGet('psychometric_numQuestions')
       if (saved) {
         const num = Number(saved)
         if ([10, 25, 50, 100].includes(num)) return num
@@ -39,7 +40,7 @@ export default function PsicotecnicosTestClient() {
 
   // Persistir en localStorage cuando cambie
   useEffect(() => {
-    localStorage.setItem('psychometric_numQuestions', String(numQuestionsPsico))
+    safeSet('psychometric_numQuestions', String(numQuestionsPsico))
   }, [numQuestionsPsico])
 
   // Load categories from API on mount (and when user loads)

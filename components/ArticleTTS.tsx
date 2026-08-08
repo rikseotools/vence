@@ -14,6 +14,7 @@ import { useTTS } from '@/lib/tts/useTTS'
 import { ChainModeToggle, useTTSChain } from '@/components/tts/TTSChainContext'
 import { TTSFloatingPlayer } from '@/components/tts/TTSFloatingPlayer'
 import type { TTSSection } from '@/lib/tts/types'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 interface ArticleLike {
   articleNumber: string
@@ -63,12 +64,12 @@ export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
   // Hidratar rate + voiceURI desde localStorage en mount.
   useEffect(() => {
     try {
-      const savedRate = localStorage.getItem(TTS_RATE_STORAGE_KEY)
+      const savedRate = safeGet(TTS_RATE_STORAGE_KEY)
       if (savedRate) {
         const n = parseFloat(savedRate)
         if (RATE_OPTIONS.includes(n)) setRate(n)
       }
-      const savedVoice = localStorage.getItem(TTS_VOICE_STORAGE_KEY)
+      const savedVoice = safeGet(TTS_VOICE_STORAGE_KEY)
       if (savedVoice) setVoiceURI(savedVoice)
     } catch {
       /* Safari private mode */
@@ -151,7 +152,7 @@ export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
   const handleRateChange = (newRate: number) => {
     setRate(newRate)
     try {
-      localStorage.setItem(TTS_RATE_STORAGE_KEY, String(newRate))
+      safeSet(TTS_RATE_STORAGE_KEY, String(newRate))
     } catch {
       /* Safari private mode */
     }
@@ -161,9 +162,9 @@ export default function ArticleTTS({ articles, lawName }: ArticleTTSProps) {
     setVoiceURI(newVoice)
     try {
       if (newVoice) {
-        localStorage.setItem(TTS_VOICE_STORAGE_KEY, newVoice)
+        safeSet(TTS_VOICE_STORAGE_KEY, newVoice)
       } else {
-        localStorage.removeItem(TTS_VOICE_STORAGE_KEY)
+        safeRemove(TTS_VOICE_STORAGE_KEY)
       }
     } catch {
       /* Safari private mode */

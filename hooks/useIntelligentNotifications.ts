@@ -20,6 +20,7 @@ import type {
   UseIntelligentNotificationsReturn
 } from './useIntelligentNotifications.types'
 import type { User } from '@supabase/supabase-js'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // Tipo para el contexto de autenticación (AuthContext.js no está tipado)
 interface AuthContextValue {
@@ -161,7 +162,7 @@ const getDismissedNotifications = (): Set<string> => {
   try {
     if (typeof window === 'undefined') return new Set() // SSR protection
     
-    const stored = localStorage.getItem(DISMISSED_NOTIFICATIONS_KEY)
+    const stored = safeGet(DISMISSED_NOTIFICATIONS_KEY)
     if (!stored) return new Set()
     
     const { notifications, timestamp } = JSON.parse(stored)
@@ -169,7 +170,7 @@ const getDismissedNotifications = (): Set<string> => {
     // Verificar si han pasado más de 24 horas
     const hoursElapsed = (Date.now() - timestamp) / (1000 * 60 * 60)
     if (hoursElapsed > DISMISSED_EXPIRY_HOURS) {
-      localStorage.removeItem(DISMISSED_NOTIFICATIONS_KEY)
+      safeRemove(DISMISSED_NOTIFICATIONS_KEY)
       return new Set()
     }
     
@@ -193,7 +194,7 @@ const saveDismissedNotification = (notificationId: string): void => {
       timestamp: Date.now()
     }
     
-    localStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(data))
+    safeSet(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(data))
     console.log(`💾 Notificación ${notificationId} marcada como descartada persistentemente`)
   } catch (error) {
     console.error('Error guardando notificación descartada:', error)
@@ -205,7 +206,7 @@ const getProblematicArticlesCooldown = (userId: string): Record<string, Cooldown
   try {
     if (typeof window === 'undefined') return {} // SSR protection
     
-    const stored = localStorage.getItem(`${PROBLEMATIC_ARTICLES_COOLDOWN_KEY}_${userId}`)
+    const stored = safeGet(`${PROBLEMATIC_ARTICLES_COOLDOWN_KEY}_${userId}`)
     if (!stored) return {}
     
     const cooldownData = JSON.parse(stored)
@@ -242,7 +243,7 @@ const saveProblematicArticleCooldown = (userId: string, lawShortName: string, ar
       articleNumber
     }
     
-    localStorage.setItem(`${PROBLEMATIC_ARTICLES_COOLDOWN_KEY}_${userId}`, JSON.stringify(cooldownData))
+    safeSet(`${PROBLEMATIC_ARTICLES_COOLDOWN_KEY}_${userId}`, JSON.stringify(cooldownData))
     console.log(`🕒 Cooldown guardado para ${articleKey}: ${testsCompleted} tests completados`)
   } catch (error) {
     console.error('Error guardando cooldown de artículo problemático:', error)
@@ -295,7 +296,7 @@ const getAchievementCooldown = (userId: string): AchievementCooldownState => {
   try {
     if (typeof window === 'undefined') return { count: 0, lastReset: Date.now() }
     
-    const stored = localStorage.getItem(`${ACHIEVEMENT_COOLDOWN_KEY}_${userId}`)
+    const stored = safeGet(`${ACHIEVEMENT_COOLDOWN_KEY}_${userId}`)
     if (!stored) return { count: 0, lastReset: Date.now() }
     
     const cooldownData = JSON.parse(stored)
@@ -336,7 +337,7 @@ const recordAchievementShown = (userId: string): void => {
       lastReset: cooldownData.lastReset
     }
     
-    localStorage.setItem(`${ACHIEVEMENT_COOLDOWN_KEY}_${userId}`, JSON.stringify(newData))
+    safeSet(`${ACHIEVEMENT_COOLDOWN_KEY}_${userId}`, JSON.stringify(newData))
     console.log(`📊 Logro registrado: ${newData.count}/${DAILY_ACHIEVEMENT_LIMIT} por hoy`)
   } catch (error) {
     console.error('Error registrando logro mostrado:', error)
@@ -353,7 +354,7 @@ const getMotivationalCooldown = (userId: string, notificationType: string): Moti
   try {
     if (typeof window === 'undefined') return null
     
-    const stored = localStorage.getItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
+    const stored = safeGet(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
     if (!stored) return null
     
     const data = JSON.parse(stored)
@@ -368,7 +369,7 @@ const setMotivationalCooldown = (userId: string, notificationType: string): void
   try {
     if (typeof window === 'undefined') return
     
-    const stored = localStorage.getItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
+    const stored = safeGet(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
     const data = stored ? JSON.parse(stored) : {}
     
     data[notificationType] = {
@@ -376,7 +377,7 @@ const setMotivationalCooldown = (userId: string, notificationType: string): void
       cooldownDays: MOTIVATIONAL_COOLDOWN_DAYS
     }
     
-    localStorage.setItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`, JSON.stringify(data))
+    safeSet(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`, JSON.stringify(data))
     console.log(`⏰ Cooldown de ${MOTIVATIONAL_COOLDOWN_DAYS} días activado para ${notificationType}`)
   } catch (error) {
     console.error('Error estableciendo cooldown motivacional:', error)
@@ -857,7 +858,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   const filterUnreadNotifications = (notifications: Notification[]) => {
     try {
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications: Record<string, any> = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+      const readNotifications: Record<string, any> = JSON.parse(safeGet(readNotificationsKey) || '{}')
 
       // Filtrar: solo mostrar las que NO están marcadas como leídas
       return notifications.filter((notification: Notification) => {
@@ -1167,7 +1168,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       
       // 🆕 OBTENER NOTIFICACIONES YA MARCADAS COMO LEÍDAS
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+      const readNotifications = JSON.parse(safeGet(readNotificationsKey) || '{}')
       
       // Tests completados de la última semana (endpoint agnóstico, user del token)
       const ahdr = await getAuthHeaders()
@@ -1297,7 +1298,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       
       // 🆕 OBTENER NOTIFICACIONES YA MARCADAS COMO LEÍDAS
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+      const readNotifications = JSON.parse(safeGet(readNotificationsKey) || '{}')
       
       // (query a 'tests' eliminada en Fase C1: lastTest no se usaba — las notificaciones
       //  de inactividad/racha rota se eliminaron y este array queda vacío.)
@@ -1608,7 +1609,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
       else {
         // Para otros tipos: marcar en localStorage
         const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-        const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+        const readNotifications = JSON.parse(safeGet(readNotificationsKey) || '{}')
         
         // Agregar la notificación como leída with timestamp
         readNotifications[notificationId] = {
@@ -1619,7 +1620,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
         // ✅ Cooldowns de racha rota eliminados - ya no se usan estas notificaciones
         
         // Guardar en localStorage
-        localStorage.setItem(readNotificationsKey, JSON.stringify(readNotifications))
+        safeSet(readNotificationsKey, JSON.stringify(readNotifications))
         console.log('💾 Notificación marcada como leída y removida de UI:', notificationId)
         
         // 🧪 Manejar notificaciones de testing con estado global
@@ -1800,7 +1801,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   const clearDismissedNotifications = () => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem(DISMISSED_NOTIFICATIONS_KEY)
+        safeRemove(DISMISSED_NOTIFICATIONS_KEY)
         console.log('🧹 Notificaciones descartadas limpiadas')
         loadAllNotifications() // Recargar para mostrar todas
       }

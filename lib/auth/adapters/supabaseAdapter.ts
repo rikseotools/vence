@@ -15,6 +15,7 @@ import type {
   SignInOptions,
   SignInWithIdTokenArgs,
 } from '../types'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawUser = any
@@ -77,11 +78,11 @@ async function acquireOAuthCallbackSession(
   // Limpiar sesión expirada en localStorage antes de esperar la nueva (evita
   // que un token viejo dispare lock contention en el SDK).
   try {
-    const existingRaw = localStorage.getItem(storageKey)
+    const existingRaw = safeGet(storageKey)
     if (existingRaw) {
       const existing = JSON.parse(existingRaw)
       if (existing?.expires_at && existing.expires_at * 1000 < Date.now()) {
-        localStorage.removeItem(storageKey)
+        safeRemove(storageKey)
       }
     }
   } catch {
@@ -131,7 +132,7 @@ async function acquireOAuthCallbackSession(
       if (resolved || !urlCode) return
       try {
         const codeVerifierKey = `${storageKey}-code-verifier`
-        const codeVerifier = localStorage.getItem(codeVerifierKey)
+        const codeVerifier = safeGet(codeVerifierKey)
         if (!codeVerifier) return
         const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=pkce`, {
           method: 'POST',
@@ -145,8 +146,8 @@ async function acquireOAuthCallbackSession(
         const tokenData = await response.json()
         if (tokenData?.access_token && tokenData?.user) {
           // Persistir para que el SDK lo detecte y limpiar el verifier usado.
-          localStorage.setItem(storageKey, JSON.stringify(tokenData))
-          localStorage.removeItem(codeVerifierKey)
+          safeSet(storageKey, JSON.stringify(tokenData))
+          safeRemove(codeVerifierKey)
           finish(tokenData)
         }
       } catch {
@@ -174,7 +175,7 @@ async function acquireOAuthCallbackSession(
     // Canal 2: polling de localStorage (sin locks).
     interval = setInterval(() => {
       try {
-        const raw = localStorage.getItem(storageKey)
+        const raw = safeGet(storageKey)
         if (raw) {
           const parsed = JSON.parse(raw)
           if (parsed?.access_token && parsed?.user) finish(parsed)
@@ -186,7 +187,7 @@ async function acquireOAuthCallbackSession(
 
     // Check inmediato por si la sesión ya está en storage.
     try {
-      const raw = localStorage.getItem(storageKey)
+      const raw = safeGet(storageKey)
       if (raw) {
         const parsed = JSON.parse(raw)
         if (parsed?.access_token && parsed?.user) finish(parsed)

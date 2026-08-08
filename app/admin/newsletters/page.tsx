@@ -4,6 +4,7 @@ import { useState, useEffect, ChangeEvent } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import EmailTemplatesTab from './EmailTemplatesTab'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 // ============================================
 // TIPOS
@@ -223,7 +224,7 @@ export default function NewslettersPage() {
   // Cargar plantillas guardadas desde localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('newsletter-templates')
+      const saved = safeGet('newsletter-templates')
       if (saved) {
         setSavedTemplates(JSON.parse(saved))
       }
@@ -395,7 +396,7 @@ export default function NewslettersPage() {
 
     const updatedTemplates = [...savedTemplates, newTemplate]
     setSavedTemplates(updatedTemplates)
-    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
     
     setTemplateName('')
     setShowSaveTemplate(false)
@@ -421,7 +422,7 @@ export default function NewslettersPage() {
     
     const updatedTemplates = [...savedTemplates, newTemplate]
     setSavedTemplates(updatedTemplates)
-    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
     alert('Plantilla duplicada exitosamente!')
   }
 
@@ -429,7 +430,7 @@ export default function NewslettersPage() {
     if (confirm('¿Estás seguro de que quieres eliminar esta plantilla?')) {
       const updatedTemplates = savedTemplates.filter(t => t.id !== templateId)
       setSavedTemplates(updatedTemplates)
-      localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+      safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
       alert('Plantilla eliminada exitosamente!')
     }
   }
@@ -451,7 +452,7 @@ export default function NewslettersPage() {
         : t
     )
     setSavedTemplates(updatedTemplates)
-    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
     setEditingTemplate(null)
     setEditingTemplateName('')
   }
@@ -1200,7 +1201,7 @@ export default function NewslettersPage() {
                                 : t
                             )
                             setSavedTemplates(updatedTemplates)
-                            localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                            safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
                             setLoadedCustomTemplate({ ...loadedCustomTemplate, subject: subject, content: htmlContent })
                             alert('✅ Cambios guardados en la plantilla!')
                           } else if (selectedTemplate) {
@@ -1220,7 +1221,7 @@ export default function NewslettersPage() {
                               }
                               const updatedTemplates = [...savedTemplates, template]
                               setSavedTemplates(updatedTemplates)
-                              localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                              safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
                               alert('✅ Plantilla guardada como nueva!')
                             }
                           }
@@ -1686,7 +1687,7 @@ export default function NewslettersPage() {
                                 }
                                 const updatedTemplates = [...savedTemplates, template]
                                 setSavedTemplates(updatedTemplates)
-                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
                                 alert('Plantilla guardada!')
                               }
                             }}
@@ -2059,7 +2060,7 @@ export default function NewslettersPage() {
                                 }
                                 const updatedTemplates = [...savedTemplates, template]
                                 setSavedTemplates(updatedTemplates)
-                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
                                 alert('Plantilla guardada!')
                               }
                             }}
@@ -2483,7 +2484,7 @@ export default function NewslettersPage() {
                                 }
                                 const updatedTemplates = [...savedTemplates, template]
                                 setSavedTemplates(updatedTemplates)
-                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                safeSet('newsletter-templates', JSON.stringify(updatedTemplates))
                                 alert('Plantilla guardada!')
                               }
                             }}

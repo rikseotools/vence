@@ -16,6 +16,7 @@ import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { esLeyResuelta } from '@/lib/laws/lawNameResuelta'
 import { getOposicion, getBlockForTopic, type Block } from '@/lib/config/oposiciones'
 import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface TopicData {
   id: string
@@ -136,7 +137,7 @@ export default function TemaTestPage({
 
   useEffect(() => {
     try {
-      const savedMode = localStorage.getItem('preferredTestMode')
+      const savedMode = safeGet('preferredTestMode')
       if (savedMode === 'practica' || savedMode === 'examen') {
         setTestMode(savedMode)
       }
@@ -145,7 +146,7 @@ export default function TemaTestPage({
 
   const handleTestModeChange = (newMode: 'practica' | 'examen') => {
     setTestMode(newMode)
-    try { localStorage.setItem('preferredTestMode', newMode) } catch { /* */ }
+    try { safeSet('preferredTestMode', newMode) } catch { /* */ }
   }
 
   const loadTopicData = useCallback(async (tema: number, userId: string | null): Promise<GetTopicDataResponse | null> => {

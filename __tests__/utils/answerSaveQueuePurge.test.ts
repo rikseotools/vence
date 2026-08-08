@@ -23,7 +23,12 @@ const localStorageMock = (() => {
 })()
 
 Object.defineProperty(global, 'localStorage', { value: localStorageMock })
-Object.defineProperty(global, 'window', { value: { addEventListener: jest.fn() } })
+// [T-203] `window.localStorage`, no solo el global: tras migrar a safeGet/safeSet
+// (lib/storage/safeLocalStorage), el acceso real pasa por `window.localStorage` — igual que
+// en un navegador de verdad, donde son la MISMA referencia. Antes el mock los separaba (el
+// código bajo prueba llamaba al `localStorage` global directamente, así que colaba), pero
+// esa separación nunca existió fuera de este test.
+Object.defineProperty(global, 'window', { value: { addEventListener: jest.fn(), localStorage: localStorageMock } })
 Object.defineProperty(global, 'document', {
   value: { addEventListener: jest.fn() },
   writable: true,

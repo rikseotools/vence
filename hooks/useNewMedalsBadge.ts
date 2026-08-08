@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '../lib/api/authHeaders'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 export function useNewMedalsBadge() {
   const { user } = useAuth() as any
@@ -18,7 +19,7 @@ export function useNewMedalsBadge() {
     if (!user?.id) return false
     try {
       const lastViewedKey = `${MEDALS_BADGE_COOLDOWN_KEY}_${user.id}`
-      const lastViewed = localStorage.getItem(lastViewedKey)
+      const lastViewed = safeGet(lastViewedKey)
       if (!lastViewed) return false
       const lastViewedTime = new Date(lastViewed)
       const hoursSinceLastViewed = (Date.now() - lastViewedTime.getTime()) / (1000 * 60 * 60)
@@ -96,7 +97,7 @@ export function useNewMedalsBadge() {
         console.warn('Error marking medals as viewed:', res.status)
       } else {
         const lastViewedKey = `${MEDALS_BADGE_COOLDOWN_KEY}_${user.id}`
-        localStorage.setItem(lastViewedKey, new Date().toISOString())
+        safeSet(lastViewedKey, new Date().toISOString())
 
         setHasNewMedals(false)
         setNewMedalsCount(0)

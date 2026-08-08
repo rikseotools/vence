@@ -75,7 +75,9 @@ describe('ArticleTTS — UI pura sobre useTTS', () => {
   it('persiste rate y voiceURI en localStorage', () => {
     expect(SRC).toMatch(/TTS_RATE_STORAGE_KEY/)
     expect(SRC).toMatch(/TTS_VOICE_STORAGE_KEY/)
-    expect(SRC).toMatch(/localStorage\.setItem/)
+    // [T-203] migrado a safeSet (lib/storage/safeLocalStorage): un `localStorage.setItem`
+    // desnudo lanza con la cuota llena; safeSet nunca lanza y emite `storage_unavailable`.
+    expect(SRC).toMatch(/safeSet\(/)
   })
 
   it('registra la instancia con TTSChain para encadenar leyes', () => {

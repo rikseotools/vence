@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface AiModel {
   id: string
@@ -214,8 +215,8 @@ export default function LifecycleQueueTab() {
           c.available_models?.some(m => m.status === 'working')
       )
       setAiConfigs(active)
-      const savedProvider = localStorage.getItem('topic_review_ai_provider')
-      const savedModel = localStorage.getItem('topic_review_ai_model')
+      const savedProvider = safeGet('topic_review_ai_provider')
+      const savedModel = safeGet('topic_review_ai_model')
       if (savedProvider && active.find(c => c.provider === savedProvider)) {
         setSelectedProvider(savedProvider)
         const cfg = active.find(c => c.provider === savedProvider)
@@ -234,18 +235,18 @@ export default function LifecycleQueueTab() {
 
   const handleProviderChange = (provider: string) => {
     setSelectedProvider(provider)
-    localStorage.setItem('topic_review_ai_provider', provider)
+    safeSet('topic_review_ai_provider', provider)
     const cfg = aiConfigs.find(c => c.provider === provider)
     const m = cfg?.available_models?.find(x => x.status === 'working')
     if (m) {
       setSelectedModel(m.id)
-      localStorage.setItem('topic_review_ai_model', m.id)
+      safeSet('topic_review_ai_model', m.id)
     }
   }
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
-    localStorage.setItem('topic_review_ai_model', model)
+    safeSet('topic_review_ai_model', model)
   }
 
   const availableModels = (): AiModel[] => {

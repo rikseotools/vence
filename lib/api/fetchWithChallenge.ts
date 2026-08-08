@@ -14,6 +14,7 @@ import {
 } from '@/lib/security/captcha/protocol'
 import { solveChallenge } from './challengeBridge'
 import { emitClientEvent } from '@/lib/observability/client'
+import { safeGet } from '@/lib/storage/safeLocalStorage'
 
 /** Path para etiquetar el evento de observabilidad, sin query ni PII. */
 function pathOfInput(input: RequestInfo | URL): string {
@@ -36,9 +37,9 @@ function withDeviceHeaders(init?: RequestInit): RequestInit {
   if (typeof window === 'undefined') return init ?? {}
   const headers = new Headers(init?.headers)
   try {
-    const deviceId = window.localStorage.getItem('vence_device_id')
+    const deviceId = safeGet('vence_device_id')
     if (deviceId && !headers.has('X-Device-Id')) headers.set('X-Device-Id', deviceId)
-    const hwFp = window.localStorage.getItem('vence_hw_fingerprint')
+    const hwFp = safeGet('vence_hw_fingerprint')
     if (hwFp && !headers.has('X-Hw-Fingerprint')) headers.set('X-Hw-Fingerprint', hwFp)
   } catch {
     /* localStorage no disponible (modo privado, etc.) → seguir sin la huella */

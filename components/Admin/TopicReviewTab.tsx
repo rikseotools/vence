@@ -98,6 +98,7 @@ const ReviewStatusBadge = ({ status, small = false }: ReviewStatusBadgeProps) =>
 
 // Formatear nombre de oposición (usa config central)
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const formatPositionName = (position: string): string => {
   if (position === 'psicotecnicos') return '🧠 Pruebas Psicotécnicas'
@@ -304,7 +305,7 @@ export default function TopicReviewTab() {
       if (data.success) {
         setPositions(data.positions || [])
         // Restaurar oposición guardada o usar la primera por defecto
-        const savedPosition = localStorage.getItem('topic_review_position')
+        const savedPosition = safeGet('topic_review_position')
         if (savedPosition && data.positions?.includes(savedPosition)) {
           setSelectedPosition(savedPosition)
         } else if (data.positions?.length > 0) {
@@ -357,8 +358,8 @@ export default function TopicReviewTab() {
         setAiConfigs(activeConfigs)
 
         // Intentar cargar selección guardada en localStorage
-        const savedProvider = localStorage.getItem('topic_review_ai_provider')
-        const savedModel = localStorage.getItem('topic_review_ai_model')
+        const savedProvider = safeGet('topic_review_ai_provider')
+        const savedModel = safeGet('topic_review_ai_model')
 
         if (savedProvider && activeConfigs.find(c => c.provider === savedProvider)) {
           // Usar el proveedor guardado si aún está disponible
@@ -397,20 +398,20 @@ export default function TopicReviewTab() {
   // Cambiar proveedor
   const handleProviderChange = (provider: string) => {
     setSelectedProvider(provider)
-    localStorage.setItem('topic_review_ai_provider', provider)
+    safeSet('topic_review_ai_provider', provider)
 
     const config = aiConfigs.find(c => c.provider === provider)
     const workingModel = config?.available_models?.find(m => m.status === 'working')
     if (workingModel) {
       setSelectedModel(workingModel.id)
-      localStorage.setItem('topic_review_ai_model', workingModel.id)
+      safeSet('topic_review_ai_model', workingModel.id)
     }
   }
 
   // Cambiar modelo (también guardar)
   const handleModelChange = (model: string) => {
     setSelectedModel(model)
-    localStorage.setItem('topic_review_ai_model', model)
+    safeSet('topic_review_ai_model', model)
   }
 
   // Cargar estado de la cola de verificaciones
@@ -948,7 +949,7 @@ export default function TopicReviewTab() {
             value={selectedPosition}
             onChange={(e) => {
               setSelectedPosition(e.target.value)
-              localStorage.setItem('topic_review_position', e.target.value)
+              safeSet('topic_review_position', e.target.value)
             }}
             className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
           >

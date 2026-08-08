@@ -15,7 +15,7 @@ import {
   decodeTrackMark,
 } from '@/lib/security/sessionIpTracking'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
-import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 import { decidirSesionFantasma, decidirIdentidadAjena } from '@/lib/auth/sesionFantasma'
 import { clearLegacySupabaseSession, readLegacySupabaseUser } from '@/lib/auth/legacySupabaseStorage'
 import { emitClientEvent } from '@/lib/observability/client'
@@ -71,9 +71,9 @@ const trackSessionIPIfDue = (userId: string | null | undefined, sessionId: strin
 const trackSessionIP = (userId: string, sessionId: string | null = null) => {
   if (typeof window === 'undefined') return
 
-  const deviceId = localStorage.getItem('vence_device_id') || null
+  const deviceId = safeGet('vence_device_id') || null
   // Huella v2 si ya está calculada (la que sobrevive a borrar el almacén), v1 mientras tanto.
-  const hwFingerprint = getFingerprintHeader() || localStorage.getItem('vence_hw_fingerprint') || null
+  const hwFingerprint = getFingerprintHeader() || safeGet('vence_hw_fingerprint') || null
 
   fetch('/api/auth/track-session-ip', {
     method: 'POST',
@@ -120,7 +120,7 @@ function readCachedProfile(expectedUserId: string): UserProfileRow | null {
   try {
     const key = profileCacheKey()
     if (!key) return null
-    const raw = localStorage.getItem(key)
+    const raw = safeGet(key)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     // Solo aceptar si es del MISMO usuario y no está caducado.
@@ -136,7 +136,7 @@ function writeCachedProfile(profile: UserProfileRow): void {
   try {
     const key = profileCacheKey()
     if (!key) return
-    localStorage.setItem(key, JSON.stringify({ profile, cachedAt: Date.now() }))
+    safeSet(key, JSON.stringify({ profile, cachedAt: Date.now() }))
   } catch {
     // localStorage lleno/no disponible — el cache es un optimizador, no crítico.
   }
@@ -145,7 +145,7 @@ function writeCachedProfile(profile: UserProfileRow): void {
 function clearCachedProfile(): void {
   try {
     const key = profileCacheKey()
-    if (key) localStorage.removeItem(key)
+    if (key) safeRemove(key)
   } catch {}
 }
 
@@ -273,7 +273,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
     // 3. Verificar localStorage para return_to
     try {
-      const returnUrl = localStorage.getItem('auth_return_url_backup')
+      const returnUrl = safeGet('auth_return_url_backup')
       if (returnUrl && (returnUrl.includes('premium-ads') || returnUrl.includes('premium-edu'))) {
         console.log('🎯 Detectado: Usuario viene de Google Ads (localStorage)')
         return 'google_ads'
@@ -631,7 +631,7 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
               // INMUTABLE (`onConflictDoNothing`), así que el binding bueno del callback ya no
               // podía corregirla. Los campos de abajo se conservan como respaldo: si no hay
               // toques, el endpoint sigue cayendo a su fallback y la cobertura no baja.
-              deviceId: typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null,
+              deviceId: typeof window !== 'undefined' ? safeGet('vence_device_id') : null,
               channel: registrationSource,
               gclid: getCookie('google_gclid') || campaign?.gclid || null,
               fbclid: getCookie('meta_fbclid') || campaign?.fbclid || null,
@@ -1125,8 +1125,8 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
 
       // 2. Limpiar localStorage
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('auth_return_url_backup')
-        localStorage.removeItem('auth_return_timestamp')
+        safeRemove('auth_return_url_backup')
+        safeRemove('auth_return_timestamp')
         // Limpiar cualquier otro dato de localStorage que uses para auth
       }
 

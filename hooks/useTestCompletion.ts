@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTopicUnlock } from './useTopicUnlock'
 import { useMedalChecker } from './useMedalChecker'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 export function useTestCompletion() {
   const { user } = useAuth() as any
@@ -19,7 +20,7 @@ export function useTestCompletion() {
       const getDismissedNotifications = () => {
         try {
           if (typeof window === 'undefined') return new Set()
-          const stored = localStorage.getItem('dismissed_notifications')
+          const stored = safeGet('dismissed_notifications')
           if (!stored) return new Set()
           
           const parsed = JSON.parse(stored)
@@ -42,7 +43,7 @@ export function useTestCompletion() {
             timestamp: Date.now()
           }
           
-          localStorage.setItem('dismissed_notifications', JSON.stringify(data))
+          safeSet('dismissed_notifications', JSON.stringify(data))
           console.log(`🗑️ Notificación ${notificationId} auto-descartada por completar test`)
         } catch (error) {
           console.warn('Error auto-descartando notificación:', error)

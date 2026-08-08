@@ -1,5 +1,12 @@
 // Sistema de respaldo local para respuestas de test
 // Previene pérdida de datos cuando hay fallos de red o servidor
+//
+// [T-203] Migrado a safeGet/safeSet/safeRemove (lib/storage/safeLocalStorage): antes cada método
+// atrapaba QuotaExceededError a mano y lo hacía sin telemetría — el helper ya no lanza nunca y
+// emite `storage_unavailable`, así que el try/catch de aquí sobra salvo donde protege un
+// JSON.parse (eso sigue siendo cosa de este fichero).
+
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 export interface BackupAnswerData {
   questionData: Record<string, unknown>
@@ -54,50 +61,41 @@ class TestBackupSystem {
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString()
       };
-      try {
-        localStorage.setItem(this.storageKey, JSON.stringify(initialBackup));
-      } catch (e) {
-        console.warn('⚠️ No se pudo inicializar backup local:', e);
+      if (!safeSet(this.storageKey, JSON.stringify(initialBackup))) {
+        console.warn('⚠️ No se pudo inicializar backup local');
       }
     }
   }
 
   // Guardar respuesta localmente ANTES de enviar a BD
   saveLocally(questionNumber: number, answerData: BackupAnswerData): boolean {
-    try {
-      const backup = this.getBackup();
-      backup.answers[questionNumber] = {
-        ...answerData,
-        timestamp: new Date().toISOString(),
-        synced: false
-      };
-      backup.lastModified = new Date().toISOString();
+    const backup = this.getBackup();
+    backup.answers[questionNumber] = {
+      ...answerData,
+      timestamp: new Date().toISOString(),
+      synced: false
+    };
+    backup.lastModified = new Date().toISOString();
 
-      localStorage.setItem(this.storageKey, JSON.stringify(backup));
+    if (safeSet(this.storageKey, JSON.stringify(backup))) {
       console.log(`💾 Respuesta #${questionNumber} guardada localmente`);
       return true;
-    } catch (e: unknown) {
-      console.error('❌ Error guardando backup local:', e);
-      // Si localStorage está lleno, intentar limpiar backups antiguos
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-        this.cleanOldBackups();
-        // Reintentar una vez
-        try {
-          const backup = this.getBackup();
-          backup.answers[questionNumber] = {
-            ...answerData,
-            timestamp: new Date().toISOString(),
-            synced: false
-          };
-          backup.lastModified = new Date().toISOString();
-          localStorage.setItem(this.storageKey, JSON.stringify(backup));
-          return true;
-        } catch (retryError) {
-          console.error('❌ Fallo después de limpiar localStorage:', retryError);
-        }
-      }
-      return false;
     }
+
+    // safeSet falló (típicamente cuota llena): limpiar backups antiguos y reintentar una vez.
+    this.cleanOldBackups();
+    const retryBackup = this.getBackup();
+    retryBackup.answers[questionNumber] = {
+      ...answerData,
+      timestamp: new Date().toISOString(),
+      synced: false
+    };
+    retryBackup.lastModified = new Date().toISOString();
+    if (safeSet(this.storageKey, JSON.stringify(retryBackup))) {
+      return true;
+    }
+    console.error('❌ Fallo guardando backup local después de limpiar.');
+    return false;
   }
 
   // Recuperar respuestas no sincronizadas
@@ -113,32 +111,33 @@ class TestBackupSystem {
 
   // Marcar como sincronizado
   markAsSynced(questionNumber: number): boolean {
-    try {
-      const backup = this.getBackup();
-      if (backup.answers[questionNumber]) {
-        backup.answers[questionNumber].synced = true;
-        backup.answers[questionNumber].syncedAt = new Date().toISOString();
-        backup.lastModified = new Date().toISOString();
-        localStorage.setItem(this.storageKey, JSON.stringify(backup));
+    const backup = this.getBackup();
+    if (backup.answers[questionNumber]) {
+      backup.answers[questionNumber].synced = true;
+      backup.answers[questionNumber].syncedAt = new Date().toISOString();
+      backup.lastModified = new Date().toISOString();
+      if (safeSet(this.storageKey, JSON.stringify(backup))) {
         console.log(`✅ Pregunta #${questionNumber} marcada como sincronizada`);
         return true;
       }
-    } catch (e) {
-      console.error('❌ Error marcando como sincronizado:', e);
+      console.error('❌ Error marcando como sincronizado');
     }
     return false;
   }
 
   // Obtener el backup actual
   getBackup(): BackupData {
-    try {
-      const stored = localStorage.getItem(this.storageKey);
-      return stored ? JSON.parse(stored) : {
+    const stored = safeGet(this.storageKey);
+    if (!stored) {
+      return {
         testId: this.testId,
         answers: {},
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString()
       };
+    }
+    try {
+      return JSON.parse(stored);
     } catch (e) {
       console.error('❌ Error leyendo backup:', e);
       return {
@@ -168,14 +167,13 @@ class TestBackupSystem {
 
   // Limpiar este backup
   clear(): boolean {
-    try {
-      localStorage.removeItem(this.storageKey);
+    const ok = safeRemove(this.storageKey);
+    if (ok) {
       console.log(`🗑️ Backup del test ${this.testId} eliminado`);
-      return true;
-    } catch (e) {
-      console.error('❌ Error eliminando backup:', e);
-      return false;
+    } else {
+      console.error('❌ Error eliminando backup');
     }
+    return ok;
   }
 
   cleanOldBackups(): void {
@@ -190,20 +188,20 @@ class TestBackupSystem {
       for (const key of Object.keys(localStorage)) {
         if (!key.startsWith('test_backup_')) continue
         try {
-          const backup = JSON.parse(localStorage.getItem(key) || '{}') as BackupData
+          const backup = JSON.parse(safeGet(key) || '{}') as BackupData
           const lastModified = new Date(backup.lastModified || backup.createdAt)
           const answers = Object.values(backup.answers || {})
           const allSynced = answers.length > 0 && answers.every(a => a.synced)
           backupKeys.push({ key, lastModified, allSynced })
         } catch {
-          localStorage.removeItem(key)
+          safeRemove(key)
         }
       }
 
       // 1) Purge fully synced backups (data already on server)
       for (const b of backupKeys) {
         if (b.allSynced) {
-          localStorage.removeItem(b.key)
+          safeRemove(b.key)
         }
       }
       const remaining = backupKeys.filter(b => !b.allSynced)
@@ -211,7 +209,7 @@ class TestBackupSystem {
       // 2) Purge backups older than 3 days
       for (const b of remaining) {
         if (b.lastModified < cutoff) {
-          localStorage.removeItem(b.key)
+          safeRemove(b.key)
         }
       }
       const afterAge = remaining.filter(b => b.lastModified >= cutoff)
@@ -222,7 +220,7 @@ class TestBackupSystem {
         const toDrop = afterAge.length - MAX_BACKUPS
         for (let i = 0; i < toDrop; i++) {
           if (afterAge[i].key !== this.storageKey) {
-            localStorage.removeItem(afterAge[i].key)
+            safeRemove(afterAge[i].key)
           }
         }
       }

@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { auth } from '../lib/auth'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { trackLimitReached } from '../lib/services/conversionTracker'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 interface DailyLimitStatus {
   questionsToday: number
@@ -293,12 +294,12 @@ export function useDailyQuestionLimit() {
           const today = new Date().toISOString().split('T')[0]
           const storageKey = `limit_tracked_${user.id}_${today}`
           const alreadyTracked = limitTrackedTodayRef.current ||
-            (typeof window !== 'undefined' && localStorage.getItem(storageKey))
+            (typeof window !== 'undefined' && safeGet(storageKey))
 
           if (questionsToday === currentLimit && !alreadyTracked) {
             limitTrackedTodayRef.current = true
             if (typeof window !== 'undefined') {
-              localStorage.setItem(storageKey, 'true')
+              safeSet(storageKey, 'true')
             }
             // Track with graduated limit context for observability
             trackLimitReached(user.id, questionsToday, {

@@ -77,8 +77,10 @@ describe('Pill flotante — 3 estados controlables', () => {
 
   it('persiste preferencia en localStorage con key "simulacro-timer-display"', () => {
     expect(src).toContain("'simulacro-timer-display'")
-    expect(src).toContain("localStorage.setItem('simulacro-timer-display'")
-    expect(src).toContain("localStorage.getItem('simulacro-timer-display')")
+    // [T-203] migrado a safeSet/safeGet (lib/storage/safeLocalStorage): un `localStorage.setItem`
+    // desnudo lanza con la cuota llena; safeSet/safeGet nunca lanzan y emiten `storage_unavailable`.
+    expect(src).toContain("safeSet('simulacro-timer-display'")
+    expect(src).toContain("safeGet('simulacro-timer-display')")
   })
 
   it('pill solo se renderiza si isCountdown && !isSubmitted && !headerTimerVisible', () => {

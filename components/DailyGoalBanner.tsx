@@ -9,6 +9,7 @@ import { useDailyGoal } from '../hooks/useDailyGoal'
 import { getAuthHeaders } from '../lib/api/authHeaders'
 import { emitClientEvent } from '../lib/observability/client'
 import { clampOffsetArrastre, necesitaRescate } from '../lib/ui/arrastrable'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // ============================================================================
 // Helpers puros (testeados en __tests__/components/DailyGoalBanner.test.ts).
@@ -85,7 +86,7 @@ export default function DailyGoalBanner() {
   useEffect(() => {
     if (!user?.id) return
     try {
-      const raw = localStorage.getItem(`daily_goal_pos:${user.id}`)
+      const raw = safeGet(`daily_goal_pos:${user.id}`)
       const guardada = raw ? JSON.parse(raw) : null
       // RESCATE (T-315 / feedback `247449ed`): una posición que solo puede venir de un scroll
       // capturado por error deja la barra sobre el contenido, comiéndose sus toques. Se
@@ -94,7 +95,7 @@ export default function DailyGoalBanner() {
       // encima del propio control que necesita pulsar). El asa impide que vuelva a pasar;
       // esto arregla a quien ya lo sufre.
       if (necesitaRescate(guardada)) {
-        localStorage.removeItem(`daily_goal_pos:${user.id}`)
+        safeRemove(`daily_goal_pos:${user.id}`)
         setPos(null)
         emitClientEvent({
           severity: 'info',
@@ -125,7 +126,7 @@ export default function DailyGoalBanner() {
         viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
       })
       if (next.x === prev.x && next.y === prev.y) return prev
-      try { localStorage.setItem(`daily_goal_pos:${user.id}`, JSON.stringify(next)) } catch { /* ignore */ }
+      try { safeSet(`daily_goal_pos:${user.id}`, JSON.stringify(next)) } catch { /* ignore */ }
       return next
     })
     reclamp()
@@ -139,7 +140,7 @@ export default function DailyGoalBanner() {
     confettiFiredRef.current = true
     try {
       const key = `daily_goal_confetti_${user?.id}_${new Date().toISOString().slice(0, 10)}`
-      localStorage.setItem(key, '1')
+      safeSet(key, '1')
     } catch { /* ignore */ }
 
     // Calculate origin from pill button position
@@ -183,7 +184,7 @@ export default function DailyGoalBanner() {
     if (goalLoading || !goalReached || !user) return
     try {
       const key = `daily_goal_confetti_${user.id}_${new Date().toISOString().slice(0, 10)}`
-      if (localStorage.getItem(key) === '1') {
+      if (safeGet(key) === '1') {
         confettiFiredRef.current = true
         return
       }
@@ -269,7 +270,7 @@ export default function DailyGoalBanner() {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       if (movedRef.current) {
-        try { localStorage.setItem(`daily_goal_pos:${user.id}`, JSON.stringify(latest)) } catch { /* ignore */ }
+        try { safeSet(`daily_goal_pos:${user.id}`, JSON.stringify(latest)) } catch { /* ignore */ }
         emitClientEvent({ severity: 'info', eventType: 'daily_goal_banner_action', metadata: { action: 'drag', x: latest.x, y: latest.y } })
       }
     }

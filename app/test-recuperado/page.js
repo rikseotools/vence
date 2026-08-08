@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import Link from 'next/link'
+import { safeGet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 const PENDING_TEST_KEY = 'vence_pending_test'
 const RECOVERY_SESSION_KEY = 'vence_recovery_result' // Para persistir entre recargas
@@ -82,7 +83,7 @@ function TestRecuperadoContent() {
         }
 
         // Obtener test pendiente de localStorage
-        const pendingTestStr = localStorage.getItem(PENDING_TEST_KEY)
+        const pendingTestStr = safeGet(PENDING_TEST_KEY)
         console.log('📂 [RECUPERADO] localStorage check:', pendingTestStr ? `FOUND (${pendingTestStr.length} chars)` : 'EMPTY')
 
         if (!pendingTestStr) {
@@ -96,7 +97,7 @@ function TestRecuperadoContent() {
           pendingTest = JSON.parse(pendingTestStr)
         } catch (e) {
           console.error('❌ [RECUPERADO] Error parseando test:', e)
-          localStorage.removeItem(PENDING_TEST_KEY)
+          safeRemove(PENDING_TEST_KEY)
           setStatus('no-test')
           return
         }
@@ -110,7 +111,7 @@ function TestRecuperadoContent() {
         // Verificar que tenga respuestas
         if (!pendingTest.answeredQuestions || pendingTest.answeredQuestions.length === 0) {
           console.log('❌ [RECUPERADO] Test sin respuestas')
-          localStorage.removeItem(PENDING_TEST_KEY)
+          safeRemove(PENDING_TEST_KEY)
           setStatus('no-test')
           return
         }
@@ -165,11 +166,11 @@ function TestRecuperadoContent() {
         console.log('🔍 [RECUPERADO] Verificación: sessionStorage tiene:', checkSession ? `${checkSession.length} chars` : 'NADA!')
 
         // 🗑️ SEGUNDO: Ahora sí, limpiar localStorage
-        localStorage.removeItem(PENDING_TEST_KEY)
+        safeRemove(PENDING_TEST_KEY)
         console.log('🗑️ [RECUPERADO] 2. localStorage limpiado')
 
         // Verificar que se eliminó
-        const checkRemoved = localStorage.getItem(PENDING_TEST_KEY)
+        const checkRemoved = safeGet(PENDING_TEST_KEY)
         console.log('🔍 [RECUPERADO] Verificación: localStorage ahora es:', checkRemoved ? 'AÚN EXISTE!' : 'ELIMINADO OK')
 
         // 🎯 TERCERO: Establecer estado React

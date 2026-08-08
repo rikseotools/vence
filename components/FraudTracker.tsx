@@ -5,6 +5,7 @@
 'use client'
 import { useEffect } from 'react'
 import { getOrCreateHardwareFingerprint } from '@/lib/deviceFingerprint'
+import { safeGet, safeSet } from '@/lib/storage/safeLocalStorage'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -12,8 +13,8 @@ export default function FraudTracker() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    if (!localStorage.getItem(DEVICE_ID_KEY)) {
-      localStorage.setItem(DEVICE_ID_KEY, crypto.randomUUID())
+    if (!safeGet(DEVICE_ID_KEY)) {
+      safeSet(DEVICE_ID_KEY, crypto.randomUUID())
     }
 
     getOrCreateHardwareFingerprint()

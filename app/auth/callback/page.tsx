@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth'
 import { pickReturnUrl } from '@/lib/auth/pickReturnUrl'
 import { useGoogleAds } from '../../../utils/googleAds'
 import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
+import { safeGet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -32,16 +33,16 @@ function AuthCallbackContent() {
           let backupUrl: string | null = null
           let backupTimestamp: string | null = null
           try {
-            backupUrl = localStorage.getItem('auth_return_url_backup')
-            backupTimestamp = localStorage.getItem('auth_return_timestamp')
+            backupUrl = safeGet('auth_return_url_backup')
+            backupTimestamp = safeGet('auth_return_timestamp')
           } catch (e) {
             console.warn('⚠️ [CALLBACK] Error accediendo localStorage:', e)
           }
           const { url, consumeBackup } = pickReturnUrl(returnToParam, backupUrl, backupTimestamp, Date.now())
           if (consumeBackup) {
             try {
-              localStorage.removeItem('auth_return_url_backup')
-              localStorage.removeItem('auth_return_timestamp')
+              safeRemove('auth_return_url_backup')
+              safeRemove('auth_return_timestamp')
             } catch { /* noop */ }
           }
           console.log('📍 [CALLBACK] URL de retorno:', url)
@@ -131,7 +132,7 @@ function AuthCallbackContent() {
         // last-touch refrescado); se llama también en logins de retorno para
         // mantener el last-touch al día.
         try {
-          const deviceId = typeof window !== 'undefined' ? localStorage.getItem('vence_device_id') : null
+          const deviceId = typeof window !== 'undefined' ? safeGet('vence_device_id') : null
           // client_id de GA4 desde la cookie _ga (GA1.x.<clientid>) — para que
           // GA4 ate la compra al usuario y atribuya su canal (Measurement Protocol).
           const gaMatch = typeof document !== 'undefined'
@@ -175,7 +176,7 @@ function AuthCallbackContent() {
         const PENDING_TEST_KEY = 'vence_pending_test'
 
         try {
-          const pendingTestStr = localStorage.getItem(PENDING_TEST_KEY)
+          const pendingTestStr = safeGet(PENDING_TEST_KEY)
           if (pendingTestStr) {
             const pendingTest = JSON.parse(pendingTestStr)
             const age = Date.now() - pendingTest.savedAt
@@ -187,7 +188,7 @@ function AuthCallbackContent() {
               redirectUrl = '/test-recuperado'
               setMessage('¡Encontramos tu test! Guardando tu progreso...')
             } else {
-              localStorage.removeItem(PENDING_TEST_KEY)
+              safeRemove(PENDING_TEST_KEY)
             }
           }
         } catch (e) {

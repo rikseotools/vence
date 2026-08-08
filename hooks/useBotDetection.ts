@@ -7,6 +7,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 // y ya no se cree el `userId` del cuerpo. Sin esta cabecera el reporte se
 // descarta con 401 — que es preferible a aceptar uno falsificado.
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { safeGet } from '@/lib/storage/safeLocalStorage'
 
 declare global {
   interface Window {
@@ -97,7 +98,7 @@ export function useBotDetection(userId: string | null) {
           try {
             const notificationPermission = await navigator.permissions.query({ name: 'notifications' })
             // Bots típicamente tienen 'denied' sin que el usuario lo haya denegado
-            if (notificationPermission.state === 'denied' && !localStorage.getItem('notification_denied_by_user')) {
+            if (notificationPermission.state === 'denied' && !safeGet('notification_denied_by_user')) {
               score += 10
               evidence.push('suspicious_permissions')
             }

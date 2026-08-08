@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getClientVersion } from '@/hooks/useVersionCheck'
+import { safeGet, safeSet, safeRemove } from '@/lib/storage/safeLocalStorage'
 
 // ============================================
 // TIPOS
@@ -132,7 +133,7 @@ function loadQueueFromStorage(): QueuedEvent[] {
   if (typeof window === 'undefined') return []
 
   try {
-    const stored = localStorage.getItem(QUEUE_KEY)
+    const stored = safeGet(QUEUE_KEY)
     return stored ? JSON.parse(stored) : []
   } catch {
     return []
@@ -143,7 +144,7 @@ function saveQueueToStorage(queue: QueuedEvent[]): void {
   if (typeof window === 'undefined') return
 
   try {
-    localStorage.setItem(QUEUE_KEY, safeStringify(queue))
+    safeSet(QUEUE_KEY, safeStringify(queue))
   } catch {
     // Storage full or unavailable
   }
@@ -153,7 +154,7 @@ function clearQueueFromStorage(): void {
   if (typeof window === 'undefined') return
 
   try {
-    localStorage.removeItem(QUEUE_KEY)
+    safeRemove(QUEUE_KEY)
   } catch {
     // Ignore
   }
