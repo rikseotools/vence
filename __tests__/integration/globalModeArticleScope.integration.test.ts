@@ -186,7 +186,14 @@ describe('NIVEL C — scope por artículo vía fuente única en el código', () 
   })
 
   it('el modo global usa el helper (no reimplementa el EXISTS a mano)', () => {
-    expect(src).toContain("import { articleInPositionScopeExists }")
+    // [T-690] Substring exacto → frágil: rompía en cuanto el import ganaba un segundo
+    // nombre en las mismas llaves (p.ej. `fueraDeScope`, T-607/ecf8aa89c 07/08/2026),
+    // aunque el fichero SIGUIERA usando el helper tal cual. La regex solo exige que
+    // `articleInPositionScopeExists` esté entre las llaves de un import de ese módulo,
+    // sin importar qué más se importe a su lado.
+    expect(src).toMatch(
+      /import\s*\{[^}]*\barticleInPositionScopeExists\b[^}]*\}\s*from\s*['"]@\/lib\/api\/_shared\/topicScopeSql['"]/,
+    )
     expect(src).toContain('const articleScopeFilter = articleInPositionScopeExists(')
     // no debe quedar el unnest sin guarda en el modo global
     expect(src).not.toMatch(/articleScopeFilter\s*=\s*sql`EXISTS/)

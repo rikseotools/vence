@@ -1328,8 +1328,40 @@ por debajo del umbral de 15… pero el ratio por 100 respuestas no llega a 25).
   | `api/user-stats/userStatsSummary.test.ts` | PK, CASCADE FK, trigger de `user_stats_summary` | tabla **SÍ existe** (confirmado); PK **no encontrada**, CASCADE FK **no encontrada**, trigger `update_user_stats_summary_trigger` **no existe** (confirmado con query directa: count=0) | 🟠 SOSPECHO migración sin aplicar tras el cutover a RDS (04/07) — las migraciones que crean esto (`20260501_init_user_stats_summary_trigger.sql`, `20260708_user_stats_summary_fk_cascade.sql`) son de ANTES del cutover; no confirmado que sea la causa, solo que el síntoma encaja con el patrón ya documentado en CLAUDE.md |
   | `canary/shuffleRoundtripBD.test.ts` (gate shuffle_safety) | preguntas `safe` que citan letra/posición (no deberían) | **203 de 2.000** (muestra aleatoria) incoherentes | 🟡 probablemente el backlog YA CONOCIDO de "criterio viejo" (`docs/runbooks/barajar-opciones-verificacion-robusta.md` §(c)) — no es nuevo, es la métrica de un problema que ya tiene su propio comando de arreglo (`npm run shuffle:recriterio`) |
   | `integration/placeholderTemarioGuard.test.ts` | preguntas colgadas de artículos placeholder vacíos, ratchet baseline=0 | **7.202** (top: SALUD MENTAL ENF 701, NUTRICIÓN 667…) | 🟡 coincide EXACTO con el backlog de T-596 ya documentado en CLAUDE.md ("13.952 artículos con title=NULL", "articulo_servido_sin_texto") — el baseline=0 de este test choca con una deuda de contenido que ya se sabe que existe y no se va a limpiar en un triaje |
-  | `integration/globalModeArticleScope.integration.test.ts` | el modo global de `lib/api/filtered-questions/queries.ts` reusa `articleInPositionScopeExists` | el fichero real **NO** importa ese helper (confirmado leyendo el import real: importa `getDb, getReadDb, getPoolerDb`, `allocateProportional`, schema, drizzle-orm ops, `getAllowedLawIds`… pero no `articleInPositionScopeExists`) | 🔴 **NO es de BD ni de mi credencial** — es un test de CONTENIDO DE FICHERO, corrió limpio en todos los intentos. O el código se refactorizó sin actualizar el test, o genuinamente reimplementa el EXISTS a mano (justo el patrón de "cinco escritores del mismo hecho" que T-130 existe para evitar). Necesita que alguien lea `queries.ts` y decida cuál de las dos cosas es |
+  | `integration/globalModeArticleScope.integration.test.ts` | el modo global de `lib/api/filtered-questions/queries.ts` reusa `articleInPositionScopeExists` | **CORREGIDO 08/08 (arreglo de la revisión).** La fila anterior decía "el fichero real NO importa ese helper" — **FALSO, y demostrable con un solo grep**: `grep -n '^import' lib/api/filtered-questions/queries.ts` → línea 31, `import { articleInPositionScopeExists, fueraDeScope } from '@/lib/api/_shared/topicScopeSql'`. El helper SÍ está importado y SÍ se usa (línea 190 del test lo confirma aparte). | ✅ era un FALSO NEGATIVO de la propia entrega, no un hallazgo de código — la fila se corrige, no se retira, porque el test SÍ estaba (y sigue estando, ver nota de abajo) genuinamente relacionado con un bug real de assertion, distinto del que se afirmaba |
   | `api/admin/salesBadge.integration.test.ts` (`markSalesAsRead`) | UPDATE en `admin_read_markers` | `permission denied for table admin_read_markers` | ✅ esperado — es un UPDATE, `vence_lector` es SELECT-only. No dice nada sobre CI |
+
+  **🔧 ARREGLO DE LA REVISIÓN (08/08, w3) — y una corrección a la PROPIA revisión, con prueba.**
+  La revisión (w1) tenía razón en que la fila de `globalModeArticleScope` era falsa (reproducido:
+  `grep -n '^import' lib/api/filtered-questions/queries.ts` → línea 31 SÍ importa
+  `articleInPositionScopeExists`). Pero su propia comprobación de reemplazo **tampoco reproduce**:
+  - La revisión afirma *"corrió limpio en todos los intentos... PASA LIMPIO, 6/6 verdes + 1 skip
+    legítimo"* y cita *"un comentario (línea 188-192) que documenta que esta aserción se hizo
+    DELIBERADAMENTE tolerante a imports adicionales"*. **Corrido ahora mismo**
+    (`npx jest __tests__/integration/globalModeArticleScope.integration.test.ts`, ANTES de tocar
+    nada): **5 passed, 1 FAILED, 1 skipped** — no 6/6. Y las líneas 188-192 no son un comentario de
+    tolerancia: son la propia aserción frágil, `expect(src).toContain("import { articleInPositionScopeExists }")`
+    (substring EXACTO, sin nada más entre llaves).
+  - **Causa real, reproducida:** el commit `ecf8aa89c` (`feat(T-607)`, 07/08/2026 00:41 UTC, ajeno a
+    esta tarea) amplió el import de la línea 31 a `import { articleInPositionScopeExists, fueraDeScope } from …`.
+    El substring exacto de la línea 189 (sin `fueraDeScope`) dejó de encajar desde ese commit —
+    **la aserción está rota desde el 07/08**, no desde siempre, y no por casualidad de mi entorno:
+    ambas fichas (la entrega original del 08/08 Y la revisión que la juzgó) corrieron DESPUÉS de
+    `ecf8aa89c` (confirmado con `git merge-base --is-ancestor ecf8aa89c HEAD`), así que el test
+    llevaba roto todo ese tiempo y ninguna de las dos vueltas lo detectó bien: la entrega dijo que
+    el import no existía (falso) y la revisión dijo que el test pasaba limpio (tampoco reproducible).
+  - **Arreglado de verdad, no solo documentado:** la aserción de la línea 189 pasa de substring
+    exacto a una regex que exige `articleInPositionScopeExists` como palabra suelta dentro de las
+    llaves de un import de `@/lib/api/_shared/topicScopeSql`, sin importar qué más se importe al
+    lado — así no vuelve a romper si mañana se añade un cuarto nombre a esa misma línea. Re-corrido
+    tras el fix: **6 passed, 1 skipped** (el skip es NIVEL A, legítimo — credenciales de Supabase
+    LEGACY que un trabajador no tiene, no el problema de SSL/RDS del resto de la ficha).
+  - **Por qué esto SÍ contaba como un fallo real de CI, y no como "hallazgo falso" a secas:** aunque
+    la causa raíz no era la que ninguna de las dos vueltas afirmó (ni "el helper no se usa" ni
+    "corre limpio siempre"), el test SÍ estaba genuinamente en rojo en cualquier corrida posterior
+    al 07/08 — incluida presumiblemente CI, que no tiene el problema de SSL/rol de esta ficha
+    porque este test en concreto no toca BD en NIVEL C (es lectura de fichero). Es, con casi total
+    seguridad, una de las suites que aportan al recuento `tests_en_rojo` del gate.
 
   **Lo que NO me dio tiempo a verificar individualmente** (quedan en la lista limpia, sin
   root-causar): `topicCountVsServed`, `articleTestCount`, `articlesDuplicateLawScope`,
