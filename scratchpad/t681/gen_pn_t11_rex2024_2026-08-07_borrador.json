@@ -1,0 +1,478 @@
+[
+  {
+    "primary_article_number": "215",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 215 (Normativa aplicable)",
+    "question_text": "Según el apartado 1 del artículo 215 del Reglamento de la Ley Orgánica 4/2000 (REx 2024, RD 1155/2024), ¿a qué se ajustará el ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000?",
+    "options": [
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se ajustará a lo dispuesto en ella y en el Reglamento de Régimen Disciplinario de la Función Pública.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 10/1995, de 23 de noviembre, se ajustará a lo dispuesto en ella y en la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se ajustará a lo dispuesto en ella y en la Ley Orgánica 3/2018, de Protección de Datos Personales.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se ajustará a lo dispuesto en ella y en la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 215.1",
+        "texto": "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se ajustará a lo dispuesto en ella y en la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas."
+      },
+      "options": {
+        "0": "El apartado 1 remite a la Ley 39/2015, no al Reglamento de Régimen Disciplinario de la Función Pública.",
+        "1": "Las infracciones están previstas en la Ley Orgánica 4/2000, no en la Ley Orgánica 10/1995 (Código Penal).",
+        "2": "El apartado 1 remite a la Ley 39/2015, no a la Ley Orgánica 3/2018 de Protección de Datos.",
+        "3": "Es la cita literal del apartado 1 del artículo 215."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 215.1**\n> \"El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se ajustará a lo dispuesto en ella y en la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas.\"\n\n**Por qué D es correcta:** Es la cita literal del apartado 1 del artículo 215.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 1 remite a la Ley 39/2015, no al Reglamento de Régimen Disciplinario de la Función Pública.\n- **B)** Las infracciones están previstas en la Ley Orgánica 4/2000, no en la Ley Orgánica 10/1995 (Código Penal).\n- **C)** El apartado 1 remite a la Ley 39/2015, no a la Ley Orgánica 3/2018 de Protección de Datos."
+  },
+  {
+    "primary_article_number": "215",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 215 (Normativa aplicable)",
+    "question_text": "Según el apartado 2 del artículo 215 del REx 2024, ¿en qué caso se puede imponer una sanción por infracción a los preceptos de la Ley Orgánica 4/2000?",
+    "options": [
+      "No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley Orgánica 4/2000, de 11 de enero, sino en virtud de denuncia previa de un particular interesado.",
+      "No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley 39/2015, de 1 de octubre, sino en virtud de procedimiento instruido al efecto.",
+      "No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley Orgánica 4/2000, de 11 de enero, sino en virtud de resolución judicial firme previa.",
+      "No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley Orgánica 4/2000, de 11 de enero, sino en virtud de procedimiento instruido al efecto."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 215.2",
+        "texto": "No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley Orgánica 4/2000, de 11 de enero, sino en virtud de procedimiento instruido al efecto."
+      },
+      "options": {
+        "0": "El apartado 2 exige un procedimiento instruido al efecto, no una denuncia previa de un particular.",
+        "1": "Las infracciones son a los preceptos de la Ley Orgánica 4/2000, no de la Ley 39/2015.",
+        "2": "El apartado 2 exige un procedimiento instruido al efecto, no una resolución judicial firme previa.",
+        "3": "Es la cita literal del apartado 2 del artículo 215."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 215.2**\n> \"No se impondrá sanción alguna por infracciones a los preceptos establecidos en la Ley Orgánica 4/2000, de 11 de enero, sino en virtud de procedimiento instruido al efecto.\"\n\n**Por qué D es correcta:** Es la cita literal del apartado 2 del artículo 215.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 2 exige un procedimiento instruido al efecto, no una denuncia previa de un particular.\n- **B)** Las infracciones son a los preceptos de la Ley Orgánica 4/2000, no de la Ley 39/2015.\n- **C)** El apartado 2 exige un procedimiento instruido al efecto, no una resolución judicial firme previa."
+  },
+  {
+    "primary_article_number": "216",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 216 (Modalidades del procedimiento sancionador)",
+    "question_text": "Según el artículo 216 del REx 2024, ¿por qué procedimientos se tramitará el ejercicio de la potestad sancionadora por infracciones de la Ley Orgánica 4/2000?",
+    "options": [
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará por los procedimientos ordinario, abreviado y de urgencia, según proceda conforme a lo dispuesto en dicha ley orgánica y en este Reglamento.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones penales previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará por los procedimientos ordinario, preferente y simplificado, según proceda conforme a lo dispuesto en dicha ley orgánica y en este Reglamento.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará por los procedimientos ordinario, preferente y simplificado, según proceda conforme a lo dispuesto en dicha ley orgánica y en este Reglamento.",
+      "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará EXCLUSIVAMENTE por el procedimiento ordinario, conforme a lo dispuesto en dicha ley orgánica y en este Reglamento."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 216",
+        "texto": "El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará por los procedimientos ordinario, preferente y simplificado, según proceda conforme a lo dispuesto en dicha ley orgánica y en este Reglamento."
+      },
+      "options": {
+        "0": "El artículo 216 habla de los procedimientos ordinario, preferente y simplificado, no de un procedimiento abreviado ni de urgencia.",
+        "1": "Las infracciones de la Ley Orgánica 4/2000 son ADMINISTRATIVAS, no penales.",
+        "2": "Es la cita literal del artículo 216, único precepto del artículo.",
+        "3": "El artículo 216 admite tres procedimientos (ordinario, preferente y simplificado), no solo el ordinario en exclusiva."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 216**\n> \"El ejercicio de la potestad sancionadora por la comisión de las infracciones administrativas previstas en la Ley Orgánica 4/2000, de 11 de enero, se tramitará por los procedimientos ordinario, preferente y simplificado, según proceda conforme a lo dispuesto en dicha ley orgánica y en este Reglamento.\"\n\n**Por qué C es correcta:** Es la cita literal del artículo 216, único precepto del artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 216 habla de los procedimientos ordinario, preferente y simplificado, no de un procedimiento abreviado ni de urgencia.\n- **B)** Las infracciones de la Ley Orgánica 4/2000 son ADMINISTRATIVAS, no penales.\n- **D)** El artículo 216 admite tres procedimientos (ordinario, preferente y simplificado), no solo el ordinario en exclusiva."
+  },
+  {
+    "primary_article_number": "217",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 217 (Actuaciones previas)",
+    "question_text": "Según el artículo 217 del REx 2024, ¿a qué se orientarán especialmente las actuaciones previas que se pueden realizar con anterioridad a la iniciación del procedimiento sancionador?",
+    "options": [
+      "A determinar con la mayor precisión posible los recursos que cabrá interponer contra la futura resolución sancionadora, sus plazos y el órgano competente para resolverlos.",
+      "A determinar con la mayor precisión posible la cuantía de la sanción que corresponderá imponer, el órgano competente para dictar la resolución sancionadora y el plazo de ejecución de dicha resolución.",
+      "A determinar con la mayor precisión posible si procede el internamiento cautelar de la persona extranjera, el centro de internamiento correspondiente y la duración máxima de dicho internamiento.",
+      "A determinar con la mayor precisión posible los hechos susceptibles de motivar la incoación del procedimiento, la identificación de la persona o personas que pudieran resultar responsables y las circunstancias relevantes que concurran en unos y otros."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 217",
+        "texto": "Estas actuaciones se orientarán especialmente a determinar con la mayor precisión posible los hechos susceptibles de motivar la incoación del procedimiento, la identificación de la persona o personas que pudieran resultar responsables y las circunstancias relevantes que concurran en unos y otros."
+      },
+      "options": {
+        "0": "El artículo 217 no habla de los recursos contra la resolución: eso es propio de una fase muy posterior del procedimiento.",
+        "1": "El artículo 217 no habla de fijar la cuantía de la sanción ni el órgano competente: eso corresponde a fases posteriores del procedimiento.",
+        "2": "El artículo 217 no menciona el internamiento cautelar: las actuaciones previas buscan precisar hechos, responsables y circunstancias.",
+        "3": "Es la cita literal del artículo 217 sobre la finalidad de las actuaciones previas."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 217**\n> \"Estas actuaciones se orientarán especialmente a determinar con la mayor precisión posible los hechos susceptibles de motivar la incoación del procedimiento, la identificación de la persona o personas que pudieran resultar responsables y las circunstancias relevantes que concurran en unos y otros.\"\n\n**Por qué D es correcta:** Es la cita literal del artículo 217 sobre la finalidad de las actuaciones previas.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 217 no habla de los recursos contra la resolución: eso es propio de una fase muy posterior del procedimiento.\n- **B)** El artículo 217 no habla de fijar la cuantía de la sanción ni el órgano competente: eso corresponde a fases posteriores del procedimiento.\n- **C)** El artículo 217 no menciona el internamiento cautelar: las actuaciones previas buscan precisar hechos, responsables y circunstancias."
+  },
+  {
+    "primary_article_number": "218",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 218 (Iniciación del procedimiento sancionador. Competencia)",
+    "question_text": "Según el apartado 1 del artículo 218 del REx 2024, ¿de qué formas se iniciará de oficio el procedimiento sancionador?",
+    "options": [
+      "El procedimiento se iniciará de oficio por acuerdo del órgano competente por propia iniciativa, como consecuencia de orden superior, a petición razonada de otros órganos o por denuncia.",
+      "El procedimiento se iniciará de oficio únicamente a instancia de la persona extranjera interesada o de su representante legal debidamente acreditado.",
+      "El procedimiento se iniciará de oficio por acuerdo del órgano competente por propia iniciativa, como consecuencia de orden superior, o por sentencia judicial firme, con exclusión de cualquier otra vía.",
+      "El procedimiento se iniciará de oficio exclusivamente a petición razonada del Ministerio Fiscal, sin que quepa la incoación por propia iniciativa del órgano competente."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 218.1",
+        "texto": "El procedimiento se iniciará de oficio por acuerdo del órgano competente por propia iniciativa, como consecuencia de orden superior, a petición razonada de otros órganos o por denuncia."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 1 del artículo 218.",
+        "1": "El procedimiento se inicia DE OFICIO por el órgano competente, no a instancia de la persona extranjera interesada.",
+        "2": "El apartado 1 incluye también la petición razonada de otros órganos y la denuncia, no solo la propia iniciativa, la orden superior o la sentencia judicial firme.",
+        "3": "El apartado 1 admite la propia iniciativa del órgano competente, la orden superior, la petición razonada de otros órganos y la denuncia — no solo la petición del Ministerio Fiscal."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 218.1**\n> \"El procedimiento se iniciará de oficio por acuerdo del órgano competente por propia iniciativa, como consecuencia de orden superior, a petición razonada de otros órganos o por denuncia.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 1 del artículo 218.\n\n**Por qué las demás son incorrectas:**\n- **B)** El procedimiento se inicia DE OFICIO por el órgano competente, no a instancia de la persona extranjera interesada.\n- **C)** El apartado 1 incluye también la petición razonada de otros órganos y la denuncia, no solo la propia iniciativa, la orden superior o la sentencia judicial firme.\n- **D)** El apartado 1 admite la propia iniciativa del órgano competente, la orden superior, la petición razonada de otros órganos y la denuncia — no solo la petición del Ministerio Fiscal."
+  },
+  {
+    "primary_article_number": "218",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 218 (Iniciación del procedimiento sancionador. Competencia)",
+    "question_text": "Según el apartado 2 del artículo 218 del REx 2024, ¿quiénes serán competentes para ordenar la incoación del procedimiento sancionador?",
+    "options": [
+      "Serán competentes para ordenar la incoación del procedimiento sancionador el Ministro del Interior, el Secretario de Estado de Seguridad, los Delegados del Gobierno en las Comunidades Autónomas pluriprovinciales y los Directores Generales de la Policía y de la Guardia Civil, con exclusión de cualquier otra autoridad.",
+      "Serán competentes para ordenar la incoación del procedimiento sancionador exclusivamente los jueces de instrucción del partido judicial correspondiente al lugar de comisión de la infracción, previa solicitud razonada del Ministerio Fiscal y con audiencia previa del Colegio de Abogados correspondiente al partido judicial.",
+      "Serán competentes para ordenar la incoación del procedimiento sancionador los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales, los Subdelegados del Gobierno, los Jefes de Oficinas de Extranjería, el Comisario General de Extranjería y Fronteras, el Jefe Superior de Policía, los Comisarios Provinciales y las personas titulares de las comisarías locales y puestos fronterizos.",
+      "Serán competentes para ordenar la incoación del procedimiento sancionador los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales y los Subdelegados del Gobierno, con exclusión de cualquier autoridad policial, de los Jefes de Oficinas de Extranjería y de cualquier otro órgano administrativo."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 218.2",
+        "texto": "Serán competentes para ordenar la incoación del procedimiento sancionador los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales, los Subdelegados del Gobierno, los Jefes de Oficinas de Extranjería, el Comisario General de Extranjería y Fronteras, el Jefe Superior de Policía, los Comisarios Provinciales y las personas titulares de las comisarías locales y puestos fronterizos."
+      },
+      "options": {
+        "0": "El apartado 2 se refiere a los Delegados del Gobierno en Comunidades Autónomas UNIPROVINCIALES, no al Ministro del Interior ni a Delegados de Comunidades pluriprovinciales, y añade otras autoridades además de esas dos.",
+        "1": "El apartado 2 atribuye la competencia a autoridades gubernativas y policiales, no a jueces de instrucción.",
+        "2": "Es la cita literal del apartado 2 del artículo 218.",
+        "3": "El apartado 2 incluye también a los Jefes de Oficinas de Extranjería y a las autoridades policiales (Comisario General, Jefe Superior de Policía, Comisarios Provinciales, comisarías locales y puestos fronterizos), no solo a Delegados y Subdelegados del Gobierno."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 218.2**\n> \"Serán competentes para ordenar la incoación del procedimiento sancionador los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales, los Subdelegados del Gobierno, los Jefes de Oficinas de Extranjería, el Comisario General de Extranjería y Fronteras, el Jefe Superior de Policía, los Comisarios Provinciales y las personas titulares de las comisarías locales y puestos fronterizos.\"\n\n**Por qué C es correcta:** Es la cita literal del apartado 2 del artículo 218.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 2 se refiere a los Delegados del Gobierno en Comunidades Autónomas UNIPROVINCIALES, no al Ministro del Interior ni a Delegados de Comunidades pluriprovinciales, y añade otras autoridades además de esas dos.\n- **B)** El apartado 2 atribuye la competencia a autoridades gubernativas y policiales, no a jueces de instrucción.\n- **D)** El apartado 2 incluye también a los Jefes de Oficinas de Extranjería y a las autoridades policiales (Comisario General, Jefe Superior de Policía, Comisarios Provinciales, comisarías locales y puestos fronterizos), no solo a Delegados y Subdelegados del Gobierno."
+  },
+  {
+    "primary_article_number": "219",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 219 (Instructor y secretario)",
+    "question_text": "Según el artículo 219 del REx 2024, ¿qué condición deben reunir, con carácter general, el instructor y el secretario nombrados en el acuerdo de incoación del procedimiento sancionador?",
+    "options": [
+      "Deberán ser funcionarios del Cuerpo Nacional de Policía, sin perjuicio de que tales nombramientos puedan recaer en otros funcionarios de las Oficinas de Extranjería cuando se trate de procedimientos sancionadores que se tramiten por las infracciones leves e infracciones graves de las letras e) y h) del artículo 53.1 de la Ley Orgánica 4/2000.",
+      "Deberán ser licenciados o graduados en Derecho, sin perjuicio de que tales nombramientos puedan recaer en otros funcionarios de las Oficinas de Extranjería cuando se trate de procedimientos sancionadores que se tramiten por infracciones muy graves de cualquiera de las letras del artículo 54.1 de la Ley Orgánica 4/2000.",
+      "Deberán ser funcionarios del Cuerpo Nacional de Policía en todo caso, sin excepción alguna posible en favor de otros funcionarios de las Oficinas de Extranjería, cualquiera que sea la gravedad de la infracción que motive el procedimiento sancionador.",
+      "Deberán ser miembros de la Carrera Judicial o Fiscal, sin perjuicio de que tales nombramientos puedan recaer en otros funcionarios de las Oficinas de Extranjería cuando se trate de procedimientos sancionadores por infracciones leves de cualquiera de las letras del artículo 52 de la Ley Orgánica 4/2000."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 219",
+        "texto": "En el acuerdo de incoación del procedimiento se nombrarán instructor y secretario, que deberán ser funcionarios del Cuerpo Nacional de Policía, sin perjuicio de que tales nombramientos puedan recaer en otros funcionarios de las Oficinas de Extranjería cuando se trate de procedimientos sancionadores que se tramiten por las infracciones leves e infracciones graves de las letras e) y h) del artículo 53.1 de la Ley Orgánica 4/2000, de 11 de enero."
+      },
+      "options": {
+        "0": "Es la cita literal del artículo 219.",
+        "1": "El artículo 219 exige que sean funcionarios del Cuerpo Nacional de Policía, no licenciados o graduados en Derecho, y la excepción es para infracciones leves y ciertas graves, no para las muy graves.",
+        "2": "El artículo 219 SÍ prevé una excepción en favor de otros funcionarios de las Oficinas de Extranjería para determinadas infracciones leves y graves.",
+        "3": "El artículo 219 exige que sean funcionarios del Cuerpo Nacional de Policía, no miembros de la Carrera Judicial o Fiscal."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 219**\n> \"En el acuerdo de incoación del procedimiento se nombrarán instructor y secretario, que deberán ser funcionarios del Cuerpo Nacional de Policía, sin perjuicio de que tales nombramientos puedan recaer en otros funcionarios de las Oficinas de Extranjería cuando se trate de procedimientos sancionadores que se tramiten por las infracciones leves e infracciones graves de las letras e) y h) del artículo 53.1 de la Ley Orgánica 4/2000, de 11 de enero.\"\n\n**Por qué A es correcta:** Es la cita literal del artículo 219.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo 219 exige que sean funcionarios del Cuerpo Nacional de Policía, no licenciados o graduados en Derecho, y la excepción es para infracciones leves y ciertas graves, no para las muy graves.\n- **C)** El artículo 219 SÍ prevé una excepción en favor de otros funcionarios de las Oficinas de Extranjería para determinadas infracciones leves y graves.\n- **D)** El artículo 219 exige que sean funcionarios del Cuerpo Nacional de Policía, no miembros de la Carrera Judicial o Fiscal."
+  },
+  {
+    "primary_article_number": "220",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 220 (El decomiso)",
+    "question_text": "Según el apartado 1 del artículo 220 del REx 2024, en los supuestos de infracción de la letra b) del artículo 54.1 de la Ley Orgánica 4/2000, ¿qué bienes serán objeto de decomiso?",
+    "options": [
+      "Únicamente el dinero en efectivo y los instrumentos financieros que hayan servido como medio de pago para la comisión de la citada infracción.",
+      "Los vehículos, embarcaciones, aeronaves y cuantos bienes muebles o inmuebles de cualquier naturaleza hayan servido como instrumento para la comisión de la citada infracción.",
+      "Exclusivamente los vehículos y embarcaciones, quedando excluidos del decomiso las aeronaves y el resto de bienes muebles o inmuebles.",
+      "Todos los bienes, muebles o inmuebles, que sean propiedad del infractor, con independencia de que hayan servido o no como instrumento para la comisión de la infracción."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 220.1",
+        "texto": "serán objeto de decomiso los vehículos, embarcaciones, aeronaves y cuantos bienes muebles o inmuebles de cualquier naturaleza hayan servido como instrumento para la comisión de la citada infracción"
+      },
+      "options": {
+        "0": "El apartado 1 no limita el decomiso al dinero en efectivo ni a instrumentos financieros: incluye vehículos, embarcaciones, aeronaves y cualquier bien mueble o inmueble que haya servido de instrumento.",
+        "1": "Es la cita literal del apartado 1 del artículo 220.",
+        "2": "El apartado 1 incluye también las aeronaves y cualquier otro bien mueble o inmueble, no solo vehículos y embarcaciones.",
+        "3": "El decomiso exige que el bien HAYA SERVIDO COMO INSTRUMENTO para la infracción, no basta con que sea propiedad del infractor."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 220.1**\n> \"serán objeto de decomiso los vehículos, embarcaciones, aeronaves y cuantos bienes muebles o inmuebles de cualquier naturaleza hayan servido como instrumento para la comisión de la citada infracción\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 1 del artículo 220.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 1 no limita el decomiso al dinero en efectivo ni a instrumentos financieros: incluye vehículos, embarcaciones, aeronaves y cualquier bien mueble o inmueble que haya servido de instrumento.\n- **C)** El apartado 1 incluye también las aeronaves y cualquier otro bien mueble o inmueble, no solo vehículos y embarcaciones.\n- **D)** El decomiso exige que el bien HAYA SERVIDO COMO INSTRUMENTO para la infracción, no basta con que sea propiedad del infractor."
+  },
+  {
+    "primary_article_number": "220",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 220 (El decomiso)",
+    "question_text": "Según el apartado 3 del artículo 220 del REx 2024, ¿a quién se adjudicarán los bienes, efectos e instrumentos definitivamente decomisados por resolución administrativa o judicial firme, y con arreglo a qué ley?",
+    "options": [
+      "Se adjudicarán al Estado en los términos fijados por la Ley 33/2003, de 4 de noviembre, del Patrimonio de las Administraciones Públicas.",
+      "Se adjudicarán a la Comunidad Autónoma donde se hubiera cometido la infracción, en los términos fijados por la Ley 33/2003, de 4 de noviembre, del Patrimonio de las Administraciones Públicas.",
+      "Se adjudicarán al Estado en los términos fijados por la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas.",
+      "Se subastarán públicamente y su importe se destinará a un fondo de ayuda a las víctimas de trata de seres humanos, en los términos fijados por la Ley 33/2003."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 220.3",
+        "texto": "Los bienes, efectos e instrumentos definitivamente decomisados por resolución administrativa o judicial firme se adjudicarán al Estado en los términos fijados por la Ley 33/2003, de 4 de noviembre, del Patrimonio de las Administraciones Públicas."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 3 del artículo 220.",
+        "1": "El apartado 3 adjudica los bienes AL ESTADO, no a la Comunidad Autónoma donde se cometió la infracción.",
+        "2": "La adjudicación se rige por la Ley 33/2003 del Patrimonio de las Administraciones Públicas, no por la Ley 39/2015.",
+        "3": "El apartado 3 no prevé una subasta pública ni un fondo de ayuda a víctimas de trata: los bienes se adjudican al Estado."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 220.3**\n> \"Los bienes, efectos e instrumentos definitivamente decomisados por resolución administrativa o judicial firme se adjudicarán al Estado en los términos fijados por la Ley 33/2003, de 4 de noviembre, del Patrimonio de las Administraciones Públicas.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 3 del artículo 220.\n\n**Por qué las demás son incorrectas:**\n- **B)** El apartado 3 adjudica los bienes AL ESTADO, no a la Comunidad Autónoma donde se cometió la infracción.\n- **C)** La adjudicación se rige por la Ley 33/2003 del Patrimonio de las Administraciones Públicas, no por la Ley 39/2015.\n- **D)** El apartado 3 no prevé una subasta pública ni un fondo de ayuda a víctimas de trata: los bienes se adjudican al Estado."
+  },
+  {
+    "primary_article_number": "221",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 221 (Resolución)",
+    "question_text": "Según el apartado 1 del artículo 221 del REx 2024, ¿quiénes dictarán la resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción?",
+    "options": [
+      "El Comisario General de Extranjería y Fronteras y el Jefe Superior de Policía dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento.",
+      "Los instructores y secretarios designados en el acuerdo de incoación dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento.",
+      "Los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales y los Subdelegados del Gobierno dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento.",
+      "Los jueces de instrucción competentes dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 221.1",
+        "texto": "Los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales y los Subdelegados del Gobierno dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento."
+      },
+      "options": {
+        "0": "Quienes dictan la resolución son los Delegados del Gobierno en Comunidades uniprovinciales y los Subdelegados del Gobierno, no el Comisario General de Extranjería y Fronteras ni el Jefe Superior de Policía.",
+        "1": "El instructor y el secretario TRAMITAN el procedimiento; la resolución la dictan los Delegados del Gobierno en Comunidades uniprovinciales y los Subdelegados del Gobierno.",
+        "2": "Es la cita literal del apartado 1 del artículo 221.",
+        "3": "Quienes dictan la resolución sancionadora son autoridades gubernativas (Delegados y Subdelegados del Gobierno), no jueces de instrucción."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 221.1**\n> \"Los Delegados del Gobierno en las Comunidades Autónomas uniprovinciales y los Subdelegados del Gobierno dictarán resolución motivada que confirme, modifique o deje sin efecto la propuesta de sanción y decida todas las cuestiones planteadas por los interesados y aquéllas otras derivadas del procedimiento.\"\n\n**Por qué C es correcta:** Es la cita literal del apartado 1 del artículo 221.\n\n**Por qué las demás son incorrectas:**\n- **A)** Quienes dictan la resolución son los Delegados del Gobierno en Comunidades uniprovinciales y los Subdelegados del Gobierno, no el Comisario General de Extranjería y Fronteras ni el Jefe Superior de Policía.\n- **B)** El instructor y el secretario TRAMITAN el procedimiento; la resolución la dictan los Delegados del Gobierno en Comunidades uniprovinciales y los Subdelegados del Gobierno.\n- **D)** Quienes dictan la resolución sancionadora son autoridades gubernativas (Delegados y Subdelegados del Gobierno), no jueces de instrucción."
+  },
+  {
+    "primary_article_number": "221",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 221 (Resolución)",
+    "question_text": "Según el apartado 3 del artículo 221 del REx 2024, además de los criterios de graduación de los apartados 3 y 4 del artículo 55 de la Ley Orgánica 4/2000, ¿qué otras circunstancias se valorarán para determinar la sanción que se imponga?",
+    "options": [
+      "Se valorará también, a tenor de su artículo 57, la existencia de antecedentes penales del infractor en su país de origen.",
+      "Se valorarán también, a tenor de su artículo 57, las circunstancias de la situación personal y familiar del infractor.",
+      "Se valorará también, a tenor de su artículo 57, el nivel de renta e ingresos económicos acreditados del infractor.",
+      "Se valorará también, a tenor de su artículo 57, el tiempo de permanencia previa del infractor en territorio de la Unión Europea."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 221.3",
+        "texto": "se valorarán también, a tenor de su artículo 57, las circunstancias de la situación personal y familiar del infractor"
+      },
+      "options": {
+        "0": "El apartado 3 no menciona antecedentes penales en el país de origen: valora la situación personal y familiar del infractor.",
+        "1": "Es la cita literal del apartado 3 del artículo 221 sobre lo que se valora adicionalmente.",
+        "2": "El apartado 3 no menciona el nivel de renta: valora la situación personal y familiar del infractor.",
+        "3": "El apartado 3 no menciona el tiempo de permanencia en la Unión Europea: valora la situación personal y familiar del infractor."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 221.3**\n> \"se valorarán también, a tenor de su artículo 57, las circunstancias de la situación personal y familiar del infractor\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 3 del artículo 221 sobre lo que se valora adicionalmente.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 3 no menciona antecedentes penales en el país de origen: valora la situación personal y familiar del infractor.\n- **C)** El apartado 3 no menciona el nivel de renta: valora la situación personal y familiar del infractor.\n- **D)** El apartado 3 no menciona el tiempo de permanencia en la Unión Europea: valora la situación personal y familiar del infractor."
+  },
+  {
+    "primary_article_number": "223",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 223 (Ejecución de las resoluciones sancionadoras)",
+    "question_text": "Según el apartado 1 del artículo 223 del REx 2024, ¿de conformidad con qué se efectuará la ejecución de las resoluciones sancionadoras?",
+    "options": [
+      "De conformidad con lo dispuesto en el capítulo III de este título, sin perjuicio de las particularidades establecidas para el procedimiento preferente.",
+      "De conformidad con lo dispuesto en el capítulo II de este título, sin perjuicio de las particularidades establecidas para el procedimiento simplificado.",
+      "De conformidad con lo dispuesto en el capítulo III de este título, sin perjuicio de las particularidades establecidas para el procedimiento ordinario.",
+      "De conformidad exclusivamente con lo dispuesto en la Ley 39/2015, sin remisión alguna a otros capítulos de este Reglamento."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 223.1",
+        "texto": "La ejecución de las resoluciones sancionadoras se efectuará de conformidad con lo dispuesto en el capítulo III de este título, sin perjuicio de las particularidades establecidas para el procedimiento preferente."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 1 del artículo 223.",
+        "1": "El apartado 1 remite al capítulo III, no al capítulo II, y la salvedad es para el procedimiento PREFERENTE, no el simplificado.",
+        "2": "El apartado 1 remite al capítulo III y la salvedad es para el procedimiento PREFERENTE, no el ordinario.",
+        "3": "El apartado 1 remite al capítulo III de este título, no exclusivamente a la Ley 39/2015."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 223.1**\n> \"La ejecución de las resoluciones sancionadoras se efectuará de conformidad con lo dispuesto en el capítulo III de este título, sin perjuicio de las particularidades establecidas para el procedimiento preferente.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 1 del artículo 223.\n\n**Por qué las demás son incorrectas:**\n- **B)** El apartado 1 remite al capítulo III, no al capítulo II, y la salvedad es para el procedimiento PREFERENTE, no el simplificado.\n- **C)** El apartado 1 remite al capítulo III y la salvedad es para el procedimiento PREFERENTE, no el ordinario.\n- **D)** El apartado 1 remite al capítulo III de este título, no exclusivamente a la Ley 39/2015."
+  },
+  {
+    "primary_article_number": "223",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 223 (Ejecución de las resoluciones sancionadoras)",
+    "question_text": "Según el apartado 2 del artículo 223 del REx 2024, de acuerdo con el artículo 63 bis de la Ley Orgánica 4/2000, ¿qué medida cautelar no podrá adoptarse durante el plazo de cumplimiento voluntario fijado en la resolución de expulsión?",
+    "options": [
+      "No podrá adoptarse la medida cautelar de retirada de la tarjeta de identidad de extranjero durante el plazo de cumplimiento voluntario que se hubiera fijado en la resolución de expulsión.",
+      "No podrá adoptarse la medida cautelar de internamiento preventivo durante el plazo de cumplimiento voluntario que se hubiera fijado en la resolución de expulsión.",
+      "No podrá adoptarse la medida cautelar de presentación periódica ante las autoridades durante el plazo de cumplimiento voluntario que se hubiera fijado en la resolución de expulsión.",
+      "No podrá adoptarse ninguna medida cautelar en ningún momento del procedimiento de expulsión, con independencia de que exista o no plazo de cumplimiento voluntario."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 223.2",
+        "texto": "no podrá adoptarse la medida cautelar de internamiento preventivo durante el plazo de cumplimiento voluntario que se hubiera fijado en la resolución de expulsión"
+      },
+      "options": {
+        "0": "El apartado 2 se refiere al internamiento preventivo, no a la retirada de la tarjeta de identidad de extranjero.",
+        "1": "Es la cita literal del apartado 2 del artículo 223 sobre esta excepción del artículo 63 bis.",
+        "2": "El apartado 2 se refiere al internamiento preventivo, no a la presentación periódica ante las autoridades.",
+        "3": "La excepción es solo para el internamiento preventivo DURANTE el plazo de cumplimiento voluntario, no una prohibición absoluta de cualquier medida cautelar en todo momento."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 223.2**\n> \"no podrá adoptarse la medida cautelar de internamiento preventivo durante el plazo de cumplimiento voluntario que se hubiera fijado en la resolución de expulsión\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 2 del artículo 223 sobre esta excepción del artículo 63 bis.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 2 se refiere al internamiento preventivo, no a la retirada de la tarjeta de identidad de extranjero.\n- **C)** El apartado 2 se refiere al internamiento preventivo, no a la presentación periódica ante las autoridades.\n- **D)** La excepción es solo para el internamiento preventivo DURANTE el plazo de cumplimiento voluntario, no una prohibición absoluta de cualquier medida cautelar en todo momento."
+  },
+  {
+    "primary_article_number": "224",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 224 (Caducidad y prescripción)",
+    "question_text": "Según el primer párrafo del apartado 1 del artículo 224 del REx 2024, ¿cuál es el plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento?",
+    "options": [
+      "El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de tres meses desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento simplificado en el artículo 237.",
+      "El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de seis meses desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento ordinario en el artículo 232.",
+      "El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de seis meses desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento simplificado en el artículo 237.",
+      "El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de un año desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento simplificado en el artículo 237."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 224.1",
+        "texto": "El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de seis meses desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento simplificado en el artículo 237."
+      },
+      "options": {
+        "0": "El plazo máximo que fija el apartado 1 es de SEIS meses, no de tres.",
+        "1": "La salvedad del apartado 1 es para el procedimiento SIMPLIFICADO (artículo 237), no para el ordinario.",
+        "2": "Es la cita literal del primer párrafo del apartado 1 del artículo 224.",
+        "3": "El plazo máximo que fija el apartado 1 es de seis meses, no de un año."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 224.1**\n> \"El plazo máximo en que debe dictarse y notificarse la resolución que resuelva el procedimiento será de seis meses desde que se acordó su iniciación, sin perjuicio de lo dispuesto para el procedimiento simplificado en el artículo 237.\"\n\n**Por qué C es correcta:** Es la cita literal del primer párrafo del apartado 1 del artículo 224.\n\n**Por qué las demás son incorrectas:**\n- **A)** El plazo máximo que fija el apartado 1 es de SEIS meses, no de tres.\n- **B)** La salvedad del apartado 1 es para el procedimiento SIMPLIFICADO (artículo 237), no para el ordinario.\n- **D)** El plazo máximo que fija el apartado 1 es de seis meses, no de un año."
+  },
+  {
+    "primary_article_number": "224",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 224 (Caducidad y prescripción)",
+    "question_text": "Según el apartado 2 del artículo 224 del REx 2024, ¿en qué plazos prescribe la acción para sancionar las infracciones previstas en la Ley Orgánica 4/2000, según su gravedad?",
+    "options": [
+      "Prescribe a los tres años si la infracción es muy grave; a los dos años si es grave, y a los seis meses si es leve, contados a partir del día en que los hechos se hubiesen cometido.",
+      "Prescribe a los cinco años si la infracción es muy grave; a los dos años si es grave, y a un año si es leve, contados a partir del día en que los hechos se hubiesen cometido.",
+      "Prescribe a los tres años si la infracción es muy grave; a los dos años si es grave, y al mes si es leve, contados a partir del día en que se dictó la resolución sancionadora.",
+      "Prescribe a los tres años en todos los casos, con independencia de la gravedad de la infracción, contados a partir del día en que los hechos se hubiesen cometido."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 224.2",
+        "texto": "La acción para sancionar las infracciones previstas en la Ley Orgánica 4/2000, de 11 de enero, prescribe a los tres años si la infracción es muy grave; a los dos años si es grave, y a los seis meses si es leve, contados a partir del día en que los hechos se hubiesen cometido."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 2 del artículo 224 sobre la prescripción de la INFRACCIÓN.",
+        "1": "Esos son los plazos de prescripción de la SANCIÓN ya impuesta (apartado 3), no de la infracción (tres/dos años/seis meses según el apartado 2).",
+        "2": "El plazo para la infracción leve es de SEIS MESES, no de un mes, y se cuenta desde que se cometieron los hechos, no desde la resolución sancionadora.",
+        "3": "El apartado 2 distingue tres plazos según la gravedad (tres años, dos años, seis meses), no un único plazo de tres años para todos los casos."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 224.2**\n> \"La acción para sancionar las infracciones previstas en la Ley Orgánica 4/2000, de 11 de enero, prescribe a los tres años si la infracción es muy grave; a los dos años si es grave, y a los seis meses si es leve, contados a partir del día en que los hechos se hubiesen cometido.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 2 del artículo 224 sobre la prescripción de la INFRACCIÓN.\n\n**Por qué las demás son incorrectas:**\n- **B)** Esos son los plazos de prescripción de la SANCIÓN ya impuesta (apartado 3), no de la infracción (tres/dos años/seis meses según el apartado 2).\n- **C)** El plazo para la infracción leve es de SEIS MESES, no de un mes, y se cuenta desde que se cometieron los hechos, no desde la resolución sancionadora.\n- **D)** El apartado 2 distingue tres plazos según la gravedad (tres años, dos años, seis meses), no un único plazo de tres años para todos los casos."
+  },
+  {
+    "primary_article_number": "224",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 224 (Caducidad y prescripción)",
+    "question_text": "Según el apartado 3 del artículo 224 del REx 2024, ¿cuál será el plazo de prescripción de la SANCIÓN ya impuesta, según la gravedad de la infracción que la motivó?",
+    "options": [
+      "El plazo de prescripción de la sanción será de tres años si la sanción impuesta lo fuera por infracción muy grave; de dos años si lo fuera por infracción grave, y de seis meses si lo fuera por infracción de carácter leve.",
+      "El plazo de prescripción de la sanción será de cinco años si la sanción impuesta lo fuera por infracción muy grave; de dos años si lo fuera por infracción grave, y de un año si lo fuera por infracción de carácter leve.",
+      "El plazo de prescripción de la sanción será de cinco años en todos los casos, con independencia de la gravedad de la infracción que la motivó.",
+      "El plazo de prescripción de la sanción será de cinco años si la sanción impuesta lo fuera por infracción grave; de dos años si lo fuera por infracción muy grave, y de un año si lo fuera por infracción de carácter leve."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 224.3",
+        "texto": "El plazo de prescripción de la sanción será de cinco años si la sanción impuesta lo fuera por infracción muy grave; de dos años si lo fuera por infracción grave, y de un año si lo fuera por infracción de carácter leve."
+      },
+      "options": {
+        "0": "Esos son los plazos de prescripción de la INFRACCIÓN (apartado 2), no de la sanción ya impuesta: la sanción prescribe a los cinco/dos/un año, no tres/dos/seis meses.",
+        "1": "Es la cita literal del apartado 3 del artículo 224 sobre la prescripción de la SANCIÓN.",
+        "2": "El apartado 3 distingue tres plazos según la gravedad (cinco años, dos años, un año), no un único plazo de cinco años para todos los casos.",
+        "3": "El plazo de cinco años corresponde a la infracción MUY GRAVE y el de dos años a la GRAVE, no al revés."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 224.3**\n> \"El plazo de prescripción de la sanción será de cinco años si la sanción impuesta lo fuera por infracción muy grave; de dos años si lo fuera por infracción grave, y de un año si lo fuera por infracción de carácter leve.\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 3 del artículo 224 sobre la prescripción de la SANCIÓN.\n\n**Por qué las demás son incorrectas:**\n- **A)** Esos son los plazos de prescripción de la INFRACCIÓN (apartado 2), no de la sanción ya impuesta: la sanción prescribe a los cinco/dos/un año, no tres/dos/seis meses.\n- **C)** El apartado 3 distingue tres plazos según la gravedad (cinco años, dos años, un año), no un único plazo de cinco años para todos los casos.\n- **D)** El plazo de cinco años corresponde a la infracción MUY GRAVE y el de dos años a la GRAVE, no al revés."
+  },
+  {
+    "primary_article_number": "222",
+    "law_slug": "rd-1155-2024-reglamento-extranjeria",
+    "article_label": "REx 2024, art. 222 (Manifestación de la voluntad de recurrir)",
+    "question_text": "Según el artículo 222 del REx 2024, ¿por medio de qué se acreditará la constancia de la voluntad expresa de recurrir de la persona extranjera, a los efectos del apartado 3 del artículo 22 de la Ley Orgánica 4/2000?",
+    "options": [
+      "Por medio de una declaración jurada ante notario público, conforme al artículo 24 de la Ley 1/2000, de 7 de enero, de Enjuiciamiento Civil.",
+      "Por medio del apoderamiento regulado en el artículo 24 de la Ley 1/2000, de 7 de enero, de Enjuiciamiento Civil.",
+      "Por medio de un escrito presentado ante el Defensor del Pueblo, conforme al artículo 24 de la Ley 1/2000, de 7 de enero, de Enjuiciamiento Civil.",
+      "Por medio del apoderamiento regulado en el artículo 24 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "REx 2024, art. 222",
+        "texto": "cuya constancia se acreditará por medio del apoderamiento regulado en el artículo 24 de la Ley 1/2000, de 7 de enero, de Enjuiciamiento Civil"
+      },
+      "options": {
+        "0": "El artículo 222 exige el apoderamiento del artículo 24 de la Ley de Enjuiciamiento Civil, no una declaración jurada ante notario.",
+        "1": "Es la cita literal del artículo 222 sobre cómo se acredita la voluntad de recurrir.",
+        "2": "El artículo 222 exige el apoderamiento del artículo 24 de la Ley de Enjuiciamiento Civil, no un escrito ante el Defensor del Pueblo.",
+        "3": "El apoderamiento se regula en el artículo 24 de la Ley 1/2000 de Enjuiciamiento Civil, no de la Ley 39/2015."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **REx 2024, art. 222**\n> \"cuya constancia se acreditará por medio del apoderamiento regulado en el artículo 24 de la Ley 1/2000, de 7 de enero, de Enjuiciamiento Civil\"\n\n**Por qué B es correcta:** Es la cita literal del artículo 222 sobre cómo se acredita la voluntad de recurrir.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 222 exige el apoderamiento del artículo 24 de la Ley de Enjuiciamiento Civil, no una declaración jurada ante notario.\n- **C)** El artículo 222 exige el apoderamiento del artículo 24 de la Ley de Enjuiciamiento Civil, no un escrito ante el Defensor del Pueblo.\n- **D)** El apoderamiento se regula en el artículo 24 de la Ley 1/2000 de Enjuiciamiento Civil, no de la Ley 39/2015."
+  }
+]

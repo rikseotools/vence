@@ -1,0 +1,422 @@
+[
+  {
+    "primary_article_number": "1",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 1 (Objeto de la ley)",
+    "question_text": "Según el artículo 1 de la Ley 3/2026, de 16 de junio, de cabildos insulares, ¿qué establece la letra c) entre los aspectos que regula la ley sobre los cabildos insulares?",
+    "options": [
+      "Las competencias y su régimen jurídico.",
+      "El ejercicio de la potestad reglamentaria.",
+      "El funcionamiento, información y transparencia.",
+      "La organización de gobierno y administrativa."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 1.1.c)",
+        "texto": "El funcionamiento, información y transparencia."
+      },
+      "options": {
+        "0": "Las competencias y su régimen jurídico es la letra a), no la c).",
+        "1": "El ejercicio de la potestad reglamentaria es la letra d), no la c).",
+        "2": "Es la letra c) literal del artículo 1.",
+        "3": "La organización de gobierno y administrativa es la letra b), no la c)."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 1.1.c)**\n> \"El funcionamiento, información y transparencia.\"\n\n**Por qué C es correcta:** Es la letra c) literal del artículo 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las competencias y su régimen jurídico es la letra a), no la c).\n- **B)** El ejercicio de la potestad reglamentaria es la letra d), no la c).\n- **D)** La organización de gobierno y administrativa es la letra b), no la c)."
+  },
+  {
+    "primary_article_number": "1",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 1 (Objeto de la ley)",
+    "question_text": "Según el artículo 1 de la Ley 3/2026, ¿qué establece la letra b) entre los aspectos que regula la ley sobre los cabildos insulares?",
+    "options": [
+      "Las competencias y su régimen jurídico.",
+      "La organización de gobierno y administrativa.",
+      "El funcionamiento, información y transparencia.",
+      "El ejercicio de la potestad reglamentaria."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 1.1.b)",
+        "texto": "La organización de gobierno y administrativa."
+      },
+      "options": {
+        "0": "Las competencias y su régimen jurídico es la letra a), no la b).",
+        "1": "Es la letra b) literal del artículo 1.",
+        "2": "El funcionamiento, información y transparencia es la letra c), no la b).",
+        "3": "El ejercicio de la potestad reglamentaria es la letra d), no la b)."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 1.1.b)**\n> \"La organización de gobierno y administrativa.\"\n\n**Por qué B es correcta:** Es la letra b) literal del artículo 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** Las competencias y su régimen jurídico es la letra a), no la b).\n- **C)** El funcionamiento, información y transparencia es la letra c), no la b).\n- **D)** El ejercicio de la potestad reglamentaria es la letra d), no la b)."
+  },
+  {
+    "primary_article_number": "1",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 1 (Objeto de la ley)",
+    "question_text": "Según el artículo 1 de la Ley 3/2026, ¿qué se regula, además del objeto principal de la ley, como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares?",
+    "options": [
+      "Asimismo, se regula la Comisión Bilateral de Cooperación como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
+      "Asimismo, se regula la Federación Canaria de Municipios como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
+      "Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
+      "Asimismo, se regula la Conferencia Sectorial para Asuntos Locales como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 1.2",
+        "texto": "Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares."
+      },
+      "options": {
+        "0": "El artículo 1.2 no menciona ninguna Comisión Bilateral de Cooperación: el foro que regula es la Conferencia de Presidentes y presidentas.",
+        "1": "El artículo 1.2 no menciona ninguna Federación Canaria de Municipios: el foro que regula es la Conferencia de Presidentes y presidentas.",
+        "2": "Es la cita literal del apartado 2 del artículo 1.",
+        "3": "El artículo 1.2 no menciona ninguna Conferencia Sectorial para Asuntos Locales: el foro que regula es la Conferencia de Presidentes y presidentas."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 1.2**\n> \"Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.\"\n\n**Por qué C es correcta:** Es la cita literal del apartado 2 del artículo 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 1.2 no menciona ninguna Comisión Bilateral de Cooperación: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **B)** El artículo 1.2 no menciona ninguna Federación Canaria de Municipios: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **D)** El artículo 1.2 no menciona ninguna Conferencia Sectorial para Asuntos Locales: el foro que regula es la Conferencia de Presidentes y presidentas."
+  },
+  {
+    "primary_article_number": "2",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 2 (Naturaleza de los cabildos insulares)",
+    "question_text": "Según el apartado 1 del artículo 2 de la Ley 3/2026, ¿qué son los cabildos insulares conforme al Estatuto de Autonomía de Canarias?",
+    "options": [
+      "Los cabildos insulares, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Comunidad Autónoma de Canarias, así como órganos de gobierno, representación y administración de cada isla.",
+      "Los cabildos insulares, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Administración General del Estado, así como órganos de gobierno, representación y administración de cada isla.",
+      "Los cabildos insulares, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Comunidad Autónoma de Canarias, así como órganos consultivos y de asesoramiento de cada isla.",
+      "Los ayuntamientos, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Comunidad Autónoma de Canarias, así como órganos de gobierno, representación y administración de cada isla."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 2.1",
+        "texto": "Los cabildos insulares, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Comunidad Autónoma de Canarias, así como órganos de gobierno, representación y administración de cada isla."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 1 del artículo 2.",
+        "1": "Los cabildos son instituciones de la Comunidad Autónoma de Canarias, no de la Administración General del Estado.",
+        "2": "Los cabildos son órganos de gobierno, representación y administración, no meramente consultivos y de asesoramiento.",
+        "3": "El artículo 2.1 se refiere a los cabildos insulares, no a los ayuntamientos."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 2.1**\n> \"Los cabildos insulares, conforme al Estatuto de Autonomía de Canarias, son instituciones de la Comunidad Autónoma de Canarias, así como órganos de gobierno, representación y administración de cada isla.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 1 del artículo 2.\n\n**Por qué las demás son incorrectas:**\n- **B)** Los cabildos son instituciones de la Comunidad Autónoma de Canarias, no de la Administración General del Estado.\n- **C)** Los cabildos son órganos de gobierno, representación y administración, no meramente consultivos y de asesoramiento.\n- **D)** El artículo 2.1 se refiere a los cabildos insulares, no a los ayuntamientos."
+  },
+  {
+    "primary_article_number": "2",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 2 (Naturaleza de los cabildos insulares)",
+    "question_text": "Según el apartado 2 del artículo 2 de la Ley 3/2026, ¿qué representación asumen los cabildos insulares en la isla?",
+    "options": [
+      "Los cabildos insulares asumen en la isla la representación ordinaria del Gobierno y de la Administración autonómica y desempeñan las funciones administrativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas.",
+      "Los ayuntamientos asumen en la isla la representación ordinaria del Gobierno y de la Administración autonómica y desempeñan las funciones administrativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas.",
+      "Los cabildos insulares asumen en la isla la representación ordinaria del Gobierno y de la Administración autonómica y desempeñan las funciones legislativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas.",
+      "Los cabildos insulares asumen en la isla la representación exclusiva del Gobierno central y de la Administración General del Estado y desempeñan las funciones administrativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 2.2",
+        "texto": "Los cabildos insulares asumen en la isla la representación ordinaria del Gobierno y de la Administración autonómica y desempeñan las funciones administrativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 2 del artículo 2.",
+        "1": "El apartado 2 se refiere a los cabildos insulares, no a los ayuntamientos.",
+        "2": "Los cabildos desempeñan funciones ADMINISTRATIVAS autonómicas, no legislativas.",
+        "3": "El apartado 2 habla de la representación ordinaria del Gobierno y de la Administración AUTONÓMICA, no de una representación exclusiva del Gobierno central y la Administración General del Estado."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 2.2**\n> \"Los cabildos insulares asumen en la isla la representación ordinaria del Gobierno y de la Administración autonómica y desempeñan las funciones administrativas autonómicas previstas en el Estatuto de Autonomía y en las leyes, así como las que les sean atribuidas, transferidas o delegadas.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 2 del artículo 2.\n\n**Por qué las demás son incorrectas:**\n- **B)** El apartado 2 se refiere a los cabildos insulares, no a los ayuntamientos.\n- **C)** Los cabildos desempeñan funciones ADMINISTRATIVAS autonómicas, no legislativas.\n- **D)** El apartado 2 habla de la representación ordinaria del Gobierno y de la Administración AUTONÓMICA, no de una representación exclusiva del Gobierno central y la Administración General del Estado."
+  },
+  {
+    "primary_article_number": "3",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 3 (Colaboración y cooperación entre cabildos insulares)",
+    "question_text": "Según el apartado 1 del artículo 3 de la Ley 3/2026, ¿qué pueden establecer entre sí los cabildos insulares, sin perjuicio de las competencias de coordinación del Gobierno de Canarias?",
+    "options": [
+      "Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los ayuntamientos podrán establecer entre sí fórmulas de colaboración y cooperación interadministrativa de las previstas en la legislación básica de régimen del sector público, para la prestación conjunta de servicios públicos propios, atribuidos o transferidos.",
+      "Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los cabildos insulares podrán establecer entre sí fórmulas de colaboración y cooperación interadministrativa de las previstas en la legislación básica de régimen del sector público, para la prestación conjunta de servicios públicos propios, atribuidos o transferidos.",
+      "Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los cabildos insulares podrán establecer entre sí fórmulas de colaboración y cooperación interadministrativa de las previstas en la legislación básica de régimen del sector público, para la cesión definitiva de sus competencias propias, atribuidas o transferidas.",
+      "Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los cabildos insulares podrán establecer entre sí fórmulas de fusión y absorción institucional de las previstas en la legislación básica de régimen del sector público, para la prestación conjunta de servicios públicos propios, atribuidos o transferidos."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 3.1",
+        "texto": "Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los cabildos insulares podrán establecer entre sí fórmulas de colaboración y cooperación interadministrativa de las previstas en la legislación básica de régimen del sector público, para la prestación conjunta de servicios públicos propios, atribuidos o transferidos."
+      },
+      "options": {
+        "0": "El apartado 1 se refiere a los cabildos insulares, no a los ayuntamientos.",
+        "1": "Es la cita literal del apartado 1 del artículo 3.",
+        "2": "La finalidad es la prestación CONJUNTA de servicios públicos, no la cesión definitiva de las competencias propias.",
+        "3": "El apartado 1 habla de fórmulas de colaboración y cooperación interadministrativa, no de fusión y absorción institucional."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 3.1**\n> \"Sin perjuicio de las competencias de coordinación del Gobierno de Canarias, los cabildos insulares podrán establecer entre sí fórmulas de colaboración y cooperación interadministrativa de las previstas en la legislación básica de régimen del sector público, para la prestación conjunta de servicios públicos propios, atribuidos o transferidos.\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 1 del artículo 3.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 1 se refiere a los cabildos insulares, no a los ayuntamientos.\n- **C)** La finalidad es la prestación CONJUNTA de servicios públicos, no la cesión definitiva de las competencias propias.\n- **D)** El apartado 1 habla de fórmulas de colaboración y cooperación interadministrativa, no de fusión y absorción institucional."
+  },
+  {
+    "primary_article_number": "3",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 3 (Colaboración y cooperación entre cabildos insulares)",
+    "question_text": "Según el apartado 2 del artículo 3 de la Ley 3/2026, ¿para qué fin pueden los cabildos insulares constituir una asociación de ámbito autonómico?",
+    "options": [
+      "Los cabildos insulares podrán constituir una asociación, de ámbito autonómico, para la protección y promoción de sus intereses comunes, sometida a la legislación sobre asociaciones.",
+      "Los cabildos insulares podrán constituir una asociación, de ámbito autonómico, para la gestión centralizada de sus competencias delegadas, sometida a la legislación sobre asociaciones.",
+      "Los cabildos insulares podrán constituir una asociación, de ámbito autonómico, para la protección y promoción de sus intereses comunes, sometida a la legislación sobre fundaciones.",
+      "Los municipios podrán constituir una asociación, de ámbito autonómico, para la protección y promoción de sus intereses comunes, sometida a la legislación sobre asociaciones."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 3.2",
+        "texto": "Los cabildos insulares podrán constituir una asociación, de ámbito autonómico, para la protección y promoción de sus intereses comunes, sometida a la legislación sobre asociaciones."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 2 del artículo 3.",
+        "1": "La finalidad que fija el apartado 2 es la protección y promoción de sus intereses comunes, no la gestión centralizada de competencias delegadas.",
+        "2": "La asociación está sometida a la legislación sobre asociaciones, no sobre fundaciones.",
+        "3": "El apartado 2 se refiere a los cabildos insulares, no a los municipios."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 3.2**\n> \"Los cabildos insulares podrán constituir una asociación, de ámbito autonómico, para la protección y promoción de sus intereses comunes, sometida a la legislación sobre asociaciones.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 2 del artículo 3.\n\n**Por qué las demás son incorrectas:**\n- **B)** La finalidad que fija el apartado 2 es la protección y promoción de sus intereses comunes, no la gestión centralizada de competencias delegadas.\n- **C)** La asociación está sometida a la legislación sobre asociaciones, no sobre fundaciones.\n- **D)** El apartado 2 se refiere a los cabildos insulares, no a los municipios."
+  },
+  {
+    "primary_article_number": "4",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 4 (Audiencia de los cabildos insulares)",
+    "question_text": "Según el artículo 4 de la Ley 3/2026, ¿en qué plazo y en qué momento se dará audiencia a los cabildos insulares cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley?",
+    "options": [
+      "Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Parlamento de Canarias audiencia a los cabildos insulares por un plazo de quince días, previamente a su aprobación.",
+      "Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Gobierno audiencia a los cabildos insulares por un plazo de quince días, previamente a su aprobación.",
+      "Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Gobierno audiencia a los cabildos insulares por un plazo de quince días, con posterioridad a su aprobación.",
+      "Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Gobierno audiencia a los cabildos insulares por un plazo de treinta días, previamente a su aprobación."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 4",
+        "texto": "Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Gobierno audiencia a los cabildos insulares por un plazo de quince días, previamente a su aprobación."
+      },
+      "options": {
+        "0": "La audiencia la da el Gobierno, no el Parlamento de Canarias.",
+        "1": "Es la cita literal del artículo 4, único precepto del artículo.",
+        "2": "La audiencia se da PREVIAMENTE a la aprobación, no con posterioridad a ella.",
+        "3": "El plazo que fija el artículo 4 es de quince días, no de treinta."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 4**\n> \"Cuando un anteproyecto de ley o proyecto de decreto afecte a las materias reguladas en esta ley, se dará por el Gobierno audiencia a los cabildos insulares por un plazo de quince días, previamente a su aprobación.\"\n\n**Por qué B es correcta:** Es la cita literal del artículo 4, único precepto del artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** La audiencia la da el Gobierno, no el Parlamento de Canarias.\n- **C)** La audiencia se da PREVIAMENTE a la aprobación, no con posterioridad a ella.\n- **D)** El plazo que fija el artículo 4 es de quince días, no de treinta."
+  },
+  {
+    "primary_article_number": "5",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 5 (Competencias de los cabildos insulares)",
+    "question_text": "Según el apartado 1 del artículo 5 de la Ley 3/2026, ¿qué competencias ejercen los cabildos insulares como órganos de gobierno, administración y representación de cada isla?",
+    "options": [
+      "Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias propias que corresponden a las islas como entidad local y las que les sean delegadas por otras Administraciones públicas, de acuerdo con lo establecido en la Constitución y la legislación de régimen local.",
+      "Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias propias que corresponden a las islas como entidad local y las que les sean delegadas exclusivamente por el Parlamento de Canarias, de acuerdo con lo establecido en la Constitución y la legislación de régimen local.",
+      "Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias propias que corresponden a las islas como entidad local y las que les sean delegadas por otras Administraciones públicas, de acuerdo con lo establecido exclusivamente en el Estatuto de Autonomía de Canarias.",
+      "Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias exclusivas que corresponden al Estado como Administración central y las que les sean delegadas por otras Administraciones públicas, de acuerdo con lo establecido en la Constitución y la legislación de régimen local."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 5.1",
+        "texto": "Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias propias que corresponden a las islas como entidad local y las que les sean delegadas por otras Administraciones públicas, de acuerdo con lo establecido en la Constitución y la legislación de régimen local."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 1 del artículo 5.",
+        "1": "Las competencias delegadas lo son por OTRAS ADMINISTRACIONES PÚBLICAS, no exclusivamente por el Parlamento de Canarias.",
+        "2": "El apartado 1 se remite a la Constitución Y la legislación de régimen local, no exclusivamente al Estatuto de Autonomía de Canarias.",
+        "3": "El apartado 1 habla de las competencias PROPIAS de las islas como entidad local, no de competencias exclusivas del Estado como Administración central."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 5.1**\n> \"Los cabildos insulares como órganos de gobierno, administración y representación de cada isla, ejercen las competencias propias que corresponden a las islas como entidad local y las que les sean delegadas por otras Administraciones públicas, de acuerdo con lo establecido en la Constitución y la legislación de régimen local.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 1 del artículo 5.\n\n**Por qué las demás son incorrectas:**\n- **B)** Las competencias delegadas lo son por OTRAS ADMINISTRACIONES PÚBLICAS, no exclusivamente por el Parlamento de Canarias.\n- **C)** El apartado 1 se remite a la Constitución Y la legislación de régimen local, no exclusivamente al Estatuto de Autonomía de Canarias.\n- **D)** El apartado 1 habla de las competencias PROPIAS de las islas como entidad local, no de competencias exclusivas del Estado como Administración central."
+  },
+  {
+    "primary_article_number": "5",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 5 (Competencias de los cabildos insulares)",
+    "question_text": "Según el apartado 2 del artículo 5 de la Ley 3/2026, ¿qué corresponde a los cabildos insulares como instituciones de la Comunidad Autónoma de Canarias?",
+    "options": [
+      "Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los ayuntamientos el ejercicio de las funciones, competencias y facultades que se determinan en el Estatuto de Autonomía de Canarias, así como las competencias autonómicas que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico.",
+      "Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los cabildos insulares el ejercicio de las funciones, competencias y facultades que se determinan en el Estatuto de Autonomía de Canarias, así como las competencias autonómicas que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico.",
+      "Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los cabildos insulares el ejercicio de las funciones, competencias y facultades que se determinan en el Estatuto de Autonomía de Canarias, así como las competencias estatales que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico.",
+      "Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los cabildos insulares el ejercicio de las funciones, competencias y facultades que se determinan en la legislación básica de régimen local, así como las competencias autonómicas que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 5.2",
+        "texto": "Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los cabildos insulares el ejercicio de las funciones, competencias y facultades que se determinan en el Estatuto de Autonomía de Canarias, así como las competencias autonómicas que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico."
+      },
+      "options": {
+        "0": "El apartado 2 se refiere a los cabildos insulares, no a los ayuntamientos.",
+        "1": "Es la cita literal del apartado 2 del artículo 5.",
+        "2": "Las competencias adicionales son AUTONÓMICAS, no estatales.",
+        "3": "Las funciones, competencias y facultades se determinan en el Estatuto de Autonomía de Canarias, no en la legislación básica de régimen local."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 5.2**\n> \"Como instituciones de la Comunidad Autónoma de Canarias, corresponde a los cabildos insulares el ejercicio de las funciones, competencias y facultades que se determinan en el Estatuto de Autonomía de Canarias, así como las competencias autonómicas que les sean atribuidas, transferidas o delegadas de entre las asumidas por la Comunidad Autónoma de Canarias, de acuerdo con el Estatuto de Autonomía de Canarias y el resto del ordenamiento jurídico.\"\n\n**Por qué B es correcta:** Es la cita literal del apartado 2 del artículo 5.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 2 se refiere a los cabildos insulares, no a los ayuntamientos.\n- **C)** Las competencias adicionales son AUTONÓMICAS, no estatales.\n- **D)** Las funciones, competencias y facultades se determinan en el Estatuto de Autonomía de Canarias, no en la legislación básica de régimen local."
+  },
+  {
+    "primary_article_number": "6",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 6 (Ámbitos materiales de competencias)",
+    "question_text": "Según el apartado 1 del artículo 6 de la Ley 3/2026, ¿por medio de qué instrumentos se determinarán los ámbitos materiales en los que los cabildos insulares ejercerán competencias, en el marco de las competencias asumidas por la Comunidad Autónoma de Canarias?",
+    "options": [
+      "En el marco de las competencias asumidas por la Administración General del Estado, los cabildos insulares ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por ley del Parlamento de Canarias o, en su caso, por decreto ley.",
+      "En el marco de las competencias asumidas por la Comunidad Autónoma de Canarias, los ayuntamientos ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por ley del Parlamento de Canarias o, en su caso, por decreto ley.",
+      "En el marco de las competencias asumidas por la Comunidad Autónoma de Canarias, los cabildos insulares ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por reglamento del Gobierno de Canarias o, en su caso, por orden ministerial.",
+      "En el marco de las competencias asumidas por la Comunidad Autónoma de Canarias, los cabildos insulares ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por ley del Parlamento de Canarias o, en su caso, por decreto ley."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 6.1",
+        "texto": "En el marco de las competencias asumidas por la Comunidad Autónoma de Canarias, los cabildos insulares ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por ley del Parlamento de Canarias o, en su caso, por decreto ley."
+      },
+      "options": {
+        "0": "El marco es el de las competencias asumidas por la Comunidad Autónoma de Canarias, no por la Administración General del Estado.",
+        "1": "El apartado 1 se refiere a los cabildos insulares, no a los ayuntamientos.",
+        "2": "Los ámbitos se determinan por ley del Parlamento de Canarias o decreto ley, no por reglamento del Gobierno de Canarias u orden ministerial.",
+        "3": "Es la cita literal del apartado 1 del artículo 6."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 6.1**\n> \"En el marco de las competencias asumidas por la Comunidad Autónoma de Canarias, los cabildos insulares ejercerán las competencias en los ámbitos materiales que se determinen en el Estatuto de Autonomía y por ley del Parlamento de Canarias o, en su caso, por decreto ley.\"\n\n**Por qué D es correcta:** Es la cita literal del apartado 1 del artículo 6.\n\n**Por qué las demás son incorrectas:**\n- **A)** El marco es el de las competencias asumidas por la Comunidad Autónoma de Canarias, no por la Administración General del Estado.\n- **B)** El apartado 1 se refiere a los cabildos insulares, no a los ayuntamientos.\n- **C)** Los ámbitos se determinan por ley del Parlamento de Canarias o decreto ley, no por reglamento del Gobierno de Canarias u orden ministerial."
+  },
+  {
+    "primary_article_number": "6",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 6 (Ámbitos materiales de competencias)",
+    "question_text": "El apartado 2 del artículo 6 de la Ley 3/2026 enumera las materias en las que se atribuyen competencias y funciones ejecutivas de carácter insular a los cabildos. ¿Cuál de las siguientes corresponde EXACTAMENTE a la letra h) de ese listado?",
+    "options": [
+      "Ordenación del territorio.",
+      "Ferias y mercados insulares.",
+      "Defensa del consumidor.",
+      "Asistencia social y servicios sociales."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 6.2.h)",
+        "texto": "Defensa del consumidor."
+      },
+      "options": {
+        "0": "Ordenación del territorio es la letra b), no la h).",
+        "1": "Ferias y mercados insulares es la letra g), no la h).",
+        "2": "Es la letra h) literal del apartado 2 del artículo 6.",
+        "3": "Asistencia social y servicios sociales es la letra i), no la h)."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 6.2.h)**\n> \"Defensa del consumidor.\"\n\n**Por qué C es correcta:** Es la letra h) literal del apartado 2 del artículo 6.\n\n**Por qué las demás son incorrectas:**\n- **A)** Ordenación del territorio es la letra b), no la h).\n- **B)** Ferias y mercados insulares es la letra g), no la h).\n- **D)** Asistencia social y servicios sociales es la letra i), no la h)."
+  },
+  {
+    "primary_article_number": "6",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 6 (Ámbitos materiales de competencias)",
+    "question_text": "Según el apartado 3 del artículo 6 de la Ley 3/2026, ¿en qué condiciones puede una ley reguladora de un sector de actuación pública determinar que un cabildo ejerza, en su condición de institución de la Comunidad Autónoma de Canarias, una competencia atribuida en el resto del archipiélago?",
+    "options": [
+      "Siempre que concurra una autorización previa del Gobierno de Canarias y no se produzca afectación a las competencias propias de la Administración de la Comunidad Autónoma de Canarias o de otros cabildos en su interés territorial insular.",
+      "Siempre que concurra un interés insular singular no susceptible de ser prestado por ningún otro cabildo del archipiélago y no se produzca afectación a las competencias propias de la Administración de la Comunidad Autónoma de Canarias o de otros cabildos en su interés territorial insular.",
+      "Siempre que concurra un interés insular singular no susceptible de ser prestado en el territorio de la respectiva isla y no se produzca afectación a las competencias propias de la Administración General del Estado.",
+      "Siempre que concurra un interés insular singular no susceptible de ser prestado en el territorio de la respectiva isla y no se produzca afectación a las competencias propias de la Administración de la Comunidad Autónoma de Canarias o de otros cabildos en su interés territorial insular."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 6.3",
+        "texto": "siempre que concurra un interés insular singular no susceptible de ser prestado en el territorio de la respectiva isla y no se produzca afectación a las competencias propias de la Administración de la Comunidad Autónoma de Canarias o de otros cabildos en su interés territorial insular"
+      },
+      "options": {
+        "0": "El apartado 3 exige un interés insular singular, no una autorización previa del Gobierno de Canarias.",
+        "1": "El interés insular tiene que ser no susceptible de prestarse EN EL TERRITORIO DE LA RESPECTIVA ISLA, no «por ningún otro cabildo del archipiélago».",
+        "2": "La no afectación se predica de las competencias de la Comunidad Autónoma de Canarias o de otros cabildos, no de la Administración General del Estado.",
+        "3": "Es la cita literal de la condición que fija el apartado 3 del artículo 6."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 6.3**\n> \"siempre que concurra un interés insular singular no susceptible de ser prestado en el territorio de la respectiva isla y no se produzca afectación a las competencias propias de la Administración de la Comunidad Autónoma de Canarias o de otros cabildos en su interés territorial insular\"\n\n**Por qué D es correcta:** Es la cita literal de la condición que fija el apartado 3 del artículo 6.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 3 exige un interés insular singular, no una autorización previa del Gobierno de Canarias.\n- **B)** El interés insular tiene que ser no susceptible de prestarse EN EL TERRITORIO DE LA RESPECTIVA ISLA, no «por ningún otro cabildo del archipiélago».\n- **C)** La no afectación se predica de las competencias de la Comunidad Autónoma de Canarias o de otros cabildos, no de la Administración General del Estado."
+  },
+  {
+    "primary_article_number": "6",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 6 (Ámbitos materiales de competencias)",
+    "question_text": "Según el apartado 3 del artículo 6 de la Ley 3/2026, cuando el ejercicio de una competencia del cabildo, en su condición de institución autonómica, pueda desplegarse fuera del ámbito de su isla, ¿qué debe ocurrir antes, y qué sucede si transcurridos dos meses no se manifiesta objeción?",
+    "options": [
+      "Deberá mediar comunicación al Parlamento de Canarias y al Ministerio de Política Territorial y, si transcurridos dos meses no se manifiesta objeción, podrá llevarse a cabo la actuación.",
+      "Deberá mediar comunicación a la consejería competente en la materia del Gobierno de Canarias y al cabildo de la isla afectada y, si transcurridos seis meses no se manifiesta objeción, podrá llevarse a cabo la actuación.",
+      "Deberá mediar comunicación a la consejería competente en la materia del Gobierno de Canarias y al cabildo de la isla afectada y, si transcurridos dos meses no se manifiesta objeción, deberá suspenderse la actuación de forma indefinida.",
+      "Deberá mediar comunicación a la consejería competente en la materia del Gobierno de Canarias y al cabildo de la isla afectada y, si transcurridos dos meses no se manifiesta objeción, podrá llevarse a cabo la actuación."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 6.3",
+        "texto": "deberá mediar comunicación a la consejería competente en la materia del Gobierno de Canarias y al cabildo de la isla afectada y, si transcurridos dos meses no se manifiesta objeción, podrá llevarse a cabo la actuación"
+      },
+      "options": {
+        "0": "La comunicación se dirige a la consejería competente del Gobierno de Canarias y al cabildo de la isla afectada, no al Parlamento de Canarias ni al Ministerio de Política Territorial.",
+        "1": "El plazo que fija el apartado 3 es de dos meses, no de seis.",
+        "2": "Si no hay objeción en plazo, la actuación PODRÁ LLEVARSE A CABO, no debe suspenderse.",
+        "3": "Es la cita literal del apartado 3 del artículo 6."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 6.3**\n> \"deberá mediar comunicación a la consejería competente en la materia del Gobierno de Canarias y al cabildo de la isla afectada y, si transcurridos dos meses no se manifiesta objeción, podrá llevarse a cabo la actuación\"\n\n**Por qué D es correcta:** Es la cita literal del apartado 3 del artículo 6.\n\n**Por qué las demás son incorrectas:**\n- **A)** La comunicación se dirige a la consejería competente del Gobierno de Canarias y al cabildo de la isla afectada, no al Parlamento de Canarias ni al Ministerio de Política Territorial.\n- **B)** El plazo que fija el apartado 3 es de dos meses, no de seis.\n- **C)** Si no hay objeción en plazo, la actuación PODRÁ LLEVARSE A CABO, no debe suspenderse."
+  },
+  {
+    "primary_article_number": "7",
+    "law_slug": "ley-3-2026-cabildos-insulares",
+    "article_label": "Ley 3/2026 Cabildos Insulares, art. 7 (Ejercicio de las competencias)",
+    "question_text": "Según el artículo 7 de la Ley 3/2026, ¿de acuerdo con qué principio se ejercen todas las competencias de los cabildos, y por parte de quién pueden ser objeto de coordinación?",
+    "options": [
+      "Todas las competencias de los cabildos se ejercen de acuerdo con el principio de subsidiariedad autonómica y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de Canarias en cuanto afecte al interés general de la Comunidad Autónoma de Canarias, de conformidad con el Estatuto de Autonomía y las leyes.",
+      "Todas las competencias de los cabildos se ejercen de acuerdo con el principio de lealtad institucional y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de España en cuanto afecte al interés general de la Comunidad Autónoma de Canarias, de conformidad con el Estatuto de Autonomía y las leyes.",
+      "Todas las competencias de los cabildos se ejercen de acuerdo con el principio de lealtad institucional y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de Canarias en cuanto afecte exclusivamente al interés particular de cada isla.",
+      "Todas las competencias de los cabildos se ejercen de acuerdo con el principio de lealtad institucional y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de Canarias en cuanto afecte al interés general de la Comunidad Autónoma de Canarias, de conformidad con el Estatuto de Autonomía y las leyes."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Ley 3/2026 Cabildos Insulares, art. 7",
+        "texto": "Todas las competencias de los cabildos se ejercen de acuerdo con el principio de lealtad institucional y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de Canarias en cuanto afecte al interés general de la Comunidad Autónoma de Canarias, de conformidad con el Estatuto de Autonomía y las leyes."
+      },
+      "options": {
+        "0": "El artículo 7 se apoya en el principio de lealtad institucional, no en el de subsidiariedad autonómica.",
+        "1": "La coordinación corresponde al Gobierno de Canarias, no al Gobierno de España.",
+        "2": "La coordinación procede cuando afecte al interés GENERAL de la Comunidad Autónoma de Canarias, no exclusivamente al interés particular de cada isla.",
+        "3": "Es la cita literal del artículo 7, único precepto del artículo."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 7**\n> \"Todas las competencias de los cabildos se ejercen de acuerdo con el principio de lealtad institucional y con el régimen jurídico que rige las relaciones entre Administraciones públicas y pueden ser objeto de coordinación por parte del Gobierno de Canarias en cuanto afecte al interés general de la Comunidad Autónoma de Canarias, de conformidad con el Estatuto de Autonomía y las leyes.\"\n\n**Por qué D es correcta:** Es la cita literal del artículo 7, único precepto del artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 7 se apoya en el principio de lealtad institucional, no en el de subsidiariedad autonómica.\n- **B)** La coordinación corresponde al Gobierno de Canarias, no al Gobierno de España.\n- **C)** La coordinación procede cuando afecte al interés GENERAL de la Comunidad Autónoma de Canarias, no exclusivamente al interés particular de cada isla."
+  }
+]

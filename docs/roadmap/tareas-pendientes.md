@@ -1803,6 +1803,92 @@ ciega PRE y re-verificación POST**). ~63k caracteres, el bloque más grande de 
 LEY. Lo que falta es el REGLAMENTO, así que las preguntas deben apoyarse en lo que el reglamento
 añade (procedimiento, plazos, órganos, tramitación) y no repetir lo que ya cubre la ley.
 
+#### AVANZADO (07/08, w3) — 1er batch de 17 preguntas (arts. 215-224 de 43) auditado, resto pendiente
+
+**Confirmado el reparto ley/reglamento antes de generar, no solo confiado en la ficha:**
+`topic_scope` real de `policia_nacional` T11 tiene LO 4/2000 (18 arts, 50-66 — las infracciones y
+sanciones sustantivas) Y REx 2024 (43 arts, 215-257 — el procedimiento). Los 43 artículos del REx
+son ÍNTEGRAMENTE procedimentales por título (normativa aplicable, modalidades, competencia,
+instructor, decomiso, resolución, ejecución, caducidad, procedimiento ordinario/preferente/
+simplificado/expulsión/multas…) — no hay solapamiento con las 251 preguntas de la ley, que versan
+sobre qué es infracción y qué sanción corresponde.
+
+**Verificado el límite del scope contra el índice estructurado del BOE** (igual que en [T-680], no
+un resumen): el Título XIV empieza en el art. 215 y su Capítulo I, "Normas comunes del procedimiento
+sancionador", cubre exactamente los arts. 215-224 (10 artículos) antes de que el Capítulo II
+(procedimiento ordinario) empiece en el art. 225 — un corte real de la propia norma, no arbitrario.
+Elegido como **primer batch** por el mismo motivo que en T-679/T-680: 43 artículos / ~63k caracteres
+es el bloque más grande de los tres y el manual pide empezar por 3-5 artículos, nunca de golpe.
+
+**Verificados los 10 artículos contra el BOE vigente** (`verificar-articulos-vs-boe.cjs
+rd-1155-2024-reglamento-extranjeria BOE-A-2024-24099 215..224` → **10/10 idénticos**, 20250520).
+
+**Generadas 17 preguntas** (arts. 215×2, 216×1, 217×1, 218×2, 219×1, 220×2, 221×2, 222×1, 223×2,
+224×3) en `scratchpad/t681/gen_pn_t11_rex2024_2026-08-07_borrador.json`. El art. 224 (caducidad y
+prescripción) concentra 3 preguntas porque sus 3 apartados relevantes traen **cifras fácilmente
+confundibles pegadas a conceptos distintos** (6 meses de plazo de resolución · 3/2/0,5 años de
+prescripción de la INFRACCIÓN · 5/2/1 años de prescripción de la SANCIÓN) — exactamente el tipo de
+contenido reglamentario denso y testeable que la ficha pide priorizar.
+
+**Paso 3.bis — 0 bloqueantes tras dos rondas de arreglo real, más densas que en los otros dos
+batches:**
+1. **2 literalidades NO_LITERAL**: en la pregunta del art. 221.3 había parafraseado "a tenor de su
+   artículo 57" como "a tenor del artículo 57 de la Ley Orgánica 4/2000" (cambia el texto); en la
+   del art. 224.1 había COMBINADO dos párrafos del apartado 1 en una sola opción con palabras
+   propias en vez de citar cada párrafo tal cual. Arregladas devolviendo el texto exacto en el
+   primer caso y simplificando la segunda pregunta a citar solo el primer párrafo del apartado
+   (más limpio que forzar una combinación).
+2. **3 tells de longitud** (arts. 217, 218.2 y 219): estos artículos citan listas largas de
+   órganos o cláusulas de excepción reales, y mis primeros distractores eran demasiado cortos
+   frente a esa cita. Arreglados alargando cada distractor con una cláusula adicional plausible de
+   longitud comparable (mismo patrón: dato real de la norma, recombinado, nunca inventado de la
+   nada) — no acortando la correcta, que es literal por definición.
+3. **Distribución/secuencia**: equilibradas con `--equilibrar` (3 transposiciones). Resultado
+   final: **A 29% · B 29% · C 24% · D 18%, secuencia DDCDACABACBABCABB (no cíclica)**. Verificado a
+   ojo que las 17 viñetas describen su propia opción tras el movimiento.
+
+**Auditoría ciega independiente (agente Sonnet que no sabía que yo las generé), con instrucción
+explícita de revisar con lupa las 3 preguntas del art. 224 (por el riesgo de mezclar plazos entre
+apartados) y la del art. 221.3 (cita que empieza a media frase): 16/17 PERFECT, 1 hallazgo real.**
+El hallazgo: en la explicación de una opción falsa del art. 215.1 había escrito "Ley Orgánica
+10/2015 (Código Penal)" — **el Código Penal real es la Ley Orgánica 10/1995, no la 10/2015**, un
+dato jurídico externo inventado dentro de la explicación (no afectaba a la clave, que seguía siendo
+correcta, pero era un dato falso servido al opositor). Corregido el número de la ley tanto en la
+opción como en la explicación para que la referencia sea real. Re-verificado tras el arreglo: sigue
+en 0 bloqueantes. Las 3 preguntas del art. 224 y la del art. 221.3, con la revisión reforzada que
+se les pidió a propósito, salieron limpias — incluidos los distractores que a propósito usan los
+números del apartado EQUIVOCADO como trampa, correctamente marcados como falsos por la auditoría.
+
+**Confirmado `grep -i "557/2011"` sobre el borrador: 0 menciones** a la norma derogada (RD 557/2011,
+el criterio de verificación que pide esta ficha). Dedup contra el banco completo: 0 coincidencias
+exactas de `question_text`.
+
+**Lo que falta — con la cifra por delante:** este primer batch cubre **10 de los 43 artículos del
+scope (23%)**. Quedan **33 artículos** (procedimiento ordinario, preferente, simplificado,
+expulsión, multas, vigilancia laboral — arts. 225-257) para batches sucesivos con su propia
+verificación y auditoría cada uno.
+
+**Lo que falta para ESTE batch, además, por permisos:** este worker solo tiene `VENCE_LECTOR_URL`
+(lectura). Para servir estas 17 preguntas, quien tenga escritura de negocio tiene que seguir el
+manual desde el **Paso 4**: insertar (`insertar-batch-generado.cjs
+scratchpad/t681/gen_pn_t11_rex2024_2026-08-07_borrador.json rd-1155-2024-reglamento-extranjeria
+gen_pn_t11_rex2024_2026-08-07`), Paso 5.bis, Paso 8 (transición a `approved` con el veredicto de
+auditoría de arriba), **Paso 9 OBLIGATORIO** (re-verificación con Sonnet nuevo sobre las preguntas
+ya vivas en BD), Paso 11 (invalidar las 3 capas de caché del tema 11 de `policia_nacional`), y
+verificar que el tema pase de 0 a 17 preguntas activas de esta ley (las 251 de la LO 4/2000 no se
+tocan).
+
+**Capas:** simulación (`simular-batch-preinsercion.cjs`) en 3 rondas hasta 0 bloqueantes + auditoría
+doble real (auto-audit + agente Sonnet independiente y ciego) con 16/17 PERFECT y 1 hallazgo
+corregido. Sin tests de código porque no se ha tocado ningún fichero de producción — es contenido,
+no lógica.
+
+**Entrega:** rama `flota/T-681-preguntas-pn-t11-rex2024`, pusheada, con el borrador en
+`scratchpad/t681/`.
+
+**Relacionadas:** [T-679] (Guardia Civil T17, calibración del método), [T-680] (Canarias T7, mismo
+patrón de primer-batch-de-un-scope-grande), [T-660] (el re-anclaje que dejó este bloque en 0).
+
 ### [T-680] 🟠 [ABIERTO 07/08] Generar preguntas del tema 7 de Aux. Admin. Canarias tras el re-anclaje a la Ley 3/2026 de cabildos (48 artículos)
 
 **Contexto:** lo destapó un usuario premium (Iván González, feedback `1627e0d4`): el tema 7 llevaba
@@ -1822,6 +1908,82 @@ ciega PRE y re-verificación POST**). ~53k caracteres de texto legal.
 sobre organización, régimen jurídico ni relaciones interadministrativas (Títulos II-V) aunque la ley
 los tenga: eso sería servir fuera de programa, que es justo el otro defecto que este usuario
 encontró en su tema 17.
+
+#### AVANZADO (07/08, w3) — 1er batch de 15 preguntas (arts. 1-7 de 48) auditado, resto pendiente
+
+**Verificado el límite del scope antes de tocar nada — no me fío del epígrafe, lo comprobé contra el
+índice estructurado del BOE** (`curl .../texto/indice`, no un resumen): el Título I (competencias)
+termina EXACTAMENTE en el art. 48 (bloque `a4-10`) y el Título II (organización) empieza en el art.
+49 (bloque `ti-2`) — el corte de la ficha en 48 es correcto, no hay que ajustarlo. Confirmado también
+el scope real en BD (`topic_scope` de `auxiliar_administrativo_canarias` T7 = arts 1-48 de esta ley,
+exacto) y que el bloque sigue en 0 preguntas.
+
+**Por qué NO until los 48 de golpe:** el propio manual es explícito («empieza siempre por una ley +
+3-5 artículos, nunca un batch grande al inicio») y la propia ficha ya usó [T-679] (5 artículos) como
+calibración. 48 artículos / ~53k caracteres exige varios batches sucesivos con su propia auditoría
+cada uno — intentarlo de una sentada con el mismo rigor no cabe en un turno. Elegí como **primer
+batch una unidad legal natural y completa**: el **Título Preliminar entero (arts. 1-4, "naturaleza")
++ el Capítulo I del Título I (arts. 5-7, "disposiciones generales" de competencias)** — un corte que
+existe en la propia ley, no arbitrario.
+
+**Verificados los 7 artículos contra el BOE vigente** (`verificar-articulos-vs-boe.cjs
+ley-3-2026-cabildos-insulares BOE-A-2026-17189 1 2 3 4 5 6 7` → **7/7 idénticos**, 20260630).
+
+**Generadas 15 preguntas** (Art 1 ×3, Art 2 ×2, Art 3 ×2, Art 4 ×1, Art 5 ×2, Art 6 ×4, Art 7 ×1) en
+`scratchpad/t680/gen_canarias_t7_ley3-2026_2026-08-07_borrador.json`. El art. 6 (listado de 24
+materias a-x) justifica sus 4 preguntas por estructura (§2.6: "enumerativo con ≥5 ítems → 4-5
+preguntas"). Técnica de distractor: swap de UN elemento real sobre la frase literal completa
+(§2.2-bis), y para las preguntas de "qué dice la letra X" (Q1, Q2, Q12 del art.1 y art.6) los 3
+distractores son las OTRAS letras reales del mismo listado, simplemente mal etiquetadas — cero
+invención, balance de longitud automático.
+
+**Paso 3.bis — 0 bloqueantes tras una ronda de arreglo:** la 1ª pasada dio un tell de longitud (la
+pregunta de la letra e) del art.1, 65 caracteres, frente al distractor más largo de 47 — las letras
+del art.1 no son intercambiables en longitud) + distribución 100% invertida hacia D por cómo
+construí las opciones. Arreglado cambiando esa pregunta a la letra c) (47 ch, balance con las otras
+tres letras dentro del margen) y equilibrando posición con `--equilibrar` (7 transposiciones,
+letra+viñeta movidas juntas). Resultado final: **A 27% · B 27% · C 20% · D 27%, secuencia
+CBCAABABABDCDDD (no cíclica)**. Verificado a ojo que las 15 viñetas describen su propia opción tras
+el movimiento (imprimí opción y viñeta enfrentadas, las 15 casan).
+
+**Auditoría ciega independiente (agente Sonnet que no sabía que yo las generé), con instrucción
+explícita de revisar con lupa las preguntas de letra (Q1/Q2/Q12) y las dos del art. 6.3 (Q13/Q14, que
+citan párrafos consecutivos del mismo apartado y podían mezclarse): 15/15 PERFECT, 0 hallazgos.**
+Verificó carácter a carácter el mapeo de las 24 letras del art. 6.2 contra el listado real y confirmó
+que Q13/Q14 no se contaminan entre sí (cada una cita un párrafo distinto de 6.3, sin solape).
+
+**Confirmado `grep -i "8/2015"` sobre el borrador: 0 menciones** a la Ley 8/2015 derogada (el
+criterio de verificación que pide esta ficha). Dedup contra el banco completo: 0 coincidencias
+exactas de `question_text`. Los 2 avisos de "posible duplicado intra-lote" que quedan (Q1↔Q2 por
+compartir la plantilla "¿qué establece la letra X?", CLAVE 0.00; Q5↔Q9 por vocabulario compartido
+entre arts. 2 y 5, CLAVE 0.23) son el propio patrón de redundancia controlada del manual — el
+simulador ya los marca como "probable falso positivo" por el Jaccard de CLAVE bajo.
+
+**Lo que falta — y es GRANDE, hay que decirlo con la cifra por delante:** este primer batch cubre
+**7 de los 48 artículos del scope (15%)**. Quedan **41 artículos** (Capítulos II-III del Título I,
+~45k caracteres) para batches sucesivos siguiendo el mismo patrón de este manual — cobertura inicial
+→ extendida, con su propia verificación contra BOE y su propia auditoría ciega cada vez. No es una
+tarea que un solo batch pueda cerrar; que quien retome esto lo sepa antes de prometer un plazo.
+
+**Lo que falta para ESTE batch, además, por permisos:** este worker solo tiene `VENCE_LECTOR_URL`
+(lectura). Para servir estas 15 preguntas, quien tenga escritura de negocio tiene que seguir el
+manual desde el **Paso 4**: insertar (`insertar-batch-generado.cjs
+scratchpad/t680/gen_canarias_t7_ley3-2026_2026-08-07_borrador.json ley-3-2026-cabildos-insulares
+gen_canarias_t7_ley3-2026_2026-08-07`), Paso 5.bis (debería salir limpio), Paso 8 (transición a
+`approved` registrando el veredicto de auditoría de arriba), **Paso 9 OBLIGATORIO** (re-verificación
+con Sonnet nuevo sobre las preguntas ya vivas en BD, no sobre el borrador), Paso 11 (invalidar las 3
+capas de caché del tema 7 de `auxiliar_administrativo_canarias`), y verificar que el tema pase de 0 a
+15 preguntas activas.
+
+**Capas:** simulación (`simular-batch-preinsercion.cjs`) en 2 rondas hasta 0 bloqueantes + auditoría
+doble real (auto-audit + agente Sonnet independiente y ciego) con 15/15 PERFECT. Sin tests de código
+porque no se ha tocado ningún fichero de producción — es contenido, no lógica.
+
+**Entrega:** rama `flota/T-680-preguntas-canarias-t7-ley3-2026`, pusheada, con el borrador en
+`scratchpad/t680/`.
+
+**Relacionadas:** [T-679] (el mismo trabajo en Guardia Civil T17, calibración del método),
+[T-660] (el re-anclaje de esta ley que dejó el bloque en 0 preguntas).
 
 **Hay una persona esperando esto:** se le respondió que estábamos actualizando el temario.
 
@@ -1845,6 +2007,91 @@ de soltar los dos grandes. Si aquí sale algo torcido, se arregla el método ant
 
 **Verificación al terminar:** que el tema 17 de `guardia_civil` vuelva a servir preguntas de esos
 artículos y que ninguna cite la norma derogada (`RD 806/2014`) en enunciado ni explicación.
+
+#### RESUELTO (07/08, w3) — batch de 10 preguntas preparado y auditado, pendiente de escritura en BD
+
+**Verificado contra fuente antes de generar (Paso 1):** `verificar-articulos-vs-boe.cjs
+rd-1125-2024-tic-age BOE-A-2024-22935 1 2 8 9 10` → **5/5 artículos idénticos al BOE vigente
+(20241107)**. Confirmado también que el bloque sigue en 0 preguntas (`SELECT count(*) FROM
+questions q JOIN articles a ON a.id=q.primary_article_id WHERE a.law_id='87a155b4-…'` → 0 filas) y
+que el scope de T17 es exactamente arts. 1,2,8,9,10 de esa ley, tal y como dice la ficha.
+
+**Generadas 10 preguntas** (Art 1 ×2, Art 2 ×1, Art 8 ×2, Art 9 ×3, Art 10 ×2), formato §8.2
+estructurado, en `scratchpad/t679/gen_gcivil_t17_rd1125_2026-08-07_borrador.json`. Cada distractor
+se construyó con la técnica de §2.2-bis («cambia UN elemento, copia el resto literal»): el sujeto o
+destinatario de una frase real del propio artículo, sustituido por otra entidad real de la misma
+norma (Gobierno / CETIC / Agencia / Consejo Rector / Ministerio…), preservando la longitud — no
+frases inventadas cortas.
+
+**Paso 3.bis (`simular-batch-preinsercion.cjs`) — 0 bloqueantes en la versión final**, tras dos
+rondas de arreglo real:
+1ª ronda: 2 literalidades NO_LITERAL (la opción marcada correcta no era subcadena exacta del
+artículo — paráfrasis mía, no del artículo) + 1 tell de longitud (correcta 261 ch vs distractor
+máximo 174 ch) + distribución 100% en A. Arregladas reescribiendo las 3 preguntas para que la
+opción correcta sea subcadena literal exacta (la técnica de swap-de-sujeto lo resuelve gratis: si
+solo cambias el sujeto, el resto sigue siendo literal y la longitud queda pareja por construcción).
+Distribución/secuencia arregladas con `--equilibrar` (7 transposiciones, letra+viñeta movidas
+juntas, verificado a ojo que cada viñeta describe su opción tras el movimiento — comando del propio
+manual §2.2-ter). Resultado final: **A 3 · B 3 · C 2 · D 2, secuencia BCDBCDBAAA (no cíclica)**.
+
+**Paso 6 (auto-audit) + Paso 7 (auditoría ciega independiente, agente Sonnet que NO sabía que yo
+las había generado) — 9/10 PERFECT, 1 NEEDS_REVIEW real, corregido:**
+- La auditoría ciega encontró que la pregunta de CETIC (art. 10) decía en su enunciado que la
+  Comisión de Estrategia TIC «aprueba la Estrategia TIC junto con el Gobierno según el artículo 8»
+  — **falso**: el art. 8 dice que aprueba el GOBIERNO y la CETIC solo tiene «la iniciativa», y esto
+  **contradecía a mi propia pregunta del art. 8 en el mismo lote**, que decía correctamente lo
+  contrario. Reescrito el inciso introductorio para no afirmar una aprobación conjunta que el
+  artículo no dice. Re-verificado tras el arreglo: sigue en 0 bloqueantes.
+- La misma auditoría, de pasada, señaló como «no verificable con el texto que le di» el título
+  oficial completo que yo había puesto en el enunciado de la pregunta del art. 1 (lo había copiado
+  de `laws.name` en BD). **Comprobado aparte contra el HTML crudo del BOE** (no el resumen de un
+  fetch, que puede parafrasear): **`laws.name` en BD está MAL** — dice *"por el que se **regula** la
+  organización y los instrumentos operativos **de las tecnologías de la información y las
+  comunicaciones** en la Administración General del Estado"* y el título oficial real (confirmado
+  con `curl` + grep del `<title>`/`<h3 class="documento-tit">` de
+  `boe.es/buscar/act.php?id=BOE-A-2024-22935`) es *"por el que se **regulan** la organización y los
+  instrumentos operativos **para la Administración Digital** de la Administración del Estado"* —
+  título distinto de verdad, no solo una coma. Corregida la pregunta con el título verificado. **No
+  toqué `laws.name` en BD** (no tengo escritura) — queda como hallazgo aparte para quien aplique
+  este batch: la columna `name` de esta ley está desactualizada/errónea y convendría corregirla,
+  aunque no afecta a ninguno de los 5 artículos usados (el `content` de los 5 SÍ está verificado
+  correcto contra BOE).
+- Confirmado además, releyendo el texto completo de los 5 artículos: ninguna cita omite una
+  cláusula condicionante/coordinada («salvo», «excepto», «así como») de la frase que cita — comprobé
+  uno por uno qué viene inmediatamente después de cada cita en el artículo fuente.
+- Los 3 avisos de "posible duplicado intra-lote" restantes (todos contra la pregunta del art. 8
+  sobre qué determina la Estrategia TIC) los revisé a mano: son preguntas sobre partes distintas de
+  artículos distintos (quién aprueba vs qué determina vs cuál es el objeto de la norma), con
+  respuestas correctas distintas — el propio simulador ya los marca como "probable falso positivo"
+  por el Jaccard de CLAVE bajo (0,08-0,41).
+- Los avisos de "mayúsculas no catalogadas: RD / TIC" (§2.2-quater) son el otro tipo de aviso, no
+  error duro: decisión razonada de NO añadir "RD" al diccionario de siglas (es una abreviatura de
+  redacción tan universal como "art.", no una sigla que compacte el nombre de una norma) y de
+  desarrollar "TIC" explícitamente en el enunciado de cada pregunta donde aparece como concepto
+  autónomo (Q2, Q4, Q5) en vez de darlo por sabido de otra pregunta del lote — las preguntas se
+  sirven sueltas y barajadas, así que cada una tiene que bastarse sola.
+- Confirmado con `grep -i "806/2014"` sobre el borrador: **0 menciones** a la norma derogada, tal y
+  como pide el criterio de verificación de la propia ficha.
+- Dedup contra el banco completo (no solo esta ley): las 10 preguntas tienen `question_text` único,
+  0 coincidencias exactas en `questions` activas.
+
+**Lo que falta y por qué se para aquí:** este worker solo tiene `VENCE_LECTOR_URL` (lectura). Para
+cerrar la tarea, quien tenga escritura de negocio tiene que seguir el manual desde el **Paso 4**:
+1. Insertar el batch (`insertar-batch-generado.cjs scratchpad/t679/gen_gcivil_t17_rd1125_2026-08-07_borrador.json rd-1125-2024-tic-age gen_gcivil_t17_rd1125_2026-08-07`) — nace en `draft`, invisible por construcción.
+2. `verificar-batch-generado.cjs` (Paso 5.bis, ya debería salir limpio porque simula lo mismo que el simulador de arriba).
+3. Transición a `approved` vía `transition_question_state` (Paso 8) tras registrar `ai_verification_results` con `ai_provider='claude_code'` (auto-audit) y `'claude_code'` del Sonnet ciego del Paso 7 — el veredicto de la auditoría ciega completa queda arriba, en esta misma ficha.
+4. **Paso 9 OBLIGATORIO**: re-verificación con un agente Sonnet NUEVO sobre las preguntas YA VIVAS en BD (no sobre el borrador) — el lote no se da por cerrado sin esto.
+5. Invalidar las 3 capas de caché (Paso 11: materialized views + Redis + tags Next.js) del tema 17 de `guardia_civil`.
+6. Verificar impacto: el tema 17 debe pasar de 0 a 10 preguntas activas, y ninguna debe citar RD 806/2014.
+7. **Corregir aparte `laws.name`** de `87a155b4-34a3-41fa-bcee-fa0b57af196c` al título oficial verificado arriba (fuera del alcance de esta tarea, pero es un dato incorrecto en producción hoy).
+
+**Capas:** simulación (`simular-batch-preinsercion.cjs`, obligatoria desde 26/07) en dos rondas
+hasta 0 bloqueantes + auditoría doble real (auto-audit + agente Sonnet independiente y ciego, sin
+saber que yo las generé) con 1 hallazgo real corregido. Sin tests de código porque no se ha tocado
+ningún fichero de producción — es contenido, no lógica.
+
+**Entrega:** rama `flota/T-679-preguntas-gc-t17-rd1125`, pusheada, con el borrador en
+`scratchpad/t679/`.
 
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
