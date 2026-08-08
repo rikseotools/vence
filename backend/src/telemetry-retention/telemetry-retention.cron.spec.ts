@@ -22,6 +22,7 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     batches: 1,
     remaining: { observable_events: 0 },
     vacuumFailed: [],
+    purgaFallida: [],
     observableEventsPorParticion: false,
     observableEventsParticionesDropeadas: 0,
   };
@@ -83,5 +84,60 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     const ev = exito(emit);
     expect(ev.metadata.remaining).toEqual({ observable_events: 4321 });
     expect(ev.metadata.vacuumFailed).toEqual(['observable_events']);
+  });
+
+  /**
+   * [T-733] La noche del 08/08 el evento que quedó fue `{"status":"failure"}` a secas. Estos dos
+   * tests fijan las DOS mitades de lo que tiene que pasar cuando la purga se corta, y son dos
+   * porque se puede acertar una y estropear la otra: que el veredicto siga siendo ERROR (o
+   * `cron_sin_exito` deja de avisar de un cron que no drena) y que el evento lleve los datos
+   * (o hay que reconstruir el diagnóstico a mano otra vez).
+   */
+  const cronRun = (emit: jest.Mock) =>
+    emit.mock.calls.map((c) => c[0]).find((e) => e?.eventType === 'cron_run');
+
+  it('si la purga se corta, el veredicto NO es éxito: severity error', async () => {
+    const { cron, emit } = montar({
+      ...resultadoBase,
+      purgaFallida: [{ tabla: 'observable_events', error: 'statement timeout' }],
+    });
+    await cron.handle();
+
+    const ev = cronRun(emit);
+    expect(ev.severity).toBe('error');
+    expect(ev.metadata.status).toBe('partial');
+    // Y NO se cuela por el filtro de éxito, que es lo que mira `cron_sin_exito`.
+    expect(exito(emit)).toBeUndefined();
+  });
+
+  it('y aun así lleva la medida: lo borrado, el atraso y el error', async () => {
+    const { cron, emit } = montar({
+      ...resultadoBase,
+      observableEventsDeleted: 30_000,
+      remaining: { observable_events: 888_040 },
+      purgaFallida: [{ tabla: 'observable_events', error: 'statement timeout' }],
+    });
+    await cron.handle();
+
+    const ev = cronRun(emit);
+    expect(ev.metadata.observableEventsDeleted).toBe(30_000);
+    expect(ev.metadata.remaining).toEqual({ observable_events: 888_040 });
+    expect(ev.metadata.purgaFallida).toEqual([
+      { tabla: 'observable_events', error: 'statement timeout' },
+    ]);
+    // El porqué llega en el propio evento, no solo en los logs del contenedor.
+    expect(ev.errorMessage).toContain('statement timeout');
+  });
+
+  it('un VACUUM roto NO degrada el veredicto (es higiene, no la medida)', async () => {
+    const { cron, emit } = montar({
+      ...resultadoBase,
+      vacuumFailed: ['observable_events'],
+    });
+    await cron.handle();
+
+    // El contraste con el test de arriba: mismo «algo falló», veredicto distinto a propósito.
+    expect(cronRun(emit).severity).toBe('info');
+    expect(exito(emit)).toBeDefined();
   });
 });
