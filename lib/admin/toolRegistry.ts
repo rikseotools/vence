@@ -3260,6 +3260,33 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'negación va sin distinguir mayúsculas, porque en los enunciados se resalta escribiéndola así ' +
       '(«señale la INCORRECTA») y con la regex sensible a la caja se escapaba.',
   },
+  explicacion_eco_clave: {
+    titulo:
+      'Explicaciones que NO explican: repiten la opción correcta, a veces con el término FALSEADO y el verdadero pegados',
+    ruta: 'scripts/audit-explicacion-eco.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      'Núcleo puro `lib/health/explicacionEcoClave.cjs` (29 tests) + `npm run audit:explicacion-eco`. ' +
+      'BAJO DEMANDA, no pinga el badge. Nace de T-557 (impugnación ' +
+      '`c805e7c0` de Adrián: *«No explica nada, repite literalmente la respuesta correcta»* — y su ' +
+      'explicación traía la finalidad FALSEADA pegada a la verdadera). Dos bandas: ECO (repite la ' +
+      'opción, `explanation_data IS NULL`, 40-400 car., ≥85% de palabras significativas de la opción ' +
+      'correcta cubiertas y explicación ≤1,6× su longitud) y ECO CONTAMINADO (dentro del eco, dos ' +
+      'candidatos — dos números o dos verbos infinitivos — pegados sin conjunción: «un tercio a la ' +
+      'mitad», «Respetar Garantizar»). Medido el 07/08 contra RDS real: 52.834 candidatas base, ' +
+      '**1.811 eco** (el 1.785 de la ficha original, +1,5% por inventario que cambia día a día — ' +
+      'reproducido, no adivinado), **21 contaminadas** (3 de examen oficial). Precisión medida sobre ' +
+      'la muestra completa: 100% en la cola final (21/21 son el fenómeno real). **Punto ciego admitido: ' +
+      'pares de ADJETIVOS pegados** («mayores menores de edad», visto en la muestra) no tienen patrón ' +
+      'propio — solo números y verbos. **Sin exposición real** para priorizar: `test_questions` sigue ' +
+      'bloqueada para `vence_lector` por RLS (T-573, migración sin aplicar) — la cola sale ordenada ' +
+      'solo por si es de examen oficial. NUNCA reescribir a ciegas: cada hallazgo pide leer contra la ' +
+      'fuente antes de tocar la explicación (`aplicar-explicacion.ts`, fuera de esta herramienta — ' +
+      'necesita escritura que un worker de la flota no tiene). Hermanos: `explicacion_truncada` (falta ' +
+      'texto, aquí no falta), `explicacion_yuxtaposicion` (mismo espíritu pero exige plantilla de ' +
+      'viñetas `- A)`; aquí la población es prosa libre sin plantilla).',
+  },
   atajos_coherencia: {
     titulo:
       '¿El banco se contradice a sí mismo sobre un atajo de teclado? (no dice cuál es el correcto)',

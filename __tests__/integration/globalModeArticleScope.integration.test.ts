@@ -186,7 +186,13 @@ describe('NIVEL C — scope por artículo vía fuente única en el código', () 
   })
 
   it('el modo global usa el helper (no reimplementa el EXISTS a mano)', () => {
-    expect(src).toContain("import { articleInPositionScopeExists }")
+    // Se comprueba que el símbolo VENGA del helper, no que la línea de import sea literalmente
+    // `import { articleInPositionScopeExists }`: en cuanto [T-607] añadió `fueraDeScope` a ese
+    // mismo import, la aserción literal se puso roja sin que nada se hubiera roto de verdad
+    // (y así se quedó, tiñendo el pre-commit de todas las sesiones).
+    expect(src).toMatch(
+      /import\s*\{[^}]*\barticleInPositionScopeExists\b[^}]*\}\s*from\s*'@\/lib\/api\/_shared\/topicScopeSql'/
+    )
     expect(src).toContain('const articleScopeFilter = articleInPositionScopeExists(')
     // no debe quedar el unnest sin guarda en el modo global
     expect(src).not.toMatch(/articleScopeFilter\s*=\s*sql`EXISTS/)
