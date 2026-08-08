@@ -50,6 +50,7 @@ const PROD = require(path.join(REPO, 'lib', 'sessions', 'productividad.cjs'))
 // dedujera por su cuenta de las columnas, `flota` y `backlog list` acabarían contando distinto.
 const REV = require(path.join(REPO, 'lib', 'backlog', 'revision.cjs'))
 const SALUD = require(path.join(REPO, 'lib', 'flota', 'saludMaquina.cjs'))
+const OOM = require(path.join(REPO, 'lib', 'flota', 'oomCgroup.cjs'))
 const BORRAB = require(path.join(REPO, 'lib', 'impugnaciones', 'borradorAbierto.cjs'))
 
 // Margen para comprobar que un encargo arrancó de verdad tras el `send-keys` (T-642). Corto a
@@ -1446,6 +1447,17 @@ async function main() {
       // Una máquina se mide UNA vez por pasada aunque aloje a cuatro trabajadores: lo que se
       // mide es el host, y sondearlo cuatro veces solo añade cuatro conexiones ssh.
       const medidas = new Map()
+      // ── OOM POR CGROUP, SIN journalctl (T-647, 08/08) ───────────────────────────────────
+      // `journalctl` no sirve aquí: este proceso corre como `User=flota`, sin `adm`/
+      // `systemd-journal`, así que no ve mensajes del kernel — medido: `journalctl -k` daba
+      // «-- No entries --» pese a >15h de historial real, y por eso `flota_sin_memoria` llevaba
+      // CERO eventos en TODA su historia, no porque no hubiera OOM. `memory.events` de cgroup v2
+      // SÍ es legible sin privilegios, así que se lee el contador `oom_kill` del kernel
+      // directamente. Vive en memoria del propio proceso (no en disco): el bucle es de un solo
+      // proceso de larga duración, así que no hace falta persistir entre pasadas — y si el
+      // proceso se reinicia, no tener base previa es exactamente lo correcto (`deltaOomKill`
+      // trata «sin anterior» como «no se sabe», nunca como «cero»).
+      let lecturaOomAnterior = null
       while (!parar) {
         let repartidos = 0
         let ocupados = 0
@@ -1532,6 +1544,31 @@ async function main() {
               VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
                       ${`${oom.muertes} proceso(s) matados por el kernel en los últimos ${desde} min`},
                       ${sql.json({ host: yo, ...oom })})`
+          }
+        } catch { /* la telemetría nunca puede parar al supervisor */ }
+        // ── Y LA VÍA QUE SÍ FUNCIONA SIN PERMISOS DE journalctl (T-647, 08/08) ──────────────
+        // El bloque de arriba es ciego en esta máquina (ver el comentario junto a
+        // `lecturaOomAnterior`), así que se complementa —no se sustituye, por si algún día SÍ
+        // hay permiso— con el contador `oom_kill` de `memory.events` de cada trabajador.
+        try {
+          const maquina = MAQ.MAQUINAS[yo]
+          if (maquina && maquina.systemd && Array.isArray(maquina.trabajadores)) {
+            const lecturaActual = {}
+            for (const w of maquina.trabajadores) lecturaActual[w] = OOM.leerOomKill(w)
+            const { total, nuevos, reiniciados } = OOM.deltaOomKill(lecturaOomAnterior, lecturaActual)
+            if (total > 0) {
+              console.log(`   💀 (cgroup) ${total} OOM-kill nuevo(s) por trabajador: ${JSON.stringify(nuevos)}`)
+              await sql`
+                INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+                VALUES ('fargate', 'error', 'flota_sin_memoria', 'flota',
+                        ${`${total} OOM-kill nuevo(s) (cgroup memory.events, no journalctl): ${JSON.stringify(nuevos)}`},
+                        ${sql.json({ host: yo, via: 'cgroup', total, nuevos, reiniciados })})`
+            } else if (reiniciados.length) {
+              // No es un OOM confirmado (el contador se perdió con el reinicio), pero SÍ es una
+              // unidad que dejó de ser la que se venía vigilando — se avisa sin afirmar la causa.
+              console.log(`   ⚠️ cgroup reiniciado desde la última pasada, sin base para el delta: ${reiniciados.join(', ')}`)
+            }
+            lecturaOomAnterior = lecturaActual
           }
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa, fallo: !!motivoSalto })

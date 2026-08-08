@@ -2831,6 +2831,36 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'trabajadores — bajar de cuatro a dos habría sido la reacción incorrecta y se retiró al medir ' +
       'quién consumía la memoria de verdad). 14 tests en `__tests__/flota/saludMaquina.test.ts`.',
   },
+  flota_oom_cgroup: {
+    titulo: 'Detectar OOM-kill de la flota SIN journalctl — el detector que T-647 construyó era ciego él mismo',
+    ruta: 'lib/flota/oomCgroup.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`leerOomKill(trabajador)` / `deltaOomKill(anterior, actual)`. Nace de medir (08/08) que ' +
+      '`flota_sin_memoria` (T-647, «Capa 4», construida para dejar de ser ciego a los OOM) llevaba ' +
+      '**CERO eventos en TODA su historia** — no porque no hubiera OOM (el 07/08 tuvo 20 en 6h), ' +
+      'sino porque su detector corre `journalctl … | grep Killed` DENTRO del supervisor, y el ' +
+      'supervisor corre como `User=flota` (confirmado con `systemctl show … -p User`), que NO ' +
+      'pertenece a `adm` ni `systemd-journal`. Reproducido en vivo con el comando EXACTO que usa el ' +
+      'supervisor: `journalctl --no-pager --since … 2>/dev/null` da vacío pese a que ' +
+      '`journalctl --list-boots` confirma >15h de historial real, y `journalctl -k` imprime el aviso ' +
+      '«Users in groups adm, systemd-journal can see all messages» — el detector nunca pudo ver nada. ' +
+      '**La alternativa:** cgroup v2 expone `memory.events` con un contador `oom_kill` que escribe el ' +
+      'KERNEL directamente y que SÍ es legible sin privilegios (confirmado con `cat` como `flota` en ' +
+      'la máquina real, para los cuatro `vence-flota@wN.service`). Mejor señal que journalctl, no solo ' +
+      'alternativa: viene atribuida por trabajador de fábrica y es un contador, no texto que parsear. ' +
+      '**El contador es ACUMULATIVO y se reinicia a 0 si la unidad se reinicia**, así que solo se ' +
+      'puede afirmar un DELTA frente a la lectura anterior — `deltaOomKill` distingue tres formas de ' +
+      '«no se sabe» (sin lectura actual, sin lectura anterior, contador que BAJÓ = unidad reiniciada) ' +
+      'y ninguna cuenta como delta 0, para no fingir salud donde solo hay falta de dato. Wireado en ' +
+      '`scripts/flota/flota.cjs` como COMPLEMENTO del bloque de journalctl (no sustituto: por si algún ' +
+      'día sí hay permiso), guardando la lectura anterior en memoria del propio proceso del bucle (de ' +
+      'larga duración; un reinicio del supervisor pierde la base y eso es lo correcto, no un fallo). ' +
+      '15 tests en `__tests__/flota/oomCgroup.test.ts`, incluida la lectura real de un ' +
+      '`memory.events` de la máquina.',
+  },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',
     ruta: 'lib/flota/cuentas.cjs',
