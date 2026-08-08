@@ -250,6 +250,37 @@ ORDER BY ts DESC LIMIT 6;
 - El contador vive en UN sitio (`backend/src/db/filasAfectadas.ts` y su espejo `lib/db/`), con
   guardarraíl `__tests__/guardrails/filasAfectadas.guardrail.test.ts`.
 
+### 0.quinquies.bis — ⚠️ ANTES DE CREERTE UNA CIFRA: ¿tiene anclas? (T-718, 08/08/2026)
+
+Vale para TODO lo de este runbook, y por eso va antes que los indicadores. **Una medición
+plausible es la forma más cara de equivocarse aquí**, porque no falla: da un número, se actúa y
+nadie lo desmiente.
+
+Tres casos del 08/08, todos camino de una decisión real:
+
+| lo que dijo la medición | lo que era |
+|---|---|
+| «36 % de 401 es el suelo sano de `user-stats`» | era **la propia avería** — 0 de 935 anónimos, 156 personas distintas en 8 días. Con ese suelo, [T-692] se cierra en falso |
+| «2 de 21 artículos son un resumen» | eran **21 de 21**: el criterio solo miraba la primera palabra |
+| «este texto no es literal» → señaló la **Constitución** | está importada literal; son **4.606 preguntas activas** |
+
+Ninguno lo cazó un test. Y no es nuevo: el manual de impugnaciones ya documenta un `lower()` que
+fabricó 8 preguntas rotas inexistentes y una regex mal escapada que convirtió 33 en 48.
+
+**La regla:** un detector declara `ANCLAS` con casos REALES leídos a mano — **positivos** que
+tiene que cazar y **negativos** que no puede cazar nunca — y su test los evalúa.
+
+- **Los negativos son obligatorios y son la mitad que salva.** Un detector que solo declara
+  positivos se satisface **marcándolo todo**, que es la forma exacta del tercer error de arriba.
+- Ejemplo calibrado: `lib/health/epigrafeTruncado.cjs` (sus dos anclas se ejercitan contra RDS en
+  `__tests__/integration/anclasEpigrafeTruncado.integration.test.ts`).
+- Núcleo `lib/calidad/anclas.cjs` · guardarraíl `anclasDetectores.guardrail` (trinquete: los
+  detectores sin anclas solo pueden bajar) · **`npm run sim:anclas`** lo demuestra contra datos
+  reales reproduciendo los tres fallos.
+
+**Si vas a dar una cifra y no puedes nombrar un caso que TIENE que salir y otro que NO puede
+salir, todavía no tienes una medición.**
+
 ### 0.sexies — `sesiones_401_en_masa`: mira PRIMERO si el token llegó a salir (T-692, 08/08/2026)
 
 Cuando dispare la alerta de 401 a sesiones válidas, la pregunta que ordena todo el diagnóstico es
