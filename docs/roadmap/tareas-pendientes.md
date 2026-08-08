@@ -1269,6 +1269,73 @@ podría romper), [T-486] (la flota).
   - **Al arreglarlo, mirar TAMBIÉN el radar:** que reporte no explica por qué corrió en sábado. Puede ser un disparo manual, o que la expresión de EventBridge y la del registro discrepen. Comprobar con `aws scheduler get-schedule --name vence-content-radar` (hoy dice `cron(0 6 ? * MON,WED,FRI *)`, que SÍ coincide con el registro) y con el historial de logs.
   - **NO silenciar la regla ni subirle el umbral**: el defecto está en el emisor, no en el vigilante. Silenciarla dejaría sin vigilancia a los tres.
 - **Relacionadas:** [T-325] (la última vez que se tocó la liveness de estos dos jobs), y la familia de `senal_error_sin_vigilancia` en el runbook de salud.
+### [T-698] 🟡 [ABIERTO 08/08] Los dos jobs sociales llevaban un mes sin reconstruirse: `cron_overdue` gritaba 20 críticos al día sobre jobs sanos
+
+**Encontrado en un «revisa la salud del sistema»** (08/08/2026), tirando del único crítico que
+seguía activo esa mañana.
+
+#### Lo que pasaba
+
+`cron_overdue` disparaba **20 veces en 24 h, las 20 por correo**, sobre `vence-content-radar` y
+`vence-instagram-daily`. **Los dos funcionaban perfectamente**, comprobado en sus logs:
+
+- el radar corrió el viernes 07/08 a las 06:01 (*«✅ radar refrescado: 23 posts de 124 recogidos /
+  29 competidores»*); va L/X/V, así que el sábado no le tocaba;
+- el de Instagram corrió ese mismo sábado a las 10:00, **código de salida 0**.
+
+#### La causa: se desplegó el vigilante y nunca el vigilado
+
+[T-325] los declaró en el catálogo de liveness (`external-jobs.registry.ts`) y **escribió su
+emisión de `cron_tick`/`cron_run`** en el código de los dos (commit `5d7ac2111`, 06/08 23:36).
+Sus imágenes de ECR eran del **07/07**, un mes anteriores. El backend que los vigila SÍ se
+desplegó; los contenedores que tenían que responder, no — porque **no había ningún camino que los
+construyera**: los dos se subieron a mano en julio y ahí se quedaron.
+
+**Lo caro no es el ruido.** Esa misma alerta es la que en julio destapó que el worker de PDFs
+llevaba **dos días muerto** (imagen purgada del registry → moría en el pull, sin logs ni eventos).
+Con dos falsos permanentes gritando, dejaba de distinguir «muerto» de «no instrumentado» — que es
+justo la confusión que la vuelve inútil.
+
+#### Y un segundo fallo, encadenado, que habría dejado el arreglo en el vacío
+
+Los `schedule` de EventBridge de los dos estaban **clavados a una revisión concreta**
+(`…/vence-content-radar:1`, `…/vence-instagram-daily:2`). Registrar una task def nueva no habría
+cambiado nada: el planificador habría seguido lanzando la vieja. El worker de PDFs, el único de
+los tres que nunca tuvo este problema, apuntaba a la **familia**. Los tres convergen ahí ahora.
+
+#### Arreglo
+
+- **`scripts/deploy/repin-derived-taskdefs.sh` extendido** (no un script nuevo: ya tenía el login
+  de ECR, la captura del digest en los dos builders, la post-condición de que el digest EXISTA
+  antes de pinearlo y el clonado de la task def viva). El formato de entrada pasa a
+  `familia|stage|repo|contexto|dockerfile`: `stage` vacío = imagen con Dockerfile propio.
+- **Despineado del `schedule`**: tras registrar la revisión, si el planificador apunta a una
+  revisión concreta se le repunta a la familia. Con aviso y `exit 1` si falla, porque una imagen
+  nueva que nadie lanza es peor que no haberla construido (parece hecho).
+- **Guardarraíl `jobsProgramadosConstruibles`**: todo job externo del catálogo de liveness tiene
+  que tener declarado CÓMO se construye. Es el hueco exacto que causó esto. Comprueba además que
+  las dos listas no estén vacías (un parseo roto dejaría el test verde vigilando nada) y que
+  ningún job use el repo ECR del frontend, cuya retención de 10 imágenes fue la causa raíz del
+  incidente de julio.
+- Ajustado `deploy-scripts.test.ts`, cuyo parseo exigía los tres campos NO vacíos y se quedaba a
+  **cero entradas** al añadir los jobs con Dockerfile propio; y su comprobación de liveness, que
+  normalizaba el prefijo `vence-` en un solo lado (el catálogo no es homogéneo: `temario-pdf-worker`
+  va sin prefijo y `vence-content-radar` con él).
+
+#### Verificado ejecutando, no leyendo
+
+Corrido el radar **una vez a mano** contra producción (es de solo lectura de competidores):
+`cron_tick` a las 08:41:40 (`phase:start`) y `cron_run` a las 08:42:02 (`status:success`), salida
+del contenedor 0. El canario pasa de 53 a **54 crons con señal**.
+
+#### PENDIENTE
+
+1. **`vence-instagram-daily` sigue sin verificarse**: no se lanza a mano porque **publicaría un
+   post real** en la cuenta. Su próximo tick es el **09/08 a las 10:00 Madrid**. Comprobar que
+   emite sus dos señales y que `cron_overdue` deja de disparar sobre él. Comparte camino de
+   construcción y despineado con el radar, así que el riesgo es bajo — pero no está comprobado.
+2. Si tras ese tick `cron_overdue` sigue disparando, mirar si al job le llega `DATABASE_URL` en su
+   task def (el emisor falla en silencio a propósito: la telemetría no puede tumbar el job).
 
 ### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
 

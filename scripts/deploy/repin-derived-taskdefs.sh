@@ -53,14 +53,30 @@ command -v "$BUILDER" >/dev/null || BUILDER=docker
 # antes divergían. El guardarraíl `__tests__/guardrails/deploy-scripts.test.ts`
 # verifica que ambos siguen invocando este script.
 #
-# Formato: <familia de task def>|<stage del Dockerfile>|<repo ECR>
+# Formato: <familia de task def>|<stage>|<repo ECR>|<contexto>|<Dockerfile>
+#
+#   · <stage>      vacío si la imagen NO sale de un multi-stage (Dockerfile propio).
+#   · <contexto>   directorio de build. `.` = raíz del repo.
+#   · <Dockerfile> ruta al Dockerfile. Vacío = el `Dockerfile` del contexto.
 #
 # Al añadir una tarea programada nueva: añadirla AQUÍ y, si es periódica,
 # declararla también en `backend/src/cron-schedule/external-jobs.registry.ts`
 # para que tenga liveness. Su repo ECR debe ser PROPIO (nunca el del frontend,
 # cuya retención de 10 imágenes la purgaría).
+#
+# ⚠️ LAS DOS LISTAS SE VIGILAN JUNTAS ([T-698], 08/08/2026), y hace falta: los dos
+# jobs sociales estaban declarados en el catálogo de liveness desde el 06/08 y
+# **su imagen era del 07/07**, un mes anterior al código que emite la señal. O
+# sea: se desplegó el vigilante y nunca el vigilado. Resultado, `cron_overdue`
+# gritando 20 críticos al día sobre dos jobs que funcionaban perfectamente — y,
+# lo caro, la alerta que avisaría de una muerte REAL (el incidente del worker de
+# PDFs) llevaba dos días sin poder distinguir una cosa de la otra. El guardarraíl
+# `__tests__/guardrails/jobsProgramadosConstruibles.test.ts` exige que todo job
+# externo periódico tenga aquí su forma de construirse.
 DERIVED_WORKERS=(
-  "vence-temario-pdf-worker|worker|vence-temario-pdf-worker"   # drena temario_pdf_jobs → PDFs a S3 (T-086 Fase D)
+  "vence-temario-pdf-worker|worker|vence-temario-pdf-worker|.|"                                                    # drena temario_pdf_jobs → PDFs a S3 (T-086 Fase D)
+  "vence-content-radar||vence-content-radar|marketing/social-content/content-radar|"                               # radar de contenido de competidores (L/X/V)
+  "vence-instagram-daily||vence-instagram-daily|marketing/social-content|marketing/social-content/Dockerfile.fargate" # pregunta del día en @vence.es (diario)
 )
 
 echo "→ construyendo y re-pineando las tareas programadas derivadas (builder: $BUILDER)"
@@ -71,14 +87,18 @@ aws ecr get-login-password ${AWS_PROFILE:+--profile "$AWS_PROFILE"} --region "$A
 
 FAILED=0
 for ENTRY in "${DERIVED_WORKERS[@]}"; do
-  IFS='|' read -r FAMILY TARGET REPO <<< "$ENTRY"
-  echo "   ── $FAMILY (stage '$TARGET' → $REPO)"
+  IFS='|' read -r FAMILY TARGET REPO CONTEXT DOCKERFILE <<< "$ENTRY"
+  CONTEXT="${CONTEXT:-.}"
+  echo "   ── $FAMILY (${TARGET:+stage $TARGET, }contexto $CONTEXT → $REPO)"
 
   # 1. Construir SOLO su stage. Es barato: el stage `worker` es `FROM deps` + el
   #    código, así que no dispara el build de Next ni necesita sus build-args.
   IMG_TAG="${REGISTRY}/${REPO}:${SHA:-latest}"
-  if ! "$BUILDER" build --target "$TARGET" -t "$IMG_TAG" . >/dev/null 2>&1; then
-    echo "      ⚠️ build del stage '$TARGET' falló"
+  BUILD_ARGS=()
+  [ -n "$TARGET" ] && BUILD_ARGS+=(--target "$TARGET")
+  [ -n "$DOCKERFILE" ] && BUILD_ARGS+=(-f "$DOCKERFILE")
+  if ! "$BUILDER" build "${BUILD_ARGS[@]}" -t "$IMG_TAG" "$CONTEXT" >/dev/null 2>&1; then
+    echo "      ⚠️ build falló (${TARGET:+stage $TARGET, }contexto $CONTEXT)"
     FAILED=1
     continue
   fi
@@ -179,6 +199,44 @@ for ENTRY in "${DERIVED_WORKERS[@]}"; do
     FAILED=1; continue
   fi
   echo "      ✅ $NEW_ARN"
+
+  # 4. Que el PLANIFICADOR use la revisión nueva. No es un paso opcional: los dos
+  #    jobs sociales tenían su schedule clavado a una revisión CONCRETA
+  #    (`…/vence-instagram-daily:2`), así que registrar una revisión nueva no
+  #    cambiaba nada — se habría desplegado en el vacío, que es el mismo modo de
+  #    fallo silencioso que este script existe para cerrar. Se apunta a la FAMILIA
+  #    (sin `:revisión`), que es como ya estaba el worker de PDFs, el único de los
+  #    tres que nunca tuvo este problema: así el planificador coge siempre la
+  #    última y no hay un segundo sitio que actualizar.
+  SCHED_ARN=$(aws scheduler get-schedule --name "$FAMILY" \
+    ${AWS_PROFILE:+--profile "$AWS_PROFILE"} --region "$AWS_REGION" \
+    --query 'Target.EcsParameters.TaskDefinitionArn' --output text 2>/dev/null || true)
+  if [ -z "$SCHED_ARN" ] || [ "$SCHED_ARN" = "None" ]; then
+    echo "      ℹ️ sin schedule propio en EventBridge Scheduler (no aplica)"
+  elif [[ "$SCHED_ARN" == *:task-definition/*:* ]]; then
+    FAMILY_ARN="${SCHED_ARN%:*}"
+    SCHED_JSON=$(aws scheduler get-schedule --name "$FAMILY" \
+      ${AWS_PROFILE:+--profile "$AWS_PROFILE"} --region "$AWS_REGION" --output json 2>/dev/null || true)
+    NEW_SCHED=$(printf '%s' "$SCHED_JSON" | SCHED_TD="$FAMILY_ARN" node -e '
+      let raw = "";
+      process.stdin.on("data", (d) => (raw += d));
+      process.stdin.on("end", () => {
+        const s = JSON.parse(raw);
+        s.Target.EcsParameters.TaskDefinitionArn = process.env.SCHED_TD;
+        for (const k of ["Arn","CreationDate","LastModificationDate","ResponseMetadata"]) delete s[k];
+        process.stdout.write(JSON.stringify(s));
+      });
+    ')
+    TMPS=$(mktemp); printf '%s' "$NEW_SCHED" > "$TMPS"
+    if aws scheduler update-schedule --cli-input-json "file://${TMPS}" \
+         ${AWS_PROFILE:+--profile "$AWS_PROFILE"} --region "$AWS_REGION" >/dev/null 2>&1; then
+      echo "      ✅ schedule despineado → $FAMILY_ARN (coge siempre la última)"
+    else
+      echo "      ⚠️ el schedule sigue clavado a $SCHED_ARN — la imagen nueva NO se usará"
+      FAILED=1
+    fi
+    rm -f "$TMPS"
+  fi
 done
 
 if [ "$FAILED" != "0" ]; then
