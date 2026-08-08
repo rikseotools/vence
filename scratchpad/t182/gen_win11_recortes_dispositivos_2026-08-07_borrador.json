@@ -1,0 +1,170 @@
+[
+  {
+    "primary_article_number": "5",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 5 (Accesorios de Windows 11)",
+    "question_text": "¿Qué ocurre en Windows 11 al pulsar la combinación de teclas Win + Mayús + S?",
+    "options": [
+      "Win + Mayús + S abre la superposición de la herramienta recortes para capturar una instantánea.",
+      "Win + Mayús + S abre el modo de grabación de vídeo de la Herramienta Recortes.",
+      "Win + Mayús + S coloca una captura de pantalla completa en el Portapapeles sin necesidad de abrir la app.",
+      "Win + Mayús + S abre el Símbolo del sistema para ejecutar comandos en modo MS-DOS."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 5",
+        "texto": "Win + Mayús + S abre la superposición de la herramienta recortes para capturar una instantánea."
+      },
+      "options": {
+        "0": "Win + Mayús + S abre la superposición de la herramienta recortes para capturar una instantánea, tal y como establece el artículo.",
+        "1": "El modo de grabación de vídeo se abre con Win + Mayús + R, no con Win + Mayús + S.",
+        "2": "Colocar una captura de pantalla completa en el Portapapeles sin abrir ninguna app es lo que hace la tecla Impr Pant pulsada sola, no Win + Mayús + S.",
+        "3": "El Símbolo del sistema se abre escribiendo «cmd» en la búsqueda o en el cuadro Ejecutar, no con Win + Mayús + S."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 5**\n> \"Win + Mayús + S abre la superposición de la herramienta recortes para capturar una instantánea.\"\n\n**Por qué A es correcta:** Win + Mayús + S abre la superposición de la herramienta recortes para capturar una instantánea, tal y como establece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **B)** El modo de grabación de vídeo se abre con Win + Mayús + R, no con Win + Mayús + S.\n- **C)** Colocar una captura de pantalla completa en el Portapapeles sin abrir ninguna app es lo que hace la tecla Impr Pant pulsada sola, no Win + Mayús + S.\n- **D)** El Símbolo del sistema se abre escribiendo «cmd» en la búsqueda o en el cuadro Ejecutar, no con Win + Mayús + S."
+  },
+  {
+    "primary_article_number": "5",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 5 (Accesorios de Windows 11)",
+    "question_text": "En la Herramienta Recortes de Windows 11, ¿en qué modo de captura se arrastra el cursor alrededor de un objeto para formar un rectángulo?",
+    "options": [
+      "En el modo forma libre se arrastra el cursor alrededor de un objeto para formar un rectángulo.",
+      "En el modo ventana se arrastra el cursor alrededor de un objeto para formar un rectángulo.",
+      "En el modo rectángulo se arrastra el cursor alrededor de un objeto para formar un rectángulo.",
+      "En el modo pantalla completa se arrastra el cursor alrededor de un objeto para formar un rectángulo."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 5",
+        "texto": "En el modo rectángulo se arrastra el cursor alrededor de un objeto para formar un rectángulo."
+      },
+      "options": {
+        "0": "En el modo forma libre se dibuja una forma libre alrededor de un objeto, no se arrastra el cursor para formar un rectángulo.",
+        "1": "En el modo ventana se selecciona una ventana, como un cuadro de diálogo, no se arrastra el cursor para formar un rectángulo.",
+        "2": "El modo rectángulo es aquel en el que se arrastra el cursor alrededor de un objeto para formar un rectángulo, tal y como establece el artículo.",
+        "3": "En el modo pantalla completa se captura toda la pantalla, no se arrastra el cursor para formar un rectángulo."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 5**\n> \"En el modo rectángulo se arrastra el cursor alrededor de un objeto para formar un rectángulo.\"\n\n**Por qué C es correcta:** El modo rectángulo es aquel en el que se arrastra el cursor alrededor de un objeto para formar un rectángulo, tal y como establece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** En el modo forma libre se dibuja una forma libre alrededor de un objeto, no se arrastra el cursor para formar un rectángulo.\n- **B)** En el modo ventana se selecciona una ventana, como un cuadro de diálogo, no se arrastra el cursor para formar un rectángulo.\n- **D)** En el modo pantalla completa se captura toda la pantalla, no se arrastra el cursor para formar un rectángulo."
+  },
+  {
+    "primary_article_number": "5",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 5 (Accesorios de Windows 11)",
+    "question_text": "Tras hacer una captura con la Herramienta Recortes de Windows 11, ¿qué botón quita las líneas o formas que se hayan dibujado sobre ella?",
+    "options": [
+      "El botón lápiz quita las líneas o formas ya dibujadas.",
+      "El botón borrador quita las líneas o formas ya dibujadas.",
+      "El botón marcador de resaltado quita las líneas o formas ya dibujadas.",
+      "El modo ventana, activo tras la captura, quita las líneas ya dibujadas."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 5",
+        "texto": "El botón borrador quita las líneas o formas ya dibujadas."
+      },
+      "options": {
+        "0": "El botón lápiz sirve para dibujar sobre la captura, no para quitar lo ya dibujado.",
+        "1": "El botón borrador es el que quita las líneas o formas ya dibujadas, tal y como establece el artículo.",
+        "2": "El botón marcador de resaltado sirve para resaltar sobre la captura, no para quitar lo ya dibujado.",
+        "3": "El modo ventana es un modo de captura, no una herramienta de anotación tras la captura; no quita nada de lo dibujado."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 5**\n> \"El botón borrador quita las líneas o formas ya dibujadas.\"\n\n**Por qué B es correcta:** El botón borrador es el que quita las líneas o formas ya dibujadas, tal y como establece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** El botón lápiz sirve para dibujar sobre la captura, no para quitar lo ya dibujado.\n- **C)** El botón marcador de resaltado sirve para resaltar sobre la captura, no para quitar lo ya dibujado.\n- **D)** El modo ventana es un modo de captura, no una herramienta de anotación tras la captura; no quita nada de lo dibujado."
+  },
+  {
+    "primary_article_number": "7",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 7 (Configuración de dispositivos: impresoras y escáneres)",
+    "question_text": "En Windows 11, ¿cuál es la ruta en Configuración para agregar una impresora o un escáner?",
+    "options": [
+      "La ruta es Inicio, Configuración, Personalización, Impresoras y escáneres.",
+      "La ruta es Inicio, Configuración, Accesibilidad, Impresoras y escáneres.",
+      "La ruta es Inicio, Configuración, Aplicaciones, Impresoras y escáneres.",
+      "La ruta es Inicio, Configuración, Bluetooth y dispositivos, Impresoras y escáneres."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 7",
+        "texto": "La ruta es Inicio, Configuración, Bluetooth y dispositivos, Impresoras y escáneres."
+      },
+      "options": {
+        "0": "Personalización es la sección de fondos de pantalla, temas y colores, no la de impresoras y escáneres.",
+        "1": "Accesibilidad es la sección de ajustes de visión, audio e interacción, no la de impresoras y escáneres.",
+        "2": "Aplicaciones es la sección de instalación y gestión de programas, no la de impresoras y escáneres.",
+        "3": "Bluetooth y dispositivos es la sección de Configuración que contiene Impresoras y escáneres, tal y como establece el artículo."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 7**\n> \"La ruta es Inicio, Configuración, Bluetooth y dispositivos, Impresoras y escáneres.\"\n\n**Por qué D es correcta:** Bluetooth y dispositivos es la sección de Configuración que contiene Impresoras y escáneres, tal y como establece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** Personalización es la sección de fondos de pantalla, temas y colores, no la de impresoras y escáneres.\n- **B)** Accesibilidad es la sección de ajustes de visión, audio e interacción, no la de impresoras y escáneres.\n- **C)** Aplicaciones es la sección de instalación y gestión de programas, no la de impresoras y escáneres."
+  },
+  {
+    "primary_article_number": "7",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 7 (Configuración de dispositivos: impresoras y escáneres)",
+    "question_text": "Según Windows 11, si la impresora que se busca agregar no aparece en la lista de dispositivos detectados, ¿qué hay que hacer?",
+    "options": [
+      "Junto a «La impresora que quiero no aparece en la lista», hay que seleccionar agregar un nuevo dispositivo manualmente y seguir las instrucciones de la ventana emergente.",
+      "Hay que ir a Configuración, Bluetooth y dispositivos, Impresoras y escáneres, y esperar a que la impresora se agregue automáticamente sin tener que seleccionar ningún botón.",
+      "Hay que comprobar Windows Update por si hay controladores más recientes disponibles, sobre todo si aparece el botón «Buscar controladores», antes de intentarlo de nuevo.",
+      "Hay que desconectar el cable USB, volver a enchufarlo y comprobar que la impresora esté encendida y conectada a la red inalámbrica antes de repetir la búsqueda."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 7",
+        "texto": "Junto a «La impresora que quiero no aparece en la lista», hay que seleccionar agregar un nuevo dispositivo manualmente y seguir las instrucciones de la ventana emergente."
+      },
+      "options": {
+        "0": "Seleccionar agregar un nuevo dispositivo manualmente junto a «La impresora que quiero no aparece en la lista» es el paso que indica el artículo para este caso.",
+        "1": "El artículo describe la instalación automática como lo habitual cuando la impresora SÍ se detecta, no como el remedio cuando no aparece en la lista.",
+        "2": "Buscar controladores en Windows Update es un paso posterior, recomendado tras instalar la impresora, no el remedio para que aparezca en la lista.",
+        "3": "El artículo no indica desconectar y reconectar el cable como el paso a seguir cuando la impresora no aparece en la lista."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 7**\n> \"Junto a «La impresora que quiero no aparece en la lista», hay que seleccionar agregar un nuevo dispositivo manualmente y seguir las instrucciones de la ventana emergente.\"\n\n**Por qué A es correcta:** Seleccionar agregar un nuevo dispositivo manualmente junto a «La impresora que quiero no aparece en la lista» es el paso que indica el artículo para este caso.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo describe la instalación automática como lo habitual cuando la impresora SÍ se detecta, no como el remedio cuando no aparece en la lista.\n- **C)** Buscar controladores en Windows Update es un paso posterior, recomendado tras instalar la impresora, no el remedio para que aparezca en la lista.\n- **D)** El artículo no indica desconectar y reconectar el cable como el paso a seguir cuando la impresora no aparece en la lista."
+  },
+  {
+    "primary_article_number": "7",
+    "law_slug": "explorador-windows-11",
+    "article_label": "Explorador Windows 11, art. 7 (Configuración de dispositivos: impresoras y escáneres)",
+    "question_text": "En Windows 11, ¿dónde se guardan por defecto los archivos escaneados con la aplicación Escáner de Windows?",
+    "options": [
+      "En la carpeta Documentos, subcarpeta Digitalizaciones.",
+      "En la carpeta Imágenes, subcarpeta Digitalizaciones.",
+      "En la carpeta Descargas, subcarpeta Digitalizaciones.",
+      "En el escritorio, dentro de una carpeta llamada Digitalizaciones."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "Explorador Windows 11, art. 7",
+        "texto": "Los archivos escaneados se guardan por defecto en la carpeta Imágenes, subcarpeta Digitalizaciones."
+      },
+      "options": {
+        "0": "Documentos no es la carpeta por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones.",
+        "1": "La carpeta Imágenes, subcarpeta Digitalizaciones, es la ubicación por defecto que establece el artículo.",
+        "2": "Descargas no es la carpeta por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones.",
+        "3": "El escritorio no es la ubicación por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **Explorador Windows 11, art. 7**\n> \"Los archivos escaneados se guardan por defecto en la carpeta Imágenes, subcarpeta Digitalizaciones.\"\n\n**Por qué B es correcta:** La carpeta Imágenes, subcarpeta Digitalizaciones, es la ubicación por defecto que establece el artículo.\n\n**Por qué las demás son incorrectas:**\n- **A)** Documentos no es la carpeta por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones.\n- **C)** Descargas no es la carpeta por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones.\n- **D)** El escritorio no es la ubicación por defecto; el artículo establece la carpeta Imágenes, subcarpeta Digitalizaciones."
+  }
+]

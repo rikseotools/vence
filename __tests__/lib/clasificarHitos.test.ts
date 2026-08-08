@@ -61,6 +61,41 @@ describe('clasificar-hitos — tipo', () => {
     expect(h('Nota informativa').tipo).toBe('otro')
     expect(h('Adaptaciones para personas con discapacidad').tipo).toBe('otro')
   })
+
+  test('T-170 (07/08): "acumulación de plazas" es modificacion_plazas, no otro — 2 hitos reales en prod', () => {
+    expect(h('Decreto de acumulación de plazas (9 → 17 plazas)').tipo).toBe('modificacion_plazas')
+    expect(h('Acumulación de plazas (11 plazas)').tipo).toBe('modificacion_plazas')
+  })
+
+  test('T-170 (07/08): "designación del Tribunal" (orden inverso a "tribunal designado") es tribunal_constituido', () => {
+    expect(h('Designación del Tribunal de selección').tipo).toBe('tribunal_constituido')
+  })
+
+  test('T-170 (07/08): un adjetivo entre el verbo y "plazo" no rompe el match — "el NUEVO plazo"', () => {
+    expect(h('Cierre del nuevo plazo de solicitudes').tipo).toBe('plazo_fin')
+    expect(h('Apertura de nuevo plazo de solicitudes').tipo).toBe('plazo_inicio')
+  })
+
+  test('T-170 (07/08): "cerrado" AL FINAL del título también es plazo_fin, no solo "cierre" al principio', () => {
+    expect(h('Plazo de inscripción cerrado').tipo).toBe('plazo_fin')
+    expect(h('Plazo de solicitudes (19/06–16/07/2026) cerrado').tipo).toBe('plazo_fin')
+  })
+
+  test('T-170 (07/08): "relación de aprobados" es resultados, no ejercicio_1 (perdía contra "fase de oposición")', () => {
+    expect(h('Relación de aprobados (fase de oposición)').tipo).toBe('resultados')
+    expect(h('Relación de aprobados y apertura de autobaremo').tipo).toBe('resultados')
+    // acotado a la frase completa: "aprobados" suelto sigue sin disparar resultados por sí solo
+    expect(h('Aprobados fase de oposición').tipo).not.toBe('resultados')
+  })
+
+  test('REGRESIÓN T-170: el ensanche de plazo_fin/plazo_inicio no se come lo que ya acertaba', () => {
+    // Estos 3 SOLO clasifican bien vía el fallback genérico de plazo_inicio (sin "apertura" ni
+    // "inicio" en el título) — el fix no podía tocarlo sin romper esto.
+    expect(h('Plazo de presentación de solicitudes').tipo).toBe('plazo_inicio')
+    expect(h('Plazo de solicitudes').tipo).toBe('plazo_inicio')
+    // Y "cerrado"/"finalizad" en otro contexto no debe disparar plazo_fin por casualidad.
+    expect(h('Proceso finalizado, en fase de nombramientos').tipo).not.toBe('plazo_fin')
+  })
 })
 
 describe('clasificar-hitos — origen (registro | inferencia | estimacion)', () => {

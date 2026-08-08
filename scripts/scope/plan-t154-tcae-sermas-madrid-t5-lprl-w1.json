@@ -1,0 +1,62 @@
+{
+ "pt": "tcae_sermas_madrid",
+ "threshold": 150,
+ "generatedAt": null,
+ "changes": [
+  {
+   "tema": 5,
+   "title": "Prevención de riesgos laborales (LPRL)",
+   "ley": "LPRL",
+   "quitar": [],
+   "anadir": [
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25",
+    "26",
+    "27",
+    "28",
+    "29",
+    "33",
+    "34",
+    "35",
+    "36",
+    "37",
+    "38",
+    "39",
+    "40"
+   ],
+   "razon": "T-154: epigrafe pide literalmente 'derechos y obligaciones' (Cap III BOE, arts 14-29) y 'consulta y participacion de los trabajadores' (Cap V BOE, arts 33-40) -- coincide palabra por palabra con la rubrica oficial del BOE-A-1995-24292 (arbol-ley-boe.cjs). Consenso del banco: 22/95 temas (23%) tienen la LPRL entera -- anomalia -- y la mediana de los que acotan es ~24 arts, que es EXACTAMENTE el tamano de este recorte (16+8=24). El unico hermano 'entera+verificado' que discrepa (celador_sermas_madrid T9) es un falso verde documentado: verified_by=claude_direct, agent_run_id=--run (fuera del pipeline real), state=stale, y sus findings solo comprueban duplicados de ley entre temas hermanos -- nunca preguntaron si el scope esta acotado al epigrafe. Medido: las 542 preguntas que salen de este tema siguen sirviendose INTEGRAS en otros 20 temas del banco que escopan la LPRL (varios enteros), cero articulo huerfano.",
+   "topic_id": "02a6eb1c-342f-4b2f-b6f8-438672bce65b",
+   "epigrafe": "La Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos laborales: derechos y obligaciones, consulta y participación de los trabajadores. Prevención de riesgos laborales específicos de la categoría. Especial referencia a la manipulación manual de cargas y al riesgo biológico, medidas de prevención. Ergonomía: métodos de movilización de enfermos e incapacitados.",
+   "lawsInTema": 1,
+   "leyNombre": "Ley 31/1995, de 8 de noviembre, de Prevención de Riesgos Laborales",
+   "scope_id": "2c4ecbb5-7695-445a-9bab-5ee08d417a8f",
+   "currentCount": 0,
+   "quitarPresent": 0,
+   "anadirAbsent": 24,
+   "deltaValid": true,
+   "emptiesLaw": false,
+   "impacto": 542,
+   "_current": [],
+   "category": "judgment_gate",
+   "flags": [
+    "impacto_alto"
+   ]
+  }
+ ],
+ "temaVerdicts": {
+  "5": "issues"
+ },
+ "temas": [
+  5
+ ]
+}
