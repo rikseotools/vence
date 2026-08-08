@@ -2642,22 +2642,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama por tarea y luego vuelve a `main`, así que lo entregado nunca es `HEAD` — mirar ahí ' +
       'daba «nada que salvar» con 22 commits atrapados (05/08). La ref de destino lleva el sha ' +
       'dentro, así que rescatar dos veces escribe la MISMA ref: idempotente sin comprobar nada. ' +
-      '**SEGUNDA FASE (T-628):** en el VPS el push del propio rescate falla SIEMPRE —los ' +
-      'trabajadores no tienen credenciales de git— así que el trabajo quedaba identificado y ' +
-      'quieto (medido el 06/08: 11 ramas atrapadas, una con un bug de producción, y 6 tareas que ' +
-      'el panel presentaba como «esperando tu decisión» cuando solo esperaban esto). Ahora el ' +
-      'rescate emite `ORIGEN=<rama>|<destino>` y el PORTÁTIL —único sitio con SSH a la máquina Y ' +
-      'credenciales del repo— se trae las refs y las empuja **con el nombre que ya calculó el ' +
-      'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
+      '**SEGUNDA FASE (T-628, histórica — YA NO DISPARA en el VPS desde el 08/08):** el 06/08 el ' +
+      'push del propio rescate fallaba SIEMPRE en el VPS —los trabajadores no tenían credenciales ' +
+      'de git— así que el trabajo quedaba identificado y quieto (medido: 11 ramas atrapadas, una ' +
+      'con un bug de producción, y 6 tareas que el panel presentaba como «esperando tu decisión» ' +
+      'cuando solo esperaban esto). El mecanismo se conserva por si una máquina vuelve a carecer ' +
+      'de credenciales: el rescate emite `ORIGEN=<rama>|<destino>` y una máquina CON credenciales ' +
+      '(el portátil, o cualquier otra) se trae las refs y las empuja **con el nombre que ya ' +
+      'calculó el rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
       '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión. ' +
       '**Gotcha corregido (07/08):** la decisión "¿hace falta rematar?" miraba `.local` — "¿quien ' +
       'llama está en la misma máquina que el trabajador?" — no "¿esa máquina tiene con qué ' +
       'empujar?". El supervisor systemd corre CON `VENCE_FLOTA_AQUI=flota-1`, así que para él ' +
-      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba, aunque el push de ' +
-      'esa máquina nunca funciona. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una ' +
-      'propiedad DE LA MÁQUINA (`lib/flota/maquinas.cjs`), no de quien pregunta.',
+      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba con el criterio ' +
+      'viejo. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una propiedad DE LA MÁQUINA ' +
+      '(`lib/flota/maquinas.cjs`), no de quien pregunta — y esa propiedad se REVIRTIÓ a `true` ' +
+      'el 08/08 (T-486/T-628) tras medir en vivo que el VPS SÍ tiene una clave SSH funcional ' +
+      '(`ssh -T git@github.com` autentica, `git fetch` funciona, y esta misma sesión empujó ' +
+      'con éxito más de una decena de veces en su propio worktree con esa credencial). No se ' +
+      'pudo probar un push real desde el clon BASE compartido específicamente (el guard de "una ' +
+      'sesión por directorio" lo bloquea, correctamente) — la autorización es por usuario del ' +
+      'sistema operativo, no por directorio, así que se infiere del mismo par cuenta/clave.',
   },
 
   flota_presencia_trabajador: {
