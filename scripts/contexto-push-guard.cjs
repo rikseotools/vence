@@ -64,6 +64,35 @@ function git(args) {
   try { return execFileSync('git', args, { cwd: REPO, encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 }) } catch { return null }
 }
 
+const DIR_FICHAS = 'docs/roadmap/tareas'
+
+/**
+ * T-532: cada ficha vive en su propio fichero (`docs/roadmap/tareas/T-nnn.md`). Un `git diff
+ * --stat` ya deja VISIBLE que un fichero desapareció o se vació — la razón de ser original de
+ * este guardarraíl (una pérdida escondida entre miles de líneas ajenas) deja de existir por
+ * construcción. Lo que SIGUE haciendo falta es que el push se PARE, no solo que sea visible: la
+ * misma lógica pura de `perdidaDeContexto.cjs` (el suelo de caracteres, la exención al cerrar)
+ * se reutiliza SIN TOCARLA, comparando las dos versiones del fichero de CADA ficha que cambió —
+ * un fichero de una sola ficha es, para `findPerdidaDeContexto`, un markdown con una entrada.
+ */
+function hallazgosDeFicheros() {
+  const tocados = git(['diff', '--name-only', 'origin/main...HEAD', '--', DIR_FICHAS])
+  if (tocados === null) return { ok: false, hallazgos: [] }
+  const rutas = tocados.split('\n').map((l) => l.trim()).filter((l) => /^docs\/roadmap\/tareas\/T-\d+\.md$/.test(l))
+  const hallazgos = []
+  for (const ruta of rutas) {
+    // `git show` de un blob que ya no existe en esa ref falla → gitOut-style: se trata como ''
+    // (fichero nuevo o borrado), que es exactamente lo que findPerdidaDeContexto espera para
+    // detectar «desaparecida».
+    const antes = git(['show', `origin/main:${ruta}`]) ?? ''
+    const despues = git(['show', `HEAD:${ruta}`]) ?? ''
+    if (!antes) continue // fichero NUEVO: nada que perder
+    const { hallazgos: h } = findPerdidaDeContexto(antes, despues)
+    hallazgos.push(...h)
+  }
+  return { ok: true, hallazgos }
+}
+
 function main() {
   const escape = evaluarEscape(process.env.CONTEXTO_GUARD_SKIP)
   if (escape.usa && !escape.permitido) {
@@ -73,9 +102,13 @@ function main() {
     console.log('     CONTEXTO_GUARD_SKIP="por qué te lo saltas" git push …')
   }
 
-  // Cortocircuito: si el push no toca el fichero, no se paga peaje.
+  // Cortocircuito: si el push no toca ni el índice ni un fichero de ficha, no se paga peaje.
   const tocados = git(['diff', '--name-only', 'origin/main...HEAD'])
-  if (tocados !== null && !tocados.split('\n').some((l) => l.trim() === FICHERO)) return 0
+  const tocaAlgoRelevante = tocados !== null && tocados.split('\n').some((l) => {
+    const t = l.trim()
+    return t === FICHERO || t.startsWith(`${DIR_FICHAS}/`)
+  })
+  if (tocados !== null && !tocaAlgoRelevante) return 0
 
   // Sin esta garantía no se puede afirmar que lo que falta lo has quitado tú (ver cabecera).
   if (git(['merge-base', '--is-ancestor', 'origin/main', 'HEAD']) === null) {
@@ -83,14 +116,21 @@ function main() {
     return 0
   }
 
+  let hallazgos = []
+
+  // Protección PRINCIPAL (T-532): un fichero por ficha.
+  const porFicheros = hallazgosDeFicheros()
+  if (porFicheros.ok) hallazgos.push(...porFicheros.hallazgos)
+
+  // Protección LEGACY: el índice generado. Cada vez menos probable que dispare (ya no se edita a
+  // mano en el flujo normal), pero seguir mirándolo cuesta una llamada a git y cubre a quien
+  // edite `tareas-pendientes.md` directamente por costumbre en vez de su ficha.
   const publicado = git(['show', `origin/main:${FICHERO}`])
   const propuesto = git(['show', `HEAD:${FICHERO}`])
-  if (!publicado || !propuesto) {
-    console.log('⚠️  contexto-push-guard: no pude leer las dos versiones del fichero. Push permitido (fail-open).')
-    return 0
+  if (publicado && propuesto) {
+    hallazgos.push(...findPerdidaDeContexto(publicado, propuesto).hallazgos)
   }
 
-  const { hallazgos } = findPerdidaDeContexto(publicado, propuesto)
   // Los `info` se imprimen SIEMPRE aunque no bloqueen: una excepción silenciosa es una excepción
   // que nadie revisa (mismo criterio que el guard de claims).
   for (const h of hallazgos.filter((x) => x.severidad === 'info')) {
@@ -123,8 +163,9 @@ function main() {
   }
   friccion('guard_bloqueo', malos.map((h) => h.id).join(','))
   console.error('\n   Casi seguro es una resolución de conflicto que se quedó con UN solo lado.')
-  console.error(`   Míralo con:  git diff origin/main -- ${FICHERO}`)
-  console.error('   Al resolver este fichero se conservan SIEMPRE los dos lados: son fichas distintas.')
+  console.error(`   Míralo con:  git diff origin/main -- ${DIR_FICHAS}/<T-nnn>.md`)
+  console.error('   Con una ficha por fichero, un conflicto real solo puede pasar si DOS sesiones tocaron')
+  console.error('   la MISMA ficha — conserva los dos cambios, no elijas «tu lado».')
   console.error('   Si el borrado es a propósito (renumerar, la entrada no era una tarea):')
   console.error('     CONTEXTO_GUARD_SKIP="por qué lo borras a propósito" git push …\n')
   return 1

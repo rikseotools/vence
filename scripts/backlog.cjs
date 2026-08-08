@@ -62,8 +62,24 @@ const MD = path.join(REPO, MD_REL);
 // de sobre una ficha. Si vuelves a tocar este bloque, mira antes `git log -p` del fichero.
 const {
   estuvoEnElHistorialLocal, hechosDeOrigin, enAlgunaRama, commitQueLaQuito, refrescarOrigin,
+  estuvoEnElHistorialLocalFichero, hechosDeOrigenFichero, enAlgunaRamaFichero, commitQueLaQuitoFichero,
 } = require(path.join(__dirname, '..', 'lib', 'backlog', 'gitFichas.cjs'));
 const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
+// «Una ficha = un fichero» (T-532): fuente de verdad de las fichas, con el monolito
+// (`docs/roadmap/tareas-pendientes.md`) como ÍNDICE GENERADO a partir de ella. `parseMd()` y
+// `fichaBody()` leen de aquí; `ficha` escribe aquí. `MD`/`MD_REL` de arriba se conservan para lo
+// que sigue siendo agnóstico a dónde vive el contenido (el nombre del índice generado, y las
+// funciones `gitFichas` de historia PRE-migración).
+const FD = require(path.join(__dirname, '..', 'lib', 'backlog', 'fichasDir.cjs'));
+// Cierra/reabre la CABECERA de una ficha (T-532) — lo usan `done`/`reopen` para no depender de
+// que alguien siga a mano una instrucción impresa contra un fichero que ya no se edita directo.
+const MF = require(path.join(__dirname, '..', 'lib', 'backlog', 'marcarFicha.cjs'));
+
+/** `dd/mm`, el formato que ya usan las 603 cabeceras del backlog. */
+function hoyDDMM() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 /** Envoltorio del historial LOCAL. Se conserva el nombre porque hay otros llamadores (T-441). */
 function estuvoEnElHistorial(id) {
@@ -374,15 +390,11 @@ async function sugerirSiguiente(s, id, sid) {
   } catch { /* sugerir NUNCA puede estropear un cierre ya hecho */ }
 }
 
-// Cuerpo de la ficha de una tarea: desde su cabecera `### [T-xxx]` hasta la siguiente `###`.
-// Lo usa `claim` para que reclamar imprima el detalle (reclamar = leer).
+// Cuerpo de la ficha de una tarea (T-532: vive en su propio fichero, ya no hay que buscarla
+// dentro del monolito). Lo usa `claim` para que reclamar imprima el detalle (reclamar = leer).
 function fichaBody(id) {
-  const md = fs.readFileSync(MD, 'utf8').split('\n');
-  const start = md.findIndex((l) => new RegExp(`^###\\s+.*\\[${id.replace('-', '\\-')}\\]`).test(l));
-  if (start < 0) return null;
-  let end = start + 1;
-  while (end < md.length && !/^###\s+/.test(md[end])) end++;
-  return md.slice(start, end).join('\n').trim();
+  const texto = FD.leerFicha(id);
+  return texto === null ? null : texto.trim();
 }
 
 // Parseo del markdown: la implementación es COMPARTIDA con lib/backlog/claim.ts. Ver el porqué
@@ -423,8 +435,13 @@ const ORDEN = require(path.join(REPO, 'lib', 'backlog', 'orden.cjs'));
 // El recordatorio de método: qué recordar y CUÁNDO (T-495). Momentos, nunca un temporizador.
 const RECORDATORIO = require(path.join(REPO, 'lib', 'sessions', 'recordatorio.cjs'));
 
+// `parseBacklogMarkdown` (T-382, en parseMarkdown.cjs) solo mira cabeceras `###`: le da igual si
+// llegan de un fichero grande o de la concatenación de 603 pequeños. T-532 cambia DE DÓNDE sale
+// el texto (los ficheros de FD, no el monolito) y deja el parser intacto — es la costura que
+// evita reescribir la fuente única del parseo por una migración de almacenamiento.
 function parseMd() {
-  return parseBacklogMarkdown(fs.readFileSync(MD, 'utf8')).map((t) => ({
+  const texto = FD.leerTodas().map((f) => f.texto).join('\n');
+  return parseBacklogMarkdown(texto).map((t) => ({
     ...t,
     // El núcleo devuelve `null` cuando la cabecera no lleva emoji de prioridad; aquí hace falta
     // un valor concreto porque esta columna se ESCRIBE en la BD. ⬜ = aparcada a propósito.
@@ -1037,8 +1054,25 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           console.log(`   ⏱ ${dur} — declaraste «${row.effort}» y salió MÁS CORTA de lo previsto.`);
         }
       }
-      console.log(`   ⚠️ AHORA mueve su entrada a "## Hechas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
+      // Marcar la cabecera y regenerar el índice — ya no hace falta el paso manual (T-532): con
+      // «una ficha = un fichero» no hay dos sitios entre los que mover nada, hay una cabecera que
+      // editar, y con `estaCerrada()` leyendo esa misma cabecera para decidir la sección, dejarlo
+      // en manos de una instrucción impresa es justo la CAUSA que esta migración vino a quitar
+      // (la instrucción vieja, además, apuntaba al monolito que ahora es generado — seguirla podía
+      // perderse en silencio si algo regeneraba el índice antes de comitear, o tardar en cazarse
+      // hasta CI, que no corre en pre-push). Fail-open a propósito: si el fichero de la ficha no
+      // existe en este checkout (clon desactualizado, o la ficha nació antes de la migración y
+      // nadie ha corrido `migrar-a-ficheros`), no se aborta el cierre — la BD ya quedó bien — pero
+      // se avisa para que alguien lo revise, en vez de fallar silenciosamente o reventar el done.
+      const textoFicha = FD.leerFicha(id);
+      if (textoFicha) {
+        FD.escribirFicha(id, MF.cerrarCabecera(textoFicha, hoyDDMM()));
+        FD.regenerarIndice();
+        console.log('   📄 cabecera marcada ✅ y docs/roadmap/tareas-pendientes.md regenerado.');
+      } else {
+        console.log(`   ⚠️ no encuentro docs/roadmap/tareas/${id}.md en este checkout — la BD ya está cerrada,`);
+        console.log('      pero la ficha no se ha podido marcar. Revísalo a mano (¿clon desactualizado?).');
+      }
       // Cerrar es el momento en que el contexto está más cargado y a punto de tirarse (T-498).
       await sugerirSiguiente(s, id, sid);
     }
@@ -1084,11 +1118,22 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                  ${'REABIERTA: ' + motivo}::text,
                  ${'(cierre anterior decía: ' + String(prev.outcome || '—').slice(0, 400) + ')'}::text,
                  progress_note)
-         WHERE id = ${id} RETURNING id, title`;
+         WHERE id = ${id} RETURNING id, title, priority`;
       console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
+      // Mismo cierre de la CAUSA que en `done` (T-532): marcar la cabecera y regenerar el índice
+      // aquí mismo, en vez de imprimir una instrucción para que alguien la siga a mano contra un
+      // fichero que ya no se edita directamente. La prioridad no sobrevive en la propia cabecera
+      // tras cerrarla (el cierre la sustituye por ✅), así que se restaura desde la BD.
+      const textoFicha2 = FD.leerFicha(id);
+      if (textoFicha2) {
+        FD.escribirFicha(id, MF.reabrirCabecera(textoFicha2, hoyDDMM(), EMOJI[row.priority] || null));
+        FD.regenerarIndice();
+        console.log('   📄 cabecera marcada de nuevo abierta y docs/roadmap/tareas-pendientes.md regenerado.');
+      } else {
+        console.log(`   ⚠️ no encuentro docs/roadmap/tareas/${id}.md en este checkout — la BD ya está reabierta,`);
+        console.log('      pero la ficha no se ha podido marcar. Revísalo a mano (¿clon desactualizado?).');
+      }
     }
 
     else if (cmd === 'release') {
@@ -1236,15 +1281,20 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         // con criterios distintos es exactamente cómo nació el punto ciego.
         // Sin refrescar, `origin/main` es la foto de la última vez que alguien hizo fetch: se
         // opinaría sobre un pasado y las fichas recién pusheadas saldrían como borradas.
+        // T-532: los hechos de git se piden por FICHERO (`docs/roadmap/tareas/T-nnn.md`), no por
+        // marca dentro del monolito — `hechosDeOrigenFichero`/`enAlgunaRamaFichero`/
+        // `commitQueLaQuitoFichero` son las variantes de `gitFichas.cjs` para el modelo «una
+        // ficha = un fichero». Misma forma de salida que las de antes (`fichaHuerfana.cjs`, la
+        // decisión, no sabe ni le importa de dónde vinieron los hechos).
         const { borradas, noVerificables, miasSinEscribir, desactualizadas, enOtraRama, sinPushear } =
           clasificarHuerfanas(sinFicha.map((r) => ({
             id: r.id,
-            estuvoEnElMarkdown: estuvoEnElHistorialLocal(r.id, GIT_FICHAS),
+            estuvoEnElMarkdown: estuvoEnElHistorialLocalFichero(r.id, GIT_FICHAS),
             // Si el claim es MÍO, «otra sesión no la ha pusheado» es imposible: la sesión soy yo.
             esMia: r.claimed_by === sid,
-            origen: hechosDeOrigin(r.id, GIT_FICHAS),
+            origen: hechosDeOrigenFichero(r.id, GIT_FICHAS),
             // Y si está commiteada en CUALQUIER rama, existe: es trabajo en vuelo, no perdido.
-            ramas: enAlgunaRama(r.id, GIT_FICHAS),
+            ramas: enAlgunaRamaFichero(r.id, GIT_FICHAS),
           })));
         if (borradas.length) {
           console.error(`🔴 FICHA BORRADA del markdown y la tarea sigue VIVA: ${borradas.join(', ')}`);
@@ -1253,9 +1303,9 @@ async function despertarPorDeploy(s, shas, opts = {}) {
             // El aviso no puede morir en la consola de quien corrió el sync: quien perdió la ficha
             // es OTRA sesión, que no lo ve. Va al bus que ya usa todo el proyecto, con su regla de
             // alerta (`RULE_BACKLOG_FICHA_BORRADA`) para que no sea un evento ciego.
-            const culpable = commitQueLaQuito(id, GIT_FICHAS);
+            const culpable = commitQueLaQuitoFichero(id, GIT_FICHAS);
             if (culpable) console.error(`   ${id} ← la quitó:  ${culpable}`);
-            console.error(`   recupérala:  git log -S'### [${id}]' -- ${MD_REL}`);
+            console.error(`   recupérala:  git log --follow -- docs/roadmap/tareas/${id}.md`);
             // OBSERVABILIDAD — que no dependa de que alguien esté mirando esta terminal: quien
             // BORRA la ficha no es quien corre el `sync` después, y la sesión víctima puede estar
             // muerta ya. Best-effort: la telemetría no puede tumbar un `sync`.
@@ -1919,16 +1969,17 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       console.log(`   y luego:  node scripts/backlog.cjs sync   (actualizará el título real)`);
     }
 
-    // ── COLOCAR UNA FICHA NUEVA (T-515) ──────────────────────────────────────────────────────
-    // A mano se coloca mal. `tareas-pendientes.md` pasa de 11.000 líneas y la frase «## Abiertas»
-    // sale DENTRO del texto de varias fichas, así que cualquier búsqueda de esa cadena acierta la
-    // mención antes que el encabezado y la ficha acaba en el preámbulo, fuera de toda sección.
-    // Pasó dos veces; la segunda, el ancla falsa era un bullet de otra sesión avisando de esto
-    // mismo — o sea que el aviso escrito no lo evita. El criterio vive en `lib/backlog/insertarFicha.cjs`.
+    // ── COLOCAR UNA FICHA NUEVA (T-532: una ficha = un fichero) ──────────────────────────────
+    // Hasta el 07/08 esto insertaba texto dentro de `tareas-pendientes.md` (T-515) porque el
+    // fichero pasaba de 11.000 líneas y la frase «## Abiertas» salía DENTRO del texto de varias
+    // fichas — cualquier búsqueda de esa cadena acertaba la mención antes que el encabezado.
+    // Con una ficha por fichero ese problema ya no puede pasar: no hay «dónde insertar», solo
+    // «qué nombre escribir». Ver `lib/backlog/fichasDir.cjs` y `lib/backlog/insertarFicha.cjs`
+    // (`validarFichaNueva`, que conserva las mismas comprobaciones de forma).
     else if (cmd === 'ficha') {
       const id = process.argv[3];
       if (!id) { console.error('❌ uso: node scripts/backlog.cjs ficha T-042 [--texto <fichero.md>]'); process.exit(1); }
-      const { insertarFicha } = require('../lib/backlog/insertarFicha.cjs');
+      const { validarFichaNueva } = require('../lib/backlog/insertarFicha.cjs');
       const fTexto = arg('--texto');
       let bloque = '';
       try {
@@ -1948,41 +1999,29 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         process.exit(3);
       }
 
-      const md = fs.readFileSync(MD, 'utf8');
-      const r = insertarFicha(md, id, bloque);
+      const r = validarFichaNueva(id, bloque, FD.leerFicha(id) !== null);
       if (!r.ok) {
-        console.error(`❌ NO insertada (${r.motivo}): ${r.detalle}`);
+        console.error(`❌ NO creada (${r.motivo}): ${r.detalle}`);
         process.exit(2);
       }
-      fs.writeFileSync(MD, r.md);
-      console.log(`✅ ficha ${id} colocada bajo «## Abiertas» (línea ${r.linea}) — ninguna ficha previa se ha perdido`);
+      FD.escribirFicha(id, r.texto);
+      FD.regenerarIndice();
+      console.log(`✅ ficha ${id} creada en docs/roadmap/tareas/${id}.md — índice regenerado`);
       console.log(`   ahora:  node scripts/backlog.cjs sync`);
     }
 
-    // ── DEVOLVER A SU SECCIÓN LAS FICHAS HUÉRFANAS (T-515) ───────────────────────────────────
-    // El rastro acumulado de insertar a mano: 58 fichas fuera de toda sección el 04/08, 27 de
-    // ellas VIVAS y cinco 🔴. El CLI las sigue viendo (manda la cabecera, no la posición), pero
-    // quien abre el fichero y baja a «## Abiertas» no las encuentra.
+    // ── REUBICAR (T-515) — RETIRADO por T-532: con una ficha por fichero no hay «fuera de
+    // sección» posible, la sección la decide la cabecera (✅), no la posición física. Se
+    // conserva el comando para que un script viejo que lo invoque no reviente: regenera el
+    // índice (por si algo quedó desincronizado) y lo dice.
     else if (cmd === 'reubicar') {
-      const { reubicarHuerfanas } = require('../lib/backlog/insertarFicha.cjs');
-      // `arg()` devuelve null a un flag SIN valor (es su contrato, documentado arriba). Los
-      // booleanos van por `includes`, como `--all` y el `--apply` de `reap`. Escrito con
-      // `arg('--apply')` no aplicaba nunca — falló hacia el lado seguro, pero no hacía su trabajo.
-      const APLICAR = process.argv.includes('--apply');
-      const md = fs.readFileSync(MD, 'utf8');
-      const r = reubicarHuerfanas(md);
-      if (!r.ok) { console.error(`❌ no se ha tocado nada (${r.motivo})`); process.exit(2); }
-      if (!r.movidas.length) {
-        console.log('✅ ninguna ficha VIVA fuera de sección.');
-        if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas: se dejan — su sitio sería «## Hechas» y hay tres)`);
-        return;
-      }
-      console.log(`${APLICAR ? '✍️  moviendo' : '🔍 SIMULACIÓN (usa --apply para escribir)'} ${r.movidas.length} ficha(s) VIVA(s) al final de «## Abiertas»:`);
-      for (const id of r.movidas) console.log(`   · ${id}`);
-      if (r.dejadas.length) console.log(`   (${r.dejadas.length} cerradas huérfanas se quedan donde están, a propósito)`);
-      if (APLICAR) {
-        fs.writeFileSync(MD, r.md);
-        console.log('✅ escrito. Ninguna ficha se ha perdido (comprobado antes de escribir).');
+      console.log('ℹ️  «reubicar» ya no hace falta (T-532): cada ficha es su propio fichero, así que no');
+      console.log('   puede quedar «fuera de sección» — la sección la decide su cabecera (✅), no su posición.');
+      if (!FD.indiceEstaAlDia()) {
+        FD.regenerarIndice();
+        console.log('   El índice estaba desincronizado (alguien lo editó a mano, o faltaba regenerar) — regenerado.');
+      } else {
+        console.log('   El índice ya estaba al día. Nada que hacer.');
       }
     }
 

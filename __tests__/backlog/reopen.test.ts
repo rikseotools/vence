@@ -54,8 +54,13 @@ describe('backlog.cjs reopen', () => {
     expect(BLOQUE).toMatch(/REABIERTA: /)
   })
 
-  it('recuerda mover la ficha en el markdown (si no, el guardarraíl de CI se pone rojo)', () => {
-    expect(BLOQUE).toMatch(/Abiertas/)
+  it('marca la cabecera de la ficha y regenera el índice ella sola (T-532, ya no hace falta moverla a mano)', () => {
+    // Hasta T-532 esto imprimía «AHORA devuelve su entrada a "## Abiertas" en el markdown» — una
+    // instrucción que, con «una ficha = un fichero», apuntaba a un índice GENERADO: seguirla a
+    // mano podía perderse en silencio (si algo regeneraba el índice antes) o tardar en cazarse
+    // hasta CI. Ahora el propio comando llama a `reabrirCabecera` + `regenerarIndice`.
+    expect(BLOQUE).toMatch(/MF\.reabrirCabecera/)
+    expect(BLOQUE).toMatch(/FD\.regenerarIndice\(\)/)
   })
 
   it('los parámetros del concat_ws van casteados (sin ::text, Postgres no infiere el tipo)', () => {
