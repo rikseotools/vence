@@ -71,6 +71,13 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // [T-077] `AND target_oposicion IS NULL`: este endpoint es la asignación AUTOMÁTICA de la 1ª
+  // vez (lo llama `OposicionDetector` en cada visita autenticada a una landing), así que sin esa
+  // condición reescribía en silencio el objetivo que el usuario ya había elegido. El cliente ya
+  // comprueba `!profile?.target_oposicion` antes de llamar, pero eso es el botón, no la puerta.
+  // Y el `updated` de abajo solo tiene sentido con ella: sin la condición el UPDATE afecta
+  // siempre a una fila y `updated` sería siempre `true`. Cambiar de oposición A PROPÓSITO no
+  // pasa por aquí — va por `/api/profile/target`.
   const res = await getAdminDb().execute(sql`
     UPDATE user_profiles
     SET target_oposicion = ${oposicionId},
@@ -78,6 +85,7 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
         first_oposicion_detected_at = COALESCE(first_oposicion_detected_at, now()),
         updated_at = now()
     WHERE id = ${auth.userId}::uuid
+      AND target_oposicion IS NULL
     RETURNING id
   `)
   const updated = (Array.isArray(res) ? res : (res as { rows?: unknown[] }).rows || []).length > 0

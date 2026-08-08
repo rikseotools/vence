@@ -3264,9 +3264,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'SIMULA por defecto: `respawn-pane -k` mata lo que corra en el panel. Criterio en dos ' +
       'núcleos puros con 19 tests: `lib/sessions/rotacionCuenta.cjs` (cuándo avisar, a dónde ' +
       'mover) y `lib/observability/cuentaDeSesion.cjs` (de quién es cada consumo). ' +
-      '⚠️ NO hay API de cuota: el proveedor no dice cuánta queda, solo corta — así que la ' +
-      'referencia es EMPÍRICA (lo que esa cuenta gastó la última vez que topó, del evento ' +
-      '`flota_turno` con `fase=sin_cuota`) y la primera vez NO puede avisar, y lo dice. ' +
+      'Sondea al PROVEEDOR: no hay endpoint de cuota, así que hace la petición más pequeña ' +
+      'posible (1 token del modelo más barato) y lee sus cabeceras `anthropic-ratelimit-unified-*` ' +
+      '(utilización de las dos ventanas, umbral de aviso y hora de reposición). La primera ' +
+      'versión AFIRMÓ que ese dato no existía y montó una estimación encima: la lección es ' +
+      'comprobar si el dato real ya viene dado ANTES de construir una estimación, porque una ' +
+      'que nadie puede desmentir no se corrige sola. La comparación empírica queda de respaldo. ' +
       '⚠️ La atribución retroactiva de sesiones locales es IMPOSIBLE: de los 355 transcripts de ' +
       '`~/.claude/projects`, ninguno guarda la cuenta; se sella en el ingest hacia delante. ' +
       'Origen [T-709]: «igual me quedo yo ahora sin poder terminar, y eso es un fallo».',

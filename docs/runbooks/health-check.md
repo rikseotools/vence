@@ -265,6 +265,21 @@ constara en ninguna parte**.
 **El orden, y las dos primeras son de un minuto:**
 
 ```sql
+-- (0) EL MOTIVO EXACTO, que es lo que decide todo lo demás (T-714, desde el 08/08/2026).
+--     `no_bearer_token`      → el cliente NO mandó el token  → se arregla en el navegador
+--     `remote_verify_failed`
+--     `local_*`              → lo mandó y NO vale            → se arregla en el servidor
+SELECT metadata->>'reason' AS motivo, endpoint, count(*), count(DISTINCT user_id)
+FROM observable_events
+WHERE http_status = 401 AND created_at > now() - interval '1 hour'
+GROUP BY 1, 2 ORDER BY 3 DESC;
+```
+
+⚠️ **Antes del 08/08/2026 ese campo NO existía**, así que para incidentes anteriores esta consulta
+sale vacía y hay que tirar de los rodeos de abajo. Ese hueco costó media jornada el 08/08: 7.000
+rechazos y ni uno con su motivo.
+
+```sql
 -- (1) ¿el cliente se está quedando sin token? Si hay filas, la causa es del CLIENTE.
 SELECT endpoint, count(*), count(DISTINCT user_id)
 FROM observable_events

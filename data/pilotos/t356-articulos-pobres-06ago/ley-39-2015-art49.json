@@ -1,0 +1,23 @@
+{
+  "question_text": "Según el artículo 49.2 de la Ley 39/2015, la nulidad o anulabilidad EN PARTE de un acto administrativo no implicará la de las partes del mismo independientes de aquélla, SALVO que:",
+  "option_a": "El acto no haya sido notificado al interesado dentro del plazo de diez días.",
+  "option_b": "La parte viciada sea de tal importancia que sin ella el acto administrativo no hubiera sido dictado.",
+  "option_c": "El interesado no haya presentado alegaciones en el trámite de audiencia.",
+  "option_d": "La Administración así lo decida de forma discrecional, atendiendo a razones de oportunidad.",
+  "correct_option": 1,
+  "explanation_data": {
+    "v": 1,
+    "cita": {
+      "ref": "Art. 49.2 Ley 39/2015",
+      "texto": "La nulidad o anulabilidad en parte del acto administrativo no implicará la de las partes del mismo independientes de aquélla, salvo que la parte viciada sea de tal importancia que sin ella el acto administrativo no hubiera sido dictado."
+    },
+    "options": {
+      "0": "El plazo de notificación (diez días, art. 40.2 LPACAP) es una regla distinta, sobre cuándo se practica la notificación — no es la excepción que fija el art. 49.2 para la nulidad parcial.",
+      "1": "Es la única excepción que recoge el art. 49.2: la regla general es que el vicio de una parte del acto NO contamina el resto, salvo que esa parte viciada fuera tan determinante que, sin ella, el acto no se habría dictado.",
+      "2": "La falta de alegaciones en el trámite de audiencia no aparece en el art. 49.2 como excepción a la regla de independencia de las partes del acto.",
+      "3": "El artículo no deja esta cuestión a la discrecionalidad de la Administración: fija una única excepción objetiva (la importancia de la parte viciada), no una decisión de oportunidad."
+    },
+    "frame": "select_correct",
+    "estilo": "boletin"
+  }
+}

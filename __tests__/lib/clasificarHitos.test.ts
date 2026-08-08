@@ -2,7 +2,7 @@
 // Unit del clasificador REAL de producción (scripts/clasificar-hitos.cjs) — no una copia:
 // una copia da falso verde cuando el código real cambia.
 // Cada caso sale de un hito REAL de prod (16/07/2026), y varios son las regresiones que ya mordieron.
-const { clasificar } = require('../../scripts/clasificar-hitos.cjs')
+const { clasificar, NO_TOCAR_TIPO } = require('../../scripts/clasificar-hitos.cjs')
 
 const h = (titulo: string, descripcion = '', url: string | null = null) => clasificar({ titulo, descripcion, url })
 
@@ -60,6 +60,80 @@ describe('clasificar-hitos — tipo', () => {
   test('lo que no casa cae a otro, no revienta', () => {
     expect(h('Nota informativa').tipo).toBe('otro')
     expect(h('Adaptaciones para personas con discapacidad').tipo).toBe('otro')
+  })
+
+  test('T-170 (07/08): "acumulación de plazas" es modificacion_plazas, no otro — 2 hitos reales en prod', () => {
+    expect(h('Decreto de acumulación de plazas (9 → 17 plazas)').tipo).toBe('modificacion_plazas')
+    expect(h('Acumulación de plazas (11 plazas)').tipo).toBe('modificacion_plazas')
+  })
+
+  test('T-170 (07/08): "designación del Tribunal" (orden inverso a "tribunal designado") es tribunal_constituido', () => {
+    expect(h('Designación del Tribunal de selección').tipo).toBe('tribunal_constituido')
+  })
+
+  test('T-170 (07/08): un adjetivo entre el verbo y "plazo" no rompe el match — "el NUEVO plazo"', () => {
+    expect(h('Cierre del nuevo plazo de solicitudes').tipo).toBe('plazo_fin')
+    expect(h('Apertura de nuevo plazo de solicitudes').tipo).toBe('plazo_inicio')
+  })
+
+  test('T-170 (07/08): "cerrado" AL FINAL del título también es plazo_fin, no solo "cierre" al principio', () => {
+    expect(h('Plazo de inscripción cerrado').tipo).toBe('plazo_fin')
+    expect(h('Plazo de solicitudes (19/06–16/07/2026) cerrado').tipo).toBe('plazo_fin')
+  })
+
+  test('T-170 (07/08): "relación de aprobados" es resultados, no ejercicio_1 (perdía contra "fase de oposición")', () => {
+    expect(h('Relación de aprobados (fase de oposición)').tipo).toBe('resultados')
+    expect(h('Relación de aprobados y apertura de autobaremo').tipo).toBe('resultados')
+    // acotado a la frase completa: "aprobados" suelto sigue sin disparar resultados por sí solo
+    expect(h('Aprobados fase de oposición').tipo).not.toBe('resultados')
+  })
+
+  test('REGRESIÓN T-170: el ensanche de plazo_fin/plazo_inicio no se come lo que ya acertaba', () => {
+    // Estos 3 SOLO clasifican bien vía el fallback genérico de plazo_inicio (sin "apertura" ni
+    // "inicio" en el título) — el fix no podía tocarlo sin romper esto.
+    expect(h('Plazo de presentación de solicitudes').tipo).toBe('plazo_inicio')
+    expect(h('Plazo de solicitudes').tipo).toBe('plazo_inicio')
+    // Y "cerrado"/"finalizad" en otro contexto no debe disparar plazo_fin por casualidad.
+    expect(h('Proceso finalizado, en fase de nombramientos').tipo).not.toBe('plazo_fin')
+  })
+
+  test('REGRESIÓN T-170 (08/08, revisión): "Nombramiento del Tribunal Calificador" es tribunal_constituido, no nombramientos', () => {
+    // Encontrado en revisión: con `nombramientos` antes que `tribunal_constituido` en el array,
+    // "Nombramiento del Tribunal Calificador" ganaba por orden de prioridad, no por precisión —
+    // pese a que tribunal_constituido TAMBIÉN casaba (su patrón incluye "tribunal...nombrad").
+    // Caso real ddb30ace: BD ya lo tenía como tribunal_constituido (tipado a mano correctamente,
+    // con cita_literal "se nombra el Tribunal Calificador") y la regla vieja lo habría degradado.
+    expect(h('Nombramiento del Tribunal Calificador').tipo).toBe('tribunal_constituido')
+    expect(h('Nombramiento de tribunales calificadores').tipo).toBe('tribunal_constituido')
+    // Y un nombramiento de PERSONAS (sin "tribunal"/"comisión" cerca) sigue siendo nombramientos.
+    expect(h('Nombramiento de funcionarios en prácticas').tipo).toBe('nombramientos')
+    expect(h('Toma de posesión').tipo).toBe('nombramientos')
+  })
+})
+
+describe('clasificar-hitos — NO_TOCAR_TIPO (T-170, 08/08)', () => {
+  test('exporta un Map, no un array — el CLI hace NO_TOCAR_TIPO.has(id) por id, no un .includes()', () => {
+    expect(NO_TOCAR_TIPO).toBeInstanceOf(Map)
+  })
+
+  test('los 9 ids adjudicados a mano en la revisión están todos en la lista, con su motivo', () => {
+    const ids = [
+      'ddb30ace-b100-43d6-ab3f-2f9dd43e0983', // tribunal_constituido correcto (el caso que probó el bug)
+      '66adf612-8ba1-4b72-a33a-7332afc38e27', // nombramientos, pérdida de precisión si se aplica
+      '49c140f3-2baa-42eb-92cc-4211a216e4d5', // corrección de bases, ambiguo
+      '8f72b566-d931-424b-96d0-e5d7d53ae7c3', // corrección de bases, ambiguo
+      '8d17ab33-9bb8-4f70-967a-06bbc7a73c80', // corrección de bases, ambiguo
+      '053db338-9087-40d7-801d-ac417869da95', // convocatoria y bases, ambiguo
+      '6625a7e3-dd39-4d6a-9339-24ef3fd9996e', // convocatoria y bases, ambiguo
+      'd0294f39-4292-4e66-993d-d9f88aeef9e5', // título/descripción contradictorios
+      'ecf88a05-c271-4fb2-9a66-73e937734149', // tecnico-informatica, ya documentado en la ficha
+    ]
+    for (const id of ids) {
+      expect(NO_TOCAR_TIPO.has(id)).toBe(true)
+      expect(typeof NO_TOCAR_TIPO.get(id)).toBe('string')
+      expect(NO_TOCAR_TIPO.get(id)!.length).toBeGreaterThan(20) // un motivo real, no un sello
+    }
+    expect(NO_TOCAR_TIPO.size).toBe(9)
   })
 })
 
