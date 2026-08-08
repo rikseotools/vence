@@ -1768,8 +1768,30 @@ Claude Code ocupan menos de 1 GB entre todos, y el peso son sus builds (1.574 + 
 1.213 MB), con la carga a 19,7 en 4 núcleos y la CPU al 97,7 % ociosa (esperando disco, no
 calculando). Bajar el número de trabajadores NO es el arreglo; serializar los builds sí.
 
-**PENDIENTE:** desplegar el backend para que
-las dos reglas empiecen a avisar.
+**✅ VERIFICADO EN VIVO (08/08, w1) — desplegado y funcionando, con dos gaps de método corregidos.**
+- **Las 2 reglas de alerta SÍ están live en el backend ECS**: confirmado con `git merge-base
+  --is-ancestor c186196e4 a0b710ee` — el commit de features es ancestro del último deploy backend
+  exitoso (`a0b710ee`, finalizado 07:41:43 UTC 08/08). `RULE_FLOTA_MAQUINA_AHOGADA` en
+  `backend/src/alerts/alert-rules.ts` usa exactamente el umbral «2 lecturas en 2h»
+  (`shouldFire: n>=2` sobre `INTERVAL '2 hours'`), tal como describe esta ficha. 364/364 tests de
+  `alert-rules.spec.ts` en verde.
+- **El fix de «medir cada pasada, no solo cuando alguien mira el panel» SÍ está corriendo**: es
+  código del supervisor LOCAL del VPS (`scripts/flota/flota.cjs`, systemd, fuera del deploy ECS).
+  Confirmado que el checkout `~flota/vence` lo tiene y que el servicio `vence-flota-supervisor`
+  está activo ejecutando ese código (PID arrancado después del commit). 3 pasadas del bucle
+  observadas sin nuevo evento `flota_maquina_salud` — comprobado en el código (`flota.cjs`: `if
+  (v.estado === 'ok') continue`) que la emisión es DELIBERADAMENTE muda cuando la máquina está
+  sana, y la máquina está sana ahora mismo (verificado `/proc/pressure/memory`: `full avg300=0,41
+  %`; `free -h`: 5,6 GiB disponibles de 7,6) porque [T-682] ya arregló la causa esta misma sesión.
+  No es un bug: es el diseño funcionando tal como debe cuando el problema de fondo está resuelto.
+- **Gap de método corregido:** `lib/flota/saludMaquina.cjs` no estaba registrado en
+  `lib/admin/toolRegistry.ts` ni en ningún runbook (una capacidad nueva y genuina, no un silo, pero
+  invisible para `tools:buscar`). Registrado como `flota_salud_maquina`. Guardarraíl
+  `toolRegistry.guardrail.test.ts` 16/16 en verde con la entrada nueva.
+- **Lo que queda:** serializar los builds (un `flock` compartido, como el del deploy) sigue
+  PENDIENTE — es la mitad que arregla la causa, y la tienen [T-682]/[T-647] (T-682 ya cerrada esta
+  sesión con la serialización del typecheck vía `flock`; el `flock` de builds JS en general, si
+  hace falta más allá de `tsc`, queda para quien retome [T-647]).
 ### [T-682] 🔴 [ABIERTO 07/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
 
 - **Cómo se llegó aquí.** El VPS llevaba horas con **carga 18 sobre 4 núcleos** y se atribuyó a falta de CPU. **Era falso.** La medida que lo decide (PSI, `/proc/pressure`): **CPU 0,00 % · disco 0,00 % · memoria `full` 98,73 %**. O sea: **durante el 98,7 % del tiempo TODOS los procesos estaban parados esperando memoria**, y nadie usaba CPU — el proceso más activo era un `sshd` al 3 %. En Linux el *load average* cuenta también a los que esperan; por eso marcaba 18.
