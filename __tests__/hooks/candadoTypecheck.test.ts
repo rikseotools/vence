@@ -82,3 +82,48 @@ describe('[T-682] el guard usa el candado y sigue distinguiendo el fallo real', 
     expect(src).toMatch(/emitirFriccion/)
   })
 })
+
+describe('[T-708] el candado cubre también `npm run typecheck`, que es por donde va el tráfico', () => {
+  const { yaEstaBajoCandado, MARCA_ENTORNO } = require('../../lib/hooks/candadoTypecheck.cjs')
+  const fs = require('fs')
+  const path = require('path')
+  const ROOT = path.join(__dirname, '..', '..')
+
+  it('`npm run typecheck` pasa por el envoltorio, no por `tsc` pelado', () => {
+    // El defecto medido el 08/08: dos `sh -c tsc --noEmit` a la vez en el VPS —o sea
+    // `npm run typecheck`, no el hook— con el swap al 92 %. El candado estaba puesto en el
+    // pre-push y no protegía nada porque el tráfico no pasaba por ahí.
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+    expect(pkg.scripts.typecheck).toContain('scripts/typecheck.cjs')
+    expect(pkg.scripts.typecheck).not.toMatch(/^tsc\b/)
+  })
+
+  it('reconoce la marca que pone quien ya tiene el candado', () => {
+    expect(yaEstaBajoCandado({ [MARCA_ENTORNO]: '1' })).toBe(true)
+    expect(yaEstaBajoCandado({ [MARCA_ENTORNO]: '' })).toBe(false)
+    expect(yaEstaBajoCandado({})).toBe(false)
+    expect(yaEstaBajoCandado(undefined as any)).toBe(false)
+  })
+
+  it('el pre-push PROPAGA la marca: si no, el hijo esperaría a su propio padre', () => {
+    // `flock` no es reentrante entre procesos. Sin la marca, cada push se colgaría los 900 s de
+    // espera antes de caer al fail-open — 15 minutos por push.
+    const guard = fs.readFileSync(path.join(ROOT, 'scripts', 'typecheck-push-guard.cjs'), 'utf8')
+    expect(guard).toContain('MARCA_ENTORNO')
+    expect(guard).toMatch(/\[MARCA_ENTORNO\]:\s*inv\.conCandado/)
+  })
+
+  it('el envoltorio corre pelado bajo la marca, y candado sin ella', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'scripts', 'typecheck.cjs'), 'utf8')
+    const iMarca = src.indexOf('yaEstaBajoCandado(process.env)')
+    const iCandado = src.indexOf('conCandado({')
+    expect(iMarca).toBeGreaterThan(-1)
+    expect(iCandado).toBeGreaterThan(iMarca)   // primero se descarta el anidado
+  })
+
+  it('no confunde «no cogí el candado» con «no compila»', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'scripts', 'typecheck.cjs'), 'utf8')
+    expect(src).toContain("veredicto === 'sin_candado'")
+    expect(src).toMatch(/se corre sin serializar/)
+  })
+})

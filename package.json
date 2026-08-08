@@ -66,7 +66,7 @@
     "test:system": "node scripts/check-system.js",
     "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='<rootDir>/.claude/worktrees/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats' --testPathIgnorePatterns='__tests__/canary' --testPathIgnorePatterns='\\.integration\\.test\\.'",
     "test:watch": "jest --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/typecheck.cjs",
     "sim": "tsx scripts/sim/run.ts",
     "sim:emit": "SIM_EMIT=1 tsx scripts/sim/run.ts",
     "sim:test": "jest --watchAll=false __tests__/sim",
