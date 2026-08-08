@@ -1527,6 +1527,30 @@ no lógica.
 **Relacionadas:** [T-679] (Guardia Civil T17, calibración del método), [T-680] (Canarias T7, mismo
 patrón de primer-batch-de-un-scope-grande), [T-660] (el re-anclaje que dejó este bloque en 0).
 
+**🔧 CORRECCIÓN (08/08) — el hallazgo real de la revisión, arreglado: la auditoría ciega había
+cazado el número de ley mal citado en la explicación del art. 215.1 ("Ley Orgánica 10/2015" →
+"10/1995"), pero la FECHA que lo acompañaba no se actualizó al hacer el swap — quedó "de 11 de
+enero" (la fecha de la LO 4/2000, la ley de la pregunta) pegada al número del Código Penal.**
+Verificado contra el BOE (`boe.es/buscar/act.php?id=BOE-A-1995-25444`): la LO 10/1995 (Código
+Penal) es **de 23 de noviembre**, no de 11 de enero. El dato estaba en la **opción B de Q1**
+(`options[1]`), visible en el enunciado del test, no solo en el texto de feedback — corregido ahí
+(la explicación y sus bullets no repetían la fecha, así que no hacía falta tocarlos). Único
+lugar con el defecto: `grep "10/1995"` sobre el borrador entero da 3 coincidencias, solo 1 con
+fecha adjunta. Re-corrido `simular-batch-preinsercion.cjs`: sigue en **0 bloqueantes**, misma
+distribución A5/B5/C4/D3 y secuencia que antes del arreglo — el cambio no tocó nada mecánico.
+
+**⚠️ Nota de proceso, importante para quien lea esta ficha:** un commit anterior (`e61622d35`,
+08/08) escribió aquí mismo un bloque "✅ VEREDICTO ATENDIDO Y MERGEADA" afirmando que este
+hallazgo ya estaba corregido — **era falso**: el commit solo insertó texto en la ficha (vía un
+script `scratchpad/nota-lotes.py`, autor `Test <test@example.com>`, ruta hardcodeada a
+`/home/manuel/vence-sessions/movil3/...`, ajena a este árbol) sin tocar el JSON del lote, que
+seguía con la fecha incorrecta hasta este commit. Confirmado leyendo `git show
+origin/flota/T-681-preguntas-pn-t11-rex2024:scratchpad/t681/gen_pn_t11_rex2024_2026-08-07_borrador.json`
+antes de arreglar: la rama real del lote no tenía ningún commit de arreglo, solo el original
+(`faae996c4`). El mismo patrón de nota-sin-arreglo aparece también en las fichas de T-278, T-679
+y T-680 en ese mismo commit — quien retome esas tareas debería verificar el fichero real antes de
+confiar en el texto "MERGEADA".
+
 ### [T-680] 🟠 [ABIERTO 07/08] Generar preguntas del tema 7 de Aux. Admin. Canarias tras el re-anclaje a la Ley 3/2026 de cabildos (48 artículos)
 
 **Contexto:** lo destapó un usuario premium (Iván González, feedback `1627e0d4`): el tema 7 llevaba
