@@ -6,7 +6,11 @@ leyes es un trabajo de varias sesiones — aquí van dos piezas completas y hone
 **priorización** (para que quien siga no tenga que rederivarla) y **una pregunta nueva**
 para el artículo de mayor impacto, verificada de extremo a extremo.
 
+<<<<<<< HEAD
 ## 1. Priorización (`articulos-protegidos-priorizados.json`, 202 artículos)
+=======
+## 1. Priorización (`articulos-protegidos-priorizados.json`, 200 artículos)
+>>>>>>> origin/flota/T-356-articulos-pobres-w2
 
 `npm run huerfanos:plan` (la herramienta que la propia ficha recomienda) usa `DATABASE_URL`
 de escritura para cruzar con `user_profiles.target_oposicion` — permiso que este worker no
@@ -17,6 +21,7 @@ temas de cuántas oposiciones les importa). No es lo mismo que la cifra de `huer
 pero ordena en la misma dirección — un artículo citado por 86 `topic_scope` pesa mucho más
 que uno citado por 1.
 
+<<<<<<< HEAD
 **⚠️ CORRECCIÓN (08/08, revisión de w4): la cifra "200 (204 el 31/07, drift normal)" estaba
 mal explicada.** La lista original se generó transcribiendo A MANO la query de
 `scripts/calidad/duplicados-exactos.cjs` contra `VENCE_LECTOR_URL` (en vez de correr la
@@ -68,15 +73,25 @@ patrón que llegaba a Postgres era `s+` (colapsa letras "s" repetidas) en vez de
   casualidad de los datos, no porque el código estuviera bien. Arreglado igual que el otro.
 
 **202 artículos, ordenados por ese proxy. Top 6:**
+=======
+**Reconté los 200/204 artículos protegidos hoy** (204 era la cifra del 31/07; ver nota en
+[T-321] sobre el drift normal a 200) y los ordené por ese proxy. Top 5:
+>>>>>>> origin/flota/T-356-articulos-pobres-w2
 
 | ley | artículo | topic_scope que lo referencian |
 |---|---|---|
 | Ley 39/2015 (LPACAP) | 49 | 86 |
 | Ley 39/2015 (LPACAP) | 120 | 85 |
+<<<<<<< HEAD
 | RDL 5/2015 (TREBEP) | 24 | 71 |
 | **Ley 40/2015 (LRJSP)** | **44** | **54** ← nuevo, uno de los 3 que faltaban en la lista original |
 | Excel 365 Escritorio | 30 | 22 |
 | LO 2/2007 Estatuto Autonomía Andalucía | 67 | 13 |
+=======
+| RDL 5/2015 (TREBEP) | 24 | 70 |
+| Ley 19/2013 (Transparencia) | 6 | 44 |
+| Excel 365 Escritorio | 30 | 22 |
+>>>>>>> origin/flota/T-356-articulos-pobres-w2
 
 Los cuatro primeros son leyes troncales que escopa casi cualquier oposición de la
 Administración General — mucho más impacto que un convenio internacional citado 1 vez.

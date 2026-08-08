@@ -43,6 +43,7 @@ async function main() {
   // preguntas activas existentes de este artículo (el motivo mismo de T-356: no añadir otra copia).
   const [artId] = await sql`SELECT art.id FROM articles art JOIN laws l ON l.id = art.law_id
     WHERE l.short_name = 'Ley 39/2015' AND art.article_number = '49' AND art.is_active`
+<<<<<<< HEAD
   // [T-356, revisión 08/08] '\s+' escrito DENTRO del template etiquetado sql`...` se cocina a
   // 's+' (JS descarta el backslash de un escape no reconocido) — colapsaba letras "s" repetidas,
   // no espacios. Mismo bug que medir-solo-lectura.cjs, aquí en la comprobación de no-duplicado.
@@ -53,6 +54,12 @@ async function main() {
   // El tipo `Row` de postgres.js no conoce las columnas de la consulta, así que la forma se
   // afirma aquí en vez de en el parámetro del callback (que no encaja con su firma).
   const yaExiste = existentes.some((e) => String((e as { norm?: unknown }).norm ?? '').trim() === normNueva)
+=======
+  const existentes = await sql`SELECT lower(regexp_replace(question_text, '\s+', ' ', 'g')) AS norm
+    FROM questions WHERE primary_article_id = ${artId.id} AND is_active`
+  const normNueva = q.question_text.toLowerCase().replace(/\s+/g, ' ').trim()
+  const yaExiste = existentes.some((e: { norm: string }) => e.norm.trim() === normNueva)
+>>>>>>> origin/flota/T-356-articulos-pobres-w2
   if (yaExiste) problems.push('el enunciado YA EXISTE tal cual entre las preguntas activas del artículo')
 
   if (problems.length) {
