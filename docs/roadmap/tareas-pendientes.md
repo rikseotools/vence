@@ -1295,12 +1295,20 @@ tuvo 238 eventos de 4 usuarios.
 
 #### ⏳ Falta: verificar EN PRODUCCIÓN
 
-Nada de esto vale hasta desplegar. `npm run sim:bearer-ausente` sale **en rojo ahora mismo** (38 %
-en `exam/pending`), que es lo correcto: mide el efecto, no la intención. Al desplegar hay que
-volver a correrlo y esperar que `exam/pending` baje hacia su suelo de 0 %.
+Nada de esto vale hasta desplegar. `npm run sim:bearer-ausente` sale **en rojo ahora mismo** (las
+dos rutas), que es lo correcto: mide el efecto, no la intención.
 
-**La medida de éxito es el porcentaje diario de 401 de esos dos endpoints**, que tiene nueve días
-de línea base limpia. Si aparece `auth_header_sin_token`, la causa sigue siendo del cliente.
+⚠️ **El «suelo sano» de `user-stats` era la propia avería, y por poco lo doy por bueno.** Su
+20-36 % diario ANTERIOR al incidente parecía una línea base con la que comparar; medido del 30/07
+al 06/08, no lo es: **0 de 935 rechazos eran anónimos** (todos de gente identificada), **156
+usuarios distintos** en 8 días con media de 1,62 días y solo 23 repitiendo 3 días o más — o sea
+**30-45 personas NUEVAS cada día**, no un grupo con la sesión rota. Es el mismo defecto. Con el
+suelo puesto en 36,1 % la simulación habría aprobado un 39 % que es exactamente el fallo; **las dos
+rutas tienen el suelo en 0**. Un suelo que nadie ha comprobado que sea sano no es una línea base:
+es la costumbre.
+
+**La medida de éxito es el porcentaje diario de 401 de LAS DOS rutas, contra 0.** Si aparece
+`auth_header_sin_token`, la causa sigue siendo del cliente.
 
 **Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
 token), [T-419] (reintento contra 401), [T-210] (flood de acuñación), [T-685] (la alerta que suena;

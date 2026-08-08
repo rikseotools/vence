@@ -21,8 +21,22 @@ const { pgConfig } = require('../../lib/db/pgSsl.cjs');
 
 const BASE = process.env.SIM_BASE_URL || 'https://www.vence.es';
 const RUTAS = ['/api/exam/pending', '/api/v2/user-stats'];
-/** Suelo sano medido del 30/07 al 06/08 en `/api/exam/pending`: 0,0 % nueve días seguidos. */
-const BASE_SANA_PCT = { '/api/exam/pending': 0.0, '/api/v2/user-stats': 36.1 };
+
+/**
+ * Suelo SANO de cada ruta, en porcentaje de 401.
+ *
+ * ⚠️ Los dos son 0, y el de `user-stats` costó una medición aparte porque la cifra evidente
+ * engañaba. Su 20-36 % diario ANTERIOR al incidente parecía una línea base con la que comparar
+ * — y no lo es: es **el mismo defecto**, medido del 30/07 al 06/08:
+ *   · **0 de 935** rechazos eran anónimos: todos de gente identificada (no es ruido de visitantes);
+ *   · **156 usuarios distintos** en 8 días, 1,62 días de media y solo 23 repitiendo 3 días o más
+ *     → no es un grupo con la sesión rota, es gente rotatoria, 30-45 personas cada día;
+ *   · ninguno fallaba a la vez en `exam/pending`, que entonces no pedía identidad.
+ *
+ * Tomarlo como suelo habría dado por BUENO un 39 % que es exactamente la avería. Un «suelo» que
+ * nadie ha comprobado que sea sano no es una línea base: es la costumbre.
+ */
+const BASE_SANA_PCT = { '/api/exam/pending': 0.0, '/api/v2/user-stats': 0.0 };
 
 let fallos = 0;
 const ok = (m) => console.log(`   ✅ ${m}`);

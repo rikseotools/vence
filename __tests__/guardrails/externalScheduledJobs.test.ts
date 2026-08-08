@@ -102,6 +102,27 @@ describe('guardarraíl — jobs programados externos', () => {
     expect(execute).toMatch(/JOB_NAME/)
   })
 
+  // La revisión de [T-325] encontró que el DRY_RUN documentado en el README de la carpeta
+  // emitía con el endpoint de siempre. `cron_overdue` solo comprueba que exista ALGUNA señal
+  // desde el tick anterior, así que una prueba manual TAPA la muerte del cron real de ese día:
+  // el falso verde que este job existe para eliminar, autoinfligido. Afecta a las DOS señales
+  // (el tick sale antes de saber si se va a publicar), no solo al `cron_run`.
+  it('una pasada DRY_RUN NO emite bajo el endpoint que vigila cron_overdue', () => {
+    const src = readFileSync(INSTAGRAM_DAILY, 'utf8')
+    const main = src.slice(src.indexOf('def main('))
+
+    // El endpoint se decide a partir de `dry`, y en dry NO es el JOB_NAME pelado.
+    expect(main).toMatch(/endpoint\s*=\s*JOB_NAME\s*\+\s*"[-\w]+"\s+if\s+dry\s+else\s+JOB_NAME/)
+
+    // Y TODAS las señales del job van por esa variable: si una se queda con el
+    // valor por defecto, vuelve a tapar.
+    // Por LÍNEA, no por paréntesis equilibrados: los argumentos llevan `int((time.time() - t0)…)`
+    // y un `\([^)]*\)` corta en el primer cierre, dando por buena una llamada que no lo es.
+    const señales = main.split('\n').filter((l) => l.includes('emit_cron_signal('))
+    expect(señales.length).toBeGreaterThanOrEqual(4) // tick + dry_run + success + error
+    for (const s of señales) expect(s).toMatch(/endpoint=endpoint/)
+  })
+
   it('los tres jobs externos que emiten señal están TODOS en el catálogo (ni uno se queda fuera)', () => {
     const nombres = [PDF_WORKER, CONTENT_RADAR, INSTAGRAM_DAILY].map((f) => {
       const src = readFileSync(f, 'utf8')
