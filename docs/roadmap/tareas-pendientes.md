@@ -1725,6 +1725,52 @@ ambos admitidos el 06/08, no le generaron recompensa. Comprobado: la impugnació
 `explicacion_confusa`, que por política NO paga sola (evento `reward_skipped_subjective_type`), y el
 bug de premium exige orden explícita de Manuel que nadie dio. **Tiene razón en los hechos**; las dos
 son decisión suya.
+
+**AVANCE (08/08, w4) — el incidente se ha calmado solo, la causa sigue SIN confirmar; descartada la
+hipótesis más prometedora que quedó a medias:**
+
+- **Medido AHORA (08/08 00:52 UTC, `now()` de la BD):** los eventos `auth` warn/error, que llegaron a
+  **1.708/hora** en el pico (16:00-17:00 UTC del 07/08), están en **14 en las últimas 2 horas** —
+  bajaron solos entre las 20:00 y las 22:00 UTC del 07/08 (588 → 47 → 23) sin que nadie desplegara
+  nada en esa ventana. **El incidente ya NO está activo ahora mismo**, pero la causa **sigue sin
+  confirmarse** — puede repetirse igual que apareció.
+- **Se investigó y se DESCARTÓ la pista que un `backlog_ficha_parecida_ignorada` de las 19:49 UTC
+  del 07/08 dejó a medias** (*"el arreglo de T-669 dejó fuera user-stats… esto es la OTRA guarda
+  (`requireUsuarioPropio`), otros call-sites"* — la hipótesis de que, igual que en [T-669], hubiera
+  llamadas cliente sin `getAuthHeaders()`). Comprobados los 4 call-sites reales de los 3 endpoints que
+  falla el incidente:
+  - `components/UserProfileModal.js` (user-stats): usa `getAuthHeaders()` correctamente.
+  - `components/PendingExams.tsx` (exam/pending, discard): usa `getAuthHeaders()` correctamente.
+  - `components/test/TemaTestPage.tsx` (user-stats): usa `getAuthHeaders()` correctamente.
+  - `app/mis-estadisticas/page.tsx` (psychometric/completed-sessions): usa `getAuthHeaders()`
+    correctamente — y de hecho el propio fichero ya lleva anotado *"Exige sesión desde T-565; sin
+    Bearer devuelve 401 (T-671)"*, señal de que alguien ya pasó por aquí durante el incidente y llegó
+    a la misma conclusión: **este NO es el fallo**.
+  - **Los 4 mandan la cabecera bien.** La hipótesis de "faltaba `getAuthHeaders()` en algún sitio"
+    (el patrón exacto de T-669) queda descartada para estos 4 — no digo que no exista en OTRO
+    call-site que no he mirado, pero en los que el propio incidente señala, no es esto.
+- **Hallazgo aparte, real pero NO es la causa de este 401 (401 requiere fallar, esto ni pide
+  auth):** `app/mis-estadisticas/page.tsx` línea 461 llama a `/api/stats?userId=…` **sin ninguna
+  cabecera**, y `app/api/stats/route.ts` (distinto de `/api/v2/user-stats`) **no llama a
+  `requireUsuarioPropio` ni a `verifyAuth`** — lee cualquier `userId` de la query sin verificar
+  identidad. No causa 401 (no exige nada), así que no es este incidente, pero es la misma familia de
+  hueco que motivó [T-340]/[T-565] (leer datos de otro usuario con solo su UUID) y no está cerrado.
+  Merece su propia ficha si nadie lo tiene ya cubierto (no lo he comprobado contra `toolRegistry`).
+- **Dónde mirar de verdad, con la pista descartada:** el mecanismo confirmado es
+  `getAuthHeaders()` → `auth.getAccessToken()` → `getMintedToken()` (en
+  `lib/auth/adapters/authjsAdapter.ts`) → `/api/auth/token`. Si los call-sites mandan bien la
+  cabecera y aun así el servidor no ve token válido, el fallo está **antes** del call-site: en el
+  minteo (`fetchMintedToken`/`/api/auth/token`, servidor) o en `verifyAuth` (verificación del
+  Bearer). **SOSPECHO** que la ventana 15:10-22:00 UTC y la bajada espontánea encajan mejor con algo
+  transitorio del lado servidor (rotación de claves JWKS, un pool de conexiones, un caché de sesión)
+  que con un bug de código de cliente — pero no lo he medido, es sospecha declarada como tal.
+- **No se ha tocado código.** Todo lo de arriba es lectura (`VENCE_LECTOR_URL` + grep del repo). Los
+  tres feedbacks (Laura + 2 de `rbsc87`) siguen SIN CONTESTAR, correctamente: no hay nada confirmado
+  que decirles todavía.
+- **Sigue siendo `sesión propia`**: la causa de fondo (por qué el minteo/verificación falló para 248
+  usuarios y se corrigió sola) no está confirmada, y sin confirmarla no se puede afirmar que no vaya
+  a repetirse.
+
 ### [T-672] 🟠 [ABIERTO 07/08] Barrido bajo la PREMISA de literalidad: preguntas activas cuya clave NO está en su artículo vinculado (reformular o desactivar)
 
 **La premisa (Manuel, 07/08/2026), que es de todo el banco y no de un caso:**
