@@ -128,6 +128,7 @@
     "audit:verificacion-cosmetica": "node --max-old-space-size=3000 scripts/audit-verificacion-cosmetica.cjs",
     "audit:instrumento-derivado": "node --max-old-space-size=3000 scripts/audit-instrumento-derivado.cjs",
     "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs",
+    "audit:literalidad-clave": "node --max-old-space-size=3000 scripts/audit-literalidad-clave.cjs",
     "llm:ab-vinculo": "node scripts/observabilidad/ab-modelo-vinculo-vecino.cjs",
     "llm:ab-transformacion": "node scripts/observabilidad/ab-modelo-transformacion.cjs",
     "llm:ab-reescritura": "node scripts/observabilidad/ab-modelo-reescritura.cjs",
