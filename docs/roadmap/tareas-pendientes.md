@@ -1202,39 +1202,22 @@ a mano, o sea que **la alerta todavía no es proactiva del todo**.
   D»), así que **ninguna podía barajar**: reescritas por opción con cita literal y ahora **las dos
   nacen barajables**.
 
+**8.bis ⚠️ COLISIÓN DE ID AJENA, SIN RESOLVER: DOS FICHAS DISTINTAS SON [T-692]**
+Al ordenar esto saltó el guardarraíl de ids únicos. Son **dos tareas diferentes de otras sesiones**
+compartiendo id (las dos del 08/08, sobre los 401 del token):
+  · «La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve
+    días a cero»
+  · «El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos…»
+**NO se toca desde aquí**: no es trabajo mío y quedarme con un lado borraría el del otro, que es
+justo lo que persigue el guardarraíl anti-pérdida. Lo tiene que resolver quien las escribió, dando a
+una un id nuevo con `reserve`. **Mientras tanto el guardarraíl de ids únicos está EN ROJO**, así que
+tapa cualquier colisión nueva que aparezca detrás.
+
 **9. COLAS**
 Las tres contestadas por esta sesión (Diego, y Laura ×2: feedback e impugnación). Lo demás está en
 otras sesiones: los dos bugs de `rbsc87` en `movil-colas`, dos `other` y dos bajas de cuenta en
 `136e28c4` y `movil2`. **No reabrir sin mirar el claim.**
 
-### [T-695] 🟠 [ABIERTO 08/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
-
-**Manuel: «pon guardarraíl porque se te olvida».** Y tenía la prueba delante: en un MISMO borrador
-para Laura Simar se colaron DOS reglas ya escritas — la mención al apartado de recompensas
-(prohibida desde el 24/07) y un «tienes razón» que él acababa de retirar ese mismo día.
-
-**Hecho:**
-- Criterio en UN sitio: `lib/feedback/validarMensaje.cjs`, cada regla con su porqué y su
-  alternativa. Cubre: recompensa mencionada · conceder la razón · proclamar la culpa («no era cosa
-  tuya», «el fallo era nuestro») · disculpas por la espera · afirmar el arreglo en vez del
-  condicional · decir que lo hace una IA.
-- Se hace cumplir en tres sitios: el dossier lo canta antes de redactar (`revisar-feedback.cjs`),
-  un comando para pasarle el borrador, y una puerta que aborta el envío (`responder-*.cjs`).
-- 11 tests (`__tests__/feedback/validarMensaje.test.ts`) con los borradores REALES como casos: los
-  dos que fallaron y los dos aprobados (Diego y Laura, ambos ya enviados).
-- Manual endurecido: el ejemplo ✅ que otra sesión escribió horas antes («Tienes razón: al pulsar
-  para corregir…») **ya no vale**. Memoria actualizada, que decía justo lo contrario.
-
-**⚠️ ERRATA A SABIENDAS:** el commit que lo introduce está pusheado como `feat(T-678)`, y **T-678 es
-otra ficha ajena YA CERRADA** («Puerta de "está vivo"»). Se eligió el id sin `reserve`, que es
-justo lo que CLAUDE.md prohíbe. El código y el manual ya citan T-695; el mensaje de commit no se
-puede reescribir porque está en `main`. Si alguien busca el origen por el commit, llega a la ficha
-equivocada.
-
-**PENDIENTE:** nada funcional. Cerrarla cuando se confirme que el dossier lo imprime en el uso real
-de otra sesión.
-
-### [T-692] 🔴 [ABIERTO 08/08] La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve días a cero
 ### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
