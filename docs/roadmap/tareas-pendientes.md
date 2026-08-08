@@ -1270,6 +1270,99 @@ por debajo del umbral de 15… pero el ratio por 100 respuestas no llega a 25).
 
 ### [T-690] 🟠 [ABIERTO 08/08] Triar los tests de integración que salen rojos ahora que por fin se ejecutan
 
+- **✅ TRIAJE HECHO DESDE UN TRABAJADOR (08/08) — con un hallazgo previo que hay que resolver antes:
+  `npm run test:integration` en este entorno NO reproduce fielmente lo que ve CI, y por qué.**
+
+  **No pude usar `gh` (no está instalado, sin acceso a la API de GitHub) para leer el run
+  `31230533199` directamente.** En su lugar reproduje corriendo la suite real aquí, apuntando a RDS
+  con `VENCE_LECTOR_URL` (el único credential de lectura de negocio que tiene un trabajador).
+  Esto destapó TRES confusores que hay que separar de los fallos reales, cada uno medido:
+
+  1. **`vence_lector` es SELECT-only por diseño** (`supabase/migrations/20260805_rol_lector_flota.sql`):
+     cualquier test que haga `DELETE`/`INSERT`/`UPDATE` en su fixture (`temario/pdfWorker`,
+     `temario/pdfJobQueue`, `temario/pdfHookScope`, `guardrails/temarioPdfQueue` — **~23 tests**)
+     falla con `permission denied for table temario_pdf_jobs`. No dice nada sobre si esos tests
+     pasan o no en CI (que usa `DATABASE_URL_REPLICA`, un rol distinto).
+  2. **61 de 62 ficheros de test que llaman `dotenv.config()` lo hacen con `override:true`**, así
+     que exportar `DATABASE_URL` en el shell NO basta — hay que editar `.env.local` (temporalmente:
+     restaurado al terminar). Sin esto, casi TODOS los tests corrían contra `vence_coordinacion` (el
+     rol de 4 tablas de coordinación) y fallaban con `permission denied` sobre CUALQUIER tabla de
+     negocio — 655 de 704 fallos en la primera pasada (93%) eran esto, cero señal real.
+  3. **🔴 HALLAZGO REPRODUCIDO, no solo medido — posible causa real de fallos en CI, sin confirmar:**
+     `db/client.ts` (`createDbClient()`, el cliente Drizzle/postgres-js que usa la mayoría del código
+     de aplicación) **nunca pasa la opción `ssl` a `postgres()`** y depende ENTERAMENTE de que la
+     connection string traiga `?sslmode=require`. Las credenciales de la flota (`DATABASE_URL`,
+     `VENCE_LECTOR_URL`) son URLs PELADAS, sin ese parámetro. Reproducido con un script mínimo:
+     ```
+     postgres(url_pelada, {...})                  → PostgresError: no pg_hba.conf entry for host
+                                                      "167.233.249.187", user "vence_lector",
+                                                      database "app", no encryption
+     postgres(url_pelada + '?sslmode=require', …)  → conecta OK
+     postgres(url_pelada, { ssl: 'require', … })   → conecta OK
+     ```
+     Cualquier test que ejercite código de aplicación real (no SQL a pelo con el helper de
+     `__tests__/helpers/db.ts`, que sí gestiona SSL bien) — `checkQuestionAvailability`,
+     `searchTeoriaContent`, `getUnreadSalesCount`… — fallaba con este error y **parecía un bug de
+     contenido cuando era un fallo de conexión**. Con `?sslmode=require` añadido a la URL de prueba,
+     3 de esos "fallos" (essentialArticlesAvailability ×3, teoriaContentSearch ×2, salesBadge
+     getUnreadSalesCount) pasaron a VERDE. **No puedo confirmar si `DATABASE_URL_REPLICA` (el
+     secret de CI) tiene el mismo problema** — no tengo acceso a GitHub Secrets ni a `gh`. SOSPECHO
+     que sí (las credenciales de la flota se acuñaron sin ese parámetro, y no hay motivo para pensar
+     que el secret de CI se acuñó distinto), pero hace falta que alguien con acceso al repo de GitHub
+     lo compruebe: si `DATABASE_URL_REPLICA` también es una URL pelada, **este único fix explicaría
+     una fracción real de los fallos de CI**, no solo de mi reproducción local.
+
+  **Con los tres confusores corregidos (rol correcto + override + sslmode), la pasada más limpia
+  dio: 33 suites falladas de 137, 89/1928 tests rojos (vs 704/1928 en la primera pasada sin
+  corregir nada).** Sigue habiendo ruido: `vence_lector` tiene `CONNECTION LIMIT 10`
+  (`CREATE ROLE ... CONNECTION LIMIT 10`) y con `--maxWorkers=2` algunas suites revientan con
+  `too many connections for role "vence_lector"` — otro artefacto de MI entorno, no de CI (que
+  seguramente usa un rol sin ese tope tan bajo).
+
+  **Filtrando permission-denied + too-many-connections, quedan ~44-71 fallos (según la pasada)
+  que NO son artefactos de mi credencial — candidatos reales.** De esos, verifiqué a fondo 6:
+
+  | suite | qué mide | resultado medido | veredicto |
+  |---|---|---|---|
+  | `configDbIntegrity.test.ts` (ETGOA - Sanidad y Consumo) | config estática dice 120 topics, cuenta en BD | **20** topics activos encontrados, faltan ~102 topic_number | 🔴 bug de DATOS real — el config de la oposición no cuadra con `topics` |
+  | `api/user-stats/userStatsSummary.test.ts` | PK, CASCADE FK, trigger de `user_stats_summary` | tabla **SÍ existe** (confirmado); PK **no encontrada**, CASCADE FK **no encontrada**, trigger `update_user_stats_summary_trigger` **no existe** (confirmado con query directa: count=0) | 🟠 SOSPECHO migración sin aplicar tras el cutover a RDS (04/07) — las migraciones que crean esto (`20260501_init_user_stats_summary_trigger.sql`, `20260708_user_stats_summary_fk_cascade.sql`) son de ANTES del cutover; no confirmado que sea la causa, solo que el síntoma encaja con el patrón ya documentado en CLAUDE.md |
+  | `canary/shuffleRoundtripBD.test.ts` (gate shuffle_safety) | preguntas `safe` que citan letra/posición (no deberían) | **203 de 2.000** (muestra aleatoria) incoherentes | 🟡 probablemente el backlog YA CONOCIDO de "criterio viejo" (`docs/runbooks/barajar-opciones-verificacion-robusta.md` §(c)) — no es nuevo, es la métrica de un problema que ya tiene su propio comando de arreglo (`npm run shuffle:recriterio`) |
+  | `integration/placeholderTemarioGuard.test.ts` | preguntas colgadas de artículos placeholder vacíos, ratchet baseline=0 | **7.202** (top: SALUD MENTAL ENF 701, NUTRICIÓN 667…) | 🟡 coincide EXACTO con el backlog de T-596 ya documentado en CLAUDE.md ("13.952 artículos con title=NULL", "articulo_servido_sin_texto") — el baseline=0 de este test choca con una deuda de contenido que ya se sabe que existe y no se va a limpiar en un triaje |
+  | `integration/globalModeArticleScope.integration.test.ts` | el modo global de `lib/api/filtered-questions/queries.ts` reusa `articleInPositionScopeExists` | el fichero real **NO** importa ese helper (confirmado leyendo el import real: importa `getDb, getReadDb, getPoolerDb`, `allocateProportional`, schema, drizzle-orm ops, `getAllowedLawIds`… pero no `articleInPositionScopeExists`) | 🔴 **NO es de BD ni de mi credencial** — es un test de CONTENIDO DE FICHERO, corrió limpio en todos los intentos. O el código se refactorizó sin actualizar el test, o genuinamente reimplementa el EXISTS a mano (justo el patrón de "cinco escritores del mismo hecho" que T-130 existe para evitar). Necesita que alguien lea `queries.ts` y decida cuál de las dos cosas es |
+  | `api/admin/salesBadge.integration.test.ts` (`markSalesAsRead`) | UPDATE en `admin_read_markers` | `permission denied for table admin_read_markers` | ✅ esperado — es un UPDATE, `vence_lector` es SELECT-only. No dice nada sobre CI |
+
+  **Lo que NO me dio tiempo a verificar individualmente** (quedan en la lista limpia, sin
+  root-causar): `topicCountVsServed`, `articleTestCount`, `articlesDuplicateLawScope`,
+  `landingSsotContractBD`, `explanationDataNoRegresionBD`, `checkAvailableQuestionsNullScope`,
+  `seguimientoFuentesCiegas`, `repasoBarajadoCoherente`, `temarioEpigrafeIntegrity`,
+  `reviewOwnership.integration`, `lawArticlesOrden`, `teoriaCatalogSearch`,
+  `failedQuestionsLawScope`, `essentialArticlesAvailability` (parcialmente — pasó con sslmode
+  arreglado, no confirmé el resto de casos), `agnosticismoQueries`, `oposicionDataCompleteness`,
+  `familiaClassification`, `positionTypeIntegrity`, `temarioVersions`, `temarioDataQuality`,
+  `deleteUserIndexCoverage`, `lawCompletenessConsistency`, `lawTestScopeServed`,
+  `lawTestCtaScopedBD`, `themeStatsModel`, `disputeOpenUnique`, `oposicionIdentityBD`. Muchas
+  de estas son "canary contra BD real" — el patrón visto en las 6 verificadas sugiere que la
+  mayoría son hallazgos de contenido/datos genuinos (no flaky, no bugs de test), pero no lo puedo
+  afirmar sin mirarlas una a una.
+
+  **No toqué el `continue-on-error: true`** — con esta cifra (decenas de fallos reales, no ~10) y
+  sin confirmar si el gap de SSL también afecta a `DATABASE_URL_REPLICA`, quitarlo ahora bloquearía
+  TODOS los merges de golpe. Eso es una decisión de producto/proceso, no técnica.
+
+  **Recomendación para quien continúe:**
+  1. Alguien con acceso a GitHub Secrets confirma si `DATABASE_URL_REPLICA` tiene `sslmode=require`
+     — si no lo tiene, ese único cambio (añadir el parámetro al secret, sin tocar código) puede
+     resolver una fracción real de los fallos de CI de un plumazo.
+  2. Considerar blindar `db/client.ts` para no depender del formato de la URL: pasar
+     `ssl: 'require'` explícito en vez de confiar en `sslmode=` — más robusto igual que ya hace
+     `__tests__/helpers/db.ts` para `pg`.
+  3. Root-causar la lista de 20+ suites sin verificar, suite a suite, con esta misma metodología
+     (rol correcto + `.env.local` editado + `sslmode=require` + `--maxWorkers=1` para evitar el
+     tope de conexiones).
+  4. `configDbIntegrity` (ETGOA) y `userStatsSummary` (migración sin aplicar) parecen los más
+     accionables de los 6 verificados — el resto (`shuffleRoundtripBD`, `placeholderTemarioGuard`)
+     son backlogs ya conocidos y trackeados por otro lado.
+
 **Esto NO es una regresión: es lo que estaba tapado.** [T-370] (cerrada el 07/08) arregló que el
 gate de integración/perf/seguridad corriera **sin base de datos** — llevaba **492 runs seguidos
 desde el 31/07 sin comprobar absolutamente nada**. Desde que apunta al secret correcto, la señal
