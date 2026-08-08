@@ -846,6 +846,45 @@ las otras tres esperaban una decisión suya desde hacía 10, 16 y 1 horas sin qu
 pusiera delante. Y una, T-270, estaba **perdiendo su ventana de medición** (11:00-13:00) sin que
 nadie lo supiera, porque la sección salía al final de 128 líneas.
 
+## Mergear una rama CORTADA ANTES de [T-532] (una ficha = un fichero)
+
+Desde T-532 el contenido vive en `docs/roadmap/tareas/T-nnn.md` y
+`docs/roadmap/tareas-pendientes.md` es un **índice GENERADO**. Una rama abierta antes de ese
+cambio edita el índice, no la ficha — y hay que llevarlo a su sitio a mano.
+
+**Los dos casos, y el segundo es el traicionero:**
+
+1. **Git da CONFLICTO** en `tareas-pendientes.md`. Se ve, y se resuelve.
+2. **Git NO da conflicto** y auto-fusiona. Parece lo bueno y es lo malo: el texto entra en un
+   fichero **generado**, así que la siguiente regeneración lo borra. **Pasó en 2 de las 3 ramas
+   que se mergearon el 08/08** (T-679 y T-465) — ninguna dio conflicto.
+
+**La receta, igual en los dos casos:**
+
+```bash
+git merge --no-ff origin/flota/<rama>
+# si hay conflicto en el índice, quédate con el TUYO (es el generado, ya al día):
+git checkout --ours docs/roadmap/tareas-pendientes.md && git add docs/roadmap/tareas-pendientes.md
+
+# lleva la ficha del índice a SU fichero (esto es lo que se olvida):
+awk '/^### \[T-nnn\]/{f=1} f&&/^### \[T-/&&!/T-nnn/{exit} f' \
+  docs/roadmap/tareas-pendientes.md > docs/roadmap/tareas/T-nnn.md
+
+node -e "require('./lib/backlog/fichasDir.cjs').regenerarIndice()"
+```
+
+**Comprueba SIEMPRE que el índice y la ficha coinciden**, aunque el merge fuera limpio:
+
+```bash
+diff <(awk '/^### \[T-nnn\]/{f=1} f&&/^### \[T-/&&!/T-nnn/{exit} f' docs/roadmap/tareas-pendientes.md) \
+     docs/roadmap/tareas/T-nnn.md
+```
+
+**No se pierde en silencio**: el guardarraíl de CI (`backlogRegistry.guardrail` → *«regenerar el
+índice desde los ficheros fuente da EXACTAMENTE el fichero comiteado»*) falla si divergen —
+comprobado provocándolo a propósito. Pero te lo dice en CI y con el commit ya hecho; esta receta
+es para no llegar ahí.
+
 ## Manuales relacionados
 
 - **🧩 El SISTEMA entero (diseño, principios y cómo portarlo):** [`sistema-sesiones-paralelas.md`](./sistema-sesiones-paralelas.md) — este runbook cuenta CÓMO se opera el backlog; aquél explica **por qué** el andamiaje de sesiones paralelas es como es.
