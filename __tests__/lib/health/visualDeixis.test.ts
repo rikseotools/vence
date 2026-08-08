@@ -186,6 +186,58 @@ describe('visualDeixis — la pregunta SÍ tiene la imagen guardada', () => {
   })
 })
 
+describe('deixis NUMERADA — la figura rotulada que el detector no veía (T-691)', () => {
+  // La cazó una usuaria, no el barrido: el día de su impugnación el detector daba CERO.
+  it('«En la figura 1 … el resultado de la Figura 2» (pregunta 3a8c8b38, impugnación 99ec0b16)', () => {
+    expect(
+      classifyVisualDeixis({
+        questionText:
+          'En la figura 1, tenemos las ventas de varios productos, y queremos calcular cuantos kilos ' +
+          'hemos vendido por tipo de producto. Indica la respuesta correcta, para obtener el resultado de la Figura 2:',
+        ...SIN_IMAGEN,
+      }).flagged,
+    ).toBe(true)
+  })
+
+  it('«vemos en la Figura 1 cómo están dispuestos los campos» (pregunta e615086f)', () => {
+    expect(
+      classifyVisualDeixis({
+        questionText: 'En WRITER, cuando queremos hacer una combinación de correspondencia… En el ejemplo, vemos en la Figura 1, como están dispuestos los campos.',
+        ...SIN_IMAGEN,
+      }).flagged,
+    ).toBe(true)
+  })
+
+  // Los DOS falsos positivos medidos al calibrar: por eso el patrón NO incluye tabla ni gráfico.
+  it('NO marca «una tabla 2x2» (concepto estadístico, no una figura)', () => {
+    expect(
+      classifyVisualDeixis({
+        questionText: 'En una tabla 2x2, si no se cumplen las condiciones de aplicación del test de Chi cuadrado…',
+        ...SIN_IMAGEN,
+      }).flagged,
+    ).toBe(false)
+  })
+
+  it('NO marca «las tablas tabla1 y tabla2» (nombres de tablas SQL)', () => {
+    expect(
+      classifyVisualDeixis({
+        questionText: "¿Cuál es la sintaxis correcta para realizar un INNER JOIN entre las tablas 'tabla1' y 'tabla2'?",
+        ...SIN_IMAGEN,
+      }).flagged,
+    ).toBe(false)
+  })
+
+  it('una pregunta CON imagen no se marca aunque cite la figura 1', () => {
+    expect(
+      classifyVisualDeixis({
+        questionText: 'En la figura 1 se ve la hoja de cálculo…',
+        imageUrl: 'https://cdn.vence.es/figura1.png',
+        contentData: null,
+      }).flagged,
+    ).toBe(false)
+  })
+})
+
 describe('visualDeixis — los patrones son de Postgres (ARE), no de JS', () => {
   it('usan \\y (frontera de palabra de Postgres), que el espejo JS traduce a \\b', () => {
     expect(VD_STRONG).toContain('\\y')

@@ -1931,7 +1931,11 @@ export class ContentHealthSweepService {
       '|(¿qu[ée]\\s+(significa|representa|indica)\\s+(este|el\\s+siguiente)\\s+(icono|s[íi]mbolo|pictograma|gr[áa]fico))' +
       '|(\\y(icono|s[íi]mbolo|pictograma|gr[áa]fico|captura|divisa|distintivo|emblema)\\s+(mostrad\\w+|adjunt\\w+|que\\s+se\\s+muestra|siguiente|anterior|de\\s+la\\s+(imagen|figura|fotograf\\w+))\\y)' +
       '|(\\y(restas|celda|celdas|f[óo]rmula|f[óo]rmulas|tabla|query|consulta|marca|base\\s+de\\s+datos|diagrama)\\w*\\s+\\w*\\s*(de|en)\\s+la\\s+imagen\\y)' +
-      '|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))';
+      '|(\\yde\\s+la\\s+imagen[,. ]+(indica|se[ñn]ale|cu[áa]l|obten|calcul))' +
+      // Deixis NUMERADA — «en la figura 1», «el resultado de la Figura 2». [T-691]
+      // Acotado a figura/fig./imagen: con `tabla` y `gráfico` dentro, 2 de 4 eran falsos
+      // positivos («tabla 2x2» de Chi cuadrado, «tabla1»/«tabla2» de un INNER JOIN).
+      '|(\\y(figura|fig\\.|imagen)\\s*[0-9])';
     const VD_FP =
       'imagen corporal|imagen p[úu]blica|imagen de la administraci|imagen de las mujeres|' +
       'de la imagen y|imagen y (el |del )?sonido|imagen y sonido|derecho a la propia imagen|' +
