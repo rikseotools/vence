@@ -1559,12 +1559,32 @@ async function main() {
         // servicio llevaba horas corriendo con la sonda dentro y había UN solo evento.
         // Aquí corre cada pasada (5 min por defecto), que es lo que da a las reglas material
         // periódico con el que disparar.
-        for (const w of MAQ.trabajadoresQueReciben()) {
+        //
+        // ⚠️ [T-712] `trabajadoresQueReciben()` devuelve `{ trabajador, maquina }`, NO nombres.
+        // La primera versión iteraba `for (const w of …)` y le pasaba el OBJETO a `maquinaDe`,
+        // que devolvía `null`, y el `continue` de la línea siguiente se lo tragaba: 439 pasadas
+        // sin medir una sola vez, mientras el panel —que sí desestructuraba— daba el veredicto
+        // correcto. Ahora `maquinaDe` LANZA ante un tipo que no sea string, así que el error no
+        // puede volver a esconderse detrás de un `continue`.
+        for (const { trabajador: w } of MAQ.trabajadoresQueReciben()) {
           const m = MAQ.maquinaDe(w)
           if (!m || medidas.has(m.nombre)) continue
           medidas.set(m.nombre, true) // una sola máquina por pasada, aunque tenga 4 trabajadores
           const medida = medirMaquina(w)
-          if (!medida) continue
+          // ── UNA SONDA QUE NO PUEDE MEDIR NO ES UNA MÁQUINA SANA ([T-712]) ───────────────
+          // Antes esto era un `continue` mudo, y por eso «todo bien» y «no he podido mirar» se
+          // veían igual: cero eventos. Se emite el hueco para que el silencio sea visible.
+          if (!medida) {
+            console.log(`  ⚪ MÁQUINA ${m.nombre}: no se pudo medir`)
+            try {
+              await sql`
+                INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+                VALUES ('fargate', 'warn', 'flota_maquina_salud', 'flota',
+                        ${`máquina ${m.nombre} sin_medida: la sonda no devolvió datos`},
+                        ${sql.json({ maquina: m.nombre, estado: 'sin_medida', trabajadorSondeado: w })})`
+            } catch { /* la telemetría nunca puede parar al supervisor */ }
+            continue
+          }
           const v = SALUD.clasificarMaquina(medida)
           if (v.estado === 'ok') continue
           console.log(`  ${v.estado === 'ahogada' ? '🔴' : '🟠'} MÁQUINA ${m.nombre}: ${v.motivos[0]}`)
