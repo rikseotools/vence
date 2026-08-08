@@ -3665,6 +3665,32 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'variable) y las marca `inaccesible`, que NO es un cambio. Frase-gatillo: «revisa los ' +
       'cambios de fuentes legales».',
   },
+  // ── Particionar observable_events: retención por DROP PARTITION, no DELETE ────────────────
+  particionar_observable_events: {
+    titulo: '`observable_events` (6,9 GB) → particionada por día (`created_at`), retención = DROP PARTITION (T-360)',
+    ruta: 'scripts/db/particionar-observable-events.cjs',
+    estado: 'vivo',
+    runbook: 'docs/roadmap/particionado-telemetria.md',
+    notas:
+      'node scripts/db/particionar-observable-events.cjs <plan|create|backfill|swap|verify> ' +
+      '[--apply]. Dry-run por defecto en TODOS los subcomandos. `plan` es de solo lectura y funciona ' +
+      'con VENCE_LECTOR_URL (lo puede correr un `trabajador`); `create`/`backfill`/`swap` necesitan ' +
+      'DATABASE_URL de escritura y — a fecha 07/08/2026 — SIN EJECUTAR ni probar contra un Postgres ' +
+      'real (esta máquina no tiene psql/Docker): revisar el DDL que imprime `plan` antes de aplicar. ' +
+      'DIARIA, no mensual (la 1ª versión del roadmap proponía mensual, error con retención EXACTA ' +
+      'de 30 días: una partición mensual no se puede DROP hasta que TODA quede fuera de la ventana, ' +
+      'hasta ~60 días de retención real). Partición por `created_at` (hora de inserción), NO por ' +
+      '`ts` (hora del evento, puede venir corrupta desde el cliente) — mismo criterio que ya usa ' +
+      '`telemetry-retention.service.ts`. Núcleo puro `lib/db/particionadoObservableEvents.cjs` ' +
+      '(14 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
+      'disponible en RDS SIN activar el background worker (evita tocar `shared_preload_libraries` ' +
+      'del parameter group + reboot, el mismo tipo de operación que costó el gotcha de ' +
+      '`hot_standby_feedback` en la réplica): `create_parent`/`run_maintenance_proc` se llaman por ' +
+      'SQL desde el cron existente, sin bgw. `telemetry-retention.service.ts` ya detecta ' +
+      '`pg_class.relkind` en cada `run()` y usa `partman.run_maintenance_proc()` en cuanto la tabla ' +
+      'pase a estar particionada — desplegable HOY sin riesgo, sigue la rama DELETE de siempre ' +
+      'mientras la migración no se aplique.',
+  },
 }
 
 /** Herramientas `vivo` que escriben un recurso dado. */

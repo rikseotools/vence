@@ -87,4 +87,72 @@ tiene ~30 d de datos, se puede recrear particionada y backfillear solo lo recien
 ## 7. Estado
 
 - ✅ Fase 1 (filtro origen + retención 30d cron + guardarraíl + purga + índice `created_at`) — hecha 11/07 (rama `fix/telemetria-401-retencion`).
-- ⏳ Fase 2 (este documento) — planificada, sin implementar. Sesión aparte.
+- 🟡 Fase 2 (este documento) — **T-360 (07/08/2026): diseño cerrado + código listo, migración SQL SIN aplicar.**
+  Alcance recortado a `observable_events` sola (la mayor y la más urgente; `validation_error_logs`/`pwa_events` quedan para otra ficha con este mismo patrón).
+
+### 7.1 Decisión que CORRIGE este documento: partición DIARIA, no mensual
+
+El §3 de más arriba proponía "RANGE mensual". **Es un error con la retención EXACTA de 30 días
+que ya existe**: una partición mensual no se puede `DROP` hasta que TODA ella caiga fuera de la
+ventana de 30 días — en el peor caso eso retiene datos hasta ~60 días, justo lo contrario de lo
+que el particionado viene a resolver. Con partición **diaria**, cada día se dropea en cuanto
+cumple los 30 días exactos, igual que la retención de hoy. Medido contra RDS el 07/08/2026 sin
+escanear la tabla (`pg_stats.histogram_bounds`, gratis): 85 k-1,27 M filas/día (el pico es el
+incidente 07-10/07 ya documentado), volumen que no acerca a ningún problema de "demasiadas
+particiones" (pg_partman recomienda cientos, no miles — aquí son ~30-40 particiones vivas en todo
+momento con retención de 30d + 7d de premake).
+
+### 7.2 `pg_partman` SIN el background worker (evita tocar el parameter group de RDS)
+
+`pg_partman` 5.2.4 está **disponible** en esta instancia (`SELECT * FROM pg_available_extensions
+WHERE name='pg_partman'` → confirmado 07/08/2026), pero su automatización "en segundo plano"
+(`pg_partman_bgw`) exige añadirlo a `shared_preload_libraries` del parameter group de RDS **y
+rebootear la instancia** — mismo tipo de operación que costó el gotcha de `hot_standby_feedback`
+en la réplica (§3 del runbook de contención). **No hace falta para nada de esto**: las funciones
+SQL de `pg_partman` (`create_parent`, `run_maintenance_proc`) se pueden llamar sin el bgw, así que
+el mantenimiento de particiones se dispara desde el cron `telemetry-retention` que YA EXISTE
+(`backend/src/telemetry-retention/`), sin tocar infraestructura de AWS. Es la opción "Manual" del
+§3 original, pero apoyada en las funciones probadas de `pg_partman` en vez de reimplementar el
+parseo de límites de partición a mano.
+
+### 7.3 Lo construido en T-360 (07/08/2026), sin escritura en RDS
+
+- **`lib/db/particionadoObservableEvents.cjs`** — núcleo puro: nombres/rangos de partición y el
+  DDL exacto (tabla nueva con `PRIMARY KEY (id, created_at)` — obligatorio en Postgres para
+  particionar por rango —, los 8 índices reales medidos contra RDS, el `CHECK` de `severity`).
+  14 tests unitarios, `__tests__/lib/db/particionadoObservableEvents.test.ts`.
+- **`scripts/db/particionar-observable-events.cjs`** — dry-run por defecto, subcomandos `plan`
+  (solo lectura, **ejecutado de verdad contra RDS vía `VENCE_LECTOR_URL` el 07/08/2026** — es lo
+  único que un rol `trabajador` puede correr), `create`/`backfill`/`swap` (requieren
+  `DATABASE_URL` de escritura, **sin ejecutar ni probar contra un Postgres real** — esta máquina
+  no tiene `psql` ni Docker) y `verify` (solo lectura, post-swap).
+- **`backend/src/telemetry-retention/telemetry-retention.service.ts`** — el cron de retención
+  ahora comprueba `pg_class.relkind` de `observable_events` EN CADA EJECUCIÓN: si sigue sin
+  particionar (el estado de HOY), seguridad total — toma la rama DELETE de siempre, sin cambio de
+  comportamiento. En cuanto la migración se aplique y la tabla pase a `relkind='p'`, la MISMA
+  ejecución del cron (sin otro deploy) empieza a llamar a `partman.run_maintenance_proc()` en su
+  lugar. Es deliberado: el código de retención se puede desplegar HOY, antes de la migración, sin
+  ningún riesgo — es la migración la que falta, no el código que la consume. 9 tests
+  (`telemetry-retention.service.spec.ts`, los 5 originales sin tocar + 4 nuevos de la rama por
+  partición).
+- **NO tocado**: ninguna escritura en RDS. `CREATE EXTENSION pg_partman`, la tabla particionada,
+  el backfill y el swap siguen sin ejecutarse — necesitan `DATABASE_URL` de escritura, que un
+  `trabajador` de la flota no tiene por diseño.
+
+### 7.4 Lo que falta, en orden, y quién puede hacerlo
+
+1. `node scripts/db/particionar-observable-events.cjs plan` — releer el DDL que imprime (puede
+   haber cambiado si `observable_events` ganó/perdió columnas o índices desde el 07/08/2026).
+2. Revisar la firma exacta de `partman.create_parent()` contra la documentación oficial de
+   pg_partman 5.2.4 (github.com/pgpartman/pg_partman) — el script la genera de memoria, sin
+   verificarla contra una instancia real; puede variar entre 4.x/5.x.
+3. Si es posible, probar `create`→`backfill`→`swap`→`verify` contra una instancia de prueba antes
+   de tocar `vence-prod`. Si no lo es, aplicar con vigilancia activa (los paneles de salud +
+   `canary_db_pool_failed`) durante y después del `swap`.
+4. `create --apply`, luego `backfill --apply` (repetible, `ON CONFLICT DO NOTHING` por
+   `(id, created_at)` — reanudable si se corta a medias), luego un último `backfill --apply` justo
+   antes de `swap --apply` para minimizar la ventana entre el último backfill y el rename.
+5. `verify` y vigilar 24-48h. Con la app estable: `DROP TABLE observable_events_old;` **a mano, no
+   por script** — es irreversible y merece una decisión explícita, no un flag.
+6. Configurar `partman.part_config` con `retention='30 days'` y `retention_keep_table=false` (el
+   `plan` ya imprime el `UPDATE` exacto).

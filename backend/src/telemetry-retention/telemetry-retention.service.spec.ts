@@ -140,3 +140,109 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.vacuumFailed).toEqual(['observable_events']);
   });
 });
+
+/**
+ * [T-360] Rama de retención por PARTICIÓN. `observable_events` puede convertirse en tabla
+ * particionada sin que este código se vuelva a desplegar — el `run()` decide en cada ejecución
+ * consultando `pg_class.relkind`. Estos tests fijan las DOS mitades de esa decisión: mientras la
+ * tabla NO esté particionada (los 5 tests de arriba, sin tocar) sigue siendo DELETE por lotes; en
+ * cuanto lo esté, pasa a `partman.run_maintenance_proc()` y dejar de intentar un DELETE por lotes
+ * es tan importante como empezar el DROP PARTITION — un `DELETE` sobre una tabla particionada no
+ * está mal, pero sería trabajo duplicado y el objetivo entero de particionar es dejar de hacerlo.
+ */
+function fakeDbParticionada(opts: {
+  particionesAntes: number;
+  particionesDespues: number;
+  validationErrorLogsPendientes?: number;
+}) {
+  const restanteValidation = { validation_error_logs: opts.validationErrorLogsPendientes ?? 0 };
+  const sentencias: string[] = [];
+  let llamadasInherits = 0;
+  return {
+    sentencias,
+    execute: jest.fn(async (q: unknown) => {
+      const texto = JSON.stringify(q);
+      sentencias.push(texto);
+
+      if (texto.includes('pg_class') && texto.includes('relkind')) {
+        return [{ relkind: 'p' }];
+      }
+      if (texto.includes('pg_inherits')) {
+        llamadasInherits += 1;
+        const n = llamadasInherits === 1 ? opts.particionesAntes : opts.particionesDespues;
+        return [{ n }];
+      }
+      if (texto.includes('run_maintenance_proc')) {
+        return comoPostgresJs(0);
+      }
+      // validation_error_logs sigue el camino de siempre (DELETE por lotes) — no particionada en este pase.
+      if (texto.includes('validation_error_logs') && texto.includes('DELETE')) {
+        const lote = Math.min(50_000, restanteValidation.validation_error_logs);
+        restanteValidation.validation_error_logs -= lote;
+        return comoPostgresJs(lote);
+      }
+      if (texto.includes('count(*)') && texto.includes('validation_error_logs')) {
+        const arr: unknown[] = [{ n: restanteValidation.validation_error_logs }];
+        Object.assign(arr, { count: 1 });
+        return arr;
+      }
+      if (texto.includes('count(*)') && texto.includes('observable_events')) {
+        // atrasoDe de observable_events: con retención por partición, 0 es el verde esperado.
+        const arr: unknown[] = [{ n: 0 }];
+        Object.assign(arr, { count: 1 });
+        return arr;
+      }
+      return comoPostgresJs(0); // VACUUM u otra sentencia sin relevancia para el test
+    }),
+  };
+}
+
+describe('TelemetryRetentionService: retención por PARTICIÓN cuando la tabla ya está particionada (T-360)', () => {
+  it('detecta la partición y NO intenta un DELETE por lotes sobre observable_events', async () => {
+    const db = fakeDbParticionada({ particionesAntes: 34, particionesDespues: 30 });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsPorParticion).toBe(true);
+    expect(res.observableEventsDeleted).toBe(0);
+    // Ningún DELETE sobre observable_events — el camino viejo debe quedar callado del todo.
+    expect(
+      db.sentencias.some((s) => s.includes('DELETE') && s.includes('observable_events')),
+    ).toBe(false);
+  });
+
+  it('reporta cuántas particiones se dropearon comparando antes/después de run_maintenance_proc', async () => {
+    const db = fakeDbParticionada({ particionesAntes: 34, particionesDespues: 30 });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsParticionesDropeadas).toBe(4);
+    expect(db.sentencias.some((s) => s.includes('run_maintenance_proc'))).toBe(true);
+  });
+
+  it('si no se dropeó ninguna partición (noche sin nada que expulsar), lo dice como 0, no como error', async () => {
+    const db = fakeDbParticionada({ particionesAntes: 30, particionesDespues: 30 });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsParticionesDropeadas).toBe(0);
+    expect(res.observableEventsPorParticion).toBe(true);
+  });
+
+  it('validation_error_logs SIGUE por DELETE aunque observable_events ya esté particionada — son independientes', async () => {
+    const db = fakeDbParticionada({
+      particionesAntes: 31,
+      particionesDespues: 30,
+      validationErrorLogsPendientes: 70_000,
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsPorParticion).toBe(true);
+    expect(res.validationErrorLogsDeleted).toBe(70_000);
+  });
+});

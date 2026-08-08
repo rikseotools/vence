@@ -9212,6 +9212,42 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 - **⚠️ AL DIAGNOSTICAR, NO EMPEORARLO:** las consultas de diagnóstico sobre esta tabla son parte del problema. Un `count(*) FILTER (…)` sobre los 10,7 M **no terminó en 5 minutos** y hubo que matarlo. Ventanas cortas y `EXPLAIN`, nunca contar.
 - **Relacionada:** `docs/runbooks/contencion-rds-paneles-admin.md` (la escalera completa, de barato a caro).
 
+#### 🔧 Diseño cerrado + código listo, migración SQL SIN aplicar (07/08, w2)
+
+**Ya había un roadmap** (`docs/roadmap/particionado-telemetria.md`, 11/07, "planificada, sin
+implementar") — no se ha rehecho, se ha EJECUTADO lo que un `trabajador` de lectura puede ejecutar
+y corregido un error de diseño que tenía.
+
+- **Corrección al roadmap: partición DIARIA, no mensual.** Con retención EXACTA de 30 días (la de
+  hoy), una partición mensual no se puede `DROP` hasta que TODA caiga fuera de la ventana — hasta
+  ~60 días de retención real, justo lo contrario de lo que se busca. Medido contra RDS sin escanear
+  la tabla (`pg_stats.histogram_bounds`, gratis): 85 k-1,27 M filas/día, 8.464.499 filas vivas
+  (07/08; bajó de los 10,7 M de la ficha original porque la retención sigue drenando sola) —
+  volumen que no acerca a ningún problema de "demasiadas particiones" con partición diaria.
+- **Construido (empujado, con tests):**
+  - `lib/db/particionadoObservableEvents.cjs` — núcleo puro (nombres/rangos/DDL), 14 tests.
+  - `scripts/db/particionar-observable-events.cjs` — dry-run por defecto, subcomandos
+    `plan|create|backfill|swap|verify`. **`plan` ejecutado de verdad contra RDS real** (vía
+    `VENCE_LECTOR_URL` — lo único que un rol trabajador puede correr) y **un bug real cazado al
+    ejecutarlo**: reusar `$1` para `pg_total_relation_size($1)` Y `WHERE relname = $1` en la misma
+    query da `operator does not exist: name = regclass` (Postgres unifica el tipo de un parámetro
+    en TODA la sentencia) — corregido con dos placeholders. `create/backfill/swap` generan DDL/DML
+    correcto en apariencia pero **sin ejecutar ni probar contra un Postgres real** (esta máquina no
+    tiene `psql` ni Docker).
+  - `backend/src/telemetry-retention/telemetry-retention.service.ts` — comprueba
+    `pg_class.relkind` de `observable_events` EN CADA `run()`: sigue sin particionar hoy → toma la
+    rama DELETE de siempre (los 5 tests originales pasan sin tocarlos, confirmando cero cambio de
+    comportamiento); en cuanto la migración se aplique y pase a `relkind='p'`, la MISMA ejecución
+    (sin otro deploy) llama a `partman.run_maintenance_proc()`. **Seguro desplegar esta pieza HOY**,
+    antes de que exista la migración. 4 tests nuevos de la rama particionada (9 en total).
+  - Registrado en `toolRegistry.ts`. Detalle completo, incluida la decisión de usar `pg_partman`
+    SIN el background worker (evita tocar `shared_preload_libraries` + reboot de RDS), en
+    `docs/roadmap/particionado-telemetria.md` §7.
+- **Falta, y requiere `DATABASE_URL` de escritura que este rol no tiene:** aplicar `create` →
+  `backfill` (repetible) → `swap` → `verify` contra RDS, idealmente probado antes contra una
+  instancia de prueba (no hay una a mano en esta sesión). El `plan` ya deja el DDL exacto para
+  revisar antes de aplicar. Detalle paso a paso en el roadmap §7.4.
+
 ### [T-353] 🟠 [ABIERTO 31/07] Los 38 endpoints fuera de `/api/stripe` que cogen el `userId` del cliente sin verificar
 
 - **DE DÓNDE SALE:** al arreglar [T-340] se contaron **38 endpoints más** con exactamente el mismo patrón —el `userId` llega en el cuerpo o la query y nadie lo contrasta con el token— fuera de `/api/stripe`. Aquellos movían dinero y por eso se atacaron primero; estos mueven datos personales, progreso, favoritos y feedback.

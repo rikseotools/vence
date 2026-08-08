@@ -67,6 +67,15 @@ export class TelemetryRetentionCron {
           // borrado sigue siendo `status: 'success'` aunque esto no esté vacío: VACUUM
           // es higiene, no la medida — ver el comentario en TelemetryRetentionService.
           vacuumFailed: result.vacuumFailed,
+          // [T-360] El día que se aplique el particionado, `observableEventsDeleted` pasa a 0
+          // para siempre porque la retención ya no borra filas, dropea particiones. Sin estos
+          // dos campos ese evento diría «0 borradas» sin ningún rastro de que sí se está
+          // drenando — exactamente el defecto que T-613 tuvo con `remaining`. Van aquí desde
+          // ya, aunque hoy valgan false/0: el emisor no se puede quedar para el día del swap,
+          // que es cuando nadie se acuerda.
+          observableEventsPorParticion: result.observableEventsPorParticion,
+          observableEventsParticionesDropeadas:
+            result.observableEventsParticionesDropeadas,
         },
       });
     } catch (error) {
