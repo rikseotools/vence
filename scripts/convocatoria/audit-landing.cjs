@@ -54,11 +54,21 @@ if (!SLUG) {
 }
 
 function conectar() {
-  if (!process.env.DATABASE_URL) {
-    console.error('❌ DATABASE_URL no configurado (RDS)')
+  // [T-152] solo leía DATABASE_URL (rol de coordinación, sin acceso a oposiciones_ssot desde
+  // [T-539]) — un trabajador de la flota con VENCE_LECTOR_URL no podía correr esta auditoría,
+  // justo el paso que su propia ficha exige antes de proponer un envío. `urlLecturaNegocio()`
+  // (T-624) es el punto único que prefiere el rol de lectura; el INSERT de la traza al final ya
+  // está en un try/catch fail-open, así que con el rol solo-lectura sigue auditando y solo pierde
+  // la traza, avisando por consola.
+  const { urlLecturaNegocio } = require(path.join(RAIZ, 'lib', 'db', 'negocioSoloLectura.cjs'))
+  let url
+  try {
+    url = urlLecturaNegocio()
+  } catch (e) {
+    console.error(`❌ ${e.message}`)
     process.exit(2)
   }
-  return postgres(process.env.DATABASE_URL, { prepare: false, max: 2, ssl: { rejectUnauthorized: false }, onnotice: () => {} })
+  return postgres(url, { prepare: false, max: 2, ssl: { rejectUnauthorized: false }, onnotice: () => {} })
 }
 
 /** Superficies del registro. Se lee el .ts con un parseo mínimo para no arrastrar tsx aquí. */
