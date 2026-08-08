@@ -64,3 +64,64 @@ describe('[T-620] clasificarShaEspera', () => {
     expect(v.motivo.length).toBeGreaterThan(40)
   })
 })
+
+/**
+ * [T-735] La pregunta HERMANA: el sha de espera puede estar impecable y no llevar dentro nada de
+ * la tarea.
+ *
+ * Medido el 08/08/2026 sobre las 57 tareas vivas con un pendiente escrito: 5 no tenían NI UN
+ * commit declarante en `origin/main` (T-328, T-352, T-381, T-411, T-562), más T-600 y T-635
+ * encontradas y fusionadas ese mismo día. Siete en una jornada. Y no fallaban en silencio: el
+ * canario de T-381 salía ROJO y parecía que su arreglo no servía; T-352 llevaba 7 días sin
+ * emitir su evento. En los dos casos el código sencillamente no estaba en main.
+ */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { clasificarTrabajoEnMain } = require('../../lib/backlog/esperaDeploy.cjs')
+
+describe('[T-735] clasificarTrabajoEnMain', () => {
+  it('con trabajo publicado en main, la espera significa algo: no molesta', () => {
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 3, enMain: 3, enHead: 3 })
+    expect(v.estado).toBe('en_main')
+    expect(v.bloquea).toBe(false)
+  })
+
+  it('basta UN commit en main: una tarea puede seguir trabajándose después de publicar parte', () => {
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 4, enMain: 1, enHead: 4 })
+    expect(v.estado).toBe('en_main')
+    expect(v.bloquea).toBe(false)
+  })
+
+  it('EL CASO MEDIDO: commits solo en otra rama → bloquea, porque ningún deploy puede incluirlos', () => {
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 3, enMain: 0, enHead: 0 })
+    expect(v.estado).toBe('sin_fusionar')
+    expect(v.bloquea).toBe(true)
+    expect(v.motivo).toMatch(/otra rama/)
+  })
+
+  it('commiteado y sin pushear NO bloquea: contradiría a clasificarShaEspera, que ya lo permite', () => {
+    // Dos puertas del MISMO comando con criterios distintos no protegen, se estorban (T-375).
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 2, enMain: 0, enHead: 2 })
+    expect(v.estado).toBe('sin_pushear')
+    expect(v.bloquea).toBe(false)
+  })
+
+  it('sin commits que la declaren NO bloquea: media ficha del repo no se despliega', () => {
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 0, enMain: 0, enHead: 0 })
+    expect(v.estado).toBe('sin_commits')
+    expect(v.bloquea).toBe(false)
+  })
+
+  it('sin git: FAIL-OPEN, como el resto del andamiaje', () => {
+    expect(clasificarTrabajoEnMain({ gitDisponible: false }).bloquea).toBe(false)
+    expect(clasificarTrabajoEnMain({}).bloquea).toBe(false)
+    expect(clasificarTrabajoEnMain().bloquea).toBe(false)
+    expect(clasificarTrabajoEnMain({ gitDisponible: true }).estado).toBe('desconocido')
+  })
+
+  it('el sha de espera y el trabajo de la tarea son preguntas DISTINTAS (el fallo del 08/08)', () => {
+    // `50e50e08` estaba en origin/main y era un deploy real de esa tarde: la puerta hermana lo
+    // da por bueno, con razón. Y aun así ninguno de los commits de T-352/T-381 iba dentro.
+    expect(clasificarShaEspera({ existe: true, enOriginMain: true, enHead: false }).bloquea).toBe(false)
+    expect(clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 3, enMain: 0, enHead: 0 }).bloquea).toBe(true)
+  })
+})

@@ -646,12 +646,41 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         // teclear `done`, es ir a mirar producción. Con la frase anterior, el atajo mental era
         // cerrarlas — y así es como una tarea se da por buena sin que nadie haya verificado nada,
         // que es el fallo que motivó [T-392].
-        console.log(`\n⏰ ${paraVerificar.length} IMPLEMENTADA(S) Y SIN COMPROBAR — hay que MIRAR producción antes de cerrarlas:`);
-        for (const r of paraVerificar) {
-          console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
-          console.log(`      ▶ falta: ${String(r.resume_check).slice(0, 160)}`);
+        // ── T-735: separar las que NO tienen su código en main ────────────────────────────
+        // Anunciarlas juntas es lo que costó la tarde del 08/08: 5 de las de este cubo no tenían
+        // NI UN commit declarante en `origin/main`, así que «ir a mirar producción» no podía
+        // encontrar nada. Piden una acción DISTINTA (fusionar), no la misma. Se mide solo si el
+        // cubo es pequeño —es un `git log` + un `merge-base` por commit— y fail-open: si git no
+        // contesta, se listan como siempre.
+        const sinFusionar = new Map();
+        if (paraVerificar.length && paraVerificar.length <= 15) {
+          try {
+            const { trabajoEnMain } = require('./backlog/verificacion.cjs');
+            const { clasificarTrabajoEnMain } = require('../lib/backlog/esperaDeploy.cjs');
+            for (const r of paraVerificar) {
+              const t = clasificarTrabajoEnMain(trabajoEnMain(r.id));
+              if (t.estado === 'sin_fusionar') sinFusionar.set(r.id, t);
+            }
+          } catch { /* fail-open: sin veredicto se listan todas juntas, como antes */ }
         }
-        console.log('   (cógelas con `claim <id>`: imprime dónde se dejaron)');
+        const listas = paraVerificar.filter((r) => !sinFusionar.has(r.id));
+
+        if (listas.length) {
+          console.log(`\n⏰ ${listas.length} IMPLEMENTADA(S) Y SIN COMPROBAR — hay que MIRAR producción antes de cerrarlas:`);
+          for (const r of listas) {
+            console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
+            console.log(`      ▶ falta: ${String(r.resume_check).slice(0, 160)}`);
+          }
+          console.log('   (cógelas con `claim <id>`: imprime dónde se dejaron)');
+        }
+        if (sinFusionar.size) {
+          console.log(`\n🔀 ${sinFusionar.size} IMPLEMENTADA(S) EN UNA RAMA SIN FUSIONAR — mirar producción NO serviría de nada:`);
+          for (const r of paraVerificar.filter((x) => sinFusionar.has(x.id))) {
+            console.log(`   ${r.id}  ${String(r.title).slice(0, 60)}`);
+            console.log(`      ▶ ninguno de sus commits está en origin/main: primero se fusiona su rama`);
+          }
+          console.log('   (`git branch -r --list "*<id>*"` para verlas · T-735)');
+        }
       }
       // ── CERRADAS SIN ARCHIVAR (T-392 F2/F3) ────────────────────────────────────────────
       // Distinta de la de arriba: aquella es código sin comprobar TODAVÍA cerrado (`done`
@@ -1620,6 +1649,32 @@ async function despertarPorDeploy(s, shas, opts = {}) {
             process.exit(2);
           }
           if (v.estado === 'sin_pushear') console.log(`   ⚠️  ${v.motivo}`);
+        }
+
+        // ── ¿y el TRABAJO de la tarea, ha llegado a main? (T-735) ──────────────────────────
+        // El sha de espera puede estar impecable y aun así no llevar dentro NADA de esta tarea:
+        // `50e50e08` estaba en `origin/main` y ninguno de los commits de T-352/T-381 iba en él.
+        // Se reusan `commitsDe` (que ya distingue DECLARAR de CITAR, T-403) y el mismo
+        // `merge-base --is-ancestor` de arriba: ni criterio nuevo ni herramienta nueva.
+        {
+          const { clasificarTrabajoEnMain } = require('../lib/backlog/esperaDeploy.cjs');
+          let hechos = { gitDisponible: false };
+          try { hechos = require('./backlog/verificacion.cjs').trabajoEnMain(id); }
+          catch { hechos = { gitDisponible: false }; }
+
+          const t = clasificarTrabajoEnMain(hechos);
+          if (t.bloquea) {
+            console.error(`❌ ${id} — ${t.motivo}.`);
+            console.error('   Anunciarla como «lista para verificar» sería mentir: no hay nada desplegable que mirar.');
+            console.error('   Medido el 08/08 (T-735): 7 tareas en un solo día así — el canario de una salía ROJO');
+            console.error('   y parecía que su arreglo fallaba, cuando el arreglo sencillamente no estaba en main.');
+            console.error('   La salida es una sola acción — fusiona su rama y vuelve a pausar:');
+            console.error(`     git merge --no-ff origin/flota/<rama-de-${id}>   &&   git push origin HEAD:main`);
+            console.error(`     node scripts/backlog.cjs pause ${id} --tras-deploy <sha> --superficie ${superficie} …`);
+            console.error('   Si de verdad no aplica (el trabajo no se despliega), usa --hasta en vez de --tras-deploy.');
+            process.exit(2);
+          }
+          if (t.estado === 'sin_pushear') console.log(`   ⚠️  ${t.motivo}`);
         }
       } else {
         try { hasta = parseHasta(); } catch (e) { console.error(`❌ ${e.message}`); process.exit(2); }
