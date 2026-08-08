@@ -9,7 +9,7 @@
 // No tienen estado ni dependencias de NestJS — son funciones puras o queries
 // que reciben el cliente `db` como parámetro.
 
-import { and, eq, inArray, or, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleDB } from '../db/database.module';
 import { laws, questions, topicScope, topics } from '../db/schema';
 import type { SectionFilter } from './test-config.types';
@@ -222,6 +222,16 @@ export function getValidExamPositions(positionType: string): string[] {
  * se cuenta NINGUNA oficial, en vez de omitir el filtro y contar las de otras oposiciones.
  */
 export function buildOfficialExamFilter(positionType: string): SQL {
+  // T-597 (07/08, decisión de Manuel): una PERSONALIZADA sí admite oficiales. El caso
+  // Laura protege de OTRA oposición; en una personalizada no hay ninguna de la que
+  // protegerse (el usuario eligió los artículos él mismo). Es EXACTAMENTE el caso
+  // Sergio (feedback 87e987d8) que motivó esta ficha: el contador de este gemelo es el
+  // que producción ejecuta de verdad (test-config enrutado al backend), así que sin
+  // este mismo cambio aquí el arreglo del frontend queda inerte, igual que T-507/T-551.
+  // Gemelo del early-return de `lib/api/oposicion-scope/queries.ts` (frontend).
+  if (positionType && positionType.toLowerCase().startsWith('personalizada_')) {
+    return sql`true`;
+  }
   const validPositions = getValidExamPositions(positionType);
   if (validPositions.length === 0) {
     return eq(questions.isOfficialExam, false);
