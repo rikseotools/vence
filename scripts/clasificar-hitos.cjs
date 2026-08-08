@@ -27,6 +27,9 @@
  *    descripción diga "pendiente" — ese "pendiente" suele referirse a OTRO evento futuro que la
  *    descripción menciona. Sin esta regla, 24 registros oficiales se marcaban como estimación.
  *  · Verificar SIEMPRE con --dry-run y mirar el reparto antes de aplicar.
+ *  · `--apply` sobrescribe TODOS los hitos que consulta (todo el catálogo, o los de --slug), no
+ *    solo los que cambian. Los ids en `NO_TOCAR_TIPO` (más abajo) quedan fuera del UPDATE — es la
+ *    única forma de proteger un hito adjudicado a mano de un re-cálculo mecánico posterior.
  */
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
@@ -34,13 +37,27 @@ const { Client } = require('pg')
 const APPLY = process.argv.includes('--apply')
 
 // Orden = prioridad: la primera regla que casa, gana.
+//
+// `tribunal_constituido` va ANTES que `nombramientos` (T-170, 08/08 — regresión encontrada en
+// revisión): "Nombramiento del Tribunal Calificador" contiene la palabra "nombramiento", así que
+// con el orden inverso ganaba `nombramientos` por prioridad de array, no por precisión — pese a
+// que `tribunal_constituido` también casaba (su propio patrón incluye "tribunal...nombrad").
+// Medido contra los 1.084 hitos reales: el reorden cambia SOLO 3 hitos, los 3 con "tribunal" en
+// el título ("Nombramiento de tribunales calificadores" ×2, "Nombramiento del Tribunal
+// Calificador" ×1) — cero riesgo de arrastrar nombramientos de PERSONAS (el patrón de
+// `tribunal_constituido` exige "tribunal"/"comisión" cerca, así que "Nombramiento de
+// funcionarios en prácticas" o "Toma de posesión" siguen cayendo en `nombramientos` sin tocar).
+// Uno de los 3 (ddb30ace) ya estaba en BD como `tribunal_constituido` — tipado a mano
+// correctamente, con `cita_literal` confirmando "se nombra el Tribunal Calificador" — y la regla
+// vieja lo habría degradado a `nombramientos` si se aplicaba tal cual: es la prueba de que el
+// reorden es la lectura correcta, no solo una excepción para ese caso.
 const TIPO = [
-  ['nombramientos',         /nombramiento|toma de posesi|adjudicaci.n de (destino|plaza)/i],
   ['reconocimiento_medico', /reconocimiento m.dico|revisi.n m.dica|prueba m.dica/i],
   // `designaci.n.*tribunal` (T-170, 07/08): "Designación del Tribunal de selección" caía a
   // 'otro' porque la regla solo reconocía "tribunal designado" (verbo DESPUÉS del sustantivo),
   // no el orden inverso. Medido: único hito con "designación"+"tribunal" en 1.084, sin riesgo.
   ['tribunal_constituido',  /tribunal(es)? (designad|calificador|coordinador|nombrad)|constituci.n.*tribunal|composici.n.*(tribunal|comisi.n)|designaci.n.*tribunal/i],
+  ['nombramientos',         /nombramiento|toma de posesi|adjudicaci.n de (destino|plaza)/i],
   ['plantilla_respuestas',  /plantilla|cuestionario|alegacion|impugnaci/i],
   // `acumulaci.n.*plaza` (T-170, 07/08): "Decreto de acumulación de plazas (9 → 17)" y
   // "Acumulación de plazas (11 plazas)" caían a 'otro' — acumular plazas de OEPs anteriores es
@@ -87,6 +104,16 @@ const NO_REGISTRO = /previsi|previsible|estimad|pendiente|sin fijar|por confirma
 const CITA_REGLA  = /no podr. (comenzar|celebrarse)|transcurrid|seg.n (las )?bases|base \d|conforme a|establece que|m.nimo de \d|plazo de \d+ (meses|d.as|h.biles)|dos meses|se determinar. con|con un m.nimo/i
 const REF_BOLETIN = /(BOE|BOCM|BORM|BOP|DOGV|DOGC|DOG|BOC|BOCYL|BOIB|BON|BOPV|BOJA|BOR|BOCCE|BOUC|BOA|DOE|BOPA)[\s\wº#-]{0,12}?(\d|A-\d)|(Orden|Decreto|Resoluci.n|RD)\s*[\wº/]*\d{1,4}\/\d{4}/i
 
+// `tipo` se decide SOLO por `h.titulo`, nunca por `h.descripcion` — probado y descartado
+// (T-170, 08/08), no por descuido. Medido contra los 1.084 hitos reales: buscar también en
+// `descripcion` con la MISMA lista de reglas cambia 124 clasificaciones, y la inmensa mayoría son
+// peores, no mejores — la descripción suele traer un dato de contexto (una fecha límite futura,
+// un trámite relacionado) que dispara una regla de prioridad más alta y desplaza al hito de su
+// categoría correcta. Ejemplo real: "Cierre del plazo de inscripción" (`plazo_fin`, correcto)
+// pasa a `lista_provisional` solo porque su descripción dice "pendiente de lista de personas
+// admitidas" — un evento FUTURO que el hito menciona, no lo que el hito ES. El título es la
+// fuente fiable porque lo redacta quien tipa el hito para nombrar EL EVENTO; la descripción es
+// prosa libre que puede citar cualquier cosa relacionada.
 function clasificar(h) {
   const tipo = (TIPO.find(([, rx]) => rx.test(h.titulo)) || ['otro'])[0]
   let origen = 'registro'
@@ -97,7 +124,32 @@ function clasificar(h) {
   return { tipo, origen }
 }
 
-module.exports = { clasificar, TIPO }
+// Hitos que la REGLA clasificaría distinto de lo que hay en BD, pero donde `--apply` NO debe
+// tocar el `tipo` (T-170, 08/08) — adjudicados a mano leyendo título/descripción/cita_literal,
+// no solo el veredicto de `clasificar()`. Cada uno es de una de estas dos clases:
+//   · CONTRADICCIÓN: la propia `descripcion` del hito NIEGA lo que el nuevo `tipo` afirmaría
+//     (p.ej. título "Convocatoria publicada" + descripción "Aún no publicada la convocatoria" —
+//     problema de CONTENIDO del hito, no de la regla; aplicar escribiría algo que el propio dato
+//     contradice).
+//   · AMBIGÜEDAD SIN FUENTE: no hay `descripcion`/`cita_literal` que decante la duda y la `url`
+//     no es un documento consultable (portal genérico) — ni el valor de BD ni el de la regla
+//     tienen más respaldo que el otro.
+// Sin esta lista, `--apply` (que sobrescribe TODOS los hitos que consulta, no solo los que
+// cambian) los tocaría igual que a los 44 casos sí verificados. Revisar cada uno contra el
+// boletín oficial antes de decidir — no adjudicar por mayoría de coincidencias de regex.
+const NO_TOCAR_TIPO = new Map([
+  ['ddb30ace-b100-43d6-ab3f-2f9dd43e0983', 'BD ya dice tribunal_constituido — CORRECTO, respaldado por cita_literal ("se nombra el Tribunal Calificador"). Arreglado en la regla (T-170, 08/08): ya no hace falta excluirlo aparte, pero se deja anotado como el caso que demostró el bug.'],
+  ['66adf612-8ba1-4b72-a33a-7332afc38e27', 'BD dice nombramientos, bien fundado en la descripción ("proceso finalizado con propuesta de nombramiento"). La regla propone oep_aprobada solo porque el título contiene "OEP" — pérdida de precisión, no mejora.'],
+  ['49c140f3-2baa-42eb-92cc-4211a216e4d5', 'AMBIGÜEDAD SIN FUENTE: "Corrección de bases (BOCYL)", sin descripción, cita_literal genérica, url a tablón-oficial sin documento consultable. BD dice modificacion_plazas; la regla propone bases_publicadas, que en el resto del banco significa publicación INICIAL, no corrección posterior.'],
+  ['8f72b566-d931-424b-96d0-e5d7d53ae7c3', 'Mismo caso que 49c140f3: "Corrección de bases (BOPVA)", sin descripción ni documento consultable.'],
+  ['8d17ab33-9bb8-4f70-967a-06bbc7a73c80', 'Mismo caso que 49c140f3: "Corrección de bases (BOPVA)", sin descripción ni documento consultable.'],
+  ['053db338-9087-40d7-801d-ac417869da95', 'AMBIGÜEDAD: "Convocatoria y bases (BOCYL)" — cita_literal es texto de convocatoria puro ("CONVOCATORIA PARA LA SELECCIÓN..."), sin mención específica de "bases" como evento propio. BD dice convocatoria_publicada, bien respaldado por la cita; la regla propone bases_publicadas solo por el patrón /bases/ (sin condición), que gana por prioridad de array ante cualquier título que mencione la palabra.'],
+  ['6625a7e3-dd39-4d6a-9339-24ef3fd9996e', 'Mismo patrón que 053db338 ("Convocatoria y bases (BOP)"), con aún menos evidencia (sin descripción ni cita_literal).'],
+  ['d0294f39-4292-4e66-993d-d9f88aeef9e5', 'CONTRADICCIÓN: título "Convocatoria publicada (BOP Badajoz...)" pero descripción "Aún no publicada la convocatoria de los procesos selectivos" — problema de CONTENIDO del hito (ya señalado en el commit original de T-170 como fuera de alcance), no algo que resolver aplicando la regla a ciegas.'],
+  ['ecf88a05-c271-4fb2-9a66-73e937734149', 'Ya documentado en la ficha como ambiguo (oposición tecnico-informatica): "Plazo de inscripción (23/12/2025 - 22/01/2026)" no dice cuál de las dos fechas es la relevante. BD dice plazo_fin, la regla propone plazo_inicio; sin url ni documento no hay fuente que consultar.'],
+])
+
+module.exports = { clasificar, TIPO, NO_TOCAR_TIPO }
 
 if (require.main === module) {
   ;(async () => {
@@ -119,11 +171,17 @@ if (require.main === module) {
       SLUG ? [SLUG] : [])).rows
     if (SLUG && !rows.length) { console.error(`❌ sin hitos para el slug "${SLUG}" (¿existe?)`); process.exit(2) }
     if (SLUG) console.log(`🔎 acotado a ${SLUG}: ${rows.length} hito(s)`)
-    const vals = rows.map(r => ({ id: r.id, ...clasificar(r) }))
+    const excluidos = rows.filter(r => NO_TOCAR_TIPO.has(r.id))
+    const incluidos = rows.filter(r => !NO_TOCAR_TIPO.has(r.id))
+    const vals = incluidos.map(r => ({ id: r.id, ...clasificar(r) }))
     const cnt = f => vals.reduce((a, r) => (a[f(r)] = (a[f(r)] || 0) + 1, a), {})
 
     console.log(APPLY ? '=== APLICANDO' : '=== DRY-RUN (no escribe; usa --apply)')
     console.log(`hitos: ${vals.length} · tipados: ${vals.filter(v => v.tipo !== 'otro').length}`)
+    if (excluidos.length) {
+      console.log(`\n⛔ ${excluidos.length} hito(s) en NO_TOCAR_TIPO — NO se tocan (ambiguos/contradictorios, adjudicados a mano):`)
+      excluidos.forEach(r => console.log(`   ${r.id}  "${r.titulo}"  — ${NO_TOCAR_TIPO.get(r.id)}`))
+    }
     console.table(cnt(v => v.tipo)); console.table(cnt(v => v.origen))
 
     if (APPLY) {
