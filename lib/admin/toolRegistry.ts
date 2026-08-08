@@ -3994,14 +3994,17 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'hasta ~60 días de retención real). Partición por `created_at` (hora de inserción), NO por ' +
       '`ts` (hora del evento, puede venir corrupta desde el cliente) — mismo criterio que ya usa ' +
       '`telemetry-retention.service.ts`. Núcleo puro `lib/db/particionadoObservableEvents.cjs` ' +
-      '(14 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
+      '(23 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
       'disponible en RDS SIN activar el background worker (evita tocar `shared_preload_libraries` ' +
       'del parameter group + reboot, el mismo tipo de operación que costó el gotcha de ' +
       '`hot_standby_feedback` en la réplica): `create_parent`/`run_maintenance_proc` se llaman por ' +
       'SQL desde el cron existente, sin bgw. `telemetry-retention.service.ts` ya detecta ' +
       '`pg_class.relkind` en cada `run()` y usa `partman.run_maintenance_proc()` en cuanto la tabla ' +
       'pase a estar particionada — desplegable HOY sin riesgo, sigue la rama DELETE de siempre ' +
-      'mientras la migración no se aplique.',
+      'mientras la migración no se aplique. `cmdVerify()` (hallazgo de revisión 08/08) contrasta los ' +
+      'GRANT tras el swap con `evaluarGrantsTrasSwap()` — separa lo que la conexión de solo lectura ' +
+      'puede confirmar de lo que le es invisible (grants de OTRO rol), en vez de fingir certeza que ' +
+      'no tiene.',
   },
 
   muestrear_fidelidad_leyes: {

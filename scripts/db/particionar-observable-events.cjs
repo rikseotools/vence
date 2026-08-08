@@ -49,11 +49,14 @@ const { urlLecturaNegocio } = require('../../lib/db/negocioSoloLectura.cjs')
 const {
   TABLA,
   TABLA_NUEVA,
+  GRANTS,
   planParticiones,
   ddlCrearTablaParticionada,
   ddlIndices,
   ddlRenombrarIndicesTrasSwap,
+  ddlGrants,
   ddlParticion,
+  evaluarGrantsTrasSwap,
 } = require('../../lib/db/particionadoObservableEvents.cjs')
 
 const argv = process.argv.slice(2)
@@ -144,6 +147,11 @@ async function cmdPlan() {
     console.log('\n=== DDL: índices (8, nombre provisional _new) ===')
     ddlIndices().forEach((i) => console.log(i.sql))
 
+    console.log('\n=== DDL: grants (T-360, imprescindibles — ver el gotcha en particionadoObservableEvents.cjs) ===')
+    console.log('Una tabla nueva NACE SIN permisos en este proyecto (a propósito, ver 20260805_rol_lector_flota.sql).')
+    console.log('Sin esto, el `swap` deja `observable_events` SIN lectura para la flota ni INSERT para el supervisor.')
+    ddlGrants().forEach((s) => console.log(s))
+
     console.log(`\n=== DDL: primeras y últimas 3 particiones (de ${plan.fechas.length} totales) ===`)
     ;[...plan.fechas.slice(0, 3), '…', ...plan.fechas.slice(-3)].forEach((f) =>
       console.log(f === '…' ? '…' : ddlParticion(f)),
@@ -191,6 +199,10 @@ async function cmdCreate() {
     const sentencias = [
       ddlCrearTablaParticionada(),
       ...ddlIndices().map((i) => i.sql),
+      // T-360: sin esto, el swap deja la tabla nueva sin SELECT para vence_lector ni INSERT
+      // para vence_coordinacion — una tabla nueva nace sin permisos en este proyecto, a
+      // propósito (ver el gotcha grande en particionadoObservableEvents.cjs).
+      ...ddlGrants(),
       ...plan.fechas.map((f) => ddlParticion(f)),
     ]
 
@@ -289,6 +301,35 @@ async function cmdVerify() {
     )
     console.log(`Índices con nombre canónico: ${indices.length}`)
     indices.forEach((i) => console.log('  ', i.indexname))
+
+    // T-360 (hallazgo de revisión 08/08): el swap podía perder los GRANT en silencio — ningún
+    // error de DDL, solo un permission denied en el primer SELECT/INSERT real. Se comprueba con
+    // la MISMA conexión de solo lectura de arriba, sin credencial de más.
+    const { rows: whoami } = await c.query('SELECT current_user')
+    const rolActual = whoami[0]?.current_user
+    const { rows: grants } = await c.query(
+      `SELECT grantee, privilege_type FROM information_schema.role_table_grants WHERE table_name = $1`,
+      [TABLA],
+    )
+    const { confirmados, faltantesConfirmados, noVisibles } = evaluarGrantsTrasSwap(grants, rolActual)
+    console.log(`\nGrants (${rolActual} solo puede confirmar los suyos propios):`)
+    confirmados.forEach((g) => console.log(`  ✅ ${g.rol} → ${g.privilegio} (confirmado)`))
+    faltantesConfirmados.forEach((g) =>
+      console.log(`  ❌ ${g.rol} → ${g.privilegio} — FALTA, confirmado con esta conexión. El swap lo perdió.`),
+    )
+    noVisibles.forEach((g) =>
+      console.log(
+        `  ⚠️  ${g.rol} → ${g.privilegio} — no visible desde ${rolActual}; confirmar con ` +
+          `\`\\dp ${TABLA}\` desde una sesión con DATABASE_URL de escritura antes de dar el swap por bueno.`,
+      ),
+    )
+    if (faltantesConfirmados.length) {
+      console.log(`\n❌ Verificación de grants: ${faltantesConfirmados.length} confirmado(s) FALTANTE(S).`)
+    } else if (noVisibles.length) {
+      console.log(`\n⚠️  Verificación de grants: sin fallos confirmados, pero ${noVisibles.length} sin poder verse desde este rol.`)
+    } else {
+      console.log(`\n✅ Verificación de grants: ${GRANTS.length}/${GRANTS.length} confirmados, ninguno pendiente.`)
+    }
   } finally {
     await c.end()
   }
