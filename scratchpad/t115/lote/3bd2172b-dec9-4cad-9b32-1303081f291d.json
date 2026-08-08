@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 26 de la Ley Orgánica 3/2018",
+    "texto": "En el Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos y su régimen de acceso."
+  },
+  "options": {
+    "0": "Reproduce el título del real decreto tal y como lo cita el artículo: Sistema Español de Archivos, Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos, y su régimen de acceso.",
+    "1": "El sistema de archivos que ese real decreto regula es el de la Administración General del Estado, no el de las Comunidades Autónomas.",
+    "2": "Lo que ese real decreto regula es el régimen de acceso, no un régimen sancionador.",
+    "3": "Lo que ese real decreto establece es el Sistema Español de Archivos; el patrimonio documental es materia de la Ley 16/1985, la otra norma a la que remite el artículo."
+  },
+  "frame": "select_correct"
+}

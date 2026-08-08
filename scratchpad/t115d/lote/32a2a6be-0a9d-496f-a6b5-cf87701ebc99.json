@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 43 del Real Decreto Legislativo 2/2004",
+    "texto": "Estarán obligados al pago de los precios públicos quienes se beneficien de los servicios o actividades por los que deban satisfacerse aquéllos."
+  },
+  "options": {
+    "0": "El criterio que fija el precepto es beneficiarse del servicio o actividad, no solicitarlo.",
+    "1": "El artículo no añade ningún requisito de residencia en el término municipal.",
+    "2": "Reproduce el precepto: están obligados quienes se beneficien de los servicios o actividades por los que deban satisfacerse los precios públicos.",
+    "3": "La obligación no se ancla en la titularidad de bienes de dominio público, sino en beneficiarse del servicio o actividad."
+  },
+  "frame": "select_correct"
+}

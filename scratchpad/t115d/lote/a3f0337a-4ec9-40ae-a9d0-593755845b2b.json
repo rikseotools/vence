@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 90.1 del Real Decreto Legislativo 2/2004",
+    "texto": "La matrícula estará a disposición del público en los respectivos ayuntamientos."
+  },
+  "options": {
+    "0": "Reproduce el precepto: la matrícula está a disposición del público en los respectivos ayuntamientos.",
+    "1": "El lugar que fija el artículo son los ayuntamientos, no las diputaciones provinciales.",
+    "2": "El precepto no condiciona el acceso a una solicitud motivada: la matrícula está a disposición del público.",
+    "3": "El artículo no le atribuye carácter reservado, sino todo lo contrario."
+  },
+  "frame": "select_correct"
+}

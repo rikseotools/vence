@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 137 de la Ley 9/2017",
+    "texto": "En caso de que el expediente de contratación haya sido declarado de tramitación urgente, los plazos establecidos en esta Sección se reducirán en la forma prevista en la letra b) del apartado 2 del artículo 119 y en las demás disposiciones de esta Ley."
+  },
+  "options": {
+    "0": "Reproduce la remisión del precepto: la reducción se hace en la forma prevista en la letra b) del apartado 2 del artículo 119.",
+    "1": "Cambia la remisión: el precepto envía a la letra b) del apartado 2, no a la letra a) del apartado 1.",
+    "2": "El artículo no fija una reducción a la mitad ni excluye los contratos sujetos a regulación armonizada: remite a lo previsto en el artículo 119.",
+    "3": "La declaración de urgencia sí produce la reducción de los plazos, y no la deja al acuerdo del órgano de contratación."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 28.1 de la Constitución Española",
+    "texto": "Todos tienen derecho a sindicarse libremente. La ley podrá limitar o exceptuar el ejercicio de este derecho a las Fuerzas o Institutos armados o a los demás Cuerpos sometidos a disciplina militar y regulará las peculiaridades de su ejercicio para los funcionarios públicos."
+  },
+  "intro": "El artículo 28 contiene dos derechos distintos en dos apartados, y la confusión entre ellos es el error clásico: el primero es la libertad sindical y el segundo, el derecho de huelga. Los dos están en la Sección 1.ª del Capítulo II, con la protección reforzada del artículo 53.2.",
+  "options": {
+    "0": "El apartado 2 del artículo 28 reconoce el derecho a la huelga de los trabajadores para la defensa de sus intereses, con la reserva de ley que garantiza los servicios esenciales de la comunidad.",
+    "1": "El artículo 26 prohíbe los Tribunales de Honor en el ámbito de la Administración civil y de las organizaciones profesionales; nada tiene que ver con la libertad sindical.",
+    "2": "Es el apartado que reconoce el derecho a sindicarse libremente, que comprende fundar sindicatos, afiliarse al de su elección, formar confederaciones y no ser obligado a afiliarse.",
+    "3": "El artículo 27.1 reconoce el derecho a la educación y la libertad de enseñanza."
+  },
+  "outro": "**Clave:** libertad sindical en el apartado 1 del artículo 28; derecho de huelga en el apartado 2."
+}

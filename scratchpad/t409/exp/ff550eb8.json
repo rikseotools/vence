@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 13.3 de la Constitución Española",
+    "texto": "La extradición sólo se concederá en cumplimiento de un tratado o de la ley, atendiendo al principio de reciprocidad. Quedan excluidos de la extradición los delitos políticos, no considerándose como tales los actos de terrorismo."
+  },
+  "intro": "La Constitución no excluye de la extradición categorías del Código Penal, sino una sola clase de infracción por su naturaleza, la política, y encima con una salvedad expresa: el terrorismo no se considera delito político, precisamente para que esa exclusión no sirva de refugio.",
+  "options": {
+    "0": "Los delitos patrimoniales y contra el orden socioeconómico son delitos comunes y no están excluidos.",
+    "1": "Los delitos contra la Hacienda Pública y la Seguridad Social tampoco aparecen en el precepto ni gozan de exclusión alguna.",
+    "2": "Los delitos contra la seguridad colectiva son igualmente delitos comunes, ajenos a la única exclusión que la Constitución contempla.",
+    "3": "Es lo que dice el artículo 13.3: quedan excluidos los delitos políticos, con la precisión de que los actos de terrorismo no tienen esa consideración."
+  },
+  "outro": "**Clave:** la única exclusión constitucional es la de los delitos políticos, y el terrorismo queda expresamente fuera de esa categoría."
+}

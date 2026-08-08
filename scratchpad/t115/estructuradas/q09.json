@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 61.2 de la Ley Orgánica 3/2018",
+    "texto": "Corresponderá en estos casos a las autoridades autonómicas intervenir en los procedimientos establecidos en el artículo 60 del Reglamento (UE) 2016/679, informando a la Agencia Española de Protección de Datos sobre su desarrollo en los supuestos en que deba aplicarse el mecanismo de coherencia."
+  },
+  "options": {
+    "0": "El artículo acota el deber de información a un supuesto concreto, en lugar de imponerlo en todo caso.",
+    "1": "El deber de informar no depende de un requerimiento previo de la Agencia: nace de que deba aplicarse el mecanismo correspondiente.",
+    "2": "El mecanismo que el precepto menciona es el de coherencia, no el de ventanilla única.",
+    "3": "Reproduce el supuesto del artículo: se informa a la Agencia cuando deba aplicarse el mecanismo de coherencia."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 31.1 de la Constitución Española",
+    "texto": "Todos contribuirán al sostenimiento de los gastos públicos de acuerdo con su capacidad económica mediante un sistema tributario justo inspirado en los principios de igualdad y progresividad que, en ningún caso, tendrá alcance confiscatorio."
+  },
+  "intro": "El artículo 31 reparte sus principios en dos apartados que se confunden con facilidad: el primero es el del INGRESO (cómo se recauda) y el segundo, el del GASTO (cómo se emplea lo recaudado). Las palabras que aparecen en los distractores son casi todas del apartado del gasto.",
+  "options": {
+    "0": "La asignación equitativa de los recursos y la eficiencia pertenecen al gasto público del apartado 2, no a los principios que inspiran el sistema tributario.",
+    "1": "Son los dos principios del artículo 31.1, unidos a la capacidad económica y al límite de que el sistema no tenga en ningún caso alcance confiscatorio.",
+    "2": "El decomiso es una consecuencia accesoria de determinados delitos, ajena a los principios que la Constitución fija para el sistema tributario.",
+    "3": "Eficiencia y economía son los criterios de programación y ejecución del gasto público que enuncia el apartado 2."
+  },
+  "outro": "**Clave:** el sistema tributario se inspira en la igualdad y la progresividad, sin alcance confiscatorio; la eficiencia y la economía rigen el gasto público."
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 96.1 de la Constitución Española",
+    "texto": "Sus disposiciones sólo podrán ser derogadas, modificadas o suspendidas en la forma prevista en los propios tratados o de acuerdo con las normas generales del Derecho internacional."
+  },
+  "intro": "Un tratado no es una norma que España pueda deshacer por su cuenta: nace de un acuerdo con otros sujetos internacionales, y por eso su salida del ordenamiento se rige por lo que el propio tratado prevea o, en su defecto, por las normas generales del Derecho internacional.",
+  "options": {
+    "0": "Una norma interna, aunque sea orgánica, no puede por sí sola derogar, modificar o suspender lo pactado internacionalmente.",
+    "1": "Menos aún una norma reglamentaria del Gobierno: la fuerza pasiva del tratado impide que una decisión unilateral interna altere sus disposiciones.",
+    "2": "Tampoco cabe por decisión de un Ministerio. Cosa distinta es la denuncia del tratado, que el apartado 2 somete al mismo procedimiento previsto para su aprobación en el artículo 94.",
+    "3": "Es lo que dispone el artículo 96.1: en la forma prevista en los propios tratados o de acuerdo con las normas generales del Derecho internacional."
+  },
+  "outro": "**Clave:** las disposiciones de un tratado solo decaen por la vía que el propio tratado prevé o conforme al Derecho internacional general, nunca por norma interna unilateral."
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 91.2 del Real Decreto Legislativo 2/2004",
+    "texto": "La liquidación y recaudación, así como la revisión de los actos dictados en vía de gestión tributaria de este impuesto se llevará a cabo por los ayuntamientos."
+  },
+  "options": {
+    "0": "La formación de la matrícula y la calificación de las actividades son gestión CENSAL, que el apartado 1 atribuye a la Administración tributaria del Estado.",
+    "1": "La revisión de los actos dictados en vía de gestión tributaria también corresponde a los ayuntamientos, no queda reservada al Estado.",
+    "2": "Reproduce el precepto: liquidación, recaudación y revisión de los actos dictados en vía de gestión tributaria del impuesto.",
+    "3": "La inspección del impuesto la lleva a cabo, según el apartado 3, la Administración tributaria del Estado, sin perjuicio de las delegaciones."
+  },
+  "frame": "select_correct"
+}

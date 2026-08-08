@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 138.3 de la Ley 9/2017",
+    "texto": "Los órganos de contratación proporcionarán a todos los interesados en el procedimiento de licitación, a más tardar 6 días antes de que finalice el plazo fijado para la presentación de ofertas, aquella información adicional sobre los pliegos y demás documentación complementaria que estos soliciten, a condición de que la hubieren pedido al menos 12 días antes del transcurso del plazo de presentación de las proposiciones o de las solicitudes de participación, salvo que en los pliegos que rigen la licitación se estableciera otro plazo distinto."
+  },
+  "options": {
+    "0": "Reproduce el plazo del precepto: a más tardar 6 días antes de que finalice el plazo de presentación de ofertas. El propio artículo lo matiza dos veces: cede ante el plazo distinto que fijen los pliegos, y baja a 4 días en los expedientes calificados de urgentes cuando se trate de contratos de obras, suministros y servicios sujetos a regulación armonizada adjudicados por procedimiento abierto o restringido.",
+    "1": "Doce días es el plazo de la CONDICIÓN (cuándo hay que haber pedido la información), no el de entrega.",
+    "2": "El plazo se cuenta sobre el fin del plazo de presentación de ofertas, no sobre la formalización del contrato.",
+    "3": "El precepto no fija quince días: son 6 para entregar y 12 para haber solicitado."
+  },
+  "frame": "select_correct"
+}

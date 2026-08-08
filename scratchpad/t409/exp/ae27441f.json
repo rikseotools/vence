@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 44 de la Ley 39/2015",
+    "texto": "Cuando los interesados en un procedimiento sean desconocidos, se ignore el lugar de la notificación o bien, intentada ésta, no se hubiese podido practicar, la notificación se hará por medio de un anuncio publicado en el «Boletín Oficial del Estado»."
+  },
+  "intro": "El precepto abre con tres supuestos distintos y los trata igual, porque en los tres ocurre lo mismo: la notificación personal no puede llegar a su destinatario. La consecuencia común es el anuncio en el «Boletín Oficial del Estado», que es el único obligatorio; las publicaciones autonómica, provincial o en el tablón de edictos son previas y facultativas.",
+  "options": {
+    "0": "Que el interesado sea desconocido es uno de los tres supuestos, pero no el único.",
+    "1": "Ignorar el lugar de la notificación es otro de ellos, y tampoco agota el precepto.",
+    "2": "El intento fallido de notificación es el tercer supuesto que la norma enumera.",
+    "3": "El artículo 44 recoge los tres, con la misma consecuencia para todos."
+  },
+  "outro": "**Clave:** interesado desconocido, lugar ignorado o notificación intentada sin éxito llevan los tres al anuncio en el «Boletín Oficial del Estado»."
+}

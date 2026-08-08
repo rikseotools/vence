@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 49.1 de la Ley 39/2015",
+    "texto": "La nulidad o anulabilidad de un acto no implicará la de los sucesivos en el procedimiento que sean independientes del primero."
+  },
+  "intro": "La invalidez no se contagia sin más a todo lo actuado: la ley distingue entre lo que dependía del acto viciado y lo que no. Lo independiente se conserva; lo que traía causa del acto inválido es lo que puede caer con él.",
+  "options": {
+    "0": "Reproduce la regla del artículo 49.1: los actos posteriores que sean independientes del viciado se mantienen, precisamente porque no derivan de él.",
+    "1": "Invierte la regla. Lo que se salva es lo independiente; respecto de los actos dependientes del viciado no cabe afirmar que nunca resulten afectados, que es justo el supuesto en el que la invalidez se transmite.",
+    "2": "Extiende la conservación a todos los actos sucesivos sin distinguir, y la ley sí distingue: solo quedan a salvo los que sean independientes del acto viciado.",
+    "3": "Convierte la invalidez en automática para todo lo posterior, cuando el precepto excluye ese efecto respecto de los actos independientes del primero."
+  },
+  "outro": "**Clave:** la invalidez solo arrastra a los actos sucesivos que dependan del viciado; los independientes se conservan, sea nulidad o anulabilidad."
+}

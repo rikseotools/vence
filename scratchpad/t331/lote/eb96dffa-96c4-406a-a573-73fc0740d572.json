@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.1.b) RD 203/2021",
+    "texto": "Sello electrónico cualificado de tiempo, entendiendo por tal la asignación por medios electrónicos de una fecha y hora a un documento electrónico con la intervención de un prestador cualificado de servicios de confianza que asegure la exactitud e integridad de la marca de tiempo del documento."
+  },
+  "options": {
+    "0": "Las propiedades que el precepto exige asegurar son la exactitud y la integridad, no la confidencialidad y la disponibilidad.",
+    "1": "Lo que debe quedar asegurado es la marca de tiempo del documento, no el expediente electrónico completo.",
+    "2": "La autenticidad y la cadena de custodia son garantías que el artículo 55 exige a la gestión del archivo electrónico único, no al sellado de tiempo.",
+    "3": "Es la exigencia literal del precepto: la intervención del prestador cualificado asegura la exactitud e integridad de la marca de tiempo del documento."
+  },
+  "frame": "select_correct"
+}

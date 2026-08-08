@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 183 del Real Decreto Legislativo 2/2004",
+    "texto": "La ejecución de los créditos consignados en el presupuesto de gastos de las entidades locales se efectuará conforme a lo dispuesto en la presente sección y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en las bases de ejecución del presupuesto."
+  },
+  "options": {
+    "0": "Las normas complementarias las dicta cada entidad local, no la comunidad autónoma, y el precepto las llama complementarias, no supletorias.",
+    "1": "Reproduce el precepto: la sección y, complementariamente, las normas de cada entidad plasmadas en las bases de ejecución del presupuesto.",
+    "2": "El instrumento donde deben quedar plasmadas esas normas son las bases de ejecución del presupuesto, no el reglamento orgánico.",
+    "3": "La remisión principal del artículo es a la propia sección del texto refundido, no a la legislación general presupuestaria del Estado."
+  },
+  "frame": "select_correct"
+}

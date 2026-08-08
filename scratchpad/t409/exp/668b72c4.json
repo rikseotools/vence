@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 113 de la Ley 39/2015",
+    "texto": "Contra los actos firmes en vía administrativa, sólo procederá el recurso extraordinario de revisión cuando concurra alguna de las circunstancias previstas en el artículo 125.1."
+  },
+  "intro": "Que un acto sea firme en vía administrativa significa que ya no caben los recursos ordinarios, por haberse agotado o por haber transcurrido los plazos. Aun así la ley deja una puerta estrecha, tasada en cuatro circunstancias, para casos como el error de hecho que resulte de los propios documentos del expediente o la aparición de documentos esenciales posteriores.",
+  "options": {
+    "0": "No existe un recurso «extraordinario de reposición»: la reposición es un recurso ordinario y potestativo contra actos que ponen fin a la vía administrativa, no contra los ya firmes.",
+    "1": "Es lo que dispone el artículo 113: el recurso extraordinario de revisión, y solo cuando concurra alguna de las circunstancias tasadas.",
+    "2": "Sí cabe recurso, aunque sea excepcional y por motivos tasados.",
+    "3": "La casación es un recurso de la jurisdicción contencioso-administrativa ante los tribunales, no un recurso en vía administrativa."
+  },
+  "outro": "**Clave:** contra actos firmes en vía administrativa, únicamente el recurso extraordinario de revisión y solo por las circunstancias tasadas de la ley."
+}

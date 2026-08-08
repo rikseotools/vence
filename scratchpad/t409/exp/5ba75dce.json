@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 24.1 de la Ley 31/1995, de Prevención de Riesgos Laborales",
+    "texto": "Cuando en un mismo centro de trabajo desarrollen actividades trabajadores de dos o más empresas, éstas deberán cooperar en la aplicación de la normativa sobre prevención de riesgos laborales. A tal fin, establecerán los medios de coordinación que sean necesarios en cuanto a la protección y prevención de riesgos laborales y la información sobre los mismos a sus respectivos trabajadores."
+  },
+  "intro": "La concurrencia de empresas en un mismo centro genera riesgos que ninguna de ellas ve entera por su cuenta, y por eso la ley impone un deber de COOPERAR. El precepto añade después la posición reforzada del empresario titular del centro, que debe informar e instruir a los demás sobre los riesgos existentes y las medidas de emergencia.",
+  "options": {
+    "0": "Es el deber que impone el artículo 24.1: cooperar y establecer los medios de coordinación necesarios en materia de protección, prevención e información a los trabajadores.",
+    "1": "Actuar cada empresa por separado es justo lo que el precepto excluye: el riesgo nace de la concurrencia y no se gestiona en compartimentos estancos.",
+    "2": "La ley no atribuye esa función a la empresa con más antigüedad en el centro, sino al empresario titular del mismo, y en términos de información e instrucciones, no de evaluar los riesgos de las demás.",
+    "3": "Prescinde precisamente del empresario titular del centro, al que la norma obliga a que los demás reciban la información y las instrucciones adecuadas."
+  },
+  "outro": "**Clave:** con trabajadores de dos o más empresas en un mismo centro, deber de cooperación y establecimiento de los medios de coordinación necesarios."
+}

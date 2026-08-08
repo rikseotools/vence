@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 62.1 de la Ley Orgánica 3/2018",
+    "texto": "Se practicarán por conducto de la Agencia Española de Protección de Datos todas las comunicaciones entre el Comité Europeo de Protección de Datos y las autoridades autonómicas de protección de datos cuando estas, como autoridades principales, deban solicitar del citado Comité la emisión de una decisión vinculante."
+  },
+  "options": {
+    "0": "Reproduce la regla del precepto: en ese supuesto todas las comunicaciones pasan por la Agencia Española de Protección de Datos.",
+    "1": "El artículo interpone precisamente a la Agencia: excluye que la comunicación sea directa entre el Comité y la autoridad autonómica.",
+    "2": "El conducto que fija el artículo es la Agencia Española de Protección de Datos, no un ministerio.",
+    "3": "La regla no está condicionada a que la Agencia lo solicite: alcanza a todas las comunicaciones de ese supuesto."
+  },
+  "frame": "select_correct"
+}

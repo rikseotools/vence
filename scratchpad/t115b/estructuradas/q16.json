@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 148.3 de la Ley 9/2017",
+    "texto": "a) estar basado en criterios verificables objetivamente y no discriminatorios; en particular, si no se ha establecido para una aplicación repetida o continuada, no favorecerá o perjudicará indebidamente a empresas determinadas; b) ser accesible para todas las partes interesadas."
+  },
+  "options": {
+    "0": "La accesibilidad que exige el precepto alcanza a todas las partes interesadas, no solo a los licitadores admitidos.",
+    "1": "Reproduce dos de las condiciones del precepto: criterios verificables objetivamente y no discriminatorios, y accesibilidad para todas las partes interesadas.",
+    "2": "El artículo no remite los criterios a una aprobación caso por caso del órgano de contratación: exige que sean verificables objetivamente y no discriminatorios.",
+    "3": "El precepto no exige aplicación previa repetida o continuada; al contrario, contempla que el método no se haya establecido para ese uso y, en tal caso, prohíbe que favorezca o perjudique indebidamente a empresas determinadas."
+  },
+  "frame": "select_correct"
+}

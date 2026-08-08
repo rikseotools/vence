@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 142.3 de la Ley 9/2017",
+    "texto": "En los procedimientos de adjudicación de contratos de suministro o de servicios, los órganos de contratación que hayan autorizado la presentación de variantes no podrán rechazar una de ellas por el único motivo de que, de ser elegida, daría lugar a un contrato de servicios en vez de a un contrato de suministro o a un contrato de suministro en vez de a un contrato de servicios."
+  },
+  "options": {
+    "0": "Invierte la regla: el precepto prohíbe precisamente rechazar la variante por ese único motivo.",
+    "1": "El motivo que el precepto declara insuficiente es el cambio de tipo contractual entre suministro y servicios, no una alteración del valor estimado.",
+    "2": "El motivo que el precepto declara insuficiente es el cambio de tipo contractual entre suministro y servicios, no la necesidad de modificar los criterios de adjudicación.",
+    "3": "Reproduce la prohibición del precepto en sus dos sentidos: de suministro a servicios y de servicios a suministro."
+  },
+  "frame": "select_correct"
+}

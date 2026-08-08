@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 7 de la Ley 40/2015",
+    "texto": "La Administración consultiva podrá articularse mediante órganos específicos dotados de autonomía orgánica y funcional con respecto a la Administración activa, o a través de los servicios de esta última que prestan asistencia jurídica."
+  },
+  "intro": "El precepto ofrece dos fórmulas alternativas para organizar la función consultiva, y las dos aparecen unidas por una disyuntiva en el texto. Lo que la ley exige en ambos casos es independencia de criterio: si la consulta se presta desde los servicios jurídicos de la Administración activa, esos servicios no pueden estar sujetos a dependencia jerárquica ni recibir instrucciones del órgano cuya actuación se consulta, y actúan de forma colegiada.",
+  "options": {
+    "0": "Los órganos generales de la Administración no son la vía que el precepto contempla: lo que prevé son órganos específicos con autonomía, o servicios de asistencia jurídica con garantías de independencia.",
+    "1": "Es una de las dos fórmulas previstas, la de órganos específicos dotados de autonomía orgánica y funcional respecto de la Administración activa.",
+    "2": "Es la otra fórmula: los servicios de la propia Administración activa que prestan asistencia jurídica, siempre que no estén sometidos a dependencia jerárquica ni reciban instrucciones sobre lo consultado.",
+    "3": "El artículo 7 admite las dos vías, unidas por una disyuntiva."
+  },
+  "outro": "**Clave:** órganos específicos con autonomía orgánica y funcional O servicios de asistencia jurídica de la Administración activa, estos últimos sin dependencia jerárquica ni instrucciones y actuando de forma colegiada."
+}

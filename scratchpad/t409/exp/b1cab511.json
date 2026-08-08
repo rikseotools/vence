@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 84 de la Constitución Española",
+    "texto": "Cuando una proposición de ley o una enmienda fuere contraria a una delegación legislativa en vigor, el Gobierno está facultado para oponerse a su tramitación. En tal supuesto, podrá presentarse una proposición de ley para la derogación total o parcial de la ley de delegación."
+  },
+  "intro": "El artículo 84 resuelve el choque entre una delegación legislativa ya concedida al Gobierno y una iniciativa parlamentaria que la contradice. Lo hace dando al Gobierno una facultad de veto sobre la tramitación, no un poder normativo ni un efecto automático sobre la delegación.",
+  "options": {
+    "0": "Es la solución del artículo 84: el Gobierno queda facultado para oponerse a la tramitación, y a las Cámaras les queda la vía de presentar una proposición de ley que derogue total o parcialmente la ley de delegación.",
+    "1": "El precepto no habilita al Gobierno a adelantarse dictando la norma delegada para cerrar el paso a la iniciativa: lo que le reconoce es oponerse a que esta se tramite.",
+    "2": "La delegación legislativa no queda en suspenso por el hecho de que se presente una iniciativa contraria; sigue en vigor mientras no se derogue la ley de delegación.",
+    "3": "Tampoco se impone al Gobierno el deber de suspender la delegación: el artículo 84 le da una facultad de oposición, y quien puede acabar con la delegación es la propia Cámara derogando la ley que la concedió."
+  },
+  "outro": "**Clave:** frente a una iniciativa contraria a una delegación en vigor, el Gobierno puede oponerse a su tramitación; la delegación solo decae si se deroga, total o parcialmente, la ley de delegación."
+}

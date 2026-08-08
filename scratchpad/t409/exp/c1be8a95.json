@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 20.1 de la Ley 39/2015",
+    "texto": "Los titulares de las unidades administrativas y el personal al servicio de las Administraciones Públicas que tuviesen a su cargo la resolución o el despacho de los asuntos, serán responsables directos de su tramitación y adoptarán las medidas oportunas para remover los obstáculos que impidan, dificulten o retrasen el ejercicio pleno de los derechos de los interesados o el respeto a sus intereses legítimos."
+  },
+  "intro": "El precepto nombra a DOS sujetos unidos por una conjunción: los titulares de las unidades administrativas y el personal al servicio de las Administraciones que tenga a su cargo la resolución o el despacho. La responsabilidad no se reparte entre ellos, alcanza a ambos, y los interesados pueden pedir que se exija.",
+  "options": {
+    "0": "Es uno de los dos sujetos que menciona el artículo 20.1, pero por sí solo deja fuera al otro.",
+    "1": "También es responsable directo según el precepto, y tampoco agota la respuesta.",
+    "2": "El artículo 20.1 atribuye la responsabilidad directa a los dos a la vez.",
+    "3": "Descarta a quienes el precepto señala expresamente como responsables directos de la tramitación."
+  },
+  "outro": "**Clave:** son responsables directos tanto los titulares de las unidades administrativas como el personal que tenga a su cargo la resolución o el despacho de los asuntos."
+}

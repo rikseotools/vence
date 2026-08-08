@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 62.1 de la Ley Orgánica 3/2018",
+    "texto": "Deban solicitar del citado Comité la emisión de una decisión vinculante según lo previsto en el artículo 65 del Reglamento (UE) 2016/679."
+  },
+  "options": {
+    "0": "Ese es el artículo del Reglamento que establece el procedimiento en el que interviene la autoridad autonómica según el artículo 61 de la ley orgánica.",
+    "1": "Ese es el artículo del Reglamento que identifica al responsable o encargado del tratamiento en el supuesto del artículo 61.1 de la ley orgánica.",
+    "2": "Es la remisión del precepto: la decisión vinculante del Comité está prevista en el artículo 65 del Reglamento.",
+    "3": "Con ese número, el artículo 57 al que remite la ley orgánica es el suyo propio, no el del Reglamento."
+  },
+  "frame": "select_correct"
+}

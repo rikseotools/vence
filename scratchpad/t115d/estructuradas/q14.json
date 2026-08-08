@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 91.3 del Real Decreto Legislativo 2/2004",
+    "texto": "La inspección de este impuesto se llevará a cabo por los órganos competentes de la Administración tributaria del Estado, sin perjuicio de las delegaciones que puedan hacerse en los ayuntamientos, diputaciones provinciales, cabildos o consejos insulares y otras entidades locales reconocidas por las leyes y comunidades autónomas que lo soliciten."
+  },
+  "options": {
+    "0": "Los ayuntamientos pueden recibir la inspección por DELEGACIÓN, pero la competencia que atribuye el precepto es de la Administración tributaria del Estado.",
+    "1": "Reproduce el precepto: la inspección la llevan a cabo los órganos competentes de la Administración tributaria del Estado.",
+    "2": "Las comunidades autónomas aparecen en el precepto como posibles destinatarias de la delegación cuando lo soliciten, no como titulares de la inspección.",
+    "3": "Esos Tribunales conocen, según el apartado 4, de las reclamaciones contra los actos de gestión censal; no realizan la inspección."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 142.1 de la Ley 9/2017",
+    "texto": "El órgano de contratación podrá tomar en consideración las variantes que ofrezcan los licitadores, siempre que las variantes se prevean en los pliegos."
+  },
+  "options": {
+    "0": "La condición del precepto es que las variantes estén previstas en los pliegos, no que se justifiquen en el expediente de contratación.",
+    "1": "Reproduce la condición del precepto: que las variantes se prevean en los pliegos.",
+    "2": "El artículo no supedita las variantes a una aceptación de la mesa de contratación, sino a su previsión en los pliegos.",
+    "3": "El artículo exige la previsión en los pliegos; la vinculación con el objeto del contrato aparece como uno de los extremos que deben expresarse, no como esta condición."
+  },
+  "frame": "select_correct"
+}

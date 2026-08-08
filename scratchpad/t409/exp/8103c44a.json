@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 44.1 de la Ley 40/2015",
+    "texto": "Los documentos electrónicos transmitidos en entornos cerrados de comunicaciones establecidos entre Administraciones Públicas, órganos, organismos públicos y entidades de derecho público, serán considerados válidos a efectos de autenticación e identificación de los emisores y receptores en las condiciones establecidas en este artículo."
+  },
+  "intro": "El precepto reconoce validez a esas transmisiones para una finalidad concreta y acotada, la de autenticar e identificar a quién emite y quién recibe, y siempre en las condiciones que el propio artículo exige: dentro de una misma Administración las fija ella misma, y entre Administraciones distintas hacen falta convenio y garantías expresas.",
+  "options": {
+    "0": "Es el efecto que reconoce el artículo 44.1: autenticación e identificación de emisores y receptores, en las condiciones del propio precepto.",
+    "1": "La publicidad es una función distinta, propia de los boletines y tablones, y nada tiene que ver con la validez de estas comunicaciones.",
+    "2": "Reducirlo a efectos meramente informativos vaciaría el precepto: lo que la ley reconoce es justamente su valor para acreditar quién emite y quién recibe.",
+    "3": "La validez no es ilimitada: el artículo la circunscribe a la autenticación e identificación y la condiciona a las garantías que él mismo establece."
+  },
+  "outro": "**Clave:** validez a efectos de autenticación e identificación de emisores y receptores, y en las condiciones que fija el propio artículo."
+}

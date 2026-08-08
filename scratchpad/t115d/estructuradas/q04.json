@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 192.1 del Real Decreto Legislativo 2/2004",
+    "texto": "Reglamentariamente se regularán las operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al carácter de los citados organismos."
+  },
+  "options": {
+    "0": "El criterio que manda atender el precepto es el CARÁCTER de los organismos, no su volumen de gasto.",
+    "1": "Las operaciones que el artículo remite al reglamento son las de cierre del ejercicio y liquidación, no las de aprobación y fiscalización previa.",
+    "2": "Reproduce el precepto: operaciones de cierre del ejercicio económico y de liquidación de los presupuestos, atendiendo al carácter de los organismos.",
+    "3": "La rendición de cuentas al Tribunal de Cuentas no es la operación que este apartado remite al reglamento."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 183 del Real Decreto Legislativo 2/2004",
+    "texto": "Y, complementariamente, por las normas que dicte cada entidad y queden plasmadas en las bases de ejecución del presupuesto."
+  },
+  "options": {
+    "0": "El reglamento orgánico regula la organización y el funcionamiento de la corporación, no la ejecución de los créditos presupuestarios.",
+    "1": "Las ordenanzas fiscales regulan los tributos propios de la entidad, no la ejecución del presupuesto de gastos.",
+    "2": "La memoria explicativa acompaña al presupuesto pero no es el instrumento que el precepto señala.",
+    "3": "Es el instrumento que designa el artículo: las bases de ejecución del presupuesto."
+  },
+  "frame": "select_correct"
+}

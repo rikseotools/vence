@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 8 de la Ley 39/2015",
+    "texto": "Si durante la instrucción de un procedimiento que no haya tenido publicidad, se advierte la existencia de personas que sean titulares de derechos o intereses legítimos y directos cuya identificación resulte del expediente y que puedan resultar afectados por la resolución que se dicte, se comunicará a dichas personas la tramitación del procedimiento."
+  },
+  "intro": "El precepto protege a quien va a sufrir los efectos de una resolución sin saber siquiera que el procedimiento existe. La Administración no tiene que buscarlo: basta con que su identidad resulte del propio expediente para que nazca el deber de avisarle, y así pueda personarse y defenderse.",
+  "options": {
+    "0": "Es exactamente lo que ordena el artículo 8: comunicar a esas personas la tramitación del procedimiento, para que puedan comparecer como interesadas.",
+    "1": "La publicación en el Boletín Oficial del Estado es el cauce del artículo 44 para cuando los interesados son desconocidos, se ignora el lugar de notificación o esta no ha podido practicarse. Aquí ocurre lo contrario: están identificados en el expediente, así que se les comunica directamente.",
+    "2": "Ningún precepto hace decaer derechos por no haber comparecido en un procedimiento que no se conocía; la consecuencia legal es justo la inversa, avisar para que puedan ejercerlos.",
+    "3": "La comunicación es un trámite dentro del procedimiento administrativo y corresponde al órgano que instruye. Los tribunales de lo contencioso-administrativo intervienen después, al revisar la actuación, no durante la instrucción."
+  },
+  "outro": "**Clave:** si el expediente permite identificar a un titular de derechos o intereses legítimos y directos que puede verse afectado, hay que comunicarle la tramitación."
+}

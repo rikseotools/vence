@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 28.1 de la Constitución Española",
+    "texto": "Todos tienen derecho a sindicarse libremente. La ley podrá limitar o exceptuar el ejercicio de este derecho a las Fuerzas o Institutos armados o a los demás Cuerpos sometidos a disciplina militar y regulará las peculiaridades de su ejercicio para los funcionarios públicos."
+  },
+  "intro": "El precepto trata de forma distinta a dos colectivos y ahí está la trampa: a las Fuerzas o Institutos armados y a los demás Cuerpos sometidos a disciplina militar la ley puede LIMITAR o EXCEPTUAR el derecho; a los funcionarios públicos solo puede regular las PECULIARIDADES de su ejercicio, que es cosa muy distinta de excluirlos.",
+  "options": {
+    "0": "Respecto de ellos la ley no puede exceptuar el derecho: únicamente regular las peculiaridades con que lo ejercen.",
+    "1": "Es uno de los colectivos que el artículo 28.1 permite limitar o exceptuar, junto a las Fuerzas o Institutos armados.",
+    "2": "El trabajo por cuenta propia no aparece en el precepto como colectivo excluible.",
+    "3": "No pueden serlo todas: solo uno de los tres colectivos admite que la ley excepcione el derecho."
+  },
+  "outro": "**Clave:** exceptuar o limitar solo cabe para Fuerzas o Institutos armados y demás Cuerpos sometidos a disciplina militar; en los funcionarios públicos la ley regula peculiaridades, no exclusión."
+}

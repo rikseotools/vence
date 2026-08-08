@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 27.1 de la Ley 7/1985, reguladora de las Bases del Régimen Local",
+    "texto": "La delegación deberá determinar el alcance, contenido, condiciones y duración de ésta, que no podrá ser inferior a cinco años, así como el control de eficiencia que se reserve la Administración delegante y los medios personales, materiales y económicos, que ésta asigne sin que pueda suponer un mayor gasto de las Administraciones Públicas."
+  },
+  "intro": "La ley fija un SUELO, no un techo: la delegación tiene que durar al menos cinco años. La razón es práctica: si pudiera revocarse enseguida, el municipio asumiría medios y organización para un encargo que se le puede retirar de inmediato. Nada impide que dure más.",
+  "options": {
+    "0": "Es el límite que impone el artículo 27.1: la duración no puede ser inferior a cinco años.",
+    "1": "El precepto no fija un máximo de diez años para la duración de la delegación.",
+    "2": "El mínimo legal son cinco años, no diez.",
+    "3": "Invierte el sentido de la regla: cinco años es el mínimo exigido, no un tope que no pueda superarse."
+  },
+  "outro": "**Clave:** la delegación de competencias en los municipios no puede durar menos de cinco años; es un mínimo, no un máximo."
+}

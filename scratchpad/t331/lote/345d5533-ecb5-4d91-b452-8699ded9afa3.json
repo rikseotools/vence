@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.2 RD 203/2021",
+    "texto": "La marca de tiempo será utilizada en todos aquellos casos en los que las normas reguladoras no establezcan la utilización de un sello electrónico cualificado de tiempo."
+  },
+  "options": {
+    "0": "Invierte la regla al suprimir la negación: la marca de tiempo opera cuando las normas reguladoras NO exigen el sello cualificado, no cuando lo exigen.",
+    "1": "Lo que las normas reguladoras pueden imponer en su lugar es un sello electrónico cualificado de tiempo, no una firma electrónica cualificada.",
+    "2": "Reproduce la regla del precepto: la marca de tiempo es la modalidad por defecto siempre que las normas reguladoras no impongan el sello cualificado.",
+    "3": "Quien puede imponer el sello cualificado son las normas reguladoras de los respectivos procedimientos; el Esquema Nacional de Interoperabilidad determina la forma de asociar la información al documento."
+  },
+  "frame": "select_correct"
+}

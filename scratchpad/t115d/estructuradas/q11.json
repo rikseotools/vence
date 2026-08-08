@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 90.4 del Real Decreto Legislativo 2/2004",
+    "texto": "Este impuesto podrá exigirse en régimen de autoliquidación, en los términos que reglamentariamente se establezcan."
+  },
+  "options": {
+    "0": "El precepto lo formula como una posibilidad, no como una obligación: dice «podrá exigirse».",
+    "1": "Reproduce el precepto: posibilidad de exigirlo en régimen de autoliquidación en los términos que se establezcan reglamentariamente.",
+    "2": "La remisión del artículo es a lo que se establezca reglamentariamente, no a un acuerdo de la Agencia Estatal de Administración Tributaria.",
+    "3": "La gestión a partir de la matrícula no impide la autoliquidación: el propio artículo la contempla."
+  },
+  "frame": "select_correct"
+}
