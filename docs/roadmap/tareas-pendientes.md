@@ -2026,6 +2026,25 @@ falso: conviene leerla antes de recalibrar).
 - **Y el arreglo de fondo, que es lo que evita que se repita:** el inventario de merge tiene que mirar **también** las ramas por trabajador, o —mejor— dejar de depender del NOMBRE de la rama y preguntar por lo que de verdad importa: *«¿esta entrega revisada tiene su trabajo en `main`?»*. Hoy se responde buscando `flota/T-nnn`, y por eso una entrega hecha en una rama compartida parece mergeada cuando no lo está.
 - **⚠️ Cuidado al limpiarlo:** una rama compartida de trabajador puede ser lo ÚNICO que guarde ese trabajo (`npm run sesiones:huerfanos` existe por eso). No borrar ninguna sin comprobar qué se perdería.
 - **Relacionadas:** [T-431] (worktrees abandonados con trabajo dentro), [T-628] (el rescate empuja las ramas de los trabajadores), y el reparto revisar/mergear de la sesión del 07/08.
+
+#### TRIAJE (07/08, w4) — 5 ramas rescatadas y verificadas; el resto necesita un método distinto al que usé, dejado escrito
+
+**Método (paso 1, barato y fiable — cruzar T-ids):** por cada uno de los 149 commits varados, comprobar si su `T-nnn` aparece en ALGÚN commit de `origin/main`. Reproducible con un script de 20 líneas sobre `git log --pretty=%s`. Resultado: **132/149 (89%) con su T-id ya presente en main** (probable trabajo rehecho por otra vía) y **17/149 sin ningún rastro** (9 en w3, 2 en w4, 1 en w1, más los 5 ya identificados como duplicados de docs al reconciliar conflictos — ver más abajo).
+
+**⚠️ ESTE MÉTODO TIENE FALSOS NEGATIVOS, MEDIDO, NO SOSPECHADO:** `T-467` (w3) SÍ aparecía como "T-id ya presente en main" — pero al intentar cherry-pickearlo el código dependía de `resolverNivelDecisivo`, una función que **NO EXISTE en main** (`grep` directo, cero resultados). La función la introducía `T-333` (commit `c9f418531`, TAMBIÉN varado en w3), cuyo id SÍ aparece en main pero por una mención NO RELACIONADA (otro commit que cita "T-333" de pasada, no el código real). **Conclusión: la presencia del T-id en el log NO demuestra que el CÓDIGO esté en main — solo que el número se mencionó en algún sitio.** El bucket de 132 "ya en main" está medido con un método que se sabe incompleto; no se ha vuelto a auditar código-por-código por coste (ver barrido del paso 2 de abajo, con sus propios límites).
+
+**Lo rescatado y VERIFICADO de verdad (cherry-pick + tests corridos contra el `main` actual, no solo leído), 5 ramas pusheadas:**
+- **`flota/T-333-T-467-varado-detector-seccion-capitulo`** — T-333 (detector de frontera de scope entiende SECCIÓN/SUBSECCIÓN) + T-467 (mismo detector, nivel CAPÍTULO) apilados en ese orden por la dependencia real de arriba. `lib/laws/scopeTitleBoundary.js`, `lib/laws/parseBoeSections.js`, `scripts/scope/sim-title-boundary.ts` + script nuevo `sim-capitulo-bankwide.cjs`. **112/112 tests verdes** contra el main actual (`scopeTitleBoundary.test.ts` + `parseBoeSections.test.js`). Medido bank-wide en su día: 1013 hallazgos reales (109 en el cubo "1-2 artículos" de T-121).
+- **`flota/T-367-varado-filtro-desde-temario`** — camino desde el temario hasta el filtro por artículos + desambigua "Filtrar por Títulos" (lectura) de "Filtrar por Artículos" (test). **Responde a un compromiso ESCRITO A UN USUARIO PREMIUM** (hilo `6df1e69a`, 31/07) que llevaba una semana sin cumplirse por estar varado. **29/29 tests verdes.** No desplegado nunca — el usuario sigue sin la funcionalidad prometida.
+- **`flota/T-387-varado-mover-ficha-automatico`** — `backlog.cjs done/reopen` mueven solos la ficha entre `## Abiertas`/`## Hechas` (`lib/backlog/moverFicha.cjs` + `escrituraSegura.cjs`, con relectura-antes-de-escribir). Ataca DIRECTAMENTE el problema que este mismo triaje sufrió de primera mano (conflictos de inserción en este fichero, ver abajo). **30/30 tests verdes.** No registrado aún en `toolRegistry.ts` en main (el commit que lo hacía se saltó al cherry-pick por conflicto de cabecera; solo cosmético, pendiente).
+- **`flota/T-492-varado-pgconfig-27-scripts`** — drena los 27 scripts con la receta de conexión `pg` rota contra RDS (deuda de T-377) a `pgConfig()`. **`node --check` limpio en los 27 + guardarraíl `pgConfigUnico.guardrail.test.ts` 7/7.**
+- Los cuatro anteriores tenían **conflictos en `docs/roadmap/tareas-pendientes.md`** al cherry-pickear — todos del mismo tipo (dos commits insertando en el mismo punto de `## Hechas`). Resueltos a mano, con un hallazgo aparte: **el cherry-pick de T-492 arrastró un bloque duplicado de T-377** (la propia rama w3 tenía T-377 cerrado en su historia local, sin relación con T-492) — se detectó comparando contra `origin/main` limpio y se quitó antes de pushear. **Esto es EXACTAMENTE el modo de fallo que motivó T-427/T-428** (cherry-picks que se llevan fichas por delante) — pasó DE NUEVO aquí, en vivo, al intentar rescatar. Ninguna rama pusheada tiene duplicados (verificado: `grep -oE "^### \[T-[0-9]+\]"` sin repetidos en las 5).
+
+**Paso 2, barrido más amplio (INFORMATIVO, no verificado uno a uno) — 46 commits `fix`/`feat` restantes del bucket "ya en main", cherry-pick automático con `-X theirs` + diff contra main tras abortar/resetear:** 26 de 46 dejan cambios de CÓDIGO (no solo el `.md`) al aplicarse sobre el main actual. **⚠️ ESTA CIFRA NO ES FIABLE COMO LISTA DE GAPS REALES — es una señal RUIDOSA, no una medición.** `-X theirs` resuelve CUALQUIER conflicto a favor del commit viejo, así que un resultado con muchas **deleciones netas** (varios de la lista: `-16`, `-49`, `-18`, `-142`…) probablemente refleja que `main` avanzó ESE MISMO fichero por otra vía y mi barrido está pisando lo nuevo con lo viejo, no destapando un hueco real — es el mismo mecanismo que causó el duplicado de T-377 de arriba, a escala. **SOSPECHO que hay más trabajo real ahí dentro (el patrón T-333/T-467 lo demuestra: el único caso investigado a fondo con este perfil SÍ era un hueco real pese a que el filtro de T-ids decía "ya en main")**, pero confirmarlo exige el método caro (cherry-pick limpio, uno a uno, leyendo cada conflicto) que usé en las 5 ramas de arriba — no el atajo con `-X theirs`. Los 25 commits con diff de código real tras el barrido ruidoso (para priorizar, NO para fiarse sin verificar cada uno): `cdc323e6a`(T-319) `93349acad`(T-486) `8d505d4e8`(T-486) `8e421707e`(T-609) `944d77af6`(T-525) `a6e668b4a`(T-611) `69b41c0ac`(T-613) `3c20fdd36`(T-392) `e6abb8860`(T-615) `c1155900b`(T-614) `7d078c7f5`(T-611) `217138bc2`(T-617) `a6f09ae22`(T-617) `f5f0879f6`(T-443) `d38cdb784`(T-619) `df8e5e985`(T-518) `c2e4bc3cd`(T-623) `0d4d4faf5`(T-626) `108a0d9cd`(T-159) `3ae8159d5`(T-240) `7bce7173a`(T-303) `52f092878`(T-313) `1a5f864ef`(T-334) `4572c9399`(T-408) `ef5fe1e58`(T-410) `7df019bd8`(T-271) — todos en `origin/flota/w3` salvo `T-271` en `origin/flota/w1`. Varios T-ids repiten (`T-486`, `T-611`, `T-617`, `T-619`, `T-623`) porque son commits sucesivos del mismo trabajo — priorizar por T-id, no por commit suelto.
+
+**Lo que NO he tocado:** las ramas `flota/w1`, `flota/w3`, `flota/w4` siguen intactas (no se han borrado ni reescrito). El resto de los 6 hallazgos docs-only que identifiqué (`T-255`, `T-348`, `T-634` en w3; `T-347`, `T-153` en w4; `T-164` en w1) tienen contenido verificado y valioso —p.ej. `T-347` (w4, commit `b3e9b7bc0`) documenta con grep exhaustivo que dos funciones de `oep-signals-queries.service.ts` están muertas, pero la propia limpieza de código que el commit AFIRMA haber hecho **nunca se completó** (verificado: los ficheros siguen existiendo en main tal cual) — pero no los he convertido en ramas por el coste/riesgo de repetir la cirugía de conflictos de arriba 6 veces más dentro de este mismo turno. Quedan como candidatos con su hash de commit citado arriba, para quien retome.
+
+**Arreglo de fondo (aún NO hecho):** seguir sin tocar — es una pieza de tooling (el inventario de merge dejando de depender del nombre de rama), no una urgencia de contenido, y este turno se agotó en el rescate mismo.
 ### [T-659] 🟢 [ABIERTO 07/08] Dos migraciones RLS de la era Supabase (rol `authenticated`) llevan desde MAYO sin aplicar: decidir si aplican o se retiran
 
 **De dónde sale:** al poner a correr en CI el detector de migraciones RLS sin aplicar ([T-658]),
@@ -6386,16 +6405,6 @@ ponerse a verificar una por una.
 - **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
 - **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
 
-### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
-
-- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
-- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
-- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
-- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
-- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
-- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
-- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
-
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
@@ -9719,6 +9728,52 @@ cada pasada del canario de navegador** mientras el arreglo no esté desplegado.
   se puede esperar el TTL de 24 h. El 07/08 seis premium recibieron el captcha (575-1.200 servidas en
   2 días; una lo vio 33 veces) — si alguno fuera falso positivo, no tenemos herramienta.
 - Si el umbral de 500/día es el correcto para premium es decisión de producto, sin tocar aquí.
+### [T-492] ✅ [HECHA 07/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
+
+- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
+- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
+- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
+- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
+- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
+- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
+
+**✅ CIERRE (07/08): drenados los 27, `TECHO_RECETA_A_MANO` a 0.**
+
+Migrados los 27 ficheros (17 `.cjs` vía `require('../…/lib/db/pgSsl.cjs')`, 10 `.ts` vía
+`await import('../…/lib/db/pgSsl.cjs')` — el mismo patrón que ya usaba
+`scripts/sim/sim-perfil-roto-se-cura.ts`) a `new Client(pgConfig(process.env.DATABASE_URL))` /
+`new Pool({ ...pgConfig(...), ...opciones })`, incluidos los dos prioritarios
+(`clonar-documento.ts`, `sweep-shuffle-safety-drift.ts`).
+
+**Verificado, en capas (sin escribir a producción):**
+- Guardarraíl `pgConfigUnico.guardrail.test.ts`: **0/0** infractores (era 27), `TECHO_RECETA_A_MANO`
+  bajado a 0. Trinquete cerrado: un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- Los 17 `.cjs`: `node --check` (sintaxis) + resolución real de la ruta relativa a `pgSsl.cjs`
+  (`fs.existsSync` sobre la ruta calculada) — las 17, correctas.
+- Los 10 `.ts`: la misma resolución de ruta sobre el `await import(...)` — las 11 ocurrencias (10
+  ficheros + las 2 de `admin-token.ts`), correctas. `tsc --noEmit` de proyecto completo revienta por
+  OOM (no es de esta tarea); comprobado archivo a archivo con flags mínimas — los únicos errores que
+  salen son de líneas que esta tarea NO tocó (imports `@/lib/shuffle/...` sin resolver por faltar el
+  `tsconfig.json` del proyecto en el check aislado, y un `@ts-expect-error` preexistente en otra
+  línea), confirmado comparando número de línea contra el diff.
+- **Dos smokes de conexión REAL contra RDS** (con `VENCE_LECTOR_URL`, sin escribir nada):
+  `sweep-shuffle-safety-drift.ts --json` conectó limpio y devolvió su JSON (`{"regressions":0,…}`,
+  sin error de certificado — el bug exacto que esto arregla); `canary-cobertura-dispositivos.cjs`
+  conectó (pasó la capa TLS) y solo entonces topó con `permission denied for table user_profiles`
+  — un hueco de GRANT/RLS de mi credencial de flota restringida, **no** un fallo de esta migración
+  (misma familia que [T-573]/[T-574], fuera de este alcance).
+- Suite `__tests__/guardrails` completa: **125/127 en verde, 2 skip** (sin `DATABASE_URL`) — sin
+  regresión. Un fallo de `shuffleRoundtripBD.test.ts` visto de pasada con `DATABASE_URL` puesta al
+  rol de coordinación (4 tablas) es el mismo hueco de permisos, en un fichero que esta tarea no toca.
+
+**NO hecho, a propósito (fuera de alcance de esta ficha):** no se ha EJECUTADO la lógica de negocio
+completa de los 27 (muchos exigen argumentos concretos, otros escriben, y mi credencial de flota es
+más estrecha que la de un run real) — solo se ha verificado que la CAPA DE CONEXIÓN (el bug que
+[T-377] diagnosticó) queda arreglada en los 27, con dos pruebas end-to-end reales de que el patrón
+funciona. Ejecutar cada script con sus argumentos reales, si hace falta, es trabajo de quien lo use.
+
+
 ### [T-663] ✅ [HECHA 07/08] La resurrección de un trabajador estaba escrita, se invocaba y NO PODÍA EJECUTARSE: dos permisos que faltaban, y w1 seis horas muerto con su tarea cogida
 
 - **Lo que se veía:** `w1` llevaba **6 horas parado** con T-168 reclamada y sin proceso. El supervisor lo contaba como **ocupado**, así que tampoco le mandaba trabajo nuevo — un trabajador de cuatro, invisible. Lo mismo le había pasado a `w3`.

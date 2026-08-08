@@ -4,6 +4,7 @@
 // Ejecutar con: node scripts/populate_law_slugs.cjs
 
 const { Pool } = require('pg');
+const { pgConfig } = require('../lib/db/pgSsl.cjs');
 require('dotenv').config({ path: '.env.local' });
 
 // Diccionario SHORT_NAME → SLUG (extraído de lawMappingUtils.ts)
@@ -290,10 +291,7 @@ function generateLawSlug(shortName) {
 }
 
 async function main() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  const pool = new Pool(pgConfig(process.env.DATABASE_URL));
 
   const client = await pool.connect();
 

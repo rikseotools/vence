@@ -33,13 +33,14 @@
  */
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { epigrafeNombraLey, clasificar, mismaFamiliaYaServida } = require('../../lib/health/normaDelEpigrafeSinEscopar.cjs')
 const MINP = Number(process.argv[2] || 3)
 console.log('\n⚠️  BAJO DEMANDA: la precisión medida NO da para el badge (ver cabecera). Cada hallazgo se')
 console.log('   verifica contra el programa oficial ANTES de tocar el scope. Falsos positivos conocidos:')
 console.log('   contenedores equivalentes con otro nombre y epígrafes con anexos pegados.\n')
 ;(async () => {
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const leyes = (await c.query(`
     SELECT l.id, l.short_name, l.name,

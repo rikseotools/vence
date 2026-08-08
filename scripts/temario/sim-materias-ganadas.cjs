@@ -19,6 +19,7 @@
 // cobertura que nadie ha medido).
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const fs = require('fs')
 
 const STOP = new Set(['sobre','entre','desde','entre','durante','entre','concepto','conceptos','generales','general','principales','tipos','tipo','otros','otras','mismo','misma','cada','como','para','their','sus','del','las','los','una','uno','que','con','por','sin','sus'])
@@ -41,7 +42,7 @@ function terminos(seg) {
   const prev = JSON.parse(fs.readFileSync(`/tmp/verify_epigrafe_${pt}.json`, 'utf8'))
   const anterior = {}; for (const t of prev.temas) anterior[t.tema] = t.epigrafe_bd
 
-  const c = new Client({ connectionString: process.env.DATABASE_URL.split('?')[0], ssl: { rejectUnauthorized: false } })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const temas = (await c.query(
     `SELECT topic_number n, epigrafe FROM topics WHERE position_type=$1 AND is_active ORDER BY 1`, [pt])).rows
