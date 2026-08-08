@@ -2642,22 +2642,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'rama por tarea y luego vuelve a `main`, así que lo entregado nunca es `HEAD` — mirar ahí ' +
       'daba «nada que salvar» con 22 commits atrapados (05/08). La ref de destino lleva el sha ' +
       'dentro, así que rescatar dos veces escribe la MISMA ref: idempotente sin comprobar nada. ' +
-      '**SEGUNDA FASE (T-628):** en el VPS el push del propio rescate falla SIEMPRE —los ' +
-      'trabajadores no tienen credenciales de git— así que el trabajo quedaba identificado y ' +
-      'quieto (medido el 06/08: 11 ramas atrapadas, una con un bug de producción, y 6 tareas que ' +
-      'el panel presentaba como «esperando tu decisión» cuando solo esperaban esto). Ahora el ' +
-      'rescate emite `ORIGEN=<rama>|<destino>` y el PORTÁTIL —único sitio con SSH a la máquina Y ' +
-      'credenciales del repo— se trae las refs y las empuja **con el nombre que ya calculó el ' +
-      'rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
+      '**SEGUNDA FASE (T-628, histórica — YA NO DISPARA en el VPS desde el 08/08):** el 06/08 el ' +
+      'push del propio rescate fallaba SIEMPRE en el VPS —los trabajadores no tenían credenciales ' +
+      'de git— así que el trabajo quedaba identificado y quieto (medido: 11 ramas atrapadas, una ' +
+      'con un bug de producción, y 6 tareas que el panel presentaba como «esperando tu decisión» ' +
+      'cuando solo esperaban esto). El mecanismo se conserva por si una máquina vuelve a carecer ' +
+      'de credenciales: el rescate emite `ORIGEN=<rama>|<destino>` y una máquina CON credenciales ' +
+      '(el portátil, o cualquier otra) se trae las refs y las empuja **con el nombre que ya ' +
+      'calculó el rescate**: recalcularlo allí sería un segundo generador del mismo nombre. ' +
       '⚠️ **No se ejecuta contra trabajadores EN MARCHA**: el rescate commitea el árbol sucio, así ' +
       'que a mitad de tarea le commitearía el trabajo a medias. Prueba: `npm run sim:rescate-flota` ' +
       '(repos git desechables) + `__tests__/flota/rescateSegundaFase.test.ts` para la decisión. ' +
       '**Gotcha corregido (07/08):** la decisión "¿hace falta rematar?" miraba `.local` — "¿quien ' +
       'llama está en la misma máquina que el trabajador?" — no "¿esa máquina tiene con qué ' +
       'empujar?". El supervisor systemd corre CON `VENCE_FLOTA_AQUI=flota-1`, así que para él ' +
-      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba, aunque el push de ' +
-      'esa máquina nunca funciona. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una ' +
-      'propiedad DE LA MÁQUINA (`lib/flota/maquinas.cjs`), no de quien pregunta.',
+      '`.local` daba `true` para w1-w4 y la segunda fase nunca se disparaba con el criterio ' +
+      'viejo. Ahora la decisión usa `MAQ.tieneCredencialesGit(w)`, una propiedad DE LA MÁQUINA ' +
+      '(`lib/flota/maquinas.cjs`), no de quien pregunta — y esa propiedad se REVIRTIÓ a `true` ' +
+      'el 08/08 (T-486/T-628) tras medir en vivo que el VPS SÍ tiene una clave SSH funcional ' +
+      '(`ssh -T git@github.com` autentica, `git fetch` funciona, y esta misma sesión empujó ' +
+      'con éxito más de una decena de veces en su propio worktree con esa credencial). No se ' +
+      'pudo probar un push real desde el clon BASE compartido específicamente (el guard de "una ' +
+      'sesión por directorio" lo bloquea, correctamente) — la autorización es por usuario del ' +
+      'sistema operativo, no por directorio, así que se infiere del mismo par cuenta/clave.',
   },
 
   flota_presencia_trabajador: {
@@ -2795,6 +2802,34 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'más a costa del tiempo de Manuel es perder. Usa MEDIANA (una entrega olvidada desplaza la ' +
       'media y esconde el resto) y **dice «no medido» en vez de rellenar** (`worked_seconds` solo ' +
       'existe desde [T-414]). Evento `flota_productividad` + `RULE_FLOTA_PRODUCTIVIDAD`, y **serie duradera** en la tabla `flota_productividad_historico` — el bus NO sirve como historia y se comprobó antes de decidirlo (10,8 M de filas y solo 32 días: se poda). Guarda las ENTRADAS del cálculo, no solo el veredicto, para poder re-juzgar la historia si se recalibran los umbrales; y compara con la medida anterior métrica a métrica con ±10 % tratado como ruido. 30 tests. **Y da PREVISIÓN** (`--ventana <h>`), con dos trampas esquivadas a propósito: (a) el ritmo NO sale de `worked_seconds`, que mide tiempo con la tarea COGIDA y no esfuerzo —hay entregas de «22 h» que son una tarea reclamada de un turno a otro—, sino de **entregas por hora de reloj**, que ya incluye paradas y reintentos; (b) si se revisa más despacio de lo que se entrega, **la previsión la manda la REVISIÓN** y añadir trabajadores no acorta nada, solo alarga la cola. Con menos de 3 entregas medidas se niega a dar un número.',
+  },
+  flota_salud_maquina: {
+    titulo: '¿Puede la MÁQUINA de la flota con el trabajo que se le manda? — vigilaba al trabajador, nunca a la máquina',
+    ruta: 'lib/flota/saludMaquina.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`clasificarMaquina(medida)` / `turnoSinProgreso(...)`. Nace de medir `flota-1` (07/08) con el ' +
+      'panel pintando los cuatro trabajadores en verde: 702 MB disponibles de 7.751 (9 %), sin swap, ' +
+      'carga 19,7 en 4 núcleos con la CPU al 97,7 % OCIOSA (procesos en `D`, esperando disco) y ' +
+      'CUATRO builds de Node a la vez (1,3-1,6 GB cada uno; los cuatro Claude Code juntos ocupaban ' +
+      'menos de 1 GB). Los trabajadores no estaban trabajando, estaban esperando disco — y nada lo ' +
+      'medía. Dos criterios que lo hacen usable: carga alta con CPU OCUPADA no alerta (máquina ' +
+      'trabajando de verdad); se mide `available`, no `free` (un Linux sano usa casi toda la RAM en ' +
+      'caché). Distingue build de trabajador por RSS del proceso `node` (>500 MB): la primera versión ' +
+      'seguía la cadena de padres (`node` cuyo ppid es un `npm`) y daba CERO en una máquina con ' +
+      'cuatro builds corriendo — el padre no siempre está. `turnoSinProgreso` es el cruce que ' +
+      'faltaba: proceso vivo + latido de presencia congelado ≥2h, que hasta entonces el panel no unía. ' +
+      'La sonda corre en el supervisor UNA VEZ POR MÁQUINA, en CADA pasada del bucle (no solo cuando ' +
+      'alguien mira el panel a mano — ese fue el propio bug del estreno, verificado en vivo: el ' +
+      'servicio llevaba horas con la sonda dentro y solo había UN evento). Emite `flota_maquina_salud` ' +
+      '(deliberadamente silencioso cuando el estado es `ok`) y `flota_turno_sin_progreso`, con dos ' +
+      'reglas proactivas (`RULE_FLOTA_MAQUINA_AHOGADA`, `RULE_FLOTA_TURNO_SIN_PROGRESO`) que exigen ' +
+      '2 lecturas en 2h antes de disparar — una suelta puede ser un build legítimo. **No es el ' +
+      'arreglo de la causa** ([T-682]/[T-647] la tienen: son los builds simultáneos, no el número de ' +
+      'trabajadores — bajar de cuatro a dos habría sido la reacción incorrecta y se retiró al medir ' +
+      'quién consumía la memoria de verdad). 14 tests en `__tests__/flota/saludMaquina.test.ts`.',
   },
   flota_cuentas: {
     titulo: 'De qué CUENTA de Claude Code tira cada trabajador de la flota (registro multi-cuenta)',

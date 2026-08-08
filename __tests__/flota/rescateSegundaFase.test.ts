@@ -94,37 +94,49 @@ describe('[T-628] necesitaSegundaFase — solo donde hace falta', () => {
   })
 })
 
-describe('[T-628] EL BUG REAL: `.local` mentía sobre si la máquina tenía credenciales', () => {
+describe('[T-628] EL BUG REAL (histórico): `.local` mentía sobre si la máquina tenía credenciales', () => {
   // La primera versión de esta feature miraba `maquina.local` — "¿quien llama está en la
   // misma máquina que el trabajador?" — para decidir si el push del propio trabajador iba a
   // funcionar. Esa pregunta NO es la misma que "¿esta máquina tiene con qué empujar?", y solo
   // coinciden por accidente en el portátil (quien llama SIEMPRE tiene sus credenciales ahí).
-  // En el VPS no coinciden nunca: el supervisor systemd corre con `VENCE_FLOTA_AQUI=flota-1`
+  // En el VPS no coincidían el 06/08: el supervisor systemd corre con `VENCE_FLOTA_AQUI=flota-1`
   // (T-617, valor real de `/etc/vence-flota/supervisor.env`), así que para ÉL
   // `maquinaDe('w1').local` da `true` — y con el criterio viejo, "local" bastaba para decir
-  // "no hace falta rematar", dejando el trabajo atrapado exactamente como antes de T-628.
-  it('REPRODUCIDO: con VENCE_FLOTA_AQUI=flota-1 (la config REAL del supervisor), maquinaDe da local:true', () => {
+  // "no hace falta rematar", dejando el trabajo atrapado exactamente como antes de T-628. La
+  // DISTINCIÓN sigue siendo correcta hoy (por eso este describe se conserva); lo que cambió el
+  // 08/08 es que la máquina SÍ tiene credenciales ahora (ver el registro en maquinas.cjs), así
+  // que estos dos tests verifican el criterio con la máquina en su estado real de HOY, no el del
+  // 06/08 — usan `SIN_CREDENCIALES` (un doble de test) para seguir demostrando que el criterio
+  // (no `.local`) es el que decide, no la máquina real.
+  it('REPRODUCIDO: con VENCE_FLOTA_AQUI=flota-1 (la config REAL del supervisor), maquinaDe da local:true — y HOY también tieneCredencialesGit:true, medido en vivo (ver maquinas.cjs)', () => {
     const previo = process.env.VENCE_FLOTA_AQUI
     process.env.VENCE_FLOTA_AQUI = 'flota-1'
     try {
       const m = MAQ.maquinaDe('w1')
       expect(m.local).toBe(true) // esto es lo que hacía fallar el criterio viejo
-      // Y aun así la máquina sigue sin credenciales — lo que importa para decidir:
-      expect(m.tieneCredencialesGit).toBe(false)
+      // 08/08: ya NO es cierto que la máquina siga sin credenciales — se añadió una clave SSH
+      // entre el 06/08 y hoy (medido: ssh -T git@github.com autentica, git fetch funciona).
+      expect(m.tieneCredencialesGit).toBe(true)
     } finally {
       if (previo === undefined) delete process.env.VENCE_FLOTA_AQUI
       else process.env.VENCE_FLOTA_AQUI = previo
     }
   })
 
-  it('CON EL CRITERIO NUEVO: la misma llamada real da hace_falta:true, no false', () => {
+  it('el criterio SIGUE siendo `tieneCredencialesGit`, no `.local` — con el doble de test SIN_CREDENCIALES da hace_falta:true aunque local:true', () => {
     const previo = process.env.VENCE_FLOTA_AQUI
     process.env.VENCE_FLOTA_AQUI = 'flota-1'
     try {
       const m = MAQ.maquinaDe('w1')
+      expect(m.local).toBe(true)
       const parsed = parsearRescate('ORIGEN=flota/T-525|rescate/w1-x-abc\nSALVADO=2')
-      const v = necesitaSegundaFase(m, parsed)
-      expect(v.hace_falta).toBe(true)
+      // Si la máquina real (con credenciales) no necesita segunda fase, eso NO demuestra que el
+      // criterio mire `.local` — lo demuestra el doble SIN_CREDENCIALES, que también es local:
+      const vConDobleSinCredenciales = necesitaSegundaFase(SIN_CREDENCIALES, parsed)
+      expect(vConDobleSinCredenciales.hace_falta).toBe(true)
+      // Y la máquina real de hoy, con credenciales, no necesita rematar — su propio push vale:
+      const vReal = necesitaSegundaFase(m, parsed)
+      expect(vReal.hace_falta).toBe(false)
     } finally {
       if (previo === undefined) delete process.env.VENCE_FLOTA_AQUI
       else process.env.VENCE_FLOTA_AQUI = previo
