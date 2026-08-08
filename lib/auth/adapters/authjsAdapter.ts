@@ -22,7 +22,8 @@
 // /api/auth/token (675k mints + 525k 401), enmascarado el 11/07 muestreando la
 // telemetría (no arreglado). Ahora el token minteado se CACHEA (por instancia del
 // adapter, que es singleton en prod) y se reusa hasta TOKEN_SKEW_SEC antes de
-// expirar; un 401 aplica UNAUTH_BACKOFF_MS de espera (anónimos dejan de martillear).
+// expirar; un 401 aplica el backoff de `backoffAcunado` (60 s a los anónimos, que son los que
+// martilleaban; 2 s a quien tiene sesión, o el freno se convierte en el fallo — ver [T-671]).
 // La detección de logout sigue viva: el poll re-verifica la sesión cuando el token
 // caduca, y el broadcast de signOut invalida la caché en todas las pestañas al instante.
 
@@ -44,6 +45,7 @@ import type {
 import { isBearerFresh, TOKEN_SKEW_SEC } from '../tokenFreshness'
 import { clearLegacySupabaseSession, esClaveSesionLegacy } from '../legacySupabaseStorage'
 import { deriveMintReason, MINT_REASON_HEADER, type MintReason } from '../mintReason'
+import { backoffTrasUnauth, puedeIntentarAcunar } from '../backoffAcunado'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type NextSessionUser = any
@@ -55,9 +57,9 @@ const POLL_INTERVAL_MS = 5000
 // define aquí: vive en el núcleo puro `../tokenFreshness`, compartido con el adapter de
 // Supabase. Tenerlo por duplicado fue el origen de T-210 (dos criterios de "¿hay que ir
 // a la red?" conviviendo, y el otro ni miraba la expiración).
-/** Tras un 401 (sin sesión), no volver a pedir token hasta pasado este backoff. Corta el
- *  martilleo de /api/auth/token de los visitantes ANÓNIMOS (que no tienen sesión). */
-const UNAUTH_BACKOFF_MS = 60_000
+// El backoff tras un 401 ya NO se define aquí: vive en el núcleo puro `../backoffAcunado`,
+// porque su duración DEPENDE de si el cliente tiene sesión (60 s anónimo / 2 s dentro) y ese
+// criterio hay que poder probarlo sin levantar el adapter ([T-671]).
 /** Canal/clave para propagar el logout entre pestañas sin polling agresivo. */
 const LOGOUT_BROADCAST_KEY = 'vence_auth_logout_at'
 // La clave de la sesión legacy y su borrado viven en `lib/auth/legacySupabaseStorage.ts`:
@@ -202,6 +204,15 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
    * en cada carga de página) y algo que está tirando la caché— quedarían indistinguibles.
    */
   let yaAcuñoAlgunaVez = false
+  /**
+   * ¿Este navegador ha tenido sesión en algún momento de esta carga? Igual que
+   * `yaAcuñoAlgunaVez`, **sobrevive a `resetCache()`** a propósito: `resetCache` corre justo
+   * cuando el acuñado devuelve 401, así que si se borrara aquí perderíamos el único dato que
+   * distingue «anónimo que martillea» de «usuario dentro al que se le cayó el token» — que es
+   * exactamente la distinción que decide cuánto callar ([T-671]). Lo apaga el logout, que es
+   * el único momento en que deja de ser cierto.
+   */
+  let huboSesionAlgunaVez = false
 
   const now = () => Date.now()
   // Frescura por el núcleo puro compartido (misma regla que el adapter de Supabase).
@@ -223,7 +234,19 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
     const t = now()
     if (!force) {
       if (mintFresh()) return { status: 'ok', token: cachedMint as MintedToken }
-      if (cachedMint === null && t < unauthUntil) return { status: 'unauthenticated' }
+      // [T-671] El silencio tras un 401 lo decide el núcleo puro `backoffAcunado`, y su
+      // duración depende de si este cliente TIENE sesión: 60 s para un anónimo (que es para
+      // quien se puso el freno) y 2 s para quien está dentro. Antes eran 60 s para todos, y en
+      // ese minuto cada petición salía sin `Authorization` — el usuario veía sus estadísticas
+      // a 0 y no podía corregir su examen sin que nada lo intentara siquiera.
+      if (!puedeIntentarAcunar({
+        hayCache: cachedMint !== null,
+        ahora: t,
+        silencioHasta: unauthUntil,
+        haySesionConocida: huboSesionAlgunaVez,
+      })) {
+        return { status: 'unauthenticated' }
+      }
     }
     // Se calcula ANTES de acuñar, con el estado que motivó la decisión (después ya está
     // pisado). `acuñoAntes` es lo que separa el SUELO del sistema (carga de página: la caché
@@ -238,10 +261,11 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
     if (outcome.status === 'ok') {
       cachedMint = outcome.token
       yaAcuñoAlgunaVez = true
+      huboSesionAlgunaVez = true
       unauthUntil = 0
     } else if (outcome.status === 'unauthenticated') {
       resetCache()
-      unauthUntil = t + UNAUTH_BACKOFF_MS
+      unauthUntil = t + backoffTrasUnauth(huboSesionAlgunaVez)
     }
     // 'transient' → no tocar la caché (reintentar en el próximo tick)
     return outcome
@@ -271,7 +295,7 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
     // Token válido pero sin identidad resoluble = sesión inservible → sign out.
     if (!user) {
       resetCache()
-      unauthUntil = t + UNAUTH_BACKOFF_MS
+      unauthUntil = t + backoffTrasUnauth(huboSesionAlgunaVez)
       return { status: 'unauthenticated' }
     }
     const session: AuthSession = {
@@ -282,6 +306,9 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
       raw: nextSession ?? { bridge: true },
     }
     cachedSession = session
+    // También aquí: hay identidad resuelta aunque el token venga del bridge. Es el otro
+    // camino por el que se sabe que este navegador NO es un anónimo ([T-671]).
+    huboSesionAlgunaVez = true
     return { status: 'ok', session }
   }
 
@@ -375,6 +402,10 @@ export function createAuthjsAuthAdapter(): AuthClientPort {
       // sigue en localStorage y el bridge la re-hidrataría → auto-relogin. Borrarla es
       // parte del contrato de signOut durante el cutover (transitorio como el bridge).
       resetCache()
+      // El único momento en que deja de ser cierto que este navegador tiene sesión. Sin
+      // apagarlo aquí, un usuario que cierra sesión seguiría con el backoff corto de los
+      // autenticados y volvería a martillear /api/auth/token, que es lo que el freno evita.
+      huboSesionAlgunaVez = false
       clearLegacySupabaseSession()
       // Avisar a las otras pestañas para que invaliden su caché al instante.
       if (typeof window !== 'undefined') {

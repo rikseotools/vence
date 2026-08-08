@@ -36,6 +36,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { Client } = require('pg')
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 const { fetchSourceText } = require('../../lib/laws/fetchSourceText.cjs')
 const { clasificarVigilancia } = require('../../lib/laws/sourceWatch.cjs')
 
@@ -46,10 +47,7 @@ const LEY = valor('--ley')
 const LIMITE = parseInt(valor('--limite') || '0', 10)
 
 async function main() {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   // ⚠️ GOTCHA nº1 (costó un 8-de-8 en falso): `verified_source_hash` lo escribe

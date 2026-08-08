@@ -39,6 +39,7 @@
 const fs = require('fs')
 const path = require('path')
 const { Client } = require('pg')
+const { pgConfig } = require('../../lib/db/pgSsl.cjs')
 
 const APLICAR = process.argv.includes('--apply')
 
@@ -47,10 +48,7 @@ const APLICAR = process.argv.includes('--apply')
 const FIRMA_BOTON_ROJO = `email_soporte_disabled = true AND unsubscribed_all = true`
 
 async function main() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  })
+  const client = new Client(pgConfig(process.env.DATABASE_URL))
   await client.connect()
 
   try {

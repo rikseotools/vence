@@ -1,12 +1,10 @@
 require('dotenv').config({ path: '.env.local' });
 const { Pool } = require('pg');
+const { pgConfig } = require('../lib/db/pgSsl.cjs');
 const fs = require('fs');
 const path = require('path');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+const pool = new Pool(pgConfig(process.env.DATABASE_URL));
 
 async function runMigration() {
   const client = await pool.connect();

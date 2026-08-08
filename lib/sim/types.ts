@@ -27,6 +27,11 @@ export type SimFault =
   | { kind: 'network_down'; urlPattern: string }                 // abortar TODAS (offline sostenido)
   | { kind: 'http_500'; urlPattern: string; times: number }      // responder 500
   | { kind: 'latency'; urlPattern: string; ms: number }          // añadir latencia
+  // Responder un status y cuerpo CONCRETOS. Existe desde [T-671]: el fallo que hay que
+  // reproducir no es «el servidor peta», es «el servidor rechaza por identidad» — un 403 con
+  // `{reason:'sin_identidad'}`. Con `http_500` no se puede simular, y ese matiz es justo lo
+  // que decide si al opositor se le dice «comprueba tu conexión» o «vuelve a entrar».
+  | { kind: 'http_status'; urlPattern: string; status: number; body?: string; times: number }
 
 /** Resultado de evaluar UNA invariante de dominio. */
 export interface InvariantResult {

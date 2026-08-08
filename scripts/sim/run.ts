@@ -122,7 +122,7 @@ function buildCtx(page: Page, ctxPw: BrowserContext, journey: Journey, steps: St
         // adaptamos Playwright Route → AbstractRoute
         await h({
           abort: (c?: string) => route.abort(c as any),
-          fulfill: ({ status, body }) => route.fulfill({ status, body }),
+          fulfill: ({ status, body, contentType }) => route.fulfill({ status, body, contentType }),
           continue: () => route.continue(),
         })
       })

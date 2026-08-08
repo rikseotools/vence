@@ -129,6 +129,7 @@
     "audit:verificacion-cosmetica": "node --max-old-space-size=3000 scripts/audit-verificacion-cosmetica.cjs",
     "audit:instrumento-derivado": "node --max-old-space-size=3000 scripts/audit-instrumento-derivado.cjs",
     "audit:vinculo-vecino": "node --max-old-space-size=3000 scripts/audit-vinculo-articulo-vecino.cjs",
+    "audit:literalidad-clave": "node --max-old-space-size=3000 scripts/audit-literalidad-clave.cjs",
     "llm:ab-vinculo": "node scripts/observabilidad/ab-modelo-vinculo-vecino.cjs",
     "llm:ab-transformacion": "node scripts/observabilidad/ab-modelo-transformacion.cjs",
     "llm:ab-reescritura": "node scripts/observabilidad/ab-modelo-reescritura.cjs",
@@ -192,8 +193,8 @@
     "sim:candado-deploy": "node scripts/deploy/sim-candado.cjs",
     "stripe:compras-atascadas": "node scripts/stripe/compras-atascadas.cjs",
     "audit:corpus-ajeno": "node scripts/convocatoria/audit-corpus-ajeno.cjs",
-    "sim:candado-typecheck": "node scripts/hooks/sim-candado-typecheck.cjs"
-  },
+"sim:candado-typecheck": "node scripts/hooks/sim-candado-typecheck.cjs",
+    "exam:reparar-correcciones": "node scripts/exam/reparar-correcciones-bloqueadas.cjs"  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@aws-sdk/client-cloudwatch": "^3.1053.0",

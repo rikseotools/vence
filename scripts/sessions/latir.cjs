@@ -28,11 +28,57 @@
 // sitio que decide qué es «esta máquina» (T-484). Otra lectura suelta sería la séptima copia del
 // error de T-407, esta vez con el host en vez del sid.
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 
 const REPO = path.resolve(__dirname, '../..')
 const VERBOSE = process.argv.includes('--verbose')
 const arg = (n) => { const i = process.argv.indexOf(n); const v = process.argv[i + 1]; return i >= 0 && v && !v.startsWith('--') ? v : null }
+
+// ── MARCA LOCAL DE FALLOS (T-687) ────────────────────────────────────────────────────────────
+// Este fichero NUNCA falla hacia fuera (regla 1 de la cabecera), así que un fallo dentro de
+// `main()` no puede tocar `process.exitCode` ni imprimir nada salvo `--verbose` — y `backlog.cjs`
+// lo invoca SIEMPRE sin `--verbose` y con `stdio: 'ignore'`, así que ese rastro no llega a ningún
+// sitio. La marca es un fichero de `os.tmpdir()` (mismo patrón que el contador de
+// `recordatorio-hook.cjs`): síncrona, sin red, así que puede escribirse aunque la causa del fallo
+// sea precisamente que la BD no contesta. El siguiente latido que SÍ tenga éxito la lee, la
+// borra y avisa — convirtiendo un silencio que antes no dejaba NINGÚN rastro en un número
+// (intentos, minutos) que se puede alertar y auditar. Ver `lib/sessions/latidoFallo.cjs`.
+const MARCA_DIR = path.join(os.tmpdir(), 'vence-latido')
+const ficheroMarca = (sid) => path.join(MARCA_DIR, String(sid || 'sin-sid').replace(/[^a-zA-Z0-9-]/g, '_'))
+
+function leerMarca(sid) {
+  try { return JSON.parse(fs.readFileSync(ficheroMarca(sid), 'utf8')) } catch { return null }
+}
+
+/** Se llama SOLO desde el `.catch()` de más afuera: nunca puede lanzar. */
+function registrarFalloLocal(sid, mensaje) {
+  try {
+    const { registrarIntento } = require(path.join(REPO, 'lib', 'sessions', 'latidoFallo.cjs'))
+    fs.mkdirSync(MARCA_DIR, { recursive: true })
+    const marca = registrarIntento(leerMarca(sid), mensaje, new Date().toISOString())
+    fs.writeFileSync(ficheroMarca(sid), JSON.stringify(marca))
+  } catch { /* ni esto puede fallar hacia fuera: es el ÚLTIMO paso del catch */ }
+}
+
+/**
+ * Se llama tras un INSERT/UPDATE con éxito. Si había una marca de fallos previos, la borra y
+ * deja constancia en `observable_events` (best-effort, detached — no puede alargar el latido que
+ * acaba de tener éxito) de cuánto estuvo callado. Sin marca, no hace nada: es el caso sano.
+ */
+function resolverFalloLocalSiExistia(sid) {
+  const marca = leerMarca(sid)
+  if (!marca) return
+  try { fs.unlinkSync(ficheroMarca(sid)) } catch { /* si no se puede borrar, el próximo éxito lo reintenta */ }
+  try {
+    const { resumenRecuperacion } = require(path.join(REPO, 'lib', 'sessions', 'latidoFallo.cjs'))
+    const r = resumenRecuperacion(marca, new Date().toISOString())
+    require('child_process').spawn(process.execPath,
+      [path.join(REPO, 'scripts', 'friccion-emitir.cjs'), '--clase', 'latido_fallido',
+        '--guard', 'latido', '--detalle', `${sid}: ${r.detalle}`],
+      { detached: true, stdio: 'ignore' }).unref()
+  } catch { /* la telemetría nunca estorba (regla 1 de la cabecera) */ }
+}
 
 function url() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
@@ -186,10 +232,17 @@ async function cerrar(slug) {
   }
 }
 
+// Se lee desde el `.catch()` de más afuera para poder atribuir un fallo a un sid aunque el
+// fallo ocurra DESPUÉS de resolverlo (la resolución en sí casi nunca falla, pero si `main()`
+// revienta más adelante, sin esto la marca local caería en el cajón "sin-sid" y perdería la
+// atribución que es justo lo que la hace útil).
+let sidParaFallo = null
+
 async function main() {
   const slugCerrar = arg('--cerrar')
   if (slugCerrar) return cerrar(slugCerrar)
   const { sid, base } = resolverSesion()
+  sidParaFallo = sid
   // Corre ANTES del `return` de abajo: no depende de sid ni de DATABASE_URL, y es lo único de
   // este fichero que protege a sesiones que ni siquiera pueden latir todavía.
   if (base) repararHooksPathSiCorrupto(base)
@@ -247,11 +300,17 @@ async function main() {
              signals        = worktree_sessions.signals + 1
       RETURNING (SELECT host_previo FROM previo) AS host_previo`
     avisarIdentidadCompartida({ sid, host, hostPrevio: r[0] && r[0].host_previo })
+    resolverFalloLocalSiExistia(sid)
     if (VERBOSE) console.log(`✅ latido: ${sid} · ${slug} · ${branch || '?'} · ${host || 'máquina ?'} · huella: ${huella ? huella.length + ' fichero(s)' : 'no calculable'}`)
   } finally {
     try { await s.end({ timeout: 3 }) } catch {}
   }
 }
 
-// Fail-open TOTAL: cualquier avería sale con 0 y en silencio (ver regla 1 de la cabecera).
-main().catch((e) => { if (VERBOSE) console.error('latido no registrado:', String(e.message || e).slice(0, 160)) })
+// Fail-open TOTAL: cualquier avería sale con 0 y en silencio de cara al comando que lo invocó
+// (ver regla 1 de la cabecera) — pero YA NO sin rastro (T-687): la marca local deja que el
+// PRÓXIMO latido con éxito cuente cuánto duró el silencio, en vez de perderlo para siempre.
+main().catch((e) => {
+  registrarFalloLocal(sidParaFallo, e && e.message)
+  if (VERBOSE) console.error('latido no registrado:', String(e.message || e).slice(0, 160))
+})

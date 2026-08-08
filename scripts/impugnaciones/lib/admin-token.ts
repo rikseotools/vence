@@ -33,10 +33,8 @@ export interface OpcionesToken {
 export async function identidadDeAdmin(opts: OpcionesToken = {}): Promise<{ token: string; userId: string }> {
   const token = await tokenDeAdmin(opts)
   const admin = opts.admin || process.env.DISPUTE_ADMIN_EMAIL || ADMIN_POR_DEFECTO
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL!.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const { pgConfig } = await import('../../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const { rows } = await c.query('select id from user_profiles where email = $1', [admin])
   await c.end()
@@ -57,10 +55,8 @@ export async function tokenDeAdmin(opts: OpcionesToken = {}): Promise<string> {
   }
   const host = new URL(base).hostname
 
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL!.split('?')[0],
-    ssl: { rejectUnauthorized: false },
-  })
+  const { pgConfig } = await import('../../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
   const { rows } = await c.query('select id from user_profiles where email = $1', [admin])
   await c.end()

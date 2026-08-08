@@ -625,6 +625,32 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'pinga el badge (mismo criterio que el hermano). Nace de 5 impugnaciones ciertas de un usuario ' +
       'premium que ningún detector del barrido podía ver.',
   },
+  audit_literalidad_clave: {
+    titulo: 'Bajo la premisa de literalidad (Manuel, §7.3.PREMISA): ¿el artículo vinculado responde la clave, sin ambigüedad?',
+    ruta: 'scripts/audit-literalidad-clave.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`npm run audit:literalidad-clave [-- --ley <texto>] [--banda lo-hi] [--out fichero.json] [--json]`. ' +
+      'SOLO LEE. [T-672]. Da un HISTOGRAMA de `recall(clave, artículo propio)` sobre todo el banco activo ' +
+      'anclado a ley real (`laws.boe_url IS NOT NULL`), no una lista de arreglos — la ficha exige medir ' +
+      'sin sesgo y leer muestra de cada banda ANTES de fijar un corte, precisamente para no repetir los ' +
+      '173 falsos positivos de una medida anterior. **HERMANO de `audit:vinculo-vecino`/' +
+      '`audit:instrumento-derivado`, reutiliza sus primitivas** (`esExaminable`/`recall` de ' +
+      '`lib/health/vinculoArticuloVecino.cjs`, 34 tests) en vez de un cuarto tokenizador — la diferencia ' +
+      'es que aquí NO se busca vecino ni instrumento: la pregunta es más simple y más general (¿el ' +
+      'PROPIO artículo responde, sí o no?). Bucketing en `lib/health/bandasLiteralidad.cjs` (6 tests), ' +
+      'aparte del script para poder testearlo sin la conexión a Postgres. **Medido 07/08/2026: 34.571 ' +
+      'preguntas examinables (25.980 excluidas: negación/meta-opción/opción-corta), 1.382 (4%) con ' +
+      'recall <25%, el 81,5% en 85-100%.** Muestra leída a mano: de 146 candidatos sin patrón obvio, ' +
+      'aparecen mezclados un FALSO POSITIVO recurrente (preguntas de ESTRUCTURA — "¿en qué título/' +
+      'sección se recoge?" — verificables pero cuyo recall de contenido es bajo porque la respuesta es ' +
+      'sobre UBICACIÓN, no sobre TEXTO) y casos que SÍ encajan con la premisa (CE art.43/53: la clave es ' +
+      'doctrina real pero del art.53.3, no del art.43 vinculado — mismo patrón que la impugnación ' +
+      '`dbc5b602` que originó esta ficha). **Precisión NO calibrada del todo — no pinga el badge, mismo ' +
+      'criterio que sus hermanos.** NUNCA cambiar la clave para que encaje; la adjudicación ' +
+      '(reformular/desactivar) es de una persona contra la fuente oficial.',
+  },
   limpiar_dlq_pdf: {
     titulo: 'Retirar de la DLQ de PDFs los fallos de un defecto YA arreglado, con la prueba delante',
     ruta: 'scripts/temario/limpiar-dlq-pdf.cjs',
@@ -1391,7 +1417,15 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'sirve como señal, ya probado (T-296): la fecha del directorio** (una sesión viva pasa horas sin ' +
       'tocar su worktree), **el `cwd` de las transcripciones** (dice siempre el repo principal) y la ' +
       'rama o el `.session-id` (existen desde que se creó). NUNCA borrar un worktree sin mirar además ' +
-      '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro.',
+      '`git status` y `git log origin/main..`: la señal dice que nadie lo usa, no que no haya trabajo dentro. ' +
+      '**Un fallo dentro de `main()` YA NO desaparece sin rastro (T-687).** Sigue sin fallar hacia fuera ' +
+      '(regla 1: el comando padre nunca se entera), pero deja una marca local en ' +
+      '`os.tmpdir()/vence-latido/<sid>` (núcleo puro `lib/sessions/latidoFallo.cjs`) que el PRÓXIMO ' +
+      'latido con éxito lee, borra y convierte en un evento `sesion_friccion`/`latido_fallido` con ' +
+      'cuántos intentos y cuántos minutos estuvo callado. `backlog.cjs heartbeat` la lee también en ' +
+      'caliente: renovar el lease de las TAREAS (`backlog_tasks`) no dice nada del latido de PRESENCIA ' +
+      '(`worktree_sessions`, otro escritor) — son dos señales distintas y el caso real que abrió esta ' +
+      'ficha fue justo esa confusión.',
   },
   parte_de_sesiones: {
     titulo: 'El PARTE: qué hace cada sesión, quién está parado y qué espera decisión — en una pantalla',
@@ -3070,6 +3104,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'caía era un artículo. ON-DEMAND a propósito: 606 llamadas al BOE por pasada para una señal ' +
       'que cambia dos o tres veces al año. Origen: feedback `1627e0d4`, un usuario premium que ' +
       'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
+  },
+
+  reparar_correcciones_bloqueadas: {
+    titulo: 'Devolver su nota a los exámenes cuya CORRECCIÓN falló (no a los abandonados)',
+    ruta: 'scripts/exam/reparar-correcciones-bloqueadas.cjs',
+    estado: 'vivo',
+    escribe: ['is_completed', 'score', 'observable_events'],
+    runbook: 'docs/procedures/gestionar-feedback-bug.md',
+    notas:
+      'Simula por defecto; exige acotar (`--email` o `--desde`) para no recorrer el banco entero. ' +
+      'NO escribe SQL propio: llama a `completeExam()`, el mismo escritor que usa ' +
+      '`/api/exam/complete` — una segunda puerta al mismo recurso se queda atrás el día que ' +
+      'cambie la regla de puntuación. El criterio de qué es reparable vive en el núcleo puro ' +
+      '`lib/exam/correccionBloqueada.ts` (7 tests con los ocho exámenes reales del caso). ' +
+      'Lo que lo hace seguro es NO reparar los abandonados: un examen dejado a medias también ' +
+      'tiene respuestas corregidas, y la línea base es de 4-13 abandonos al día — repararlos ' +
+      'les inventaría una nota que nadie quiso sacar. Origen [T-671]: feedbacks `86071bf9` y ' +
+      '`3bcbd41b`, un premium de tres días con ocho exámenes sin poder corregir ninguno.',
   },
 
   reactivar_articulo_boe: {
