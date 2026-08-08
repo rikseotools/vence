@@ -777,6 +777,29 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'solo las preguntas deja la fábrica intacta. Fuente verificada el 08/08/2026: ' +
       'help.libreoffice.org/latest/es/text/shared/01/05030100.html',
   },
+  preguntas_de_otra_comunidad: {
+    titulo: '¿Qué preguntas de OTRA comunidad autónoma recibe una oposición?',
+    ruta: 'scripts/calidad/preguntas-de-otra-comunidad.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`node scripts/calidad/preguntas-de-otra-comunidad.cjs --oposicion <position_type> [--todas]`. ' +
+      '**Solo lee.** Núcleo puro `lib/health/preguntaDeOtraComunidad.cjs` (21 tests). Nace de [T-732]: ' +
+      'Alba España (premium, TCAE Madrid) impugnó *«ESTOY ESTUDIANDO COMUNIDAD DE MADRID NO DE ' +
+      'VALENCIA»*; hay **388 preguntas de normativa autonómica** colgadas de artículos que escopan 10+ ' +
+      'oposiciones, y la respuesta correcta CAMBIA según la comunidad (citostáticos: rojo en Andalucía, ' +
+      'azul en la referencia nacional), así que no es temario de más sino **clave falsa**. ' +
+      '**Las tres trampas que el núcleo evita, todas medidas:** (1) `SAS` casa dentro de «ca·sas» → ' +
+      '2.493 casos de los que 2.341 eran falsos; las siglas van *case-sensitive* y con límite a los dos ' +
+      'lados. (2) **Mencionar ≠ examinar**: la comunidad en el ENUNCIADO o en la opción correcta es ' +
+      'examen; solo en la explicación suele ser cita incidental. (3) Los **gentilicios** son ' +
+      'imprescindibles — la peor pregunta de todas («Constitución Federal **andaluza**», 116 ' +
+      'oposiciones) no dice «Andalucía» en ninguna parte. Más una exención calibrada: una comunidad tras ' +
+      '«salvo/excepto» es el alcance de una norma estatal, no su objeto. Medido el 08/08: **111** ' +
+      'defectos en `tcae_sermas_madrid` y **63** en `celador_sas`. **On-demand a propósito** (como ' +
+      '`audit:vinculo-vecino`): la frontera exige leer. **NUNCA desactivar** lo que marca — cada ' +
+      'pregunta es legítima para SU comunidad; la salida es moverla.',
+  },
   medir_anexos_faltantes: {
     titulo: '¿A qué leyes que servimos les falta un anexo que su fuente SÍ tiene?',
     ruta: 'scripts/leyes/medir-anexos-faltantes.cjs',
