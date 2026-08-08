@@ -1874,6 +1874,12 @@ no lógica.
 **Relacionadas:** [T-679] (Guardia Civil T17, calibración del método), [T-680] (Canarias T7, mismo
 patrón de primer-batch-de-un-scope-grande), [T-660] (el re-anclaje que dejó este bloque en 0).
 
+**✅ VEREDICTO ATENDIDO Y MERGEADA (08/08).** Corregida la fecha del Código Penal en la opción B de Q1:
+la auditoría ciega ya había cazado el número (10/2015 → 10/1995) pero **no la fecha que lo acompañaba**,
+que quedó «de 11 de enero» — la de la LO 4/2000, copiada al cambiar sólo el número. El Código Penal es
+**de 23 de noviembre**, y esto estaba en una OPCIÓN visible, no en el feedback. `simular:batch`:
+0 bloqueantes. **Queda insertar el lote** y, después, los 33 artículos restantes (225-257).
+
 ### [T-680] 🟠 [ABIERTO 07/08] Generar preguntas del tema 7 de Aux. Admin. Canarias tras el re-anclaje a la Ley 3/2026 de cabildos (48 artículos)
 
 **Contexto:** lo destapó un usuario premium (Iván González, feedback `1627e0d4`): el tema 7 llevaba
@@ -1971,6 +1977,15 @@ porque no se ha tocado ningún fichero de producción — es contenido, no lógi
 [T-660] (el re-anclaje de esta ley que dejó el bloque en 0 preguntas).
 
 **Hay una persona esperando esto:** se le respondió que estábamos actualizando el temario.
+
+**✅ VEREDICTO ATENDIDO Y MERGEADA (08/08).** Los dos distractores inventados de Q3, sustituidos por
+organismos REALES verificados contra fuente: «Conferencia Sectorial de Administración Local» → el
+nombre exacto **«Conferencia Sectorial para Asuntos Locales»** (mpt.gob.es y el Diccionario
+panhispánico del español jurídico de la RAE), y «Consejo de Cabildos» —que no existe— → **Federación
+Canaria de Municipios**, que sí existe y agrupa a los MUNICIPIOS, no a los cabildos: un dato real mal
+atribuido, que es la técnica correcta. `simular:batch` tras el cambio: 0 bloqueantes.
+**Queda insertar el lote**, y después los 41 artículos restantes de los 48 del scope — hay un usuario
+premium (Iván González) esperando esto.
 
 ### [T-679] 🟠 [ABIERTO 07/08] Generar preguntas del bloque TIC de Guardia Civil T17 tras el re-anclaje al RD 1125/2024 (5 artículos)
 
@@ -2077,6 +2092,15 @@ ningún fichero de producción — es contenido, no lógica.
 
 **Entrega:** rama `flota/T-679-preguntas-gc-t17-rd1125`, pusheada, con el borrador en
 `scratchpad/t679/`.
+
+**✅ VEREDICTO ATENDIDO Y MERGEADA (08/08).** Desarrollada la sigla «CETIC» en la explicación de Q5,
+que era el hallazgo. **Y arreglado el motivo por el que se coló**, que es lo que evita el siguiente:
+el gate fallaba por partida doble —CETIC no estaba en el diccionario Y `analizarSiglas` solo BUSCABA
+las siglas en enunciado + opciones, nunca en la explicación—. Las dos mitades cerradas, con el coste
+medido antes de tocar el núcleo (64 preguntas de los 4 lotes: 0 marcadas → 0 con el cambio).
+**Comprobado además el aviso que dejó [T-683]:** sus 12 preguntas ya están vivas en esta misma norma,
+y el solape medido contra este lote es sólo el TÍTULO de la norma que las vivas llevan de preámbulo —
+leídas enteras no se pisan (`scratchpad/solape-t679-t683.cjs`). **Queda insertar el lote.**
 
 ### [T-669] 🔴 [ABIERTO 07/08] Modo examen: el usuario termina, pulsa corregir y el servidor le responde «no tienes acceso» — la llamada no manda el token y la guarda de propiedad bloquea al PROPIO dueño
 
@@ -9208,6 +9232,12 @@ npm run test:integration      # ~160 s · NO uses --setupFiles, ver el aviso de 
   - **Auditoría doble:** auto-audit (yo, contra `articles.content`) + **agente Sonnet ciego e independiente** (no se le dijo que el lote era mío ni se le dio mi veredicto) con el input completo pregunta+artículo. **Veredicto del agente: 21/22 PERFECT, 1 NEEDS_REVIEW menor** (Q12, art. 48.1.e): el enunciado decía "fuera de poblado" y esa frase concreta no está en `articles.content` de esa cláusula —vive en el TÍTULO del artículo 48, que no se le pasó al auditor ni lo comprueba el simulador—; no afecta a la clave (45 km/h sigue siendo el único valor del texto para esa categoría). Corregido quitando la coletilla. **Ningún caso de clave dudosa ni distractor defendible como correcto.**
   - **NO insertado — no tengo escritura de negocio.** Batch final en `scratchpad/t278-mecanico-conductor/gen_mecanico_conductor_estado_t10_2026-08-06_borrador.json` (formato `insertar-batch-generado.cjs <fichero> rgc <batch_id>`, `batch_id=gen_mecanico_conductor_estado_t10_2026-08-06`) + `audit_input.json` (lo que vio el auditor ciego, por si alguien quiere repetir la auditoría). Quien retome: Paso 4 (insertar 1 y comprobar invariantes) → Paso 5 (resto) → Paso 5.bis (`verificar-batch-generado.cjs`, contra BD esta vez) → Paso 8 (transición `draft→approved` vía `transition_question_state`, NO update directo) → Paso 9 (re-verificación POST-aplicación con un Sonnet NUEVO) → Paso 11 (refrescar MV + invalidar caché) antes de que cuente para el umbral de 20.
   - **Capas:** `simular:batch` (existente, solo lectura) + guardarraíl de siglas ampliado con test propio (16/16 verde) + suite completa de `lib/generacion` corrida entera (264/264 verde, sin regresión) + `robustez-push-guard.cjs`/`contexto-push-guard.cjs` en verde.
+
+**✅ VEREDICTO ATENDIDO Y MERGEADA (08/08).** El hallazgo de la revisión —la cita del art. 48.1.c).1º
+omitía una cláusula sin marcar la elipsis mientras la explicación la llamaba «literal»— **ya lo había
+arreglado el propio trabajador** tras la revisión (commit `8e0987893`): verificado que el `(...)` está
+en la cita y en la explicación. Nada que rehacer. **Lo que queda es insertar el lote** (Paso 4 en
+adelante del manual), que es escritura en BD de negocio.
 
 ### [T-277] 🟠 [ABIERTO 29/07 — implementado y probado el 06/08, falta verificación en producción] Modo examen: barajar y recortar opciones sin corromper el examen reanudado
 
