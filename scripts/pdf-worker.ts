@@ -5,6 +5,7 @@
 // como script/cron/task dedicada. Reusa el pipeline real (@react-pdf) vía pregenerateTopicPdf.
 //
 //   tsx -r tsconfig-paths/register scripts/pdf-worker.ts enqueue-big [minTotal] [minArt]
+//   tsx -r tsconfig-paths/register scripts/pdf-worker.ts seed-poblacion [topN]   (T-159 pieza (c))
 //   tsx -r tsconfig-paths/register scripts/pdf-worker.ts drain [maxJobs]
 //   tsx -r tsconfig-paths/register scripts/pdf-worker.ts stats
 //
@@ -117,6 +118,73 @@ async function bigTopics(db: any, minTotal: number, minArt: number): Promise<{ p
   return out
 }
 
+/**
+ * Los `topN` position_types con más usuarios apuntando a ellos (T-159 pieza (c), 06/08/2026).
+ * MISMA metodología que usa el panel admin para "alumnos" (`lib/api/admin-contenido/queries.ts`):
+ * `user_profiles.target_oposicion` agrupado, sin filtrar por plan — es población, no ingresos.
+ * El JOIN con `topics` descarta position_types huérfanos (nadie los estudia todavía: no hay
+ * temario que pre-generar).
+ */
+async function poblacionTop(db: any, topN: number): Promise<{ pt: string; usuarios: number }[]> {
+  const rows: any[] = await db.execute(sql`
+    SELECT up.target_oposicion AS pt, count(*)::int AS usuarios
+    FROM user_profiles up
+    WHERE up.target_oposicion IS NOT NULL
+      AND EXISTS (SELECT 1 FROM topics t WHERE t.position_type = up.target_oposicion AND t.is_active)
+    GROUP BY up.target_oposicion
+    ORDER BY usuarios DESC
+    LIMIT ${topN}
+  `)
+  return rows.map((r) => ({ pt: r.pt, usuarios: Number(r.usuarios) }))
+}
+
+/** Temas ACTIVOS y DISPONIBLES de un position_type — mismo filtro que `bigTopics`. */
+async function temasDisponiblesDe(db: any, pt: string): Promise<number[]> {
+  const rows: any[] = await db.execute(sql`
+    SELECT topic_number FROM topics WHERE position_type = ${pt} AND is_active AND disponible ORDER BY topic_number
+  `)
+  return rows.map((r) => Number(r.topic_number))
+}
+
+/**
+ * Siembra el catálogo SOLO donde hay alumnos (T-159 pieza (c), decidida por Manuel el 30/07:
+ * *"sembrar solo donde hay alumnos, no los 3.547"*). NO es un reconciliador — a propósito NO se
+ * cablea en el ciclo de `drain` (ver guardarraíl): es un backfill DE UNA VEZ para el catálogo que
+ * hoy tiene alumnos y aún no tiene PDF cacheado, no un trabajo recurrente. Los temas que un
+ * usuario ya edita o pide se siguen curando solos vía el hook de scope y el miss bajo demanda
+ * ([T-159]/[T-270] Fase 2) — esto solo cubre el hueco de "nadie lo ha tocado todavía".
+ *
+ * Misma firma/idempotencia que `cmdEnqueueBig`: `seed:${PDF_TEMPLATE_VERSION}` por (oposicion,
+ * tema), comprobada en CUALQUIER estado antes de insertar. Repetir el comando no duplica trabajo;
+ * un bump de plantilla sí vuelve a sembrar (auto-cura igual que el reconciliador de temas grandes).
+ * No hace falta el content_hash REAL del tema: quien lo renderiza (`pregenerateTopicPdf`, vía el
+ * hijo `pdf-local.ts`) lo recalcula de la BD viva en el momento del render, como ya hace
+ * `enqueue-big` — la firma de la cola es solo un token de dedup, no la clave de caché en S3.
+ */
+async function cmdSeedPoblacion(db: any, topN: number) {
+  const top = await poblacionTop(db, topN)
+  console.log(`📋 top ${top.length} oposiciones por población:`)
+  for (const o of top) console.log(`   ${o.pt}: ${o.usuarios} alumnos`)
+  let enq = 0, dup = 0, sinSlug = 0, temasVistos = 0
+  for (const { pt } of top) {
+    if (!PT_TO_SLUG[pt]) { sinSlug++; console.log(`  ⚠️  ${pt} sin slug conocido (PT_TO_SLUG) — se salta`); continue }
+    const temas = await temasDisponiblesDe(db, pt)
+    temasVistos += temas.length
+    for (const tema of temas) {
+      const sig = `seed:${PDF_TEMPLATE_VERSION}`
+      const existing = (await db.execute(sql`
+        SELECT count(*)::int AS n FROM temario_pdf_jobs
+        WHERE oposicion = ${pt} AND tema = ${tema} AND content_hash = ${sig}
+      `)) as { n: number }[]
+      if (Number(existing[0]?.n ?? 0) > 0) { dup++; continue }
+      const ins = await enqueuePdfJob(db, { oposicion: pt, tema, contentHash: sig })
+      if (ins) { enq++; console.log(`  + ${pt} T${tema}`) }
+      else dup++
+    }
+  }
+  console.log(`✅ ${temasVistos} temas revisados · encolados ${enq} · ya al día/duplicados ${dup}${sinSlug ? ` · ${sinSlug} oposiciones sin slug` : ''}`)
+}
+
 async function cmdEnqueueBig(db: any, minTotal: number, minArt: number) {
   const temas = await bigTopics(db, minTotal, minArt)
   console.log(`📋 ${temas.length} temas grandes (total>${minTotal} o art>${minArt}). Encolando…`)
@@ -195,6 +263,11 @@ async function main() {
   const { db, conn } = makeDb()
   try {
     if (cmd === 'enqueue-big') await cmdEnqueueBig(db, Number(a) || PDF_MAX_CHARS, Number(b) || PDF_MAX_ARTICLE_CHARS)
+    // Manual, a propósito: NO se llama desde 'drain'. Es un backfill de una vez (T-159 pieza
+    // (c)), no un reconciliador recurrente — cablearlo en el ciclo de 30 min repetiría el
+    // barrido de cientos de temas cada tick para nada (la firma ya lo haría idempotente, pero
+    // la CONSULTA de población/temas no es gratis y no hace falta pagarla cada 30 min).
+    else if (cmd === 'seed-poblacion') await cmdSeedPoblacion(db, Number(a) || 8)
     else if (cmd === 'drain') {
       // `drain` es lo que invoca el scheduler → es el tick que la liveness vigila.
       // El tick va ANTES de cualquier trabajo: mide "¿arrancó el job?", no "¿terminó?".
@@ -223,7 +296,7 @@ async function main() {
       }
     }
     else if (cmd === 'stats') console.log('📊', await pdfJobStats(db))
-    else { console.error('uso: enqueue-big [minTotal minArt] | drain [maxJobs] | stats'); process.exitCode = 2 }
+    else { console.error('uso: enqueue-big [minTotal minArt] | seed-poblacion [topN] | drain [maxJobs] | stats'); process.exitCode = 2 }
   } finally {
     await conn.end()
   }

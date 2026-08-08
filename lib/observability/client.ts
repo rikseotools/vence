@@ -28,6 +28,10 @@ const SAMPLE_RATES: Record<string, number> = {
   // Clic en "Hacer test de {ley}" del temario. Volumen moderado; muestreo 20% basta
   // para la señal (proporción scoped vs no-scoped). Si sube el ruido, bajar.
   law_test_cta_click: 0.2,
+  // Su hermano de al lado, y el mismo criterio: mismo componente, mismo volumen, misma pregunta
+  // (¿se usa el filtro de artículos, o el CTA de ley entera se lo come?). Al 20% para poder
+  // comparar los dos sin sesgo de muestreo — con ritmos distintos, la proporción mentiría.
+  law_article_filter_cta_click: 0.2,
   // [T-611] Una por vuelta al temario: volumen bajo y es LA medida de si el bucle se cerró.
   temario_vuelta_articulo: 1.0,
   pre_hydration_error: 1.0,
@@ -199,6 +203,12 @@ export type ClientEventType =
   // scopedArticleCount=0, es una regresión (un CTA volvió a enlazar la ley entera).
   // Ver docs/runbooks/observability.md.
   | 'law_test_cta_click'
+  // Segundo CTA del mismo componente, «🔧 Elegir qué artículos entran» (<LawTestCTA>). Llegó con
+  // el descubrimiento del filtro por artículos y **su tipo no se declaró aquí**, así que el
+  // typecheck lo rechazaba: `emitClientEvent` exige un `ClientEventType`, no una cadena
+  // cualquiera. Es la puerta funcionando —un evento nuevo tiene que pasar por este fichero, que
+  // es donde también se le pone muestreo y donde se decide si necesita regla— y no un estorbo.
+  | 'law_article_filter_cta_click'
   // [T-611] Vuelta del test AL ARTÍCULO del temario donde estabas. El bucle
   // temario → «Hacer test Art. N» → volver estaba ABIERTO: el enlace de vuelta llevaba
   // arriba del tema y con las leyes otra vez plegadas, así que había que buscar el artículo

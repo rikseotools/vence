@@ -523,7 +523,11 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
               className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
               <span>📚</span>
-              <span>Filtrar por Títulos</span>
+              {/* [T-367] "Filtrar por Títulos" competía con "📄 Filtrar por Artículos" del
+                  configurador de tests (misma palabra, distinto emoji como única pista) —
+                  un usuario los confundió y pulsó "Aplicar filtro" aquí creyendo que
+                  configuraba el TEST, cuando esto solo filtra la LECTURA. */}
+              <span>Ver por Títulos (lectura)</span>
             </button>
           
           {selectedSectionFilter && selectedSectionFilter.length > 0 && (

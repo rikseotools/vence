@@ -138,6 +138,7 @@
     "canary:cobertura-dispositivos": "node scripts/canary-cobertura-dispositivos.cjs",
     "laws:vigilar": "node scripts/laws/vigilar-fuentes-legales.cjs",
     "laws:derogadas": "node scripts/laws/auditar-derogadas.cjs",
+    "laws:fidelidad": "node scripts/laws/muestrear-fidelidad.cjs",
     "canary:perfil-sin-resolver": "node scripts/canary-perfil-sin-resolver.cjs",
     "sim:reintento-perfil": "tsx --env-file=.env.local scripts/sim/sim-reintento-perfil.ts",
     "sim:perfil-roto-se-cura": "tsx --env-file=.env.local scripts/sim/sim-perfil-roto-se-cura.ts",

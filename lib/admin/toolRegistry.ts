@@ -1494,33 +1494,48 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'verde cuando no ha podido mirar: sin señales el veredicto es ⚪, no 🟢.',
   },
   colocar_ficha_backlog: {
-    titulo: 'Colocar una ficha nueva del backlog en su sitio (a mano se coloca mal)',
+    titulo: 'Colocar/mover una ficha del backlog en su sitio (a mano se coloca mal)',
     ruta: 'scripts/backlog.cjs',
     estado: 'vivo',
     escribe: ['docs/roadmap/tareas-pendientes.md'],
     runbook: 'docs/runbooks/tareas-pendientes.md',
     notas:
-      '`ficha <id> [--texto <fichero.md>]` (o por stdin) · `reubicar [--apply]` para devolver a su ' +
-      'sección las que ya quedaron fuera. Lo cita `reserve` en lugar del ' +
-      '«escríbela a mano» de antes. **Nace de que a mano NO sale bien:** el fichero pasa de ' +
-      '11.000 líneas y la frase `## Abiertas` aparece DENTRO del texto de varias fichas (las que ' +
-      'hablan de este problema), antes que el encabezado real — así que un `index()`, un `sed` o ' +
-      '«pégala arriba» aciertan la MENCIÓN y la ficha aterriza en el preámbulo, fuera de toda ' +
-      'sección. Medido al estrenarlo: **58 fichas huérfanas, 27 vivas**, o sea que colocarla mal ' +
-      'era el resultado NORMAL, no el desliz. Y el aviso no bastaba: el ancla falsa con la que se ' +
-      'tropezó el 04/08 era un bullet de otra sesión documentando esta misma trampa. Localiza el ' +
-      'encabezado por **línea exacta**, nunca por búsqueda de texto, y se niega a escribir si el ' +
-      'id no está RESERVADO en `backlog_tasks` (la BD es el árbitro; el markdown no admite reserva ' +
-      'atómica), si el id ya tiene ficha, si la cabecera dice otro id, si la ficha nace con ✅, o ' +
-      'si desaparecería alguna ficha previa. ⚠️ **NO reduce los conflictos de git** —todas las ' +
-      'sesiones insertan en el mismo punto— y no pretende hacerlo: eso se resuelve al fusionar ' +
-      'conservando LOS DOS lados. Criterio puro en `lib/backlog/insertarFicha.cjs` (11 tests). ' +
-      '`reubicar` las manda al FINAL de «## Abiertas» (arriba escriben las sesiones las fichas ' +
-      'NUEVAS: meter 27 ahí es chocar con quien esté creando una) y NO toca las cerradas ' +
-      'huérfanas — su sitio sería «## Hechas» y hay TRES secciones así, elegir una es adivinar. ' +
-      'Trinquete en `backlogRegistry.guardrail`: «ninguna ficha VIVA fuera de sección», nacido en ' +
-      'verde tras reubicar las 27. Funciona igual en local y en un trabajador remoto (texto + una ' +
-      'consulta a RDS).',
+      '`ficha <id> [--texto <fichero.md>]` (o por stdin) · `mover <id>` (a «## Hechas») · ' +
+      '`reubicar [--apply]` para devolver a su sección las que ya quedaron fuera. Lo cita ' +
+      '`reserve` en lugar del «escríbela a mano» de antes. **Nace de que a mano NO sale bien:** el ' +
+      'fichero pasa de 11.000 líneas y la frase `## Abiertas` aparece DENTRO del texto de varias ' +
+      'fichas (las que hablan de este problema), antes que el encabezado real — así que un ' +
+      '`index()`, un `sed` o «pégala arriba» aciertan la MENCIÓN y la ficha aterriza en el ' +
+      'preámbulo, fuera de toda sección. Medido al estrenarlo: **58 fichas huérfanas, 27 vivas**, ' +
+      'o sea que colocarla mal era el resultado NORMAL, no el desliz. Y el aviso no bastaba: el ' +
+      'ancla falsa con la que se tropezó el 04/08 era un bullet de otra sesión documentando esta ' +
+      'misma trampa. Localiza el encabezado por **línea exacta**, nunca por búsqueda de texto, y ' +
+      'se niega a escribir si el id no está RESERVADO en `backlog_tasks` (la BD es el árbitro; el ' +
+      'markdown no admite reserva atómica), si el id ya tiene ficha, si la cabecera dice otro id, ' +
+      'si la ficha nace con ✅, o si desaparecería alguna ficha previa. ⚠️ **NO reduce los ' +
+      'conflictos de git** —todas las sesiones insertan/mueven en el mismo fichero— y no pretende ' +
+      'hacerlo: eso se resuelve al fusionar conservando LOS DOS lados, o con la Fase 2 de [T-387] ' +
+      '(una ficha por fichero, sin construir todavía). Criterio puro en ' +
+      '`lib/backlog/insertarFicha.cjs` (11 tests). `reubicar` las manda al FINAL de «## Abiertas» ' +
+      '(arriba escriben las sesiones las fichas NUEVAS: meter 27 ahí es chocar con quien esté ' +
+      'creando una) y NO toca las cerradas huérfanas — su sitio sería «## Hechas» y hay TRES ' +
+      'secciones así, elegir una es adivinar. **`mover` sí decide entre las tres** ([T-387], ' +
+      '07/08): siempre la PRIMERA «## Hechas» del fichero, determinista — `done`/`reopen` ya NO ' +
+      'dicen «AHORA muévela tú»: mueven la ficha solas al cerrar/reabrir (era la causa concreta de ' +
+      '**91 commits/día** sobre el fichero — cada cierre de cada sesión generaba su propio script ' +
+      'de usar y tirar; T-442 lleva el rastro de uno mal hecho, `✅ ✅ 🟠` duplicado). Núcleo puro ' +
+      '`lib/backlog/moverFicha.cjs` (localiza por cabecera, respeta la convención `✅` DELANTE del ' +
+      'emoji de prioridad — un simple sustituir-en-sitio la deja detrás) + **única puerta de ' +
+      'escritura** `lib/backlog/escrituraSegura.cjs` (relectura antes de escribir: control de ' +
+      'concurrencia optimista, aborta si el fichero cambió en el hueco entre leer y escribir en ' +
+      'vez de pisarlo — la «relectura» que la ficha pedía explícita). Fail-open: si el movimiento ' +
+      'automático no reconoce el formato, sigue habiendo instrucción manual, para que un problema ' +
+      'de FORMATO del markdown nunca bloquee un cierre que ya pasó en BD. 24 tests + guardarraíl de ' +
+      'wiring (`backlogMoverAlCerrar.guardrail`) + verificado contra copia del fichero real ' +
+      '(602 fichas antes/después de un cierre+reapertura real). Trinquete en ' +
+      '`backlogRegistry.guardrail`: «ninguna ficha VIVA fuera de sección», nacido en verde tras ' +
+      'reubicar las 27. Funciona igual en local y en un trabajador remoto (texto + una consulta a ' +
+      'RDS).',
   },
   embudo_preguntas_sesiones: {
     titulo: 'Preguntar a Manuel sin que tenga que entrar en la terminal de cada sesión (el embudo)',
@@ -3905,6 +3920,38 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`pg_class.relkind` en cada `run()` y usa `partman.run_maintenance_proc()` en cuanto la tabla ' +
       'pase a estar particionada — desplegable HOY sin riesgo, sigue la rama DELETE de siempre ' +
       'mientras la migración no se aplique.',
+  },
+
+  muestrear_fidelidad_leyes: {
+    titulo: 'Muestrear artículos de una ley y comparar su TEXTO (no solo contarlos) contra la fuente oficial',
+    ruta: 'scripts/laws/muestrear-fidelidad.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/completitud-leyes.md',
+    notas:
+      'npm run laws:fidelidad -- [<law_slug>] [--n 5] [--limite 15] [--umbral 0.6] [--json] [--aplicar]. ' +
+      'Cubre el punto ciego de `audit-law-completeness.cjs` (T-240): ese detector cuenta filas — el ' +
+      'RGPD daba 99/99, is_ok:true, con 72 de esos 99 artículos reescritos en paráfrasis (T-193). ' +
+      'Auditar las 126 leyes activas artículo por artículo es carísimo; MUESTREA unos pocos por ley ' +
+      '(`elegirMuestra`, reparto uniforme, no los primeros N) y reutiliza `compararArticuloOficial` ' +
+      '(NO se reescribe esa clasificación). Núcleo puro `lib/laws/fidelidadMuestra.js` (22 tests). ' +
+      'Veredicto por ley: `fiel`/`revisar_muestra`/`auditoria_completa`/`inconcluso`; ' +
+      '`auditoria_completa` por defecto exige ≥60% de la muestra MEDIBLE en `incompleto`/`contaminado` ' +
+      'Y al menos 3 observaciones medibles (`minMedibles`) — sin el mínimo, un ratio de 1/1 es ruido. ' +
+      'Nace de un falso positivo REAL medido construyendo esto: la LECrim y el Código Civil (leyes ' +
+      'de 1882/1889, "Real Decreto que aprueba un Código") tienen DOS bloques "Artículo 1" en el ' +
+      'índice del BOE —el del decreto aprobatorio y el del propio Código— y `mapaBloquesPorArticulo` ' +
+      '(boeBloqueVigente.js, ya existente y compartido con reactivar-articulo-boe.cjs/' +
+      'actualizar-articulo-oficial.cjs) se queda con el primero: comparar contra ESE bloque da ' +
+      '"contaminado" en un art. 1 que es correcto. Con `n=5` el ratio ya diluye solo (1/4=25%); el ' +
+      'mínimo absoluto cubre leyes con pocos artículos activos. Solo reconoce BOE consolidado ' +
+      '(`BOE-A-AAAA-N`) y EUR-Lex CONSOLIDADO (`CELEX:0…`) — se NIEGA a comparar una norma UE contra ' +
+      'el espejo del BOE (reproduce erratas, T-184) o contra un CELEX del acto original (sector 3): ' +
+      'medido 06/08/2026, NINGUNA de las 42 leyes scope=eu tiene hoy un CELEX consolidado en ' +
+      '`boe_url` (RGPD apunta al espejo DOUE), así que la cobertura real de esta v1 es BOE. Filtra ' +
+      'artículos a `article_number` numérico (excluye preámbulo/disposiciones/la fila estructural ' +
+      '"0": el índice del BOE solo mapea rúbricas "Artículo N", medido en la CE). Es DETECTOR, no ' +
+      'reescribe nada — el remedio es `actualizar-articulo-oficial.cjs`. `--aplicar` deja rastro en ' +
+      'observable_events (`law_fidelity_sampled`); usa VENCE_LECTOR_URL para leer (T-486).',
   },
 }
 

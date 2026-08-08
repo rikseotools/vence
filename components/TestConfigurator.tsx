@@ -100,7 +100,8 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
   testMode = 'practica',
   positionType,
   scopeToPosition = false,
-  autoOpenFailed = false
+  autoOpenFailed = false,
+  initialShowLawsFilter = false
 }) => {
   // Límite diario de preguntas
   const {
@@ -144,7 +145,7 @@ const TestConfigurator: React.FC<TestConfiguratorProps> = ({
 
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState<Set<string>>(new Set());
-  const [showLawsFilter, setShowLawsFilter] = useState(!tema && lawsData?.length > 1);
+  const [showLawsFilter, setShowLawsFilter] = useState(initialShowLawsFilter || (!tema && lawsData?.length > 1));
   const [lawSearchQuery, setLawSearchQuery] = useState('');
 
   // 🆕 Estados para filtro de artículos

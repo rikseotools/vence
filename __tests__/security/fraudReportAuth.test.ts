@@ -14,6 +14,10 @@ const mockEmitFireAndForget = jest.fn()
 const mockInsertValues = jest.fn().mockReturnValue({
   returning: jest.fn().mockResolvedValue([{ id: 'alerta-1' }]),
 })
+// Por defecto simula el fallo real del mock viejo (sin `.execute`): la consulta de
+// respuestas reales de servidor lanza y la política se queda sin ese dato (fail-safe).
+// Los tests de T-303 la sobrescriben para simular una respuesta real de BD.
+const mockDbExecute = jest.fn().mockRejectedValue(new Error('mock sin .execute'))
 
 jest.mock('@/lib/api/auth/verifyAuth', () => ({
   verifyAuthOptional: (...a: unknown[]) => mockVerifyAuthOptional(...a),
@@ -31,11 +35,18 @@ jest.mock('@/db/schema', () => ({ fraudAlerts: { id: 'id', alertType: 'alert_typ
 jest.mock('drizzle-orm', () => ({
   and: (...a: unknown[]) => a, eq: (...a: unknown[]) => a,
   gte: (...a: unknown[]) => a, arrayContains: (...a: unknown[]) => a,
+  // `sql` solo se usa como plantilla opaca que se pasa a `db().execute(...)` — sin
+  // mockearla, la llamada moría con "sql is not a function" ANTES de llegar al mock
+  // de `.execute`, y tanto esto como el bloque de `suspicious_behavior` pasaban por
+  // el camino fail-safe del catch sin que ningún test ejerciera el `.execute` de
+  // verdad (descubierto construyendo los tests de T-303).
+  sql: (strings: TemplateStringsArray, ...vals: unknown[]) => ({ strings, vals }),
 }))
 jest.mock('@/db/client', () => ({
   getAdminDb: () => ({
     select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }),
     insert: () => ({ values: (...a: unknown[]) => mockInsertValues(...a) }),
+    execute: (...a: unknown[]) => mockDbExecute(...a),
   }),
 }))
 jest.mock('next/headers', () => ({
@@ -61,6 +72,7 @@ const req = (body: unknown) => ({ json: async () => body }) as never
 beforeEach(() => {
   jest.clearAllMocks()
   mockVerifyAuthOptional.mockResolvedValue({ userId: YO })
+  mockDbExecute.mockRejectedValue(new Error('mock sin .execute'))
 })
 
 describe('/api/fraud/report — la identidad sale del token, no del cuerpo', () => {
@@ -139,6 +151,56 @@ describe('/api/fraud/report — solo se abre expediente con la confianza con la 
   it('una huella firme (score >= 90) SÍ crea alerta y reta', async () => {
     const res = await POST(req({ userId: YO, alertType: 'bot_detected', botScore: 150 }))
     expect(res.status).toBe(200)
+    expect(mockMarkForcedChallenge).toHaveBeenCalledTimes(1)
+  })
+
+  // T-303: el patrón EXACTO de las 5 alertas dismissed — score 90 con solo señales
+  // blandas — pero ahora con la cuenta habiendo respondido de verdad en servidor.
+  it('T-303: score 90 con patrón blando de WebView NO alerta si el servidor confirma respuestas reales', async () => {
+    mockDbExecute.mockResolvedValue([{ n: 199 }])
+    const res = await POST(req({
+      userId: YO, alertType: 'bot_detected', botScore: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.alerted).toBe(false)
+    expect(body.reason).toContain('actividad_real_confirmada')
+    expect(mockInsertValues).not.toHaveBeenCalled()
+    expect(mockMarkForcedChallenge).not.toHaveBeenCalled()
+  })
+
+  // El mismo patrón, pero la cuenta NUNCA respondió de verdad (el cosechador real
+  // medido en T-303, `daily_questions_served` alto y `test_questions` vacío) SIGUE
+  // alertando — el arreglo no puede abrir un hueco para la cosecha real.
+  it('T-303: el mismo score/patrón SÍ alerta si el servidor confirma CERO respuestas reales', async () => {
+    mockDbExecute.mockResolvedValue([{ n: 0 }])
+    const res = await POST(req({
+      userId: YO, alertType: 'bot_detected', botScore: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+    }))
+    expect(mockMarkForcedChallenge).toHaveBeenCalledTimes(1)
+    expect(mockInsertValues).toHaveBeenCalledTimes(1)
+  })
+
+  // Automatización DURA: nunca se exime aunque el servidor confirme actividad real.
+  it('T-303: webdriver_detected SÍ alerta aunque el servidor confirme actividad real', async () => {
+    mockDbExecute.mockResolvedValue([{ n: 500 }])
+    const res = await POST(req({
+      userId: YO, alertType: 'bot_detected', botScore: 90,
+      evidence: ['webdriver_detected'],
+    }))
+    expect(mockMarkForcedChallenge).toHaveBeenCalledTimes(1)
+  })
+
+  // Si la consulta de respuestas reales falla (como el mock por defecto), la ruta
+  // sigue alertando igual que ANTES de T-303 — fail-safe de verdad, no solo en el
+  // núcleo puro.
+  it('T-303: si la consulta de respuestas reales falla, sigue alertando como antes', async () => {
+    const res = await POST(req({
+      userId: YO, alertType: 'bot_detected', botScore: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+    }))
     expect(mockMarkForcedChallenge).toHaveBeenCalledTimes(1)
   })
 

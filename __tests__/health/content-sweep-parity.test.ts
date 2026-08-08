@@ -816,3 +816,130 @@ describe('el snapshot NO trunca toda la tabla — solo los kinds de ESTA pasada 
     expect(BACKEND).toMatch(/if \(kindsDeEstaPasada\.length\)/)
   })
 })
+
+describe('mirror del detector pregunta_duplicada (núcleo ↔ backend @Cron) [T-408]', () => {
+  const core = require('@/lib/calidad/duplicados.js')
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia de bandaGrupo)', () => {
+    expect(SCRIPT).toContain("require('../lib/calidad/duplicados.js')")
+    expect(SCRIPT).not.toMatch(/function bandaGrupo/)
+  })
+
+  it('los dos gemelos emiten el kind, en las dos bandas', () => {
+    expect(hasKind(SCRIPT, 'pregunta_duplicada')).toBe(true)
+    expect(hasKind(BACKEND, 'pregunta_duplicada')).toBe(true)
+    expect(SCRIPT).toContain("'error', null, 'pregunta_duplicada'")
+    expect(SCRIPT).toContain("'warn', null, 'pregunta_duplicada'")
+    expect(BACKEND).toContain("'error',\n          null,\n          'pregunta_duplicada'")
+    expect(BACKEND).toContain("'warn',\n          null,\n          'pregunta_duplicada'")
+  })
+
+  /**
+   * El backend no puede `require('lib/calidad/duplicados.js')` (build NestJS separado), así que
+   * `normalizarDup` va replicada INLINE en TS. Comprobar que el TEXTO de las dos versiones es
+   * idéntico no basta —el backend usa un rango Unicode LITERAL para las tildes (mismo patrón que
+   * `aplastarInline`, ya en este fichero) donde el núcleo usa el escape `̀-ͯ`; son el
+   * MISMO rango de códigos escrito de dos formas— así que la prueba real es de COMPORTAMIENTO:
+   * extraer la función del fuente TS, quitarle las anotaciones de tipo (lo único que `new
+   * Function` no puede parsear) y ejecutar las dos contra la MISMA batería de entradas.
+   */
+  function extraerNormalizarDup(): Array<(texto: string | null) => string> {
+    const re = /const normalizarDup = \(texto: string \| null\): string => \{([\s\S]*?)\n {6}\};/g
+    const fns: Array<(texto: string | null) => string> = []
+    let m: RegExpExecArray | null
+    while ((m = re.exec(BACKEND))) {
+      // eslint-disable-next-line no-new-func
+      fns.push(new Function('texto', m[1]) as (texto: string | null) => string)
+    }
+    return fns
+  }
+
+  it('hay DOS copias de normalizarDup en el backend (legislativas + psicotécnicas) — cada bloque autosuficiente', () => {
+    // Si sube o baja de dos, algo cambió de forma que este test debe volver a mirar a propósito:
+    // o se fusionaron los bloques (bien) o se olvidó una copia al arreglar la otra (mal).
+    expect(extraerNormalizarDup().length).toBe(2)
+  })
+
+  it('normalizarDup (backend, LAS DOS COPIAS) se comporta IGUAL que normalizar() (núcleo) en cada entrada', () => {
+    const copias = extraerNormalizarDup()
+    const casos = [
+      'Windows 10', 'windows   10', '<b>Windows</b> 10', 'Año 2026', 'año 2026',
+      'Ñoño', 'ñoño', 'Sé prudente, José', 'ACCESO', 'acceso.', '¿Qué opción es correcta?',
+      '', null, '   espacios   sueltos   ', 'Café, plátano y niño',
+    ]
+    for (const normalizarDup of copias) {
+      for (const c of casos) {
+        expect(normalizarDup(c as string | null)).toBe(core.normalizar(c))
+      }
+    }
+  })
+
+  it('la banda se decide por el TEXTO de la respuesta correcta en los dos gemelos, nunca por correct_option', () => {
+    // El propio criterio (bandaGrupo) es el mismo import en el CLI; en el backend se comprueba
+    // que la comparación pasa por `normalizarDup(opts(m)[m.correct_option])` — es decir, el
+    // ÍNDICE solo sirve para RECUPERAR el texto, la igualdad se decide sobre el texto.
+    expect(BACKEND).toContain('normalizarDup(opts(m)[m.correct_option]')
+    expect(BACKEND).not.toMatch(/m\.correct_option\s*===?\s*m2?\.correct_option/)
+  })
+
+  it('el corte es ESTRICTO en los dos gemelos: excluye supuestos prácticos y exige artículo', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/primary_article_id is not null[\s\S]{0,60}exam_case_id is null/)
+    }
+  })
+})
+
+describe('mirror del detector pregunta_duplicada — banco PSICOTÉCNICO (núcleo ↔ backend @Cron) [T-410]', () => {
+  const core = require('@/lib/calidad/duplicados.js')
+
+  it('el CLI CONSUME sqlNormalizar y unidoSoloPorTildes del núcleo (no lleva su propia copia)', () => {
+    expect(SCRIPT).toContain('sqlNormalizar: sqlNormalizarDup')
+    expect(SCRIPT).toContain('unidoSoloPorTildes')
+    expect(SCRIPT).not.toMatch(/function unidoSoloPorTildes/)
+  })
+
+  it('los dos gemelos consultan psychometric_questions con la huella de imagen/content_data', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/from psychometric_questions/)
+      expect(txt).toContain("coalesce(q.image_url, '') || '#' || coalesce(q.content_data::text, '')")
+    }
+  })
+
+  /**
+   * `unidoSoloPorTildes` va replicada inline en el backend (mismo motivo que `normalizarDup`).
+   * Prueba de COMPORTAMIENTO: un grupo que solo se une al quitar la tilde debe APARTARSE en los
+   * dos gemelos — es la guarda que evita falsos positivos en un banco que examina ortografía.
+   */
+  function extraerUnidoSoloPorTildes(): (opciones: Array<Array<string | null>>) => boolean {
+    // `unidoSoloPorTildes` cierra sobre `normalizarConTildes`, definida justo antes en el mismo
+    // bloque: hay que extraer y ejecutar las dos juntas, o la función queda sin su dependencia.
+    const mConTildes = BACKEND.match(/const normalizarConTildes = \(texto: string \| null\): string =>\s*\n?([\s\S]*?);\n {6}const unidoSoloPorTildes/)
+    const mUnido = BACKEND.match(/const unidoSoloPorTildes = \(opcionesPorCopia: Array<Array<string \| null>>\): boolean => \{([\s\S]*?)\n {6}\};/)
+    if (!mConTildes || !mUnido) throw new Error('no se encontró normalizarConTildes/unidoSoloPorTildes en el backend')
+    // eslint-disable-next-line no-new-func
+    const fabrica = new Function(
+      `const normalizarConTildes = (texto) => (${mConTildes[1]});\n` +
+      `const unidoSoloPorTildes = (opcionesPorCopia) => {${mUnido[1]}};\n` +
+      `return unidoSoloPorTildes;`,
+    )
+    return fabrica() as (o: Array<Array<string | null>>) => boolean
+  }
+
+  it('unidoSoloPorTildes (backend) se comporta IGUAL que el núcleo, con el caso real que la motivó', () => {
+    const backendFn = extraerUnidoSoloPorTildes()
+    const casos = [
+      [['como salir', 'entrar', 'quedarse', 'volver'], ['cómo salir', 'entrar', 'quedarse', 'volver']], // solo tilde → true
+      [['windows 10', 'linux', 'macos', 'unix'], ['windows 10', 'linux', 'macos', 'unix']], // idénticas → false
+      [['añadir', 'quitar'], ['anadir', 'quitar']], // ñ→n NO es tilde: la función NO la ignora
+    ]
+    for (const [a, b] of casos) {
+      expect(backendFn([a, b])).toBe(core.unidoSoloPorTildes([a, b]))
+    }
+  })
+
+  it('marcar() usa el universo EVALUADO (todas las activas), no solo las defectuosas', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(txt).toMatch(/marcar\('pregunta_duplicada',\s*dupPsicoUniverso\)/)
+    }
+  })
+})

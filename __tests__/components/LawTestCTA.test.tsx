@@ -46,4 +46,22 @@ describe('LawTestCTA (cliente, fix T-073)', () => {
       expect.objectContaining({ metadata: expect.objectContaining({ scopedArticleCount: 2 }) }),
     )
   })
+
+  // [T-367] Segundo enlace: camino al filtro que NO auto-arranca el test.
+  it('además del CTA de siempre, hay un enlace al filtro SIN selected_articles (no auto-arranca)', () => {
+    render(<LawTestCTA lawShortName="CE" articles={[{ articleNumber: 1 }, { articleNumber: 2 }]} />)
+    const filterLink = screen.getByRole('link', { name: /elegir qué artículos entran/i })
+    expect(filterLink).toHaveAttribute('href', '/leyes/ce?abrir_filtro=1&source=temario_filtro')
+  })
+
+  it('el clic en el enlace del filtro emite su propio evento', () => {
+    render(<LawTestCTA lawShortName="CE" articles={[{ articleNumber: 1 }]} />)
+    fireEvent.click(screen.getByRole('link', { name: /elegir qué artículos entran/i }))
+    expect(mockEmitClientEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'law_article_filter_cta_click',
+        metadata: expect.objectContaining({ source: 'temario', lawSlug: 'ce' }),
+      }),
+    )
+  })
 })

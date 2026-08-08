@@ -26,6 +26,23 @@ import { join } from 'path'
 
 const src = readFileSync(join(process.cwd(), 'components/TestConfigurator.tsx'), 'utf8')
 
+// [T-367, 06/08/2026] Segundo escalón del mismo defecto: el rótulo YA nombraba los
+// artículos (arreglo de arriba), pero no había NINGÚN camino desde el temario —que es
+// «por donde entra la gente» (cita literal del compromiso escrito a un usuario)— hasta
+// esa pantalla. El único CTA de ley del temario (`LawTestCTA`) siempre lleva
+// `selected_articles` y por tanto siempre auto-arranca el test, saltándose el filtro. Y el
+// botón «📚 Filtrar por Títulos» de /teoria (que filtra la LECTURA) competía por el mismo
+// nombre que «📄 Filtrar por Artículos» (que filtra el TEST) — un usuario los confundió.
+const lawTestCtaSrc = readFileSync(join(process.cwd(), 'components/temario/LawTestCTA.tsx'), 'utf8')
+const lawTestConfiguratorSrc = readFileSync(
+  join(process.cwd(), 'app/leyes/[law]/LawTestConfigurator.tsx'),
+  'utf8',
+)
+const lawArticlesClientSrc = readFileSync(
+  join(process.cwd(), 'app/teoria/[law]/LawArticlesClient.tsx'),
+  'utf8',
+)
+
 describe('el filtro por artículos es descubrible', () => {
   it('el rótulo del bloque nombra los ARTÍCULOS haya una ley o varias', () => {
     // La línea del encabezado, con sus dos ramas.
@@ -53,5 +70,27 @@ describe('el filtro por artículos es descubrible', () => {
     // botón: exactamente el «no lo veo» que motivó este test.
     expect(src).toMatch(/const initialSelectedLaws = new Set\(lawsData\.map\(law => law\.law_short_name\)\)/)
     expect(src).toMatch(/\{isSelected && \(/)
+  })
+
+  // [T-367]
+  it('hay un camino DESDE EL TEMARIO hasta el filtro, distinto del que auto-arranca el test', () => {
+    // El CTA de siempre ("Hacer test de {ley}") sigue existiendo y sigue acotando al tema.
+    expect(lawTestCtaSrc).toMatch(/buildLawTestLink/)
+    // El nuevo: NO lleva selected_articles → no auto-arranca, aterriza en el configurador.
+    expect(lawTestCtaSrc).toMatch(/buildLawFilterLink/)
+    expect(lawTestCtaSrc).toMatch(/Elegir qué artículos/)
+  })
+
+  it('el enlace nuevo abre el panel YA desplegado, no otra vez plegado por defecto', () => {
+    expect(lawTestConfiguratorSrc).toMatch(/abrir_filtro/)
+    expect(lawTestConfiguratorSrc).toMatch(/initialShowLawsFilter=\{abrirFiltroParam\}/)
+    expect(src).toMatch(/showLawsFilter, setShowLawsFilter\] = useState\(initialShowLawsFilter/)
+  })
+
+  it('el botón que filtra la LECTURA (temario) ya no compite por el nombre "Filtrar por Títulos" con el que filtra el TEST', () => {
+    // Antes decían lo mismo salvo el emoji (📚 vs 📄) — el caso real que confundió a un
+    // usuario, que pulsó "Aplicar filtro" en /teoria creyendo que configuraba el test.
+    expect(lawArticlesClientSrc).not.toMatch(/>Filtrar por Títulos</)
+    expect(lawArticlesClientSrc).toMatch(/Ver por Títulos/)
   })
 })

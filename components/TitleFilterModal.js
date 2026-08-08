@@ -67,7 +67,7 @@ export default function TitleFilterModal({ isOpen, onClose, lawShortName, onTitl
       <div className="relative mx-auto max-w-2xl w-full bg-white rounded-lg shadow-xl max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            📚 Filtrar por Títulos - {lawShortName}
+            📚 Ver por Títulos (lectura) - {lawShortName}
           </h2>
           <button
             onClick={onClose}

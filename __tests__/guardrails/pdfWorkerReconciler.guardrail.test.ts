@@ -29,3 +29,35 @@ describe('pdf-worker — reconciliador auto-curable', () => {
     expect(enqIdx).toBeLessThan(drainIdx) // reconcile ANTES de drenar
   })
 })
+
+// El backfill de población (T-159 pieza (c), 06/08/2026): sembrar el catálogo SOLO donde hay
+// alumnos, un comando MANUAL de una vez, no un reconciliador. Mismo defecto que se quiere evitar
+// que el de arriba: si alguien lo cablea sin querer en el ciclo de 30 min, cada tick pagaría el
+// barrido de cientos de temas de las oposiciones más pobladas para nada — la firma lo haría
+// idempotente (no re-renderizaría), pero la CONSULTA de población/temas no es gratis.
+describe('pdf-worker — seed-poblacion es un backfill MANUAL, no un reconciliador', () => {
+  it('la firma de siembra también incluye PDF_TEMPLATE_VERSION (auto-cura ante bump de plantilla)', () => {
+    expect(worker).toMatch(/seed:\$\{PDF_TEMPLATE_VERSION\}/)
+  })
+
+  it('filtra por PT_TO_SLUG — no encola una oposición sin slug conocido', () => {
+    const fnBody = worker.slice(worker.indexOf('async function cmdSeedPoblacion'), worker.indexOf('async function cmdEnqueueBig'))
+    expect(fnBody).toMatch(/PT_TO_SLUG\[pt\]/)
+  })
+
+  it('`seed-poblacion` es un comando CLI explícito y distinto de `drain`/`enqueue-big`', () => {
+    expect(worker).toMatch(/cmd === 'seed-poblacion'/)
+    expect(worker).toMatch(/uso:.*seed-poblacion/)
+  })
+
+  it('NO se llama desde la rama de `drain` — es manual, no un reconciliador de cada ciclo', () => {
+    const drainBranch = worker.slice(worker.indexOf("cmd === 'drain'"), worker.indexOf("cmd === 'stats'"))
+    expect(drainBranch).not.toMatch(/cmdSeedPoblacion/)
+  })
+
+  it('está definido ANTES de `cmdEnqueueBig` y usa el mismo patrón de idempotencia (existing.n)', () => {
+    const fnBody = worker.slice(worker.indexOf('async function cmdSeedPoblacion'), worker.indexOf('async function cmdEnqueueBig'))
+    expect(fnBody).toMatch(/content_hash = \$\{sig\}/)
+    expect(fnBody).toMatch(/existing\[0\]\?\.n/)
+  })
+})
