@@ -6927,7 +6927,28 @@ pero eso hay que comprobarlo, no suponerlo.
 - **`eab05295` (Andalucía, competencia del BOJA) → la clave ES correcta, RESTAURAR a `approved`.** El diagnóstico de la sesión anterior era acertado (nuestra copia del art. 1 es un resumen de 370 caracteres, no el texto legal) pero quedaba sin comprobar contra el BOJA real. Hecho ahora: fetch RAW (no resumen de LLM — lección de T-679) de `https://www.juntadeandalucia.es/boja/2025/513/1` (Decreto 168/2025, BOJA Extraordinario nº 13/2025) — el art. 1.k) dice literalmente *«La dirección, edición y publicación del Boletín Oficial de la Junta de Andalucía en su sede electrónica»*, EXACTO a la opción correcta. Artículo 1 completo re-extraído y formateado, listo para reemplazar el resumen: `scratchpad/t465/decreto168-2025-articulo1-verbatim.txt`.
 - **Hallazgo NUEVO, medido, fuera de alcance de esta ficha:** el Decreto 168/2025 entero (21 artículos) está importado como resúmenes parafraseados (215-386 caracteres cada uno) en vez de texto literal — el art. 1 real mide 4.650. Cuelgan 8 preguntas (7 activas). Muestreadas 5 de las 6 del art. 2 contra el texto real (también extraído, `scratchpad/t465/decreto168-2025-articulo2-raw.txt`): las 5 tienen clave correcta, mismo patrón (resumen malo, clave buena). La sexta (`20c697b1`, departamentos del SAS) no encaja con el art. 2 que sí tengo — puede estar mal vinculada o necesitar un artículo posterior no comprobado. Y el `laws.boe_url` de este decreto apunta a OTRO documento (una Orden de incendios forestales, verificado con WebFetch) — la URL correcta es la de arriba. No re-importo los 20 artículos restantes: son fuera del "rato" declarado para los 2 `needs_human`, quedan anotados con cifras para quien lo retome.
 
-**⏳ SIGUE PENDIENTE — decisión de producto sobre las ~1.680 firmadas no medibles:** preguntado a Manuel (ver `preguntar`), las dos opciones ya están descritas arriba (NOTA).
+**✅ DECISIÓN DE MANUEL (08/08, pregunta #111): OPCIÓN A — limpiar los flags a NULL.** *«El falso verde
+es peor que el hueco declarado, y "no lo sé" tiene que poder decirse — es uno de los nueve principios
+del andamiaje de sesiones (…) Dejarlas en B es exactamente lo contrario: el banco seguiría AFIRMANDO
+que 1.680 preguntas están verificadas sabiendo nosotros que la firma fue cosmética.»* Dos condiciones,
+ambas verificadas ANTES de escribir nada:
+1. **Que nulear `article_ok`/`answer_ok` no desactive ni jubile nada por sí solo.** Comprobado: esos
+   flags viven en `ai_verification_results`, NO en `questions`; `information_schema.triggers` da
+   **0 filas** para esa tabla, y `questions.is_active` es `GENERATED` solo desde `lifecycle_state` —
+   no hay ruta de cascada. El único cron que degrada por antigüedad sin verificar
+   (`lifecycle_grandfather_expire`, aún SIN programar) mira `questions.verified_at`, un campo distinto.
+2. **Dejar rastro de que fue saneamiento, no verificación nueva.** El script nuevo inserta un
+   `observable_events` por fila limpiada con el MISMO `event_type` que ya usa el trigger de
+   prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un tipo nuevo, para que
+   saneamiento retroactivo y prevención compartan serie temporal.
+
+**Construido: `scripts/calidad/sanear-verificacion-cosmetica.cjs`** (`npm run
+sanear:verificacion-cosmetica [-- --aplicar]`), SIMULA por defecto. Núcleo puro compartido
+`calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` (17 tests, 5 nuevos). Registrado en
+`toolRegistry.ts`. **Medido en dry-run (08/08): 1.705 filas a limpiar** (bajó de las 1.713 originales
+por el trabajo pregunta-a-pregunta ya hecho arriba). **NO aplicado**: mi credencial (`VENCE_LECTOR_URL`)
+es de solo lectura — necesita `--aplicar` de alguien con escritura, y entonces la cifra exacta que
+quede en NULL se conocerá con certeza (debería ser 1.705, salvo que algo cambie entretanto).
 
 - **Relacionadas:** [T-458] (las 8 impugnaciones que lo destaparon), [T-462] (otro guardarraíl desalineado del mismo flujo).
 
