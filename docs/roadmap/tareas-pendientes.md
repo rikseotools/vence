@@ -982,19 +982,44 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 ## Abiertas
 
 ### [T-643] 🟡 [ABIERTO 07/08] Oposiciones con `topics` construidos pero SIN fila en `oposiciones` (T-045, T-393) + trabajador sin escritura de contenido
-- **Qué:** dos casos independientes, medidos por dos sesiones distintas el mismo día (07/08), del MISMO patrón: la oposición tiene `topics`/`topic_scope` (a veces con preguntas reales detrás) pero **la tabla `oposiciones` no tiene fila para ella, ni activa ni inactiva**. Sin esa fila no hay landing, no resuelven las rutas, `audit:oposicion` no tiene qué auditar y nadie puede darle `is_active=true`.
+
+> **🔧 CORRECCIÓN (08/08, w3) — LOS DOS CASOS de "fila ausente" eran FALSOS POSITIVOS de RLS, no
+> filas borradas. Esta ficha nace de generalizar un error que no era tal.**
+> - **[T-045]:** `oposiciones` tiene RLS activo con la única política de `SELECT`
+>   `qual=(is_active = true)`, y `vence_lector` (el rol de `VENCE_LECTOR_URL`) tiene
+>   `rolbypassrls=false` — cualquier fila `is_active=false` es invisible por lectura, exista o no.
+>   Contraejemplo reproducido: `etgoa-sanidad-consumo` da 0 filas por `VENCE_LECTOR_URL` pese a que
+>   Manuel confirmó (embudo, `#99`, minutos antes) que la escribió él mismo con `is_active=false`.
+>   Detalle completo en § [T-045].
+> - **[T-393]: peor todavía — esta ficha CONTRADECÍA una corrección YA PUBLICADA de Manuel** en la
+>   misma conversación de flota, sin citarla ni reconciliarla. Su respuesta a la pregunta `#100`
+>   (minutos antes de este commit): *"TU PREMISA CLAVE ES FALSA... SÍ la hay: slug
+>   'auxiliar-archivos-bibliotecas-museos-madrid'... `is_active=false`, grupo C, SUBGRUPO C1. No la
+>   encontraste porque el slug NO coincide con el `position_type`"*. Es decir: la fila existe, y el
+>   motivo de no encontrarla la primera vez fue buscar por la columna equivocada — RLS también
+>   habría escondido esa fila si se hubiera buscado por `slug` sin bypass, así que ambos motivos
+>   coincidían ahí. Manuel además corrigió el estado: **NO está publicada** (los 50 `topics` tienen
+>   `disponible=false`), así que no hay ningún usuario aterrizando en un temario vacío hoy.
+> - **Lo que SIGUE siendo real y útil de esta ficha:** el patrón RLS en sí (documentarlo aquí para
+>   que el próximo trabajador que consulte una oposición `is_active=false` por `VENCE_LECTOR_URL`
+>   no repita la misma lectura) y el punto 3 de la decisión de abajo (el modelo de escritura de la
+>   flota). Los puntos 1 y 2 (restaurar filas, diagnosticar un DELETE) están **retirados**: no hay
+>   nada que restaurar y no hubo ningún DELETE que diagnosticar.
+
+- **Qué (texto original, mantenido para trazabilidad — ver la corrección de arriba antes de actuar
+  sobre nada de esto):** dos casos independientes, medidos por dos sesiones distintas el mismo día
+  (07/08), del MISMO patrón aparente: la oposición tiene `topics`/`topic_scope` (a veces con
+  preguntas reales detrás) pero **la tabla `oposiciones` no tiene fila para ella, ni activa ni
+  inactiva**. Sin esa fila no hay landing, no resuelven las rutas, `audit:oposicion` no tiene qué
+  auditar y nadie puede darle `is_active=true`.
   - **[T-045]** Agentes de Tributos Agencia Tributaria Canaria: 40 `topics`, 2 `oposicion_bloques`, 64 filas de `topic_scope`, cientos de preguntas — TODO intacto y con los mismos recuentos que el cierre del 26/07 (medido contra RDS). La fila `oposiciones` (`id f6fe6eb1-03a5-41e1-af7f-b81b4e51ccb8`) no existe; la `convocatoria` que la sesión del 20-25/07 corrigió sigue en BD con esa FK ahora huérfana. `lib/config/oposiciones.ts:406-485` (en `main`) sí tiene la entrada completa.
   - **[T-393]** Auxiliar Archivos/Bibliotecas/Museos Madrid: 50 `topics` con epígrafe y descripción, `topic_scope` en 0 filas, y **tampoco existe fila en `oposiciones`** (medido 07/08 por otra sesión — la ficha original decía `is_active=false`, que es MENOS orfandad de la real).
   - No se puede determinar CUÁNDO desapareció (o si alguna vez llegó a insertarse) con acceso de solo lectura: no hay auditoría de DELETE visible para un rol lector, y el `updated_at` de tablas relacionadas no es concluyente (comparado contra oposiciones canarias sanas, tampoco se tocan a diario).
-- **Segundo hallazgo, y por qué esta ficha junta las dos cosas:** comprobado con `SELECT has_table_privilege('vence_coordinacion', tabla, 'INSERT')` contra RDS que el rol de `DATABASE_URL` de un trabajador de la flota da **`false`** en `oposiciones`, `topics`, `oposicion_bloques`, `topic_scope`, `questions`, `laws`, `articles` y `convocatorias` — contrastado contra `backlog_tasks`/`session_questions`/`worktree_sessions`, donde SÍ da `true` (el método de medida es correcto, no un `false` universal por error). El `.env.local` de un trabajador solo trae `DATABASE_URL` (coordinación) y `VENCE_LECTOR_URL` (lectura); no hay tercera credencial.
-  - Esto significa que **ningún trabajador de hoy puede ni restaurar estas filas ni ejecutar el pipeline de generación de contenido** (`docs/maintenance/generar-preguntas-con-ia.md`, `scripts/insertar-batch-generado.cjs`, el scaffolder de `crear-nueva-oposicion.md`) contra RDS directamente — todos escriben en tablas de negocio.
-  - Coincide en el tiempo con que el modelo de roles restringidos para trabajadores (T-539) es del 04/08, **posterior** a las sesiones que sí escribieron en T-045 (20-26/07). No se da como causa probada (no verificable con acceso de lectura), pero es la explicación que mejor encaja con todos los datos medidos: antes se podía escribir contenido, ahora no.
-- **Por qué importa junto y no por separado:** si la causa de "topics sin oposiciones" fuera solo un bug puntual de un script, arreglarlo en T-045 no evitaría que vuelva a pasar (ya ha pasado dos veces, en fechas y sesiones distintas). Y si la causa es que ya NO HAY forma de que un trabajador complete estas tareas de construcción con las credenciales actuales, entonces asignar tareas de "construir/engordar contenido" a la flota tal como está provisionada hoy es asignar trabajo que no se puede terminar.
-- **Decisión de Manuel:**
-  1. Restaurar las dos filas (valores conocidos y no inventados: para T-045 están en su ficha; para T-393 hay que remedir contra la ficha original + BOE).
-  2. Diagnosticar la causa real de por qué `topics` puede existir sin `oposiciones` (¿un paso del scaffolder que puede fallar a medias sin abortar el resto? ¿un DELETE en algún sitio que no debería tocar `oposiciones` sin tocar sus `topics`?) — con escritura, para poder reproducir.
+- **Segundo hallazgo, y por qué esta ficha junta las dos cosas — este SÍ sigue vigente:** comprobado con `SELECT has_table_privilege('vence_coordinacion', tabla, 'INSERT')` contra RDS que el rol de `DATABASE_URL` de un trabajador de la flota da **`false`** en `oposiciones`, `topics`, `oposicion_bloques`, `topic_scope`, `questions`, `laws`, `articles` y `convocatorias` — contrastado contra `backlog_tasks`/`session_questions`/`worktree_sessions`, donde SÍ da `true` (el método de medida es correcto, no un `false` universal por error). El `.env.local` de un trabajador solo trae `DATABASE_URL` (coordinación) y `VENCE_LECTOR_URL` (lectura); no hay tercera credencial.
+  - Esto significa que **ningún trabajador de hoy puede ejecutar el pipeline de generación de contenido** (`docs/maintenance/generar-preguntas-con-ia.md`, `scripts/insertar-batch-generado.cjs`, el scaffolder de `crear-nueva-oposicion.md`) contra RDS directamente — todos escriben en tablas de negocio. (La parte de "ni restaurar estas filas" ya no aplica: no hay filas que restaurar, ver corrección de arriba.)
+- **Decisión de Manuel — SOLO el punto 3 sigue en pie:**
   3. La pregunta de fondo: **¿cómo debe la flota seguir tareas de generación de contenido si `vence_coordinacion` no escribe en tablas de negocio?** Si es a propósito, hace falta un mecanismo tipo "borrador + aplicación por alguien con permiso" (como ya existe para lo que se envía a personas, `lib/sessions/aprobacion.cjs`) en vez de asignar la tarea entera a un trabajador que no puede terminarla.
-- **Cómo:** empezar leyendo `docs/roadmap/tareas-pendientes.md` § T-045 (hallazgo del 07/08, con los valores exactos de reconstrucción) y § T-393 (pregunta #100 en `preguntas`). Rama con el hallazgo de T-045 ya pusheada: `flota/T-045-fila-oposiciones-ausente`.
+- **Cómo:** § [T-045] tiene el detalle completo del patrón RLS y su verificación.
 
 ### [T-642] 🟠 [ABIERTO 07/08] El vigía canta «↻ retoma» aunque el turno muera al instante: nadie mira si el trabajador llegó a arrancar, y una cuenta con el límite semanal agotado es invisible
 
@@ -14374,20 +14399,60 @@ contra `articles.title`.
 >   5. **Cabo que NO es de esta ficha:** las 8 preguntas del T221 se sirven además en el T12 de `oficial_de_gestion_parlamento_de_andalucia`, que escopa la Ley 22/2009 entera → **[T-137]**. Ya están auditadas, reparadas y con Paso 9 completo, así que no hay riesgo abierto: lo que queda es el reparto del scope.
 > - **✅ CABO DEL RGGIT CERRADO CON MEDICIÓN (26/07), y era falsa alarma.** La ficha arrastraba «4 artículos del RGGIT divergen del BOE en una muestra de 60, sin identificar», que bloqueaba el T203. Medido: los **71 artículos que la ATC escopa están idénticos al BOE vigente** (28 del rango 2-29 que usa el T203 + 43 del 155-197), y una muestra repartida de 15 de los **no escopados** también. El RGGIT lo escopa **solo** esta oposición, así que no hay superficie servible sin verificar. Los 4 divergentes no son reproducibles: se midieron **antes de que el arreglo del extractor llegara a producción** — lo que divergía era el parseo, igual que el verde falso de la LGT. **Un bloqueo se vuelve a medir antes de darlo por vivo** (segunda vez en esta ficha, después del DL 1/1994).
 >
-> ## 🔴 HALLAZGO (07/08) — falta la fila `oposiciones`, y un trabajador de hoy NO tiene permiso para restaurarla ni para seguir el engorde
-> **Medido contra RDS vivo (`VENCE_LECTOR_URL`), no supuesto.** El contenido sigue INTACTO: 40 `topics` (15 Bloque I `disponible=true`, 25 Bloque II `disponible=false`), 2 `oposicion_bloques`, 64 filas de `topic_scope`, y los recuentos por tema **coinciden exactamente** con el cierre del 26/07 (Bloque I: T15=58, T13=148, T10=30…; Bloque II: T222=25, T217=43, T215=32… los 25 temas dan el mismo número que la última entrada de esta ficha). Pero **la fila de `oposiciones` para `administrativo-agencia-tributaria-canaria` (id `f6fe6eb1-03a5-41e1-af7f-b81b4e51ccb8`) NO EXISTE** — comprobado por `slug` y por `id`, dos consultas independientes, cero filas.
-> - La `convocatoria` que esta ficha corrigió el 20-25/07 (`id a2ec6502-e9ec-4c77-a49e-3821f5f77e2f`, `plazas_libres=7`, `plazas_promocion_interna=12`, `boe_reference='BOC nº 117, de 12 de junio de 2026 — Resolución de 29/05/2026 de la Presidenta de la ATC'`) **sigue en BD** pero ahora es una FK **huérfana**: apunta a un `oposicion_id` que ya no existe.
-> - No puedo fechar el momento exacto de la desaparición con acceso de solo lectura: `convocatorias.updated_at` marca 28/07, pero contrastado contra las convocatorias de `administrativo-canarias`/`auxiliar-administrativo-canarias` (sanas, hermanas de CCAA) tampoco se tocan desde finales de julio — no hay cron diario que lo delate, así que el dato no es concluyente.
-> - **No es pérdida de contenido**, es la fila ancla: sin ella la oposición no resuelve rutas ni landing, y nadie puede ponerla `is_active=true`. `lib/config/oposiciones.ts:406-485` (código, en `main`) sigue teniendo la entrada completa — el hueco es solo de datos.
+> ## 🔧 CORRECCIÓN (08/08, w3) — el HALLAZGO del 07/08 de abajo es un FALSO POSITIVO de RLS, no un
+> incidente. No hay fila borrada, no hay FK huérfana, no hace falta que Manuel decida ninguna
+> restauración porque no hay nada que restaurar.
 >
-> **Por qué no la reparo yo mismo:** comprobado con `has_table_privilege('vence_coordinacion', tabla, 'INSERT')` contra RDS que mi rol (el de `DATABASE_URL` de un trabajador) da `false` en `oposiciones`, `topics`, `oposicion_bloques`, `topic_scope`, `questions`, `laws`, `articles` y `convocatorias` — contrastado contra `backlog_tasks`/`session_questions`/`worktree_sessions`, donde SÍ da `true` (el método de medida es correcto, no es un `false` universal). Mi `.env.local` solo trae `DATABASE_URL` (coordinación) y `VENCE_LECTOR_URL` (lectura); no hay tercera credencial. Encaja con la regla dura de esta sesión de "nunca escribir en la BD de negocio": no es un fallo mío, es el modelo de permisos vigente HOY para un trabajador.
-> - **Esto alcanza también al resto de "QUÉ QUEDA" de esta ficha:** los ~95 preguntas del engorde (§ arriba) exigen `insertar-batch-generado.cjs` escribiendo directo en `questions`/`laws`/`topic_scope`, que un trabajador de hoy no puede ejecutar (misma comprobación de privilegios). El grueso del trabajo de esta ficha (20/07-26/07) se hizo con permisos que un trabajador de hoy no tiene — coincide en el tiempo con que el modelo de roles restringidos para trabajadores (T-539) es del 04/08, POSTERIOR a esas sesiones. No lo doy por causa probada (no puedo verlo con acceso de solo lectura), lo dejo como lo que es: la única explicación que encaja con todos los datos medidos.
+> **Demostrado, no sospechado.** `oposiciones` tiene RLS activo (`pg_class.relrowsecurity=true`)
+> con una única política de `SELECT`: `'Public read oposiciones'`, `qual=(is_active = true)`. Y
+> `vence_lector` tiene `rolbypassrls=false` (`pg_roles`, comprobado). **Cualquier fila con
+> `is_active=false` es INVISIBLE para `VENCE_LECTOR_URL`, exista o no** — es el mismo patrón que
+> ya está documentado repetidas veces en CLAUDE.md para otras tablas (T-573, T-578…), que esta
+> ficha no reconoció.
+> - **Contraejemplo irrefutable, reproducido yo mismo:** `SELECT id,slug,is_active FROM
+>   oposiciones WHERE slug='etgoa-sanidad-consumo'` → **0 filas**, pese a que Manuel escribió
+>   `is_active=false` en esa fila con su propia credencial minutos antes en esta misma sesión de
+>   flota (su respuesta a la pregunta `#99` del embudo: *"Ya está aplicado por mí (tengo
+>   escritura): `oposiciones.is_active=false` para etgoa-sanidad-consumo"*) — esa fila EXISTE con
+>   certeza absoluta y aun así una consulta por `slug` vía `VENCE_LECTOR_URL` la esconde
+>   exactamente igual que la de `administrativo-agencia-tributaria-canaria`.
+> - Esta misma ficha (más arriba) ya decía que la oposición **"nunca llegó a `is_active=true`"** —
+>   o sea, siempre estuvo en la única condición que la RLS oculta. No hace falta invocar un
+>   borrado: basta con lo que ya sabíamos.
+> - La `convocatoria a2ec6502-e9ec-4c77-a49e-3821f5f77e2f` **NO está huérfana**: apunta con casi
+>   total certeza a una fila que sigue ahí, solo invisible para el rol de lectura de un
+>   trabajador. Nadie ha comprobado esto con una credencial que bypasee RLS (lo pendiente de
+>   verdad, si alguien quiere cerrar el "casi" del todo — trivial con acceso de escritura:
+>   `SELECT id FROM oposiciones WHERE id='f6fe6eb1-03a5-41e1-af7f-b81b4e51ccb8'`, o simplemente
+>   preguntarle a Manuel, como confirmó él mismo para el caso gemelo de T-393 — ver abajo).
 >
-> **Para restaurar la fila** (mecánico — solo hace falta quien tenga escritura), valores con evidencia ya reunidos, ninguno por inventar:
->   `slug='administrativo-agencia-tributaria-canaria'`, nombre `'Agentes de Tributos - Agencia Tributaria Canaria'` (`lib/config/oposiciones.ts:413`), `plazas_libres=7`, `plazas_promocion_interna=12`, `temas_count=40`, `bloques_count=2`, `is_active=false` (nunca llegó a `true`), `programa_url='https://sede.gobiernodecanarias.org/boc/boc-a-2026-117-2024.pdf'`, `boe_reference='BOC nº 117, de 12 de junio de 2026 — Resolución de 29/05/2026 de la Presidenta de la ATC'`. Tras reinsertar: reenlazar la convocatoria huérfana (`UPDATE convocatorias SET oposicion_id=<nuevo id> WHERE id='a2ec6502-e9ec-4c77-a49e-3821f5f77e2f'`).
+> **Lo que SÍ sigue en pie, como pregunta legítima y separada** (esto no lo desmiente el hallazgo
+> de RLS): si conviene que la flota siga recibiendo tareas de generación de contenido dado que
+> `vence_coordinacion` no escribe en tablas de negocio — eso está bien medido
+> (`has_table_privilege` da `false` en `oposiciones`/`topics`/`questions`/etc. y `true` en las 4
+> tablas de coordinación) y no depende de si la fila existe o no.
 >
-> **Decisión de Manuel, no de un trabajador:** (a) restaurar la fila y retomar el engorde con una sesión que sí tenga escritura, y (b) más en general — **¿cómo sigue una tarea de generación de contenido** (esta, T-155, T-146, cualquiera que use `generar-preguntas-con-ia.md`) **asignada a la flota si `vence_coordinacion` no puede escribir en `questions`/`laws`/`topic_scope`/`oposiciones`?** Si la restricción es a propósito (parece que sí, por T-539), este tipo de tarea no se le puede seguir encargando a un trabajador tal como está provisionado hoy — o hace falta un mecanismo distinto (borrador + aplicación por alguien con permiso, como ya existe para lo que se envía a personas).
-
+> **Para verificar de una vez** (con una credencial que bypasee RLS, o simplemente preguntando a
+> Manuel — mucho más barato que reconstruir una fila que probablemente ya está ahí):
+>   `SELECT id, slug, is_active FROM oposiciones WHERE id='f6fe6eb1-03a5-41e1-af7f-b81b4e51ccb8'`.
+> Si de verdad no existe (RLS no puede descartarlo del todo sin esa consulta), los valores de
+> restauración que dejó la entrega original siguen siendo válidos y quedan más abajo por si
+> hicieran falta — pero no se dan por necesarios sin antes correr esa única consulta.
+>
+> **Valores de restauración (SOLO si la consulta de arriba confirma que la fila de verdad no
+> existe — no aplicar a ciegas):** `slug='administrativo-agencia-tributaria-canaria'`, nombre
+> `'Agentes de Tributos - Agencia Tributaria Canaria'` (`lib/config/oposiciones.ts:413`),
+> `plazas_libres=7`, `plazas_promocion_interna=12`, `temas_count=40`, `bloques_count=2`,
+> `is_active=false`, `programa_url='https://sede.gobiernodecanarias.org/boc/boc-a-2026-117-2024.pdf'`,
+> `boe_reference='BOC nº 117, de 12 de junio de 2026 — Resolución de 29/05/2026 de la Presidenta de
+> la ATC'`.
+>
+> **La pregunta de fondo sobre permisos de escritura de la flota sigue viva, sin cambios por esta
+> corrección:** ¿cómo sigue una tarea de generación de contenido (esta, T-155, T-146, cualquiera
+> que use `generar-preguntas-con-ia.md`) asignada a la flota si `vence_coordinacion` no escribe en
+> `questions`/`laws`/`topic_scope`/`oposiciones`? Si es a propósito (parece que sí, por T-539),
+> hace falta un mecanismo tipo "borrador + aplicación por alguien con permiso" — pero esto ya NO
+> es una decisión urgente de "restaurar una fila perdida", es una decisión de proceso a su ritmo.
 
 ### [T-022] ✅ [CANCELADA 05/08 — cae en la exclusión A1/A2] Construir Cuerpo de Gestión Administrativa A2 (Junta de Andalucía)
 - **Decisión: NO se construye.** Regla de producto (Manuel, 31/07/2026 — ver [T-391]): Vence construye contenido de D, C1 y C2; **A1 y A2 no, por ahora** (temarios enormes para pocas plazas/usuarios). Esta oposición es **A2 con 69 temas**: cae exactamente en la exclusión, sin excepción declarada para gaps de competidores. La ficha es de 13/07, ANTES de que esa regla existiera (31/07) — se cierra al releerla con la política actual, no por falta de tiempo.
