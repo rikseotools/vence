@@ -39,13 +39,23 @@ LAWS = ("constitucion-espanola", "rdl-5-2015", "ley-39-2015", "ley-40-2015")
 JOB_NAME = "vence-instagram-daily"
 
 
-def emit_cron_signal(conn, event_type, ms=None, status="success", error=None):
+def emit_cron_signal(conn, event_type, ms=None, status="success", error=None, endpoint=None):
     """Señal de LIVENESS del job, mismo contrato que scripts/pdf-worker.ts:
     cron_tick al arrancar y cron_run al terminar, ambos con endpoint=JOB_NAME. Sin
     esto el job es invisible para cron_overdue -- exactamente como
     temario-pdf-worker estuvo 2 días muerto sin una sola alerta (27->29/07/2026):
     un contenedor que muere antes del entrypoint no puede avisar de su propia
     muerte, y la única señal fiable es la AUSENCIA de estas dos.
+
+    EL ENDPOINT ES LA CLAVE, y por eso se puede cambiar: `cron_overdue` empareja
+    `cron_tick ∪ cron_run` con el catálogo POR ENDPOINT y solo comprueba que exista
+    ALGUNA señal desde el tick anterior -- no que caiga cerca de la hora esperada.
+    Así que una pasada manual con DRY_RUN=1 (documentada paso a paso en el README de
+    esta carpeta) emitida con el endpoint de siempre TAPARÍA la muerte del cron real
+    de ese mismo día: el falso verde que este job existe para eliminar, autoinfligido
+    por su propio mecanismo de prueba. Lo señaló la revisión de [T-325]; el hueco es
+    de las DOS señales, no solo del `cron_run` de completado, porque el tick se emite
+    antes de publicar nada.
     """
     import json
     meta = json.dumps({"phase": "start"} if event_type == "cron_tick" else {"status": status})
@@ -55,7 +65,8 @@ def emit_cron_signal(conn, event_type, ms=None, status="success", error=None):
                 "INSERT INTO observable_events "
                 "(source, severity, event_type, endpoint, duration_ms, error_message, metadata) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
-                ("worker", "error" if error else "debug", event_type, JOB_NAME, ms, error, meta),
+                ("worker", "error" if error else "debug", event_type,
+                 endpoint or JOB_NAME, ms, error, meta),
             )
     except Exception:
         # La observabilidad nunca tumba el job. Si se pierde el tick, el cron_run
@@ -251,10 +262,14 @@ def publish_ig(image_url, caption):
 
 def main():
     dry = os.environ.get("DRY_RUN") == "1"
+    # Una pasada de prueba deja rastro, pero NUNCA bajo el endpoint que vigila
+    # `cron_overdue`: si no, taparía la muerte del cron real de ese día (ver
+    # `emit_cron_signal`).
+    endpoint = JOB_NAME + "-dry-run" if dry else JOB_NAME
     t0 = time.time()
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = True
-    emit_cron_signal(conn, "cron_tick")
+    emit_cron_signal(conn, "cron_tick", endpoint=endpoint)
     try:
         q = pick_question(conn)
         cr = round(q["first_attempts_correct_sum"] / q["difficulty_sample_size"] * 100)
@@ -265,7 +280,7 @@ def main():
             with open("/tmp/ig_preview.jpg", "wb") as f:
                 f.write(buf.getvalue())
             print("DRY_RUN: imagen en /tmp/ig_preview.jpg, NO se publica.\n--- caption ---\n" + caption)
-            emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="dry_run")
+            emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="dry_run", endpoint=endpoint)
             return
         image_url = upload_s3(buf)
         print("Imagen en:", image_url)
@@ -277,11 +292,11 @@ def main():
                 (q["id"], mid, permalink, caption, image_url),
             )
         print(f"✅ Publicado: {permalink} (media {mid})")
-        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="success")
+        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="success", endpoint=endpoint)
     except Exception as e:
         # Un ciclo que peta SÍ anuncia que terminó: sin cron_run la regla lo vería
         # como colgado en vez de como fallado, y son dos diagnósticos distintos.
-        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="error", error=str(e))
+        emit_cron_signal(conn, "cron_run", ms=int((time.time() - t0) * 1000), status="error", error=str(e), endpoint=endpoint)
         raise
 
 
