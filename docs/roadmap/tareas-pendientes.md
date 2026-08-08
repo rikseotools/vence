@@ -1855,6 +1855,57 @@ ambos admitidos el 06/08, no le generaron recompensa. Comprobado: la impugnació
 `explicacion_confusa`, que por política NO paga sola (evento `reward_skipped_subjective_type`), y el
 bug de premium exige orden explícita de Manuel que nadie dio. **Tiene razón en los hechos**; las dos
 son decisión suya.
+
+**LA CAUSA, CERRADA (08/08, sesión movil-colas) — y el parche anterior NO bastaba:**
+
+El arreglo `4b7b1c42f` (poner `getAuthHeaders()` en tres llamantes) **está vivo desde las 21:00
+UTC del 07/08** en el bundle `a99c08fc`, y se nota: el 401 de `/api/exam/pending` cae del **100%
+al 48%** en esa hora exacta. Pero **no lo cierra**: sobre ese mismo bundle seguían fallando el
+**48% de las lecturas en 28 usuarios**, el último a las 07:12 UTC del 08/08.
+
+**Lo que faltaba, medido:** de esos 28, **18 no acuñaron un solo token** en toda la ventana. No
+es que el acuñado fallara — es que **ni se intentaba**. El adapter aplica `UNAUTH_BACKOFF_MS =
+60_000` tras un 401 de `/api/auth/token` y en esa ventana `getMintedToken()` devuelve
+`unauthenticated` **sin llegar a la red**. El freno estaba puesto para los ANÓNIMOS (que
+martilleaban el endpoint) y se aplicaba a todo el mundo. Un minuto es eterno con un examen a
+medias: `rbsc87` pulsó «Corregir Examen» **ocho veces seguidas** y luego cerró sesión.
+
+**Y la etiqueta mentía.** El 403 de `/api/exam/validate` lo pone `requireDuenoDelRecurso`
+([T-565]) como `auth_identidad_ajena_rechazada` / `motivo: recurso_ajeno`. Contadas las 32 h del
+incidente: **195 rechazos, y los 195 con `user_id` NULL** — o sea, **ni uno** era de otra
+persona. Tres daños de una sola etiqueta: la señal que vigila el abuso quedó inservible durante
+el pico; esta misma ficha **descartó esa pista por «no aparece en user-stats»** cuando era el
+rastro exacto; y al opositor se le dijo que su propio examen no era suyo.
+
+**Y el aviso remataba:** `ExamLayout` tenía UN `alert()` para cualquier fallo — *«Comprueba tu
+conexión»*. Por eso su segundo mensaje dice *«cuando la conexión es perfecta»*: le hicimos
+revisar su router por un fallo nuestro, y sin ofrecerle lo único que lo arreglaba (volver a
+entrar).
+
+**Arreglado en `main`** (pendiente de desplegar): tres núcleos puros nuevos —`propiedadRecurso`
+(401 sin identidad ≠ 403 recurso ajeno, sin ablandar ninguna denegación), `avisoDeCorreccion`
+(el texto sale de la CAUSA; la conexión solo se nombra si el fallo es de red) y `backoffAcunado`
+(60 s al anónimo, 2 s a quien tiene sesión)—, `getAuthHeaders()` deja de callar
+(`auth_header_sin_token`), y dos reglas de alerta (`examen_correccion_fallida` crítica y
+`auth_header_sin_token`). 32 unitarios + journey de vence-sim que inyecta el 403 real y mira lo
+que LEE la persona.
+
+**Datos reparados:** las respuestas se guardaban y hasta corregidas; lo que quedaba a cero era la
+fila de `tests`. `npm run exam:reparar-correcciones -- --email … --aplicar` (llama a
+`completeExam()`, el escritor canónico) le devolvió sus cuatro notas: **18/25, 13/24, 17/23,
+12/23**. El quinto (14 de 25) se deja: eso es abandonar, no entregar — y la línea base de
+abandonos es de 4-13 al día, así que repararlos inventaría notas.
+
+**PENDIENTE:**
+1. **Desplegar frontend + backend** y re-medir el 401 de `/api/exam/pending` y
+   `/api/v2/user-stats` sobre el bundle nuevo: tiene que irse del 48% al suelo histórico (0-7%).
+2. **Barrer el resto de exámenes bloqueados del 07/08** — `--desde 2026-08-07` en simulación da
+   la lista; son de OTROS usuarios y marcarles el examen como terminado **necesita el OK de
+   Manuel**, no se hace de oficio.
+3. **Contestar a rbsc87** (dos hilos, uno cada uno) SOLO cuando (1) esté verificado en producción.
+4. Los 18 que nunca acuñaron: si tras el deploy queda un resto, `auth_header_sin_token` ya lo
+   hace visible — ahí es donde mirar, y ya no habrá que reconstruirlo a mano.
+
 ### [T-672] 🟠 [ABIERTO 07/08] Barrido bajo la PREMISA de literalidad: preguntas activas cuya clave NO está en su artículo vinculado (reformular o desactivar)
 
 **La premisa (Manuel, 07/08/2026), que es de todo el banco y no de un caso:**
