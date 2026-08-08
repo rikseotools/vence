@@ -846,6 +846,24 @@ await supabase.from('laws').insert({
 - Cada pregunta debe tener un artículo cuyo contenido justifique la respuesta correcta.
 - Verificar que el epígrafe del tema realmente incluye esos conceptos teóricos antes de importar las preguntas.
 
+### ⚠️ El paso 3 (redactar el contenido) es OBLIGATORIO, y desde T-374 se hace cumplir (07/08/2026)
+
+El 08/07/2026 `import-aulaplus-clinico.cjs` vinculó **7.202 preguntas de enfermería** (80
+contenedores) al artículo 1 de leyes virtuales cuyo contenido seguía siendo el marcador
+`⏳ Teoría pendiente (contenedor enfermería).` — se saltó el paso 3 de arriba e importó
+directo al paso 4. El trinquete `__tests__/integration/placeholderTemarioGuard.test.ts`
+(que solo puede BAJAR) volvió de 0 a 7.202 sin que nadie lo notara porque el gate de CI que
+lo corre llevaba días en rojo por un secret que faltaba ([T-370]) — un gate ciego no frena,
+solo dejar de avisar.
+
+**Ahora `import-aulaplus-clinico.cjs` e `import-tcae-subject.cjs` comprueban el artículo
+ANTES de construir las filas** (`lib/generacion/articuloPlaceholder.js`, el mismo umbral que
+usa el trinquete — un solo criterio, no dos que puedan discrepar) y **abortan** si sigue en
+placeholder. Si de verdad hace falta importar antes de tener el temario escrito (poco
+recomendable: es exactamente el orden que causó esto), hay un escape explícito con motivo:
+`--permitir-placeholder "<por qué>"`. Cualquier importador NUEVO de este tipo debe llamar a
+esa misma función — no reescribir el umbral a mano.
+
 ## 12. Aislamiento de preguntas de exámenes oficiales por oposición (CRÍTICO)
 
 Las leyes virtuales de informática (Procesadores de texto, Hojas de cálculo, etc.) son **compartidas** entre todas las oposiciones. Si vinculas preguntas de exámenes oficiales de una oposición a estas leyes compartidas, los usuarios de OTRAS oposiciones verán esas preguntas, que pueden ser de versiones antiguas o contener referencias a documentos específicos del examen.

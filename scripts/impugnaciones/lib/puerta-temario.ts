@@ -44,6 +44,10 @@ export type VeredictoTemario = {
   positionType?: string | null
   /** Motivo declarado en `--temario-igualmente`. Lo produce el núcleo; se propaga para poder CONTARLO. */
   motivo?: string
+  /** Solo en `clase: 'escape'`: ¿habría bloqueado de verdad? Lo mide el núcleo re-evaluando (T-702). */
+  evitoBloqueo?: boolean
+  /** Los `code` de los bloqueos que el escape se saltó, para poder mirar CUÁLES estorban. */
+  bloqueosEvitados?: string[]
 }
 
 /** Qué se guarda de un escape: el motivo que la persona escribió, que es lo único que explica el rodeo. */
@@ -150,7 +154,13 @@ export function anunciarTemario(v: VeredictoTemario, { aplicar }: { aplicar: boo
     if (v.clase === 'escape') {
       console.log('   🚪 puerta de temario SALTADA con motivo declarado (queda contado en el bus de fricción;')
       console.log('      si esto se repite, la puerta estorba y hay que revisarla)')
-      if (aplicar) emitirFriccion({ clase: 'guard_escape', guard: 'temario', detalle: motivoEscape(v) })
+      // `evitoBloqueo` lo calcula el núcleo re-evaluando SIN el escape (T-702). Sin este dato el
+      // panel tenía que deducirlo restando bloqueos, y esta puerta no emite ninguno cuando se la
+      // saltan — daba «rodeada el 100%» por aritmética y prescribía borrarla.
+      if (aplicar) emitirFriccion({
+        clase: 'guard_escape', guard: 'temario', detalle: motivoEscape(v),
+        evitoBloqueo: v.evitoBloqueo,
+      })
     } else if (v.clase === 'verde') {
       console.log('   ✅ temario: lo que sirve esta pregunta está verificado contra el programa oficial')
     }

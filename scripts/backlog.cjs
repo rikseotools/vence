@@ -2008,6 +2008,28 @@ async function despertarPorDeploy(s, shas, opts = {}) {
         const [t] = await s`SELECT id FROM public.backlog_tasks WHERE id = ${tarea}`;
         if (!t) { console.error(`❌ la tarea ${tarea} no existe`); process.exit(2); }
       }
+      // ── ¿YA HAY UNA PREGUNTA ABIERTA SOBRE ESTA TAREA? (T-705, 08/08) ───────────────────────
+      // AVISA, no bloquea: la segunda pregunta suele ser legítima (otra sesión midió algo nuevo).
+      // Lo que no es legítimo es que Manuel reciba la MISMA decisión dos veces sin saber que lo
+      // son — pasó hoy con T-530, preguntada por una sesión local y, una hora después, por el
+      // trabajador al que el reparto acababa de entregarle esa misma tarea. Dos de las cinco
+      // preguntas abiertas eran la misma. Y un embudo con ruido se deja de leer, que es la razón
+      // por la que existe el embudo.
+      if (tarea) {
+        const previas = await s`
+          SELECT id, sid, question, asked_at FROM public.session_questions
+           WHERE task_id = ${tarea} AND status = 'open' AND sid IS DISTINCT FROM ${sid}
+           ORDER BY asked_at LIMIT 3`;
+        if (previas.length) {
+          console.log(`\n⚠️  YA HAY ${previas.length} pregunta(s) abierta(s) sobre ${tarea}, de otra sesión:`);
+          for (const p of previas) {
+            console.log(`   · #${p.id} (${String(p.sid).slice(0, 18)}): ${String(p.question).replace(/\s+/g, ' ').slice(0, 150)}`);
+          }
+          console.log('   Si es LA MISMA decisión, no la repitas: contéstale a esa sesión con');
+          console.log(`     node scripts/backlog.cjs responder ${previas[0].id} "…lo que hayas medido tú…"`);
+          console.log('   Si la tuya es distinta, sigue — pero dilo en el texto, para que se vean como dos.\n');
+        }
+      }
       const [r] = await s`
         INSERT INTO public.session_questions (sid, task_id, question, context, blocking)
         VALUES (${sid}, ${tarea || null}, ${pregunta}, ${contexto || null}, ${bloquea})

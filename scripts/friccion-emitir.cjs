@@ -48,6 +48,12 @@ async function main() {
               ${s.json({
                 clase,
                 guard: arg('--guard') || null,
+                // ¿El escape servía para algo, o se puso de prefijo? Lo RESPONDE el guardarraíl,
+                // que es el único que puede saberlo; deducirlo restando bloqueos daba 100% forzoso
+                // en las puertas cuyo escape corta la evaluación antes de calcularlos (T-702).
+                evitoBloqueo: process.argv.includes('--evito-bloqueo')
+                  ? true
+                  : process.argv.includes('--sin-nada-que-rodear') ? false : null,
                 segundos: arg('--segundos') ? Number(arg('--segundos')) : null,
                 sid: resolverSid({ repo: REPO }).sid,
                 cwd: process.cwd(),

@@ -103,8 +103,16 @@ try {
   comprobar('BLOQUEA', 1, correrGuard())
 
   // 4. El escape propio, que es lo que evita que se use --no-verify (y se apague todo).
-  console.log('\n4) El borrado es a propósito y se usa el escape')
-  comprobar('deja pasar con CONTEXTO_GUARD_SKIP=1', 0, correrGuard({ CONTEXTO_GUARD_SKIP: '1' }))
+  console.log('\n4) El borrado es a propósito y se usa el escape CON MOTIVO')
+  comprobar('deja pasar con un motivo escrito', 0,
+    correrGuard({ CONTEXTO_GUARD_SKIP: 'la entrada T-100 no era una tarea, la renumero' }))
+
+  // 4.bis. El escape dejó de ser una llave maestra (T-704). Medido antes de cambiarlo: 25 escapes
+  // en 7 días SIN un solo motivo escrito, 8 de ellos en 60 segundos — la variable se copiaba de un
+  // comando a otro. Sus dos hermanos ya lo exigían desde T-496/T-497; este se había quedado atrás.
+  console.log('\n4.bis) El escape con un «1», que es como se vuelve un prefijo')
+  comprobar('YA NO deja pasar con CONTEXTO_GUARD_SKIP=1', 1, correrGuard({ CONTEXTO_GUARD_SKIP: '1' }))
+  comprobar('tampoco con un motivo de dos letras', 1, correrGuard({ CONTEXTO_GUARD_SKIP: 'xx' }))
 
   // 5. La otra mitad del incidente: la ficha sobrevive pero vaciada.
   console.log('\n5) La ficha sigue, pero vaciada de contexto')

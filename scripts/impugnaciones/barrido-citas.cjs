@@ -80,6 +80,29 @@ const { citaNoLiteral } = require('./validar-explicacion.cjs');
 // marcados como defectos es un cubo que nadie drena.
 const RE_REF_ARTICULO = /\bart[íi]?c?u?l?o?\.?\s*(\d+\s*(?:bis|ter|quater)?)/i;
 
+// ── ¿La atribución declara además una LEY DISTINTA de la del artículo vinculado? ────────────────
+//
+// Hasta el 06/08 `refDeclaradaDistinta` solo miraba el NÚMERO: «(Art. 4.2.a RP)» en una pregunta
+// de LOGP se comprobaba contra "LOGP art. 4" — que no existe con ese contenido — en vez de contra
+// "RP art. 4", que SÍ lo tiene, literal. Dos casos reales lo confirman (T-207, 06/08): `273b6309`
+// cita LOGP art.3 (vinculado, literal) + RP art.4.2.a (declarado, TAMBIÉN literal en RP) y
+// `b72000de` cita TREBEP/RDL 5/2015 art.53.5 (declarado, literal) para una pregunta vinculada a la
+// Ley 5/2023 de Andalucía, que solo REMITE a esos principios sin reproducirlos. Las dos se
+// acusaban de «cita ajena» sin serlo: el detector nunca comprobó la ley correcta.
+//
+// Extrae un CANDIDATO de sigla/ley del texto que sigue a la referencia — deliberadamente
+// PERMISIVO (sigla en mayúsculas tipo RP/CP/LOPJ, siglas mixtas tipo LECrim, o "Ley N/YYYY" /
+// "RDL N/YYYY"). La permisividad es segura porque quien LEE este candidato (`leyIdParaCandidato`
+// en el CLI) solo lo usa si coincide con un `laws.short_name` real: un candidato que no exista
+// como ley simplemente no resuelve nada, no genera un falso negativo nuevo.
+const RE_SIGLA_LEY = /[A-ZÁÉÍÓÚÑ]{2,}[a-záéíóúñ]{0,8}(?:\s+\d{1,4}\/\d{2,4})?|(?:Ley|LO|RD|RDL|Real Decreto(?:\s+Legislativo)?)\s+\d{1,4}\/\d{2,4}/g;
+// TODOS los candidatos de la ventana, no solo el primero: «TREBEP (RDL 5/2015)» declara la ley por
+// DOS nombres (la sigla común y el `short_name` real de nuestra BD), y solo uno de los dos suele
+// resolver. Probarlos todos es lo que hace el fallo seguro: ninguno real → no exime nada nuevo.
+function candidatosLey(texto) {
+  return [...String(texto || '').matchAll(RE_SIGLA_LEY)].map((m) => m[0].trim());
+}
+
 /**
  * Trocea el blockquote en pares (cita, artículo que la propia explicación le atribuye).
  *
@@ -127,10 +150,20 @@ function citasAtribuidas(explanation) {
   const RE_PEGADA_DETRAS = /^[\s.,;:\-—*_]{0,8}\(\s*art[íi]?c?u?l?o?\.?\s*(\d+\s*(?:bis|ter|quater)?)/i;
   const finDe = (i) => trozos[i].index + trozos[i][0].length;
   const iniSiguiente = (i) => (i + 1 < trozos.length ? trozos[i + 1].index : bq.length);
+  // Ventana corta tras el número de artículo, hasta el cierre del paréntesis si lo hay: ahí vive
+  // la sigla de la ley cuando la atribución la nombra («Art. 4.2.a RP)», «Art. 121.1 RP)»,
+  // «Art. 53.5 del TREBEP (RDL 5/2015)» — dos candidatos, la sigla común y el short_name real).
+  const leyesTrasMatch = (texto, finMatch) => {
+    let ventana = texto.slice(finMatch, finMatch + 40);
+    const cierre = ventana.indexOf(')', ventana.indexOf('(') + 1);
+    if (cierre >= 0) ventana = ventana.slice(0, cierre);
+    return candidatosLey(ventana);
+  };
+
   const detras = trozos.map((_, i) => {
     const tail = bq.slice(finDe(i), iniSiguiente(i));
     const m = tail.match(RE_PEGADA_DETRAS);
-    return m ? { ref: m[1], consumido: m[0].length } : null;
+    return m ? { ref: m[1], consumido: m[0].length, leyes: leyesTrasMatch(tail, m[0].length) } : null;
   });
 
   // ¿Lo entrecomillado es la RÚBRICA de una división (Capítulo/Sección/Título) en vez de una cita
@@ -148,7 +181,7 @@ function citasAtribuidas(explanation) {
   for (let i = 0; i < trozos.length; i++) {
     const desde0 = i === 0 ? 0 : finDe(i - 1) + (detras[i - 1] ? detras[i - 1].consumido : 0);
     const rubrica = esRubrica(bq.slice(desde0, trozos[i].index));
-    if (detras[i]) { out.push({ texto: trozos[i][1], ref: String(detras[i].ref).replace(/\s+/g, ' ').trim(), rubrica }); continue; }
+    if (detras[i]) { out.push({ texto: trozos[i][1], ref: String(detras[i].ref).replace(/\s+/g, ' ').trim(), leyes: detras[i].leyes, rubrica }); continue; }
     // La cabecera empieza donde acaba la cita anterior MÁS lo que su atribución trasera consumió,
     // para no volver a leer la referencia de la vecina.
     const cabeza = bq.slice(desde0, trozos[i].index);
@@ -156,8 +189,13 @@ function citasAtribuidas(explanation) {
     // De la cabeza manda la ÚLTIMA referencia (la pegada a la cita), no la primera.
     const enCabeza = [...cabeza.matchAll(new RegExp(RE_REF_ARTICULO.source, 'gi'))].pop();
     const enCola = cola.match(RE_REF_ARTICULO);
-    const ref = enCabeza ? enCabeza[1] : (enCola ? enCola[1] : null);
-    out.push({ texto: trozos[i][1], ref: ref === null ? null : String(ref).replace(/\s+/g, ' ').trim(), rubrica });
+    const elegidaMatch = enCabeza || enCola;
+    const ref = elegidaMatch ? elegidaMatch[1] : null;
+    // La ley se busca en la MISMA cadena (cabeza o cola) donde se encontró la referencia, justo
+    // detrás del número — «Artículo 53.5 del TREBEP (RDL 5/2015)» declara la ley DESPUÉS del nº.
+    const ventanaLey = enCabeza ? cabeza : cola;
+    const leyes = elegidaMatch ? leyesTrasMatch(ventanaLey, elegidaMatch.index + elegidaMatch[0].length) : [];
+    out.push({ texto: trozos[i][1], ref: ref === null ? null : String(ref).replace(/\s+/g, ' ').trim(), leyes, rubrica });
   }
   return out;
 }
@@ -177,6 +215,27 @@ function refDeclaradaDistinta(explanation, articleNumber, citaTexto) {
     : citas.reduce((a, b) => (b.texto.length > a.texto.length ? b : a));
   if (!elegida || elegida.ref === null) return null;
   return String(elegida.ref) === String(articleNumber) ? null : elegida.ref;
+}
+
+/**
+ * Sigla(s)/ley(es) candidatas que la propia cita declara junto al número de artículo, si las
+ * declara — «Art. 4.2.a RP» devuelve `["RP"]`; «Art. 53.5 del TREBEP (RDL 5/2015)» devuelve
+ * `["TREBEP", "RDL 5/2015"]` (dos candidatos: la sigla común y el `short_name` real de la ley en
+ * nuestra BD suelen ser DISTINTOS, y basta con que uno de los dos resuelva). Array vacío si no hay
+ * candidato (la mayoría de citas: son de la MISMA ley que el artículo vinculado y no lo dicen).
+ *
+ * Compañera de `refDeclaradaDistinta` — mismo criterio de "cuál cita se juzga" — pero NO decide
+ * por sí sola si alguna ley es distinta de la vinculada: eso lo resuelve quien tenga acceso a BD
+ * (el CLI, comparando cada candidato contra `laws.short_name`/`name` reales). Una función pura no
+ * puede saber qué leyes existen.
+ */
+function leyesDeclaradasParaCita(explanation, citaTexto) {
+  const citas = citasAtribuidas(explanation);
+  if (!citas.length) return [];
+  const elegida = citaTexto
+    ? (citas.find((c) => c.texto === citaTexto) || citas.find((c) => c.texto.includes(citaTexto) || citaTexto.includes(c.texto)))
+    : citas.reduce((a, b) => (b.texto.length > a.texto.length ? b : a));
+  return elegida ? elegida.leyes : [];
 }
 
 function citaAusente(texto, articleContent) {
@@ -206,7 +265,7 @@ function clasificar(solape) {
 
 // Exporta los helpers puros para test (sin BD). Si se requiere como módulo, no ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { refDeclaradaDistinta, citasAtribuidas, citaLiteralPretendida, citaAusente, solapeConArticulo };
+  module.exports = { refDeclaradaDistinta, leyesDeclaradasParaCita, citasAtribuidas, citaLiteralPretendida, citaAusente, solapeConArticulo };
   return;
 }
 
@@ -243,6 +302,25 @@ if (require.main !== module) {
             SELECT content FROM articles
              WHERE law_id = ${r.law_id} AND article_number = ${ref} AND is_active LIMIT 1`;
           if (otro && !citaAusente(cita.texto, otro.content)) { declaradas++; continue; }
+
+          // Y si no está en la MISMA ley, ¿la propia cita declara además una ley DISTINTA
+          // («Art. 4.2.a RP», «Art. 53.5 del TREBEP (RDL 5/2015)») y allí SÍ es literal? Puede
+          // haber varios candidatos (la sigla común Y el short_name real) — se prueban todos hasta
+          // que uno resuelva; un candidato que no exista como ley simplemente no resuelve nada
+          // (T-207, 06/08 — `273b6309` cita RP, `df5aeb28` cita LOGP, `b72000de` cita TREBEP).
+          let exenta = false;
+          for (const candidato of leyesDeclaradasParaCita(r.explanation, cita.texto)) {
+            const [otraLey] = await sql`
+              SELECT id FROM laws
+               WHERE is_active AND (short_name = ${candidato} OR short_name ILIKE ${candidato + '%'} OR name ILIKE ${'%' + candidato + '%'})
+               ORDER BY (short_name = ${candidato}) DESC LIMIT 1`;
+            if (!otraLey) continue;
+            const [otroArt] = await sql`
+              SELECT content FROM articles
+               WHERE law_id = ${otraLey.id} AND article_number = ${ref} AND is_active LIMIT 1`;
+            if (otroArt && !citaAusente(cita.texto, otroArt.content)) { exenta = true; break; }
+          }
+          if (exenta) { declaradas++; continue; }
         }
         const solape = solapeConArticulo(cita.texto, r.content);
         hallazgos.push({

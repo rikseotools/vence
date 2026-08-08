@@ -7,10 +7,12 @@
 //
 // Uso:  node scripts/import-aulaplus-clinico.cjs --subject "03. CARDIOLOGÍA" --container "Cardiología"
 //         [--input /tmp/enf_nuevas.json] [--source "Aula Plus - Enfermería"] [--limit 1000] [--apply]
+//         [--permitir-placeholder "<motivo>"]  (ver más abajo, T-374)
 
 const fs = require('fs')
 const crypto = require('crypto')
 const path = require('path')
+const { esContenidoPlaceholder } = require(path.join(process.cwd(), 'lib', 'generacion', 'articuloPlaceholder'))
 const APPLY = process.argv.includes('--apply')
 const arg = (n, d) => { const i = process.argv.indexOf(n); return i > -1 ? process.argv[i + 1] : d }
 const LIMIT = parseInt(arg('--limit', '2000'), 10)
@@ -18,6 +20,12 @@ const SUBJECT = arg('--subject', null)
 const CONTAINER = arg('--container', null)
 const INPUT = arg('--input', '/tmp/enf_nuevas.json')
 const SOURCE = arg('--source', 'Aula Plus - Enfermería')
+// T-374 (07/08/2026): 7.202 preguntas de enfermería se colgaron el 08/07/2026 de artículos
+// cuyo contenido era «⏳ Teoría pendiente (contenedor enfermería).» — el script insertaba en
+// DRAFT sin comprobar el artículo, y nada más en la cadena lo comprobó tampoco. El manual
+// (§11 de importar-preguntas-scrapeadas.md) YA decía en qué orden va esto: redactar el
+// contenido del artículo ANTES de vincular preguntas — aquí se hace cumplir, no solo se pide.
+const PERMITIR_PLACEHOLDER = arg('--permitir-placeholder', null)
 if (!SUBJECT || !CONTAINER) { console.error('Faltan --subject y --container'); process.exit(1) }
 
 function loadDbUrl() {
@@ -34,8 +42,20 @@ function cleanStatement(raw) { return (raw || '').replace(/\s*\((?:test|tema|exa
   const sql = postgres(loadDbUrl(), { ssl: 'require', max: 1 })
   const law = (await sql`SELECT id FROM laws WHERE short_name = ${CONTAINER} LIMIT 1`)[0]
   if (!law) throw new Error('contenedor no encontrado: ' + CONTAINER)
-  const arts = await sql`SELECT id, article_number, title FROM articles WHERE law_id = ${law.id} ORDER BY article_number`
+  const arts = await sql`SELECT id, article_number, title, content FROM articles WHERE law_id = ${law.id} ORDER BY article_number`
   if (!arts.length) throw new Error('el contenedor no tiene artículos')
+  if (esContenidoPlaceholder(arts[0].content) && !PERMITIR_PLACEHOLDER) {
+    console.error(`\n🛑 «${CONTAINER}» art. ${arts[0].article_number} sigue con contenido placeholder ` +
+      `(${(arts[0].content || '').length} caracteres): "${(arts[0].content || '').slice(0, 60)}".\n` +
+      `Vincular preguntas aquí repite T-374 (7.202 preguntas de enfermería sin temario real).\n` +
+      `Redacta el contenido del artículo PRIMERO (§11 de importar-preguntas-scrapeadas.md), o si\n` +
+      `de verdad quieres importar antes de escribir el temario, pásalo explícito:\n` +
+      `  --permitir-placeholder "<por qué>"\n`)
+    process.exit(1)
+  }
+  if (esContenidoPlaceholder(arts[0].content) && PERMITIR_PLACEHOLDER) {
+    console.warn(`⚠️  Importando contra artículo placeholder a propósito. Motivo: "${PERMITIR_PLACEHOLDER}"`)
+  }
 
   const all = JSON.parse(fs.readFileSync(INPUT, 'utf8'))
   const pool = all.filter(q => q.subject === SUBJECT)

@@ -286,4 +286,80 @@ describe('UserAvatar', () => {
       expect(screen.getByTestId('stat-accuracy')).toHaveTextContent('90%')
     })
   })
+
+  // T-271 (06/08/2026): /api/v2/user-stats devuelve `sessionInvalid:true` para una sesión
+  // zombie (user_id borrado, FK violation) — un caso que el SERVIDOR ya reconoce y gestiona
+  // (401, no 500). El cliente lo tiraba a console.error igual que un fallo real: medido,
+  // 30-45 usuarios/día en observable_events como `console_error`/severity:'error', sin bajar
+  // tras desplegar T-245 (que ataja un camino DISTINTO de identidad rota). console.warn lo
+  // clasifica como severity:'warn' en el mismo pipeline (lib/observability/client.ts) — visible
+  // pero sin disparar la alerta de errores crónicos.
+  describe('sesión zombie (sessionInvalid) — T-271', () => {
+    let errorSpy: jest.SpyInstance
+    let warnSpy: jest.SpyInstance
+
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      errorSpy.mockRestore()
+      warnSpy.mockRestore()
+    })
+
+    test('sessionInvalid:true → console.warn, NUNCA console.error', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/v2/user-stats')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: false, error: 'Usuario no existe', sessionInvalid: true }),
+          })
+        }
+        if (url.includes('/api/exam/pending')) {
+          return Promise.resolve(mockPendingExamsResponse())
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      render(<UserAvatar />)
+
+      await waitFor(() => {
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('sesión zombie'),
+          'Usuario no existe',
+        )
+      })
+      expect(errorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('v2 stats error'),
+        expect.anything(),
+      )
+    })
+
+    // Mutation-check inverso: un error SIN el flag sigue siendo console.error — no
+    // silenciamos de más. Reproducido antes del fix (ver entrega T-271): quitar la
+    // condición `data.sessionInvalid` hace que este test siga en verde pero el de arriba
+    // se ponga en rojo (deja de distinguir), que es justo lo que ambos juntos cazan.
+    test('error SIN sessionInvalid sigue siendo console.error (no se silencia de más)', async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes('/api/v2/user-stats')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: false, error: 'Error interno' }),
+          })
+        }
+        if (url.includes('/api/exam/pending')) {
+          return Promise.resolve(mockPendingExamsResponse())
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+
+      render(<UserAvatar />)
+
+      await waitFor(() => {
+        expect(errorSpy).toHaveBeenCalledWith('UserAvatar: v2 stats error:', 'Error interno')
+      })
+      expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('sesión zombie'), expect.anything())
+    })
+  })
 })
