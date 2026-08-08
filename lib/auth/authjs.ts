@@ -16,8 +16,9 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { resolverPerfilPorEmail } from './resolveAppUser'
+import { resolverPerfilPorEmail, canonicalSubForToken } from './resolveAppUser'
 import { decidirReintentoPerfil, CAMPO_REINTENTO } from './reintentoPerfil'
+import { decidirRevalidacionPerfil, CAMPO_REVALIDACION } from './revalidacionPerfil'
 // El NOMBRE del claim se importa del emisor (lib/sim/session.ts) para que no haya dos
 // literales que puedan divergir en silencio: si allí se renombra, aquí deja de compilar.
 import { CLAIM_SIMULACION } from '@/lib/sim/session'
@@ -225,6 +226,65 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               simulacion: esSimulacion,
             },
           })
+        } else if (decision.accion === 'ya_resuelto') {
+          // ── [T-352] REVALIDACIÓN: "puesto" no es "sigue existiendo" ──────────────────────
+          //
+          // `decidirReintentoPerfil` de arriba solo mira si `appUserId` está VACÍO. En cuanto
+          // tiene CUALQUIER valor, este bloque de arriba lo da por bueno para siempre y nunca
+          // vuelve a mirarlo. Si el perfil desaparece DESPUÉS del primer sign-in —borrado de
+          // cuenta, entre otras causas—, la sesión queda apuntando a un id fantasma
+          // indefinidamente: un JWT sin estado en servidor no expira solo ni hay lista de
+          // revocación que lo tumbe.
+          //
+          // Caso real (T-352, 31/07): un id con 247 eventos en 3 días, 44 acuñados de token
+          // (200 OK en `/api/auth/token`) y CERO fila en `user_profiles` desde el primer
+          // evento — la sesión nunca fue revalidada porque nunca estuvo vacía.
+          //
+          // `canonicalSubForToken` (T-245) YA hace exactamente esta comprobación —existencia +
+          // reconciliación por email— pero vive en `/api/auth/token` y no puede escribir de
+          // vuelta en esta cookie: cura el ACCESS TOKEN de esa llamada, no la SESIÓN. Medido en
+          // producción (06/08): un mismo usuario reconciliado 5 veces en 2 días — la cura nunca
+          // se quedaba pegada porque no había dónde pegarla. Aquí sí hay dónde: el propio token
+          // de sesión, que se re-firma en cada rotación.
+          const revalidacion = decidirRevalidacionPerfil(token, Math.floor(Date.now() / 1000))
+          if (revalidacion.accion === 'revalidar') {
+            token[CAMPO_REVALIDACION] = Math.floor(Date.now() / 1000)
+            const d = await canonicalSubForToken(revalidacion.appUserId, revalidacion.email)
+            if (d.reconciliado) {
+              token.appUserId = d.sub
+              emitFireAndForget({
+                source: 'vercel',
+                severity: 'warn',
+                eventType: 'auth_perfil_revalidado',
+                endpoint: '/api/auth/session',
+                metadata: {
+                  subOriginal: revalidacion.appUserId,
+                  subRevalidado: d.sub,
+                  resultado: 'reconciliado',
+                  simulacion: esSimulacion,
+                },
+              })
+            } else if (d.huerfano) {
+              // Ni el id cacheado ni el email resuelven: el perfil de verdad desapareció (o
+              // nunca existió). Se limpia `appUserId` para que `decidirReintentoPerfil` lo
+              // recoja en la SIGUIENTE rotación por su camino normal — el mismo mecanismo que
+              // ya cura a los usuarios de T-434 — en vez de duplicar aquí esa decisión.
+              delete token.appUserId
+              emitFireAndForget({
+                source: 'vercel',
+                severity: 'error',
+                eventType: 'auth_perfil_revalidado',
+                endpoint: '/api/auth/session',
+                metadata: {
+                  subOriginal: revalidacion.appUserId,
+                  resultado: 'huerfano',
+                  simulacion: esSimulacion,
+                },
+              })
+            }
+            // Ni reconciliado ni huerfano: el perfil SIGUE existiendo — el caso sano, que ya
+            // pagó su única consulta (lookup por PK, microsegundos) y no necesita evento.
+          }
         }
       } catch (err) {
         // Que esto suene es DISTINTO de que el perfil no se resuelva: significa que el propio
