@@ -1,0 +1,282 @@
+[
+  {
+    "primary_article_number": "1",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 1 (Objeto)",
+    "question_text": "¿Qué establece el artículo 1 del Real Decreto 1125/2024, de 5 de noviembre, por el que se regulan la organización y los instrumentos operativos para la Administración Digital de la Administración del Estado, sobre el objeto de la norma?",
+    "options": [
+      "El objeto de este real decreto es la determinación de los objetivos, principios y acciones para el desarrollo de la administración digital y la transformación digital de la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.",
+      "El objeto de este real decreto es el desarrollo de un modelo común de gobernanza de las Tecnologías de la Información y las Comunicaciones (TIC) en la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.",
+      "El objeto de este real decreto es la extensión de sus previsiones a la Administración del Estado, entendiendo por tal la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.",
+      "El objeto de este real decreto es la aprobación de la Estrategia TIC, así como de sus revisiones, a propuesta de la persona titular del Ministerio para la Transformación Digital y de Función Pública."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 1",
+        "texto": "El objeto de este real decreto es el desarrollo de un modelo común de gobernanza de las Tecnologías de la Información y las Comunicaciones (TIC) en la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes."
+      },
+      "options": {
+        "0": "Eso es lo que determinará la Estrategia TIC según el artículo 8, no el objeto del real decreto que fija el artículo 1.",
+        "1": "Es exactamente lo que dice el artículo 1: el objeto de la norma es el desarrollo de ese modelo común de gobernanza.",
+        "2": "Eso es el ámbito de aplicación, que regula el artículo 2, no el objeto de la norma.",
+        "3": "Eso es lo que corresponde aprobar al Gobierno según el artículo 8, no el objeto del real decreto."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 1**\n> \"El objeto de este real decreto es el desarrollo de un modelo común de gobernanza de las Tecnologías de la Información y las Comunicaciones (TIC) en la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.\"\n\n**Por qué B es correcta:** Es exactamente lo que dice el artículo 1: el objeto de la norma es el desarrollo de ese modelo común de gobernanza.\n\n**Por qué las demás son incorrectas:**\n- **A)** Eso es lo que determinará la Estrategia TIC según el artículo 8, no el objeto del real decreto que fija el artículo 1.\n- **C)** Eso es el ámbito de aplicación, que regula el artículo 2, no el objeto de la norma.\n- **D)** Eso es lo que corresponde aprobar al Gobierno según el artículo 8, no el objeto del real decreto."
+  },
+  {
+    "primary_article_number": "1",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 1 (Objeto)",
+    "question_text": "Según el artículo 1 del Real Decreto 1125/2024, sobre las tecnologías de la información y las comunicaciones (TIC) en la Administración General del Estado, ¿con qué fin debe garantizarse el uso adecuado de los recursos informáticos dentro del modelo común de gobernanza de las TIC?",
+    "options": [
+      "Con el fin de garantizar la interoperabilidad de los sistemas de información con las comunidades autónomas y los entes de la Administración local.",
+      "Con el fin de reducir el gasto público asociado a la contratación de infraestructuras tecnológicas por parte de los distintos departamentos ministeriales.",
+      "Con el fin de mejorar la prestación de los servicios públicos a la ciudadanía y las empresas y la relación digital con las restantes administraciones públicas.",
+      "Con el fin de facilitar la colaboración y cooperación en materia de administración digital con la Unión Europea y sus instituciones."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 1",
+        "texto": "con el fin de mejorar la prestación de los servicios públicos a la ciudadanía y las empresas y la relación digital con las restantes administraciones públicas"
+      },
+      "options": {
+        "0": "La interoperabilidad con comunidades autónomas y entes locales no aparece en el artículo 1, que habla de servicios a la ciudadanía, empresas y otras administraciones.",
+        "1": "El artículo 1 no menciona la reducción del gasto público como fin de la estrategia de transformación digital.",
+        "2": "Es el fin que fija literalmente el artículo 1 para la estrategia global de transformación digital.",
+        "3": "La cooperación con la Unión Europea en proyectos digitales es contenido del artículo 10, sobre proyectos de interés prioritario, no del artículo 1."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 1**\n> \"con el fin de mejorar la prestación de los servicios públicos a la ciudadanía y las empresas y la relación digital con las restantes administraciones públicas\"\n\n**Por qué C es correcta:** Es el fin que fija literalmente el artículo 1 para la estrategia global de transformación digital.\n\n**Por qué las demás son incorrectas:**\n- **A)** La interoperabilidad con comunidades autónomas y entes locales no aparece en el artículo 1, que habla de servicios a la ciudadanía, empresas y otras administraciones.\n- **B)** El artículo 1 no menciona la reducción del gasto público como fin de la estrategia de transformación digital.\n- **D)** La cooperación con la Unión Europea en proyectos digitales es contenido del artículo 10, sobre proyectos de interés prioritario, no del artículo 1."
+  },
+  {
+    "primary_article_number": "2",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 2 (Ámbito de aplicación)",
+    "question_text": "Según el artículo 2 del RD 1125/2024, ¿a qué se extiende el ámbito de aplicación de esta norma?",
+    "options": [
+      "A la Administración del Estado y a la Administración local, entendiendo por tal los entes que integran las entidades locales, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público.",
+      "A la Administración del Estado y a las comunidades autónomas, entendiendo por tales las administraciones autonómicas y sus organismos públicos vinculados, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público.",
+      "A la Administración General del Estado exclusivamente, sin extenderse a sus organismos públicos ni a las entidades de Derecho público vinculadas o dependientes de ella.",
+      "A la Administración del Estado, entendiendo por tal la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 2",
+        "texto": "El ámbito de aplicación de este real decreto se extiende a la Administración del Estado, entendiendo por tal la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público."
+      },
+      "options": {
+        "0": "El artículo 2 no incluye a la Administración local: se ciñe a la Administración del Estado.",
+        "1": "El artículo 2 no incluye a las comunidades autónomas ni a sus organismos: se ciñe a la Administración del Estado.",
+        "2": "El artículo 2 SÍ extiende el ámbito a los organismos públicos y entidades de Derecho público vinculados o dependientes, no solo a la Administración General del Estado.",
+        "3": "Es la cita literal del artículo 2."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 2**\n> \"El ámbito de aplicación de este real decreto se extiende a la Administración del Estado, entendiendo por tal la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público.\"\n\n**Por qué D es correcta:** Es la cita literal del artículo 2.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 2 no incluye a la Administración local: se ciñe a la Administración del Estado.\n- **B)** El artículo 2 no incluye a las comunidades autónomas ni a sus organismos: se ciñe a la Administración del Estado.\n- **C)** El artículo 2 SÍ extiende el ámbito a los organismos públicos y entidades de Derecho público vinculados o dependientes, no solo a la Administración General del Estado."
+  },
+  {
+    "primary_article_number": "8",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 8 (Estrategia en materia de TIC)",
+    "question_text": "Según el artículo 8 del Real Decreto 1125/2024, sobre las tecnologías de la información y las comunicaciones (TIC) en la Administración General del Estado, ¿quién aprueba la Estrategia TIC, así como sus revisiones?",
+    "options": [
+      "El Consejo Rector de la Agencia, a iniciativa de la Comisión de Estrategia TIC y a propuesta de la persona titular de la Dirección de la Agencia.",
+      "El Gobierno, a iniciativa de la Comisión de Estrategia TIC y a propuesta de la persona titular del Ministerio para la Transformación Digital y de Función Pública.",
+      "La Comisión de Estrategia TIC, a iniciativa del Gobierno y a propuesta de la persona titular del Ministerio de Hacienda.",
+      "El Ministerio para la Transformación Digital y de Función Pública, a iniciativa propia y a propuesta del Consejo Rector de la Agencia."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 8",
+        "texto": "El Gobierno, a iniciativa de la Comisión de Estrategia TIC y a propuesta de la persona titular del Ministerio para la Transformación Digital y de Función Pública aprobará la Estrategia TIC, así como sus revisiones."
+      },
+      "options": {
+        "0": "Quien aprueba es el Gobierno, no el Consejo Rector de la Agencia, y la propuesta la hace el Ministerio para la Transformación Digital y de Función Pública, no la persona titular de la Dirección de la Agencia.",
+        "1": "Es la cita literal del artículo 8: aprueba el Gobierno, no la Comisión de Estrategia TIC ni el Consejo Rector de la Agencia.",
+        "2": "El artículo 8 invierte los papeles: quien aprueba es el Gobierno, la Comisión de Estrategia TIC solo tiene la iniciativa, y la propuesta corresponde al Ministerio para la Transformación Digital y de Función Pública, no al de Hacienda.",
+        "3": "El Ministerio para la Transformación Digital y de Función Pública solo propone; quien aprueba la Estrategia TIC es el Gobierno, a iniciativa de la Comisión de Estrategia TIC."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 8**\n> \"El Gobierno, a iniciativa de la Comisión de Estrategia TIC y a propuesta de la persona titular del Ministerio para la Transformación Digital y de Función Pública aprobará la Estrategia TIC, así como sus revisiones.\"\n\n**Por qué B es correcta:** Es la cita literal del artículo 8: aprueba el Gobierno, no la Comisión de Estrategia TIC ni el Consejo Rector de la Agencia.\n\n**Por qué las demás son incorrectas:**\n- **A)** Quien aprueba es el Gobierno, no el Consejo Rector de la Agencia, y la propuesta la hace el Ministerio para la Transformación Digital y de Función Pública, no la persona titular de la Dirección de la Agencia.\n- **C)** El artículo 8 invierte los papeles: quien aprueba es el Gobierno, la Comisión de Estrategia TIC solo tiene la iniciativa, y la propuesta corresponde al Ministerio para la Transformación Digital y de Función Pública, no al de Hacienda.\n- **D)** El Ministerio para la Transformación Digital y de Función Pública solo propone; quien aprueba la Estrategia TIC es el Gobierno, a iniciativa de la Comisión de Estrategia TIC."
+  },
+  {
+    "primary_article_number": "8",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 8 (Estrategia en materia de TIC)",
+    "question_text": "Según el artículo 8 del Real Decreto 1125/2024, sobre las tecnologías de la información y las comunicaciones (TIC) en la Administración General del Estado, ¿qué determinará la Estrategia TIC?",
+    "options": [
+      "El Catálogo de Medios y Servicios Comunes, que incluirá también todos los medios y servicios declarados transversales por la Comisión de Estrategia TIC.",
+      "El desarrollo de un modelo común de gobernanza de las Tecnologías de la Información y las Comunicaciones en la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.",
+      "Los objetivos, principios y acciones para el desarrollo de la administración digital y la transformación digital de la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.",
+      "Los proyectos de interés prioritario, especialmente aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y la Unión Europea."
+    ],
+    "correct_option": 2,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 8",
+        "texto": "La Estrategia TIC determinará los objetivos, principios y acciones para el desarrollo de la administración digital y la transformación digital de la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes."
+      },
+      "options": {
+        "0": "La elaboración del Catálogo de Medios y Servicios Comunes corresponde a la Agencia según el artículo 9, no es contenido de la Estrategia TIC.",
+        "1": "Eso es el OBJETO del real decreto, que fija el artículo 1, no el contenido de la Estrategia TIC.",
+        "2": "Es lo que determina la Estrategia TIC según el artículo 8.",
+        "3": "Los proyectos de interés prioritario los declara la CETIC según el artículo 10, no es lo que determina la Estrategia TIC."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 8**\n> \"La Estrategia TIC determinará los objetivos, principios y acciones para el desarrollo de la administración digital y la transformación digital de la Administración General del Estado y sus organismos públicos y entidades de Derecho público vinculados o dependientes.\"\n\n**Por qué C es correcta:** Es lo que determina la Estrategia TIC según el artículo 8.\n\n**Por qué las demás son incorrectas:**\n- **A)** La elaboración del Catálogo de Medios y Servicios Comunes corresponde a la Agencia según el artículo 9, no es contenido de la Estrategia TIC.\n- **B)** Eso es el OBJETO del real decreto, que fija el artículo 1, no el contenido de la Estrategia TIC.\n- **D)** Los proyectos de interés prioritario los declara la CETIC según el artículo 10, no es lo que determina la Estrategia TIC."
+  },
+  {
+    "primary_article_number": "9",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
+    "question_text": "Según el apartado 2 del artículo 9 del RD 1125/2024, ¿qué carácter tiene la utilización de los medios y servicios transversales respecto a los medios y servicios particulares empleados por las distintas unidades?",
+    "options": [
+      "Carácter preferente, pero no sustitutivo, respecto a los medios y servicios particulares empleados por las distintas unidades.",
+      "Carácter voluntario y complementario respecto a los medios y servicios particulares empleados por las distintas unidades.",
+      "Carácter obligatorio, aunque compatible, respecto a los medios y servicios particulares empleados por las distintas unidades.",
+      "Carácter obligatorio y sustitutivo respecto a los medios y servicios particulares empleados por las distintas unidades."
+    ],
+    "correct_option": 3,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 9.2",
+        "texto": "La utilización de los medios y servicios transversales será de carácter obligatorio y sustitutivo respecto a los medios y servicios particulares empleados por las distintas unidades."
+      },
+      "options": {
+        "0": "El apartado 2 no habla de una preferencia: la utilización de los medios transversales es obligatoria y sustituye a los particulares, no solo se prefiere sobre ellos.",
+        "1": "El apartado 2 dice justo lo contrario: la utilización es obligatoria, no voluntaria, y sustitutiva, no complementaria.",
+        "2": "El apartado 2 no dice que los medios particulares sigan siendo compatibles: el carácter es sustitutivo, no de mera compatibilidad.",
+        "3": "Es la cita literal del apartado 2 del artículo 9."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 9.2**\n> \"La utilización de los medios y servicios transversales será de carácter obligatorio y sustitutivo respecto a los medios y servicios particulares empleados por las distintas unidades.\"\n\n**Por qué D es correcta:** Es la cita literal del apartado 2 del artículo 9.\n\n**Por qué las demás son incorrectas:**\n- **A)** El apartado 2 no habla de una preferencia: la utilización de los medios transversales es obligatoria y sustituye a los particulares, no solo se prefiere sobre ellos.\n- **B)** El apartado 2 dice justo lo contrario: la utilización es obligatoria, no voluntaria, y sustitutiva, no complementaria.\n- **C)** El apartado 2 no dice que los medios particulares sigan siendo compatibles: el carácter es sustitutivo, no de mera compatibilidad."
+  },
+  {
+    "primary_article_number": "9",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
+    "question_text": "El apartado 3 del artículo 9 del RD 1125/2024 obliga a escoger, entre unidades con necesidades comunes, la alternativa que permita compartir el servicio. ¿Qué excepción prevé el propio apartado a esa obligación?",
+    "options": [
+      "Salvo autorización expresa en sentido contrario de la persona titular del Ministerio para la Transformación Digital y de Función Pública.",
+      "Salvo autorización expresa en sentido contrario de la persona titular de la Dirección de la Agencia.",
+      "Salvo autorización expresa en sentido contrario del Consejo Rector de la Agencia, previo análisis de su valor estratégico.",
+      "Salvo autorización expresa en sentido contrario de la Comisión de Estrategia TIC, a propuesta de las unidades TIC afectadas."
+    ],
+    "correct_option": 1,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 9.3",
+        "texto": "salvo autorización expresa en sentido contrario de la persona titular de la Dirección de la Agencia"
+      },
+      "options": {
+        "0": "La excepción corresponde a la persona titular de la Dirección de la Agencia, no del Ministerio para la Transformación Digital y de Función Pública.",
+        "1": "Es la excepción literal que fija el apartado 3.",
+        "2": "El Consejo Rector de la Agencia interviene en la declaración de medios transversales del apartado 1, no en esta excepción del apartado 3, que corresponde a la Dirección de la Agencia.",
+        "3": "La Comisión de Estrategia TIC declara los medios y servicios transversales, pero la excepción del apartado 3 la concede la persona titular de la Dirección de la Agencia."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 9.3**\n> \"salvo autorización expresa en sentido contrario de la persona titular de la Dirección de la Agencia\"\n\n**Por qué B es correcta:** Es la excepción literal que fija el apartado 3.\n\n**Por qué las demás son incorrectas:**\n- **A)** La excepción corresponde a la persona titular de la Dirección de la Agencia, no del Ministerio para la Transformación Digital y de Función Pública.\n- **C)** El Consejo Rector de la Agencia interviene en la declaración de medios transversales del apartado 1, no en esta excepción del apartado 3, que corresponde a la Dirección de la Agencia.\n- **D)** La Comisión de Estrategia TIC declara los medios y servicios transversales, pero la excepción del apartado 3 la concede la persona titular de la Dirección de la Agencia."
+  },
+  {
+    "primary_article_number": "9",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
+    "question_text": "Según el apartado 4 del artículo 9 del RD 1125/2024, ¿a quién corresponde la elaboración del Catálogo de Medios y Servicios Comunes?",
+    "options": [
+      "Corresponde a la Agencia la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC.",
+      "Corresponde a la Comisión de Estrategia TIC la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Agencia.",
+      "Corresponde al Consejo Rector de la Agencia la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC.",
+      "Corresponde al Ministerio para la Transformación Digital y de Función Pública la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 9.4",
+        "texto": "Corresponde a la Agencia la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC."
+      },
+      "options": {
+        "0": "Es la cita literal del apartado 4: la elaboración corresponde a la Agencia, y esta se nutre de lo que la Comisión de Estrategia TIC declara transversal.",
+        "1": "El apartado 4 invierte los papeles: quien elabora el Catálogo es la Agencia, y es la Comisión de Estrategia TIC quien declara qué está incluido como transversal, no al revés.",
+        "2": "El apartado 4 atribuye la elaboración a la Agencia, no a su Consejo Rector.",
+        "3": "El apartado 4 atribuye la elaboración a la Agencia, no al Ministerio para la Transformación Digital y de Función Pública."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 9.4**\n> \"Corresponde a la Agencia la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC.\"\n\n**Por qué A es correcta:** Es la cita literal del apartado 4: la elaboración corresponde a la Agencia, y esta se nutre de lo que la Comisión de Estrategia TIC declara transversal.\n\n**Por qué las demás son incorrectas:**\n- **B)** El apartado 4 invierte los papeles: quien elabora el Catálogo es la Agencia, y es la Comisión de Estrategia TIC quien declara qué está incluido como transversal, no al revés.\n- **C)** El apartado 4 atribuye la elaboración a la Agencia, no a su Consejo Rector.\n- **D)** El apartado 4 atribuye la elaboración a la Agencia, no al Ministerio para la Transformación Digital y de Función Pública."
+  },
+  {
+    "primary_article_number": "10",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 10 (Proyectos de interés prioritario)",
+    "question_text": "El artículo 10 del Real Decreto 1125/2024 se refiere a la \"CETIC\" (la Comisión de Estrategia TIC, que según el artículo 8 de la misma norma tiene la iniciativa para que el Gobierno apruebe la Estrategia TIC). Según el artículo 10, ¿a quién atribuye la facultad de declarar un proyecto como \"de interés prioritario\"?",
+    "options": [
+      "La CETIC podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital.",
+      "La Agencia podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital.",
+      "El Gobierno podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital.",
+      "El Consejo Rector de la Agencia podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 10",
+        "texto": "La CETIC podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital."
+      },
+      "options": {
+        "0": "Es la cita literal del artículo 10: quien declara los proyectos de interés prioritario es la CETIC.",
+        "1": "El artículo 10 atribuye esta declaración a la CETIC, no a la Agencia — la Agencia elabora el Catálogo de Medios y Servicios Comunes (art. 9), no declara proyectos de interés prioritario.",
+        "2": "El artículo 10 atribuye esta declaración a la CETIC, no al Gobierno — el Gobierno aprueba la Estrategia TIC (art. 8), no declara proyectos de interés prioritario.",
+        "3": "El artículo 10 atribuye esta declaración a la CETIC, no al Consejo Rector de la Agencia, que interviene en la declaración de medios transversales (art. 9)."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 10**\n> \"La CETIC podrá declarar proyectos de interés prioritario aquellos que tengan una singular relevancia y, especialmente, aquellos que tengan como objetivo la colaboración y cooperación con las comunidades autónomas y los entes que integran la Administración local y la Unión Europea en materia de administración digital.\"\n\n**Por qué A es correcta:** Es la cita literal del artículo 10: quien declara los proyectos de interés prioritario es la CETIC.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo 10 atribuye esta declaración a la CETIC, no a la Agencia — la Agencia elabora el Catálogo de Medios y Servicios Comunes (art. 9), no declara proyectos de interés prioritario.\n- **C)** El artículo 10 atribuye esta declaración a la CETIC, no al Gobierno — el Gobierno aprueba la Estrategia TIC (art. 8), no declara proyectos de interés prioritario.\n- **D)** El artículo 10 atribuye esta declaración a la CETIC, no al Consejo Rector de la Agencia, que interviene en la declaración de medios transversales (art. 9)."
+  },
+  {
+    "primary_article_number": "10",
+    "law_slug": "rd-1125-2024-tic-age",
+    "article_label": "RD 1125/2024, art. 10 (Proyectos de interés prioritario)",
+    "question_text": "Según el artículo 10 del RD 1125/2024, ¿a quién se traslada la declaración de un proyecto de interés prioritario, y para qué?",
+    "options": [
+      "La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio de Hacienda y a la Comisión de Políticas de Gasto para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.",
+      "La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio para la Transformación Digital y de Función Pública y a la Agencia para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.",
+      "La declaración de proyecto de interés prioritario se trasladará como recomendación a la Comisión de Estrategia TIC y al Consejo Rector de la Agencia para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.",
+      "La declaración de proyecto de interés prioritario se trasladará como recomendación al Gobierno y a las comunidades autónomas afectadas para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado."
+    ],
+    "correct_option": 0,
+    "explanation_data": {
+      "v": 1,
+      "cita": {
+        "ref": "RD 1125/2024, art. 10",
+        "texto": "La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio de Hacienda y a la Comisión de Políticas de Gasto para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado."
+      },
+      "options": {
+        "0": "Es la cita literal del artículo 10: se traslada al Ministerio de Hacienda y a la Comisión de Políticas de Gasto, de cara a los Presupuestos Generales del Estado.",
+        "1": "El artículo 10 no traslada la recomendación al Ministerio para la Transformación Digital ni a la Agencia: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto.",
+        "2": "El artículo 10 no traslada la recomendación a la Comisión de Estrategia TIC ni al Consejo Rector de la Agencia: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto.",
+        "3": "El artículo 10 no traslada la recomendación al Gobierno ni a las comunidades autónomas: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto."
+      },
+      "frame": "select_correct"
+    },
+    "explanation": "> **RD 1125/2024, art. 10**\n> \"La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio de Hacienda y a la Comisión de Políticas de Gasto para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.\"\n\n**Por qué A es correcta:** Es la cita literal del artículo 10: se traslada al Ministerio de Hacienda y a la Comisión de Políticas de Gasto, de cara a los Presupuestos Generales del Estado.\n\n**Por qué las demás son incorrectas:**\n- **B)** El artículo 10 no traslada la recomendación al Ministerio para la Transformación Digital ni a la Agencia: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto.\n- **C)** El artículo 10 no traslada la recomendación a la Comisión de Estrategia TIC ni al Consejo Rector de la Agencia: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto.\n- **D)** El artículo 10 no traslada la recomendación al Gobierno ni a las comunidades autónomas: el destino es el Ministerio de Hacienda y la Comisión de Políticas de Gasto."
+  }
+]
