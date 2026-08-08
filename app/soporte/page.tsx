@@ -1,6 +1,7 @@
 // app/soporte/page.tsx - Centro de soporte unificado para usuarios
 'use client'
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -902,7 +903,7 @@ function SoporteContent() {
         {/* Modal de Imagen Expandida */}
         {expandedImage && (
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}
             onClick={(e) => { if (e.target === e.currentTarget) setExpandedImage(null) }}
           >
             <div className="relative max-w-5xl max-h-[90vh] overflow-auto">
@@ -1428,8 +1429,8 @@ function SoporteContent() {
         {/* Modal de Pregunta Completa */}
         {selectedQuestionModal && (
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-hidden"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', zIndex: CAPAS.modal } as React.CSSProperties}
             onClick={(e) => { if (e.target === e.currentTarget) setSelectedQuestionModal(null) }}
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1578,7 +1579,7 @@ function SoporteContent() {
       {/* Modal de Imagen Expandida */}
       {expandedImage && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}
           onClick={(e) => { if (e.target === e.currentTarget) setExpandedImage(null) }}
         >
           <div className="relative max-w-5xl max-h-[90vh] overflow-auto">

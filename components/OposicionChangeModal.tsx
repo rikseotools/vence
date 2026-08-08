@@ -3,12 +3,13 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
 import { OFFICIAL_OPOSICIONES, type OposicionItem } from './OnboardingModal'
 import { setTargetOposicion } from '@/lib/api/setTargetOposicion'
-import { matchesOposicion } from '@/lib/utils/searchOposicion'
+import { matchesOposicion, sortByCoverageLevel, findBuiltEquivalent, builtDisplayName } from '@/lib/utils/searchOposicion'
 import { useOposicionesCatalog } from '@/lib/hooks/useOposicionesCatalog'
 import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
@@ -51,7 +52,13 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
   const [saving, setSaving] = useState(false)
   // Mensaje cuando el usuario elige una oposición que aún no está
   // implementada. La demanda queda capturada en user_profiles.target_oposicion.
-  const [pendingOposicion, setPendingOposicion] = useState<{ id: string; nombre: string } | null>(null)
+  // `equivalente`: si YA existe una construida con el mismo nombre/alias
+  // (T-562), se ofrece en vez de dejar a la persona en un callejón sin salida.
+  const [pendingOposicion, setPendingOposicion] = useState<{
+    id: string
+    nombre: string
+    equivalente?: { id: string; nombre: string }
+  } | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -80,11 +87,15 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
 
   const filtered = useMemo(() => {
     const term = search.trim()
-    const list: OposicionItem[] = term
+    const matched: OposicionItem[] = term
       ? catalog.filter((o: OposicionItem) =>
           matchesOposicion({ ...o, aliases: aliasesById[o.id] }, term)
         )
       : catalog
+    // Más construida primero (T-562): sin esto, una entrada catalogada con 0
+    // preguntas puede salir ANTES que su equivalente con miles solo por orden
+    // alfabético — es justo el callejón que dejó a Elisabet sin oposición.
+    const list = sortByCoverageLevel(matched)
 
     const groups: Record<string, OposicionItem[]> = {}
     for (const op of list) {
@@ -130,7 +141,23 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
         // demanda de oposiciones aún no implementadas igual que antes.
         await setTargetOposicion(oposicionId).catch(() => {})
       }
-      setPendingOposicion({ id: oposicionId, nombre })
+      // ── ¿YA HAY UNA CONSTRUIDA CON ESTE MISMO NOMBRE? (T-562) ────────────
+      // Antes esto era un callejón sin salida: se guardaba la demanda y se
+      // enseñaba "en elaboración" aunque la oposición YA estuviera construida
+      // con otro nombre de catálogo (p.ej. "Auxiliar de Biblioteca" elegida,
+      // "Auxiliar de Biblioteca (Estado)" ya viva con 13.891 preguntas). Se
+      // busca con el MISMO matcher que la caja de búsqueda, así que si el
+      // nombre está en sus aliases, aparece.
+      const equivalente = findBuiltEquivalent(OPOSICIONES, nombre)
+      setPendingOposicion({
+        id: oposicionId,
+        nombre,
+        // builtDisplayName (T-562): el mismo motivo por el que las listas ya
+        // no usan el nombre de BOE — sin esto sería "Ir a Auxiliar de
+        // Archivos, Bibliotecas y Museos del Estado (Sección Bibliotecas)"
+        // en vez de "Ir a Auxiliar de Biblioteca (Estado)".
+        equivalente: equivalente ? { id: equivalente.id, nombre: builtDisplayName(equivalente) } : undefined,
+      })
       return
     }
 
@@ -157,7 +184,7 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -176,19 +203,38 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
         ) : pendingOposicion ? (
           <div className="py-6">
             <div className="text-center mb-5">
-              <div className="text-4xl mb-3">🔜</div>
+              <div className="text-4xl mb-3">{pendingOposicion.equivalente ? '👀' : '🔜'}</div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                 {pendingOposicion.nombre}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                Esta oposición <strong>aún no está disponible</strong>. Estamos trabajando en ella y queda registrado tu interés — te avisaremos en cuanto esté lista.
-              </p>
+              {pendingOposicion.equivalente ? (
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                  Esta no está construida con ese nombre, pero <strong>ya tenemos</strong>{' '}
+                  <strong>{pendingOposicion.equivalente.nombre}</strong>, que es la misma oposición.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                  Esta oposición <strong>aún no está disponible</strong>. Estamos trabajando en ella y queda registrado tu interés — te avisaremos en cuanto esté lista.
+                </p>
+              )}
             </div>
+            {pendingOposicion.equivalente && (
+              <button
+                onClick={() => handleSelect(pendingOposicion.equivalente!.id)}
+                className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors mb-2"
+              >
+                Ir a {pendingOposicion.equivalente.nombre}
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+              className={
+                pendingOposicion.equivalente
+                  ? 'w-full py-3 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium transition-colors'
+                  : 'w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors'
+              }
             >
-              Entendido
+              {pendingOposicion.equivalente ? 'No, gracias' : 'Entendido'}
             </button>
           </div>
         ) : (
@@ -236,7 +282,12 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
                           </span>
                           <div className="min-w-0 flex-1">
                             <span className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-blue-700 dark:group-hover:text-blue-400 block break-words">
-                              {op.nombre}
+                              {/* short_name es el nombre corto pensado para UI (T-562): el
+                                  de BOE puede llegar truncado en una línea, p.ej. "Auxiliar
+                                  de Archivos, Bibliotecas y Museos del Estado (Sección
+                                  Bibliotec…". Solo lo trae el catálogo real, no el fallback
+                                  estático — por eso el || . */}
+                              {op.short_name || op.nombre}
                             </span>
                             <span className="text-xs text-gray-400 dark:text-gray-500">
                               {op.categoria}

@@ -188,6 +188,24 @@ export default async function OposicionesPage() {
             ))}
           </div>
         </nav>
+
+        {/* T-328: la tuya puede no estar en ninguna de las {oposiciones.length} de arriba —
+            salida hacia el temario a medida en vez de dejar al visitante sin más opción. */}
+        <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 text-center">
+          <p className="text-gray-800 dark:text-gray-200 font-medium">
+            ¿Tu oposición no está en esta lista?
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Móntate tu propio temario eligiendo las leyes y los artículos que entran en tu
+            convocatoria.
+          </p>
+          <Link
+            href="/tu-oposicion-a-medida"
+            className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+          >
+            Crea tu oposición a medida
+          </Link>
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
 interface CancellationFlowProps {
@@ -114,7 +115,7 @@ export default function CancellationFlow({ isOpen, onClose, userId, periodEndDat
     : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: CAPAS.modal }}>
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={!loading && !feedbackSubmitting ? handleClose : undefined}

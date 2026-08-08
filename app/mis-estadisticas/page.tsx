@@ -1,6 +1,7 @@
 // app/mis-estadisticas/page.tsx - ACTUALIZADO USANDO useAuth GLOBAL
 'use client'
 import { useState, useEffect, useCallback, Suspense } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
@@ -1557,7 +1558,7 @@ function EstadisticasContent() {
 
       {/* Modal informativo sobre tests recientes */}
       {showRecentTestsInfo && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">

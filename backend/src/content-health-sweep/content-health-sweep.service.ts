@@ -624,6 +624,34 @@ const ESTADOS_FICHA_VIVA = new Set([
 function procesoConFichaViva(estadoProceso: string | null | undefined): boolean {
   return ESTADOS_FICHA_VIVA.has(estadoProceso as string);
 }
+
+// Mirror INLINE de lib/convocatoria/seguimientoFuenteError.cjs — MANTENER EN SYNC (T-564,
+// 07/08/2026). `seguimiento_change_status='error'`: el cron ni siquiera llega a un HTTP 2xx.
+// Reutiliza `procesoConFichaViva` de arriba — mismo criterio de fase que `seguimiento_url_stale`.
+function diagnosticarSeguimientoErrorInline(
+  estadoProceso: string | null | undefined,
+  seguimientoUrl: string | null | undefined,
+): { severidad: 'error' | 'warn'; motivo: string } {
+  const enJuego = procesoConFichaViva(estadoProceso);
+  const url = seguimientoUrl ? ` (${seguimientoUrl})` : '';
+  if (enJuego) {
+    return {
+      severidad: 'error',
+      motivo:
+        `el cron de seguimiento FALLA al comprobar la seguimiento_url${url} — con la convocatoria ` +
+        `viva (estado_proceso='${estadoProceso}') esto nos deja ciegos a sus cambios (aplazamientos, ` +
+        'listas, correcciones) mientras el fallo persista; el error no es ruido, nadie más lo mira',
+    };
+  }
+  return {
+    severidad: 'warn',
+    motivo:
+      `el cron de seguimiento FALLA al comprobar la seguimiento_url${url} — sin convocatoria con ` +
+      `ficha viva todavía (estado_proceso='${estadoProceso}'), el radar (PAG/boletines/competidor) ` +
+      'puede detectar igualmente la convocatoria nueva por otra vía, pero conviene arreglarlo antes ' +
+      'de que la convocatoria salga',
+  };
+}
 // ── Mirror INLINE de lib/convocatoria/notaInternaPublicada.cjs — MANTENER EN SYNC ──────────
 // Detecta una NOTA INTERNA nuestra colada en un campo que la landing PUBLICA. Los campos de
 // referencia se pintan en el hero y bajo el botón oficial; el 31/07/2026 había 7 landings activas
@@ -1449,6 +1477,37 @@ export class ContentHealthSweepService {
       }
       // El bloque TERMINÓ de mirar su población: un 0 aquí es «vigilado y limpio», no «nadie miró».
       marcar('cobertura_banda_ciega', bandaCiega.length);
+
+      // ── TEMAS SIN description (T-600, 07/08/2026) ──
+      // La única vigilancia que tenía esto era `temarioEpigrafeIntegrity.test.ts` (suite de
+      // INTEGRACIÓN, informativa para el gate de deploy) con un umbral de tolerancia (<500) que
+      // la cifra real ya superó — 897 el 07/08, frente a los ~364 del comentario del test del
+      // 08/07 — sin que ningún kind del barrido lo mirase. Un rojo que nadie mira no vigila nada.
+      //
+      // MEDIDO el render (T-600): `description` se lee en `generateMetadata` de cada
+      // `temario/[slug]/page.tsx` (title/og:description, SEO real, con fallback GENÉRICO cuando
+      // está vacía) y en el párrafo de entrada de `TopicContentView.tsx` (condicional: si está
+      // vacío no se renderiza, sin hueco visible). Por eso `warn`, no `error`: pérdida real de
+      // calidad SEO en temas SERVIDOS, pero ninguna página rota. Solo `disponible=true`.
+      const sinDescripcion = (await this.db.execute(sql`
+        SELECT topic_number FROM topics
+        WHERE position_type = ${pt} AND is_active AND disponible
+          AND (description IS NULL OR length(trim(description)) < 10)
+        ORDER BY topic_number
+      `)) as unknown as Array<{ topic_number: number }>;
+      marcar('topic_sin_description', sinDescripcion.length);
+      if (sinDescripcion.length) {
+        add(
+          'content',
+          'warn',
+          o.slug,
+          'topic_sin_description',
+          `${o.slug}: ${sinDescripcion.length} tema(s) servido(s) sin description (T${sinDescripcion
+            .slice(0, 6)
+            .map((r) => r.topic_number)
+            .join(',T')}${sinDescripcion.length > 6 ? '…' : ''}) — degrada el SEO (title/og:description cae a un texto genérico); redactar contra el temario oficial, nunca a ojo`,
+        );
+      }
 
       // ── CONTENIDO: coherencia de tarjetas + dual-write + hitos ──
       const nTopics = topics.length;
@@ -2933,6 +2992,40 @@ export class ContentHealthSweepService {
       );
     }
     marcar('notas_convocatoria_sin_vigilancia', notasRows.length);
+
+    // ── seguimiento_change_status='error': el cron ni siquiera llega a un HTTP 2xx (seguimiento_fuente_error, T-564) ──
+    // Un escalón MÁS ATRÁS que los dos anteriores: `seguimiento_url_stale` mira el TEXTO de la URL
+    // y `seguimiento_fuente_ciega` exige un fetch que responda 200 — de hecho ese clasificador
+    // descarta a propósito el caso 'error' (severidad 'warn', y el bucle de arriba hace
+    // `if (v.severidad !== 'error') continue`, asumiendo "ya visible como seguimiento_change_status
+    // ='error', no duplicar"). Esa suposición era falsa: nada más lee ese estado. Medido (07/08):
+    // 18 oposiciones ACTIVAS en ese estado, solo 3 con algún hallazgo de seguimiento (por otro
+    // motivo) y CERO con seguimiento_fuente_ciega. Severidad por FASE, ver
+    // lib/convocatoria/seguimientoFuenteError.cjs (mirror aquí porque el backend NestJS no puede
+    // importar del `lib/` del frontend).
+    const erroresRows = (await this.db.execute(sql`
+      SELECT slug, estado_proceso, seguimiento_url
+      FROM oposiciones
+      WHERE is_active AND seguimiento_change_status = 'error'
+    `)) as unknown as Array<{
+      slug: string;
+      estado_proceso: string | null;
+      seguimiento_url: string | null;
+    }>;
+    for (const r of erroresRows) {
+      const d = diagnosticarSeguimientoErrorInline(
+        r.estado_proceso,
+        r.seguimiento_url,
+      );
+      add(
+        'content',
+        d.severidad,
+        r.slug,
+        'seguimiento_fuente_error',
+        `${r.slug}: ${d.motivo}`,
+      );
+    }
+    marcar('seguimiento_fuente_error', erroresRows.length);
 
     // ── NOTAS INTERNAS PUBLICADAS EN LA LANDING (nota_interna_publicada, T-435) ──
     // Los campos de REFERENCIA se PINTAN en el hero y bajo el botón oficial, y se estaban usando

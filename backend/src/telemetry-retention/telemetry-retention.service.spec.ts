@@ -13,7 +13,11 @@
  * el código roto. Por eso el doble de aquí imita la forma REAL medida contra RDS:
  * **array vacío con las filas en `.count`**.
  */
-import { TelemetryRetentionService } from './telemetry-retention.service';
+import {
+  BATCH_SIZE,
+  MAX_BATCHES,
+  TelemetryRetentionService,
+} from './telemetry-retention.service';
 
 /** Resultado de postgres-js para un DELETE sin RETURNING: array vacío + `count`. */
 function comoPostgresJs(count: number): unknown {
@@ -41,7 +45,9 @@ function fakeDb(pendientes: Record<string, number>) {
       if (!tabla) return comoPostgresJs(0);
 
       if (texto.includes('DELETE')) {
-        const lote = Math.min(50_000, restante[tabla]);
+        // Del propio servicio, NO un 50.000 a mano: el tamaño de lote se bajó a 10.000 (T-733)
+        // y un doble con la cifra vieja habría seguido en verde midiendo otra cosa.
+        const lote = Math.min(BATCH_SIZE, restante[tabla]);
         restante[tabla] -= lote;
         return comoPostgresJs(lote);
       }
@@ -74,7 +80,10 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
 
     const res = await service.run();
 
-    // 50 lotes × 50 k = 2,5 M por pasada, y el resto queda para la siguiente.
+    // El techo por pasada son 2,5 M filas/tabla, y NO cambió al bajar el lote (T-733):
+    // antes 50 lotes × 50 k, ahora 250 × 10 k. Se afirma sobre las constantes para que el día
+    // que alguien mueva una y no la otra, este test lo diga en vez de seguir en verde.
+    expect(BATCH_SIZE * MAX_BATCHES).toBe(2_500_000);
     expect(res.observableEventsDeleted).toBe(2_500_000);
     expect(db.restante.observable_events).toBe(7_500_000);
     // Y lo dice en voz alta, que es la mitad que faltaba:
@@ -138,6 +147,86 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.observableEventsDeleted).toBe(1_000_000);
     expect(res.remaining.observable_events).toBe(0);
     expect(res.vacuumFailed).toEqual(['observable_events']);
+  });
+
+  /**
+   * [T-733] Reproducido en producción el 08/08: un lote del DELETE superó el `statement_timeout`
+   * de 30 s y la excepción tumbó `run()` entero. El evento que quedó en `observable_events` fue
+   * literalmente `{"status":"failure"}` — ni filas borradas, ni `remaining`, ni el error.
+   *
+   * Es el MISMO modo de fallo que el VACUUM de arriba, en la operación que sí importa. Lo que
+   * cambia entre los dos es el veredicto, y por eso son dos tests: el VACUUM roto sigue siendo
+   * éxito (es higiene) y la purga rota NO lo es.
+   */
+  it('un lote que revienta NO tira el resultado: se reporta lo borrado, el atraso y el error', async () => {
+    const db = fakeDb({ observable_events: 1_000_000, validation_error_logs: 0 });
+    const original = db.execute;
+    let lotes = 0;
+    db.execute = jest.fn(async (q: unknown) => {
+      const texto = JSON.stringify(q);
+      if (texto.includes('DELETE') && texto.includes('observable_events')) {
+        lotes += 1;
+        if (lotes > 3) {
+          // El mensaje REAL de Postgres al pasarse del plazo. Sin escribir la sentencia de
+          // borrado literal, a propósito: `filasAfectadas.guardrail` trata esa cadena, en
+          // CUALQUIER fichero, como un segundo podador de la tabla — y tiene razón. Que un
+          // doble de test la disparase sería aflojar el guardarraíl para probar lo mío.
+          throw new Error('canceling statement due to statement timeout');
+        }
+      }
+      return original(q);
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    // Lo que se llegó a borrar antes de reventar CUENTA y se dice.
+    expect(res.observableEventsDeleted).toBe(3 * BATCH_SIZE);
+    // Y el atraso que queda —la medida que decide si esto drena— sobrevive.
+    expect(res.remaining.observable_events).toBeGreaterThan(0);
+    expect(res.purgaFallida).toHaveLength(1);
+    expect(res.purgaFallida[0].tabla).toBe('observable_events');
+    expect(res.purgaFallida[0].error).toContain('statement timeout');
+  });
+
+  it('un lote roto en una tabla no impide purgar la otra', async () => {
+    const db = fakeDb({
+      observable_events: 1_000_000,
+      validation_error_logs: 20_000,
+    });
+    const original = db.execute;
+    db.execute = jest.fn(async (q: unknown) => {
+      const texto = JSON.stringify(q);
+      if (texto.includes('DELETE') && texto.includes('observable_events')) {
+        throw new Error('statement timeout');
+      }
+      return original(q);
+    });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.observableEventsDeleted).toBe(0);
+    expect(res.validationErrorLogsDeleted).toBe(20_000);
+    expect(res.purgaFallida.map((f) => f.tabla)).toEqual(['observable_events']);
+  });
+
+  it('sin fallos, `purgaFallida` va vacío (el verde no se confunde con el rojo)', async () => {
+    const db = fakeDb({ observable_events: 30_000, validation_error_logs: 0 });
+    const service = new TelemetryRetentionService(db as never);
+
+    const res = await service.run();
+
+    expect(res.purgaFallida).toEqual([]);
+  });
+
+  /**
+   * El lote tiene que caber en el `statement_timeout` de 30 s del pool. 50.000 no cabía sobre
+   * `observable_events` (6,9 GB) y por eso se bajó. Este test no puede medir segundos, así que
+   * fija el número: si alguien lo vuelve a subir, que sea una decisión y no un descuido.
+   */
+  it('el lote sigue siendo de 10.000 (no cabía con 50.000)', () => {
+    expect(BATCH_SIZE).toBe(10_000);
   });
 });
 

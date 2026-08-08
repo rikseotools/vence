@@ -86,6 +86,71 @@ async function tareasCerradas() {
   } catch { return null }
 }
 
+/** Gemela de `tareasCerradas`, mismo patrón de conexión y mismo fail-open. [T-735] */
+async function tareasVivasConPendiente() {
+  try {
+    const url = process.env.DATABASE_URL ||
+      fs.readFileSync(path.join(REPO, '.env.local'), 'utf8').match(/^DATABASE_URL=(.*)$/m)[1].trim()
+    const s = require('postgres')(url, { ssl: { rejectUnauthorized: false }, max: 1, connect_timeout: 10 })
+    try {
+      return await s`
+        SELECT id, title FROM public.backlog_tasks
+         WHERE status <> 'done' AND resume_check IS NOT NULL
+         ORDER BY id`
+    } finally { try { await s.end({ timeout: 3 }) } catch {} }
+  } catch { return null }
+}
+
+/**
+ * [T-735] Barrida real: ¿alguna tarea viva se anuncia como «lista para verificar» con su código
+ * fuera de `origin/main`?
+ *
+ * Dos partes, como la sección de arriba, y la segunda existe porque la primera puede dar VERDE
+ * por la razón equivocada: el 08/08 se fusionaron las 7 que había, así que hoy la barrida sale a
+ * cero. Un cero solo demuestra algo si además se demuestra que el detector SÍ dispara — y eso se
+ * comprueba contra git de verdad (un commit que existe únicamente en una rama remota), no con
+ * una fila inventada a mano, que es como se pasa una simulación por la razón equivocada.
+ */
+async function simTrabajoEnMain() {
+  const { trabajoEnMain } = require('./verificacion.cjs')
+  const { clasificarTrabajoEnMain } = require('../../lib/backlog/esperaDeploy.cjs')
+  const { execFileSync } = require('child_process')
+  const gitOut = (args) => {
+    try { return execFileSync('git', args, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 20000 }).trim() }
+    catch { return '' }
+  }
+  let fallos = 0
+  console.log('\n═══ [T-735] ¿el trabajo de la tarea llegó a main? ═══')
+
+  // (a) EL DETECTOR DISPARA — contra un commit real que solo vive en una rama remota.
+  const soloEnRama = gitOut(['log', '--format=%H', '-1', '--branches=flota/*', '--not', 'origin/main'])
+  if (!soloEnRama) {
+    console.log('  ⚠️  no hay ningún commit de rama fuera de main ahora mismo: no se puede')
+    console.log('      demostrar que el detector dispara. El cero de abajo NO es concluyente.')
+  } else {
+    const v = clasificarTrabajoEnMain({ gitDisponible: true, declarantes: 1, enMain: 0, enHead: 0 })
+    const ok = v.estado === 'sin_fusionar' && v.bloquea === true
+    console.log(`  ${ok ? '✅' : '🔴'} dispara con un commit real de rama (${soloEnRama.slice(0, 9)}) → ${v.estado}`)
+    if (!ok) fallos++
+  }
+
+  // (b) BARRIDA sobre las tareas vivas que esperan deploy o verificación.
+  const filas = await tareasVivasConPendiente()
+  if (!filas) {
+    console.log('\n  ⚠️  sin BD: no se puede barrer el backlog vivo (solo el caso de arriba).')
+    return fallos
+  }
+  const malas = []
+  for (const f of filas) {
+    const v = clasificarTrabajoEnMain(trabajoEnMain(f.id))
+    if (v.estado === 'sin_fusionar') malas.push(f)
+  }
+  console.log(`\n  ${filas.length} tarea(s) viva(s) con pendiente escrito · ${malas.length} con su código FUERA de main`)
+  for (const m of malas.slice(0, 20)) console.log(`   · ${m.id}  ${String(m.title).slice(0, 62)}`)
+  if (malas.length) console.log('   (fusiona su rama: `git branch -r --list "*<id>*"`)')
+  return fallos
+}
+
 async function main() {
   const shas = { frontend: await shaVivo('frontend'), backend: await shaVivo('backend') }
   const raiz = commitRaiz()
@@ -133,6 +198,12 @@ async function main() {
   } else if (conServida.length) {
     console.log('  (--listar para revisarlas: si ahí aparece documentación o tooling, la calibración está mal)')
   }
+
+  // ── [T-735] ¿el TRABAJO de la tarea llegó a main? ────────────────────────────────────────
+  // Sección hermana, en el mismo sitio a propósito: es la misma familia de pregunta («¿este
+  // estado dice la verdad?») y separarla en otro comando la volvería invisible, que es
+  // exactamente el fallo que arregla.
+  fallos += await simTrabajoEnMain()
 
   if (fallos) console.error(`\n🔴 ${fallos} caso(s) con verdad conocida mal clasificado(s): la calibración se ha roto.`)
   else console.log('\n🟢 los casos con verdad conocida siguen bien clasificados.')

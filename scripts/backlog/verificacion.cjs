@@ -44,10 +44,19 @@ function git(args, cwd = REPO) {
  * nunca tocó; venía del commit de OTRA sesión que la citaba de pasada. Habría mandado a esperar
  * un deploy que no tenía nada que ver con ella.
  */
-function commitsDe(id, limite = 60) {
+/**
+ * @param {{todasLasRamas?:boolean}} [opts]
+ *   `todasLasRamas` añade `--all`. Por defecto NO, que es lo que quiere el gate de `done`: allí
+ *   la pregunta es «¿lo que voy a cerrar está vivo?» y un commit de otra rama no cuenta.
+ *   Lo pide [T-735], donde la pregunta es la contraria — «¿existe este trabajo en ALGUNA rama y
+ *   sigue sin llegar a main?» — y sin `--all` un commit que vive fuera es indistinguible de no
+ *   existir, que es justo el caso que hay que cazar. Se añade como opción, y no se copia la
+ *   función, para que DECLARAR vs CITAR ([T-403]) siga decidiéndose en un solo sitio.
+ */
+function commitsDe(id, limite = 60, { todasLasRamas = false } = {}) {
   const RS = '\x1e'
   const FS = '\x1f'
-  const raw = git(['log', '--grep', `\\b${id}\\b`, '-E', `-${limite}`, `--format=${RS}%H${FS}%s${FS}%b`])
+  const raw = git(['log', ...(todasLasRamas ? ['--all'] : []), '--grep', `\\b${id}\\b`, '-E', `-${limite}`, `--format=${RS}%H${FS}%s${FS}%b`])
   const out = []
   for (const bloque of raw.split(RS)) {
     if (!bloque.trim()) continue
@@ -57,6 +66,35 @@ function commitsDe(id, limite = 60) {
     if (referencedIds.includes(id) && !mencionSolo.includes(id)) out.push(sha.trim())
   }
   return out
+}
+
+/**
+ * Hechos que necesita `clasificarTrabajoEnMain` ([T-735]): ¿cuántos commits DECLARAN esta tarea,
+ * y cuántos han llegado a `origin/main` / a tu HEAD?
+ *
+ * Vive aquí —y no en cada llamante— porque `pause --tras-deploy` y `list` hacen la MISMA
+ * pregunta: dos recolecciones separadas divergirían y volveríamos a tener dos criterios sobre el
+ * mismo hecho, que es el modo de fallo de [T-375]. La DECISIÓN sigue siendo pura y vive en
+ * `lib/backlog/esperaDeploy.cjs`; aquí solo se mide.
+ *
+ * Fail-open: si git no contesta devuelve `{gitDisponible:false}` y el clasificador no bloquea.
+ */
+function trabajoEnMain(id) {
+  try {
+    const shas = commitsDe(id, 60, { todasLasRamas: true }) || []
+    const dentroDe = (sha, ref) => {
+      try { execFileSync('git', ['merge-base', '--is-ancestor', sha, ref], { cwd: REPO, stdio: 'ignore' }); return true }
+      catch { return false }
+    }
+    return {
+      gitDisponible: true,
+      declarantes: shas.length,
+      enMain: shas.filter((c) => dentroDe(c, 'origin/main')).length,
+      enHead: shas.filter((c) => dentroDe(c, 'HEAD')).length,
+    }
+  } catch {
+    return { gitDisponible: false }
+  }
 }
 
 function ficherosDe(commits) {
@@ -235,7 +273,7 @@ async function analizar(id, { shas = null, detectarRollout = true } = {}) {
   return { ...veredicto, commits, desplegado, vivos, rollout, grupos }
 }
 
-module.exports = { analizar, commitsDe, ficherosDe, importadoEn, servidoPorConvencion, tokenDeImport, patronImport, packageTocaDependencias, contenidos, noContenidos, shaVivo, HEALTH }
+module.exports = { analizar, commitsDe, trabajoEnMain, ficherosDe, importadoEn, servidoPorConvencion, tokenDeImport, patronImport, packageTocaDependencias, contenidos, noContenidos, shaVivo, HEALTH }
 
 if (require.main === module) {
   const id = process.argv[2]

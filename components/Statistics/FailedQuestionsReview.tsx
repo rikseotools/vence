@@ -1,6 +1,7 @@
 // components/Statistics/FailedQuestionsReview.tsx - Sección de repaso de falladas en mis-estadisticas
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOposicion } from '@/contexts/OposicionContext'
 import { getOposicionByPositionType } from '@/lib/config/oposiciones'
@@ -266,7 +267,7 @@ export default function FailedQuestionsReview() {
 
       {/* Loading overlay for modal */}
       {modalLoading && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white rounded-xl p-6 shadow-xl">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-3"></div>
             <p className="text-sm text-gray-600">Cargando preguntas falladas...</p>

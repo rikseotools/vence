@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { trackPremiumGateCtaClick } from '@/lib/services/conversionTracker'
 import type { PremiumFeature } from '@/lib/premium/features'
+import { CAPAS } from '@/lib/ui/capas'
 
 interface Props {
   feature: PremiumFeature
@@ -44,7 +45,8 @@ export default function PremiumFeatureModal({ feature, context, onClose }: Props
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/60 p-4"
+      style={{ zIndex: CAPAS.modal }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="premium-feature-title"

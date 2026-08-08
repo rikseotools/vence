@@ -12,7 +12,7 @@ import {
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { withDbTimeout, isDbTimeoutError } from '@/lib/db/timeout'
 import { getDailyLimitStatus, incrementDailyCount, checkDeviceDailyUsage, debeConsumirCupo } from '@/lib/api/dailyLimit'
-import { emit } from '@/lib/observability/emit'
+import { emit, emitFireAndForget } from '@/lib/observability/emit'
 import { marcarFarmeoFireAndForget } from '@/lib/api/fraud/watchList'
 import { marcarPersistente } from '@/lib/api/fraud/marcaPersistente'
 import { currentDeviceLimitMode, shouldBlock } from '@/lib/security/deviceLimitMode'
@@ -21,6 +21,8 @@ import { registerAndCheckDevice, getDeviceIdFromRequest, getHwFingerprintFromReq
 import { ipDeConfianza } from '@/lib/api/clientIp'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { shouldRouteToBackend, backendUrlFor } from '@/lib/api/backend-router'
+import { construirEventoRutaLenta } from '@/lib/api/v2/answer-and-save/rutaLenta'
+import { INSTANCE_ID } from '@/lib/observability/instanceId'
 
 // Margen para cold start + conexión BD
 export const maxDuration = 30
@@ -51,12 +53,35 @@ const ANTIFRAUD_TIMEOUT_MS = 25000
 // TRIGGER × 20 → INSERT pasa a <100ms). Ver docs/runbooks/outbox-cutover.md
 const VALIDATE_AND_SAVE_TIMEOUT_MS = 25000
 
+// [T-635] Techo TOTAL de la request, con margen bajo `maxDuration=30` para que la respuesta
+// (serializar + salir por la red) no quede ella misma cortada por el kill de la plataforma.
+// ANTIFRAUD_TIMEOUT_MS y VALIDATE_AND_SAVE_TIMEOUT_MS (25s cada uno) fueron pensados para el
+// camino DIRECTO (sin pasar antes por el intento al backend). Cuando SÍ se pasó antes por ahí
+// (el canary de `answer-and-save` está en `true` en producción) y ese intento aborta cerca de
+// su propio techo de 25s, sumar OTROS 25s de fallback local excede el `maxDuration` por mucho
+// margen — y ese exceso lo mata la plataforma SIN lanzar ninguna excepción de JS, así que
+// ningún `catch` de este fichero llega a correr. `presupuestoRestanteMs()` acota el fallback al
+// tiempo que de verdad queda: si ya no queda casi nada, `withDbTimeout` corta ANTES y devuelve
+// un 503 normal (que SÍ deja rastro, porque `handler()` llega a resolver) en vez de dejar que la
+// plataforma mate la función en silencio.
+const SAFE_TOTAL_BUDGET_MS = 27000
+
 async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveResponse | { success: false; error: string }>> {
   const startTime = Date.now()
+  // [T-635] Lo que queda del presupuesto total, con un suelo de 1s (nunca 0 ni negativo: un
+  // withDbTimeout(0) no tendría sentido — que corte cuanto antes, no que no llegue a intentarlo).
+  const presupuestoRestanteMs = () => Math.max(1000, SAFE_TOTAL_BUDGET_MS - (Date.now() - startTime))
 
   try {
     // 1. Auth via wrapper (soporta off/shadow/on via env JWT_LOCAL_VERIFY_MODE)
     const auth = await verifyAuth(request, '/api/v2/answer-and-save')
+    // T-312 (ampliación 06/08): desglose de fases a nivel de RUTA. El desglose interno de
+    // validateAndSaveAnswer (validar/guardar/score) lleva 0 disparos en 7 días de producción
+    // mientras request_completed sigue viendo el mismo ~1,3% de peticiones >2s — su reloj arranca
+    // DESPUÉS de auth+antifraude, así que es ciego justo a la fase que más probablemente domina
+    // (ver lib/api/v2/answer-and-save/rutaLenta.ts). authMs se mide aquí, aunque el resto del
+    // desglose solo se completa (y se emite) si la petición llega al camino feliz.
+    const authMs = Date.now() - startTime
     if (!auth.success) {
       return NextResponse.json(
         { success: false, error: auth.reason === 'no_bearer_token' ? 'No autorizado' : 'Usuario no autenticado' } as const,
@@ -128,15 +153,41 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
           clearTimeout(timer)
         }
       } catch (backendError) {
+        const abortado = backendError instanceof Error && backendError.name === 'AbortError'
         console.warn(
           `⚠️ [answer-and-save proxy] backend canary falló (${(backendError as Error).message ?? 'unknown'}), fallback a Vercel local`,
         )
+        // [T-635] Rastro ANTES de caer al fallback, no después: el fallback que sigue tiene su
+        // propio presupuesto (`presupuestoRestanteMs`, más abajo) precisamente porque, sin él,
+        // la suma de este intento (hasta 25s) + el fallback local (hasta otros 25s) supera con
+        // holgura el `maxDuration=30` del propio endpoint — y cuando eso pasa, Vercel MATA la
+        // función a nivel de plataforma: no hay excepción de JS que capturar, así que ni este
+        // `catch` ni el de más abajo ni `withErrorLogging` (que solo emite tras `await handler()`)
+        // llegan a ejecutarse nunca. Medido (07/08, 7 días): 36 de 11.527 requests a este
+        // endpoint superan los 25.000ms, todas concentradas entre 25.100-25.246ms — la huella de
+        // un aborto seguido de un fallback local RÁPIDO que sí llegó a tiempo. Ninguna aparece
+        // entre 25.300ms y 30.000ms, que es justo la zona invisible por construcción: no se puede
+        // medir un evento que nunca se emite. `await` (no fire-and-forget): dentro de un handler
+        // que SÍ se espera desde fuera y que va a seguir haciendo más `await` después, el emit
+        // fire-and-forget puede quedar huérfano si la lambda se suspende antes de que el INSERT
+        // termine (mismo mecanismo que causó la pérdida del 47% del 26/05, ver emit.ts).
+        await emit({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'answer_save_backend_proxy_fallback',
+          endpoint: '/api/v2/answer-and-save',
+          userId: user.id,
+          durationMs: Date.now() - startTime,
+          errorMessage: (backendError as Error).message ?? 'unknown',
+          metadata: { motivo: abortado ? 'timeout_abort_25s' : 'network_error' },
+        }).catch(() => { /* el rastro no puede tumbar el fallback que viene detrás */ })
         // Caemos al código local de abajo (antifraud + validate + save)
       }
     }
 
     // 3. Anti-fraud checks in parallel (device limit + daily limits)
     // All three RPCs are independent — run them concurrently to save ~400ms
+    const tAntifraude0 = Date.now() // T-312: arranca el reloj de la fase que se sospecha dominante
     const deviceId = getDeviceIdFromRequest(request)
     const hwFingerprint = getHwFingerprintFromRequest(request)
     const [deviceCheck, dailyLimit, deviceUsage] = await withDbTimeout(
@@ -145,7 +196,8 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
         getDailyLimitStatus(user.id),
         checkDeviceDailyUsage(deviceId, hwFingerprint, ipDeConfianza(request)),
       ]),
-      ANTIFRAUD_TIMEOUT_MS,
+      // [T-635] Acotado a lo que queda de verdad — ver SAFE_TOTAL_BUDGET_MS arriba.
+      Math.min(ANTIFRAUD_TIMEOUT_MS, presupuestoRestanteMs()),
     )
 
     if (!deviceCheck.allowed) {
@@ -260,16 +312,33 @@ async function _POST(request: NextRequest): Promise<NextResponse<AnswerAndSaveRe
       )
     }
 
+    // T-312: cierra la ventana de antifraude aquí — es el punto exacto donde el reloj interno de
+    // validateAndSaveAnswer (validar/guardar/score) habría arrancado si midiera desde el principio.
+    const antifraudeMs = Date.now() - tAntifraude0
+
     // 4. Ejecutar: validar + guardar + actualizar score
+    const tGuardar0 = Date.now()
     const result = await withDbTimeout(
       () => validateAndSaveAnswer(parsed.data, user.id),
-      VALIDATE_AND_SAVE_TIMEOUT_MS,
+      // [T-635] Acotado a lo que queda de verdad — ver SAFE_TOTAL_BUDGET_MS arriba.
+      Math.min(VALIDATE_AND_SAVE_TIMEOUT_MS, presupuestoRestanteMs()),
     )
+    const guardarTotalMs = Date.now() - tGuardar0
 
     const totalMs = Date.now() - startTime
     if (totalMs > 2000) {
       console.warn(`⚠️ [answer-and-save] Respuesta lenta: ${totalMs}ms questionId=${parsed.data.questionId}`)
     }
+
+    // T-312 (ampliación 06/08): desglose de RUTA (auth + antifraude + guardado completo). Solo se
+    // emite cuando la petición es lenta y al 100% — mismo criterio que el desglose interno de
+    // validateAndSaveAnswer, que sigue viviendo aparte y explica el reparto DENTRO de guardarTotal
+    // cuando es esa la fase dominante. Ver rutaLenta.ts para por qué hacía falta uno nuevo.
+    const eventoRuta = construirEventoRutaLenta(
+      { authMs, antifraudeMs, guardarTotalMs, totalMs },
+      { questionId: parsed.data.questionId, instanceId: INSTANCE_ID },
+    )
+    if (eventoRuta) emitFireAndForget(eventoRuta)
 
     // 4. Operaciones background (no bloquean la respuesta)
     after(async () => {

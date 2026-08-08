@@ -943,3 +943,65 @@ describe('mirror del detector pregunta_duplicada — banco PSICOTÉCNICO (núcle
     }
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// mirror del detector seguimiento_fuente_error (núcleo ↔ backend @Cron) [T-564]
+//
+// A diferencia de pregunta_duplicada/veredicto_verificacion_rojo/audit_note_explanation, este
+// detector no tiene un test de comportamiento que compare las dos copias: el CLI SÍ importa el
+// núcleo (`lib/convocatoria/seguimientoFuenteError.cjs`), pero el backend NestJS no puede —así
+// que lleva una copia INLINE (`diagnosticarSeguimientoErrorInline` + su propio `ESTADOS_FICHA_VIVA`)
+// que nada comprobaba que siguiera igual. Sin este bloque, un cambio en uno de los dos criterios
+// de fase (añadir/quitar un estado de la lista) divergiría en silencio — exactamente el modo de
+// fallo que el resto de mirrors de este fichero existen para impedir.
+describe('mirror del detector seguimiento_fuente_error (núcleo ↔ backend @Cron) [T-564]', () => {
+  const { procesoConFichaViva } = require('@/lib/convocatoria/seguimientoUrlSalud.cjs')
+  const { diagnosticarSeguimientoError } = require('@/lib/convocatoria/seguimientoFuenteError.cjs')
+
+  /** Lee el `const ESTADOS_FICHA_VIVA = new Set([...])` del backend y lo evalúa. */
+  function evalEstadosFichaViva(src: string): Set<string> {
+    const m = src.match(/const ESTADOS_FICHA_VIVA = new Set\(\[([\s\S]*?)\]\)/)
+    if (!m) throw new Error('no se encontró ESTADOS_FICHA_VIVA en el backend')
+    // eslint-disable-next-line no-new-func
+    return new Function(`return new Set([${m[1]}])`)()
+  }
+
+  it('el CLI CONSUME el núcleo compartido (no lleva su propia copia de diagnosticarSeguimientoError)', () => {
+    expect(SCRIPT).toContain("require('../lib/convocatoria/seguimientoFuenteError.cjs')")
+    expect(SCRIPT).not.toMatch(/function diagnosticarSeguimientoError/)
+  })
+
+  it('el ESTADOS_FICHA_VIVA del backend coincide EXACTO (mismos estados, ni uno de más ni de menos) con el que ya usa seguimiento_url_stale', () => {
+    // seguimientoUrlSalud.cjs no exporta el Set directamente (solo la función), así que se
+    // compara por COMPORTAMIENTO sobre el universo real de estado_proceso — incluidos los que
+    // no están en ninguna lista, para que el test no pase por casualidad con un Set vacío.
+    const backendSet = evalEstadosFichaViva(BACKEND)
+    const universo = [
+      'convocatoria_publicada', 'convocada', 'inscripcion_abierta', 'inscripcion_cerrada',
+      'lista_admitidos', 'pendiente_examen', 'oep_aprobada', 'sin_oep', 'nombramientos',
+      'examen_realizado', null, undefined, '',
+    ]
+    for (const estado of universo) {
+      expect(backendSet.has(estado as string)).toBe(procesoConFichaViva(estado))
+    }
+  })
+
+  it('diagnosticarSeguimientoErrorInline (backend) decide la MISMA severidad que el núcleo para cada fase', () => {
+    // La severidad depende SOLO de procesoConFichaViva (ver el fuente de los dos: `enJuego ?
+    // 'error' : 'warn'`), así que basta con que el Set coincida (test de arriba) — este test fija
+    // además la lectura textual del propio backend para que un refactor que cambie la condición
+    // sin tocar el Set (p.ej. invertir el if) también se cace.
+    expect(BACKEND).toMatch(/if \(enJuego\) \{\s*return \{\s*severidad: 'error',/)
+    for (const estado of ['inscripcion_abierta', 'pendiente_examen', 'oep_aprobada', 'sin_oep']) {
+      const esperado = diagnosticarSeguimientoError({ estadoProceso: estado, seguimientoUrl: null }).severidad
+      expect(procesoConFichaViva(estado) ? 'error' : 'warn').toBe(esperado)
+    }
+  })
+
+  it('los dos gemelos emiten el kind sobre seguimiento_change_status=\'error\', nada más', () => {
+    for (const txt of [SCRIPT, BACKEND]) {
+      expect(hasKind(txt, 'seguimiento_fuente_error')).toBe(true)
+      expect(txt).toMatch(/seguimiento_change_status = 'error'/)
+    }
+  })
+})

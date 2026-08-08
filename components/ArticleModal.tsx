@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { formatLegalText } from '../lib/teoria/formatLegalText'
 import { tieneMarkdown } from '../lib/teoria/tieneMarkdown'
+import { CAPAS } from '../lib/ui/capas'
 
 interface OfficialExamData {
   hasOfficialExams: boolean
@@ -261,8 +262,10 @@ export default function ArticleModal({
     return null
   }
 
+  // z-index por CAPAS (T-608): con z-[9999] empataba con el banner de cookies (mismo z), y con
+  // el mismo z gana el orden del DOM — el agujero que esta escala existe para evitar.
   return (
-    <div className="fixed inset-0 z-[9999] overflow-y-auto" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: CAPAS.modal }}>
       {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/50 transition-opacity"

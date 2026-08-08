@@ -29,6 +29,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { claveAceptacion, debeMostrarAviso, diaLocal } from '../lib/multicuenta/aviso'
 import { emitClientEvent } from '@/lib/observability/client'
+import { CAPAS } from '@/lib/ui/capas'
 
 export default function AvisoMultiCuentaModal() {
   const { user } = useAuth() as any
@@ -98,7 +99,8 @@ export default function AvisoMultiCuentaModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      style={{ zIndex: CAPAS.modal }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="aviso-multicuenta-titulo"

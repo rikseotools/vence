@@ -129,9 +129,15 @@ describe('filas afectadas: un solo contador (T-613)', () => {
     // El único podador legítimo construye el nombre de la tabla (`purgeTable`), así
     // que un `DELETE FROM ... observable_events` LITERAL en cualquier sitio es, por
     // construcción, un segundo podador.
-    const otros = grep('DELETE FROM public.observable_events').concat(
-      grep('DELETE FROM observable_events'),
-    )
+    // Los `.spec.ts` quedan fuera de ESTA comprobación (no de las otras): un spec no
+    // poda nada en producción, y el que reproduce el fallo de T-613 tiene que poder
+    // CITAR la consulta que murió («Failed query: DELETE FROM observable_events…»)
+    // palabra por palabra — esa cita es la prueba, no un segundo podador. Sin este
+    // corte, escribir el test de regresión rompía el guardarraíl que lo vigila.
+    const esSpec = (l: string) => /\.spec\.tsx?:/.test(l) || /\.test\.tsx?:/.test(l)
+    const otros = grep('DELETE FROM public.observable_events')
+      .concat(grep('DELETE FROM observable_events'))
+      .filter((l) => !esSpec(l))
     expect({
       otrosPodadores: [...new Set(otros.map((l) => l.split(':')[0]))],
       arreglo: otros.length

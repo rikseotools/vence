@@ -104,4 +104,24 @@ describe('paridad de la estimación por leyes (frontend ↔ backend)', () => {
     expect(linea).toBeDefined()
     expect(linea).toContain('scopeToPosition')
   })
+
+  // [T-411] Mismo motivo que scopeToPosition, mismo sitio: la casilla "🏛️ Preguntas
+  // oficiales" pasa de contar solo las propias a contar propias+compartidas — dos números
+  // distintos que no pueden compartir entrada de caché.
+  it('las dos cuentan las oficiales COMPARTIDAS cuando se pide includeSharedOfficials', () => {
+    for (const src of [front, back]) {
+      expect(cuerpoEstimateByLaws(src)).toContain('includeSharedOfficials')
+    }
+  })
+
+  it('el controlador del backend LEE `includeSharedOfficials` en GET y POST', () => {
+    expect(controller).toContain("query.includeSharedOfficials === 'true'")
+    expect(controller).toContain('body?.includeSharedOfficials === true')
+  })
+
+  it('…y lo mete EN LA CLAVE DE CACHÉ de `estimate` (mismo riesgo que scopeToPosition)', () => {
+    const linea = controller.split('\n').find((l) => l.includes('`estimate:t'))
+    expect(linea).toBeDefined()
+    expect(linea).toContain('includeSharedOfficials')
+  })
 })

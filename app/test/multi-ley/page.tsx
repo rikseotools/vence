@@ -151,6 +151,8 @@ function MultiLeyTestContent() {
   const timeLimitParam = searchParams?.get('time_limit')
   const timeLimit = timeLimitParam ? parseInt(timeLimitParam) : null
   const onlyOfficialQuestions = searchParams?.get('only_official') === 'true'
+  // [T-411] Oficiales de OTRAS oposiciones sobre la misma ley — ver TestConfigurator.
+  const includeSharedOfficials = searchParams?.get('include_shared_officials') === 'true'
   const focusEssentialArticles = searchParams?.get('focus_essential') === 'true'
   const onlyFailedQuestions = searchParams?.get('only_failed') === 'true'
 
@@ -257,6 +259,7 @@ function MultiLeyTestContent() {
             difficultyMode,
             excludeRecentDays: excludeRecent ? recentDays : 0,
             onlyOfficialQuestions,
+            includeSharedOfficials,
             focusEssentialArticles,
             onlyFailedQuestions,
             failedQuestionIds,
@@ -300,7 +303,7 @@ function MultiLeyTestContent() {
       loadQuestions()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, userProfile, scopedRequested, user?.id, userPositionType, scopeToPosition, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
+  }, [authLoading, userProfile, scopedRequested, user?.id, userPositionType, scopeToPosition, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, includeSharedOfficials, focusEssentialArticles, onlyFailedQuestions])
 
   // Estado de carga
   if (loading || authLoading) {

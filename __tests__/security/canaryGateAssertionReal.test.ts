@@ -28,8 +28,15 @@ const STATUS = readFileSync(join(ROOT, 'app/api/security/captcha/status/route.ts
 
 describe('canary del gate — la aserción que importa no puede estar exenta', () => {
   it('la exención es CONDICIONAL: solo cuando el sujeto está saturado', () => {
-    // La cabecera con secreto ya no se escribe fija dentro de los headers de la petición.
-    expect(CANARY).toMatch(/const exencion[^=]*=\s*sondaReal\s*\?\s*\{\}/)
+    // [T-381] La rama `sondaReal` dejó de ser `{}` — ahora manda la cabecera de MÉTRICAS
+    // (`x-vence-canary-metrics-secret`, ver lib/api/syntheticTrust.ts) para no envenenar
+    // `daily_questions_served` con esta sonda. Lo que importa para ESTE guardarraíl sigue
+    // igual: esa rama NO puede llevar la cabecera que exime del RETO
+    // (`x-vence-canary-secret`) — si la llevara, la sonda dejaría de ser real otra vez.
+    const bloqueExencion = CANARY.match(/const exencion[^=]*=\s*sondaReal\s*\?\s*\{[\s\S]*?\}\s*:\s*\{[\s\S]*?\};/)?.[0] ?? ''
+    expect(bloqueExencion).not.toBe('')
+    const ramaSondaReal = bloqueExencion.match(/sondaReal\s*\?\s*(\{[\s\S]*?\})\s*:/)?.[1] ?? ''
+    expect(ramaSondaReal).not.toMatch(/'x-vence-canary-secret':/)
     expect(CANARY).toMatch(/\.\.\.exencion,/)
   })
 

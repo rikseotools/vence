@@ -1099,6 +1099,19 @@ SELECT to_char(ts,'HH24:MI') t, duration_ms,
 - **🎯 `fuera_de_fases` es la respuesta MÁS valiosa cuando aparece:** el handler apenas consumió tiempo, así que el problema **no es su lógica** sino el entorno — event-loop bloqueado, espera de pool, GC o throttle del contenedor. Distinguir «la BD tardó» de «el proceso no llegó a ejecutarme» es exactamente lo que faltó el 29/07, cuando atribuir un incidente costó medio día y la primera atribución (crons del backend) resultó **falsa**.
 - **Contexto de base:** entre el **0,3% y el 1,3%** de los guardados superan los 5 s **todos los días** (~50-200 opositores). Un puñado de estos eventos al día es lo normal, no una regresión; lo que se mira es el cambio de `dominante` o un salto de volumen.
 - ⚠️ **Al medir latencia aquí, cuidado con las ventanas cortas:** el endpoint tiene ~1.600 observaciones/día CON muestreo al 10%, así que en 5 minutos hay 2-3 muestras y `percentile_disc(0.95)` devuelve el MÁXIMO. El 30/07 eso produjo **tres falsas alarmas seguidas** («p95 de 25 s» con n=3). Núcleo puro con suelo de muestras: `lib/api/admin/endpoint-latency.ts` (`LATENCY_MIN_SAMPLES`).
+- ⚠️ **Este desglose es CIEGO a auth+antifraude — medido el 06/08, cero disparos en 7 días de producción** mientras `request_completed` seguía viendo el mismo ~1,3% de siempre (73 de 5.516 muestras en 3 días). La causa: `tInicio` arranca DENTRO de `validateAndSaveAnswer`, que el propio route handler llama DESPUÉS de auth y de las 3 RPCs de antifraude en paralelo (documentadas en el código capaces de tardar 10-20 s bajo carga). Si el guardado es lento por antifraude, este evento nunca se entera. **Usar `answer_save_ruta_lenta` (siguiente bloque) para esa fase.**
+
+**El desglose de RUTA, que sí ve auth y antifraude — evento `answer_save_ruta_lenta` (06/08, ampliación de T-312).** Mismo criterio (>2 s, 100%, mismo núcleo `evaluarFasesNombradas`), medido desde el principio del handler:
+```sql
+SELECT to_char(ts,'HH24:MI') t, duration_ms,
+       metadata->>'dominante' AS fase, metadata->>'pctDominante' AS pct,
+       metadata->>'authMs' AS auth, metadata->>'antifraudeMs' AS antifraude,
+       metadata->>'guardarTotalMs' AS guardar_total, metadata->>'noExplicadoMs' AS no_explicado
+  FROM observable_events WHERE event_type='answer_save_ruta_lenta'
+   AND ts > now() - interval '24 hours' ORDER BY duration_ms DESC LIMIT 20;
+```
+- **`dominante`** aquí es `auth` / `antifraude` / `guardarTotal` / `fuera_de_fases`. Si es `guardarTotal`, cruzar con `answer_save_lento` del MISMO rango de tiempo para ver cuál de validar/guardar/score se lo llevó DENTRO de esa ventana — los dos eventos son complementarios, no duplicados: éste dice QUÉ GRAN FASE domina, aquél dice el reparto fino dentro de "guardar" cuando es ella la que manda.
+- Si `antifraude` domina de forma sostenida, es la confirmación con datos que pide [T-315] antes de tocar `ANTIFRAUD_TIMEOUT_MS`.
 
 **El detector que se vuelve más lento cuanto más SANA está la base (2026-07-30, T-307)** — el barrido nocturno de salud (`content-health-sweep`) murió entero el 29 y el 30/07, y estuvo dos días sin escribir mientras el panel enseñaba el snapshot del 28 como si fuera de hoy.
 - **Causa inmediata:** la query del detector `audit_note_explanation` tardaba **40,6 s** contra el `statement_timeout: 30000` del cliente del backend (`backend/src/db/database.module.ts`). Como el barrido era todo-o-nada, el throw se llevó a los ~40 detectores restantes **y** al bloque de escritura.

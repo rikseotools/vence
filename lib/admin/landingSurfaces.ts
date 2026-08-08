@@ -108,7 +108,11 @@ export const LANDING_SURFACES: Record<string, SuperficieLanding> = {
   enlace_seguimiento: {
     titulo: 'Botón "Seguimiento del proceso"',
     marcadores: ['seguimientoUrl'],
-    kinds: ['seguimiento_url_stale', 'seguimiento_fuente_ciega'],
+    // Los tres fallan en el mismo sitio y se ven igual desde la landing (el botón lleva
+    // a algo que ya no vigila): `stale` apunta a un ciclo cerrado, `ciega` responde 200
+    // sin contenido vigilable, y `error` [T-564] ni siquiera responde. El tercero entró
+    // con su detector y se quedó sin superficie hasta este merge.
+    kinds: ['seguimiento_url_stale', 'seguimiento_fuente_ciega', 'seguimiento_fuente_error'],
   },
   temario: {
     titulo: 'Temario servido (temas, nombres, número de preguntas)',

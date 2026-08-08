@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import UserProfileModal from './UserProfileModal'
+import { CAPAS } from '@/lib/ui/capas'
 
 const PAGE_SIZE = 50
 
@@ -274,7 +275,8 @@ export default function RankingModal({ isOpen, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] overflow-y-auto"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto"
+      style={{ zIndex: CAPAS.modal }}
     >
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white rounded-xl w-[90%] max-w-sm sm:w-full sm:max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">

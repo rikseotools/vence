@@ -735,7 +735,87 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'una descarga válida. Tras escribir **relee de la BD y compara carácter a carácter** con lo ' +
       'descargado, y aborta si algo no cuadra: importar y declararlo hecho es como se llegó al ' +
       'estado que venía a arreglar. Patrón reutilizable para cualquier norma con anexos mal ' +
-      'importados (cambiar `BOE_ID` y la tabla de bloques).',
+      'importados (cambiar `BOE_ID` y la tabla de bloques). **SUPERADO por `importar_anexos_boe`** ' +
+      '([T-726]): el mismo usuario avisó al día siguiente de la ley de al lado, así que el patrón ' +
+      'dejó de escribirse a mano. Se conserva por su registro de lo que se hizo con esta norma.',
+  },
+  importar_anexos_boe: {
+    titulo: 'Importar los ANEXOS (y disposiciones) de CUALQUIER norma consolidada del BOE, VERBATIM',
+    ruta: 'scripts/oposiciones/importar-anexos-boe.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`node scripts/oposiciones/importar-anexos-boe.cjs --ley "485/1997" [--disposiciones] [--apply]`. ' +
+      'Dry-run por defecto. Generaliza `importar_rd486_anexos` **porque el caso se repitió**: el mismo ' +
+      'usuario (`casterpepe76`) avisó el 07/08 del RD 486/1997 ([T-676]) y el 08/08 del RD 485/1997 ' +
+      '([T-726]), al que le faltaban los SIETE anexos y las 4 disposiciones — 34.714 caracteres, el ' +
+      '85% de la norma. La causa raíz está documentada desde antes: nuestro extractor de leyes **no ' +
+      'toca los anexos** (`monitoreo-boe-y-crear-leyes-nuevas.md`, «Limitación 1»). Descubre los ' +
+      'bloques del **índice consolidado**, así que sirve para la siguiente norma sin tocar código. ' +
+      '⚠️ La API exige `Accept: application/xml` — sin esa cabecera devuelve un 400 de 187 bytes que ' +
+      'parece una descarga válida. **Las tablas se convierten a Markdown, no se aplanan** (núcleo ' +
+      '`lib/boe/bloquesConsolidados.cjs`): una tabla aplanada es el defecto que `detectFlattenedTable` ' +
+      'persigue, y en el Anexo II del RD 485/1997 la tabla ES el contenido examinable (los colores de ' +
+      'seguridad). Tras escribir **relee de la BD y compara carácter a carácter**. Limitación ' +
+      'declarada: los **pictogramas** de los anexos (imágenes del BOE) no se importan.',
+  },
+  arreglar_interlineado_writer: {
+    titulo: 'Reparar el interlineado de LibreOffice Writer (teoría + pregunta con clave falsa)',
+    ruta: 'scripts/calidad/arreglar-interlineado-writer.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`node scripts/calidad/arreglar-interlineado-writer.cjs [--aplicar]`. Simula por defecto. Sale ' +
+      'de la impugnación `52c5ae85` (Laura Simar, premium), que decía que dos opciones eran válidas ' +
+      '**porque nuestra explicación lo afirmaba**. Al medir el sistémico salieron tres defectos y una ' +
+      'sola causa: **el artículo de teoría afirmaba que «Regleta» NO es una opción de interlineado**, ' +
+      'y lista opciones inventadas («Al menos», «Mínimo», sin «1,15 renglones»). Es FALSO — la ayuda ' +
+      'oficial es-ES la incluye entre «Por lo menos» y «Fijo». De esa teoría salieron las preguntas: ' +
+      '`165fee45` (explicación falsa, corregida), `c8d9dbb7` (duplicada exacta, jubilada) y ' +
+      '`d99afeef` (clave equivocada, reescrita). **Lección reutilizable: cuando varias preguntas de ' +
+      'un artículo mienten igual, el defecto está en el ARTÍCULO, no en las preguntas** — arreglar ' +
+      'solo las preguntas deja la fábrica intacta. Fuente verificada el 08/08/2026: ' +
+      'help.libreoffice.org/latest/es/text/shared/01/05030100.html',
+  },
+  preguntas_de_otra_comunidad: {
+    titulo: '¿Qué preguntas de OTRA comunidad autónoma recibe una oposición?',
+    ruta: 'scripts/calidad/preguntas-de-otra-comunidad.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`node scripts/calidad/preguntas-de-otra-comunidad.cjs --oposicion <position_type> [--todas]`. ' +
+      '**Solo lee.** Núcleo puro `lib/health/preguntaDeOtraComunidad.cjs` (21 tests). Nace de [T-732]: ' +
+      'Alba España (premium, TCAE Madrid) impugnó *«ESTOY ESTUDIANDO COMUNIDAD DE MADRID NO DE ' +
+      'VALENCIA»*; hay **388 preguntas de normativa autonómica** colgadas de artículos que escopan 10+ ' +
+      'oposiciones, y la respuesta correcta CAMBIA según la comunidad (citostáticos: rojo en Andalucía, ' +
+      'azul en la referencia nacional), así que no es temario de más sino **clave falsa**. ' +
+      '**Las tres trampas que el núcleo evita, todas medidas:** (1) `SAS` casa dentro de «ca·sas» → ' +
+      '2.493 casos de los que 2.341 eran falsos; las siglas van *case-sensitive* y con límite a los dos ' +
+      'lados. (2) **Mencionar ≠ examinar**: la comunidad en el ENUNCIADO o en la opción correcta es ' +
+      'examen; solo en la explicación suele ser cita incidental. (3) Los **gentilicios** son ' +
+      'imprescindibles — la peor pregunta de todas («Constitución Federal **andaluza**», 116 ' +
+      'oposiciones) no dice «Andalucía» en ninguna parte. Más una exención calibrada: una comunidad tras ' +
+      '«salvo/excepto» es el alcance de una norma estatal, no su objeto. Medido el 08/08: **111** ' +
+      'defectos en `tcae_sermas_madrid` y **63** en `celador_sas`. **On-demand a propósito** (como ' +
+      '`audit:vinculo-vecino`): la frontera exige leer. **NUNCA desactivar** lo que marca — cada ' +
+      'pregunta es legítima para SU comunidad; la salida es moverla.',
+  },
+  medir_anexos_faltantes: {
+    titulo: '¿A qué leyes que servimos les falta un anexo que su fuente SÍ tiene?',
+    ruta: 'scripts/leyes/medir-anexos-faltantes.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    notas:
+      '`node scripts/leyes/medir-anexos-faltantes.cjs [--limite N] [--json f]`. **No escribe nada.** ' +
+      'Nace de [T-726], para contestar con un número a «¿esto pasa en más sitios?». **La consulta ' +
+      'obvia miente**: «leyes servidas sin ninguna fila de anexo» da 404, pero la Constitución y la ' +
+      'Ley 39/2015 no tienen anexos — contarlas es el error de medida que el manual de impugnaciones ' +
+      'advierte. El hueco real solo se afirma comparando con el **índice consolidado del BOE** de ' +
+      'cada ley. Medido el 08/08 tras reparar el RD 485/1997: **0 huecos** sobre las 406 leyes ' +
+      'servidas con BOE consolidado (395 no tienen anexos en su fuente, 11 sin índice accesible). ' +
+      '**Punto ciego declarado: 635 leyes servidas SIN BOE consolidado** (autonómicas, UE, virtuales) ' +
+      'sobre las que no puede opinar. On-demand a propósito (≈400 peticiones al BOE por pasada, para ' +
+      'una señal que cambia dos o tres veces al año) — mismo criterio que `laws:derogadas`.',
   },
   audit_corpus_ajeno: {
     titulo: '¿Los documentos que respaldan una convocatoria salen del sitio de su fuente oficial?',
@@ -851,7 +931,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'de todo el mundo en el punto de servicio); esta es la versión bajo demanda, para contestar ' +
       'una impugnación concreta («¿le va a volver a pasar?») sin esperar días de telemetría. ' +
       'Usada el 06/08 para cerrar `dba485dc`/`410025b4` (Lucia, UC3M): 50 servidas por Test Rápido y ' +
-      '32 por el examen de su tema, 0 fuera.',
+      '32 por el examen de su tema, 0 fuera. ' +
+      '[T-381, 08/08] Corría contra la sesión de un usuario REAL sin ninguna cabecera de canario: ' +
+      'contra `SIM_BASE` de producción por defecto, cada tanda contaba en `daily_questions_served` ' +
+      'como servidas-sin-responder BAJO LA IDENTIDAD DE ESA PERSONA — la firma exacta de cosecha, ' +
+      'contra alguien inocente. No lo cazaba el canario `served-rollup` (que busca el patrón ' +
+      '`smoke@`, y aquí el JWT lleva un `userId` real). Arreglado con `x-vence-canary-secret` en el ' +
+      'contexto de Playwright (mismo patrón que `scripts/sim/run.ts`), que además evita el reto ' +
+      'anti-scraping.',
   },
   // ── un modal abierto en móvil, ¿se puede TOCAR entero? ────────────────────────────────────
   sim_modal_tocable: {
@@ -1790,7 +1877,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Exit code 1 si hay errores → por eso `send-promo-inscripcion.cjs` lo usa como PUERTA antes ' +
       'de enviar (escape: --saltar-auditoria). Las cifras solo se contrastan si hay documento de ' +
       'tipo convocatoria/bases: el 96% del hub está clonado como `nota` y contrastar contra el ' +
-      'documento equivocado produce avisos falsos en masa (medido: 168).',
+      'documento equivocado produce avisos falsos en masa (medido: 168). [T-152, 08/08] Conectaba ' +
+      'SOLO con DATABASE_URL (rol de coordinación, sin acceso a oposiciones_ssot desde [T-539]): un ' +
+      'trabajador de la flota con VENCE_LECTOR_URL no podía correr la auditoría que su propia PUERTA ' +
+      'exige. Arreglado con `urlLecturaNegocio()` (T-624); la traza de observabilidad al final ya ' +
+      'estaba en try/catch fail-open, así que con el rol de solo-lectura audita igual y solo avisa ' +
+      'por consola si no puede escribir la traza.',
   },
   simular_auditoria_landings: {
     titulo: 'Simular audit:landing sobre TODAS las landings activas (cuántas están mal y por qué)',
@@ -3932,14 +4024,17 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'hasta ~60 días de retención real). Partición por `created_at` (hora de inserción), NO por ' +
       '`ts` (hora del evento, puede venir corrupta desde el cliente) — mismo criterio que ya usa ' +
       '`telemetry-retention.service.ts`. Núcleo puro `lib/db/particionadoObservableEvents.cjs` ' +
-      '(14 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
+      '(23 tests) genera nombres/rangos/DDL; el script solo los ejecuta (o no). pg_partman 5.2.4 ' +
       'disponible en RDS SIN activar el background worker (evita tocar `shared_preload_libraries` ' +
       'del parameter group + reboot, el mismo tipo de operación que costó el gotcha de ' +
       '`hot_standby_feedback` en la réplica): `create_parent`/`run_maintenance_proc` se llaman por ' +
       'SQL desde el cron existente, sin bgw. `telemetry-retention.service.ts` ya detecta ' +
       '`pg_class.relkind` en cada `run()` y usa `partman.run_maintenance_proc()` en cuanto la tabla ' +
       'pase a estar particionada — desplegable HOY sin riesgo, sigue la rama DELETE de siempre ' +
-      'mientras la migración no se aplique.',
+      'mientras la migración no se aplique. `cmdVerify()` (hallazgo de revisión 08/08) contrasta los ' +
+      'GRANT tras el swap con `evaluarGrantsTrasSwap()` — separa lo que la conexión de solo lectura ' +
+      'puede confirmar de lo que le es invisible (grants de OTRO rol), en vez de fingir certeza que ' +
+      'no tiene.',
   },
 
   muestrear_fidelidad_leyes: {

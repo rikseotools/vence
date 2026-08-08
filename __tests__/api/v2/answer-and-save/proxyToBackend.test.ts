@@ -33,6 +33,32 @@ jest.mock('../../../../lib/db/timeout', () => ({
   isDbTimeoutError: jest.fn(() => false),
 }))
 
+// [T-635] Sin mockear, `emit()` intenta un INSERT real contra `getAdminDb()` — resiliente (nunca
+// tira, ver sink.ts), pero deja una conexión pg abierta que Jest se queja de no poder cerrar
+// ("did not exit one second after..."). Mockearlo aquí también es lo que permite comprobar POR
+// VALOR qué se emite en el momento exacto del abort/fallo del proxy.
+//
+// ⚠️ EL MOCK TIENE QUE DECLARAR **TODO** LO QUE LA RUTA IMPORTA DE ESTE MÓDULO, no solo lo que
+// este fichero mira. [T-735]
+//
+// `emitFireAndForget` lo estrenó T-312 en esta MISMA ruta (desglose de fases auth+antifraude)
+// mientras T-635 vivía en su rama. Cada una pasaba sus tests por separado; al juntarlas, el mock
+// parcial dejaba la función sin definir y la ruta moría con un `TypeError` que el `catch` general
+// traducía a **500**. El ÚNICO test que llega a esa línea es el que simula un reloj lento —el del
+// presupuesto, más abajo—, así que el síntoma era «esperaba 200, recibí 500» y parecía que el
+// arreglo de T-635 no funcionaba, cuando estaba perfectamente bien. Un mock de módulo tiene que
+// declarar TODO lo que la ruta importe, o envejece en cuanto otra rama toca el fichero.
+//
+// Va a un espía PROPIO y no al de `emit` a propósito: son dos contratos distintos (uno espera a
+// que se escriba, el otro no) y con un solo espía no se puede afirmar cuál de los dos se usó —
+// que es justo lo que comprueba el test del presupuesto.
+const mockEmit = jest.fn().mockResolvedValue(undefined)
+const mockEmitFireAndForget = jest.fn()
+jest.mock('../../../../lib/observability/emit', () => ({
+  emit: (...args: unknown[]) => mockEmit(...args),
+  emitFireAndForget: (...args: unknown[]) => mockEmitFireAndForget(...args),
+}))
+
 jest.mock('../../../../lib/api/dailyLimit', () => ({
   getDailyLimitStatus: jest.fn().mockResolvedValue({
     allowed: true,
@@ -235,6 +261,91 @@ describe('POST /api/v2/answer-and-save — proxy canary al backend', () => {
       // Path local ejecutado como fallback
       expect(validateAndSaveAnswer).toHaveBeenCalledWith(VALID_BODY, USER_ID)
       expect(res.status).toBe(200)
+    })
+
+    // [T-635] El rastro que faltaba: antes de este fix, un fallo del proxy solo dejaba un
+    // console.warn — invisible si el fallback que sigue se lleva por delante el maxDuration=30
+    // del endpoint (Vercel mata la función sin lanzar ninguna excepción de JS que capturar).
+    it('[T-635] un fallo de red del proxy deja rastro en observable_events ANTES de intentar el fallback', async () => {
+      fetchSpy.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      await POST(makeReq())
+
+      expect(mockEmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'vercel',
+          severity: 'warn',
+          eventType: 'answer_save_backend_proxy_fallback',
+          endpoint: '/api/v2/answer-and-save',
+          userId: USER_ID,
+          errorMessage: 'ECONNREFUSED',
+          metadata: { motivo: 'network_error' },
+        }),
+      )
+    })
+
+    it('[T-635] un abort por timeout se distingue del resto de errores de red (motivo: timeout_abort_25s)', async () => {
+      const abortError = new Error('The operation was aborted')
+      abortError.name = 'AbortError'
+      fetchSpy.mockRejectedValue(abortError)
+
+      await POST(makeReq())
+
+      expect(mockEmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'answer_save_backend_proxy_fallback',
+          metadata: { motivo: 'timeout_abort_25s' },
+        }),
+      )
+    })
+
+    it('[T-635] si el proxy ya consumió casi todo el presupuesto, el fallback local NO recibe otros 25s completos', async () => {
+      // Simula que el intento al backend tardó 24.5s antes de fallar: cuando el fallback llega
+      // al primer withDbTimeout (antifraude), presupuestoRestanteMs() tiene que reflejarlo — si
+      // en vez de eso se le siguen dando los 25000ms completos de ANTIFRAUD_TIMEOUT_MS, la suma
+      // (24500 + 25000) vuelve a superar el maxDuration=30 y reproduce el fallo que esto arregla.
+      let now = Date.now()
+      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now)
+      fetchSpy.mockImplementation(async () => {
+        now += 24500
+        throw new Error('ECONNREFUSED')
+      })
+
+      const { withDbTimeout } = require('../../../../lib/db/timeout')
+      const res = await POST(makeReq())
+
+      expect(res.status).toBe(200)
+      expect((withDbTimeout as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(1)
+      const [, primerTimeoutMs] = (withDbTimeout as jest.Mock).mock.calls[0]
+      // Muy por debajo del ANTIFRAUD_TIMEOUT_MS de 25000 sin recortar.
+      expect(primerTimeoutMs).toBeLessThan(10000)
+      // Y nunca 0 ni negativo: withDbTimeout(fn, 0) no tiene sentido — que corte
+      // cuanto antes, no que no llegue a intentarlo.
+      expect(primerTimeoutMs).toBeGreaterThanOrEqual(1000)
+
+      // El desglose de ruta lenta (T-312) SALE de verdad en este camino. Se afirma aquí porque es
+      // justo lo que nadie miraba: mientras el mock no lo declaraba, esta línea de la ruta no
+      // estaba «sin probar», estaba REVENTANDO, y el 500 se leía como un fallo del presupuesto.
+      expect(mockEmitFireAndForget).toHaveBeenCalled()
+
+      nowSpy.mockRestore()
+    })
+
+    it('[T-635] presupuestoRestanteMs() nunca baja de 1000ms aunque se haya agotado todo el margen', async () => {
+      let now = Date.now()
+      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now)
+      fetchSpy.mockImplementation(async () => {
+        now += 30000 // más que SAFE_TOTAL_BUDGET_MS entero
+        throw new Error('ECONNREFUSED')
+      })
+
+      const { withDbTimeout } = require('../../../../lib/db/timeout')
+      await POST(makeReq())
+
+      const [, primerTimeoutMs] = (withDbTimeout as jest.Mock).mock.calls[0]
+      expect(primerTimeoutMs).toBe(1000)
+
+      nowSpy.mockRestore()
     })
   })
 

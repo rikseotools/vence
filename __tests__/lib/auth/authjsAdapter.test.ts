@@ -386,6 +386,33 @@ describe('authjsAdapter — caché del token (anti-flood)', () => {
     expect(tokenFetches()).toBe(2)
   })
 
+  it('[T-692, investigación 08/08] DOS llamadas CONCURRENTES a getAccessToken() en carga de página disparan DOS fetches independientes, no comparten el que ya está en vuelo', async () => {
+    // Reproduce el escenario real: `Header.tsx` y `PendingExams.tsx` (u otro call-site con
+    // `exigeSesion`) montan casi a la vez, `cachedMint` está vacío en los dos, y NINGUNO
+    // espera a que el mint que YA salió termine — cada uno dispara el suyo. No es solo un
+    // desperdicio de red: el retry de `bearerConReintento.ts` (200 ms) tampoco espera a la
+    // petición que sigue en vuelo, dispara una TERCERA si hace falta. Se controla a mano
+    // cuándo resuelve el fetch para que las dos llamadas queden solapadas de verdad, no
+    // secuenciales por casualidad.
+    let resolverFetch: (() => void) | null = null
+    const pendiente = new Promise<void>((r) => { resolverFetch = r })
+    ;(global.fetch as jest.Mock).mockImplementation(async () => {
+      await pendiente
+      return { ok: true, status: 200, json: async () => ({ accessToken: 'tok', expiresAt: FUTURE }) }
+    })
+
+    const adapter = createAuthjsAuthAdapter()
+    const p1 = adapter.getAccessToken()
+    const p2 = adapter.getAccessToken()
+    resolverFetch!()
+    const [t1, t2] = await Promise.all([p1, p2])
+
+    expect(t1).toBe('tok')
+    expect(t2).toBe('tok')
+    // Esto es lo que se mide, no se supone: DOS fetches para pedir el MISMO token a la vez.
+    expect(tokenFetches()).toBe(2)
+  })
+
   it('refreshSession fuerza re-acuñación aunque el token esté cacheado (frescura para el caller)', async () => {
     mockGetSession.mockResolvedValue({ user: { id: APP_USER_ID, email: 'u@test.com' } })
     setTokenEndpoint(() => ({ ok: true, body: { accessToken: 'tok', expiresAt: FUTURE, user: { id: APP_USER_ID, email: 'u@test.com' } } }))

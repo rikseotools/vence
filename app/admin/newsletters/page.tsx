@@ -1,6 +1,7 @@
 // app/admin/newsletters/page.tsx - Panel de newsletters
 'use client'
 import { useState, useEffect, ChangeEvent } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useAuth } from '@/contexts/AuthContext'
 import EmailTemplatesTab from './EmailTemplatesTab'
@@ -3216,7 +3217,7 @@ export default function NewslettersPage() {
 
         {/* Modal: Ver newsletter */}
         {selectedNewsletter && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-start">
@@ -3263,7 +3264,7 @@ export default function NewslettersPage() {
 
         {/* Modal: Lista de usuarios (Enviados/Abiertos/Clicks) */}
         {showUsersModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
               {/* Header */}
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -3464,7 +3465,7 @@ export default function NewslettersPage() {
 
       {/* 📧 Progress Modal */}
     {sendingProgress.isActive && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: CAPAS.modal }}>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             📧 Enviando Newsletter

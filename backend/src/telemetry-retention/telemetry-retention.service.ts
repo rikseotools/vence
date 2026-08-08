@@ -30,6 +30,21 @@ export interface TelemetryRetentionResult {
    */
   vacuumFailed: string[];
   /**
+   * Tablas cuyo DELETE por lotes se cortó con error (vacío si todo fue bien). [T-733]
+   *
+   * Mismo razonamiento que `vacuumFailed`, aplicado a la operación que SÍ importa: el 08/08 un
+   * lote se pasó del `statement_timeout` y la excepción tumbó `run()` entero, así que el evento
+   * que quedó en `observable_events` fue literalmente `{"status":"failure"}` — sin cuántas filas
+   * se habían llegado a borrar, sin `remaining`, sin el mensaje del error. Un cron que falla y no
+   * dice POR QUÉ obliga a reconstruir el diagnóstico a mano cada vez.
+   *
+   * Diferencia con `vacuumFailed`, y es importante: un VACUUM fallido sigue siendo
+   * `status: 'success'` porque es higiene. Esto NO — si la purga se corta, el cron reporta error
+   * y `cron_sin_exito` tiene que seguir disparando. Aquí no se silencia nada; solo se deja de
+   * perder la medida.
+   */
+  purgaFallida: { tabla: string; error: string }[];
+  /**
    * `true` si `observable_events` ya está particionada (T-360) y este `run()` retuvo por
    * `DROP PARTITION` (`partman.run_maintenance_proc()`) en vez de por DELETE. `false` mientras
    * la migración de particionado no se haya aplicado — que es el estado de HOY.
@@ -41,6 +56,30 @@ export interface TelemetryRetentionResult {
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
 export const ATRASO_TOPE = 200_000;
+
+/**
+ * Filas por lote del DELETE. **10.000, no 50.000** — bajado el 08/08 tras medirlo. [T-733]
+ *
+ * Cada lote es UNA sentencia, así que compite contra el `statement_timeout` de 30 s del pool
+ * (`connection.statement_timeout` en `database.module.ts`). Con 50.000 no cabía: el
+ * `ctid IN (SELECT … LIMIT 50000)` sobre `observable_events` (6,9 GB, 10,7 M filas) se pasó del
+ * plazo la noche del 08/08 y tiró todo el `run()`.
+ *
+ * Y no fue mala suerte de una noche, fue una espiral: el 07/08 falló el VACUUM, así que los
+ * millones de tuplas muertas se quedaron sin compactar, así que el DELETE de la noche siguiente
+ * tenía que escarbar más para encontrar sus 50.000 → también falló. Dos noches sin drenar dejaron
+ * **918.040 filas pasadas de los 30 días de retención** (medido contra RDS el 08/08).
+ *
+ * El tope por pasada NO baja: `BATCH_SIZE × MAX_BATCHES` sigue siendo 2,5 M filas por tabla. Lo
+ * único que cambia es que se llega en más sentencias y cada una cabe de sobra en los 30 s.
+ *
+ * ⚠️ Esto NO sustituye al particionado de [T-360], que es el arreglo de fondo (la retención pasa
+ * a `DROP PARTITION`, sin DELETE ni VACUUM). Es lo que hace que la tabla drene MIENTRAS tanto.
+ */
+export const BATCH_SIZE = 10_000;
+
+/** Lotes máximos por tabla y ejecución. Con `BATCH_SIZE` mantiene el techo de 2,5 M filas/tabla. */
+export const MAX_BATCHES = 250;
 
 /**
  * Retención de las dos tuberías de telemetría (append-only, alto volumen):
@@ -70,11 +109,11 @@ export class TelemetryRetentionService {
   /** Días de retención del crudo. Ventana holgada sobre lo que miran los runbooks (24 h–7 d). */
   private readonly retentionDays = 30;
 
-  /** Filas por batch. */
-  private readonly batchSize = 50_000;
+  /** Filas por batch. Ver `BATCH_SIZE`. */
+  private readonly batchSize = BATCH_SIZE;
 
   /** Batches máximos por tabla y ejecución (2,5 M filas/tabla). Acota locks y drena el backlog en varias noches. */
-  private readonly maxBatches = 50;
+  private readonly maxBatches = MAX_BATCHES;
 
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
@@ -85,6 +124,7 @@ export class TelemetryRetentionService {
       batches: 0,
       remaining: {},
       vacuumFailed: [],
+      purgaFallida: [],
       observableEventsPorParticion: false,
       observableEventsParticionesDropeadas: 0,
     };
@@ -110,12 +150,14 @@ export class TelemetryRetentionService {
         'observable_events',
         'created_at',
         (n) => (result.batches += n),
+        (tabla, error) => result.purgaFallida.push({ tabla, error }),
       );
     }
     result.validationErrorLogsDeleted = await this.purgeTable(
       'validation_error_logs',
       'created_at',
       (n) => (result.batches += n),
+      (tabla, error) => result.purgaFallida.push({ tabla, error }),
     );
 
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
@@ -234,22 +276,47 @@ export class TelemetryRetentionService {
    * Borra en batches las filas de `table` cuya columna temporal `tsColumn` es más
    * antigua que la retención. `table` y `tsColumn` son literales controlados por el
    * código (nunca input externo) → `sql.raw` es seguro aquí.
+   *
+   * [T-613] El `ORDER BY tsColumn` del SELECT interno NO es cosmético, y es lo que
+   * hace que el lote quepa en el `statement_timeout` que documenta T-733. Medido con
+   * `EXPLAIN (ANALYZE, BUFFERS)` contra `observable_events` (6,2 M filas), mismo
+   * filtro y mismo LIMIT: sin `ORDER BY`, Seq Scan, 8.124 ms y 145.058 buffers de
+   * disco; con `ORDER BY`, Index Scan. Sin él, dos o tres iteraciones bastan para
+   * pasarse de los 30 s y caer por el `catch` de abajo — o sea que las dos causas se
+   * diagnosticaron por separado el mismo día y son la misma avería vista dos veces.
    */
   private async purgeTable(
     table: string,
     tsColumn: string,
     onBatch: (n: number) => void,
+    onFallo: (tabla: string, error: string) => void,
   ): Promise<number> {
     let deleted = 0;
     for (let i = 0; i < this.maxBatches; i++) {
-      const res = await this.db.execute(sql`
-        DELETE FROM ${sql.raw(table)}
-        WHERE ctid IN (
-          SELECT ctid FROM ${sql.raw(table)}
-          WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
-          LIMIT ${this.batchSize}
-        )
-      `);
+      let res: unknown;
+      try {
+        res = await this.db.execute(sql`
+          DELETE FROM ${sql.raw(table)}
+          WHERE ctid IN (
+            SELECT ctid FROM ${sql.raw(table)}
+            WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
+            ORDER BY ${sql.raw(tsColumn)}
+            LIMIT ${this.batchSize}
+          )
+        `);
+      } catch (error) {
+        // [T-733] Un lote que revienta (típicamente `statement_timeout`) corta el drenaje de ESTA
+        // tabla, pero no puede llevarse por delante el `run()`: lo ya borrado cuenta, la otra tabla
+        // se sigue purgando y `remaining` —que se calcula después— es justo el número que dice si
+        // esto se está drenando o no. Se anota y se sale del bucle: si un lote no cabe en el
+        // plazo, el siguiente tampoco va a caber.
+        const mensaje = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `${table}: lote ${i + 1} falló tras ${deleted} filas — ${mensaje}`,
+        );
+        onFallo(table, mensaje);
+        break;
+      }
       // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
       // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
       const count = filasAfectadas(res);

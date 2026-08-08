@@ -104,6 +104,35 @@ describe('[T-623] /estimate — GET y POST cuentan lo mismo', () => {
     expect(recibidos[1]).toEqual(recibidos[0]);
   });
 
+  // [T-411] Mismo riesgo que scopeToPosition: si GET y POST leyeran este campo de forma
+  // distinta, una selección con "incluir compartidas" se contaría diferente según el verbo.
+  it('los dos leen includeSharedOfficials igual (T-411)', async () => {
+    await controller.estimate(
+      {
+        positionType: 'auxiliar_administrativo_estado',
+        selectedLaws: 'CE',
+        onlyOfficialQuestions: 'true',
+        includeSharedOfficials: 'true',
+        difficultyMode: 'random',
+      },
+      resDoble(),
+    );
+    await controller.estimatePost(
+      {
+        positionType: 'auxiliar_administrativo_estado',
+        selectedLaws: ['CE'],
+        onlyOfficialQuestions: true,
+        includeSharedOfficials: true,
+        difficultyMode: 'random',
+      },
+      resDoble(),
+    );
+
+    expect(recibidos).toHaveLength(2);
+    expect(recibidos[1]).toEqual(recibidos[0]);
+    expect(recibidos[0].includeSharedOfficials).toBe(true);
+  });
+
   it('...y piden la MISMA clave de caché (si no, la misma selección se contaría dos veces)', async () => {
     await controller.estimate(
       {
