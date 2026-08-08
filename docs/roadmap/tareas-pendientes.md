@@ -3273,41 +3273,6 @@ actualizados a la fixture correcta. `npm run sim:rescate-flota` (8/8, mecánica 
 sin tocar) y `npx tsc --noEmit` limpios. 587 tests de `__tests__/flota/` + `__tests__/sessions/`
 en verde.
 
-### [T-625] 🟠 [ABIERTO 06/08/2026] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
-
-- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
-- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
-  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
-  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
-  enumerar las materias del tema y **no enumera ninguna**.
-- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
-  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
-  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
-  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
-  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
-  simplemente no tienen nada contra lo que comparar.
-- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
-  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
-  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
-  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
-  aislado aparecieron **14**.
-- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
-  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
-  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
-  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
-  continuación, no 14 descuidos independientes.
-- **QUÉ HACER:**
-  1. **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
-     kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro + kind propio en los dos
-     gemelos del sweep. **NO un silo nuevo.** Nace en 14, así que es un trinquete: cualquier subida
-     es una regresión demostrable.
-  2. **Completar los 14** con el texto LITERAL del programa oficial de cada oposición (el hub ya
-     tiene documento en muchas), y re-verificar el Paso 1. NUNCA inventar la continuación ni
-     «redondear» el epígrafe con lo que parezca: eso es exactamente lo que este defecto provoca.
-- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
-  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marcar solo el final, y medir antes
-  de ampliar el patrón.
-- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
 ### [T-626] 🟠 [ABIERTO 06/08] El bucle supervisor de la flota lleva desde que nació sin registrar ni una pasada: su `INSERT` nombra una columna que no existe y el `catch` de telemetría se lo traga
 
 - **Esfuerzo: rato.**
@@ -9209,6 +9174,51 @@ Fui a cerrarla y me encontré con que **no se podía**, por un motivo que no est
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-625] ✅ [HECHA 08/08] 14 temas activos sirven un epígrafe CORTADO en dos puntos: promete la lista de materias y no la trae
+
+- **Esfuerzo: rato** (el detector; completar los 14 epígrafes contra su fuente es aparte y va por oposición).
+- **QUÉ PASA:** el `topics.epigrafe` termina literalmente en `:` y ahí se acaba. *«La Ley 40/2015,
+  de 1 de octubre, de Régimen Jurídico del Sector Público:»* · *«Régimen Jurídico del Sector
+  Público (I):»* · *«La contratación del sector público (II):»*. El epígrafe anuncia que va a
+  enumerar las materias del tema y **no enumera ninguna**.
+- **POR QUÉ IMPORTA (no es cosmético):** el epígrafe es **la vara de medir** de todo el sistema de
+  temario. Con él se decide qué artículos entran en el `topic_scope` (Paso 2), se verifica su
+  literalidad contra el boletín (Paso 1) y se adjudican los recortes de sobre-inclusión. Un
+  epígrafe truncado **no se puede contrastar con nada**: cualquier scope le encaja, porque no dice
+  nada. Es un falso verde por construcción, y de los peores, porque las herramientas no fallan —
+  simplemente no tienen nada contra lo que comparar.
+- **DÓNDE SALIÓ:** trabajando el punto 5 de [T-518] (06/08/2026). De los 12 temas que escopaban el
+  Capítulo III de la Ley 40/2015 sin que su epígrafe lo pidiera, **11 se recortaron** y el 12.º
+  (`auxiliar_administrativo_sermas` T9) **hubo que dejarlo fuera**: su epígrafe está cortado, así
+  que no hay forma honesta de decidir si el Capítulo III entra o no. Al medir si era un caso
+  aislado aparecieron **14**.
+- **MEDIDO el 06/08/2026** contra RDS: **14 de 3.799** temas activos con epígrafe (`btrim(epigrafe) ~ ':\s*$'`).
+  Concentrados: `administrativo_extremadura` (6), `auxiliar_administrativo_sermas` (2), y sueltos en
+  `auxiliar_administrativo_universidad_huelva`, `administrativo_diputacion_valencia`,
+  `celador_sescam_clm`. Que estén concentrados sugiere un import por lotes que se comió la
+  continuación, no 14 descuidos independientes.
+- **Detector**, hermano del que ya existe para el epígrafe sucio (`lib/health/epigrafeRuidoBoletin.cjs`,
+  kind `epigrafe_ruido_boletin`): mismo sitio, mismo patrón, núcleo puro (`lib/health/epigrafeTruncado.cjs`)
+  + kind propio (`epigrafe_truncado`) en los dos gemelos del sweep. **No un silo nuevo.** Nace en 14,
+  así que es un trinquete: cualquier subida es una regresión demostrable.
+- **⚠️ OJO al criterio del detector:** terminar en `:` es señal fuerte pero no la única forma de
+  truncamiento; y hay epígrafes legítimos con `:` **en medio**. Marca solo el final.
+- **✅ VERIFICADO EN PRODUCCIÓN (08/08 ~08:20 UTC):** `content_health_findings` tiene **exactamente
+  14 filas** `kind=epigrafe_truncado`, `computed_at=2026-08-08T07:33:08Z` — posterior a la ventana
+  del @Cron (03:00 UTC) y al deploy backend `269e31e1` (finalizado 08/07 17:05:14 UTC), que sí
+  contiene el commit del detector (`1070b5fc5`, 05:29 UTC 08/07) como ancestro (confirmado con
+  `git merge-base --is-ancestor`). Las 14 filas coinciden con los temas/slugs esperados. El badge de
+  `/admin/salud-sistema` y el chip de `/admin/contenido` no necesitaron código nuevo: leen
+  `content_health_findings` de forma genérica (`app/api/admin/content-health/route.ts`) y la entrada
+  de `lib/admin/runbookRegistry.ts` (frase `"revisa los epígrafes cortados"`, presente en CLAUDE.md)
+  ya estaba wireada. Tests: `epigrafeTruncado.test.ts` 7/7, `runbookRegistry.test.ts` 12/12,
+  `content-sweep-parity.test.ts` 192/192.
+- **Queda, y es Fase 2 declarada aparte:** completar el texto LITERAL del programa oficial de cada
+  oposición para los 14 (el hub ya tiene documento en muchas) y re-verificar el Paso 1. NUNCA
+  inventar la continuación ni «redondear» el epígrafe con lo que parezca: eso es exactamente lo que
+  este defecto provoca.
+- **Relacionadas:** [T-518] (de donde sale), [T-528] (temarios sin contrastar contra su fuente).
 
 ### [T-617] ✅ [HECHA 08/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
 
