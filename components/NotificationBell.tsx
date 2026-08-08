@@ -564,23 +564,19 @@ export default function NotificationBell() {
     oposicionAlerts.refresh() // y los avisos de oposición (8c)
   }
 
-  // 🆕 MEZCLAR NOTIFICACIONES DE DISPUTAS CON NOTIFICACIONES PRINCIPALES
+  // [T-378] Las respuestas a impugnaciones (disputes) YA NO se mezclan aquí: salieron de
+  // la campana y tienen su propio badge en el botón de Soporte (useSupportUnreadBadge),
+  // igual que las respuestas de feedback (filtradas en useIntelligentNotifications). Se
+  // leen/despachan desde /soporte, que ya tiene su propia UI completa (pestaña
+  // "Impugnaciones", deep-link ?tab=impugnaciones&dispute_id=...) — no se pierde nada.
+  // `disputeNotifications` sigue viva en este componente porque handleDismiss/
+  // handleMarkAsRead/la alegación inline la siguen usando por si algún día vuelve a
+  // alimentarse una lista de disputas aquí; el badge de Soporte (Header.tsx) es
+  // independiente y consulta su propio endpoint (useSupportUnreadBadge).
   const getAllNotifications = (): Notification[] => {
-    // Convertir disputas a formato Notification (añadir priority)
-    const disputeNotifs: Notification[] = (disputeNotifications.notifications || []).map(d => ({
-      ...d,
-      priority: 70, // Prioridad alta para disputas
-      icon: d.status === 'resolved' ? '✅' : d.status === 'appealed' ? '📝' : '❌',
-      color: 'blue' as const,
-      bgColor: 'bg-blue-100 dark:bg-blue-900/50',
-      textColor: 'text-blue-600 dark:text-blue-400',
-      borderColor: 'border-blue-200 dark:border-blue-800'
-    }))
-
-    // Combinar notificaciones principales con disputas + avisos de oposición (8c)
+    // Combinar notificaciones principales con avisos de oposición (8c)
     const combinedNotifications: Notification[] = [
       ...notifications,
-      ...disputeNotifs,
       ...oposicionAlerts.notifications
     ]
 
@@ -605,38 +601,28 @@ export default function NotificationBell() {
       return filteredBySwipe
     }
     
-    // Filtrar por categoría - las disputas van en 'important'
-    const disputeNotifs = (disputeNotifications.notifications || []).filter(notification => {
-      const swipeState = swipeStates[notification.id]
-      return !(swipeState && swipeState.opacity === 0)
-    })
-    
+    // [T-378] Las disputas ya no se filtran por categoría aquí — ver getAllNotifications.
     const categoryKey = selectedCategory as keyof typeof categorizedNotifications
     const mainNotifs = (categorizedNotifications[categoryKey] || []).filter((notification: Notification) => {
       const swipeState = swipeStates[notification.id]
       return !(swipeState && swipeState.opacity === 0)
     })
 
-    if (selectedCategory === 'important') {
-      // Cast dispute notifications to Notification type for compatibility
-      return [...mainNotifs, ...(disputeNotifs as unknown as Notification[])]
-    }
-    
     return mainNotifs
   }
 
-  // 🆕 CALCULAR TOTAL DE NOTIFICACIONES NO LEÍDAS INCLUYENDO DISPUTAS
+  // [T-378] Total de la campana: SOLO avisos de estudio + avisos de oposición. Las
+  // respuestas de soporte (feedback + impugnaciones) tienen su propio badge en el botón
+  // de Soporte — antes se sumaban aquí y el número nunca bajaba a 0 si había impugnaciones
+  // sin leer, aunque el usuario despachara todo lo que veía en la campana.
   const getTotalUnreadCount = (): number => {
     const mainUnread = unreadCount || 0
-    const disputeUnread = disputeNotifications.unreadCount || 0
     const oposicionUnread = oposicionAlerts.unreadCount || 0
-    return mainUnread + disputeUnread + oposicionUnread
+    return mainUnread + oposicionUnread
   }
 
   // Obtener color del badge según la prioridad máxima
   const getBadgeColor = (): string => {
-    // Si hay disputas no leídas, prioridad alta
-    if ((disputeNotifications.unreadCount || 0) > 0) return 'bg-red-500'
     if (categorizedNotifications.critical.length > 0) return 'bg-red-500'
     if (categorizedNotifications.important.length > 0) return 'bg-orange-500'
     if (categorizedNotifications.recommendations.length > 0) return 'bg-yellow-500'
