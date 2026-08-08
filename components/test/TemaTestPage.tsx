@@ -270,7 +270,7 @@ export default function TemaTestPage({
           setUserStatsLoading(true)
           // Cargar racha global en paralelo con topic data
           // Exige sesión desde [T-565]; sin Bearer devuelve 401 ([T-671]).
-          getAuthHeaders()
+          getAuthHeaders({ exigeSesion: true, endpoint: '/api/v2/user-stats' })
             .then(headers => fetch(`/api/v2/user-stats?userId=${user.id}`, { headers }))
             .then(r => r.json())
             .then(d => { if (d.success) setGlobalStreak(d.currentStreak ?? 0) })

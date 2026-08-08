@@ -2,6 +2,7 @@ import { TelemetryRetentionCron } from './telemetry-retention.cron';
 import type { TelemetryRetentionService } from './telemetry-retention.service';
 import type { ObservabilityService } from '../observability/observability.service';
 import type { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
+import type { TelemetryRetentionResult } from './telemetry-retention.service';
 
 /**
  * Lo que el cron EMITE, que no es lo mismo que lo que el servicio DEVUELVE.
@@ -15,7 +16,7 @@ import type { HeartbeatRegistry } from '../heartbeat/heartbeat.registry';
  * literalmente el incidente [T-613]).
  */
 describe('TelemetryRetentionCron — el evento que emite', () => {
-  const resultadoBase = {
+  const resultadoBase: TelemetryRetentionResult = {
     observableEventsDeleted: 0,
     validationErrorLogsDeleted: 12,
     batches: 1,
@@ -25,7 +26,7 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     observableEventsParticionesDropeadas: 0,
   };
 
-  function montar(resultado: typeof resultadoBase) {
+  function montar(resultado: TelemetryRetentionResult) {
     const emit = jest.fn().mockResolvedValue(undefined);
     // `runWithHeartbeat` emite el `cron_tick` de arranque por otra vía (fire-and-forget);
     // sin este doble, el wrapper revienta antes de llegar al `cron_run` que se quiere probar.

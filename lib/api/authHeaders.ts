@@ -17,21 +17,53 @@
 // la mecánica. Guardarraíl: `__tests__/guardrails/bearerTokenSinglePath.test.ts`.
 import { auth } from '@/lib/auth'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
+import { obtenerBearerConReintento } from '@/lib/api/bearerConReintento'
 import { emitClientEvent, hayUsuarioConocido } from '@/lib/observability/client'
 
 const DEVICE_ID_KEY = 'vence_device_id'
+
+/** Opciones de `getAuthHeaders`. Ver `exigeSesion`. */
+export interface OpcionesCabeceras {
+  /**
+   * El llamante va a una ruta que EXIGE identidad (guarda de propiedad, [T-565]). Si aun así
+   * no hay token, salir sin cabecera es un 401 garantizado y una pantalla en blanco: se emite
+   * `auth_header_sin_token` para que quede visible.
+   *
+   * No se activa por defecto a propósito: `getAuthHeaders()` lo usan también rutas públicas,
+   * donde no tener token es lo NORMAL y emitir ahí ahogaría la señal (misma lección que
+   * `senal_error_sin_vigilancia`: un evento que grita en falso se acaba silenciando entero).
+   */
+  exigeSesion?: boolean
+  /** Ruta destino, solo para poder agrupar la señal por endpoint. */
+  endpoint?: string
+}
 
 /**
  * Obtiene headers de autenticación para llamadas fetch a API routes.
  * El token lo sirve el puerto (cacheado y compartido); aquí solo se envuelve en
  * `Authorization` y se añaden las cabeceras de dispositivo (anti-fraude).
+ *
+ * [T-692] Si el token no está a la primera se pide UNA vez más (`bearerConReintento`), porque
+ * la alternativa medida era emitir una petición condenada al 401 y dejar la pantalla vacía sin
+ * que nadie reintentara (0 de 29 recuperaciones en `user-stats`).
  */
-export async function getAuthHeaders(): Promise<Record<string, string>> {
+export async function getAuthHeaders(
+  opciones: OpcionesCabeceras = {},
+): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
 
   let motivoSinToken: 'sin_token' | 'excepcion' | null = null
   try {
-    const accessToken = await auth.getAccessToken()
+    // [T-692] Donde el token es OBLIGATORIO (ruta con guarda de propiedad) se pide una segunda
+    // vez antes de rendirse: salir sin cabecera ahí es un 401 garantizado y una pantalla vacía
+    // que nadie reintenta (medido: 0 de 29 recuperaciones en `/api/v2/user-stats`).
+    //
+    // En el resto se conserva EXACTAMENTE el camino de antes —un intento— porque en una página
+    // pública no tener token es lo normal: reintentar ahí metería 200 ms a cada llamada anónima
+    // sin arreglar nada, y ese efecto lateral haría inatribuible la mejora que se va a medir.
+    const accessToken = opciones.exigeSesion
+      ? (await obtenerBearerConReintento({ pedirToken: () => auth.getAccessToken() })).token
+      : await auth.getAccessToken()
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`
     } else {
@@ -51,11 +83,17 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   // anónimo, y romper aquí les rompería a ellos. Lo que cambia es que ahora se VE. Se filtra
   // por `estaAutenticado()` para no medir a los anónimos, que son el caso normal y ahogarían
   // la señal.
+  //
+  // [T-692] Aquí NO se añadió un segundo evento propio: `auth_header_sin_token` ya dice este
+  // hecho y su filtro (`hayUsuarioConocido`) es más ancho que cualquier declaración por
+  // call-site, porque cubre también a los que no declaran nada. Dos emisores de lo mismo no
+  // miden el doble: divergen. Lo único que se le suma es el `endpoint`, para poder agrupar.
   if (motivoSinToken && typeof window !== 'undefined' && hayUsuarioConocido()) {
     emitClientEvent({
       severity: 'error',
       eventType: 'auth_header_sin_token',
-      metadata: { motivo: motivoSinToken },
+      endpoint: opciones.endpoint,
+      metadata: { motivo: motivoSinToken, exigeSesion: Boolean(opciones.exigeSesion) },
     })
   }
 

@@ -1210,12 +1210,11 @@ equivocada.
 **PENDIENTE:** nada funcional. Cerrarla cuando se confirme que el dossier lo imprime en el uso real
 de otra sesión.
 
-### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
+### [T-692] 🔴 [ABIERTO 08/08] La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve días a cero
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
-**no mandaban** el token. Los tres que llaman a `/api/exam/pending` (`app/Header.tsx:197`,
-`components/UserAvatar.tsx:97`, `components/PendingExams.tsx:64`) **sí** lo mandan hoy — y aun así
-un tercio largo de las llamadas se responde con 401.
+**no mandaban** el token. Los que llaman a `/api/exam/pending` y `/api/v2/user-stats` **sí** lo
+mandan — y aun así un tercio largo de las llamadas se responde con 401.
 
 #### Lo que lo destapa: `/api/exam/pending` llevaba NUEVE DÍAS a cero
 
@@ -1226,47 +1225,87 @@ un tercio largo de las llamadas se responde con 401.
 | **08/08 (hoy, post-deploy)** | **44,2 % · 18 usuarios** | 42,9 % · 11 usuarios |
 
 `exam/pending` **no requería identidad** hasta [T-565]; por eso su 401 era literalmente cero. Al
-exigirla, hereda una carrera que `user-stats` **ya tenía y que nadie había mirado**: su 20-36 %
-diario es de siempre, no del incidente. Son dos síntomas del mismo defecto.
+exigirla hereda un defecto que `user-stats` **ya tenía y que nadie había mirado**: su 20-36 %
+diario es de siempre. Son dos síntomas de lo mismo.
 
-#### La causa, medida y no supuesta
+#### La causa, DEMOSTRADA contra producción (no supuesta)
 
-`getAuthHeaders()` (`lib/api/authHeaders.ts`) **falla en silencio**: si `auth.getAccessToken()`
-todavía no tiene token, el `catch {}` devuelve `{}` **sin `Authorization`**, y la petición sale
-igualmente. El componente arranca su `fetch` en cuanto `user` existe, que es antes.
+Llamando a los dos endpoints desde fuera con un Bearer recién acuñado:
 
-- **Mediana de 0 s** desde el primer evento de la sesión; **55 de 87 (63 %)** en los **10 primeros
-  segundos** → es el arranque de página, no un token caducado a media sesión.
-- **No se recupera solo:** de 58 fallos en `exam/pending` solo **7** vuelven a acertar en los 2 min
-  siguientes; en `user-stats`, **0 de 29**. Se pide una vez, se falla y **nadie reintenta**.
+```
+/api/v2/user-stats    con Bearer válido → HTTP 200
+                      sin Bearer        → HTTP 401 {"reason":"no_bearer_token"}
+/api/exam/pending     con Bearer válido → HTTP 200
+                      sin Bearer        → HTTP 401 {"reason":"no_bearer_token"}
+```
 
-#### Lo que ve la persona
+**El servidor está bien: la petición sale sin la cabecera.** `getAuthHeaders()`
+(`lib/api/authHeaders.ts`) **fallaba en silencio** — si `auth.getAccessToken()` no tenía token, el
+`catch {}` devolvía `{}` y **la petición salía igual**.
 
-Estadísticas a 0, exámenes pendientes vacíos y, según el call-site, tests que no se corrigen — con
-sesión válida y sin un solo mensaje de error. `UserAvatar: v2 stats error: No autorizado` lleva
-**3.704 apariciones desde el 09/07**, con la app dándose por buena.
+**Por qué era invisible, que es lo peor:** el navegador adjunta la cookie de sesión por su cuenta,
+así que `requestHadCredentials()` da `true` y el servidor no lo distingue de una sesión con el
+token roto. Se contabiliza como rechazo legítimo. **7.000 rechazos en 24 h y el `reason` no
+constaba en ningún sitio.**
 
-**Caso real:** María del Mar Rodríguez (feedback `3ca20894`) **pidió darse de baja 7 minutos
-después** de su primer 401, tras 106 en una hora. Siguió media hora intentándolo y hasta miró
-Premium. Free, 22 días de alta, 4 preguntas respondidas en total.
+- **Mediana de 0 s** desde el primer evento de la sesión; **55 de 87 (63 %)** en los 10 primeros
+  segundos → es el arranque de página.
+- **No se recupera solo:** 7 de 58 en `exam/pending`; **0 de 29** en `user-stats`.
 
-#### Por dónde va el arreglo (a decidir)
+⚠️ **Dos hipótesis que los datos DESCARTARON** (anotadas para que nadie las repita): (a) el backoff
+de 60 s de `UNAUTH_BACKOFF_MS` — solo 15 de 7.007 fallos tenían un 401 propio de `/api/auth/token`
+antes; (b) discrepancia de identidad — eso responde **403** y `auth_identidad_ajena_rechazada` solo
+tuvo 238 eventos de 4 usuarios.
 
-El punto es UNO y ya está centralizado, que es lo bueno: `getAuthHeaders()` es el único sitio por
-donde pasan estas cabeceras (guardarraíl `bearerTokenSinglePath.test.ts`). Salidas:
+#### ✅ Hecho
 
-1. **Esperar al token** en vez de salir sin él — que `getAccessToken()` resuelva cuando la sesión
-   esté lista, en lugar de devolver vacío.
-2. **No disparar** el `fetch` hasta que haya token (gatear los tres call-sites por sesión lista).
-3. **Reintentar** el 401 una vez con token fresco.
+- **Núcleo puro `lib/api/bearerConReintento.ts`**: el token se pide, y si no está, se pide **UNA
+  vez más** tras 200 ms. Un solo reintento a propósito — [T-419] es el daño de martillear contra un
+  401 y [T-210] el de re-acuñar (58.400/día). Para un anónimo el segundo intento no cuesta red: el
+  adapter contesta desde su backoff.
+- **El reintento va SOLO donde el token es obligatorio** (`exigeSesion`). En una página pública no
+  tenerlo es lo normal, y reintentar ahí metería 200 ms a cada llamada anónima sin arreglar nada;
+  peor aún, ese efecto lateral haría imposible atribuir a este cambio la mejora que se va a medir.
+  El resto de la app **conserva exactamente el camino de antes** (un intento).
+- **Cableado en el punto ÚNICO** (`getAuthHeaders`), no en los componentes: el guardarraíl
+  `bearerTokenSinglePath.test.ts` existe justo para que no haya un segundo camino.
+- **NINGUNA señal nueva, a propósito.** Se había escrito una (`bearer_ausente`) y **se retiró al
+  mergear**: la sesión `movil4` había añadido en paralelo `auth_header_sin_token` para este mismo
+  hecho, y su filtro es **mejor** — `hayUsuarioConocido()` cubre también los call-sites que no
+  declaran nada, mientras que el mío dependía de que alguien se acordara de poner `exigeSesion`.
+  Dos emisores de lo mismo no miden el doble: divergen. Lo único que se le suma es el `endpoint` y
+  el `exigeSesion` en la metadata, para poder agrupar. La notificación de [T-685] —la alerta que
+  suena— ahora manda a mirar esa señal ANTES de nada, porque separa «el cliente no manda el token»
+  de «el servidor rechaza uno bueno», que se arreglan en sitios distintos.
+- **7 call-sites declarados** (`exigeSesion` + endpoint): `Header.tsx`, `UserAvatar.tsx` (×2),
+  `PendingExams.tsx`, `UserProfileModal.js`, `TemaTestPage.tsx` y la página de tema de AGE.
+  `TemaTestPage` **no estaba en el grep inicial** y lo cazó la calibración del guardarraíl.
+- **Capas:** 10 unitarios del núcleo (`__tests__/api/bearerConReintento.test.ts`, con las cifras
+  reales) + 4 en la suite que YA existía de `authHeaders` (donde se fija el acotado, incluido el
+  caso «sin `exigeSesion` no se reintenta») · el guardarraíl `identidadEnRutasConDueno` ampliado
+  con un tercer bloque · un
+  **E2E en navegador de verdad** (`e2e/authed/bearer-en-rutas-con-dueno.spec.ts`) que comprueba que
+  la cabecera VIAJA, que es lo único que ningún unitario puede afirmar · simulación
+  `npm run sim:bearer-ausente` (contrato del servidor + % del día contra la línea base + señal de
+  causa). Suites: 63/63 + alertas del backend 364/364 + typecheck en verde.
+- **Trinquete, no muro:** hay 24 rutas con guarda y 22 llamadas no declaraban `exigeSesion`.
+  Exigirlo a todas nace en rojo y un guardarraíl que nace rojo se ignora (lección de
+  `landing_cifra_sin_respaldo`). Se cierra donde el daño está MEDIDO (las dos rutas) y el resto
+  lleva techo que **solo puede bajar**: 22 → **21**.
 
-⚠️ (3) sola **no basta y puede empeorar**: [T-419] es exactamente el daño de reintentar contra un
-401 sin arreglar la causa. La medida de éxito es el **porcentaje diario de 401 de esos dos
-endpoints**, que tiene nueve días de línea base limpia con la que comparar.
+#### ⏳ Falta: verificar EN PRODUCCIÓN
+
+Nada de esto vale hasta desplegar. `npm run sim:bearer-ausente` sale **en rojo ahora mismo** (38 %
+en `exam/pending`), que es lo correcto: mide el efecto, no la intención. Al desplegar hay que
+volver a correrlo y esperar que `exam/pending` baje hacia su suelo de 0 %.
+
+**La medida de éxito es el porcentaje diario de 401 de esos dos endpoints**, que tiene nueve días
+de línea base limpia. Si aparece `auth_header_sin_token`, la causa sigue siendo del cliente.
 
 **Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
-token), [T-419] (reintento contra 401), [T-685] (la alerta que hoy no dispara: 18 usuarios quedan
-por debajo del umbral de 15… pero el ratio por 100 respuestas no llega a 25).
+token), [T-419] (reintento contra 401), [T-210] (flood de acuñación), [T-685] (la alerta que suena;
+hoy no dispara porque 18 usuarios quedan por debajo de su umbral de 15 **y** el ratio por 100
+respuestas no llega a 25).
 
 ### [T-690] 🟠 [ABIERTO 08/08] Triar los tests de integración que salen rojos ahora que por fin se ejecutan
 
@@ -6936,6 +6975,10 @@ ponerse a verificar una por una.
   - **REPRODUCIDO, no solo razonado:** `__tests__/hooks/useDisputeNotifications401.test.tsx` (6 tests) monta el hook de verdad (`renderHook` + timers falsos), simula un 401 sostenido y comprueba que tras 10 ticks de 60s **sigue en 1 sola petición** (antes del fix habrían sido 11 — confirmado revirtiendo el fix a mano: 3 de los 6 tests fallan exactamente como se espera, y vuelven a pasar con el fix puesto). Cubre también: visibilitychange no reintenta, una sesión nueva (`user` distinto) SÍ vuelve a intentar, un 500 SÍ sigue reintentando (para no convertir esto en "para ante cualquier error"), el sondeo normal (200) no cambia, y sin usuario no arranca (comportamiento previo intacto). Typecheck limpio; 224/224 en toda la carpeta `__tests__/hooks`.
   - **Pendiente de verificar EN VIVO tras el deploy del frontend** (no puedo desplegar desde aquí): que la query de la ficha (`disputes/notifications 401` agrupada por `user_id`) deje de mostrar rachas de decenas/cientos de eventos seguidos con el mismo `user_id`, y que el volumen total baje de forma sostenida (no solo un día bueno).
 
+- **✅ SEGUNDO FIX (07/08) — un mecanismo real de identidad de objeto, corregido tras revisión el 08/08 porque la narrativa de "verificado en producción" no se sostenía.**
+  - **El mecanismo de código es real y está REPRODUCIDO en test, no solo razonado:** el `useEffect` del hook dependía de `[user]` (el objeto completo, comparado por referencia), y `AuthContext` puede reconstruir ese objeto (mismo `id`, referencia NUEVA) sin que sea un login real — cada reconstrucción reiniciaba `sessionInvalidRef.current = false`, deshaciendo el corte del primer fix. Arreglo: depender de `userId = user?.id` en vez de `user`. Confirmado independientemente revirtiendo SOLO el hook a `origin/main` y comprobando que el test nuevo (`__tests__/hooks/useDisputeNotifications401.test.tsx`, "re-hidratación, no login") falla con 2 llamadas en vez de 1; restaurando el fix, pasa. 7/7 tests, eslint limpio.
+  - **⚠️ Lo que NO se sostuvo al revisar (08/08): la afirmación "verificado en producción, no supuesto" de que el primer fix, ya desplegado, seguía fallando.** El comentario original citaba deploy_version/eventos como prueba, pero al comprobar los timestamps: `c0f110243` (primer fix) se commiteó `2026-08-07T02:57:29Z`; el primer `deploy_version` que lo contiene como ancestro no aparece hasta `2026-08-07T11:39:52Z` (~8h42m después). **Los eventos citados como "el fix ya desplegado seguía fallando" vienen de `deploy_version` que empezaron a servir HORAS ANTES de que ese commit existiera** (uno desde las 21:24Z del día anterior) — son contenedores pre-fix, no evidencia de que el fix desplegado fallara. Y en sentido contrario: en las ~20h de datos posteriores al primer deploy_version que sí contiene el fix, no aparece ninguna racha de 60s nueva — indicio de que el primer fix SÍ funcionó una vez vivo. **No se revierte este segundo fix** (el mecanismo de identidad de objeto es real, reproducido y una mejora legítima independiente de esta narrativa), pero la causa "el primer fix falló en producción" queda como NO DEMOSTRADA — corregido el comentario del test y esta ficha para no dejarlo documentado como hecho confirmado. Detalle completo: revisión `revisado T-419` de esta misma fecha.
+
 
 ### [T-424] 🟡 [ABIERTO 31/07 — lote 1 de 8 cerrado] Cubo «explicación apelotonada»: la banda 5-9 impresiones (97 preguntas), que es lo que queda vivo del cubo
 
@@ -7148,6 +7191,35 @@ pero eso hay que comprobarlo, no suponerlo.
   - **Los 22 falsos positivos** eran paráfrasis correctas, preguntas de NEGACIÓN que el filtro no reconocía, o claves cortas. **`RE_NEGATIVA` se amplió TRES veces durante la propia revisión** (`no atribuye`, `entre los que no se encuentra`, `no se considera`, `no se constituyen`) — cada enunciado nuevo destapaba otro hueco de la lista cerrada. Todos fijados en `__tests__/health/vinculoArticuloVecinoNegacion.test.js` con sus contraejemplos.
 - **⏳ QUEDA — la decisión sobre el resto de las 1.713 firmadas:** No hay atajo determinista: cada una exige abrir su norma y aplicar §3.1 (test directo + test inverso). Lista en `scratchpad/t465-medibles.json` (filtrar `real:true`). Empezar por las de más exposiciones.
 - **NOTA:** Limpiarles los flags (ponerlos a NULL) las devuelve a la cola de revisión de golpe; dejarlas las mantiene figurando como comprobadas. Opción intermedia: limpiar solo las que además salgan en los detectores deterministas. **NO son necesariamente preguntas malas** — es que nadie ha mirado su contenido.
+
+**RESUELTAS las 2 últimas `needs_human` (08/08) — verificadas contra fuente oficial, no aplicadas (credencial de solo lectura). Plan completo en `scratchpad/t465/plan-needs-human.md`:**
+- **`8b5d00f1` (Galicia, gerencia de área sanitaria) → RETIRAR.** El único artículo de la Ley 8/2008 que cruza gerencia+nombramiento (el 121.7) es una cláusula de remisión genérica, no nombra a la Consellería de Sanidad; revisado el banco entero, no hay decreto de estructura orgánica del SERGAS/áreas sanitarias importado que lo atribuya. `admin_content_not_in_law`.
+- **`eab05295` (Andalucía, competencia del BOJA) → la clave ES correcta, RESTAURAR a `approved`.** El diagnóstico de la sesión anterior era acertado (nuestra copia del art. 1 es un resumen de 370 caracteres, no el texto legal) pero quedaba sin comprobar contra el BOJA real. Hecho ahora: fetch RAW (no resumen de LLM — lección de T-679) de `https://www.juntadeandalucia.es/boja/2025/513/1` (Decreto 168/2025, BOJA Extraordinario nº 13/2025) — el art. 1.k) dice literalmente *«La dirección, edición y publicación del Boletín Oficial de la Junta de Andalucía en su sede electrónica»*, EXACTO a la opción correcta. Artículo 1 completo re-extraído y formateado, listo para reemplazar el resumen: `scratchpad/t465/decreto168-2025-articulo1-verbatim.txt`.
+- **Hallazgo NUEVO, medido, fuera de alcance de esta ficha:** el Decreto 168/2025 entero (21 artículos) está importado como resúmenes parafraseados (215-386 caracteres cada uno) en vez de texto literal — el art. 1 real mide 4.650. Cuelgan 8 preguntas (7 activas). Muestreadas 5 de las 6 del art. 2 contra el texto real (también extraído, `scratchpad/t465/decreto168-2025-articulo2-raw.txt`): las 5 tienen clave correcta, mismo patrón (resumen malo, clave buena). La sexta (`20c697b1`, departamentos del SAS) no encaja con el art. 2 que sí tengo — puede estar mal vinculada o necesitar un artículo posterior no comprobado. Y el `laws.boe_url` de este decreto apunta a OTRO documento (una Orden de incendios forestales, verificado con WebFetch) — la URL correcta es la de arriba. No re-importo los 20 artículos restantes: son fuera del "rato" declarado para los 2 `needs_human`, quedan anotados con cifras para quien lo retome.
+
+**✅ DECISIÓN DE MANUEL (08/08, pregunta #111): OPCIÓN A — limpiar los flags a NULL.** *«El falso verde
+es peor que el hueco declarado, y "no lo sé" tiene que poder decirse — es uno de los nueve principios
+del andamiaje de sesiones (…) Dejarlas en B es exactamente lo contrario: el banco seguiría AFIRMANDO
+que 1.680 preguntas están verificadas sabiendo nosotros que la firma fue cosmética.»* Dos condiciones,
+ambas verificadas ANTES de escribir nada:
+1. **Que nulear `article_ok`/`answer_ok` no desactive ni jubile nada por sí solo.** Comprobado: esos
+   flags viven en `ai_verification_results`, NO en `questions`; `information_schema.triggers` da
+   **0 filas** para esa tabla, y `questions.is_active` es `GENERATED` solo desde `lifecycle_state` —
+   no hay ruta de cascada. El único cron que degrada por antigüedad sin verificar
+   (`lifecycle_grandfather_expire`, aún SIN programar) mira `questions.verified_at`, un campo distinto.
+2. **Dejar rastro de que fue saneamiento, no verificación nueva.** El script nuevo inserta un
+   `observable_events` por fila limpiada con el MISMO `event_type` que ya usa el trigger de
+   prevención en vivo (`verificacion_cosmetica_firmaba_fondo`) — no un tipo nuevo, para que
+   saneamiento retroactivo y prevención compartan serie temporal.
+
+**Construido: `scripts/calidad/sanear-verificacion-cosmetica.cjs`** (`npm run
+sanear:verificacion-cosmetica [-- --aplicar]`), SIMULA por defecto. Núcleo puro compartido
+`calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` (17 tests, 5 nuevos). Registrado en
+`toolRegistry.ts`. **Medido en dry-run (08/08): 1.705 filas a limpiar** (bajó de las 1.713 originales
+por el trabajo pregunta-a-pregunta ya hecho arriba). **NO aplicado**: mi credencial (`VENCE_LECTOR_URL`)
+es de solo lectura — necesita `--aplicar` de alguien con escritura, y entonces la cifra exacta que
+quede en NULL se conocerá con certeza (debería ser 1.705, salvo que algo cambie entretanto).
+
 - **Relacionadas:** [T-458] (las 8 impugnaciones que lo destaparon), [T-462] (otro guardarraíl desalineado del mismo flujo).
 
 ### [T-464] 🟢 [ABIERTO 01/08] Importar el I Plan de Igualdad de la Junta 2023-2027 como contenido propio (celador SAS se quedó sin ese temario)
