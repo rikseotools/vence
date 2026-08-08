@@ -59,7 +59,7 @@
     "primary_article_number": "2",
     "law_slug": "rd-1125-2024-tic-age",
     "article_label": "RD 1125/2024, art. 2 (Ámbito de aplicación)",
-    "question_text": "Según el artículo 2 del RD 1125/2024, ¿a qué se extiende el ámbito de aplicación de esta norma?",
+    "question_text": "Según el artículo 2 del Real Decreto (RD) 1125/2024, ¿a qué se extiende el ámbito de aplicación de esta norma?",
     "options": [
       "A la Administración del Estado y a la Administración local, entendiendo por tal los entes que integran las entidades locales, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público.",
       "A la Administración del Estado y a las comunidades autónomas, entendiendo por tales las administraciones autonómicas y sus organismos públicos vinculados, de acuerdo con lo previsto en la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público.",
@@ -143,7 +143,7 @@
     "primary_article_number": "9",
     "law_slug": "rd-1125-2024-tic-age",
     "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
-    "question_text": "Según el apartado 2 del artículo 9 del RD 1125/2024, ¿qué carácter tiene la utilización de los medios y servicios transversales respecto a los medios y servicios particulares empleados por las distintas unidades?",
+    "question_text": "Según el apartado 2 del artículo 9 del Real Decreto (RD) 1125/2024, ¿qué carácter tiene la utilización de los medios y servicios transversales respecto a los medios y servicios particulares empleados por las distintas unidades?",
     "options": [
       "Carácter preferente, pero no sustitutivo, respecto a los medios y servicios particulares empleados por las distintas unidades.",
       "Carácter voluntario y complementario respecto a los medios y servicios particulares empleados por las distintas unidades.",
@@ -171,7 +171,7 @@
     "primary_article_number": "9",
     "law_slug": "rd-1125-2024-tic-age",
     "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
-    "question_text": "El apartado 3 del artículo 9 del RD 1125/2024 obliga a escoger, entre unidades con necesidades comunes, la alternativa que permita compartir el servicio. ¿Qué excepción prevé el propio apartado a esa obligación?",
+    "question_text": "El apartado 3 del artículo 9 del Real Decreto (RD) 1125/2024 obliga a escoger, entre unidades con necesidades comunes, la alternativa que permita compartir el servicio. ¿Qué excepción prevé el propio apartado a esa obligación?",
     "options": [
       "Salvo autorización expresa en sentido contrario de la persona titular del Ministerio para la Transformación Digital y de Función Pública.",
       "Salvo autorización expresa en sentido contrario de la persona titular de la Dirección de la Agencia.",
@@ -199,7 +199,7 @@
     "primary_article_number": "9",
     "law_slug": "rd-1125-2024-tic-age",
     "article_label": "RD 1125/2024, art. 9 (Medios y servicios digitales comunes y declarados transversales)",
-    "question_text": "Según el apartado 4 del artículo 9 del RD 1125/2024, ¿a quién corresponde la elaboración del Catálogo de Medios y Servicios Comunes?",
+    "question_text": "Según el apartado 4 del artículo 9 del Real Decreto (RD) 1125/2024, ¿a quién corresponde la elaboración del Catálogo de Medios y Servicios Comunes?",
     "options": [
       "Corresponde a la Agencia la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Comisión de Estrategia TIC.",
       "Corresponde a la Comisión de Estrategia TIC la elaboración, del Catálogo de Medios y Servicios Comunes, que incluirá también todos los declarados transversales por la Agencia.",
@@ -255,7 +255,7 @@
     "primary_article_number": "10",
     "law_slug": "rd-1125-2024-tic-age",
     "article_label": "RD 1125/2024, art. 10 (Proyectos de interés prioritario)",
-    "question_text": "Según el artículo 10 del RD 1125/2024, ¿a quién se traslada la declaración de un proyecto de interés prioritario, y para qué?",
+    "question_text": "Según el artículo 10 del Real Decreto (RD) 1125/2024, ¿a quién se traslada la declaración de un proyecto de interés prioritario, y para qué?",
     "options": [
       "La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio de Hacienda y a la Comisión de Políticas de Gasto para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.",
       "La declaración de proyecto de interés prioritario se trasladará como recomendación al Ministerio para la Transformación Digital y de Función Pública y a la Agencia para que, en su caso, sea tenida en cuenta en la elaboración de los Presupuestos Generales del Estado.",

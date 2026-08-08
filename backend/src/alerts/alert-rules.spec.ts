@@ -2390,6 +2390,47 @@ describe('RULE_FLOTA_MAQUINA_AHOGADA / RULE_FLOTA_TURNO_SIN_PROGRESO (T-677, 07/
   });
 });
 
+describe('RULE_FLOTA_SIN_MEMORIA (T-647, 08/08)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RULE_FLOTA_SIN_MEMORIA, ALERT_RULES } = require('./alert-rules');
+
+  const oom = (n: number, muertes = n) => [
+    { n, muertes, ultimo: `${muertes} proceso(s) matados por el kernel en los últimos 6 min` },
+  ];
+
+  // El evento se emitía desde el 07/08 y NINGUNA regla lo miraba: un `error` publicado para nadie.
+  it('está registrada — que es justo lo que faltaba', () => {
+    const nombres = ALERT_RULES.map((r: { name: string }) => r.name);
+    expect(nombres).toContain('flota_sin_memoria');
+  });
+
+  it('UNA muerte ya dispara: cada una se lleva un turno a medias, no es ruido', () => {
+    expect(RULE_FLOTA_SIN_MEMORIA.shouldFire(oom(1))).toBe(true);
+  });
+
+  it('sin muertes, silencio — el estado normal es cero y así debe verse', () => {
+    expect(RULE_FLOTA_SIN_MEMORIA.shouldFire(oom(0))).toBe(false);
+    expect(RULE_FLOTA_SIN_MEMORIA.shouldFire([])).toBe(false);
+    expect(RULE_FLOTA_SIN_MEMORIA.shouldFire([{}] as never)).toBe(false);
+  });
+
+  it('el aviso desaconseja los dos arreglos que YA se probaron y no funcionaron', () => {
+    const n = RULE_FLOTA_SIN_MEMORIA.buildNotification(oom(2, 3));
+    expect(n.body).toMatch(/NO repetirlo/i);
+    expect(n.body).toMatch(/Subir el techo/i);   // 4×3 GB sobre 7,7 GB: dispara el OOM de la máquina
+    expect(n.body).toMatch(/swap/i);             // hace agonizar, no arregla
+    expect(n.body).toMatch(/MemoryHigh/);        // lo que SÍ funcionó
+  });
+
+  it('dice cómo comprobar que la propia alerta sigue viva (una alerta muda parece silencio)', () => {
+    expect(RULE_FLOTA_SIN_MEMORIA.buildNotification(oom(1)).body).toMatch(/canary:oom-flota/);
+  });
+
+  it('cuenta las muertes, no los avisos: dos eventos pueden traer cinco muertos', () => {
+    expect(RULE_FLOTA_SIN_MEMORIA.buildNotification(oom(2, 5)).title).toMatch(/5 proceso/);
+  });
+});
+
 describe('RULE_MURO_CUPO_SIN_CONSUMO (el muro para a quien no ha respondido nada — T-657, 07/08)', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { RULE_MURO_CUPO_SIN_CONSUMO } = require('./alert-rules');

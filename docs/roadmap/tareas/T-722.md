@@ -1,0 +1,49 @@
+### [T-722] 🟡 [ABIERTO 08/08] Un guardarraíl no debe LISTAR sus fuentes a mano: debe descubrirlas
+
+**Es el mismo fallo, ya pagado cuatro veces, y siempre por el mismo motivo: alguien contó a ojo los
+sitios que tocan algo.**
+
+| caso | cómo se contó | cuántos había de verdad |
+|---|---|---|
+| [T-130] `seguimiento_url` | «los escritores que conozco» | **cinco**, y se escribió un sexto sin ver los otros |
+| [T-339] `target_oposicion` | una lista de tres puertas en el guardarraíl | **cuatro** (y al buscarlas apareció una **quinta**, que resultó ser segura) |
+| [T-689] `review_requested_at` | `FUENTES = [tres ficheros]`, con el comentario *«son pocos y así añadir uno es deliberado»* | **cuatro**; el que faltaba era el panel de salud, y llevaba contando 11 filas ya revisadas como pendientes |
+| [T-624] credencial de lectura | — | **cuatro** copias del mismo `VENCE_LECTOR_URL \|\| DATABASE_URL`, y ese mismo día aparecieron **dos más** en ramas sin mergear |
+
+En los cuatro, la lista escrita a mano **no estaba mal el día que se escribió**. Se quedó vieja
+sola, y el guardarraíl siguió dando verde sobre un universo que ya no era el real. Un guardarraíl
+que solo mira donde le dijeron **no protege: tranquiliza**.
+
+#### El arreglo, que ya está probado en uno de ellos
+
+[T-689] lo resolvió el 08/08 y sirve de patrón: en vez de una constante con rutas, **recorre el
+árbol** (`app`, `lib`, `scripts`, `backend/src`), se queda con los ficheros que de verdad tocan el
+recurso, y **falla si encuentra menos de los que ya sabe que hay**. Ese mínimo es la parte que no se
+puede omitir: un descubrimiento que devuelve cero pasaría TODO en verde sin mirar nada, que es la
+forma más silenciosa de perder un guardarraíl (misma lección que el `it('encuentra ficheros que
+auditar')` de `credencialLectura`).
+
+#### Qué hacer
+
+1. **Inventariar los guardarraíles que llevan lista fija.** Son reconocibles: una constante de rutas
+   (`FUENTES`, `RUTAS`, `FICHEROS`, `ZONA_CIEGA_PENDIENTE`…) que alimenta un `it.each`. Medir cuántos
+   son antes de decidir nada.
+2. **Convertirlos al patrón de descubrimiento** los que vigilen un recurso que pueda crecer (un
+   escritor de una columna, un consumidor de una cola, un llamante de una función sensible).
+3. **Y NO convertir los que son un TRINQUETE a propósito.** `ZONA_CIEGA_PENDIENTE` de
+   `user-scoping-c2` es una línea base congelada que **solo puede encoger**: ahí la lista fija ES el
+   mecanismo, y descubrir automáticamente la vaciaría de sentido. Lo mismo con `TECHO_CRUDOS` de
+   `llmInstrumentation`. La regla no es «ninguna lista a mano», es **«ninguna lista a mano que
+   pretenda ser exhaustiva»**.
+4. Engancharlo donde ya vive esto: `npm run tools:buscar` y `lib/admin/toolWriters.ts` ya detectan
+   escritores por patrón de escritura real (`UPDATE … SET`, `INSERT INTO`, `.set({…})`). **Esa
+   detección ya existe y no hay que reinventarla** — lo que falta es que los guardarraíles la usen
+   en vez de tener cada uno su lista.
+
+**Lo que NO hay que hacer:** un guardarraíl genérico que vigile «todo». El valor está en que cada
+uno sepa qué recurso mira y por qué; lo que se comparte es **cómo encuentra a quién lo toca**, no el
+criterio.
+
+**Relacionadas:** [T-689] (el patrón ya implementado), [T-130] (el registro de herramientas y los
+cinco escritores), [T-339] (las cuatro puertas), [T-624] (la credencial de lectura), [T-384]
+(`toolWriters.ts`, la detección por patrón de escritura que ya existe).

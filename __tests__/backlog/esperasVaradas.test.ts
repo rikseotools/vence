@@ -80,3 +80,29 @@ describe('[T-711] esperasVaradas', () => {
     expect(src).toContain('clasificarShaEspera')
   })
 })
+
+describe('[T-718] `wake` levanta las CINCO esperas, también la de deploy', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const cli = fs.readFileSync(path.join(__dirname, '..', '..', 'scripts', 'backlog.cjs'), 'utf8')
+  const bloque = cli.slice(cli.indexOf("cmd === 'wake'"), cli.indexOf("cmd === 'wake'") + 2500)
+
+  it('limpia también `wake_on_deploy_sha`, que era la única que se quedaba', () => {
+    // Es justo la que puede volverse IMPOSIBLE: si la rama con ese commit no se fusiona nunca,
+    // ningún deploy puede contenerlo. 16 tareas así el 08/08, algunas de dos días — el detector
+    // de [T-711] las enseñaba y NO había comando para desatascarlas: `wake` decía «despierta» y
+    // las dejaba exactamente igual.
+    expect(bloque).toMatch(/wake_on_deploy_sha\s*=\s*NULL/)
+    expect(bloque).toMatch(/wake_on_deploy_surface\s*=\s*NULL/)
+  })
+
+  it('sigue levantando las otras: reloj y revisión', () => {
+    expect(bloque).toMatch(/snooze_until\s*=\s*NULL/)
+    expect(bloque).toMatch(/review_requested_at\s*=\s*NULL/)
+  })
+
+  it('es UN solo UPDATE: despertar a medias es como se quedaron varadas', () => {
+    const updates = (bloque.match(/UPDATE public\.backlog_tasks/g) || []).length
+    expect(updates).toBe(1)
+  })
+})

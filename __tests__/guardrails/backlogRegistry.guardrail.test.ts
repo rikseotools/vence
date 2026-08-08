@@ -293,6 +293,11 @@ describe('guardarraíl — las fichas cerradas no se quedan en «## Abiertas»',
  * cerrada mal colocada no le cuesta nada a nadie.
  */
 describe('guardarraíl — ninguna ficha VIVA fuera de sección', () => {
+  // T-532: desde que cada ficha vive en su propio fichero (`docs/roadmap/tareas/T-nnn.md`) y el
+  // índice se GENERA a partir de ellos, «fuera de sección» ya no es un estado alcanzable — la
+  // sección la decide `generarIndice()` mirando el ✅, nunca la posición física. Este test se
+  // queda como TRINQUETE del índice generado (si algún día vuelve a haber inserción manual, aquí
+  // se vería), no porque siga habiendo un modo de fallo real que evitar con `reubicar`.
   it('el preámbulo no tiene fichas abiertas', () => {
     const lineas = md.split("\n")
     const fin = lineas.findIndex((l: string) => /^##\s/.test(l) && !/^###/.test(l))
@@ -301,5 +306,32 @@ describe('guardarraíl — ninguna ficha VIVA fuera de sección', () => {
       .filter((l: string) => /^###\s+.*\[T-\d+\]/.test(l) && !l.includes('✅'))
       .map((l: string) => l.slice(0, 90))
     expect({ fichasVivasHuerfanas: vivas }).toEqual({ fichasVivasHuerfanas: [] })
+  })
+})
+
+/**
+ * El índice generado tiene que COINCIDIR con lo que regenerarlo produciría AHORA (T-532).
+ *
+ * Es la protección nueva que sustituye a «reubicar»: con una ficha por fichero no hay dónde
+ * insertar mal, pero SÍ se puede editar `tareas-pendientes.md` a mano (por costumbre, o porque
+ * un editor lo abre primero) y dejarlo desincronizado de las 603+ fuentes reales — silencioso,
+ * porque el fichero sigue pareciendo válido. Este test lo cazaría: falla si el índice comiteado
+ * no es exactamente lo que `fichasDir.generarIndice()` produce a partir de `docs/roadmap/tareas/`.
+ */
+describe('guardarraíl — el índice generado está al día con docs/roadmap/tareas/', () => {
+  it('regenerar el índice desde los ficheros fuente da EXACTAMENTE el fichero comiteado', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const FD = require('../../lib/backlog/fichasDir.cjs')
+    expect(FD.indiceEstaAlDia()).toBe(true)
+  })
+
+  it('todos los ids del índice tienen su fichero fuente, y viceversa (nada huérfano en ninguna dirección)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const FD = require('../../lib/backlog/fichasDir.cjs')
+    const idsIndice = new Set(tasks.map((t) => t.id))
+    const idsFicheros = new Set(FD.listarIds())
+    const soloEnIndice = [...idsIndice].filter((id) => !idsFicheros.has(id))
+    const soloEnFicheros = [...idsFicheros].filter((id) => !idsIndice.has(id))
+    expect({ soloEnIndice, soloEnFicheros }).toEqual({ soloEnIndice: [], soloEnFicheros: [] })
   })
 })

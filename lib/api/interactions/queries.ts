@@ -12,6 +12,8 @@ import type {
   TrackBatchInteractionsRequest,
   TrackInteractionResponse
 } from './schemas'
+import { emitFireAndForget } from '@/lib/observability/emit'
+import { construirEventoEspejo } from './versionCheckMirror'
 
 // ============================================
 // INSERTAR UNA INTERACCIÓN
@@ -49,6 +51,11 @@ export async function trackInteraction(
       category: params.eventCategory,
       component: params.component
     })
+
+    // [T-168] user_interactions está detrás de RLS sin política para el rol de lectura de
+    // la flota — espejar los 3 eventos version_check_* a observable_events, que sí es legible.
+    const espejo = construirEventoEspejo(params)
+    if (espejo) emitFireAndForget(espejo)
 
     return {
       success: true,
@@ -105,6 +112,13 @@ export async function trackBatchInteractions(
       count: params.events.length,
       categories: [...new Set(params.events.map(e => e.eventCategory))]
     })
+
+    // [T-168] mismo espejo que trackInteraction — un batch puede traer varios eventos
+    // version_check_* (p. ej. deferred seguido de reload_immediate al salir de la ruta crítica).
+    for (const event of params.events) {
+      const espejo = construirEventoEspejo(event)
+      if (espejo) emitFireAndForget(espejo)
+    }
 
     return {
       success: true,

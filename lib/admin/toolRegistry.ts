@@ -455,10 +455,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'REESCRIBIR explicaciones firmó `article_ok`/`answer_ok` con confianza alta, y con eso siete ' +
       'preguntas inestudiables quedaron marcadas como comprobadas hasta que un usuario las impugnó ' +
       'una a una. Medido el 01/08/2026: 4.159 firmas cosméticas afirmando fondo, 1.713 preguntas ' +
-      'activas cuya ÚNICA verificación es un pase así. La PREVENCIÓN no está aquí sino en el punto ' +
-      'de escritura: trigger `tg_verificacion_cosmetica_no_firma` (migración ' +
-      '20260801_verificacion_cosmetica_no_firma.sql), que pone esos flags a NULL y emite ' +
-      '`verificacion_cosmetica_firmaba_fondo`. Este script solo INVENTARÍA lo que ya se firmó antes.',
+      'activas cuya ÚNICA verificación es un pase así (re-medido 08/08 tras el trabajo pregunta-a-' +
+      'pregunta de T-465: 1.705). La PREVENCIÓN no está aquí sino en el punto de escritura: trigger ' +
+      '`tg_verificacion_cosmetica_no_firma` (migración 20260801_verificacion_cosmetica_no_firma.sql), ' +
+      'que pone esos flags a NULL y emite `verificacion_cosmetica_firmaba_fondo`. Este script solo ' +
+      'INVENTARÍA lo que ya se firmó antes. **Usa `urlLecturaNegocio()`** (T-624, corregido 08/08): ' +
+      'leía `DATABASE_URL` a pelo pese a ser SOLO LEE, así que un trabajador de la flota con solo ' +
+      '`VENCE_LECTOR_URL` no podía correrlo ("permission denied for table ai_verification_results", ' +
+      'medido 08/08).',
   },
   sanear_verificacion_cosmetica: {
     titulo: 'El APLICAR del audit de arriba: limpia (article_ok/answer_ok → NULL) lo ya firmado por un pase cosmético',
@@ -479,8 +483,14 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'tipo nuevo, para que el saneamiento retroactivo y la prevención compartan serie temporal. ' +
       'Núcleo puro compartido: `calcularSaneamiento()` en `lib/calidad/verificacionCosmetica.cjs` ' +
       '(17 tests). Medido el 08/08/2026: 1.705 filas a limpiar (bajó de las 1.713 originales por el ' +
-      'trabajo pregunta-a-pregunta ya hecho de T-465). NUNCA toca `explanation`/`ai_model`/etc.: esos ' +
-      'campos son la firma original del pase cosmético y la evidencia de qué pasó.',
+      'trabajo pregunta-a-pregunta ya hecho de T-465; re-medido el 08/08 tras el fix de abajo, sigue ' +
+      'en 1.705). NUNCA toca `explanation`/`ai_model`/etc.: esos campos son la firma original del ' +
+      'pase cosmético y la evidencia de qué pasó. **La medición (sin `--aplicar`) usa ' +
+      '`urlLecturaNegocio()`** (T-624): al escribirse, el script leía `DATABASE_URL` a pelo, así que ' +
+      'un trabajador de la flota con solo `VENCE_LECTOR_URL` no podía ni simular ("permission denied ' +
+      'for table ai_verification_results", medido 08/08) — el mismo gotcha que ya se había corregido ' +
+      'en `verificar-articulos-vs-boe.cjs`/`huerfanos-plan.cjs`, sin llegar a este script porque nació ' +
+      'el mismo día que aquel fix. `--aplicar` sigue exigiendo `DATABASE_URL` real (escritura), sin más.',
   },
   explicaciones_bucle_reescritura: {
     titulo: 'Bucle para reescribir explicaciones a escala (gate de citas, volcado para re-verificar, correcciones con rastro)',
@@ -1028,6 +1038,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'techo heredado no permite distinguir. Comparte núcleo con el detector del barrido ' +
       '(`lib/health/opcionesDuplicadas.cjs`, kind `opciones_duplicadas`), así que canario y badge ' +
       'no pueden divergir de criterio. Medido al estrenarlo: 0 y 0 sobre 138.115 activas.',
+  },
+  canary_oom_flota: {
+    titulo: 'Canario: ¿sigue viva la detección de OOM de la flota, o solo lo parece?',
+    ruta: 'scripts/flota/canario-oom.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run canary:oom-flota` (o `-- --solo-mirar`, que no provoca nada). **Provoca un OOM ' +
+      'de mentira** en un cgroup transitorio propio (`systemd-run --scope` con `MemoryMax=40M` y ' +
+      'sin swap) y espera a que el supervisor publique `flota_sin_memoria`. Comprueba la cadena ' +
+      'ENTERA: kernel → journal → que el usuario `flota` pueda leerlo → pasada del supervisor → ' +
+      '`observable_events`. **Por qué hace falta provocarlo:** ese detector solo habla cuando el ' +
+      'kernel mata algo, así que mientras la máquina va bien «funciona» y «está roto» se ven ' +
+      'exactamente igual (cero eventos) — el agujero que costó [T-712], donde una sonda llevaba ' +
+      '439 pasadas sin medir nada. Aquí no basta con afirmar el verde, porque el verde correcto ' +
+      'ES la ausencia. **Es seguro:** el kernel elige víctima DENTRO del cgroup del canario; ' +
+      'verificado el 08/08, murió su propio `tail` y los cuatro turnos siguieron. Estrenado con ' +
+      'la cadena en verde: OOM a las 13:59:41, evento publicado a las 14:01:35.',
   },
   canary_identidad_pago: {
     titulo: 'Comprobar tras cada deploy que la caja no se cierra por un id desincronizado (y que cancelar sigue cortando)',

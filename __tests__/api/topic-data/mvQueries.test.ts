@@ -119,6 +119,35 @@ describe('getTopicAggregatesFromMV', () => {
     expect(agg.officialQuestionsCount).toBe(0)
   })
 
+  // T-597 (08/08): una personalizada no tiene positions mapeadas (mismo `[]` de arriba), pero
+  // a diferencia de una oposición real, NO debe restar las oficiales del total ni dejar
+  // officialQuestionsCount en 0 — buildOfficialExamFilter ya las admite todas en el serve.
+  // Medido contra RDS: sin este fix, la MV restaba las 518 oficiales servibles de la
+  // personalizada de Sergio (tema 1: total pasaba de 186 a 160, officialQuestionsCount 0).
+  it('personalizada: NO resta las oficiales del total y las cuenta todas en officialQuestionsCount', async () => {
+    const db = buildFakeDb({
+      law: [
+        {
+          law_id: 'law-1', law_short_name: 'CE', law_name: 'CE',
+          total_questions: 186, articles_with_questions: 5,
+          count_easy: 100, count_medium: 60, count_hard: 26, count_extreme: 0, count_auto: 0,
+          computed_at: COMPUTED_AT,
+        },
+      ],
+      official: [
+        { exam_position: 'auxiliar_administrativo_madrid', official_questions: 15, count_easy: 10, count_medium: 5, count_hard: 0, count_extreme: 0, count_auto: 0 },
+        { exam_position: 'guardia_civil', official_questions: 11, count_easy: 0, count_medium: 5, count_hard: 6, count_extreme: 0, count_auto: 0 },
+      ],
+    })
+
+    const agg = await getTopicAggregatesFromMV(db as never, TOPIC_ID, 'personalizada_a92faefaf41b4d36b723c274f90a59f7')
+    // total_questions de la MV YA incluye estas oficiales (vienen de topic_law_question_summary,
+    // que cuenta todo lo activo del scope) — el camino de "ajena" restaría 26 y las dejaría en 160.
+    expect(agg.totalQuestions).toBe(186)
+    expect(agg.difficultyStats).toEqual({ easy: 100, medium: 60, hard: 26, extreme: 0, auto: 0 })
+    expect(agg.officialQuestionsCount).toBe(26)
+  })
+
   it('staleSinceMs se mide desde la fila MÁS ANTIGUA del MV (peor caso)', async () => {
     const oldDate = new Date(Date.now() - 3 * 3600_000).toISOString() // 3h ago
     const newDate = new Date(Date.now() - 60_000).toISOString() // 1min ago

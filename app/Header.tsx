@@ -15,6 +15,8 @@ import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { useReferralEarningsBadge } from '@/hooks/useReferralEarningsBadge'
 import { RewardsIcon } from '@/components/RewardsIcon'
 import { debeMostrarIconoRecompensas } from '@/lib/referrals/logic'
+import { useSupportUnreadBadge } from '@/hooks/useSupportUnreadBadge'
+import { SupportUnreadBadge } from '@/components/SupportUnreadBadge'
 
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
@@ -80,6 +82,7 @@ export default function HeaderES() {
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const { icono: iconoRecompensas } = useReferralEarningsBadge()
+  const { badge: badgeSoporte } = useSupportUnreadBadge()
   const pathname = usePathname()
 
   const { user, loading: authLoading, isPremium, isLegacy, userProfile } = useAuth()
@@ -679,13 +682,16 @@ export default function HeaderES() {
                   </Link>
                 )}
 
-                {/* 💬 ICONO DE SOPORTE — en un test abre el modal aquí (no pierde el test); fuera → /soporte */}
+                {/* 💬 ICONO DE SOPORTE — en un test abre el modal aquí (no pierde el test); fuera → /soporte.
+                    [T-378] El número es SOLO de respuestas de soporte (feedback + impugnaciones) — ya
+                    no vive sumado en la campana, que antes se quedaba clavada en "9+" con esto dentro. */}
                 <SupportButton
-                  className="tap-feedback flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                  className="tap-feedback relative flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   aria-label="Contactar soporte"
                   title="Contactar soporte"
                 >
                   <span className="text-lg">💬</span>
+                  <SupportUnreadBadge badge={badgeSoporte} />
                 </SupportButton>
 
                 {/* 🎁 ICONO DE RECOMPENSAS — premium/legacy CON antigüedad desde el alta (T-199:
@@ -782,13 +788,15 @@ export default function HeaderES() {
 
             {/* DERECHA: Notificaciones + Menú hamburguesa + Avatar del usuario */}
             <div className="flex items-center space-x-1 flex-shrink-0">
-              {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop. En un test abre el modal aquí (no pierde el test); fuera → /soporte */}
+              {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop. En un test abre el modal aquí (no pierde el test); fuera → /soporte.
+                  [T-378] Mismo badge que la versión móvil — ver comentario de arriba. */}
               <SupportButton
-                className="hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
+                className="hidden xl:flex relative items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
                 <span className="text-sm">💬</span>
                 <span className="text-sm font-medium">Soporte</span>
+                <SupportUnreadBadge badge={badgeSoporte} />
               </SupportButton>
 
               {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE en desktop */}
