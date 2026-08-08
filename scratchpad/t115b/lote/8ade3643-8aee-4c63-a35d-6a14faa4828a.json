@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 146.2.a) de la Ley 9/2017",
+    "texto": "La valoración de los criterios cuya cuantificación dependa de un juicio de valor corresponderá, en los casos en que proceda por tener atribuida una ponderación mayor que la correspondiente a los criterios evaluables de forma automática, a un comité formado por expertos con cualificación apropiada, que cuente con un mínimo de tres miembros, que podrán pertenecer a los servicios dependientes del órgano de contratación, pero en ningún caso podrán estar adscritos al órgano proponente del contrato."
+  },
+  "options": {
+    "0": "Reproduce el precepto: comité de expertos con un mínimo de tres miembros, que podrán pertenecer a los servicios dependientes del órgano de contratación pero en ningún caso estar adscritos al órgano proponente del contrato. El artículo ofrece además una vía alternativa, encomendar la evaluación a un organismo técnico especializado identificado en los pliegos, que el enunciado deja fuera.",
+    "1": "El mínimo que fija el precepto es de tres miembros, no de cinco.",
+    "2": "Invierte la incompatibilidad: los miembros del comité no pueden estar adscritos al órgano proponente del contrato.",
+    "3": "Ese es el régimen de la letra b) del mismo apartado, aplicable a los restantes supuestos, no al que aquí se describe."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 142.1 de la Ley 9/2017",
+    "texto": "Se considerará que se cumple este requisito cuando se expresen los requisitos mínimos, modalidades, y características de las mismas, así como su necesaria vinculación con el objeto del contrato."
+  },
+  "options": {
+    "0": "Las características de las variantes sí deben expresarse: el precepto las enumera junto a los requisitos mínimos y las modalidades.",
+    "1": "No basta con admitirlas: el artículo exige expresar requisitos mínimos, modalidades, características y la vinculación con el objeto del contrato.",
+    "2": "Reproduce los cuatro extremos del precepto, incluida la necesaria vinculación de las variantes con el objeto del contrato.",
+    "3": "El último extremo que exige el precepto es la vinculación con el objeto del contrato, no la repercusión sobre el presupuesto base de licitación."
+  },
+  "frame": "select_correct"
+}

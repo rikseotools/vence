@@ -1,0 +1,1214 @@
+[
+  {
+    "id": "20b68b66-7479-4a22-bfd8-6e48b5da81c7",
+    "article_number": "49",
+    "ley": "Ley 39/2015",
+    "n_topic_scope": "86"
+  },
+  {
+    "id": "948e57e3-1510-48ec-bd4f-67ceea6b7faf",
+    "article_number": "120",
+    "ley": "Ley 39/2015",
+    "n_topic_scope": "85"
+  },
+  {
+    "id": "c7d94af7-3655-4057-8d68-d4b5264b6fe9",
+    "article_number": "24",
+    "ley": "RDL 5/2015",
+    "n_topic_scope": "71"
+  },
+  {
+    "id": "67c75874-ebae-4bfb-9623-8e7d7f14cbfc",
+    "article_number": "44",
+    "ley": "Ley 40/2015",
+    "n_topic_scope": "54"
+  },
+  {
+    "id": "93b61922-ac8f-4f12-9843-6ab73f5a9ea1",
+    "article_number": "30",
+    "ley": "Excel 365 Escritorio",
+    "n_topic_scope": "22"
+  },
+  {
+    "id": "87bbc84c-065c-47dc-a537-0396f2964b43",
+    "article_number": "67",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "13"
+  },
+  {
+    "id": "ea50b472-abe0-4acc-a15f-21d99f705a43",
+    "article_number": "44",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "13"
+  },
+  {
+    "id": "69fb3478-dcf8-4201-b511-7e7afe978cd8",
+    "article_number": "16",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "12"
+  },
+  {
+    "id": "711456a7-9ff4-4262-8d55-1196f74a84bc",
+    "article_number": "141",
+    "ley": "RDL 8/2015",
+    "n_topic_scope": "12"
+  },
+  {
+    "id": "ba9535c9-1c4a-4a80-9c62-9b22f9e87a2a",
+    "article_number": "37",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "12"
+  },
+  {
+    "id": "5cbbcc03-7205-4e11-8eb6-0447a1ba4fd3",
+    "article_number": "70",
+    "ley": "LO 3/2018",
+    "n_topic_scope": "11"
+  },
+  {
+    "id": "a302add1-8c0a-428e-8591-e0174d5dcfcd",
+    "article_number": "122",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "10"
+  },
+  {
+    "id": "c0f1e7d1-853d-47bb-b415-19f1d1da8faf",
+    "article_number": "46",
+    "ley": "Ley 47/2003",
+    "n_topic_scope": "9"
+  },
+  {
+    "id": "a4c11446-0dfa-4fc5-8d15-14090fd66c11",
+    "article_number": "131",
+    "ley": "LO 2/2007 Estatuto de Autonomía de Andalucía",
+    "n_topic_scope": "9"
+  },
+  {
+    "id": "279b6913-deb8-4d96-9fac-25d99a3f469e",
+    "article_number": "166",
+    "ley": "RDL 8/2015",
+    "n_topic_scope": "9"
+  },
+  {
+    "id": "2b9ee7e4-c99b-4d06-829c-bbd45e0f799c",
+    "article_number": "137",
+    "ley": "RDL 8/2015",
+    "n_topic_scope": "8"
+  },
+  {
+    "id": "c5e175b3-c06a-4122-856f-6f53529ba339",
+    "article_number": "1",
+    "ley": "TFUE",
+    "n_topic_scope": "7"
+  },
+  {
+    "id": "621364bc-62f5-402a-acfc-ef4146f015ba",
+    "article_number": "61",
+    "ley": "Ley 12/2007 Igualdad de Género Andalucía",
+    "n_topic_scope": "5"
+  },
+  {
+    "id": "6d4c3496-22f6-4b9f-94c6-a296982ba20e",
+    "article_number": "9",
+    "ley": "LO 6/1985",
+    "n_topic_scope": "5"
+  },
+  {
+    "id": "f78924a6-4eee-41f1-a5b9-e8721e30de3b",
+    "article_number": "68",
+    "ley": "LO 1/2004",
+    "n_topic_scope": "5"
+  },
+  {
+    "id": "b2d048e3-46c8-4b21-92c2-c2637872e883",
+    "article_number": "30",
+    "ley": "LO 6/1985",
+    "n_topic_scope": "5"
+  },
+  {
+    "id": "ba3d5d0d-1e06-4112-8a60-1d6ec0bf531c",
+    "article_number": "57",
+    "ley": "Ley 12/2007 Igualdad de Género Andalucía",
+    "n_topic_scope": "5"
+  },
+  {
+    "id": "639cafe0-228e-4afb-b985-f3c292e4fe3b",
+    "article_number": "106",
+    "ley": "CP",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "75695b64-82a9-420d-927b-54a91a730d64",
+    "article_number": "14",
+    "ley": "LO 11/1985",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "46e74025-e673-469b-906b-79586dbd2a88",
+    "article_number": "268",
+    "ley": "LECrim",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "7d1cb53d-ed92-486b-8d81-9f65f39cad97",
+    "article_number": "46",
+    "ley": "LOTC",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "6ccf7028-e21f-42b6-a708-0b44d869d4b8",
+    "article_number": "37",
+    "ley": "RD 203/2021",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "6082b4f6-e499-489e-9026-6f26e9afede0",
+    "article_number": "3",
+    "ley": "RD 1708/2011",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "1a88d157-4565-4e33-b977-e8dd1ff2ea4d",
+    "article_number": "32",
+    "ley": "DLeg 1/2010 TRLGHPA",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "f3013ca9-697e-4d59-ab69-4e44a1901155",
+    "article_number": "27",
+    "ley": "Ley 13/2007 Violencia de Género Andalucía",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "e7d54aab-e75c-4c24-b65e-eb2138500f93",
+    "article_number": "DA_adicional_séptima",
+    "ley": "LO 3/2018",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "1faecd0e-f897-4c75-af40-047c07c80da0",
+    "article_number": "411",
+    "ley": "LECrim",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "4afc3900-be3f-4350-a1a4-83a09ec34e83",
+    "article_number": "52",
+    "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "026a0a4e-27bf-4f21-82a1-8ae64e762fe5",
+    "article_number": "413",
+    "ley": "LECrim",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "bd8ac31a-6ab1-46b2-9887-942378a88bd7",
+    "article_number": "40",
+    "ley": "LO 3/1983",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "bc8e6af9-9e3d-4696-a1ba-eb150243b1f4",
+    "article_number": "544",
+    "ley": "LECrim",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "35529634-b855-4668-a490-ef53804cc056",
+    "article_number": "3",
+    "ley": "Decreto 204/1995 Atención Ciudadana JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "bad7f7e4-0ce7-479c-90a7-fcdf32315781",
+    "article_number": "4",
+    "ley": "Decreto 204/1995 Atención Ciudadana JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "3070676d-6b11-489f-b00a-82b00cce5332",
+    "article_number": "12",
+    "ley": "Código Conducta TIC JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "ebe10e21-6429-42b7-b9c1-16cb14652522",
+    "article_number": "46",
+    "ley": "Ley 6/2006 Gobierno de Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "a0d32800-4034-4f7b-b0ad-ecca1df33acd",
+    "article_number": "48",
+    "ley": "Ley 7/2011 Documentos y Archivos Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "8ba61afe-b31f-4ac8-b4f6-34908f62f7e9",
+    "article_number": "12",
+    "ley": "Ley 7/2011 Documentos y Archivos Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "d3a2c0b4-b3f3-417f-982d-2f7356d00090",
+    "article_number": "14",
+    "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "edfe72c7-8cc8-4837-8a30-77c98c060c08",
+    "article_number": "5",
+    "ley": "Decreto 204/1995 Atención Ciudadana JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "4b749e91-bd7f-48ff-be17-64cf555fcbd0",
+    "article_number": "47",
+    "ley": "LO 3/1983",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "95482bb2-c36c-48a8-9051-cade1558464d",
+    "article_number": "1",
+    "ley": "Ley 1/2014 Transparencia Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "f0f61b3d-14e3-4db9-87d8-093544ab7c87",
+    "article_number": "44",
+    "ley": "Ley 7/2011 Documentos y Archivos Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "88e43c93-6ad7-459e-b604-8c37c9982609",
+    "article_number": "56",
+    "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "09b0df9c-a1c9-4817-a15a-b132efe6949d",
+    "article_number": "13",
+    "ley": "Ley 9/2007 Administración de la Junta de Andalucía",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "8114ab09-b2e2-4314-bee9-601a4e7e2fc3",
+    "article_number": "9",
+    "ley": "Código Conducta TIC JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "d6719f8a-089a-4835-bbc7-291524c3ad31",
+    "article_number": "34",
+    "ley": "RD 39/1997",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "3eb11da8-c3bf-4b52-a65d-51bc43def9c3",
+    "article_number": "2",
+    "ley": "LO 5/1995",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "edc71b55-9a07-438f-8ad2-318d4c583abe",
+    "article_number": "5",
+    "ley": "Decreto 97/2000 Reglamento Archivos Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "351ddde8-1d01-4912-8264-9e23ed388ec3",
+    "article_number": "34",
+    "ley": "CP",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "24148663-3fb8-4718-ba78-6a8ab3eeeab6",
+    "article_number": "182",
+    "ley": "CP",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "8e5e97e8-b5f5-4af0-879f-fd81083a3fa1",
+    "article_number": "28",
+    "ley": "Reglamento Parlamento Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "32afd4b6-c694-4b1d-ad69-2a4bcc4f5b23",
+    "article_number": "da",
+    "ley": "CE",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "4eb0e4ba-af4d-481f-9b1a-9c03d10d83cc",
+    "article_number": "550",
+    "ley": "Ley 1/2000",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "d2630dcb-a9ec-4926-ae6f-8d6f5e4a0764",
+    "article_number": "626",
+    "ley": "Ley 1/2000",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "06b62aef-ee2d-4217-a71e-a2632209460a",
+    "article_number": "50",
+    "ley": "Ley 23/2014 Reconocimiento Mutuo Penal",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "f308a481-0c83-49f2-bfa6-c3910ca984be",
+    "article_number": "13",
+    "ley": "Decreto 97/2000 Reglamento Archivos Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "d8c217fa-22b1-498b-9007-26135e6a52f6",
+    "article_number": "27",
+    "ley": "Reglamento Parlamento Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "2f14c965-a956-4e65-95a2-aa210e1e4ae7",
+    "article_number": "48",
+    "ley": "Decreto 97/2000 Reglamento Archivos Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "03bca85f-6b95-4187-b1bf-2903697cdab0",
+    "article_number": "19",
+    "ley": "Reglamento Parlamento Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "09e7fa87-6e8b-425e-b258-eeb4ea3f03ef",
+    "article_number": "17",
+    "ley": "Reglamento Parlamento Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "92a08e86-adda-44b5-bf7d-259e0312c53f",
+    "article_number": "47",
+    "ley": "Ley 1/2014 Transparencia Andalucía",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "ba483748-9aef-4fd2-a7a9-906cb563cf24",
+    "article_number": "64",
+    "ley": "Ley 1/2015 Hacienda GVA",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "b7270916-182b-4944-ba96-0b006b09a508",
+    "article_number": "5",
+    "ley": "LO 5/1995",
+    "n_topic_scope": "2"
+  },
+  {
+    "id": "9a85906b-e2cf-4261-a20e-2ac5d6b59c7d",
+    "article_number": "31",
+    "ley": "Código Civil",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "19f167fb-3414-4dc2-9609-5276a1fb2d78",
+    "article_number": "9",
+    "ley": "Decreto 262/1988 Sugerencias y Reclamaciones JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "1dc3060c-8142-4292-939e-0f3e9880aaec",
+    "article_number": "14",
+    "ley": "Decreto 622/2019 Administracion Electronica JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "a702dafe-e394-4a1f-8aea-d6ef7531e426",
+    "article_number": "30",
+    "ley": "Decreto 622/2019 Administracion Electronica JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "ae86ac68-4701-4e96-b486-0239efacea43",
+    "article_number": "7",
+    "ley": "LSP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "2abcd14d-a4d5-4ca0-bb62-ac8712de133c",
+    "article_number": "441",
+    "ley": "CP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "86891661-2b0f-4ea5-8064-00a5ed079900",
+    "article_number": "33",
+    "ley": "LSP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "0027a729-8558-472c-9b0b-3ffb7ecf8c68",
+    "article_number": "54",
+    "ley": "LSP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "4b7ae0fb-e435-4b4a-a4dd-b293bad0aea6",
+    "article_number": "81",
+    "ley": "CP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "b0fcd038-caa4-4a77-8289-2c88814cb3a7",
+    "article_number": "26",
+    "ley": "Decreto 204/1995 Atención Ciudadana JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "42526977-a771-4258-828a-d20a864cd1cb",
+    "article_number": "21",
+    "ley": "Ley 50/1981",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "f9765da5-bfac-4335-acb2-86ef71883538",
+    "article_number": "77",
+    "ley": "CP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "81c559c7-eb3a-4806-ab1f-1cf2eedebe71",
+    "article_number": "454",
+    "ley": "CP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "e1d0e3be-123b-4bc6-aa61-fb5a522e649d",
+    "article_number": "107",
+    "ley": "Código Civil",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "55658360-b421-4b32-96af-2da90d0b7aab",
+    "article_number": "158",
+    "ley": "CP",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "4fa502ef-b084-499c-8747-87eff5fdfb98",
+    "article_number": "4",
+    "ley": "Decreto 317/2003 Cartas de Servicios Andalucía",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "b5e02ebf-eae4-4c3a-a883-cae645460c83",
+    "article_number": "9",
+    "ley": "Decreto 317/2003 Cartas de Servicios Andalucía",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "2a6f5b34-4917-4c48-89cb-4013704f1952",
+    "article_number": "10",
+    "ley": "Decreto 317/2003 Cartas de Servicios Andalucía",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "de79b631-a06d-4318-96ed-337ebcc1cff8",
+    "article_number": "12",
+    "ley": "Decreto 289/2015 Transparencia JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "88d6114c-aa38-46dc-b7a6-debc2351137c",
+    "article_number": "27",
+    "ley": "Decreto 622/2019 Administracion Electronica JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "bd25e6ea-2674-41d4-a981-fa43c1d35966",
+    "article_number": "3",
+    "ley": "Decreto 622/2019 Administracion Electronica JA",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "9745ca75-8697-4dd0-8e7e-cb4b2b4e2030",
+    "article_number": "37",
+    "ley": "LO 4/2000",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "2a520b1d-3858-4c02-b291-bc322397bea5",
+    "article_number": "27",
+    "ley": "CEDH",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "ecdf2a12-b345-4182-ac01-1dffc451a9be",
+    "article_number": "35",
+    "ley": "CEDH",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "9634bf98-6a8d-42c5-a9e2-7f4792f24eb5",
+    "article_number": "3",
+    "ley": "CEDH",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "b59ec2b5-93bd-45b6-8310-5bf192c22179",
+    "article_number": "44",
+    "ley": "CEDH",
+    "n_topic_scope": "1"
+  },
+  {
+    "id": "40f7c0bc-06eb-4e12-b023-43b19886f621",
+    "article_number": "9",
+    "ley": "Reglamento Schengen 2016/399",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "43b649f0-cf22-44af-a7a4-d7affe8aae8b",
+    "article_number": "35",
+    "ley": "Estatuto TJUE",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "04813c07-8d89-4ff0-b99b-26333fd6e876",
+    "article_number": "663",
+    "ley": "Código Civil",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "f3c11e59-81f9-4191-8936-3a32b1024176",
+    "article_number": "53",
+    "ley": "LO 4/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d92e72be-b93d-47ed-9ace-bbd73d55ac03",
+    "article_number": "32",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d2435566-7dd5-4340-8998-b9af9a7a8923",
+    "article_number": "142",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "156c177c-8933-4250-928a-e2d114209f5f",
+    "article_number": "0",
+    "ley": "Orden INT/859/2023",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "bd0efb44-6ae0-4ae3-a005-ffd0a40a11f6",
+    "article_number": "2",
+    "ley": "Decreto 465/2019 Estructura Consejería Economía JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "1a28780e-7e66-48a5-9eaa-7358756dbf1d",
+    "article_number": "24",
+    "ley": "Orden INT/859/2023",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "af46173c-1da4-4295-a382-fdd6e591d3a6",
+    "article_number": "162",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "1b5270cb-18f4-4932-a927-1d8766fafb13",
+    "article_number": "26",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "68ae18fc-ad63-45cc-b1e5-47074ee4daf9",
+    "article_number": "37",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "63c77fb1-6533-4237-a852-c73abd4c8f25",
+    "article_number": "27",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "52491dd0-73bc-46b8-8a2a-f72d4e619294",
+    "article_number": "DA9",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "3d98a076-5494-41d0-9cf8-e3a7b4865d90",
+    "article_number": "3",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "fd05a1e7-b460-4c41-a426-c4be7e432173",
+    "article_number": "72",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d31d3352-dc5d-493d-992f-58b0507af4aa",
+    "article_number": "52",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "12aed184-51b9-4007-ad86-ddd010713087",
+    "article_number": "3",
+    "ley": "RD 2/2006 PRL PN",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "302d0c91-24da-4a0d-af29-68fdbbbc1ab4",
+    "article_number": "4",
+    "ley": "Decreto 406/2019 OEP Estabilización Andalucía",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "dad2ad1a-ec3b-4ab2-ba5c-6bd7618378d3",
+    "article_number": "3",
+    "ley": "Ley 10/2006 Instituto Andaluz PRL",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "e6c451ad-c1f8-44f5-ac62-86a22a12fbfc",
+    "article_number": "6",
+    "ley": "RD 2/2006 PRL PN",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "08f7a629-e569-436b-8b0b-94690260945b",
+    "article_number": "8",
+    "ley": "Orden 19/02/2015 Contabilidad Pública JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d5532180-621e-4691-b940-e20a510bd59e",
+    "article_number": "9",
+    "ley": "Orden 19/02/2015 Contabilidad Pública JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "f267d5a8-8f92-4e42-95de-f06869ceebd3",
+    "article_number": "143",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "de46ebc9-ea7b-4682-8ddc-8f6f1020cd63",
+    "article_number": "930",
+    "ley": "Código Civil",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "504bb4a4-0e11-4907-be2e-143db5a3d48c",
+    "article_number": "2",
+    "ley": "Reglamento Schengen 2016/399",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c4fe76f6-cff5-48e7-9310-da7dcfe4448d",
+    "article_number": "97",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "b7bb31e1-05d5-410a-be80-67d8289a7c90",
+    "article_number": "48",
+    "ley": "LO 4/2000",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c8d49b65-a2c3-4c12-9678-0cccafbc1a0d",
+    "article_number": "825",
+    "ley": "LECrim",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "aaf8956c-4603-4046-bc6c-ac7dd6a8f456",
+    "article_number": "23",
+    "ley": "Decreto 226/2020 Organización Territorial Provincial JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "7b31c778-c8b7-43ab-a9b2-725b8e75ca20",
+    "article_number": "30",
+    "ley": "LO 4/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "9bd03819-5b37-4055-91c1-2a194f19bffc",
+    "article_number": "19",
+    "ley": "LO 4/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "99e91072-759b-42f9-80a6-ff82a789ea22",
+    "article_number": "9",
+    "ley": "Ley 10/2006 Instituto Andaluz PRL",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "95182e46-dc68-4dfb-bd27-cd9c4c0d30a7",
+    "article_number": "33",
+    "ley": "LOFCS",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "728aecff-5632-4b04-94c1-24737ef01159",
+    "article_number": "16",
+    "ley": "Herramientas Admin-e JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "028480af-f303-44d1-a49f-8a0696a21671",
+    "article_number": "54",
+    "ley": "Regl. UE 2019/1896 Frontex",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "277a942c-6ed5-4b36-8915-88d966992b84",
+    "article_number": "130",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "b359076e-0d5c-47cf-9d86-dfa156f285d3",
+    "article_number": "43",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "bcfff84d-f38d-4099-8956-84efc88410c1",
+    "article_number": "preámbulo",
+    "ley": "RD 769/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "758bdf6f-4c27-4b6a-b441-25b42c975b91",
+    "article_number": "41",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "3ab0facd-ed93-46bd-9219-6a6b678ad22a",
+    "article_number": "92",
+    "ley": "Convenio Schengen",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d261227c-74a9-4ede-aa9a-f5a22cbfbae4",
+    "article_number": "20",
+    "ley": "Orden INT/859/2023",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "5ce11393-138b-4e58-bb7a-90065f4e9922",
+    "article_number": "5",
+    "ley": "Orden INT/859/2023",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "caf709fe-b6fe-4366-8f13-5686d9e294bb",
+    "article_number": "28",
+    "ley": "RD 769/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "ad3ee798-7106-45d7-ab06-cdeb2d8299ad",
+    "article_number": "11",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "b813db08-b094-4f97-95ed-8c44e67b5cdc",
+    "article_number": "2",
+    "ley": "Convenio Schengen",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "acf29cfd-3a4b-4351-bac7-5562fb1f12dd",
+    "article_number": "30",
+    "ley": "Reglamento Visados 810/2009",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "0a071612-39ba-4f83-8121-ddc58be4658a",
+    "article_number": "13",
+    "ley": "LO 7/2021",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "0d0c0153-6f49-44a7-b26d-657799c9ff7d",
+    "article_number": "16",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "a2e902e5-a257-427c-acca-f05bb93f3d4f",
+    "article_number": "26",
+    "ley": "RD 2822/1998",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "7f0bb270-741b-437c-9912-a10665edadf0",
+    "article_number": "137",
+    "ley": "RD 137/1993 Reglamento Armas",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "27aa436e-e3be-4e82-b096-ffffa4f64d53",
+    "article_number": "25",
+    "ley": "Estatuto TJUE",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "80839f90-f768-4c9e-b99e-7145ad3808fd",
+    "article_number": "30",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c37faf02-ecf1-4c9b-bdaa-c414b3810951",
+    "article_number": "11",
+    "ley": "Reglamento Procedimiento TJUE",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "80b50177-877b-4502-8ffb-af4c244173c7",
+    "article_number": "20",
+    "ley": "Estatuto TJUE",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "14f142df-3cb0-4b6b-9a5a-e16a85019169",
+    "article_number": "16",
+    "ley": "Ley 4/2015 Estatuto Víctima",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "ed6e12ec-b0ae-4f4d-a2ed-3ef5840b84bf",
+    "article_number": "39",
+    "ley": "RD 769/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "4b2ee0df-de16-45c4-8f9c-3bfda4cd4e3e",
+    "article_number": "38",
+    "ley": "LO 5/2000 Menores",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c813fb89-a281-4793-a3b3-9f1646c3f97d",
+    "article_number": "3",
+    "ley": "Decreto 90/1993 Funciones Órganos JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d02f0f66-f1fd-4b9a-ab08-46016022fc17",
+    "article_number": "45",
+    "ley": "LO 5/2000 Menores",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "e8b3a281-445a-470f-a152-7089c4581d98",
+    "article_number": "19",
+    "ley": "Reglamento Procedimiento TEDH",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c368eca6-a816-4445-a01a-3b7298694b38",
+    "article_number": "8",
+    "ley": "Decreto 226/2020 Organización Territorial Provincial JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "9c222f25-f11a-408d-8a7c-ccdac5aa2708",
+    "article_number": "21",
+    "ley": "Decreto 226/2020 Organización Territorial Provincial JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c39d9c73-00b5-4e16-a4a5-5c9fc3229374",
+    "article_number": "7",
+    "ley": "Ley 10/2006 Instituto Andaluz PRL",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "35fb708d-d3db-42da-bbdc-c414976fad0d",
+    "article_number": "8",
+    "ley": "Ley 10/2006 Instituto Andaluz PRL",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "035d7833-6a8a-4771-b852-6951abfc1d77",
+    "article_number": "10",
+    "ley": "Decreto 304/2011 Estructura PRL JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "46f33846-e08d-4081-8699-d9a42271f383",
+    "article_number": "7",
+    "ley": "Decreto 304/2011 Estructura PRL JA",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "af62e8b4-cf06-46db-89a2-f44b3f724c15",
+    "article_number": "10",
+    "ley": "Ley 10/2006 Instituto Andaluz PRL",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "19e1ccba-de26-4eed-bf87-1fb674ea13fe",
+    "article_number": "13",
+    "ley": "Reglamento Visados 810/2009",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "8d5b7795-38d2-4706-875b-7464b930b624",
+    "article_number": "1",
+    "ley": "RDL 29/2020 Teletrabajo AAPP",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "e1db81cd-addb-4648-895c-30529de62584",
+    "article_number": "2",
+    "ley": "Orden 22/07/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "228d512b-298f-48cc-a727-ad0414771b74",
+    "article_number": "1",
+    "ley": "Orden INT Centro Universitario PN",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "32ad615e-20b2-4fae-bf4e-42e9e4eec772",
+    "article_number": "52",
+    "ley": "LOFCS",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "80f97573-588a-4ab4-aa61-12fee7bbe806",
+    "article_number": "11",
+    "ley": "Convenio Schengen",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "cf1adcb0-240b-4e39-be03-18c6aab2731c",
+    "article_number": "24",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "b4bc32a0-00d0-4f2e-a686-10cb9f64065a",
+    "article_number": "2",
+    "ley": "Reglamento Eurojust 2018/1727",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "830bd549-2898-4dfa-8cf7-164b5badf1e5",
+    "article_number": "11",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "2a82625f-28cb-4d03-805d-cf3413c835cb",
+    "article_number": "38",
+    "ley": "Ley 12/2009",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "e331a3ee-4c33-4544-9e39-ae6907267886",
+    "article_number": "40",
+    "ley": "Convenio Schengen",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "125a9171-3f3d-41b5-ac78-72650ee74718",
+    "article_number": "21",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "3fa1652f-05a5-4e97-baf4-89cb6629a913",
+    "article_number": "42",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "0a16ddc5-dfb0-409a-b5c4-606866f4a58c",
+    "article_number": "83",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "38918c8d-3511-4faf-93d6-b07f4a17ac8c",
+    "article_number": "49",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "18761499-35ee-49aa-a055-d4e2e764819d",
+    "article_number": "51",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "4641be63-eca7-430f-83cb-13979cb6b91a",
+    "article_number": "47",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "2b8c90c8-e6e8-4fcb-bde2-edc8e9a4d6d5",
+    "article_number": "76",
+    "ley": "RD 203/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "50b6d863-9b96-49db-999a-bba6afb15558",
+    "article_number": "18",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "c48444fb-19a0-4c9a-8e83-34e0e5488ed4",
+    "article_number": "131",
+    "ley": "RGC",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "822f1ee6-3ea8-49b3-b16e-e2cf7babed6f",
+    "article_number": "45",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "54d343e1-3671-4b1e-992f-d30a3f6aa83d",
+    "article_number": "12",
+    "ley": "RD 1004/2015 Nacionalidad",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "cb05fa93-af7b-428f-8c97-101dd09ea95b",
+    "article_number": "21",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "21c780d2-2c6b-4332-9323-721f8d9bdaa3",
+    "article_number": "4",
+    "ley": "RD 853/2022",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "a47e832b-1d61-4b64-94f7-59ad008abfd7",
+    "article_number": "42",
+    "ley": "LO 7/2021",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "615dd2c2-5af7-4f51-a456-acece8b52639",
+    "article_number": "33",
+    "ley": "Ley 20/2022",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "a33f493e-2d15-4d94-8e06-426ecf5bbbcf",
+    "article_number": "45",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "f5a62b30-02f2-43e3-b114-e6dbe67f69d1",
+    "article_number": "12",
+    "ley": "Resolución Uniformidad CNP",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "acb75f08-61db-45c6-a942-f4db115d4628",
+    "article_number": "6",
+    "ley": "REx",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d86a929c-0118-4cdc-80dc-09d8e3806ca8",
+    "article_number": "11",
+    "ley": "Resolución Uniformidad CNP",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "e7b711e3-865f-41c3-b6d6-f19bf9e75c3d",
+    "article_number": "97",
+    "ley": "RD 137/1993 Reglamento Armas",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "f8053d19-4cf0-43f3-929e-8d39e2aa78f3",
+    "article_number": "12",
+    "ley": "RD 2/2006 PRL PN",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "f9f24c65-e8f8-4d13-9a77-f6af8ad58ad9",
+    "article_number": "32",
+    "ley": "RD 769/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "eef56264-6930-4c90-9fd8-a60df6835a2d",
+    "article_number": "65",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "184d7f13-9770-4cb4-8a98-ca51bac05379",
+    "article_number": "88",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "d2e1524c-3acd-437e-ad08-96be0a32a0b6",
+    "article_number": "56",
+    "ley": "LO 9/2015",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "406d3adb-4bb9-4ec8-b566-60954c1b684d",
+    "article_number": "10",
+    "ley": "Resolución Uniformidad CNP",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "021dc8eb-f60f-4ce0-86ea-3e396de6a05b",
+    "article_number": "70",
+    "ley": "LO 4/2000",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "699dd0ff-8cb6-4ece-a8bb-41b12e07a9a2",
+    "article_number": "39",
+    "ley": "Orden 22/07/1987",
+    "n_topic_scope": "0"
+  },
+  {
+    "id": "2b10d2c9-7107-4b2b-ae2c-2fc56f988f71",
+    "article_number": "14",
+    "ley": "LO 4/2010",
+    "n_topic_scope": "0"
+  }
+]

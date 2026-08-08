@@ -1,0 +1,16 @@
+{
+  "frame": "select_incorrect",
+  "estilo": "impugnacion",
+  "cita": {
+    "ref": "Artículo 95.3 de la Ley 39/2015",
+    "texto": "La caducidad no producirá por sí sola la prescripción de las acciones del particular o de la Administración, pero los procedimientos caducados no interrumpirán el plazo de prescripción."
+  },
+  "intro": "El artículo 95 de la Ley 39/2015 mantiene separados dos planos: la caducidad extingue el procedimiento concreto, pero no toca los plazos de prescripción, que siguen su curso propio.",
+  "options": {
+    "0": "El artículo 95.3 dice justo lo contrario: la caducidad **no** produce por sí sola la prescripción de las acciones de la Administración. Que un procedimiento caduque no extingue el derecho de la Administración a actuar; simplemente el procedimiento se archiva y podrá iniciarse otro nuevo mientras no haya prescrito la acción.",
+    "1": "Recoge el artículo 95.4: podrá no ser aplicable la caducidad cuando la cuestión suscitada afecte al interés general, o fuera conveniente sustanciarla para su definición y esclarecimiento.",
+    "2": "Recoge el artículo 95.3: los procedimientos caducados no interrumpen el plazo de prescripción, que sigue corriendo como si esa tramitación no hubiera existido.",
+    "3": "Recoge el artículo 95.3: la caducidad tampoco produce por sí sola la prescripción de las acciones del particular."
+  },
+  "outro": "**Clave:** la caducidad no produce por sí sola la prescripción de ninguna acción, ni la del particular ni la de la Administración; lo único que hace es no interrumpir el plazo que ya corría."
+}

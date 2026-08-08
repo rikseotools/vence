@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 6.2 de la Ley Orgánica 4/2001, reguladora del Derecho de Petición",
+    "texto": "La administración, institución pública o autoridad que reciba una petición acusará recibo de la misma y lo comunicará al interesado dentro de los diez días siguientes a su recepción."
+  },
+  "intro": "El acuse de recibo es el primer trámite de la petición y tiene plazo propio, que no debe confundirse con el de la contestación de fondo. Dos detalles deciden la respuesta: son diez días y se cuentan desde la RECEPCIÓN, no desde la presentación.",
+  "options": {
+    "0": "Quince días no es el plazo del acuse de recibo; la ley lo fija en diez.",
+    "1": "Además de no ser el plazo, cambia el día inicial: el cómputo arranca en la recepción por el órgano, no en la presentación por el peticionario.",
+    "2": "Veinte días tampoco corresponde a este trámite, y el cómputo vuelve a estar mal enunciado.",
+    "3": "Es lo que dispone el artículo 6.2: acusar recibo y comunicarlo al interesado dentro de los diez días siguientes a su recepción."
+  },
+  "outro": "**Clave:** acuse de recibo de la petición, diez días desde su recepción."
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 140.1.a).3.º de la Ley 9/2017",
+    "texto": "Que no está incursa en prohibición de contratar por sí misma ni por extensión como consecuencia de la aplicación del artículo 71.3 de esta Ley."
+  },
+  "options": {
+    "0": "La declaración alcanza también a las prohibiciones que operan por extensión, que es justo lo que el precepto añade.",
+    "1": "La remisión del precepto es al artículo 71.3; el 75.2 regula el compromiso cuando se recurre a la solvencia de otras empresas.",
+    "2": "Reproduce el precepto: no estar incursa en prohibición de contratar por sí misma ni por extensión conforme al artículo 71.3.",
+    "3": "El artículo no formula la declaración en términos de sanciones previas, sino de no estar incursa en prohibición de contratar."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,13 @@
+{
+  "motivo": "T-408 — revisión de gemelas con clave contradictoria: la pregunta se responde con el art. 72.2 LO 3/2007, no con el 71",
+  "movimientos": [
+    {
+      "preguntas": ["b49017b3-5d23-40d8-af40-1d22975cb3af"],
+      "origenArticuloId": "7ca15c60-c918-4252-80f3-cfee6f97df3d",
+      "destinoArticuloId": "2c448ed8-cd02-4c3a-a300-c2d51ae6e5f5",
+      "porQue": "El art. 71 solo PROHÍBE usar el sexo como factor actuarial. La consecuencia por la que pregunta el enunciado ('otorgará al contratante perjudicado el derecho a reclamar la asimilación...') es literal del art. 72.2, verificado contra BOE-A-2007-6115.",
+      "permitirPerdidaTemas": false,
+      "motivoPerdida": null
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 21.2 de la Constitución Española",
+    "texto": "En los casos de reuniones en lugares de tránsito público y manifestaciones se dará comunicación previa a la autoridad, que sólo podrá prohibirlas cuando existan razones fundadas de alteración del orden público, con peligro para personas o bienes."
+  },
+  "intro": "La diferencia que decide la respuesta es la que hay entre COMUNICAR y pedir permiso. El apartado 1 deja claro que el derecho de reunión pacífica y sin armas no necesita autorización previa; el apartado 2 solo añade, para el tránsito público y las manifestaciones, el deber de avisar antes, y limita la prohibición a razones fundadas de alteración del orden público con peligro para personas o bienes.",
+  "options": {
+    "0": "Exigir autorización, sea del órgano autonómico que sea, contradice el apartado 1: el ejercicio del derecho no la necesita.",
+    "1": "Es lo que impone el apartado 2: comunicación previa a la autoridad, que solo puede prohibir la manifestación por razones fundadas de alteración del orden público con peligro para personas o bienes.",
+    "2": "Los sindicatos no autorizan manifestaciones: pueden convocarlas como cualquier otro organizador, pero no intervienen en el ejercicio del derecho por terceros.",
+    "3": "El destinatario del aviso es la autoridad gubernativa competente, no un mando policial concreto; el precepto no designa a ningún funcionario en particular."
+  },
+  "outro": "**Clave:** manifestación en lugar público, comunicación previa y no autorización; la prohibición es excepcional y ha de fundarse en el orden público."
+}

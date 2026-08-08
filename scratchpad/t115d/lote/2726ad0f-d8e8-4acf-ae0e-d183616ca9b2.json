@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 90.1 del Real Decreto Legislativo 2/2004",
+    "texto": "El impuesto se gestiona a partir de la matrícula de éste. Dicha matrícula se formará anualmente para cada término y estará constituida por censos comprensivos de las actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, del recargo provincial."
+  },
+  "options": {
+    "0": "Las cuotas que integran los censos son las mínimas, no las máximas.",
+    "1": "La matrícula se forma anualmente, no trimestralmente.",
+    "2": "El recargo que el precepto contempla, en su caso, es el provincial, no uno autonómico.",
+    "3": "Reproduce el precepto: formación anual por término y censos de actividades económicas, sujetos pasivos, cuotas mínimas y, en su caso, recargo provincial."
+  },
+  "frame": "select_correct"
+}

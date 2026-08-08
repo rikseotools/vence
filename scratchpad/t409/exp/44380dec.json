@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 89.1 de la Constitución Española",
+    "texto": "La tramitación de las proposiciones de ley se regulará por los Reglamentos de las Cámaras, sin que la prioridad debida a los proyectos de ley impida el ejercicio de la iniciativa legislativa en los términos regulados por el artículo 87."
+  },
+  "intro": "Cada Cámara ordena su propio funcionamiento interno, y la Constitución respeta esa autonomía cuando regula la iniciativa legislativa: no manda a una ley que diga cómo se tramitan las proposiciones, sino a las normas que el Congreso y el Senado se dan a sí mismos.",
+  "options": {
+    "0": "La Constitución no remite esa tramitación a una ley ordinaria: lo que hace es reenviar a las normas internas de cada Cámara, que se aprueban por un procedimiento propio y no como una ley.",
+    "1": "La reserva de ley orgánica del artículo 81 alcanza al desarrollo de los derechos fundamentales, los Estatutos de Autonomía, el régimen electoral general y los casos previstos expresamente; el procedimiento parlamentario de tramitación no está entre ellos.",
+    "2": "Es lo que dispone el artículo 89.1: la tramitación de las proposiciones de ley se regula por los Reglamentos de las Cámaras, sin que la prioridad de los proyectos de ley impida ejercer la iniciativa legislativa del artículo 87.",
+    "3": "El decreto-ley es una norma que dicta el Gobierno en casos de extraordinaria y urgente necesidad (artículo 86); no es el instrumento con el que se ordena el trabajo interno de las Cámaras."
+  },
+  "outro": "**Clave:** la tramitación de las proposiciones de ley se remite a los Reglamentos parlamentarios, que son las normas con las que cada Cámara regula su propio procedimiento."
+}

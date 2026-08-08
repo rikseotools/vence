@@ -38,7 +38,10 @@ function reqUrl(url: string) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  mockExecute.mockResolvedValue({ rows: [] })
+  // Forma real de postgres.js (drizzle `db.execute`): array plano, no `{rows:[...]}` — los
+  // routes de este fichero son defensivos con las dos formas (ver `filas()`/`Array.isArray`),
+  // así que el default modela la que de verdad devuelve producción.
+  mockExecute.mockResolvedValue([])
 })
 
 describe('POST /api/v2/onboarding/save-field', () => {

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 18.1 de la Constitución Española",
+    "texto": "Se garantiza el derecho al honor, a la intimidad personal y familiar y a la propia imagen."
+  },
+  "intro": "El artículo 18 agrupa cuatro garantías del ámbito privado: honor, intimidad y propia imagen (apartado 1), inviolabilidad del domicilio (2), secreto de las comunicaciones (3) y el límite legal al uso de la informática (4). Los distractores son artículos con los que suele confundirse porque también protegen a la persona o tratan de la información.",
+  "options": {
+    "0": "El artículo 20 reconoce las libertades de expresión e información; el honor y la intimidad aparecen ahí, pero como LÍMITE de esas libertades, no como el derecho que se garantiza.",
+    "1": "El artículo 15 reconoce el derecho a la vida y a la integridad física y moral, con la prohibición de la tortura y de las penas o tratos inhumanos o degradantes.",
+    "2": "El artículo 13 regula la posición de los extranjeros, la extradición y el derecho de asilo.",
+    "3": "Es el artículo que garantiza el honor, la intimidad personal y familiar y la propia imagen, y a continuación la inviolabilidad del domicilio y el secreto de las comunicaciones."
+  },
+  "outro": "**Clave:** honor, intimidad personal y familiar y propia imagen están en el artículo 18.1; en el artículo 20 aparecen como límite de las libertades de expresión e información."
+}

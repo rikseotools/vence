@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 140.1.a) de la Ley 9/2017",
+    "texto": "Las proposiciones en el procedimiento abierto deberán ir acompañadas de una declaración responsable que se ajustará al formulario de documento europeo único de contratación de conformidad con lo indicado en el artículo siguiente, que deberá estar firmada y con la correspondiente identificación."
+  },
+  "options": {
+    "0": "El precepto exige que la declaración esté firmada y con la correspondiente identificación, sin excepcionar la remisión por medios electrónicos.",
+    "1": "Lo que acompaña a la proposición es la declaración responsable; la documentación justificativa solo se pide en los supuestos del apartado 3 del mismo artículo.",
+    "2": "El modelo al que debe ajustarse la declaración es el formulario de documento europeo único de contratación, no uno aprobado por el órgano de contratación.",
+    "3": "Reproduce el precepto: declaración responsable ajustada al formulario de documento europeo único de contratación, firmada y con la correspondiente identificación."
+  },
+  "frame": "select_correct"
+}

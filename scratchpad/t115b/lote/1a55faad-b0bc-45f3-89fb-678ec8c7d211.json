@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 138.2 de la Ley 9/2017",
+    "texto": "a) Cuando se den circunstancias técnicas que lo impidan, en los términos señalados en la Disposición adicional decimoquinta. b) Por razones de confidencialidad, en aplicación de lo dispuesto en el artículo 133. c) En el caso de las concesiones de obras y de servicios, por motivos de seguridad excepcionales."
+  },
+  "options": {
+    "0": "La remisión del precepto para la confidencialidad es al artículo 133; el 119 regula la tramitación urgente del expediente, que en este artículo aparece como excepción a la prórroga del plazo.",
+    "1": "El supuesto que enumera el precepto son las razones de confidencialidad, no un genérico interés público.",
+    "2": "La urgencia del expediente no figura entre las tres causas del acceso no electrónico, y lo que la Disposición adicional decimoquinta ampara son las circunstancias técnicas que lo impidan.",
+    "3": "Reproduce la letra b) del precepto: razones de confidencialidad, en aplicación de lo dispuesto en el artículo 133. Las otras dos causas son las circunstancias técnicas que lo impidan y, en las concesiones de obras y de servicios, los motivos de seguridad excepcionales."
+  },
+  "frame": "select_correct"
+}

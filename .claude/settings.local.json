@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-remote *)",
+      "Bash(git rebase *)",
+      "Bash(test -d .git/rebase-merge -o -d .git/rebase-apply)",
+      "Bash(git rev-list *)",
+      "Bash(echo \"posición vs origin/main: $\\(git rev-list --left-right --count HEAD...origin/main\\)\")",
+      "Bash(node /tmp/claude-1000/-home-manuel-Documentos-github-vence/26b5ccce-2c24-4dd0-af6e-34e8a4163ee7/scratchpad/drift_check.cjs)",
+      "Bash(git fetch *)",
+      "Bash(echo \"✅ rebase limpio · pos vs origin/main: $\\(git rev-list --left-right --count HEAD...origin/main\\)\")",
+      "Bash(node scripts/backlog-push-guard.cjs)",
+      "Bash(echo \"--- exit: $?\")",
+      "Bash(node *)",
+      "Bash(NODE_TLS_REJECT_UNAUTHORIZED=0 node *)",
+      "Bash(cd *)",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(test *)",
+      "Bash(mkdir *)",
+      "Bash(chmod *)",
+      "Read",
+      "Edit",
+      "Write",
+      "WebFetch(domain:www.valencia.es)",
+      "WebFetch(domain:ics.gencat.cat)",
+      "WebSearch",
+      "Bash(git worktree *)",
+      "Skill(update-config)",
+      "Bash(ln -s /home/manuel/Documentos/github/vence/node_modules node_modules)",
+      "Bash(ln -s /home/manuel/Documentos/github/vence/.env.local .env.local)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(echo \"pos vs origin/main: $\\(git rev-list --left-right --count HEAD...origin/main\\)\")",
+      "WebFetch(domain:www.boe.es)",
+      "Bash(ln -sf /home/manuel/Documentos/github/vence/node_modules /home/manuel/Documentos/github/vence-wt-oep-manual/node_modules)",
+      "Bash(sort -t- -k2 -n)"
+    ],
+    "defaultMode": "bypassPermissions",
+    "additionalDirectories": [
+      "/home/manuel/Documentos/github/vence-wt-oep-triage"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 44 de la Ley 39/2015",
+    "texto": "Cuando los interesados en un procedimiento sean desconocidos, se ignore el lugar de la notificación o bien, intentada ésta, no se hubiese podido practicar, la notificación se hará por medio de un anuncio publicado en el «Boletín Oficial del Estado»."
+  },
+  "intro": "Cuando la notificación personal no es posible, la ley separa el cauce que produce el efecto de notificar de los avisos que la Administración puede añadir por su cuenta. Solo uno es obligatorio, y los otros tres que aparecen en las opciones son precisamente los facultativos.",
+  "options": {
+    "0": "El tablón de edictos del Ayuntamiento del último domicilio es una publicación previa y facultativa; por sí sola no cumple el deber de notificar.",
+    "1": "El boletín de la Comunidad Autónoma también aparece en el precepto, pero igualmente como publicación previa y voluntaria.",
+    "2": "Lo mismo ocurre con el boletín provincial: complementa, no sustituye.",
+    "3": "Es la vía que exige el artículo 44: anuncio publicado en el «Boletín Oficial del Estado»."
+  },
+  "outro": "**Clave:** interesado desconocido, lugar ignorado o notificación fallida se resuelven con anuncio en el «Boletín Oficial del Estado»; las demás publicaciones son facultativas y no eximen de aquel."
+}

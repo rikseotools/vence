@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 41 de la Constitución Española",
+    "texto": "Los poderes públicos mantendrán un régimen público de Seguridad Social para todos los ciudadanos, que garantice la asistencia y prestaciones sociales suficientes ante situaciones de necesidad, especialmente en caso de desempleo."
+  },
+  "intro": "El mandato de sostener un régimen público de Seguridad Social está entre los principios rectores de la política social y económica, el Capítulo III del Título I. No es un derecho directamente exigible ante los tribunales: informa la actuación de los poderes públicos y solo se alega ante ellos conforme a las leyes que lo desarrollan.",
+  "options": {
+    "0": "El artículo 27 reconoce el derecho a la educación y la libertad de enseñanza, y está en la Sección 1.ª del Capítulo II, con protección de derecho fundamental.",
+    "1": "Es el precepto que obliga a mantener ese régimen público para todos los ciudadanos, con prestaciones suficientes ante situaciones de necesidad y, señaladamente, en caso de desempleo.",
+    "2": "El artículo 57 regula la sucesión en la Corona y el orden de llamamientos, dentro del Título II.",
+    "3": "El artículo 33 reconoce el derecho a la propiedad privada y a la herencia, con su función social y la garantía frente a la expropiación."
+  },
+  "outro": "**Clave:** el régimen público de Seguridad Social para todos los ciudadanos es el artículo 41, principio rector del Capítulo III."
+}

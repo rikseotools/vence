@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 140.3 de la Ley 9/2017",
+    "texto": "El órgano o la mesa de contratación podrán pedir a los candidatos o licitadores que presenten la totalidad o una parte de los documentos justificativos, cuando consideren que existen dudas razonables sobre la vigencia o fiabilidad de la declaración, cuando resulte necesario para el buen desarrollo del procedimiento y, en todo caso, antes de adjudicar el contrato."
+  },
+  "options": {
+    "0": "La petición no depende de que la inste otro licitador, y el momento límite que fija el precepto es antes de adjudicar, no antes de formalizar.",
+    "1": "Reproduce los tres supuestos del precepto: dudas razonables sobre la vigencia o fiabilidad de la declaración, necesidad para el buen desarrollo del procedimiento y, en todo caso, antes de adjudicar el contrato. El mismo apartado exceptúa después al empresario inscrito en el Registro Oficial de Licitadores y Empresas Clasificadas del Sector Público, o en una base de datos nacional de un Estado miembro de la Unión Europea, cuando sean accesibles de modo gratuito.",
+    "2": "El artículo obliga a pedirlos en todo caso antes de adjudicar, de modo que no puede prohibirse la petición tras la apertura de las proposiciones.",
+    "3": "Las dudas que menciona el precepto son sobre la vigencia o fiabilidad de la declaración, y el momento límite es antes de adjudicar el contrato."
+  },
+  "frame": "select_correct"
+}

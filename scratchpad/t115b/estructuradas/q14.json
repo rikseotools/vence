@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 146.3 de la Ley 9/2017",
+    "texto": "En el caso de que el procedimiento de adjudicación se articule en varias fases, se indicará igualmente en cuales de ellas se irán aplicando los distintos criterios, estableciendo un umbral mínimo del 50 por ciento de la puntuación en el conjunto de los criterios cualitativos para continuar en el proceso selectivo."
+  },
+  "options": {
+    "0": "El umbral se calcula sobre el conjunto de los criterios cualitativos, no sobre los evaluables mediante fórmulas.",
+    "1": "El porcentaje que fija el precepto es el 50 por ciento, no el 30.",
+    "2": "Reproduce el precepto: umbral mínimo del 50 por ciento de la puntuación en el conjunto de los criterios cualitativos para continuar en el proceso selectivo.",
+    "3": "El umbral condiciona la continuidad en el proceso selectivo, no la adjudicación, y se mide sobre los criterios cualitativos."
+  },
+  "frame": "select_correct"
+}

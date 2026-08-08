@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 18.2 de la Constitución Española",
+    "texto": "El domicilio es inviolable. Ninguna entrada o registro podrá hacerse en él sin consentimiento del titular o resolución judicial, salvo en caso de flagrante delito."
+  },
+  "intro": "La inviolabilidad del domicilio no es absoluta: el precepto contempla tres supuestos en los que la entrada o el registro son admisibles. Dos son títulos habilitantes (el consentimiento del titular y la resolución judicial) y el tercero es una excepción que opera sin ninguno de ellos, el delito flagrante.",
+  "options": {
+    "0": "El flagrante delito es uno de los supuestos, pero por sí solo deja fuera las dos vías ordinarias de entrada.",
+    "1": "El consentimiento del titular también habilita la entrada, y tampoco agota los casos que el precepto admite.",
+    "2": "La resolución judicial es el tercer supuesto, y es el cauce habitual cuando no hay consentimiento ni flagrancia.",
+    "3": "El artículo 18.2 recoge los tres supuestos: consentimiento del titular, resolución judicial y flagrante delito."
+  },
+  "outro": "**Clave:** consentimiento del titular, resolución judicial o flagrante delito; fuera de esos tres supuestos, el domicilio es inviolable."
+}

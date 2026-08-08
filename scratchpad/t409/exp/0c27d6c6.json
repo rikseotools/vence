@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 28.2 de la Constitución Española",
+    "texto": "Se reconoce el derecho a la huelga de los trabajadores para la defensa de sus intereses. La ley que regule el ejercicio de este derecho establecerá las garantías precisas para asegurar el mantenimiento de los servicios esenciales de la comunidad."
+  },
+  "intro": "La pregunta no va del contenido del derecho, sino de su UBICACIÓN dentro del Título I, que es lo que determina su protección. El artículo 28 está en la Sección 1.ª del Capítulo II, la de mayor garantía: reserva de ley orgánica, procedimiento preferente y sumario y recurso de amparo ante el Tribunal Constitucional.",
+  "options": {
+    "0": "Esa es la Sección 2.ª del Capítulo II (artículos 30 a 38), donde están el deber de defender a España, el sistema tributario, el derecho al trabajo o la libertad de empresa. La huelga queda por encima de esa rúbrica.",
+    "1": "Los principios rectores de la política social y económica son el Capítulo III (artículos 39 a 52) y no son derechos directamente exigibles ante los tribunales, sino informadores de la actuación de los poderes públicos.",
+    "2": "Es la Sección 1.ª del Capítulo II, donde el artículo 28.2 reconoce el derecho a la huelga de los trabajadores para la defensa de sus intereses, con la garantía de los servicios esenciales.",
+    "3": "Sí tiene reconocimiento constitucional expreso, y del máximo nivel de protección."
+  },
+  "outro": "**Clave:** la huelga está en el artículo 28.2, dentro de los derechos fundamentales y libertades públicas, con amparo constitucional y reserva de ley orgánica."
+}

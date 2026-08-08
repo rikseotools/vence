@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 50.2 RD 203/2021",
+    "texto": "La información relativa a las marcas y sellos electrónicos cualificados de tiempo se asociará a los documentos electrónicos en la forma que determine el Esquema Nacional de Interoperabilidad y normativa correspondiente."
+  },
+  "options": {
+    "0": "El instrumento que el precepto invoca es el de interoperabilidad, no el de seguridad.",
+    "1": "La política de gestión de documentos electrónicos determina, en el artículo 52, el tiempo durante el que se garantiza el acceso al expediente, no la forma de asociar la referencia temporal.",
+    "2": "Ese órgano interviene en el artículo 55 para fijar los plazos de accesibilidad en el archivo electrónico único de la Administración General del Estado.",
+    "3": "Es la remisión literal del precepto: la forma de asociar esa información la determina el Esquema Nacional de Interoperabilidad y normativa correspondiente."
+  },
+  "frame": "select_correct"
+}

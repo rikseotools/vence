@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 91.1 del Real Decreto Legislativo 2/2004",
+    "texto": "La formación de la matrícula del Impuesto, la calificación de las actividades económicas, el señalamiento de las cuotas correspondientes y, en general, la gestión censal del tributo se llevará a cabo por la Administración tributaria del Estado."
+  },
+  "options": {
+    "0": "Reproduce el precepto: la gestión censal corresponde a la Administración tributaria del Estado. La delegación que el mismo apartado permite para las cuotas municipales no traslada la titularidad de la competencia.",
+    "1": "A los ayuntamientos les corresponde, según el apartado 2, la liquidación y recaudación y la revisión de los actos de gestión tributaria, no la gestión censal.",
+    "2": "Esas entidades pueden recibir la gestión censal por DELEGACIÓN cuando se trate de cuotas municipales, pero la competencia es de la Administración tributaria del Estado.",
+    "3": "Las comunidades autónomas figuran entre las entidades en que puede delegarse, no como titulares de la competencia."
+  },
+  "frame": "select_correct"
+}

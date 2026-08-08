@@ -1552,6 +1552,34 @@ async function main() {
         let motivoSalto = null
         let atascados = []
 
+        // ── Y EL SUPERVISOR SE PONE AL DÍA A SÍ MISMO (T-716, 08/08) ───────────────────────
+        // Ponía al día el clon de TODOS los trabajadores antes de cada encargo… y nunca el suyo.
+        // Medido el 08/08 en una tarde de supervisión: hubo que actualizarlo A MANO ocho veces,
+        // y llegó a ir **54 commits por detrás en veinte minutos** — la flota produce más rápido
+        // de lo que un humano se acuerda de hacer `git pull`. No es cosmético: cada pasada lanza
+        // `flota.cjs repartir` COMO HIJO, así que un clon viejo reparte con la criba vieja, y es
+        // el modo de fallo nº1 del sistema (un supervisor desactualizado cuenta mal quién está
+        // libre y deja de repartir).
+        //
+        // Reusa el MISMO criterio que aplica a los demás (`lib/flota/actualizacion.cjs`): nada
+        // de `reset --hard` ni `clean`. Si el árbol está sucio o adelantado NO se toca —lo sin
+        // commitear puede ser el único rastro de un trabajo— y se dice en voz alta.
+        try {
+          const sonda = ACTU.leerSonda(
+            require('child_process').execSync(ACTU.SONDA_GIT(REPO), { encoding: 'utf8', timeout: 60000 }))
+          const v = ACTU.evaluarClon(sonda)
+          if (v.hayQueActualizar) {
+            require('child_process').execSync(ACTU.ORDEN_ACTUALIZAR(REPO), { encoding: 'utf8', timeout: 180000 })
+            console.log(`  ⬆️  supervisor: clon puesto al día (${sonda.atras} commit(s) por detrás)`)
+          } else if (v.estado !== 'al_dia' && v.estado !== 'a_medias') {
+            // Se avisa y se sigue: quedarse sin repartir por no poder actualizar sería peor que
+            // repartir con código de hace un rato.
+            console.log(`  ⚠️  supervisor: no se pudo poner al día (${v.motivo}) — se reparte igual`)
+          }
+        } catch (e) {
+          console.log(`  ⚠️  supervisor: fallo al mirar su propio clon (${String(e.message || e).slice(0, 70)}) — se reparte igual`)
+        }
+
         // ── LA SALUD DE LA MÁQUINA SE MIDE AQUÍ, NO SOLO EN EL PANEL ([T-677]) ──────────────
         // La primera versión solo medía al pintar el panel, o sea **solo cuando una persona
         // ejecutaba `npm run flota` a mano**. Eso no es una alerta proactiva: es una alerta que

@@ -1,0 +1,14 @@
+{
+  "cita": {
+    "ref": "Art. 18.2 de la Constitución Española",
+    "texto": "El domicilio es inviolable. Ninguna entrada o registro podrá hacerse en él sin consentimiento del titular o resolución judicial, salvo en caso de flagrante delito."
+  },
+  "intro": "La garantía se construye con tres piezas y las opciones se distinguen solo por cuántas recogen: dos títulos que habilitan la entrada (el consentimiento del titular y la resolución judicial) y una excepción que opera sin ninguno de los dos (el delito flagrante). Quedarse con una sola de las habilitaciones deja fuera la otra.",
+  "options": {
+    "0": "Omite los dos títulos que sí permiten entrar, con lo que el domicilio solo sería accesible en flagrante delito.",
+    "1": "Recoge el consentimiento del titular y olvida la resolución judicial, que es justo la vía por la que se practica la mayoría de los registros.",
+    "2": "Recoge la resolución judicial y deja fuera el consentimiento del titular, que también habilita la entrada.",
+    "3": "Reproduce el precepto completo: consentimiento del titular o resolución judicial, y como excepción el flagrante delito."
+  },
+  "outro": "**Clave:** consentimiento del titular O resolución judicial, y al margen de ambos, el caso de flagrante delito."
+}

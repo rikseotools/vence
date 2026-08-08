@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 52 RD 203/2021",
+    "texto": "Y el cumplimiento de la normativa aplicable en materia de protección de datos de carácter personal y de transparencia y acceso a la información pública y de patrimonio documental, histórico y cultural."
+  },
+  "options": {
+    "0": "La tercera materia que enumera el precepto es la de patrimonio documental, histórico y cultural, no la de seguridad de las redes y sistemas de información.",
+    "1": "La segunda materia que enumera el precepto es la de transparencia y acceso a la información pública, no la de reutilización de la información del sector público.",
+    "2": "Reproduce las tres materias que enumera el precepto: protección de datos de carácter personal, transparencia y acceso a la información pública, y patrimonio documental, histórico y cultural.",
+    "3": "La contratación del sector público no figura entre las materias que el artículo enumera; la tercera es la de patrimonio documental, histórico y cultural."
+  },
+  "frame": "select_correct"
+}

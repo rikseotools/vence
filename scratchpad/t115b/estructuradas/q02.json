@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 138.1 de la Ley 9/2017",
+    "texto": "Los órganos de contratación ofrecerán acceso a los pliegos y demás documentación complementaria por medios electrónicos a través del perfil de contratante, acceso que será libre, directo, completo y gratuito, y que deberá poder efectuarse desde la fecha de la publicación del anuncio de licitación o, en su caso, del envío de la invitación a los candidatos seleccionados."
+  },
+  "options": {
+    "0": "El momento desde el que debe poder efectuarse el acceso es la publicación del anuncio de licitación o el envío de la invitación, no la aprobación del pliego.",
+    "1": "El precepto exige que el acceso sea gratuito; someterlo a tasa contradice uno de sus cuatro caracteres.",
+    "2": "Reproduce el precepto: acceso libre, directo, completo y gratuito, disponible desde la publicación del anuncio o el envío de la invitación.",
+    "3": "El acceso ha de ser directo y completo, sin condicionarlo a una solicitud motivada previa."
+  },
+  "frame": "select_correct"
+}

@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "cita": {
+    "ref": "Art. 53 bis de la Ley Orgánica 3/2018",
+    "texto": "Además, deben garantizar la transmisión y recepción seguras de los documentos e información que se intercambien, y, en su caso, recoger las evidencias necesarias y el resultado de las actuaciones realizadas asegurando su autoría, autenticidad e integridad."
+  },
+  "options": {
+    "0": "Las tres propiedades que el precepto exige asegurar son autoría, autenticidad e integridad, no confidencialidad y disponibilidad.",
+    "1": "El artículo condiciona esa recogida de evidencias con un «en su caso»; sustituirlo por «en todo caso» convierte en obligatorio lo que la norma deja a las circunstancias.",
+    "2": "El precepto no fija plazo de conservación alguno: lo que exige es la transmisión y recepción seguras de los documentos e información que se intercambien.",
+    "3": "Reproduce la exigencia del artículo: transmisión y recepción seguras y, en su caso, recogida de evidencias y del resultado asegurando autoría, autenticidad e integridad."
+  },
+  "frame": "select_correct"
+}
