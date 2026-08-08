@@ -42,15 +42,26 @@ const postgres = pgMod.default || pgMod
 const { calcularSaneamiento } = require(
   path.join(REPO, 'lib', 'calidad', 'verificacionCosmetica.cjs'),
 )
+// [T-465/T-624] La medición (SELECT) es de solo lectura y un trabajador de la flota con
+// únicamente VENCE_LECTOR_URL tiene que poder simularla — es la vía por la que se verifica la
+// cifra antes de pedirle a alguien con escritura que aplique. Leer DATABASE_URL a pelo aquí era
+// el mismo gotcha que ya se corrigió en verificar-articulos-vs-boe.cjs/huerfanos-plan.cjs: un
+// trabajador con DATABASE_URL restringido a coordinación (T-539) no podía ni simular, aunque
+// tuviera VENCE_LECTOR_URL exportado (medido 08/08: "permission denied for table
+// ai_verification_results" al intentarlo). El `--aplicar` SÍ necesita escritura real, así que
+// esa transacción sigue por su cuenta con `DATABASE_URL` sin más — resolverla con
+// `urlLecturaNegocio()` preferiría el rol de lectura si alguien tiene las dos variables
+// exportadas a la vez, y el UPDATE fallaría con el mismo "permission denied".
+const { urlLecturaNegocio } = require(path.join(REPO, 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const APLICAR = process.argv.includes('--aplicar')
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: { rejectUnauthorized: false } })
+  const sqlLectura = postgres(urlLecturaNegocio(), { max: 1, prepare: false, ssl: { rejectUnauthorized: false } })
 
   // Mismo SELECT que la auditoría, a propósito: dos consultas distintas para "lo mismo" es como
   // empiezan a divergir estos criterios.
-  const filas = await sql`
+  const filas = await sqlLectura`
     SELECT v.id, v.question_id, v.explanation, v.article_ok, v.answer_ok, v.ai_model,
            l.short_name AS ley
     FROM ai_verification_results v
@@ -70,11 +81,21 @@ async function main() {
 
   if (!APLICAR) {
     console.log('\n(simulación: no se ha escrito nada. Repite con --aplicar)')
-    await sql.end()
+    await sqlLectura.end()
     return
   }
+  await sqlLectura.end()
 
-  await sql.begin(async (tx) => {
+  // Escritura real: necesita el rol con permiso de UPDATE sobre ai_verification_results.
+  // urlLecturaNegocio() preferiría VENCE_LECTOR_URL si también está exportada — sería el mismo
+  // "permission denied" pero en la transacción, así que aquí se exige DATABASE_URL sin más.
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ --aplicar necesita DATABASE_URL con permiso de escritura sobre negocio (no VENCE_LECTOR_URL, que es solo lectura).')
+    process.exit(1)
+  }
+  const sqlEscritura = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: { rejectUnauthorized: false } })
+
+  await sqlEscritura.begin(async (tx) => {
     let limpiadas = 0
     for (const { fila, flags } of aLimpiar) {
       await tx`
@@ -100,7 +121,7 @@ async function main() {
     console.log(`\n✅ ${limpiadas} fila(s) saneadas (article_ok/answer_ok → NULL) + su traza en observable_events.`)
   })
 
-  await sql.end()
+  await sqlEscritura.end()
 }
 
 main().catch((e) => {

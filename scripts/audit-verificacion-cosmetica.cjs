@@ -25,11 +25,16 @@ const postgres = pgMod.default || pgMod
 const { clasificarFirma, soloVerificadaPorPasesCosmeticos } = require(
   path.join(REPO, 'lib', 'calidad', 'verificacionCosmetica.cjs'),
 )
+// [T-624] SOLO LEE (ver cabecera) — un trabajador de la flota con únicamente `VENCE_LECTOR_URL`
+// tiene que poder correrlo. Leía `DATABASE_URL` a pelo (medido 08/08: "permission denied for
+// table ai_verification_results" con el rol de coordinación), el mismo gotcha que
+// `verificar-articulos-vs-boe.cjs`/`huerfanos-plan.cjs` ya habían corregido.
+const { urlLecturaNegocio } = require(path.join(REPO, 'lib', 'db', 'negocioSoloLectura.cjs'))
 
 const JSON_OUT = process.argv.includes('--json')
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: { rejectUnauthorized: false } })
+  const sql = postgres(urlLecturaNegocio(), { max: 1, prepare: false, ssl: { rejectUnauthorized: false } })
 
   // Solo preguntas ACTIVAS: una retirada ya no engaña a nadie.
   const filas = await sql`
