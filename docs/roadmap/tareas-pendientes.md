@@ -6413,7 +6413,41 @@ explicaciones legales.
   producción tras el deploy. No es un caso agregado del banco: es una persona con un hilo sin
   responder porque la respuesta definitiva a *"¿por qué el contador no acierta del todo?"*
   depende de la decisión que falta aquí.
-- **Relacionadas:** [T-507], [T-411], [T-397], [T-566] (caso real de arriba).
+- **📊 Cifra de usuarios que faltaba (08/08, Manuel vía #117, `user_profiles` — fuera del alcance de
+  un trabajador):** `mecanico_conductor_estado` tiene **17 usuarios** con esa oposición como
+  objetivo, **0 premium**. `policia_nacional` tiene **127**, también **0 premium**.
+- **🔬 DIAGNÓSTICO de los 8 temas de `mecanico_conductor_estado` que sirven CERO (08/08, w3,
+  encargado por Manuel: "si el filtro de tag rechaza preguntas correctamente escopadas, el
+  defecto está en el filtro/tags, no en el scope — averígualo, no hace falta mi OK").**
+  **Medido, y la hipótesis NO se sostiene: no hay bug de etiquetado.** El `topic_scope` de los 7
+  temas `disponible=false` (6, 8, 11 [ya diagnosticado en [T-522]], 12, 13, 14, 15) apunta a
+  artículos REALES de RGC/Ley de Tráfico/RD 818/2009/RD 2822/1998, y esos artículos SÍ tienen
+  preguntas activas — pero consulté el banco ENTERO (no solo el scope de estos temas) y **de las 4
+  leyes de tráfico, el 100% de las preguntas activas llevan el tag `PN`**: RGC 80/80, Ley Tráfico
+  6/6, RD 818/2009 1/1, RD 2822/1998 3/3 — **90 de 90, cero sin el tag**. No es que el filtro
+  descarte de más: es que **nunca se ha generado una sola pregunta de tráfico para nadie que no sea
+  Policía Nacional**. El scope está bien, el filtro funciona como está diseñado — el hueco es de
+  CONTENIDO, no de etiquetado ni de scope.
+  - **Comprobado también el motivo original del tag** (`EXCLUSIVE_QUESTION_TAGS`, pensado para no
+    mezclar formatos — PN usa 3 opciones): las 42 preguntas de tema 11 (el caso ya cerrado en
+    [T-522]) tienen las 42 con `option_d IS NULL` (3 opciones), confirmando que SON del formato PN.
+    Pero el formato NO es un bloqueo automático para compartirlas si algún día se decide: el propio
+    tema 1 (CE) de esta oposición, que YA sirve hoy con normalidad, mezcla **230 de 1.225 preguntas
+    (19%) con `option_d IS NULL`** — la app ya tolera tests con opciones mixtas 3/4 sin problema.
+  - **Tema 7 tiene ADEMÁS un segundo defecto, distinto y más simple:** sus artículos de RGC
+    (9,10,11,12,14,14 bis,15,16) tienen texto real pero **CERO preguntas generadas, ni siquiera de
+    PN** — no es un problema de tag, es que nadie ha escrito preguntas de esos artículos todavía. Y
+    su fila de `topic_scope` para RD 2822/1998 tiene `article_numbers=NULL` (fila vacía, sin
+    artículos ni rango de título/capítulo) — un hueco de scope menor, aparte del de contenido.
+  - **Las dos salidas reales para estos 7 temas** (siguen sin ser mi decisión — esto es el
+    diagnóstico que pedía Manuel, no la resolución): (a) generar preguntas propias de tráfico para
+    `mecanico_conductor_estado` desde el texto ya importado (las 4 leyes, 496 artículos, YA están en
+    BD verificadas — es trabajo de generación con doble auditoría, no de importar temario nuevo); o
+    (b) replantear si esas 90 preguntas de PN pueden compartirse (quitar/duplicar el tag) — el
+    formato mixto ya se tolera, pero esto cambia el contrato de "exclusivo de PN" a nivel de
+    sistema, así que si se plantea es decisión de producto, no un fix técnico suelto.
+- **Relacionadas:** [T-507], [T-411], [T-397], [T-566] (caso real de arriba), [T-522] (mismo
+  diagnóstico ya aplicado y cerrado para el tema 11 en concreto — el gate ya no lo bendice en falso).
 
 
 ### [T-514] 🟡 [ABIERTO 04/08] Ujieres CCGG: generar preguntas para T4 y T9-T12, que son el núcleo propio del Cuerpo
