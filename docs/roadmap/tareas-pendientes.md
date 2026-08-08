@@ -1140,6 +1140,25 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-710] 🟡 [ABIERTO 08/08] Construir Auxiliar de Archivos/Bibliotecas/Museos de Madrid (C1): mapear topic_scope de 50 temas + config + gates
+
+- **Esfuerzo: sesión_propia.** Mapeo de scope tema→(ley, artículos) para 50 temas + config + activación — trabajo de contenido real, no medición.
+- **De dónde sale:** separada de [T-393] a petición explícita de Manuel (embudo, pregunta `#100`, 08/08): *"construirla es trabajo de CONTENIDO real (mapear el `topic_scope` de los 50 temas, entrada de config, gates `audit:oposicion` y `verify:scope`), así que va a ficha propia con su esfuerzo declarado, no dentro de T-393"*. T-393 se queda como el diagnóstico (ya corregido); esta ficha es la construcción.
+- **Decisión de producto YA TOMADA por Manuel (08/08), no pendiente:** regla textual del día — *"A1 y A2 no las vamos a hacer por el momento; las C1, C2, D etc. esas sí, todas"*. `auxiliar_archivos_bibliotecas_museos_madrid` es **grupo C, subgrupo C1** (confirmado por Manuel al corregir T-393) → cae exactamente en lo que SÍ se construye. **Se termina, no se retira.**
+- **Estado real medido (08/08, vía `VENCE_LECTOR_URL` + confirmado por Manuel con su credencial):**
+  - `oposiciones` tiene fila (`slug='auxiliar-archivos-bibliotecas-museos-madrid'`, nombre *"Auxiliar de Archivos, Bibliotecas y Museos de la Comunidad de Madrid"*, `is_active=false`, grupo C, subgrupo C1) — **existe**, contra lo que decía la ficha original de T-393 tras su remedición del 07/08.
+  - **NO está publicada:** `is_active=false` y los 50 `topics` tienen `disponible=false` (`is_active=true` en el topic, pero no servible). No hay nadie aterrizando en un temario vacío hoy — la urgencia original de T-393 estaba sobrestimada.
+  - `topic_scope`: **0 filas** (confirmado 08/08). Esto SÍ sigue siendo el hueco real: sin scope, ningún tema puede servir preguntas aunque se active.
+  - Sin entrada en `lib/config/oposiciones.ts` y sin rutas `app/auxiliar-archivos-bibliotecas-museos-madrid/` (confirmado, grep + `find`) — el scaffold de frontend no existe.
+  - 3 usuarios FREE la tienen como `target_oposicion` (dato de la ficha original de T-393, no re-verificado hoy — `user_profiles` fuera del alcance de `VENCE_LECTOR_URL` por diseño, PII).
+- **Qué hacer, en orden (manual `docs/maintenance/crear-nueva-oposicion.md` + `verificar-epigrafes-scope.md`):**
+  1. **Primero, lo que pidió Manuel como paso 1 de T-393:** comprobar qué ven hoy esos 3 usuarios con la oposición `is_active=false`. El mecanismo que podía borrarles la oposición en silencio ([T-569], el limpiador de `/perfil` que vaciaba `target_oposicion`) **está confirmado ya en `main`** (commit `b54cd6934`, mergeado vía `0444aee0b`) — pero confirmar el efecto EN VIVO para estos 3 usuarios concretos requiere una sesión con más alcance que un trabajador de lectura.
+  2. Mapear el `topic_scope` de los 50 temas (tema→ley/artículos) según cada epígrafe — el temario ya está escrito con epígrafes (lo caro ya está hecho), falta el juicio del mapeo.
+  3. Añadir la entrada de config en `lib/config/oposiciones.ts` + rutas + `OnboardingModal`/perfil/mapeo CCAA.
+  4. Gates `audit:oposicion` + `audit:served` + `verify:scope` en verde antes de `is_active=true`.
+- **⚠️ Cabo suelto encontrado de paso (no arreglado, fuera de alcance de esta ficha):** la ficha de [T-569] sigue con cabecera `🟠 [ABIERTO 05/08]` en el markdown pese a que su fix está confirmado en `main` desde el 07/08 — parece la misma clase de divergencia DB/markdown que [T-393] tenía (ver abajo), aunque no comprobé su estado en `backlog_tasks`.
+- **Relacionadas:** [T-393] (el diagnóstico, ahora corregido), [T-643] (el patrón RLS que hizo parecer estas filas ausentes), [T-045] (mismo patrón, otra oposición), [T-569] (el fix que protege a los 3 usuarios mientras tanto).
+
 ### [T-704] 🟠 [ABIERTO 08/08] El tercer guardarraíl del pre-push seguía aceptando un «1» como escape, y por eso su 69% no significaba nada
 
 - **Se quedó atrás.** [T-496] y [T-497] le quitaron el `=1` a `indice-compartido` y a `backlog-push` —*«el escape se usa de prefijo, se copia de un comando a otro»*— pero `contexto-backlog`, que nació después ([T-428]), siguió con `CONTEXTO_GUARD_SKIP=1`. **NO es lo mismo que T-428**, que construye lo que el guard DETECTA (fichas vaciadas al resolver un conflicto); esto es su puerta de ESCAPE.
@@ -8047,6 +8066,37 @@ esas preguntas no le habrían salido nunca.
 >   "Terminarla" es un trabajo de contenido real (mapeo scope tema→ley/artículos para 50 temas,
 >   siguiendo `crear-nueva-oposicion.md` + gates `audit:oposicion`/`verify:scope`), no algo para
 >   empezar especulativamente sin saber si es el camino elegido.
+
+> **🔧 CORRECCIÓN (08/08, w3) — la remedición del 07/08 de arriba estaba mal en lo más central, y
+> Manuel ya lo había corregido en el embudo ANTES de este commit: la fila SÍ existe.**
+> - **Causa del error: RLS, no borrado.** `oposiciones` tiene RLS activo con la única política de
+>   `SELECT` `qual=(is_active = true)`, y `vence_lector` (`VENCE_LECTOR_URL`) tiene
+>   `rolbypassrls=false` — cualquier fila `is_active=false` es invisible por lectura, exista o no
+>   (mismo patrón documentado en CLAUDE.md para otras tablas, T-573/T-578; detalle en [T-045]).
+> - **Manuel confirmó con su propia credencial (embudo, pregunta `#100`, 08/08), respondiendo
+>   textualmente a la premisa "ni siquiera hay fila en la tabla oposiciones":** *"TU PREMISA CLAVE
+>   ES FALSA... SÍ la hay: slug 'auxiliar-archivos-bibliotecas-museos-madrid'... `is_active=false`,
+>   grupo C, SUBGRUPO C1. No la encontraste porque el slug NO coincide con el `position_type`
+>   ('auxiliar_archivos_bibliotecas_museos_madrid'): buscaste por `position_type` contra una tabla
+>   que se indexa por `slug`."* — un segundo motivo, distinto de la RLS pero que apunta a la misma
+>   conclusión: la fila existe.
+> - **Y la urgencia estaba sobrestimada:** Manuel también corrigió que la oposición **NO está
+>   publicada** — `is_active=false` y los 50 `topics` tienen `disponible=false`. No hay nadie
+>   aterrizando en un temario vacío hoy; sí hay 3 usuarios FREE con la oposición como objetivo
+>   (dato no re-verificado, `user_profiles` fuera de alcance por PII).
+> - **La decisión de Manuel, ya tomada (no pendiente):** regla del día, textual — *"A1 y A2 no las
+>   vamos a hacer por el momento; las C1, C2, D etc. esas sí, todas"*. Esta oposición es **C1** →
+>   **SE TERMINA**, no se retira. El trabajo de construcción (scope + config + gates) va a **ficha
+>   propia** por instrucción explícita de Manuel — **[T-710]** — para que no quede mezclado con el
+>   diagnóstico de esta ficha.
+> - **⚠️ Y un hallazgo de proceso, más grave que el dato equivocado: esta tarea estaba cerrada
+>   `done` en la BD (cerrada por el supervisor el 07/08) pese a que el trabajo real nunca se hizo.**
+>   El outcome del cierre decía que la rama de quien la trabajó *"ya está en main (0 diff)"* — cierto,
+>   pero esa rama **solo tocaba `docs/roadmap/tareas-pendientes.md` (21 líneas, sin código)**, nunca
+>   el `topic_scope`/config real. Confirmado ahora (08/08): `topic_scope` sigue en **0 filas**, sin
+>   entrada en `lib/config/oposiciones.ts`, sin rutas `app/`. Es un cierre en falso: "la rama está en
+>   main" no es lo mismo que "el trabajo está hecho" cuando la rama nunca tuvo el trabajo. **Reabierta
+>   con `reopen` (08/08), motivo registrado en `backlog_tasks`.**
 
 ### [T-389] 🟠 [ABIERTO 31/07] Al ACEPTAR una impugnación, medir si el fallo es sistémico no puede depender de que Claude se acuerde
 
