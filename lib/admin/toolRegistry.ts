@@ -3085,6 +3085,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
       'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
   },
+  specs_ejecutados: {
+    titulo: 'Un spec de Playwright que ningún proyecto de CI ejecuta NO cuenta como capa',
+    ruta: 'lib/calidad/specsEjecutados.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/e2e-playwright.md',
+    notas:
+      'Núcleo puro + guardarraíl `__tests__/guardrails/specsEjecutados.guardrail.test.ts` ' +
+      '(trinquete: los 6 huérfanos medidos el 08/08/2026 quedan declarados y la lista solo ' +
+      'ENCOGE; ninguno nuevo puede entrar). Nace de [T-713]: 6 de 8 specs no se ejecutaban ' +
+      'NUNCA porque ningún workflow invoca el proyecto `authenticated`, y `preview-aws` solo se ' +
+      'dispara en pull_request — un evento que no ocurre en este repo. El daño no es perder esos ' +
+      '6, es que quien escribe el séptimo cree que ha puesto una capa. Lee los proyectos del ' +
+      'config real y los workflows de verdad, así que no se desfasa. Pendiente: DECIDIR dónde ' +
+      'corren (GHA con AUTH_SECRET como secret —firma sesiones— o smoke post-deploy, que alarga ' +
+      'el lock global). El proveedor `own-mint` ya está listo.',
+  },
+
   bearer_con_reintento: {
     titulo: 'El Bearer se pide dos veces antes de rendirse, y si no llega se DICE (`auth_header_sin_token`)',
     ruta: 'lib/api/bearerConReintento.ts',
@@ -3232,6 +3250,26 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'caía era un artículo. ON-DEMAND a propósito: 606 llamadas al BOE por pasada para una señal ' +
       'que cambia dos o tres veces al año. Origen: feedback `1627e0d4`, un usuario premium que ' +
       'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
+  },
+
+  cuota_cuentas_claude: {
+    titulo: '¿A qué cuenta de Claude Code le queda cuota, y mover un panel a la otra sin escribir nada',
+    ruta: 'scripts/sesiones/cuota.cjs',
+    estado: 'vivo',
+    escribe: ['observable_events'],
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run cuota` (foto) · `-- --rotar <slug> [--aplicar]` (relanza ese panel de tmux en la ' +
+      'otra cuenta con `--resume`, así que el hilo se conserva y no hay que escribir nada). ' +
+      'SIMULA por defecto: `respawn-pane -k` mata lo que corra en el panel. Criterio en dos ' +
+      'núcleos puros con 19 tests: `lib/sessions/rotacionCuenta.cjs` (cuándo avisar, a dónde ' +
+      'mover) y `lib/observability/cuentaDeSesion.cjs` (de quién es cada consumo). ' +
+      '⚠️ NO hay API de cuota: el proveedor no dice cuánta queda, solo corta — así que la ' +
+      'referencia es EMPÍRICA (lo que esa cuenta gastó la última vez que topó, del evento ' +
+      '`flota_turno` con `fase=sin_cuota`) y la primera vez NO puede avisar, y lo dice. ' +
+      '⚠️ La atribución retroactiva de sesiones locales es IMPOSIBLE: de los 355 transcripts de ' +
+      '`~/.claude/projects`, ninguno guarda la cuenta; se sella en el ingest hacia delante. ' +
+      'Origen [T-709]: «igual me quedo yo ahora sin poder terminar, y eso es un fallo».',
   },
 
   reparar_correcciones_bloqueadas: {

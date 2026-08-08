@@ -9,6 +9,7 @@ import type { Page } from '@playwright/test'
 import { E2E_SESSION_PROVIDER } from '../config/env'
 import { storageStateProvider } from './providers/storageStateProvider'
 import { bridgeMintProvider } from './providers/bridgeMintProvider'
+import { ownMintProvider } from './providers/ownMintProvider'
 
 export interface SessionProvider {
   readonly name: string
@@ -23,6 +24,12 @@ export interface SessionProvider {
 const REGISTRY: Record<string, SessionProvider> = {
   storage: storageStateProvider,
   bridge: bridgeMintProvider,
+  // [T-713] El que funciona HOY y el único que puede correr en CI: acuña la cookie Auth.js con
+  // `AUTH_SECRET`, igual que las simulaciones con navegador de `scripts/sim/*`. `bridge` acuña
+  // por Supabase (CONGELADO desde el 04/07) y `storage` exige una captura manual, así que
+  // ninguno de los dos sirve sin una persona delante — que es por lo que los 6 specs de
+  // `authed/` llevaban sin ejecutarse desde que existen.
+  'own-mint': ownMintProvider,
   // koigrid: koigridProvider,   // ← futuro: 1 fichero, sin tocar tests
 }
 

@@ -66,7 +66,7 @@
     "test:system": "node scripts/check-system.js",
     "test:unit": "jest --watchAll=false --passWithNoTests --testPathIgnorePatterns='/node_modules/' --testPathIgnorePatterns='<rootDir>/.claude/worktrees/' --testPathIgnorePatterns='__tests__/integration' --testPathIgnorePatterns='__tests__/perf' --testPathIgnorePatterns='__tests__/security' --testPathIgnorePatterns='__tests__/scraping' --testPathIgnorePatterns='__tests__/api/user-stats' --testPathIgnorePatterns='__tests__/canary' --testPathIgnorePatterns='\\.integration\\.test\\.'",
     "test:watch": "jest --watch",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/typecheck.cjs",
     "sim": "tsx scripts/sim/run.ts",
     "sim:emit": "SIM_EMIT=1 tsx scripts/sim/run.ts",
     "sim:test": "jest --watchAll=false __tests__/sim",
@@ -197,7 +197,8 @@
     "audit:corpus-ajeno": "node scripts/convocatoria/audit-corpus-ajeno.cjs",
     "sim:candado-typecheck": "node scripts/hooks/sim-candado-typecheck.cjs",
     "exam:reparar-correcciones": "node scripts/exam/reparar-correcciones-bloqueadas.cjs",
-    "sim:reparto-devueltas": "node scripts/flota/sim-reparto-devueltas.cjs"
+    "sim:reparto-devueltas": "node scripts/flota/sim-reparto-devueltas.cjs",
+    "cuota": "node scripts/sesiones/cuota.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
