@@ -18,6 +18,7 @@ const ROOT = path.resolve(__dirname, '..')
 require(path.join(ROOT, 'node_modules/dotenv')).config({ path: path.join(ROOT, '.env.local') })
 const { Client } = require(path.join(ROOT, 'node_modules/pg'))
 const { pgConfig } = require(path.join(ROOT, 'lib/db/pgSsl.cjs'))
+const { urlLecturaNegocio } = require(path.join(ROOT, 'lib/db/negocioSoloLectura.cjs'))
 const { clasificaPregunta } = require(path.join(ROOT, 'lib/health/explicacionEcoClave.cjs'))
 
 const arg = (n, d) => {
@@ -28,7 +29,9 @@ const LIMITE = parseInt(arg('--limite', '25'), 10)
 const JSON_OUT = process.argv.includes('--json')
 
 ;(async () => {
-  const url = process.env.VENCE_LECTOR_URL || process.env.DATABASE_URL
+  // La credencial de lectura se elige en UN solo sitio ([T-624]); esta rama es anterior a ese
+  // punto único y traía su propia copia del criterio.
+  const url = urlLecturaNegocio()
   if (!url) {
     console.error('⚠️  Falta VENCE_LECTOR_URL (o DATABASE_URL con acceso de negocio).')
     process.exit(1)

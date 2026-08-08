@@ -147,6 +147,31 @@ describe('verbosPegados', () => {
     expect(verbosPegados('ninguna palabra por aquí termina así')).toEqual([])
     expect(verbosPegados(null)).toEqual([])
   })
+
+  // Falso positivo real de la cola de 21 «contaminadas» (pregunta a1cfdaa9), encontrado al
+  // revisar T-557. «prescribirá» es un verbo CONJUGADO, no un infinitivo pegado a otro: lo
+  // partía el `\b` de JavaScript, que no cuenta la tilde como letra.
+  test('un verbo conjugado con tilde NO se parte en dos («reclamar prescribirá»)', () => {
+    expect(
+      verbosPegados('El derecho a reclamar prescribirá al año de producido el hecho')
+    ).toEqual([])
+  })
+
+  test('la misma frase con DOS infinitivos de verdad sí se marca', () => {
+    // Contraste obligado: si el arreglo se pasara de frenada, este caso dejaría de verse.
+    expect(verbosPegados('El derecho a reclamar exigir el importe')).toHaveLength(1)
+  })
+
+  test('otras conjugaciones acentuadas tampoco disparan', () => {
+    for (const frase of [
+      'podrá solicitar acreditará su identidad',
+      'deberá comunicar notificará el resultado',
+    ]) {
+      // el primer par sí es sospechoso, pero el verbo acentuado no debe contarse como segundo
+      const hits = verbosPegados(frase)
+      expect(hits.join(' ')).not.toMatch(/acreditar\b(?!á)|notificar\b(?!á)/)
+    }
+  })
 })
 
 describe('clasificaPregunta', () => {
