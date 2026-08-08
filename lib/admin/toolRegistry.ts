@@ -1847,7 +1847,12 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'Exit code 1 si hay errores → por eso `send-promo-inscripcion.cjs` lo usa como PUERTA antes ' +
       'de enviar (escape: --saltar-auditoria). Las cifras solo se contrastan si hay documento de ' +
       'tipo convocatoria/bases: el 96% del hub está clonado como `nota` y contrastar contra el ' +
-      'documento equivocado produce avisos falsos en masa (medido: 168).',
+      'documento equivocado produce avisos falsos en masa (medido: 168). [T-152, 08/08] Conectaba ' +
+      'SOLO con DATABASE_URL (rol de coordinación, sin acceso a oposiciones_ssot desde [T-539]): un ' +
+      'trabajador de la flota con VENCE_LECTOR_URL no podía correr la auditoría que su propia PUERTA ' +
+      'exige. Arreglado con `urlLecturaNegocio()` (T-624); la traza de observabilidad al final ya ' +
+      'estaba en try/catch fail-open, así que con el rol de solo-lectura audita igual y solo avisa ' +
+      'por consola si no puede escribir la traza.',
   },
   simular_auditoria_landings: {
     titulo: 'Simular audit:landing sobre TODAS las landings activas (cuántas están mal y por qué)',
