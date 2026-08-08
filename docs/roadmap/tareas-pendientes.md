@@ -1140,6 +1140,73 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-713] 🔴 [ABIERTO 08/08] 6 de los 8 specs de Playwright no se ejecutan NUNCA, y son justo los que se escribieron porque un fallo se escapó de todo lo demás
+
+**No estaban rotos ni desactivados: ningún workflow invoca el proyecto que los recoge.**
+
+| proyecto | qué recoge | ¿lo corre CI? |
+|---|---|---|
+| `prod` | `smoke-*.spec.ts` | ✅ cron cada 6 h |
+| `preview-aws` | `smoke-*.spec.ts` | ❌ solo en `pull_request`, y aquí **se empuja directo a `main`** |
+| `authenticated` | `authed/**` | ❌ solo con `npm run test:e2e:auth`, que no aparece en ningún workflow |
+
+Resultado: **2 de 8 se ejecutan**. Los 6 huérfanos son
+`bearer-en-rutas-con-dueno`, `dispute-envio-explicito`, `dispute-panel-no-arrastra-pregunta`,
+`laws-configurator`, `question-evolution` y `session-ip-se-registra`.
+
+#### Por qué importa más de lo que parece
+
+Cada uno de esos 6 existe porque un fallo se **escapó de todas las demás capas**: el registro de
+IP roto **27 días en silencio** ([T-314]), el envío explícito de impugnaciones ([T-198]), el
+configurador de leyes (regresión `442bc679`). Son la red de última instancia, y no está puesta.
+
+Y el daño real no es perder esos 6, es que **quien escribe el séptimo cree que ha añadido una
+capa**. Es el mismo modo de fallo que el gate de integración corriendo **492 veces sin base de
+datos** ([T-370]): verde que no comprueba nada. Lo destapó revisar mi propio trabajo de [T-692] —
+había escrito un spec de navegador y lo había contado como capa.
+
+#### ✅ Hecho
+
+- **Guardarraíl `__tests__/guardrails/specsEjecutados.guardrail.test.ts`** (núcleo puro
+  `lib/calidad/specsEjecutados.cjs`, 8 tests). Lee los proyectos **del config real** y los
+  workflows **de verdad**, así que no se desfasa: si alguien deja de invocar un proyecto, sale
+  rojo con los specs que se quedaron sin ejecutar.
+  - **Trinquete, no muro:** los 6 actuales se declaran para que nazca en VERDE — uno rojo se
+    saltaría con `--skip` y dejaría de proteger. **Ninguno nuevo puede entrar** y la lista solo
+    ENCOGE (hay un test que falla si declaras uno que ya corre).
+  - **No aprueba en falso:** si NINGÚN proyecto estuviera vivo, dice que no puede medir en vez de
+    dar verde. Y el mensaje nombra el fichero y da las tres salidas.
+  - ⚠️ **GOTCHA que casi lo deja ciego:** `e2e-smoke.yml` no escribe el script en el `run`, lo
+    **calcula** (`echo "script=test:e2e:prod" >> $GITHUB_OUTPUT`) y luego hace
+    `npm run ${{ steps.target.outputs.script }}`. Buscando solo `npm run …` el detector daba CERO
+    proyectos vivos, o sea que se declaraba ciego siendo el caso NORMAL de este repo.
+- **Proveedor de sesión `own-mint`** (`e2e/helpers/providers/ownMintProvider.ts`): acuña la cookie
+  Auth.js con `AUTH_SECRET`, el MISMO camino que ya usaban las simulaciones con navegador
+  (`mintOwnAuthCookie` + `cookieForPlaywright` de `lib/sim/session`). **El camino bueno ya
+  existía y el harness no lo usaba** — esto no inventa nada, conecta las dos piezas.
+  - Los dos que había se quedaron atrás del cutover: `bridge` acuña por **Supabase**, CONGELADO
+    desde el 04/07 y con el bridge en drenaje; `storage` exige una captura **a mano**, que sirve
+    para una persona y no para nada desatendido.
+- **Runbook `docs/runbooks/e2e-playwright.md`** con el aviso ARRIBA: mientras no se decida dónde
+  corren, **escribir un spec en `e2e/authed/` NO cuenta como capa de robustez**, y la alternativa
+  viva son las simulaciones de `scripts/sim/*`.
+
+#### ⏳ DECISIÓN PENDIENTE (de Manuel): dónde se ejecutan
+
+Las dos salidas tienen coste y ninguna es obvia:
+
+1. **Invocar `authenticated` desde `e2e-smoke.yml`.** Exige `AUTH_SECRET` como secret de GitHub —
+   y ese secreto **FIRMA sesiones**: quien lo tenga puede acuñar la de cualquier usuario. No es un
+   secret más, y por eso no se hace sin decisión explícita.
+2. **Correrlos en el smoke post-deploy** (`scripts/deploy-frontend.sh` [6/6]), donde el secreto ya
+   sale de SSM y no se expone. Pero añade minutos a un deploy que **mantiene el lock global**, y
+   con varias sesiones desplegando eso lo paga todo el mundo.
+
+Al elegir, quitar los specs que pasen a ejecutarse de `HUERFANOS_DECLARADOS`.
+
+**Relacionadas:** [T-692] (de donde salió: mi propio spec era decoración), [T-370] (el gate ciego
+492 runs), [T-314], [T-198] (dos de los huérfanos y lo que costó no tenerlos).
+
 ### [T-704] 🟠 [ABIERTO 08/08] El tercer guardarraíl del pre-push seguía aceptando un «1» como escape, y por eso su 69% no significaba nada
 
 - **Se quedó atrás.** [T-496] y [T-497] le quitaron el `=1` a `indice-compartido` y a `backlog-push` —*«el escape se usa de prefijo, se copia de un comando a otro»*— pero `contexto-backlog`, que nació después ([T-428]), siguió con `CONTEXTO_GUARD_SKIP=1`. **NO es lo mismo que T-428**, que construye lo que el guard DETECTA (fichas vaciadas al resolver un conflicto); esto es su puerta de ESCAPE.
