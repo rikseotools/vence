@@ -74,11 +74,20 @@ describeIf('Integración temario: BD ↔ listado ↔ tema-N', () => {
       console.warn('Topics sin description:', invalidos.slice(0, 5).map(t => `${t.position_type} T${t.topic_number}`))
     }
     // COSMÉTICO (no correctness): `description` es SUPLEMENTARIO — el temario se
-    // renderiza con title + epígrafe (oficial BOE) sin él. Cada oposición nueva
-    // se construye sin description propia hasta redactarla. A 08/07 hay ~364
-    // (crece con cada build de la sesión de contenido). Umbral holgado (caza
-    // regresión estructural, no bloquea builds); redacción = tarea aparte.
-    expect(invalidos.length).toBeLessThan(500)
+    // renderiza con title + epígrafe (oficial BOE) sin él. MEDIDO el render antes de
+    // decidirlo (T-600): alimenta `generateMetadata` (SEO, con fallback genérico cuando
+    // falta) y el párrafo de entrada de `TopicContentView.tsx` (condicional, sin hueco
+    // visible si falta). Cada oposición nueva se construye sin description propia hasta
+    // redactarla, y crece con cada build de contenido: ~364 (08/07) → 868 (05/08) → 897
+    // (07/08) — el umbral de 500 quedó por detrás de un crecimiento orgánico medido, no
+    // de una regresión, así que llevaba tiempo en rojo permanente sin decir nada (T-600).
+    // Subido con margen sobre lo medido: sigue cazando un salto ESTRUCTURAL (un bug que
+    // tumbe cientos de golpe), no el crecimiento normal del contenido. El seguimiento
+    // continuo de la deuda ya NO depende de este test: lo hace el barrido nocturno
+    // (`kind topic_sin_description`, `docs/runbooks/salud-contenido.md`), que además
+    // distingue lo SERVIDO (disponible=true) de lo que no. Redacción = tarea aparte,
+    // de sesión propia, contra el temario oficial.
+    expect(invalidos.length).toBeLessThan(1000)
   })
 
   it('todos los topics activos tienen epigrafe (fuente oficial BOE)', () => {

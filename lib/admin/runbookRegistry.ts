@@ -281,6 +281,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'localiza los artículos escopados en un tema vivo que se sirven MUDOS (ni rúbrica ni contenido: el usuario ve el número y el botón «Hacer test», y ni una línea que estudiar) e importa su texto VERBATIM desde la fuente oficial, con la doble auditoría de siempre. NO confundir con «revisa los artículos sin preguntas», que es lo contrario: allí el artículo se lee bien y lo que falta son preguntas. Origen (T-596): hasta el 05/08/2026 el encabezado de la tarjeta colgaba solo de `title`, que 13.952 artículos activos (23% del banco) tienen a NULL TENIENDO el texto guardado, así que se servían mudos 48 de 62 artículos en un tema; el arreglo fue de render (`lib/teoria/encabezadoArticulo`) y este detector vigila lo que queda, que es la deuda de contenido real. Lo destapó un usuario premium, no una alerta.',
   },
+  topic_sin_description: {
+    title: 'Temas servidos sin `description`: SEO genérico en vez de específico',
+    triggerPhrase: 'revisa los temas sin descripción',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'para cada oposición señalada, `topics.description` está vacía en temas SERVIDOS (`disponible=true`). MEDIDO el render antes de escribir el detector (T-600): `description` alimenta `generateMetadata` de cada `temario/[slug]/page.tsx` (title/og:description — con la vacía, cae a un texto GENÉRICO tipo "Contenido teórico del Tema N") y el párrafo de entrada de `TopicContentView.tsx` (condicional: si está vacío no se renderiza, sin hueco visible ni layout roto) — por eso es `warn`, pérdida de calidad SEO, no una página rota. Redactar la description contra el TEMARIO OFICIAL de esa oposición (nunca a ojo, mismo criterio que cualquier contenido legal). Antes de esto la única vigilancia era `__tests__/integration/temarioEpigrafeIntegrity.test.ts`, una suite de integración informativa para el gate de deploy con un umbral (<500) que la cifra real ya había superado (897 el 07/08, frente a ~364 el 08/07) sin que nadie lo viera — un rojo mudo. NUNCA rellenar con texto genérico solo para apagar el aviso: eso sería peor que dejarlo vacío (parecería resuelto y no lo estaría).',
+  },
   flattened_table: {
     title: 'Tabla aplanada (import PDF sin rejilla)',
     triggerPhrase: 'revisa las tablas de artículos',
