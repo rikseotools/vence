@@ -22,6 +22,7 @@
 //   node scripts/backlog.cjs wake T-042                # la despierta antes de tiempo
 //   node scripts/backlog.cjs sync                      # importa ids nuevos del markdown
 //   node scripts/backlog.cjs archive T-042 --evidencia "…" # confirma que se vio funcionar en prod (T-392)
+//   node scripts/backlog.cjs mover T-042                # mueve a "## Hechas" a mano (done ya lo hace sola)
 //
 // El session-id se resuelve solo: --sid > .session-id > CLAUDE_CODE_SESSION_ID.
 'use strict';
@@ -35,11 +36,21 @@ const loadPg = () => require('postgres');
 const { claimGate, isChronicSnooze, deployWakeReady, isAwaitingVerification, puedeMarcarseVerificada, clasificarEspera, detectarTrabajoPendiente } = require(path.join(__dirname, '..', 'lib', 'backlog', 'claimGate.cjs'));
 // El PLAZO («tiene que estar antes de») es lo contrario de snooze («no la cojas antes de»).
 const { clasificarPlazo, validarPlazo, tareasConPlazo } = require(path.join(__dirname, '..', 'lib', 'backlog', 'plazo.cjs'));
+// Único escritor del markdown para el cierre Abiertas↔Hechas (T-387): sin esto, cada sesión
+// movía la ficha a mano con su propio script de usar y tirar.
+const { moverAHechas, moverAAbiertas } = require(path.join(__dirname, '..', 'lib', 'backlog', 'moverFicha.cjs'));
+const { leerTransformarEscribir } = require(path.join(__dirname, '..', 'lib', 'backlog', 'escrituraSegura.cjs'));
 
 const LEASE_MIN = 90;                 // duración del lease; heartbeat lo renueva
 const REPO = path.join(__dirname, '..');
 const MD_REL = path.join('docs', 'roadmap', 'tareas-pendientes.md');
 const MD = path.join(REPO, MD_REL);
+
+/** Fecha de hoy en `dd/mm`, formato que ya usan las marcas `[HECHA …]` del fichero real. */
+function fechaCortaHoy() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 /**
  * ¿La ficha de este id ESTUVO alguna vez en el markdown? Es la prueba que separa «me la han
@@ -2029,6 +2040,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
       } else {
         console.log('   El índice ya estaba al día. Nada que hacer.');
       }
+      console.log(`✅ ${id} movida a «## Hechas» (marca ✅ [HECHA ${fechaCortaHoy()}]) — ninguna ficha previa se ha perdido`);
     }
 
     // ── EL EMBUDO DE PREGUNTAS (T-493) ───────────────────────────────────────────────────────
@@ -2247,7 +2259,7 @@ async function despertarPorDeploy(s, shas, opts = {}) {
     }
 
     else {
-      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | archive <id> --evidencia "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
+      console.log('Uso: backlog.cjs list [--all] | next | claim <id> | heartbeat | mine | done <id> --outcome "…" | reopen <id> --motivo "…" | release <id> | snooze <id> --hasta|--horas|--dias --motivo "…" | pause <id> (--hasta …|--tras-deploy [sha] [--superficie frontend|backend|both]) --hecho "…" --falta "…" | verificado <id> --nota "…" | revision <id> --entrega "…" | archive <id> --evidencia "…" | deployed <sha> --superficie … | wake <id> | due <id> --fecha "…" --motivo "…" | reserve ["título"] [--aunque "…"] | ficha <id> [--texto <fichero.md>] | mover <id> | reubicar [--apply] | reap [--horas N] [--apply] | esfuerzo <id> <minutos|rato|larga|sesion_propia> | sync\n     preguntas: preguntar "…" [--contexto "…"] [--tarea T-nnn] [--bloquea] | preguntas [--todas] | responder <id> "…" | retirar <id> --motivo "…"');
     }
   } catch (e) {
     console.error('❌', e.message);

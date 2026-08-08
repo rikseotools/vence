@@ -30,9 +30,27 @@ Todo lo de arriba responde a **«¿están todos los artículos?»**. NO responde
 
 Ningún otro detector lo veía: los de huecos miran que el tema tenga preguntas (tenía 207), los de scope miran qué artículos entran (entraban todos) y este contaba filas. **Nadie leía el texto.**
 
-**Qué hacer al verificar una ley, además de contar:** coger unos pocos artículos y compararlos de verdad con `compararArticuloOficial` (`lib/laws/compararArticuloOficial.js`, distingue `identico`/`erratas`/`incompleto`/`contaminado`). Si varios salen `contaminado`, esa ley pide auditoría completa. **Nunca escribir en `last_verification_summary` un `is_ok` que solo se apoye en el recuento.** Automatizarlo está pendiente en [T-240].
+**Qué hacer al verificar una ley, además de contar:** coger unos pocos artículos y compararlos de verdad con `compararArticuloOficial` (`lib/laws/compararArticuloOficial.js`, distingue `identico`/`erratas`/`incompleto`/`contaminado`). Si varios salen `contaminado`, esa ley pide auditoría completa. **Nunca escribir en `last_verification_summary` un `is_ok` que solo se apoye en el recuento.**
 
 **Y ojo con la fuente en normas de la UE:** va el CONSOLIDADO de EUR-Lex (`CELEX:0…`), nunca el espejo del BOE, que reproduce el original **con erratas** — comparar contra el BOE decía que 80 de 99 artículos «divergían» y «arreglarlos» habría metido *«las orientación sexuales»* en el temario. La descarga ya está resuelta y es reutilizable (`lib/laws/descargarEurlex.cjs`): valida el contenido y cae al espejo Cellar cuando EUR-Lex raciona con un `202` vacío.
+
+#### Automatizado (T-240, 06/08/2026): `npm run laws:fidelidad`
+
+```bash
+node scripts/laws/muestrear-fidelidad.cjs <law_slug> [--n 5]     # una ley
+node scripts/laws/muestrear-fidelidad.cjs [--limite 15] [--n 5]  # barrido priorizado por impacto
+node scripts/laws/muestrear-fidelidad.cjs <law_slug> --aplicar   # deja rastro en observable_events
+```
+
+MUESTREA `n` artículos por ley (reparto uniforme, no los primeros N — los primeros artículos suelen ser definiciones cortas y sesgarían la muestra), compara cada uno con `compararArticuloOficial` y agrega un veredicto POR LEY (`lib/laws/fidelidadMuestra.js`, 22 tests): `fiel` / `revisar_muestra` / `auditoria_completa` / `inconcluso`. `auditoria_completa` exige que ≥60% de lo MEDIBLE salga `incompleto`/`contaminado` **y** al menos 3 observaciones medibles — sin ese mínimo un ratio de 1/1 es ruido puro (ver el gotcha de abajo, que es justo lo que este mínimo evita).
+
+**Solo reconoce dos fuentes** (`resolverFuente`): BOE consolidado (`BOE-A-AAAA-N`, extraído de `boe_url`) y EUR-Lex CONSOLIDADO (`CELEX:0…`, extraído de `boe_url` si apunta a `eur-lex.europa.eu`). Se **niega** a comparar una norma UE contra el espejo del BOE o contra un CELEX del acto original (sector 3) — exactamente el error de T-184. **Medido el 06/08/2026: NINGUNA de las 42 leyes `scope='eu'` tiene hoy un CELEX consolidado registrado en `boe_url`** (el RGPD apunta al espejo `DOUE-…`; el resto, cuando tienen algo, es el CELEX del acto original) — la cobertura real de esta v1 es el **BOE**, y las normas UE quedan `omitida (fuente_no_reconocida | celex_no_consolidado)` a propósito, no en silencio.
+
+> ⚠️ **GOTCHA medido construyendo esto: falso positivo real en leyes "Real Decreto que aprueba un Código".** La LECrim (1882) y el Código Civil (1889) tienen **dos** bloques rotulados "Artículo 1" en el índice del BOE — el del decreto aprobatorio y el del Código anexo — y `mapaBloquesPorArticulo` (`lib/laws/boeBloqueVigente.js`, compartido con `reactivar-articulo-boe.cjs`/`actualizar-articulo-oficial.cjs`, no algo que arregle esta herramienta) se queda con el primero. Comparar nuestro art. 1 (correcto) contra ese bloque da `contaminado`. Con `n=5` el ratio ya diluye solo (1/4 ≈ 25%, por debajo del 60%); el `minMedibles` es el cinturón para leyes con pocos artículos activos donde ese único artículo pesa más. Si ves `revisar_muestra` con exactamente el art. 1/1º divergiendo y el resto idéntico, es casi seguro este patrón — confírmalo mirando si la ley es un código decimonónico antes de tocar nada.
+
+**Filtra a `article_number` numérico** (excluye preámbulo, disposiciones y la fila estructural `article_number='0'` de preguntas de estructura, ver `reanclarGuardas.js`): el índice del BOE solo mapea rúbricas "Artículo N", así que esas filas siempre saldrían `sin_oficial` sin aportar nada — medido en la CE, sin el filtro 2 de 3 artículos muestreados eran no medibles.
+
+Es **DETECTOR**, no reescribe nada — el remedio de lo que salga `auditoria_completa` es §3 de este runbook o `actualizar-articulo-oficial.cjs`.
 
 ## Procedimiento
 

@@ -1993,6 +1993,218 @@ export class ContentHealthSweepService {
       marcar('opciones_duplicadas', opcRows.length);
     }
 
+    // ── CONTENIDO: la MISMA pregunta duplicada dentro del banco (T-408) ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
+    // Criterio en `lib/calidad/duplicados.js` (frontend, con sus tests) — este proyecto NestJS
+    // no puede importarlo (build separado), así que `normalizarDup`/la banda se replican INLINE.
+    //
+    // Distinto de opciones_duplicadas (arriba): allí se repite una OPCIÓN dentro de una pregunta;
+    // aquí se repite la PREGUNTA ENTERA — mismo artículo, mismo enunciado normalizado y las
+    // mismas 4 opciones. Corte ESTRICTO a propósito (el mismo que usa
+    // scripts/calidad/duplicados-exactos.cjs, T-321): un umbral de parecido ya se probó y dio
+    // 3.230 pares cuyos peores casos eran SUPUESTOS PRÁCTICOS. El corte borroso (T-425/T-519)
+    // sigue siendo bajo demanda, no al badge.
+    //
+    // `error` = las gemelas dan respuestas DISTINTAS (irresoluble para el opositor) · `warn` =
+    // misma respuesta, solo repetición. Compara el TEXTO de la opción correcta, NUNCA
+    // `correct_option`: las copias vienen barajadas entre sí.
+    {
+      const normalizarDup = (texto: string | null): string => {
+        const MARCA = '';
+        return String(texto ?? '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/[ñÑ]/g, MARCA)
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
+          .split(MARCA)
+          .join('ñ')
+          .replace(/[^a-z0-9ñ]+/g, '');
+      };
+      const dupGrupos = (await this.db.execute(sql`
+        with base as (
+          select q.id, q.correct_option, q.primary_article_id,
+                 q.option_a, q.option_b, q.option_c, q.option_d,
+                 lower(regexp_replace(q.question_text, '\s+', ' ', 'g')) as norm,
+                 (select string_agg(x, '|' order by x) from unnest(array[
+                    lower(trim(q.option_a)), lower(trim(q.option_b)),
+                    lower(trim(q.option_c)), lower(trim(q.option_d))]) x) as ops
+            from questions q
+           where q.is_active
+             and q.primary_article_id is not null
+             and q.exam_case_id is null
+        )
+        select norm, primary_article_id, ops, count(*)::int n,
+               json_agg(json_build_object(
+                 'id', id, 'correct_option', correct_option,
+                 'option_a', option_a, 'option_b', option_b, 'option_c', option_c, 'option_d', option_d
+               )) as miembros
+          from base
+         group by 1, 2, 3
+        having count(*) > 1
+      `)) as unknown as Array<{
+        norm: string;
+        primary_article_id: string;
+        ops: string;
+        n: number;
+        miembros: Array<{
+          id: string;
+          correct_option: number;
+          option_a: string | null;
+          option_b: string | null;
+          option_c: string | null;
+          option_d: string | null;
+        }>;
+      }>;
+      const dupUniversoRows = (await this.db.execute(sql`
+        select count(*)::int n from questions
+         where is_active and primary_article_id is not null and exam_case_id is null
+      `)) as unknown as Array<{ n: number }>;
+      const dupUniverso = dupUniversoRows[0]?.n ?? 0;
+
+      let erroresGrupos = 0, erroresPreguntas = 0, avisosGrupos = 0, avisosPreguntas = 0;
+      const muestraError: string[] = [], muestraAviso: string[] = [];
+      for (const g of dupGrupos ?? []) {
+        const opts = (m: (typeof g.miembros)[number]) => [m.option_a, m.option_b, m.option_c, m.option_d];
+        const respuestas = new Set(
+          g.miembros.map((m) => normalizarDup(opts(m)[m.correct_option] ?? null)),
+        );
+        const ids = g.miembros.map((m) => m.id).join('=');
+        if (respuestas.size > 1) {
+          erroresGrupos++; erroresPreguntas += g.n;
+          if (muestraError.length < 15) muestraError.push(ids);
+        } else {
+          avisosGrupos++; avisosPreguntas += g.n;
+          if (muestraAviso.length < 15) muestraAviso.push(ids);
+        }
+      }
+      if (erroresGrupos)
+        add(
+          'content',
+          'error',
+          null,
+          'pregunta_duplicada',
+          `${erroresGrupos} grupo(s) de preguntas DUPLICADAS con clave CONTRADICTORIA (${erroresPreguntas} activas): el opositor no puede saber cuál vale`,
+          { grupos: erroresGrupos, preguntas: erroresPreguntas, banda: 'clave_contradictoria', sample: muestraError },
+        );
+      if (avisosGrupos)
+        add(
+          'content',
+          'warn',
+          null,
+          'pregunta_duplicada',
+          `${avisosGrupos} grupo(s) de preguntas duplicadas literalmente (${avisosPreguntas} activas), misma clave: repetición, no contradicción`,
+          { grupos: avisosGrupos, preguntas: avisosPreguntas, banda: 'repeticion', sample: muestraAviso },
+        );
+      marcar('pregunta_duplicada', dupUniverso);
+    }
+
+    // ── CONTENIDO: mismo kind, banco PSICOTÉCNICO (T-410) ──
+    // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
+    // Dos diferencias que impone la tabla, no el criterio: normalización FUERTE (ignora tildes y
+    // puntuación, replicada de `sqlNormalizar` del núcleo) en vez de la laxa de legislativas, y
+    // la clave de grupo lleva la HUELLA de imagen/`content_data` — sin ella, 95 de 98 grupos son
+    // preguntas DISTINTAS que solo comparten un enunciado genérico. Guarda propia: un grupo
+    // unido SOLO por quitar la tilde se aparta (en un banco que examina ORTOGRAFÍA, la tilde
+    // puede ser la respuesta).
+    {
+      const sqlNormalizarDup = (col: string) =>
+        `regexp_replace(lower(translate(regexp_replace(coalesce(${col},''), '<[^>]*>', ' ', 'g'), ` +
+        `'áéíóúàèìòùäëïöüâêîôûÁÉÍÓÚÀÈÌÒÙÄËÏÖÜÂÊÎÔÛçÇ', ` +
+        `'aeiouaeiouaeiouaeiouAEIOUAEIOUAEIOUAEIOUcC')), '[^a-z0-9ñ]+', '', 'g')`;
+      const normalizarConTildes = (texto: string | null): string =>
+        String(texto ?? '')
+          .replace(/<[^>]*>/g, ' ')
+          .toLowerCase()
+          .replace(/[^a-z0-9ñáéíóúüç]+/g, '');
+      const unidoSoloPorTildes = (opcionesPorCopia: Array<Array<string | null>>): boolean => {
+        const claves = (opcionesPorCopia || []).map((opts) =>
+          (opts || []).map(normalizarConTildes).filter((o) => o.length > 0).sort().join('|'),
+        );
+        return new Set(claves).size > 1;
+      };
+      // Copia local (el `normalizarDup` de más arriba vive en el bloque de legislativas, con su
+      // propio scope de `{}` — cada bloque de este fichero es autosuficiente a propósito).
+      const normalizarDup = (texto: string | null): string => {
+        const MARCA = '';
+        return String(texto ?? '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/[ñÑ]/g, MARCA)
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
+          .split(MARCA)
+          .join('ñ')
+          .replace(/[^a-z0-9ñ]+/g, '');
+      };
+      const NP = sqlNormalizarDup;
+      const dupPsicoGrupos = (await this.db.execute(sql.raw(`
+        with base as (
+          select q.id, q.correct_option, q.section_id,
+                 ${NP('q.question_text')} as norm,
+                 (select string_agg(x, '|' order by x) from unnest(array[
+                    ${NP('q.option_a')}, ${NP('q.option_b')}, ${NP('q.option_c')},
+                    ${NP('q.option_d')}, ${NP('q.option_e')}]) x where x <> '') as ops,
+                 md5(coalesce(q.image_url, '') || '#' || coalesce(q.content_data::text, '')) as huella,
+                 array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e] as opciones,
+                 (array[q.option_a, q.option_b, q.option_c, q.option_d, q.option_e])[q.correct_option + 1] as texto_correcta
+            from psychometric_questions q
+           where q.is_active
+        )
+        select norm, ops, huella, count(*)::int n,
+               json_agg(json_build_object(
+                 'id', id, 'opciones', opciones, 'textoCorrecta', texto_correcta
+               )) as miembros
+          from base
+         group by 1, 2, 3
+        having count(*) > 1
+      `))) as unknown as Array<{
+        norm: string;
+        ops: string;
+        huella: string;
+        n: number;
+        miembros: Array<{ id: string; opciones: Array<string | null>; textoCorrecta: string | null }>;
+      }>;
+      const dupPsicoUniversoRows = (await this.db.execute(sql`
+        select count(*)::int n from psychometric_questions where is_active
+      `)) as unknown as Array<{ n: number }>;
+      const dupPsicoUniverso = dupPsicoUniversoRows[0]?.n ?? 0;
+
+      let erroresGrupos = 0, erroresPreguntas = 0, avisosGrupos = 0, avisosPreguntas = 0, porTilde = 0;
+      const muestraError: string[] = [], muestraAviso: string[] = [];
+      for (const g of dupPsicoGrupos ?? []) {
+        if (unidoSoloPorTildes(g.miembros.map((m) => m.opciones))) { porTilde++; continue; }
+        const respuestas = new Set(g.miembros.map((m) => normalizarDup(m.textoCorrecta)));
+        const ids = g.miembros.map((m) => m.id).join('=');
+        if (respuestas.size > 1) {
+          erroresGrupos++; erroresPreguntas += g.n;
+          if (muestraError.length < 15) muestraError.push(ids);
+        } else {
+          avisosGrupos++; avisosPreguntas += g.n;
+          if (muestraAviso.length < 15) muestraAviso.push(ids);
+        }
+      }
+      if (erroresGrupos)
+        add(
+          'content',
+          'error',
+          null,
+          'pregunta_duplicada',
+          `${erroresGrupos} grupo(s) de PSICOTÉCNICAS duplicadas con clave CONTRADICTORIA (${erroresPreguntas} activas): el opositor no puede saber cuál vale`,
+          { grupos: erroresGrupos, preguntas: erroresPreguntas, banda: 'clave_contradictoria_psico', sample: muestraError },
+        );
+      if (avisosGrupos)
+        add(
+          'content',
+          'warn',
+          null,
+          'pregunta_duplicada',
+          `${avisosGrupos} grupo(s) de PSICOTÉCNICAS duplicadas literalmente (${avisosPreguntas} activas), misma clave: repetición, no contradicción`,
+          { grupos: avisosGrupos, preguntas: avisosPreguntas, banda: 'repeticion_psico', sample: muestraAviso, apartadosPorTilde: porTilde },
+        );
+      marcar('pregunta_duplicada', dupPsicoUniverso);
+    }
+
     // ── CONTENIDO: preguntas que invocan una imagen/icono AUSENTE (visual deixis sin image_url) ──
     // Gemelo de scripts/health-sweep.cjs (MANTENER EN SYNC — guardarraíl content-sweep-parity).
     // El enunciado apunta a un visual ("el siguiente icono", "observa la figura", "de la imagen…")

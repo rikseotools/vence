@@ -11,6 +11,7 @@
  *   record <position_type> <json>     → registra veredictos de consenso vía record_topic_verification()
  *   status <position_type>            → resumen del estado de verificación de una oposición
  *   audit  [--json]                   → cobertura global: temas que necesitan verificación (alimenta badge/guardarraíl)
+ *   provenance [--json]               → (T-334) verified_correct sin fuente declarada en findings — recuento SEPARADO, no alimenta el badge de `audit`
  *
  * Conexión: DATABASE_URL (RDS). Carga .env.local automáticamente.
  */
@@ -26,6 +27,44 @@ function describeApplyActor(sidValue, cambios, includeGate) {
     actor: `verify-topic-scope.cjs apply:${sidCorto(sidValue)}`,
     reason: `verify:scope apply — ${cambios} cambio(s)${includeGate ? ' (incluye puerta de juicio)' : ' (auto_safe)'}`,
   }
+}
+
+// ── PROVENANCE del veredicto (T-334, 07/08/2026) ──────────────────────────────
+//
+// La asimetría real: para marcar un epígrafe LITERAL (Paso 1) hace falta
+// `source_documento_id` — un documento clonado en el hub. Para marcar un `topic_scope`
+// como `verified_correct` (Paso 2), `record_topic_verification` acepta CUALQUIER
+// `findings` y lo da por bueno — no hay ni un campo que diga si se consultó algo.
+//
+// Caso real que lo destapó (30/07): al re-adjudicar `auxiliar_administrativo_sms` se
+// sellaron T15 y T16 como `verified_correct` con una nota nunca contrastada contra el
+// BOE, y resultó falsa (ver T-332). La nota TENÍA la misma forma que un veredicto de
+// verdad — nada distinguía «lo comprobé» de «me lo creí».
+//
+// LÍMITE HONESTO, a asumir de entrada: esto es AUTOCERTIFICACIÓN. Un campo `fuente` no
+// prueba que se mirara el BOE — solo hace que la AUSENCIA de fuente sea visible y
+// contable en vez de indistinguible de una verificación buena. El guardarraíl de
+// verdad para este defecto es [T-333] (comprueba el hecho); esto es la mitad barata:
+// que al menos se pueda CONTAR cuántos veredictos «correct» no declaran nada.
+const FUENTE_POR_DEFECTO = 'razonado'
+
+/**
+ * Añade `fuente` a `findings` si no la trae ya, SIN pisar una que sí venga declarada.
+ * `'razonado'` es el valor honesto para «no se consultó ninguna fuente concreta» — nunca
+ * se inventa un id de BOE ni un documento que no se haya consultado de verdad.
+ *
+ * @param {object} findings  el objeto que va a persistirse (puede venir de un consensus.json externo)
+ * @param {string} [porDefecto] valor a usar si `findings.fuente` no está declarada
+ */
+function conFuenteDeclarada(findings, porDefecto = FUENTE_POR_DEFECTO) {
+  const f = findings && typeof findings === 'object' ? findings : {}
+  if (typeof f.fuente === 'string' && f.fuente.trim()) return f
+  return { ...f, fuente: porDefecto }
+}
+
+/** ¿Esta `fuente` cuenta como provenance CONCRETA (no "no se consultó nada")? */
+function esFuenteConcreta(fuente) {
+  return typeof fuente === 'string' && fuente.trim().length > 0 && fuente !== FUENTE_POR_DEFECTO
 }
 const { classifyScope } = require('./scope-over-inclusion.cjs') // pre-filtro determinista de sobre-inclusión
 
@@ -227,7 +266,8 @@ async function cmdRecord(pt, jsonPath, runId) {
       const tid = byN[n]
       if (!tid) { skipped.push(n); continue }
       if (!['correct', 'issues', 'needs_human'].includes(v.verdict)) { skipped.push(`${n}(verdict inválido)`); continue }
-      const findings = JSON.stringify(v.findings || { note: v.note || null })
+      // T-334: la fuente se declara SIEMPRE, aunque sea 'razonado' — nunca queda en blanco.
+      const findings = JSON.stringify(conFuenteDeclarada(v.findings || { note: v.note || null }))
       await c.query(`SELECT record_topic_verification($1,$2,$3::jsonb,$4,$5)`,
         [tid, v.verdict, findings, run, v.verified_by || 'multi_agent'])
       ok++
@@ -292,6 +332,40 @@ async function cmdAudit(asJson) {
         console.log(`  ${r.position_type}: ✅${r.ok}${r.needs_human ? ` 🚨needs_human:${r.needs_human}` : ''} ⚠️issues:${r.issues} 🟡stale:${r.stale} ⬜never:${r.never} / ${r.total}`)
       }
       console.log(`\n  oposiciones 100% verified_correct: ${needing.filter(r => r.pendientes === 0).length}/${needing.length}`)
+    }
+  } finally { await c.end() }
+}
+
+// T-334: recuento SEPARADO del badge de `cmdAudit` — «cuántos verified_correct vivos no
+// declaran fuente». NO se suma a `pendientes` (que alimenta el badge existente): un
+// verified_correct sin fuente sigue siendo un verified_correct, correcto o no — lo que esto
+// mide es la CONFIANZA que merece esa afirmación, un eje distinto del estado. Mezclarlo
+// habría inflado un badge ya vivo sin que nadie lo hubiera pedido.
+async function cmdProvenance(asJson) {
+  const c = db(); await c.connect()
+  try {
+    const rows = (await c.query(`
+      SELECT t.position_type,
+        count(*) FILTER (WHERE v.state='verified_correct') AS ok,
+        count(*) FILTER (
+          WHERE v.state='verified_correct'
+            AND (v.findings->>'fuente' IS NULL OR v.findings->>'fuente' = $1)
+        ) AS sin_fuente
+      FROM topics t JOIN topic_scope_verification v ON v.topic_id=t.id
+      WHERE t.is_active AND v.state='verified_correct'
+      GROUP BY t.position_type`, [FUENTE_POR_DEFECTO])).rows
+    const datos = rows.map(r => ({ position_type: r.position_type, ok: +r.ok, sin_fuente: +r.sin_fuente }))
+      .filter(r => r.sin_fuente > 0)
+      .sort((a, b) => b.sin_fuente - a.sin_fuente)
+    const totalOk = rows.reduce((a, r) => a + +r.ok, 0)
+    const totalSinFuente = rows.reduce((a, r) => a + +r.sin_fuente, 0)
+    if (asJson) {
+      console.log(JSON.stringify({ total_verified_correct: totalOk, sin_fuente: totalSinFuente, oposiciones: datos }, null, 1))
+    } else {
+      console.log(`=== provenance de verified_correct (T-334) ===`)
+      console.log(`${totalSinFuente}/${totalOk} verified_correct sin fuente concreta declarada (findings.fuente ausente o '${FUENTE_POR_DEFECTO}')`)
+      for (const r of datos) console.log(`  ${r.position_type}: ${r.sin_fuente}/${r.ok}`)
+      console.log(`\n  ⚠️ un veredicto SIN fuente no es necesariamente falso — solo indica que no hay con qué contrastarlo si se vuelve a dudar. No confundir con [T-333] (que sí comprueba el hecho contra el BOE).`)
     }
   } finally { await c.end() }
 }
@@ -535,7 +609,10 @@ async function cmdApply(pt, jsonPath, opts) {
       // si aplicamos solo auto_safe y el tema tenía puerta, queda 'issues'
       const verdict = opts.includeGate ? 'correct' : plan.temaVerdicts[String(t)] || plan.temaVerdicts[t] || 'correct'
       const note = `pipeline verify:scope apply ${new Date().toISOString().slice(0, 10)}`
-      await c2.query(`SELECT record_topic_verification($1,$2,$3::jsonb,$4,$5)`, [tid, verdict, JSON.stringify({ note }), run, 'pipeline'])
+      // T-334: éste SÍ tiene provenance concreta — es el resultado de aplicar un plan que
+      // viene del pipeline dump→2 agentes anclados a BOE→plan, no un veredicto "a ojo".
+      const findings = JSON.stringify(conFuenteDeclarada({ note }, 'pipeline_verify_scope_apply'))
+      await c2.query(`SELECT record_topic_verification($1,$2,$3::jsonb,$4,$5)`, [tid, verdict, findings, run, 'pipeline'])
       rec++
     }
     console.log(`✅ record: ${rec} temas`)
@@ -553,6 +630,7 @@ async function main() {
     else if (cmd === 'record') await cmdRecord(args[0], args[1], args[2])
     else if (cmd === 'status') await cmdStatus(args[0])
     else if (cmd === 'audit') await cmdAudit(args.includes('--json'))
+    else if (cmd === 'provenance') await cmdProvenance(args.includes('--json'))
     else if (cmd === 'gate') await cmdGate()
     else if (cmd === 'plan') {
       const th = opt('--impact-threshold')
@@ -560,7 +638,7 @@ async function main() {
     } else if (cmd === 'apply') {
       await cmdApply(positional[0], positional[1], { dryRun: flag('--dry-run'), includeGate: flag('--include-gate') })
     } else {
-      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|plan|apply|record|status|audit|gate> ...')
+      console.log('Uso: node scripts/verify-topic-scope.cjs <dump|plan|apply|record|status|audit|provenance|gate> ...')
       process.exit(1)
     }
   } catch (e) {
@@ -571,7 +649,7 @@ async function main() {
 
 // Requerido como módulo (tests) → exporta los helpers puros y NO ejecuta el CLI.
 if (require.main !== module) {
-  module.exports = { subsecciones, MAX_ARTS_DUMP, MAX_SUBSECCIONES, describeApplyActor }
+  module.exports = { subsecciones, MAX_ARTS_DUMP, MAX_SUBSECCIONES, describeApplyActor, conFuenteDeclarada, esFuenteConcreta, FUENTE_POR_DEFECTO }
 } else {
   main()
 }

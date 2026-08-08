@@ -72,6 +72,12 @@ export interface TestConfiguratorProps {
   scopeToPosition?: boolean
   /** Abrir automáticamente el modal de preguntas falladas al montar */
   autoOpenFailed?: boolean
+  /**
+   * Abrir el panel "Filtrar por Artículos" ya desplegado al montar, en vez de plegado
+   * (default). [T-367]: el camino nuevo desde el temario ("Elegir qué artículos entran")
+   * aterriza aquí y el panel plegado por defecto lo dejaba tan invisible como antes.
+   */
+  initialShowLawsFilter?: boolean
 }
 
 // ============================================

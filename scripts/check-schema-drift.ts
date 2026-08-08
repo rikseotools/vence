@@ -87,10 +87,11 @@ async function main() {
     }
   }
 
-  // ssl: 'require' es obligatorio contra RDS (pg_hba exige TLS): sin él, `postgres` intenta
-  // conectar en claro y el motor lo rechaza con "no encryption" — no es un problema de permisos,
-  // ni siquiera negocia TLS. Un DATABASE_URL de .env.local normal ya lleva `sslmode=require` en
-  // la cadena y lo tapaba; las credenciales de flota que salen de SSM (T-539) no, y ahí se ve.
+  // ssl:'require' explícito (T-568, 05/08/2026, redescubierto y reaplicado en T-518): la
+  // DATABASE_URL de un trabajador de la flota no lleva `?sslmode=require` en la cadena (se la
+  // pasa el lanzador, no un `.env.local`), y sin la opción `ssl` postgres-js intenta conectar
+  // en claro → RDS lo rechaza (`no pg_hba.conf entry ... no encryption`). Mismo patrón que ya
+  // usa `scripts/audit-temario-display-drift.cjs`.
   const sql = postgres(DATABASE_URL!, { max: 1, ssl: 'require' })
 
   try {

@@ -10,17 +10,22 @@ echo "🔍 Ejecutando validaciones pre-commit..."
 echo ""
 
 # 1. Verificar schema drift (solo si DATABASE_URL disponible — no bloquea).
-#
-# [T-566] `npm run db:check` como statement suelto se ejecuta bajo `sh -e` (husky
-# invoca los hooks así, ver .husky/_/h): CUALQUIER fallo —drift real o un simple
-# "permission denied" de un rol restringido (trabajador de la flota, solo 4 tablas
-# de coordinación)— abortaba el script AQUÍ MISMO, antes de imprimir el aviso de
-# abajo y sin llegar a NINGUNO de los pasos siguientes del hook. El comentario
-# "solo warning, no bloquea" llevaba tiempo siendo falso. `if ! cmd; then` es la
-# forma exenta de `-e` (POSIX): así SÍ se ejecuta el cuerpo y sigue el hook.
+# El comando va DENTRO de la condición del `if` (T-568/T-571, 05/08/2026, redescubierto y
+# reaplicado en T-518 porque el commit original se perdió: no está en ningún branch alcanzable).
+# Husky invoca este script con `sh -e` (ver `.husky/_/h`: `sh -e "$s" "$@"`), y bajo `-e` un
+# comando SUELTO que falla aborta el script entero AHÍ MISMO — el comentario "solo warning, no
+# bloquea" era falso en la práctica: `npm run db:check` fallando mataba el hook antes de llegar
+# siquiera a leer `SCHEMA_EXIT_CODE`, y ningún paso posterior (sintaxis, tests, display-drift)
+# llegaba a correr. La condición de un `if` es la única posición que POSIX exime de `-e`.
 if [ -n "$DATABASE_URL" ]; then
   echo "📊 Verificando sincronización schema vs BD..."
-  if ! npm run db:check; then
+  if npm run db:check; then
+    SCHEMA_EXIT_CODE=0
+  else
+    SCHEMA_EXIT_CODE=$?
+  fi
+
+  if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
     echo ""
     echo "⚠️  Schema desincronizado (o sin permisos para comprobarlo). Ver errores arriba."
     echo "   Para sincronizar: npm run db:pull"
