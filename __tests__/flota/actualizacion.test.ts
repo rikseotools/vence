@@ -331,3 +331,53 @@ describe('al trabajador que viene de su rama se le devuelve a main', () => {
     expect(o).not.toMatch(/reset|clean|--force/)
   })
 })
+
+describe('[T-716] el supervisor se pone al día a sí mismo, no solo a los demás', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const fuente = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'scripts', 'flota', 'flota.cjs'), 'utf8')
+  const bucle = fuente.slice(fuente.indexOf("cmd === 'bucle'"))
+
+  it('mira su propio clon DENTRO del bucle, antes de repartir', () => {
+    // Cada pasada lanza `flota.cjs repartir` como HIJO: un clon viejo reparte con la criba
+    // vieja. Medido el 08/08: hubo que actualizarlo a mano ocho veces, y llegó a ir 54 commits
+    // por detrás en veinte minutos.
+    const iSonda = bucle.indexOf('ACTU.SONDA_GIT(REPO)')
+    const iRepartir = bucle.indexOf("'repartir'")
+    expect(iSonda).toBeGreaterThan(-1)
+    expect(iRepartir).toBeGreaterThan(iSonda)
+  })
+
+  it('usa el MISMO criterio que aplica a los trabajadores, no uno propio', () => {
+    expect(bucle).toContain('ACTU.evaluarClon')
+    expect(bucle).toContain('ACTU.ORDEN_ACTUALIZAR(REPO)')
+  })
+
+  it('NUNCA a la brava: ni reset --hard ni clean sobre su propio árbol', () => {
+    // Lo sin commitear puede ser el único rastro de un trabajo (T-431).
+    // Se mide sobre el CÓDIGO, no sobre la prosa: los comentarios que explican por qué NO se usa
+    // `reset --hard` contienen esa misma cadena, así que un grep a secas se acusa a sí mismo —
+    // pasó al escribir este test.
+    const codigo = bucle.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
+    expect(codigo).not.toMatch(/reset\s+--hard/)
+    expect(codigo).not.toMatch(/git\s+clean/)
+  })
+
+  it('un árbol sucio o adelantado NO se toca: el criterio lo dice y aquí se comprueba', () => {
+    const { evaluarClon } = require('../../lib/flota/actualizacion.cjs')
+    for (const sonda of [
+      { fetch: 'ok', atras: 5, adelante: 0, fueraDeMain: 0, sucio: 1 },
+      { fetch: 'ok', atras: 5, adelante: 2, fueraDeMain: 0, sucio: 0 },
+      { fetch: 'ok', atras: 5, adelante: 2, fueraDeMain: 0, sucio: 3 },
+    ]) {
+      expect(evaluarClon(sonda).hayQueActualizar).toBe(false)
+    }
+  })
+
+  it('si no puede mirarlo, reparte igual: quedarse parado sería peor', () => {
+    // Fail-open, como el resto del andamiaje: repartir con código de hace un rato es mejor que
+    // no repartir.
+    expect(bucle).toMatch(/se reparte igual/)
+  })
+})
