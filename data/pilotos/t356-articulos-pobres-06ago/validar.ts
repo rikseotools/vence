@@ -50,7 +50,9 @@ async function main() {
   const existentes = await sql`SELECT lower(regexp_replace(question_text, ${WS_PATTERN}, ' ', 'g')) AS norm
     FROM questions WHERE primary_article_id = ${artId.id} AND is_active`
   const normNueva = q.question_text.toLowerCase().replace(/\s+/g, ' ').trim()
-  const yaExiste = existentes.some((e: { norm: string }) => e.norm.trim() === normNueva)
+  // El tipo `Row` de postgres.js no conoce las columnas de la consulta, así que la forma se
+  // afirma aquí en vez de en el parámetro del callback (que no encaja con su firma).
+  const yaExiste = existentes.some((e) => String((e as { norm?: unknown }).norm ?? '').trim() === normNueva)
   if (yaExiste) problems.push('el enunciado YA EXISTE tal cual entre las preguntas activas del artículo')
 
   if (problems.length) {
