@@ -24,6 +24,7 @@ const SWEEP_KINDS = [
   'epigrafe_provenance_no_doc', 'temario_revision_pendiente', 'scope_sin_verificar',
   'explicacion_yuxtaposicion', 'article_audit_note', 'epigrafe_truncado',
   'notas_convocatoria_sin_vigilancia', 'pregunta_duplicada',
+  'topic_sin_description',
 ]
 
 describe('runbookRegistry — guardarraíles', () => {

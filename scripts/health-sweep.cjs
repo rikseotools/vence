@@ -350,6 +350,32 @@ async function detectarTodo(c, add, marcar, now) {
     // El bloque TERMINÓ de mirar su población: un 0 aquí es «vigilado y limpio», no «nadie miró».
     marcar('cobertura_banda_ciega', bandaCiega.length);
 
+    // ── TEMAS SIN description (T-600, 07/08/2026) ──
+    // La única vigilancia que tenía esto era `temarioEpigrafeIntegrity.test.ts` (suite de
+    // INTEGRACIÓN, que el gate de deploy trata como informativa) con un umbral de tolerancia
+    // (<500) que la cifra real ya superó — 897 el 07/08, frente a los ~364 que el propio test
+    // documentaba en su comentario del 08/07 — sin que ningún kind del barrido lo mirase: cero
+    // coincidencias, no pinga badge, no sale en /admin/contenido. Un rojo que nadie mira no
+    // vigila nada.
+    //
+    // MEDIDO el render antes de decidir severidad (T-600): `description` se lee en dos sitios —
+    // (1) `generateMetadata` de cada `temario/[slug]/page.tsx` (title/og:description, SEO real)
+    // con fallback a un texto GENÉRICO cuando está vacía (`Contenido teórico del Tema N`); (2) el
+    // párrafo de entrada en `TopicContentView.tsx`, condicional (`{content.description && …}`) —
+    // si está vacío simplemente NO SE RENDERIZA, sin hueco visible ni layout roto. Por eso `warn`,
+    // no `error`: hay pérdida real de calidad SEO en los temas SERVIDOS, pero ningún usuario ve
+    // una página rota. Solo cuentan los `disponible=true` (lo que de verdad se sirve).
+    const sinDescripcion = (await c.query(`
+      SELECT topic_number FROM topics
+      WHERE position_type = $1 AND is_active AND disponible
+        AND (description IS NULL OR length(trim(description)) < 10)
+      ORDER BY topic_number`, [pt])).rows;
+    marcar('topic_sin_description', sinDescripcion.length);
+    if (sinDescripcion.length) {
+      add('content', 'warn', o.slug, 'topic_sin_description',
+        `${o.slug}: ${sinDescripcion.length} tema(s) servido(s) sin description (T${sinDescripcion.slice(0, 6).map(r => r.topic_number).join(',T')}${sinDescripcion.length > 6 ? '…' : ''}) — degrada el SEO (title/og:description cae a un texto genérico); redactar contra el temario oficial, nunca a ojo`);
+    }
+
     // ── ARTÍCULO SERVIDO MUDO (T-596) ──
     // El temario pinta cada artículo con su rúbrica y, si no la hay, con un extracto de su
     // contenido (`lib/teoria/encabezadoArticulo`). Queda mudo —número pelado, sin una línea que
