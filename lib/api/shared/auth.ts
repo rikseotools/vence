@@ -21,6 +21,7 @@ import { eq } from 'drizzle-orm'
 import { verifyAuth, verifyAuthOptional } from '@/lib/api/auth/verifyAuth'
 import { isAdminEmail } from '@/lib/auth/adminEmails'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import { juzgarPropiedad, dejaPasar, statusDe } from '@/lib/api/shared/propiedadRecurso'
 
 // ============================================
 // Tipos
@@ -248,23 +249,41 @@ export async function requireDuenoDelRecurso(
   const auth = await verifyAuthOptional(request, endpoint)
   const callerUserId = auth?.userId ?? null
 
-  if (duenoReal !== null && duenoReal !== callerUserId) {
-    console.warn(`🔒 [auth] ${endpoint}: recurso ajeno — bloqueado`)
-    emitFireAndForget({
-      source: 'vercel',
-      severity: 'warn',
-      eventType: 'auth_identidad_ajena_rechazada',
-      endpoint,
-      userId: callerUserId ?? undefined,
-      metadata: { duenoReal, motivo: 'recurso_ajeno' },
-    })
-    return {
-      ok: false,
-      response: NextResponse.json({ success: false, error: 'No tienes acceso a este recurso' }, { status: 403 }),
-    }
-  }
+  const veredicto = juzgarPropiedad({ duenoReal, callerUserId })
+  if (veredicto === 'permitido' || dejaPasar(veredicto)) return { ok: true, callerUserId }
 
-  return { ok: true, callerUserId }
+  // Las dos denegaciones se separan a propósito ([T-671]): «no sé quién eres» es una sesión
+  // caída y «no eres el dueño» es acceso a lo ajeno. Antes las dos salían como lo segundo, y
+  // durante el incidente del 07/08 eso etiquetó 195 sesiones caídas como intentos de acceso
+  // ajeno — las 195. Ver el porqué completo en `propiedadRecurso.ts`.
+  const sinIdentidad = veredicto === 'sin_identidad'
+  console.warn(`🔒 [auth] ${endpoint}: ${sinIdentidad ? 'sin identidad verificable' : 'recurso ajeno'} — bloqueado`)
+  emitFireAndForget({
+    source: 'vercel',
+    // La sesión caída es un fallo NUESTRO que el usuario sufre → `error`, para que entre en el
+    // catch-all de señales del panel. El acceso ajeno sigue siendo `warn`: es una denegación que
+    // funciona como debe.
+    severity: sinIdentidad ? 'error' : 'warn',
+    eventType: sinIdentidad ? 'auth_sin_identidad_en_recurso' : 'auth_identidad_ajena_rechazada',
+    endpoint,
+    userId: callerUserId ?? undefined,
+    metadata: { duenoReal, motivo: veredicto },
+  })
+  return {
+    ok: false,
+    response: NextResponse.json(
+      {
+        success: false,
+        error: sinIdentidad
+          ? 'Tu sesión no está activa. Vuelve a entrar para continuar.'
+          : 'No tienes acceso a este recurso',
+        // El cliente decide el aviso con esto, no adivinando por el código: ver
+        // `lib/tests/avisoDeCorreccion.ts`.
+        reason: veredicto,
+      },
+      { status: statusDe(veredicto) },
+    ),
+  }
 }
 
 // ============================================

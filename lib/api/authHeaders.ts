@@ -17,6 +17,7 @@
 // la mecánica. Guardarraíl: `__tests__/guardrails/bearerTokenSinglePath.test.ts`.
 import { auth } from '@/lib/auth'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
+import { emitClientEvent, hayUsuarioConocido } from '@/lib/observability/client'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -28,12 +29,35 @@ const DEVICE_ID_KEY = 'vence_device_id'
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
 
+  let motivoSinToken: 'sin_token' | 'excepcion' | null = null
   try {
     const accessToken = await auth.getAccessToken()
     if (accessToken) {
       headers['Authorization'] = `Bearer ${accessToken}`
+    } else {
+      motivoSinToken = 'sin_token'
     }
-  } catch {}
+  } catch {
+    motivoSinToken = 'excepcion'
+  }
+
+  // [T-671] EL SILENCIO ERA EL BUG. Estas dos ramas se tragaban el fallo y devolvían las
+  // cabeceras SIN Bearer; el servidor contestaba 401 y en el cliente no quedaba ni una línea
+  // que dijera por qué. El 07/08/2026 eso dejó a 248 usuarios con las estadísticas a 0 y sin
+  // poder corregir sus exámenes, y reconstruir la causa costó dos sesiones cruzando el
+  // `deploy_version` de los 401 con el commit que los arreglaba a medias.
+  //
+  // Sigue devolviendo cabeceras sin Bearer a propósito: hay llamadas legítimas de usuario
+  // anónimo, y romper aquí les rompería a ellos. Lo que cambia es que ahora se VE. Se filtra
+  // por `estaAutenticado()` para no medir a los anónimos, que son el caso normal y ahogarían
+  // la señal.
+  if (motivoSinToken && typeof window !== 'undefined' && hayUsuarioConocido()) {
+    emitClientEvent({
+      severity: 'error',
+      eventType: 'auth_header_sin_token',
+      metadata: { motivo: motivoSinToken },
+    })
+  }
 
   if (typeof window !== 'undefined') {
     const deviceId = localStorage.getItem(DEVICE_ID_KEY)

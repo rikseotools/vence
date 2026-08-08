@@ -27,7 +27,9 @@ import { getOposicionSlugFromPathname, resolveOposicionSlugForNav, getExamPenalt
 import { useOposicion } from '@/contexts/OposicionContext'
 import { useOposicionPaths } from '@/hooks/useOposicionPaths'
 import { validateExam, type ValidatedResults, type ValidatedQuestionResult } from '@/lib/api/exam/client'
-import { ApiTimeoutError, ApiNetworkError } from '@/lib/api/client'
+import { ApiTimeoutError, ApiNetworkError, ApiHttpError } from '@/lib/api/client'
+import { causaDelFallo, avisoDeCorreccion, type AvisoDeCorreccion } from '@/lib/tests/avisoDeCorreccion'
+import { emitClientEvent } from '@/lib/observability/client'
 import { useAnswerWatchdog } from '@/hooks/useAnswerWatchdog'
 import { useOffsetCabecera } from '@/hooks/useOffsetCabecera'
 import { useArrastrable } from '@/hooks/useArrastrable'
@@ -486,6 +488,13 @@ export default function ExamLayout({
 
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
+  /**
+   * [T-671] Aviso de corrección fallida, con su CAUSA. Reemplaza al `alert()` único que
+   * echaba la culpa a la conexión pasara lo que pasara — ver `lib/tests/avisoDeCorreccion.ts`.
+   * Es estado y no `alert` porque «vuelve a entrar» necesita un botón, y porque un `alert`
+   * bloquea la pestaña y no deja leer que las respuestas están a salvo.
+   */
+  const [avisoCorreccion, setAvisoCorreccion] = useState<AvisoDeCorreccion | null>(null)
 
   // Watchdog: detecta UI congelada si isSaving se queda en true >20s
   useAnswerWatchdog({
@@ -964,8 +973,27 @@ export default function ExamLayout({
         : 'API_ERROR'
       console.error('❌ Error en validación de examen:', errorType, error)
       setIsSaving(false)
-      // Mostrar error al usuario en vez de dejar UI colgada
-      alert('Error al enviar el examen. Comprueba tu conexión e inténtalo de nuevo.')
+
+      // [T-671] El aviso sale de la CAUSA, no de una conjetura. Antes esto era un `alert()`
+      // único que decía «comprueba tu conexión» pasara lo que pasara: un usuario premium hizo
+      // ocho exámenes que no pudo corregir —le fallaba la SESIÓN— y se pasó la tarde revisando
+      // su router. Cuando no sabemos la causa, ya no la nombramos. Ver `avisoDeCorreccion.ts`.
+      const http = error instanceof ApiHttpError ? error : null
+      const causa = causaDelFallo({
+        status: http?.status ?? null,
+        reason: (http?.body as { reason?: string } | undefined)?.reason ?? null,
+        tipoDeError: errorType === 'TIMEOUT' ? 'TIMEOUT' : errorType === 'NETWORK' ? 'NETWORK' : http ? 'HTTP' : 'OTRO',
+      })
+      setAvisoCorreccion(avisoDeCorreccion(causa))
+
+      // Y la causa se MIDE: sin esto, «no puedo corregir» vuelve a ser indistinguible de «no
+      // tengo cobertura» en los datos, que es lo que hizo falta reconstruir a mano.
+      emitClientEvent({
+        eventType: 'examen_correccion_fallida',
+        severity: 'error',
+        endpoint: '/api/exam/validate',
+        metadata: { causa, status: http?.status ?? null, errorType },
+      })
       // Los errores de validación se registran automáticamente en validation_error_logs por el servidor
       logClientError('/api/exam/validate', error, { component: 'ExamLayout', userId: user?.id })
     }
@@ -1212,6 +1240,45 @@ export default function ExamLayout({
               <strong> Tus respuestas están guardadas en este dispositivo</strong> y se
               enviarán solas al recuperar la conexión. Puedes seguir el examen con normalidad.
             </p>
+          </div>
+        )}
+
+        {/* [T-671] La corrección no salió. Antes esto era un `alert()` que siempre decía
+            «comprueba tu conexión»: un premium hizo ocho exámenes sin poder corregir ninguno
+            —le fallaba la SESIÓN— y se pasó la tarde mirando su router. Ahora el texto sale de
+            la causa real y, sobre todo, lo primero que se lee es que NO ha perdido nada. */}
+        {avisoCorreccion && (
+          <div
+            className="mb-4 p-4 bg-red-50 border border-red-300 rounded-lg"
+            role="alert"
+            data-testid="aviso-correccion-fallida"
+            data-causa={avisoCorreccion.causa}
+          >
+            <p className="font-semibold text-red-900">{avisoCorreccion.titulo}</p>
+            <p className="mt-1 text-sm text-red-800">{avisoCorreccion.cuerpo}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {avisoCorreccion.accion === 'entrar' ? (
+                <Link
+                  href="/login"
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                >
+                  Volver a entrar
+                </Link>
+              ) : (
+                <button
+                  onClick={() => { setAvisoCorreccion(null); handleSubmitExam() }}
+                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                >
+                  Reintentar la corrección
+                </button>
+              )}
+              <button
+                onClick={() => setAvisoCorreccion(null)}
+                className="px-4 py-2 text-sm text-red-700 underline"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         )}
 

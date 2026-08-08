@@ -3072,6 +3072,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'estudiaba la Ley 8/2015 de Cabildos derogada hacía cinco semanas.',
   },
 
+  reparar_correcciones_bloqueadas: {
+    titulo: 'Devolver su nota a los exámenes cuya CORRECCIÓN falló (no a los abandonados)',
+    ruta: 'scripts/exam/reparar-correcciones-bloqueadas.cjs',
+    estado: 'vivo',
+    escribe: ['is_completed', 'score', 'observable_events'],
+    runbook: 'docs/procedures/gestionar-feedback-bug.md',
+    notas:
+      'Simula por defecto; exige acotar (`--email` o `--desde`) para no recorrer el banco entero. ' +
+      'NO escribe SQL propio: llama a `completeExam()`, el mismo escritor que usa ' +
+      '`/api/exam/complete` — una segunda puerta al mismo recurso se queda atrás el día que ' +
+      'cambie la regla de puntuación. El criterio de qué es reparable vive en el núcleo puro ' +
+      '`lib/exam/correccionBloqueada.ts` (7 tests con los ocho exámenes reales del caso). ' +
+      'Lo que lo hace seguro es NO reparar los abandonados: un examen dejado a medias también ' +
+      'tiene respuestas corregidas, y la línea base es de 4-13 abandonos al día — repararlos ' +
+      'les inventaría una nota que nadie quiso sacar. Origen [T-671]: feedbacks `86071bf9` y ' +
+      '`3bcbd41b`, un premium de tres días con ocho exámenes sin poder corregir ninguno.',
+  },
+
   reactivar_articulo_boe: {
     titulo: 'Reactivar un artículo apagado comparándolo antes con el BOE consolidado',
     ruta: 'scripts/reactivar-articulo-boe.cjs',
