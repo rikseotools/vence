@@ -18,6 +18,7 @@
 import { auth } from '@/lib/auth'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
 import { emitClientEvent, hayUsuarioConocido } from '@/lib/observability/client'
+import { safeGet } from '@/lib/storage/safeLocalStorage'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -60,7 +61,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   }
 
   if (typeof window !== 'undefined') {
-    const deviceId = localStorage.getItem(DEVICE_ID_KEY)
+    const deviceId = safeGet(DEVICE_ID_KEY)
     if (deviceId) headers['X-Device-Id'] = deviceId
     // Huella de hardware: v2 en cuanto esté calculada, v1 mientras tanto (una sola función
     // decide, ver `lib/security/fingerprint`). El `device_id` de arriba NO sirve como ancla de

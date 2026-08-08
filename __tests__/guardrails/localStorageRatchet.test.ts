@@ -13,19 +13,18 @@
  * Al migrar un fichero a `lib/storage/safeLocalStorage`, se borra su línea de la lista Y se baja el
  * número de aquí. Nunca al revés.
  *
- * [T-203, 08/08/2026] 41 de los 45 originales migrados de verdad (violación AST real) + 2 que no
- * tenían nada que migrar (uno usa sessionStorage, no localStorage; el otro solo toca localStorage
- * dentro de un <Script> de texto plano, invisible para el AST y ya protegido por su propio
- * try/catch). Queda solo `lib/api/authHeaders.ts`, en uso por otra sesión viva a la vez.
+ * [T-203, 08/08/2026] Los 45 ficheros originales quedaron todos resueltos: la mayoría migrada de
+ * verdad (violación AST real, incluyendo `window.localStorage.*`, que el lint no veía pero tenía
+ * el mismo riesgo de lanzar) y un par que resultaron no tener nada que migrar (uno usaba
+ * sessionStorage, no localStorage; otro solo tocaba localStorage dentro de un <Script> de texto
+ * plano, invisible para el AST y ya protegido por su propio try/catch). Solo queda el helper, que
+ * por definición es el único sitio que puede tocar el API real.
  */
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-/**
- * Excepciones vivas. Este número NO puede subir. Incluye el helper (permanente: es el único
- * sitio que puede tocar el API real) + `lib/api/authHeaders.ts` (T-203, pendiente).
- */
-const DEUDA_INICIAL = 2
+/** Excepciones vivas. Este número NO puede subir. Solo el helper: es el único caso permanente. */
+const DEUDA_INICIAL = 1
 
 function excepcionesDeclaradas(): string[] {
   const cfg = readFileSync(join(process.cwd(), 'eslint.config.mjs'), 'utf-8')

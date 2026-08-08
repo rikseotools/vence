@@ -212,18 +212,18 @@ const eslintConfig = [
   // exceptuados abajo para no bloquear a nadie, pero **ningún fichero nuevo** puede sumarse. La lista
   // solo puede MENGUAR — al migrar uno, se borra su línea.
   //
-  // [T-203, 08/08/2026] Migrados los 41 ficheros con violaciones AST reales (bare o
-  // `window.localStorage.*`) más los 2 que ya no tenían nada que migrar (`ConsentModeDefault.tsx`
-  // usa localStorage solo dentro de un <Script> de texto plano, invisible para el AST — y ya estaba
+  // [T-203, 08/08/2026] Migrados los 45 ficheros originales: 41 con violaciones AST reales (bare o
+  // `window.localStorage.*`) + 2 que ya no tenían nada que migrar (`ConsentModeDefault.tsx` usa
+  // localStorage solo dentro de un <Script> de texto plano, invisible para el AST — y ya estaba
   // envuelto en try/catch propio; `AttributionCapture.tsx` usa sessionStorage, no localStorage: su
-  // línea era papel mojado desde siempre). Queda `lib/api/authHeaders.ts` sin migrar — otra sesión
-  // viva (movil2) lo estaba tocando a la vez; se deja para no pisarle el trabajo.
+  // línea era papel mojado desde siempre) + `lib/api/authHeaders.ts` (el último, migrado tras
+  // liberarse el conflicto con otra sesión viva). Solo queda el helper, que por definición es el
+  // único sitio que puede tocar el API real.
   {
     files: ["app/**/*.{ts,tsx,js,jsx}", "lib/**/*.{ts,tsx,js,jsx}", "components/**/*.{ts,tsx,js,jsx}",
             "contexts/**/*.{ts,tsx,js,jsx}", "hooks/**/*.{ts,tsx,js,jsx}", "utils/**/*.{ts,tsx,js,jsx}"],
     ignores: [
       "lib/storage/safeLocalStorage.ts",   // es el helper: aquí SÍ se toca el API real
-      "lib/api/authHeaders.ts",            // T-203: pendiente, en uso por otra sesión viva a la vez
     ],
     rules: {
       "no-restricted-properties": [
