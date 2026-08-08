@@ -65,6 +65,16 @@ export const LLM_CALL_SITES: LlmCallSite[] = [
   { ruta: 'scripts/oposiciones/analizar-preguntas-sin-ley.cjs', estado: 'instrumentado', feature: 'mantenimiento' },
   { ruta: 'scripts/oposiciones/validar-programa-completo.cjs', estado: 'instrumentado', feature: 'mantenimiento' },
 
+  // [T-709] NO es una llamada de trabajo: es la SONDA de cuota. No hay endpoint que diga cuánta
+  // queda, así que se hace la petición más pequeña posible (1 token del modelo más barato) y lo
+  // que interesa son sus CABECERAS (`anthropic-ratelimit-unified-*`), no la respuesta. Se
+  // registra igual —consume cuota y habla con el proveedor, que es lo que este contrato vigila—
+  // pero pasarla por el cliente compartido no la mejoraría: ese instrumenta el gasto por tokens
+  // y aquí el gasto es de 1, mientras que el dato que se busca lo tira `getAnthropic` al
+  // devolver solo el cuerpo. Si algún día el cliente compartido expone las cabeceras, se migra.
+  { ruta: 'scripts/sesiones/cuota.cjs', estado: 'crudo', feature: 'sonda_cuota',
+    motivo: 'sonda de 1 token cuyo resultado son las CABECERAS de cuota, que el cliente compartido no expone. Migrar cuando `getAnthropic` las devuelva.' },
+
   { ruta: 'scripts/observabilidad/ab-modelo-notas.cjs', estado: 'instrumentado', feature: 'ab_notas' },
   { ruta: 'scripts/observabilidad/ab-modelo-vinculo-vecino.cjs', estado: 'instrumentado', feature: 'ab_vinculo_vecino' },
   { ruta: 'scripts/observabilidad/ab-modelo-transformacion.cjs', estado: 'instrumentado', feature: 'ab_transformacion' },
@@ -175,4 +185,7 @@ export function crudos(): LlmCallSite[] {
  * cuando se montó el registro. Bajarlo al instrumentar uno es el objetivo; subirlo significa que
  * alguien ha abierto una puerta nueva al proveedor sin observabilidad.
  */
-export const TECHO_CRUDOS = 15
+// [T-709] Sube de 15 a 16 por la sonda de cuota, y es la ÚNICA subida legítima que se ha hecho:
+// no es gasto de trabajo que se escapa de la vista (que es lo que el trinquete impide), es una
+// petición de 1 token cuyo valor está en las cabeceras. Cualquier otra subida hay que pelearla.
+export const TECHO_CRUDOS = 16
