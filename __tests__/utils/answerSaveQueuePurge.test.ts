@@ -406,4 +406,38 @@ describe('answerSaveQueue — purga y límites', () => {
       expect(getPendingCount('session-Z')).toBe(0)
     })
   })
+
+  // ============================================
+  // T-271 (06/08/2026): flush() con cola VACÍA no debe pedir token ni loguear error.
+  //
+  // Medido en observable_events (31/07, 24h): 618 de 642 "Sin token" del
+  // console_error eran de visitantes ANÓNIMOS con 0 pendientes — flush() se dispara en
+  // 'online'/'visibilitychange' (eventos globales, para cualquiera) y pedía el token
+  // ANTES de comprobar si había algo que sincronizar. Nada en juego, error igual.
+  // ============================================
+  describe('flush — cola vacía (T-271)', () => {
+    it('con la cola vacía NO llama a getAccessToken (nada que sincronizar)', async () => {
+      setQueue([])
+      const { espiasPuerto, puertoAuth } = require('../helpers/authPortHarness')
+      puertoAuth.reset()
+      puertoAuth.sinSesion() // sin token disponible — si se llamara, sería el caso "Sin token"
+
+      const { flush } = require('@/utils/answerSaveQueue')
+      await flush()
+
+      expect(espiasPuerto.getAccessToken).not.toHaveBeenCalled()
+    })
+
+    it('con respuestas pendientes SÍ llama a getAccessToken (comportamiento preexistente intacto)', async () => {
+      setQueue([makeAnswer('session-A', 'q1')])
+      const { espiasPuerto, puertoAuth } = require('../helpers/authPortHarness')
+      puertoAuth.reset()
+      puertoAuth.sinSesion()
+
+      const { flush } = require('@/utils/answerSaveQueue')
+      await flush()
+
+      expect(espiasPuerto.getAccessToken).toHaveBeenCalled()
+    })
+  })
 })
