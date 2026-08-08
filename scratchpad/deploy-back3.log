@@ -1,0 +1,140 @@
+══ vuelta 1/12 — siguiendo aa7322fdc
+   [1] desplegar — desplegando el último verde eb8fc1ffb; quedan 4 commit(s) más nuevos sin veredicto
+→ desplegando backend en eb8fc1ffb (deja fuera 4 commit(s) más nuevos, irán en el siguiente deploy)
+⏳ Otra sesión está desplegando (lock /tmp/vence-deploy.lock). Esperando…
+❌ el lock sigue tomado tras 45 min — abortado. ¿Un build largo delante? Usa scripts/deploy-cuando-verde.sh, que reintenta.
+   el deploy no completó; reevalúo en la siguiente vuelta
+══ vuelta 2/12 — siguiendo 00dc58614
+   [1] desplegar — desplegando el último verde 165b6e5d2; quedan 1 commit(s) más nuevos sin veredicto
+→ desplegando backend en 165b6e5d2 (deja fuera 1 commit(s) más nuevos, irán en el siguiente deploy)
+⏳ Otra sesión está desplegando (lock /tmp/vence-deploy.lock). Esperando…
+🔒 lock de deploy adquirido (/tmp/vence-deploy.lock).
+→ DEPLOY_SHA: se despliega 165b6e5d2 (último verde), 3 commit(s) de main se quedan para el siguiente deploy
+🔒 candado de deploy adquirido (run 91) — visible desde cualquier máquina.
+→ se desplegará (ancestro elegido) 165b6e5d23f63b9db6632bc0b36168a5aa542999 = 165b6e5d (el árbol de trabajo no se toca)
+→ [gate CI] verificando checks de CÓDIGO (unit+typecheck+lint) de GHA para 165b6e5d…
+   ✅ CI de código verde (unit+typecheck+lint) para 165b6e5d. [integration=failure — informativo]
+→ árbol de build efímero: /tmp/vence-build-z6phqS (se borra al salir, pase lo que pase)
+→ [1/6] build 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-backend:deploy-165b6e5d (contexto backend/ del árbol efímero)
+[1/2] STEP 1/7: FROM node:22-slim AS builder
+[1/2] STEP 2/7: WORKDIR /app
+--> Using cache 81796166bda0bc3b5d3224579b6ad46a3bc37d50d119e70365b63618f27a7a56
+--> 81796166bda0
+[1/2] STEP 3/7: COPY package*.json ./
+--> Using cache 5e03b65e186bc33aebcc452221d5b46ca4fcb7b0f34241595656a065b8f2dec1
+--> 5e03b65e186b
+[1/2] STEP 4/7: RUN npm ci
+--> Using cache 0d8454c4e58c919c4de44e52d1a8496b5a0f4ab97c3124d477dc3917020f4ea1
+--> 0d8454c4e58c
+[1/2] STEP 5/7: COPY tsconfig*.json nest-cli.json ./
+--> Using cache 8ee5f77a0919b8db3c2872868f990816e76dd18eccd0c82b2852859a3694fc58
+--> 8ee5f77a0919
+[1/2] STEP 6/7: COPY src ./src
+--> 51ff0744c6ce
+[1/2] STEP 7/7: RUN npm run build
+
+> @vence/backend@0.1.0 build
+> nest build
+
+--> 437cbc7d7a83
+[2/2] STEP 1/13: FROM node:22-slim AS runtime
+[2/2] STEP 2/13: ENV NODE_ENV=production
+--> Using cache 0f8569fc656889cb309be0266b5deab827088b569c004d27aa77bbdf96fb18f3
+--> 0f8569fc6568
+[2/2] STEP 3/13: RUN apt-get update   && apt-get install -y --no-install-recommends poppler-utils curl   && rm -rf /var/lib/apt/lists/*
+--> Using cache 489e87deb64aec1a1601098be75c99ac31c255942f81f68885e3c0b1845c26bf
+--> 489e87deb64a
+[2/2] STEP 4/13: ARG GIT_COMMIT_SHA=
+--> Using cache f4b0dd2780121abb30eff1a61c4a0b8fcd2ce97892f983ad57382d24f72d19f0
+--> f4b0dd278012
+[2/2] STEP 5/13: ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
+--> Using cache 1fc9820c0547589ecdb6931c2afa2a2930d9e00861e0086b81c3baab1e81f82e
+--> 1fc9820c0547
+[2/2] STEP 6/13: WORKDIR /app
+--> Using cache 4cf75a47c768a699a029bfdc157181a5e0535c5dea0f1c19ded987e2fc5bb075
+--> 4cf75a47c768
+[2/2] STEP 7/13: COPY package*.json ./
+--> Using cache 7707062c1989d22e178e185a6d674381c4a659a3d656d18e1f1107745f03fbff
+--> 7707062c1989
+[2/2] STEP 8/13: RUN npm ci --omit=dev && npm cache clean --force
+
+added 212 packages, and audited 213 packages in 4s
+
+51 packages are looking for funding
+  run `npm fund` for details
+
+3 vulnerabilities (1 low, 2 high)
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+npm notice
+npm notice New major version of npm available! 10.9.8 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice
+npm warn using --force Recommended protections disabled.
+--> 2fe9f9b7b45d
+[2/2] STEP 9/13: COPY --from=builder /app/dist ./dist
+--> bc250a1ef2f2
+[2/2] STEP 10/13: USER node
+--> 3147cd67b2fc
+[2/2] STEP 11/13: EXPOSE 3000
+--> 421b234835f4
+[2/2] STEP 12/13: HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+time="2026-08-07T23:18:32+02:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> 905ad9646630
+[2/2] STEP 13/13: CMD ["node", "dist/main.js"]
+[2/2] COMMIT 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-backend:deploy-165b6e5d
+time="2026-08-07T23:18:32+02:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+--> 581bd74560e4
+Successfully tagged 349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-backend:deploy-165b6e5d
+581bd74560e447c33ac1e6ed35fa28822a965c28b86077f6ab7ebc648df7598a
+→ [2/6] push ECR
+Getting image source signatures
+Copying blob sha256:753ac0cda9f387fe3fc1bfd5260e8945062fcdd307e664ae013ac9d4b82e82a0
+Copying blob sha256:a45e8410aa35d5194fcdeb7f7969789ac3cc9431d5b69be8602492a2097909d7
+Copying blob sha256:d84f419161f986391e64d28f3e40dd54381ea37495b0a25daef6353bd8df4d92
+Copying blob sha256:66462cc862fe2053b9863fefa3866e07bb5dfb06f6b3ce3177cc096e4021aabe
+Copying blob sha256:a8a755e4d6c4443f2aa3d52c6581a3253c71013f240d1a02edd519c317a66c4b
+Copying blob sha256:971f4222c89e76e28d9b107cb29729a5abb9fd7adea0d4a1c419ce9b73204feb
+Copying blob sha256:77781b840dcc9da7ed98c5031a381efba8ea296d4e58f433f0859537ec360ed5
+Copying blob sha256:97c6b24fae719bcbbbff6dd289c7179c34c20a45e49bff2573624089274b0d51
+Copying blob sha256:4ec1e35159597bd260ba72d8e45b0127d1906110b0783a0745a6ea0950624b03
+Copying config sha256:581bd74560e447c33ac1e6ed35fa28822a965c28b86077f6ab7ebc648df7598a
+Writing manifest to image destination
+→ [3/6] resolver digest (imagen pineada, inmutable)
+   349744179687.dkr.ecr.eu-west-2.amazonaws.com/vence-backend@sha256:1b7f8db470cb6187704c37a9af43ec4c8aab38aad1582135e098b0975edc73d9
+→ [4/6] clonar la task def VIVA (hereda secretos/config) + swap imagen
+   base viva: arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-backend:176
+   ✅ secretos: los 23 recurso(s) permitidos cubren la task def
+   registrada: arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-backend:177
+→ [5/6] update-service (rolling) + esperar CONVERGENCIA REAL (mantiene el lock → deploys de uno en uno)
+[
+    {
+        "s": "PRIMARY",
+        "r": "IN_PROGRESS"
+    },
+    {
+        "s": "ACTIVE",
+        "r": "COMPLETED"
+    }
+]
+   ✅ convergido: 1 deployment PRIMARY COMPLETED (1/1 tasks) — lock retenido hasta aquí
+→ [6/6] smoke post-deploy
+   /health=200
+→ verificando que el SHA vivo == 165b6e5d (anti-clobber)
+   ✅ SHA vivo = 165b6e5d
+
+✅ DEPLOY BACKEND OK — arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-backend:177
+(16 esperando deploy, ninguna incluida todavía en 165b6e5d)
+
+📐 RECORDATORIO DE MÉTODO (cada 30 min — para que no se olvide a media tarea):
+   · nada de chapuzas: profesional, robusto, escalable y OBSERVABLE, integrado en lo que ya hay
+   · ¿lo que estás construyendo ya existe?  npm run tools:buscar -- <palabra>
+   · nada de silos: engánchalo al runbook o sistema que ya lo cubre
+   · capas: unit · integración · simulación (vence-sim) · canary · guardarraíl — las que hagan falta
+   · si estrenas una herramienta, REGÍSTRALA en lib/admin/toolRegistry.ts
+   Rollback: aws ecs update-service --cluster vence-backend --service vence-backend --task-definition arn:aws:ecs:eu-west-2:349744179687:task-definition/vence-backend:176 --profile vence --region eu-west-2
+✅ DEPLOY backend OK (vuelta 2)

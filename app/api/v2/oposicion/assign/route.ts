@@ -17,6 +17,13 @@ import { sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
+import {
+  esObjetivoPersonalizado,
+  personalizadaUtilizable,
+  ERROR_PERSONALIZADA_SIN_TEMARIO,
+} from '@/lib/oposicion/objetivoPersonalizado'
+import { buscarPersonalizada } from '@/lib/api/oposicionPersonalizada/consultas'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 export const maxDuration = 15
 
@@ -36,6 +43,33 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'invalid_payload' }, { status: 400 })
   }
   const { oposicionId, oposicionData } = parsed.data
+
+  // [T-339] CUARTA puerta de escritura de `target_oposicion`, encontrada al revisar las otras
+  // tres. Su `bodySchema` acepta CUALQUIER string de hasta 255 caracteres y hacía el UPDATE sin
+  // mirar nada: hoy su único llamante (`OposicionDetector`) solo manda ids del catálogo
+  // estático, así que desde la UI no es alcanzable — pero el endpoint no lo impide, y cualquier
+  // usuario autenticado puede llamarlo directo con una personalizada de 0 temas y reproducir el
+  // bug original por la vía que ni la ficha ni la entrega auditaron.
+  //
+  // MISMO criterio puro que las otras tres (`personalizadaUtilizable`) y MISMA consulta
+  // (`buscarPersonalizada`): una cuarta puerta con su propia regla no protegería, se
+  // contradiría con las demás. FAIL-OPEN igual que ellas — solo corta cuando SÍ se sabe vacía.
+  if (esObjetivoPersonalizado(oposicionId)) {
+    const personalizada = await buscarPersonalizada(oposicionId, auth.userId)
+    if (personalizada && !personalizadaUtilizable(personalizada.temas)) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'objetivo_personalizado_vacio',
+        endpoint: '/api/v2/oposicion/assign',
+        metadata: { oposicionId, temas: personalizada.temas, bloqueado: true },
+      })
+      return NextResponse.json(
+        { success: false, ...ERROR_PERSONALIZADA_SIN_TEMARIO },
+        { status: 409 },
+      )
+    }
+  }
 
   const res = await getAdminDb().execute(sql`
     UPDATE user_profiles

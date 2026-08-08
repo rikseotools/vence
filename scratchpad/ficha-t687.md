@@ -1,0 +1,35 @@
+### [T-687] 🟡 [ABIERTO 07/08] Las esperas de deploy entre sesiones se auto-encuentran con `pgrep` y no disparan NUNCA: quedan procesos zombis
+
+**Qué es.** Varias sesiones esperan a que termine un deploy ajeno con este patrón:
+
+```bash
+while pgrep -f "deploy-cuando-verde.sh frontend" >/dev/null; do sleep 20; done
+scripts/deploy-cuando-verde.sh frontend
+```
+
+El `pgrep -f` casa contra la **línea de órdenes completa**… que incluye la del propio `while`, porque
+lleva dentro esa misma cadena. Así que el proceso **se encuentra a sí mismo** y espera para siempre.
+
+**Medido el 07/08:** con el lock libre y NINGÚN deploy corriendo, había **dos esperas** vivas
+(`1411578`, `1515973`), una de ellas encadenando un deploy de backend que nunca llegó a lanzarse. Una
+llevaba horas.
+
+**Por qué importa más de lo que parece.** No es solo un proceso colgado: es una sesión que **cree que
+va a desplegar y no va a desplegar nunca**. Nadie recibe un error, nadie ve un rojo — simplemente el
+deploy no ocurre, y el trabajo se queda sin salir a producción hasta que alguien pasa por ahí y lo
+nota a mano. Es el mismo modo de fallo que [T-613]: un cero silencioso que se lee como «no había nada
+que hacer».
+
+**El arreglo no es un `pgrep` más listo.** Se puede excluir el propio PID (`pgrep -f … | grep -v $$`)
+pero eso vuelve a poner la corrección en cada sitio que lo copie. Lo que ya existe y sirve: el
+**`flock`** de `/tmp/vence-deploy.lock`, que serializa de verdad — lanzar el deploy directamente lo
+pone A LA COLA sin que nadie tenga que esperar a mano. El propio runbook lo dice: *«no hace falta
+coordinar con nadie: el flock serializa y lanzar un deploy solo lo pone a la cola»*.
+
+**Propuesta:** que el patrón de espera desaparezca. Si alguien quiere saber cuándo terminó, que mire
+el LOG del deploy o el sha vivo de `/api/health`, no la tabla de procesos. Y si hace falta un
+esperador, que viva en un sitio (un `scripts/deploy/esperar-turno.sh`) y no copiado en cada sesión.
+
+**Cabo suelto asociado:** mientras esto exista, `pgrep -fa "deploy-cuando-verde"` da falsos positivos
+al comprobar «¿hay un deploy en marcha?» — hoy mismo me hizo dudar antes de lanzar la segunda ronda.
+La comprobación fiable es `fuser /tmp/vence-deploy.lock`.

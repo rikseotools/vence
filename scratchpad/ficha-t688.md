@@ -1,0 +1,30 @@
+### [T-688] 🟡 [ABIERTO 07/08] Dos preguntas activas con la explicación defectuosa, encontradas al medir otras impugnaciones
+
+Las dos salieron de las mediciones sistémicas del 07/08 (impugnaciones `3d3dd74e` y `28745372`). **No
+las reportó nadie**, así que se anotan aquí para que no se pierdan con la sesión.
+
+**1. `4788f559` — tres razones escritas en CONDICIONAL, que no afirman nada.**
+Su explicación dice, opción por opción, cosas como *«**Si** afirma que el magistrado pierde su
+condición de miembro de la Sala al integrarse en la sección especializada, contradice…»*, *«**Si**
+establece que la participación en juntas queda suspendida…»*, *«**Si** indica que la adscripción
+requiere renuncia…»*. El opositor lee un «si» y no sabe si la opción dice eso o no: la razón no
+juzga, plantea una hipótesis. Es primo hermano de `article_audit_note` (la nota de auditoría colada
+como explicación) pero con otra forma, así que **ningún detector la ve**.
+
+**2. `fe67e9c0` — cita la ley EQUIVOCADA.**
+Es una pregunta del art. 10 de la **Ley 40/2015** (avocación) y su explicación cierra con *«C)
+**CORRECTA**. Art. 10.2 Ley 39/2015»*. La 39/2015 es la del procedimiento, no la del sector público:
+quien vaya a comprobarlo abrirá la norma que no es. La clave y el resto del razonamiento están bien;
+lo que falla es la referencia.
+
+**Qué hacer:** reescribir las razones de `4788f559` en afirmativo contra el artículo vinculado, y
+corregir la referencia de `fe67e9c0` a la Ley 40/2015, en los dos casos con
+`scripts/aplicar-explicacion.ts` (que deja las dos columnas coherentes y la pregunta barajable).
+Ninguna toca la clave.
+
+**Por qué está fichado y no arreglado ya:** aparecieron mientras se medía si otra cosa era sistémica,
+y arreglarlas de paso habría mezclado dos asuntos en la misma impugnación. Son minutos.
+
+**Lo que NO es:** no hay indicios de que sean una clase. El barrido de razones descolocadas por
+solape de palabras da 2.469 candidatas y **20 de 20 leídas a mano eran correctas** (razones
+parafraseadas), así que ese número no vale para nada — anotado aquí para que nadie lo reviva.
