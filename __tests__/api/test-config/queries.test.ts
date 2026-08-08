@@ -339,6 +339,57 @@ describe('estimateAvailableQuestions', () => {
     expect(db.select).not.toHaveBeenCalled()
   })
 
+  // [T-411] Sergio (agente_hacienda) no tiene exam_positions propias — el fail-safe de
+  // arriba lo deja siempre en 0. includeSharedOfficials es la vía para que, estudiando
+  // por leyes, SÍ pueda contar (y luego practicar) oficiales de OTRAS oposiciones sobre
+  // esa misma ley: el fail-safe no debe cortar antes de consultar la BD.
+  test('con includeSharedOfficials, oposición SIN exam_positions propias: SÍ cuenta (no corta en el fail-safe)', async () => {
+    const db = setupMockDb([
+      [{ id: 'law-ce' }],   // resolver law_id de CE
+      [{ count: 7 }],       // conteo de oficiales de OTRAS oposiciones sobre CE
+    ])
+
+    const result = await estimateAvailableQuestions({
+      topicNumber: null,
+      positionType: 'oposicion_sin_oficiales' as any,
+      selectedLaws: ['CE'],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: true,
+      includeSharedOfficials: true,
+      difficultyMode: 'random',
+      focusEssentialArticles: false,
+      scopeToPosition: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.count).toBe(7)
+    expect(db.select).toHaveBeenCalled()
+  })
+
+  // Sin includeSharedOfficials, la MISMA oposición sigue cortando en el fail-safe —
+  // el opt-in no cambia el comportamiento por defecto (caso Laura/Sergio original).
+  test('sin includeSharedOfficials, oposición SIN exam_positions propias: sigue en 0', async () => {
+    const db = setupMockDb([])
+
+    const result = await estimateAvailableQuestions({
+      topicNumber: null,
+      positionType: 'oposicion_sin_oficiales' as any,
+      selectedLaws: ['CE'],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: true,
+      includeSharedOfficials: false,
+      difficultyMode: 'random',
+      focusEssentialArticles: false,
+      scopeToPosition: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.count).toBe(0)
+    expect(db.select).not.toHaveBeenCalled()
+  })
+
   test('sin filtros: total de preguntas del tema', async () => {
     setupMockDb([
       // 1. topic_scope

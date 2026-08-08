@@ -175,4 +175,16 @@ describe('normalizeEstimateParams', () => {
     expect(abierto.scopeToPosition).toBe(false)
     expect(JSON.stringify(acotado)).not.toBe(JSON.stringify(abierto))
   })
+
+  // [T-411]: mismo motivo exacto que scopeToPosition arriba — propias vs propias+compartidas
+  // son números DISTINTOS. Si el normalizador lo tirase, la segunda selección leería el
+  // conteo cacheado de la primera (el bug que T-326 encontró en este mismo sitio).
+  test('includeSharedOfficials viaja en la clave (propias ≠ propias+compartidas → distinta entrada)', () => {
+    const soloPropias = normalize({ ...BASE, topicNumber: null, selectedLaws: ['CE'], onlyOfficialQuestions: true, includeSharedOfficials: false } as EstimateQuestionsRequest)
+    const conCompartidas = normalize({ ...BASE, topicNumber: null, selectedLaws: ['CE'], onlyOfficialQuestions: true, includeSharedOfficials: true } as EstimateQuestionsRequest)
+
+    expect(soloPropias.includeSharedOfficials).toBe(false)
+    expect(conCompartidas.includeSharedOfficials).toBe(true)
+    expect(JSON.stringify(soloPropias)).not.toBe(JSON.stringify(conCompartidas))
+  })
 })

@@ -199,6 +199,7 @@ export class TestConfigController {
         difficultyMode: (query.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
         focusEssentialArticles: query.focusEssentialArticles === 'true',
         scopeToPosition: query.scopeToPosition === 'true',
+        includeSharedOfficials: query.includeSharedOfficials === 'true',
       },
       res,
     );
@@ -231,6 +232,7 @@ export class TestConfigController {
         difficultyMode: (body?.difficultyMode ?? 'random') as EstimateQuestionsRequest['difficultyMode'],
         focusEssentialArticles: body?.focusEssentialArticles === true,
         scopeToPosition: body?.scopeToPosition === true,
+        includeSharedOfficials: body?.includeSharedOfficials === true,
       },
       res,
     );
@@ -254,7 +256,7 @@ export class TestConfigController {
     // oposición vs ley entera), así que omitirlo haría que dos selecciones distintas
     // compartieran entrada y la segunda leyera el número de la primera. Es el mismo bug
     // que se encontró en el normalizador del frontend al implementar T-326.
-    const subKey = `estimate:t${params.topicNumber ?? 'all'}:p${params.positionType ?? 'any'}:l${lawsKey}:a${articlesKey}:s${sectionsKey}:o${params.onlyOfficialQuestions ? '1' : '0'}:d${params.difficultyMode}:e${params.focusEssentialArticles ? '1' : '0'}:sc${params.scopeToPosition ? '1' : '0'}`;
+    const subKey = `estimate:t${params.topicNumber ?? 'all'}:p${params.positionType ?? 'any'}:l${lawsKey}:a${articlesKey}:s${sectionsKey}:o${params.onlyOfficialQuestions ? '1' : '0'}:d${params.difficultyMode}:e${params.focusEssentialArticles ? '1' : '0'}:sc${params.scopeToPosition ? '1' : '0'}:sh${params.includeSharedOfficials ? '1' : '0'}`;
 
     return this.servedCached(subKey, TTL.estimate, res, () =>
       this.service.estimateAvailableQuestions(params),

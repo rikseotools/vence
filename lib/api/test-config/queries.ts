@@ -287,6 +287,7 @@ async function estimateByLaws(
     onlyOfficialQuestions,
     difficultyMode,
     scopeToPosition,
+    includeSharedOfficials,
   } = params
 
   // Sin leyes seleccionadas no hay nada que contar (el configurador aún no ha elegido).
@@ -296,8 +297,10 @@ async function estimateByLaws(
 
   const validPositions = onlyOfficialQuestions ? getValidExamPositions(positionType) : []
   // Fail-safe: oposición no registrada en EXAM_POSITION_MAP → no tiene oficiales propias.
-  // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría.
-  if (onlyOfficialQuestions && validPositions.length === 0) {
+  // Omitir el filtro contaría las de OTRAS oposiciones y la casilla mentiría — SALVO que
+  // `includeSharedOfficials` las pida a propósito ([T-411]): ahí no hay "propias" que
+  // exigir, así que este corte no aplica.
+  if (onlyOfficialQuestions && !includeSharedOfficials && validPositions.length === 0) {
     return { success: true, count: 0, byLaw: {} }
   }
 
@@ -383,7 +386,13 @@ async function estimateByLaws(
 
     if (onlyOfficialQuestions) {
       conditions.push(eq(questions.isOfficialExam, true))
-      conditions.push(inArray(questions.examPosition, validPositions))
+      // [T-411] Con includeSharedOfficials, no restringir por exam_position: el filtro
+      // de ley/artículo de arriba (conditions con articles.lawId / articleNumbers) ya
+      // acota a ESTA ley, así que basta con ser oficial de CUALQUIER oposición. Mismo
+      // criterio que usa el serve real (filtered-questions/queries.ts, opt-in).
+      if (!includeSharedOfficials) {
+        conditions.push(inArray(questions.examPosition, validPositions))
+      }
     }
 
     if (difficultyMode && difficultyMode !== 'random' && difficultyMode !== 'adaptive') {
@@ -1003,6 +1012,10 @@ function normalizeEstimateParams(
     // temario de la oposición o la ley entera. Si se cae aquí, dos selecciones que dan
     // números distintos comparten entrada de cache y el segundo lee el del primero.
     scopeToPosition: params.scopeToPosition,
+    // [T-411] Mismo motivo que scopeToPosition: dos selecciones que solo difieren en
+    // este flag dan números DISTINTOS (propias vs propias+compartidas). Omitirlo de la
+    // key es el mismo bug que T-326 encontró en este mismo normalizador.
+    includeSharedOfficials: params.includeSharedOfficials,
   }
 }
 

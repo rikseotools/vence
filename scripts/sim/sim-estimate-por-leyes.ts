@@ -52,11 +52,13 @@ async function main() {
       topicNumber: null, positionType: POSITION as any, selectedLaws: [ley],
       selectedArticlesByLaw: {}, selectedSectionFilters: [], onlyOfficialQuestions: false,
       difficultyMode: 'random', focusEssentialArticles: false, scopeToPosition: false,
+      includeSharedOfficials: false,
     })
     const oficiales = await estimateAvailableQuestions({
       topicNumber: null, positionType: POSITION as any, selectedLaws: [ley],
       selectedArticlesByLaw: {}, selectedSectionFilters: [], onlyOfficialQuestions: true,
       difficultyMode: 'random', focusEssentialArticles: false, scopeToPosition: false,
+      includeSharedOfficials: false,
     })
 
     casos.push({ nombre: `${ley} · todas`, obtenido: total.count ?? -1, esperado: Number(totalSql) })
@@ -68,7 +70,7 @@ async function main() {
     topicNumber: null, positionType: POSITION as any, selectedLaws: ['Ley 39/2015'],
     selectedArticlesByLaw: { 'Ley 39/2015': ['13', '14'] }, selectedSectionFilters: [],
     onlyOfficialQuestions: false, difficultyMode: 'random', focusEssentialArticles: false,
-    scopeToPosition: false,
+    scopeToPosition: false, includeSharedOfficials: false,
   })
   const [{ n: acotadoSql }]: any = await db.execute(sql`
     SELECT count(*)::int AS n FROM questions q
@@ -82,6 +84,7 @@ async function main() {
     topicNumber: null, positionType: 'agente_hacienda' as any, selectedLaws: ['Ley 39/2015'],
     selectedArticlesByLaw: {}, selectedSectionFilters: [], onlyOfficialQuestions: true,
     difficultyMode: 'random', focusEssentialArticles: false, scopeToPosition: false,
+    includeSharedOfficials: false,
   })
   casos.push({ nombre: 'agente_hacienda · oficiales (sin banco propio)', obtenido: sinBanco.count ?? -1, esperado: 0 })
 
@@ -100,6 +103,7 @@ async function main() {
       topicNumber: null, selectedLaws: ['Ley 39/2015'], selectedArticlesByLaw: {},
       selectedSectionFilters: [], onlyOfficialQuestions: false,
       difficultyMode: 'random' as const, focusEssentialArticles: false,
+      includeSharedOfficials: false,
     }
     const sinAcotar = await estimateAvailableQuestions({
       ...comun, positionType: SIN_TEMARIO as any, scopeToPosition: false,
@@ -121,6 +125,7 @@ async function main() {
     topicNumber: null, positionType: POSITION as any, selectedLaws: [],
     selectedArticlesByLaw: {}, selectedSectionFilters: [], onlyOfficialQuestions: false,
     difficultyMode: 'random', focusEssentialArticles: false, scopeToPosition: false,
+    includeSharedOfficials: false,
   })
   casos.push({ nombre: 'sin leyes seleccionadas', obtenido: vacio.count ?? -1, esperado: 0 })
 

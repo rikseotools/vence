@@ -292,6 +292,7 @@ export class TestConfigService {
       onlyOfficialQuestions,
       difficultyMode,
       scopeToPosition,
+      includeSharedOfficials,
     } = params;
 
     // Sin leyes seleccionadas no hay nada que contar (el configurador aún no ha elegido).
@@ -308,9 +309,12 @@ export class TestConfigService {
       : [];
     // Fail-safe: oposición REAL no registrada en EXAM_POSITION_MAP ([] tras el helper de
     // arriba) → no tiene oficiales propias. Omitir el filtro contaría las de OTRAS
-    // oposiciones y la casilla mentiría. `null` (personalizada) NO entra aquí.
+    // oposiciones y la casilla mentiría — SALVO que `includeSharedOfficials` las pida a
+    // propósito ([T-411]): ahí no hay "propias" que exigir, así que este corte no aplica.
+    // `null` (personalizada, T-597) tampoco entra aquí: no tiene "propias" que exigir.
     if (
       onlyOfficialQuestions &&
+      !includeSharedOfficials &&
       validPositions !== null &&
       validPositions.length === 0
     ) {
@@ -416,8 +420,10 @@ export class TestConfigService {
 
       if (onlyOfficialQuestions) {
         conditions.push(eq(questions.isOfficialExam, true));
-        // null (personalizada) = sin restricción de exam_position, no se empuja el inArray.
-        if (validPositions !== null) {
+        // null (personalizada, T-597) = sin restricción de exam_position; [T-411]
+        // includeSharedOfficials = mismo efecto pero para OTRAS oposiciones. En
+        // ninguno de los dos casos se empuja el inArray de examPosition.
+        if (validPositions !== null && !includeSharedOfficials) {
           conditions.push(inArray(questions.examPosition, validPositions));
         }
       }

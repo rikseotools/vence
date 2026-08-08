@@ -54,6 +54,12 @@ export const estimateQuestionsRequestSchema = z.object({
   // temario del positionType en vez de a la ley entera, igual que hace el selector
   // de artículos. Con tema, el scope ya lo impone el topic_scope.
   scopeToPosition: z.boolean().default(false),
+  // 🆕 [T-411] Solo aplica con onlyOfficialQuestions y SIN topicNumber: cuenta también
+  // las oficiales de OTRAS oposiciones sobre las mismas leyes/artículos seleccionados,
+  // en vez de restringir a `getValidExamPositions(positionType)`. Quien estudia por
+  // leyes (sin temario propio construido) es justo quien más se beneficia — el filtro
+  // de ley/artículo sigue aplicando igual, solo se levanta el de "tu oposición".
+  includeSharedOfficials: z.boolean().default(false),
 })
 
 export type EstimateQuestionsRequest = z.infer<typeof estimateQuestionsRequestSchema>
