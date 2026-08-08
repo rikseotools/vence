@@ -3450,6 +3450,16 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
     escribe: ['observable_events'],
     runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
     notas:
+      '⚠️ ALCANCE (08/08/2026): esto es de la MÁQUINA, no de este repo — las cuentas son las ' +
+      'mismas en vence, koigrid y facturas. Se llega desde cualquier proyecto con **`cuota`** ' +
+      '(`~/bin/cuota`), un ENVOLTORIO —no una copia— que localiza este repo, carga ' +
+      '`~/.config/vence/cuentas.env` y delega aquí; el criterio se arregla en un solo sitio y ' +
+      'vale para los tres. Documentado en `~/.claude/CLAUDE.md`, que se carga en todos los ' +
+      'proyectos. Nace de comprobar que en koigrid la pregunta no tenía respuesta: allí no ' +
+      'existe `scripts/sesiones/`, su CLAUDE.md solo nombra «cuota» para el plan de la app, y ' +
+      'la memoria del proyecto es otra carpeta. Sin el envoltorio, el sondeo directo enseña ' +
+      'UNA sola cuenta (sin `cuentas.env` en el entorno no ve la secundaria), que es peor que ' +
+      'nada: parece un estado y es media foto. Si el repo se mueve: `VENCE_REPO=/ruta cuota`. ' +
       '`npm run cuota` (foto) · `-- --rotar <slug> [--aplicar]` (relanza ese panel de tmux en la ' +
       'otra cuenta con `--resume`, así que el hilo se conserva y no hay que escribir nada). ' +
       'SIMULA por defecto: `respawn-pane -k` mata lo que corra en el panel. Criterio en dos ' +

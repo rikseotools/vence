@@ -189,6 +189,30 @@ describe('toolRegistry — descubribilidad (que no haya que saberse el fichero)'
     expect(md).toContain('tools:buscar')
   })
 
+  /**
+   * Herramientas que NO son de este repo aunque su código viva aquí (08/08/2026).
+   *
+   * La cuota de las cuentas de Claude es de la MÁQUINA: las mismas cuentas valen en vence, en
+   * koigrid y en facturas. Su punto de entrada global es `~/bin/cuota`, un envoltorio que vive
+   * FUERA del repo — y ahí está el problema que este test cubre: **nada dentro del repo se entera
+   * si ese envoltorio se olvida**. Sin esta nota, la siguiente sesión que llegue desde otro
+   * proyecto o bien no encuentra nada, o bien copia el sondeo aquí y crea un segundo criterio.
+   *
+   * Se afirma sobre el REGISTRO y no sobre `~/bin`, a propósito: el fichero del home no está
+   * versionado y no puede existir en CI ni en una máquina recién clonada, así que comprobarlo
+   * daría un rojo que no significa nada. Lo que se protege es que la PISTA no se borre.
+   */
+  it('la herramienta de cuota declara que es de la máquina y dónde está su entrada global', () => {
+    const entrada = (TOOL_REGISTRY as Record<string, { notas?: string }>).cuota_cuentas_claude
+    expect(entrada).toBeTruthy()
+    const notas = String(entrada.notas ?? '')
+    expect(notas).toContain('~/bin/cuota')
+    expect(notas).toMatch(/M[ÁA]QUINA/)
+    // Y que sigue diciendo que es un envoltorio: el día que alguien copie el sondeo, esta
+    // palabra es lo primero que deja de ser verdad.
+    expect(notas).toMatch(/ENVOLTORIO|envoltorio/)
+  })
+
   it('el comando tools:buscar existe en package.json y apunta a un script real', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'))
     const cmd = pkg.scripts?.['tools:buscar']
