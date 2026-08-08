@@ -62,9 +62,9 @@
     "question_text": "Según el artículo 1 de la Ley 3/2026, ¿qué se regula, además del objeto principal de la ley, como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares?",
     "options": [
       "Asimismo, se regula la Comisión Bilateral de Cooperación como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
-      "Asimismo, se regula el Consejo de Cabildos como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
+      "Asimismo, se regula la Federación Canaria de Municipios como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
       "Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.",
-      "Asimismo, se regula la Conferencia Sectorial de Administración Local como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares."
+      "Asimismo, se regula la Conferencia Sectorial para Asuntos Locales como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares."
     ],
     "correct_option": 2,
     "explanation_data": {
@@ -75,13 +75,13 @@
       },
       "options": {
         "0": "El artículo 1.2 no menciona ninguna Comisión Bilateral de Cooperación: el foro que regula es la Conferencia de Presidentes y presidentas.",
-        "1": "El artículo 1.2 no menciona ningún Consejo de Cabildos: el foro que regula es la Conferencia de Presidentes y presidentas.",
+        "1": "El artículo 1.2 no menciona ninguna Federación Canaria de Municipios: el foro que regula es la Conferencia de Presidentes y presidentas.",
         "2": "Es la cita literal del apartado 2 del artículo 1.",
-        "3": "El artículo 1.2 no menciona ninguna Conferencia Sectorial de Administración Local: el foro que regula es la Conferencia de Presidentes y presidentas."
+        "3": "El artículo 1.2 no menciona ninguna Conferencia Sectorial para Asuntos Locales: el foro que regula es la Conferencia de Presidentes y presidentas."
       },
       "frame": "select_correct"
     },
-    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 1.2**\n> \"Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.\"\n\n**Por qué C es correcta:** Es la cita literal del apartado 2 del artículo 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 1.2 no menciona ninguna Comisión Bilateral de Cooperación: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **B)** El artículo 1.2 no menciona ningún Consejo de Cabildos: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **D)** El artículo 1.2 no menciona ninguna Conferencia Sectorial de Administración Local: el foro que regula es la Conferencia de Presidentes y presidentas."
+    "explanation": "> **Ley 3/2026 Cabildos Insulares, art. 1.2**\n> \"Asimismo, se regula la Conferencia de Presidentes y presidentas como foro institucional de colaboración de la Comunidad Autónoma de Canarias y los cabildos insulares.\"\n\n**Por qué C es correcta:** Es la cita literal del apartado 2 del artículo 1.\n\n**Por qué las demás son incorrectas:**\n- **A)** El artículo 1.2 no menciona ninguna Comisión Bilateral de Cooperación: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **B)** El artículo 1.2 no menciona ninguna Federación Canaria de Municipios: el foro que regula es la Conferencia de Presidentes y presidentas.\n- **D)** El artículo 1.2 no menciona ninguna Conferencia Sectorial para Asuntos Locales: el foro que regula es la Conferencia de Presidentes y presidentas."
   },
   {
     "primary_article_number": "2",
