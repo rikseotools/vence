@@ -41,8 +41,14 @@ function git(args, cwd = REPO) {
  * justo aquí, en qué se le preguntaba a git.
  */
 function datosDeWorktree(ruta, rama) {
+  const perdida = loQueSePerderia(ruta)
   return {
-    ficherosUnicos: loQueSePerderia(ruta),
+    ficherosUnicos: perdida.ficheros,
+    // Para que el informe pueda decir la VERDAD sobre cada fichero en vez de llamarlos a todos
+    // «sin commitear»: son dos cosas distintas y se arreglan distinto ([T-707]).
+    sinCommitear: perdida.sinCommitear,
+    soloCommiteadoAqui: perdida.soloCommiteadoAqui,
+    publicadoEn: perdida.publicadoEn,
     commitsAhead: Number(git(['rev-list', '--count', `origin/main..${rama || 'HEAD'}`], ruta) || 0),
     // `git cherry` compara por PARCHE: '+' = no está en la principal ni por contenido.
     commitsUnicos: git(['cherry', 'origin/main', rama || 'HEAD'], ruta)
@@ -85,12 +91,57 @@ function listarWorktrees() {
 function loQueSePerderia(ruta) {
   const commiteado = git(['diff', '--name-only', 'origin/main...HEAD'], ruta).split('\n').filter(Boolean)
   const difiereHoy = new Set(git(['diff', '--name-only', 'origin/main'], ruta).split('\n').filter(Boolean))
-  const sinCommitear = git(['status', '--porcelain', '--untracked-files=all'], ruta)
-    .split('\n').filter(Boolean)
-    .map((l) => l.slice(3).trim())
+  const sinCommitear = ficherosSinCommitear(ruta)
+
+  // ── «COMMITEADO AQUÍ» NO ES «SOLO EXISTE AQUÍ» (T-707, 08/08) ────────────────────────────
+  // Lo que este worktree ha commiteado y `main` no tiene puede estar PUSHEADO —de hecho el
+  // rescate de [T-560] existe justo para eso: empujar a `origin/rescate/<slug>-<sha>` lo que solo
+  // vivía en una máquina—. Medido: `t486-flota` salía con «4 ficheros que solo existen aquí (sin
+  // commitear)» teniendo el árbol LIMPIO y su commit a salvo en `origin/rescate/t486-flota-…`, y
+  // encima su contenido ya estaba en `main` por otra vía. Avisar de eso es gastar la atención de
+  // quien lo lea; y con 13 worktrees señalados, el que de verdad guarde algo pasa desapercibido.
+  const contenidos = commiteado.length ? ramasQueLoContienen(ruta) : []
+  const publicado = contenidos.some((r) => r.startsWith('origin/'))
+  const soloCommiteadoAqui = publicado ? [] : commiteado.filter((f) => difiereHoy.has(f))
+
+  return {
+    sinCommitear,
+    soloCommiteadoAqui,
+    publicadoEn: publicado ? contenidos.filter((r) => r.startsWith('origin/'))[0] : null,
+    // Lo que se pierde de verdad si alguien borra el worktree ahora mismo.
+    ficheros: [...new Set([...soloCommiteadoAqui, ...sinCommitear])],
+  }
+}
+
+/**
+ * Ficheros con cambios sin commitear, leyendo `--porcelain` como es (T-707).
+ *
+ * **El defecto que arregla:** `git()` hace `.trim()` de la salida, así que la PRIMERA línea perdía
+ * su espacio inicial — y `slice(3)` se comía entonces el primer carácter del nombre. Se veía en el
+ * informe real como `ocs/roadmap/tareas-pendientes.md` (sin la `d`): un fichero que no existe, así
+ * que quien fuera a mirarlo no lo encontraba. Solo pasaba con la primera línea y solo con los
+ * códigos que empiezan por espacio (` M`, ` D`), que son justo los cambios sin preparar — los más
+ * frecuentes. Ahora se parte por el patrón real (`XY<espacio>RUTA`) en vez de por posición fija, y
+ * se resuelve el `ORIG -> DESTINO` de los renombrados, que también salía pegado.
+ */
+function ficherosSinCommitear(ruta) {
+  return git(['status', '--porcelain', '--untracked-files=all'], ruta)
+    .split('\n')
+    .map((l) => {
+      const m = /^(..)[ ]?(.*)$/.exec(l)
+      if (!m) return ''
+      const camino = m[2].trim()
+      // Renombrado/copiado: `R  viejo -> nuevo`. Lo que existe hoy es el destino.
+      return camino.includes(' -> ') ? camino.split(' -> ').pop().trim() : camino
+    })
     // El `.session-id` lo escribe la propia herramienta de worktrees: es artefacto, no trabajo.
     .filter((f) => f && f !== '.session-id')
-  return [...new Set([...commiteado.filter((f) => difiereHoy.has(f)), ...sinCommitear])]
+}
+
+/** Ramas (locales y remotas) que ya contienen el HEAD de este worktree. */
+function ramasQueLoContienen(ruta) {
+  return git(['branch', '-a', '--contains', 'HEAD', '--format=%(refname:short)'], ruta)
+    .split('\n').map((l) => l.replace(/^remotes\//, '').trim()).filter(Boolean)
 }
 
 /**
@@ -216,8 +267,25 @@ async function main() {
   console.log(`\n⚠️  ${r.huerfanos.length} WORKTREE(S) CON TRABAJO QUE SOLO EXISTE AHÍ:`)
   for (const c of r.huerfanos) {
     console.log(`\n   ${c.slug} — ${c.motivo}`)
-    for (const f of c.ficherosUnicos.slice(0, 10)) console.log(`      ${f}`)
-    if (c.ficherosUnicos.length > 10) console.log(`      …y ${c.ficherosUnicos.length - 10} más`)
+    // Se separan porque se arreglan distinto: lo SIN COMMITEAR hay que commitearlo (o decidir que
+    // era basura), y lo COMMITEADO Y NO PUBLICADO hay que empujarlo. Llamar «sin commitear» a las
+    // dos cosas mandaba a mirar el árbol de un worktree que estaba limpio ([T-707]).
+    const sin = c.sinCommitear || []
+    const soloAqui = c.soloCommiteadoAqui || []
+    if (sin.length) {
+      console.log(`      · ${sin.length} sin commitear:`)
+      for (const f of sin.slice(0, 8)) console.log(`          ${f}`)
+      if (sin.length > 8) console.log(`          …y ${sin.length - 8} más`)
+    }
+    if (soloAqui.length) {
+      console.log(`      · ${soloAqui.length} commiteado(s) aquí y sin publicar (empújalo: git -C <ruta> push origin HEAD):`)
+      for (const f of soloAqui.slice(0, 8)) console.log(`          ${f}`)
+      if (soloAqui.length > 8) console.log(`          …y ${soloAqui.length - 8} más`)
+    }
+    if (!sin.length && !soloAqui.length) {
+      for (const f of c.ficherosUnicos.slice(0, 10)) console.log(`      ${f}`)
+      if (c.ficherosUnicos.length > 10) console.log(`      …y ${c.ficherosUnicos.length - 10} más`)
+    }
   }
   console.log('\n   Míralo antes de borrar nada:  git -C <ruta> diff origin/main')
   emitirFriccion(r.huerfanos.length)
