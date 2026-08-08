@@ -16018,13 +16018,21 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
     `refDeclaradaDistinta` sin tocar) + 4 nuevos con los casos reales. Sin regresión en
     `__tests__/impugnaciones/` (391 tests) ni en `content-sweep-parity` (172, fija la paridad del
     kind `cita_no_literal`).
-  - **✅ DOS MISLINKS verificados, plan de reancle listo (dry-run, no aplicado — sin escritura):**
-    `ebd70c34` y `b471ef18` cuelgan del art.10 de RD 1372/1986 (Reglamento Bienes EELL) pero sus
-    explicaciones citan, verbatim, el contenido REAL de los arts. **11** y **12** respectivamente
-    (verificado carácter por carácter). Plan en
-    `data/pilotos/t207-citas-w2/plan-reanclaje-reglamento-bienes-eell.json`, validado con
-    `reanclar-preguntas.cjs` (0 problemas), pérdida de tema declarada (art.10 sirve 4 temas, 11/12
-    solo 2: Ourense T14 y Huelva T13).
+  - **⚠️ DOS MISLINKS temáticos, plan de reancle listo (dry-run, no aplicado — sin escritura) —
+    CORREGIDO 08/08 (revisión w3): "verbatim carácter por carácter" era FALSO, son paráfrasis.**
+    `ebd70c34` y `b471ef18` cuelgan del art.10 de RD 1372/1986 (Reglamento Bienes EELL); el TEMA de
+    sus explicaciones es el de los arts. **11** y **12** respectivamente (el art.10 solo lista
+    MODOS de adquirir, sin detallar ninguno), pero la CITA en sí no es literal ni siquiera contra
+    el artículo correcto: `solapeConArticulo` da 0,67 y 0,57 (no ~1,0) y `citaAusente` da `true`
+    para las dos, reproducido con las propias funciones de la entrega contra `articles.content`
+    real. Detalle + textos verbatim reales listos para la reescritura en
+    `data/pilotos/t207-citas-w2/README.md` §2. **El arreglo son DOS pasos, no uno:** (1) reanclar
+    con `data/pilotos/t207-citas-w2/plan-reanclaje-reglamento-bienes-eell.json` vía
+    `reanclar-preguntas.cjs` (0 problemas, pérdida de tema declarada: art.10 sirve 4 temas, 11/12
+    solo 2 — Ourense T14 y Huelva T13); (2) reescribir el blockquote citado con el texto verbatim
+    real del art.11.1/12.1-2 (ambos textos ya extraídos y listos en el README). Aplicar solo el
+    paso 1 deja vivo el defecto de cita-no-literal que motivó T-207, solo que contra el artículo
+    correcto en vez del equivocado — por eso NO se cierra como "resuelto" hasta hacer los dos.
   - **⚠️ TRES citas genuinamente FABRICADAS, mismo Reglamento Bienes EELL, recomendado
     `needs_human` — NO reescritas.** `f4e51a3b` (art.1), `d2a801b4` (art.3), `1fb9247e` (art.4):
     sus citas no aparecen en NINGUNA de las 138 filas de artículos de la ley (grep exhaustivo,

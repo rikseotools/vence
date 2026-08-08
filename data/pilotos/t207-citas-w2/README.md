@@ -38,29 +38,63 @@ exactamente igual) + **4 nuevos** con los casos reales de `273b6309` y `b72000de
 `__tests__/health/content-sweep-parity.test.ts` (172 tests, que fija la paridad del kind
 `cita_no_literal` entre el CLI y el barrido de salud) se rompe.
 
-## 2) DOS MISLINKS verificados, plan de reancle listo (dry-run)
+## 2) DOS MISLINKS TEMÁTICOS — el ancla está mal, pero la cita SIGUE sin ser literal
 
-`ebd70c34` y `b471ef18` cuelgan del art. 10 de RD 1372/1986 (Reglamento de Bienes EELL), pero sus
-explicaciones citan, **verbatim, carácter por carácter**, el contenido REAL de los arts. **11** y
-**12** respectivamente (verificado contra `articles.content`, no contra la ficha):
+**⚠️ CORRECCIÓN (08/08, revisión de w3): la entrega original decía que `ebd70c34` y `b471ef18`
+citaban «verbatim, carácter por carácter» el contenido real de los arts. 11 y 12. Es FALSO — son
+paráfrasis, no transcripciones. La revisión lo demostró y esta corrección lo reproduce de forma
+independiente**, con las propias funciones de la entrega (`solapeConArticulo`, `citaAusente`)
+ejecutadas contra el texto real de `articles.content`:
 
-- `ebd70c34`: pide los requisitos de la adquisición ONEROSA (normativa de contratación + valoración
-  pericial de inmuebles) → eso es el **art. 11.1**, no el 10 (el 10 solo lista los MODOS de
-  adquirir: por Ley, oneroso, herencia, prescripción, ocupación…, sin detallar requisitos).
-- `b471ef18`: pide la restricción de la adquisición GRATUITA (herencia/legado/donación) → eso es
-  el **art. 12.1-12.2**, no el 10.
+- `ebd70c34` vs art.11.1: `solapeConArticulo` = **0,67** (no ~1,0) y `citaAusente` = **true**
+  incluso contra el artículo correcto. Comparación palabra por palabra: la cita dice *"Toda
+  adquisición… exige…"* / *"de las Entidades locales"* / *"requiere la previa valoración pericial
+  que acredite su precio o valor"*; el art.11.1 real dice *"La adquisición… exigirá…"* / *"de las
+  Corporaciones locales"* / *"se exigirá, además, informe previo pericial"* — mismo tema,
+  redacción distinta, y la coletilla *"que acredite su precio o valor"* no está en el artículo.
+- `b471ef18` vs art.12.1-2: `solapeConArticulo` = **0,57** y `citaAusente` = **true**. La cita
+  dice *"salvo la aceptación expresa por el órgano competente cuando lleve aparejada alguna
+  condición o modalidad onerosa"*; el art.12.2 real dice otra cosa distinta de fondo: *"solo
+  podrán aceptarse los bienes previo expediente en el que se acredite que el valor del gravamen
+  impuesto no excede del valor de lo que se adquiere"* — no habla de «aceptación expresa del
+  órgano», habla de un expediente que acredite el valor. No es solo estilo: el mecanismo descrito
+  difiere.
 
-Plan en `plan-reanclaje-reglamento-bienes-eell.json`, validado con
-`node scripts/reanclar-preguntas.cjs plan-reanclaje-reglamento-bienes-eell.json` (dry-run, dos
-movimientos, 0 problemas). **Pérdida de tema declarada y aceptada** (mismo criterio que
-`4438d206` en T-561): el art.10 sirve a 4 temas (dos diputaciones de más, Cádiz T20 y Cuenca T14);
-los arts.11/12 solo a 2 (Ourense T14, Huelva T13) — mover el ancla sirve la pregunta correctamente
-donde SÍ tiene scope y dejar de servirla donde el ancla no sostenía su respuesta.
+**Lo que SÍ es cierto y se mantiene:** el ARTÍCULO vinculado está mal — el art.10 solo lista los
+MODOS de adquirir (por Ley, oneroso, herencia…) sin detallar ninguno de los dos requisitos, y el
+contenido de las preguntas SÍ es el tema de los arts. 11 y 12, no el del 10. El mislink de ancla
+es real y el plan de reanclaje sigue siendo la corrección correcta para ESO. Lo que NO es cierto
+es que mover el ancla, por sí solo, arregle el defecto que da origen a T-207 (cita no literal):
+tras reanclar, la cita seguiría siendo una paráfrasis del art.11/12, así que el defecto
+persistiría con el artículo correcto en vez de con el equivocado.
 
-Aplicar (necesita escritura, un trabajador NO puede):
-```bash
-npx tsx --env-file=.env.local scripts/reanclar-preguntas.cjs data/pilotos/t207-citas-w2/plan-reanclaje-reglamento-bienes-eell.json --apply
-```
+**Por eso el arreglo tiene DOS pasos, no uno — y aquí van los dos, listos para aplicar juntos:**
+
+1. Reanclar (plan ya validado, dry-run, 0 problemas):
+   ```bash
+   npx tsx --env-file=.env.local scripts/reanclar-preguntas.cjs data/pilotos/t207-citas-w2/plan-reanclaje-reglamento-bienes-eell.json --apply
+   ```
+   **Pérdida de tema declarada y aceptada** (mismo criterio que `4438d206` en T-561): el art.10
+   sirve a 4 temas (dos diputaciones de más, Cádiz T20 y Cuenca T14); los arts.11/12 solo a 2
+   (Ourense T14, Huelva T13) — mover el ancla sirve la pregunta correctamente donde SÍ tiene
+   scope y deja de servirla donde el ancla no sostenía su respuesta.
+
+2. **Reescribir la cita del blockquote con el texto VERBATIM real** (necesita escritura de BD,
+   igual que el paso 1 — un trabajador no puede aplicar ninguno de los dos). Textos verbatim
+   confirmados contra `articles.content` hoy, listos para copiar:
+   - `ebd70c34` → art.11.1: *"La adquisición de bienes a título oneroso exigirá el cumplimiento
+     de los requisitos contemplados en la normativa reguladora de la contratación de las
+     Corporaciones locales. Tratándose de inmuebles se exigirá, además, informe previo pericial…"*
+   - `b471ef18` → art.12.1-2: *"1. La adquisición de bienes a título gratuito no estará sujeta a
+     restricción alguna. 2. No obstante, si la adquisición llevare aneja alguna condición o
+     modalidad onerosa, solo podrán aceptarse los bienes previo expediente en el que se acredite
+     que el valor del gravamen impuesto no excede del valor de lo que se adquiere."*
+
+   El resto de la explicación (por qué las otras opciones son incorrectas) puede conservarse tal
+   cual — el contenido de fondo de la clave ya era correcto, lo que hay que cambiar es solo el
+   blockquote citado. **Sin este segundo paso, aplicar solo el reanclaje es una entrega A MEDIAS**:
+   corrige a qué artículo sirve la pregunta pero deja vivo el defecto que motivó T-207 en
+   primer lugar.
 
 ## 3) TRES citas genuinamente fabricadas — recomendado `needs_human`, NO reescritas
 

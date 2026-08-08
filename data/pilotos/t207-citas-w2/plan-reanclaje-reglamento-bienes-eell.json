@@ -1,11 +1,11 @@
 {
-  "motivo": "T-207 — 2 preguntas de RD 1372/1986 (Reglamento de Bienes EELL) vinculadas al art.10 cuya explicación cita, verbatim, el contenido REAL de otro artículo (11 y 12 respectivamente). Verificado contra articles.content: el art.10 real solo enumera los MODOS de adquisición (por Ley, oneroso, herencia, prescripción...) sin ninguno de los requisitos que las explicaciones citan.",
+  "motivo": "T-207 — 2 preguntas de RD 1372/1986 (Reglamento de Bienes EELL) vinculadas al art.10 cuya explicación versa sobre el TEMA de otro artículo (11 y 12 respectivamente), NO sobre el art.10 (que solo enumera los MODOS de adquisición: por Ley, oneroso, herencia, prescripción... sin ninguno de los requisitos que las explicaciones citan). CORRECCIÓN 08/08: la cita del blockquote es una PARÁFRASIS, no verbatim, ni siquiera contra el artículo correcto (solapeConArticulo 0.67/0.57, citaAusente=true) — reanclar corrige a qué artículo sirve la pregunta pero NO por sí solo el defecto de cita-no-literal; ver data/pilotos/t207-citas-w2/README.md §2 para los textos verbatim reales, pendientes de aplicar en un segundo paso.",
   "movimientos": [
     {
       "preguntas": ["ebd70c34-58c5-4d25-bbd9-419a462a05f6"],
       "origenArticuloId": "1a1039ba-9ed2-4273-bdb0-04980fbfe1a9",
       "destinoArticuloId": "b5cea3fb-6348-469a-8351-7ebe74310409",
-      "porQue": "La pregunta pregunta por los requisitos de la adquisición ONEROSA (normativa de contratación + valoración pericial de inmuebles) y su explicación cita ese texto verbatim como 'Art. 10' — pero ese texto es del ART. 11.1, no del 10 (el 10 solo lista los MODOS de adquirir, sin detallar requisitos). Confirmado carácter por carácter contra articles.content.",
+      "porQue": "La pregunta pregunta por los requisitos de la adquisición ONEROSA (normativa de contratación + valoración pericial de inmuebles), tema que es del ART. 11.1, no del 10 (el 10 solo lista los MODOS de adquirir, sin detallar requisitos) — confirmado contra articles.content. La cita del blockquote sigue siendo una paráfrasis del 11.1 (solapeConArticulo=0.67, citaAusente=true), NO verbatim: reescribirla es un segundo paso pendiente, ver README.md §2.",
       "permitirPerdidaTemas": true,
       "motivoPerdida": "El art.10 está escopado en 4 temas (auxiliar_administrativo_diputacion_ourense T14, _huelva T13, _cadiz T20, _cuenca T14); el art.11 solo en 2 (ourense T14, huelva T13). Mover el ancla sirve la pregunta correctamente en esos 2 y deja de servirla en cadiz/cuenca, donde hoy se sirve con un ancla que no sostiene su respuesta."
     },
@@ -13,7 +13,7 @@
       "preguntas": ["b471ef18-4eb9-421f-8d1e-44fcd1e5dd87"],
       "origenArticuloId": "1a1039ba-9ed2-4273-bdb0-04980fbfe1a9",
       "destinoArticuloId": "9ec80743-2694-49f5-9b6a-c1c79c8cc3ba",
-      "porQue": "La pregunta pregunta por la restricción de la adquisición a título GRATUITO (herencia/legado/donación) y su explicación cita ese texto verbatim como 'Art. 10' — pero ese texto es del ART. 12.1-12.2, no del 10. Confirmado carácter por carácter contra articles.content.",
+      "porQue": "La pregunta pregunta por la restricción de la adquisición a título GRATUITO (herencia/legado/donación), tema que es del ART. 12.1-12.2, no del 10 — confirmado contra articles.content. La cita del blockquote sigue siendo una paráfrasis del 12.1-2 (solapeConArticulo=0.57, citaAusente=true), NO verbatim: reescribirla es un segundo paso pendiente, ver README.md §2.",
       "permitirPerdidaTemas": true,
       "motivoPerdida": "Mismo caso que ebd70c34: el art.12 solo está escopado en 2 de los 4 temas del art.10 (ourense T14, huelva T13)."
     }
