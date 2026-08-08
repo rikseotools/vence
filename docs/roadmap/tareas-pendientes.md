@@ -15889,6 +15889,111 @@ sensor: que extraiga y guarde la **URL del documento** junto a la del sumario.
 - **DIMENSIONADO (27/07), es pequeño:** de **725** documentos en convocatorias vigentes de oposiciones activas, **120** tienen menos de 3.000 caracteres, y solo **30** vienen de `boe.es/…/pdfs/` — de los cuales **6** son cortos. Esos 6 son el objetivo real: el PDF del BOE no lleva la ficha de análisis y escribe las cifras solo en letra, que es exactamente como se perdió el 561.
 - **Origen:** sesión del 27/07 (causa raíz destapada por el detector `plazas_afirmadas_sin_documento`).
 
+#### RE-MEDIDO (08/08, w4) — el dimensionado cambió con el catálogo; 4 documentos reales listos para re-clonar, 1 hallazgo nuevo fuera de alcance
+
+**El dimensionado de hoy no es el del 27/07, y no debería serlo (12 días de catálogo vivo).** Repetida
+la consulta exacta de la ficha contra `VENCE_LECTOR_URL`: **410** documentos en convocatorias
+`is_current` de oposiciones `is_active` (excluyendo `tipo='nota'`; con notas incluidas, 837 — la
+ficha no dice si las contaba), **55** con menos de 3.000 caracteres, **28** de `boe.es/…/pdfs/`, de
+los cuales **5** son cortos. La caída de 725→410 es catálogo (125 oposiciones activas, 2.554
+convocatorias hoy — no medí cuántas había el 27/07 para poder afirmar la causa exacta, **SOSPECHO**
+que es crecimiento/cambio normal del catálogo en 12 días, no un error de la medición original).
+
+**De los 5 documentos "cortos + de /pdfs/", 1 es ruido de test, no un documento real — no tocar:**
+`auxiliar-administrativo-estado` (la oposición de más tráfico del catálogo) tiene un
+`convocatoria_documentos` con `url` `.../BOE-A-2099-TESTHUB.pdf` (año 2099), `content_hash='h1'`,
+`titulo='T'` y el texto extraído es literalmente la página de error 404 de boe.es — es un fixture de
+canary/test que escribió contra la convocatoria REAL en vez de una de prueba (`fetched_at`
+2026-07-25). Re-clonarlo no arregla nada (la URL no existe, seguiría dando 404): esto es un hallazgo
+de higiene de datos aparte, no del alcance de esta ficha — dejarlo anotado para quien lo quiera
+limpiar (`DELETE` de esa fila, o investigar qué script de test la escribió y hacer que apunte a datos
+de prueba en vez de a `auxiliar-administrativo-estado`).
+
+**Los 4 documentos reales, verificados uno a uno contra la fuente (no contra el resumen de un
+fetch): en los CUATRO el `txt.php` del mismo BOE-ID trae la «ficha de ANÁLISIS» con las plazas en
+cifra, que el `/pdfs/` no tiene** (confirmado con `curl` a `boe.es/diario_boe/txt.php?id=<BOE-ID>` y
+comparando contra `extracted_text` real en BD, no contra lo que la ficha afirma):
+
+| oposición | documento | BD hoy (chars, de /pdfs/) | txt.php (chars) | ficha de análisis que falta |
+|---|---|---|---|---|
+| `auxiliar-administrativo-ayuntamiento-madrid` | BOE-A-2024-21734 | 1.246 | 2.545 | «Turno libre: Auxiliar Administrativo/a 256 plazas» |
+| `auxiliar-administrativo-ayuntamiento-cordoba` | BOE-A-2026-9772 | 1.488 | 2.795 | «Turno libre: Auxiliar Administrativo/a 55 plazas» |
+| `auxiliar-administrativo-diputacion-zaragoza` | BOE-A-2026-6897 | 1.921 | 2.517 | «Turno libre: Auxiliar de Administración General 26 plazas» |
+| `administrativo-diputacion-valencia` | BOE-A-2026-9387 | 2.285 | 2.791 | «Turno libre: Administrativo/a 66 plazas» |
+
+Las 4 mejoras superan el umbral automático de `decidirRefresco` (≥1,15×: 2,04× / 1,88× / 1,31× /
+1,22×), así que re-clonar con la URL `txt.php` **reemplazaría solo sin necesitar `--refrescar-texto`**
+— se incluye igual en los comandos de abajo porque es lo que pide la ficha y quita cualquier duda.
+
+**⚠️ HALLAZGO NUEVO, cruzando contra `convocatorias.plazas_libres` — 3 de 4 ya están bien, 1 no
+cuadra y es MÁS GRANDE que esta ficha:**
+- **Córdoba, Zaragoza y Valencia: el dato vivo YA ES CORRECTO.** Zaragoza `plazas_libres=26` casa
+  exacto con el BOE. Córdoba (`plazas_libres=43` + `plazas_discapacidad=12` = 55) y Valencia
+  (`plazas_libres=56` + `plazas_discapacidad=10` = 66) casan exacto con el BOE **sumando** la reserva
+  de discapacidad al turno libre — consistente con que el BOE publica el turno libre como una cifra
+  única que YA incluye la reserva. En estas 3, re-clonar mejora la PROVENANCE (tener el documento que
+  demuestra la cifra) pero no cambia ningún dato mostrado a un usuario.
+- **Madrid NO cuadra, y por una razón que no es una extracción pobre:** `plazas_libres=111` en BD
+  frente a **256** en el documento adjunto. No es un problema de reserva de discapacidad (Madrid no
+  tiene `plazas_discapacidad` declaradas). Mirando `convocatorias.landing_description` de esa misma
+  fila: *«La OEP 2025 (Acuerdo de 27/11/2025, BOAM nº 10.017) incorpora 111 plazas de turno libre,
+  **pendientes de convocatoria**»* — es decir, la fila `is_current` de esta oposición describe la
+  **OEP 2025 (111 plazas, aún sin convocar)**, y el documento `BOE-A-2024-21734` que tiene adjunto es
+  la **convocatoria de 2024 (256 plazas)**, de un ciclo distinto y ya cerrado. **SOSPECHO** que el
+  documento del ciclo 2024 quedó enganchado a la fila `is_current` en un rollover sin que nadie lo
+  revisara (no lo he podido confirmar leyendo el historial de `convocatorias`, que no tengo a mano
+  con mi credencial de solo lectura) — lo que SÍ puedo afirmar, medido: los dos números (111 y 256)
+  son de DOS CONVOCATORIAS DISTINTAS, no la misma cifra mal extraída. Re-clonar el documento de 2024
+  no arregla esto — traería una ficha de análisis PERFECTA que sigue demostrando el número del ciclo
+  EQUIVOCADO. **No lo he tocado**: ni reasigno el documento, ni cambio `plazas_libres`, ni re-clono
+  este. Es una decisión de qué documento pertenece a qué ciclo, no una mejora de extracción — fuera
+  del alcance de esta ficha y de mi credencial. Ningún detector existente lo señala hoy (comprobado
+  `content_health_findings` para este slug: solo 2 hallazgos activos, ninguno sobre esto). Queda
+  como candidato a ficha propia para quien decida si merece su propio T-id.
+
+**Comandos listos, para quien tenga escritura de negocio** (yo solo tengo `VENCE_LECTOR_URL`, y
+`clonar-documento.ts` escribe con `DATABASE_URL` directo — no hay `--dry-run`, así que no los he
+podido ejecutar; los cuatro se han verificado leyendo la fuente a mano, no adivinados):
+```
+cd backend
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+  --slug=auxiliar-administrativo-ayuntamiento-madrid \
+  --url=https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-21734 \
+  --tipo=convocatoria --titulo="Resolución de 4 de octubre de 2024, del Ayuntamiento de Madrid" \
+  --boletin=BOE --ref=BOE-A-2024-21734 --fecha=2024-10-23 --refrescar-texto
+
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+  --slug=auxiliar-administrativo-ayuntamiento-cordoba \
+  --url=https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-9772 \
+  --tipo=convocatoria --titulo="Resolución de 27 de abril de 2026, del Ayuntamiento de Córdoba" \
+  --boletin=BOE --ref=BOE-A-2026-9772 --fecha=2026-05-05 --refrescar-texto
+
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+  --slug=auxiliar-administrativo-diputacion-zaragoza \
+  --url=https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-6897 \
+  --tipo=otro --titulo="Resolución de 15 de marzo de 2026, de la Diputación Provincial de Zaragoza" \
+  --boletin=BOE --ref=BOE-A-2026-6897 --fecha=2026-03-25 --refrescar-texto
+
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
+  --slug=administrativo-diputacion-valencia \
+  --url=https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-9387 \
+  --tipo=otro --titulo="Resolución de 17 de abril de 2026, de la Diputación Provincial de Valencia" \
+  --boletin=BOE --ref=BOE-A-2026-9387 --fecha=2026-04-30 --refrescar-texto
+```
+Verificar después con `npm run audit:convocatorias` (antes/después) y confirmando que
+`convocatoria_documentos.extracted_text` de esas 4 filas ya trae la sección «ANÁLISIS».
+
+**Capas:** sin código de producción tocado (es curación de contenido con una herramienta ya
+existente, `clonar-documento.ts`, ya registrada en `toolRegistry.ts`). Verificación = fetch directo
+de la fuente oficial + comparación contra BD, no simulación de código.
+
+**Lo que queda para el resto del piloto (fuera de esta pasada):** el barrido completo de "documentos
+cortos" más allá de /pdfs+corto (55 documentos con <3.000 chars en total, de los que estos 4-5 son
+solo el subconjunto de mayor sospecha por venir de `/pdfs/`) no se ha revisado uno a uno — puede
+haber más casos reales entre los 51 restantes que no vienen de `/pdfs/` pero igual están cortos por
+otra razón. No se ha vuelto a correr `npm run audit:convocatorias` en esta pasada por no tener nada
+que aplicar todavía.
+
 ### [T-186] 🟡 [ABIERTO 27/07] `correos-personal-operativo`: su enlace oficial lleva a una página de error y no hay documento público que verificar
 - **Qué:** el `programa_url` (`correos.es/es/es/personas-y-talento/empleo/index.html`) responde **200 con la página de error de Correos** — el sitio sirve ese error para CUALQUIER ruta desconocida, así que el botón "Ver convocatoria" de la landing lleva a un "¡Vaya! Parece que no hemos podido encontrar la página". **43 usuarios.**
 - **Y no hay recambio evidente:** la sección de empleo **ya no existe en `correos.es`** (no aparece en su sitemap de 3,2 MB; probadas 6 rutas, todas error) y el portal vivo es `conecta.correos.es`, que exige **autenticación (401)**. Además, a 27/07/2026 **no hay convocatoria publicada** de personal operativo (los ~4.000 puestos previstos siguen sin bases).
