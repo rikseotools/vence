@@ -2630,6 +2630,28 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'usuarios) — aunque lo que de verdad protege es la credencial, no el texto. **Antes de cada ' +
       'encargo pone su clon al día y comprueba que no esté ya trabajando** (ver `flota_clon_al_dia`).',
   },
+  flota_reparto_devueltas: {
+    titulo: 'Que una entrega devuelta con PROBLEMAS pueda llegarle a alguien',
+    ruta: 'scripts/flota/sim-reparto-devueltas.cjs',
+    estado: 'vivo',
+    notas:
+      '`npm run sim:reparto-devueltas`. ' +
+      'Comprueba, contra la BD real, que toda tarea que el criterio compartido ' +
+      '(`lib/backlog/revision.cjs` → `devueltaConProblemas`) considera una devolución sin dueño ' +
+      'está al alcance del reparto de la flota. **Nace de una AUSENCIA, no de un fallo** ([T-700], ' +
+      '08/08): el repartidor tenía tres ramas —revisar, retomar lo propio, tarea nueva— y una ' +
+      'devolución se caía de las tres a la vez (de `candidatas` por `status=\'open\'` y por ' +
+      '`review_requested_at IS NULL`; de `porRevisar` por tener ya `reviewed_at`; de las retomadas ' +
+      'porque entregar suelta el claim). Nada fallaba ni avisaba: **25 tareas paradas, la más vieja ' +
+      '37,2 h**, y el veredicto más caro de producir —otro trabajador reproduciendo el trabajo— era ' +
+      'el único que no podía llegarle a nadie. Ningún unit podía verlo (el criterio puro estaba ' +
+      'bien; el hueco estaba ENTRE las consultas), de ahí la simulación. **Se autocalifica**: mide ' +
+      'también lo que el reparto anterior alcanzaba y avisa de NO CONCLUYENTE si no hay ' +
+      'devoluciones o si el verde no distingue el arreglo de su ausencia — un verde que no ' +
+      'ejercita nada es peor que no tenerlo (lección de `sim:espera-revision`). Solo lectura. ' +
+      'El encargo que se les manda es `ENC.encargoCorreccion`, distinto del normal a propósito: ' +
+      'con «tu tarea es T-nnn» el trabajador la REHACE desde cero y tira el veredicto.',
+  },
   flota_rescate: {
     titulo: 'Sacar de la máquina de un trabajador el trabajo que solo existe ahí (y empujarlo aunque él no pueda)',
     ruta: 'lib/flota/rescate.cjs',
