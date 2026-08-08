@@ -192,4 +192,30 @@ describe('TelemetryRetentionService: el bucle drena de verdad (T-613)', () => {
     expect(res.validationErrorLogsDeleted).toBe(0);
     expect(res.remaining.validation_error_logs).toBe(0);
   });
+
+  /**
+   * Guardarraíl de la causa que provocó el fallo de arriba, no solo su síntoma.
+   * MEDIDO (08/08) con `EXPLAIN (ANALYZE, BUFFERS)` contra `observable_events` real
+   * (6,2 M filas): el mismo SELECT sin `ORDER BY` elige Seq Scan (8.124 ms, 145.058
+   * buffers de disco) pese a existir `idx_observable_events_created_at`, porque la
+   * correlación físico/lógica de `created_at` es casi nula (`pg_stats.correlation ≈
+   * -0.09`). Con `ORDER BY` el planificador cambia solo a Index Scan: 44 ms — 185×
+   * más rápido, sin forzar nada. Sin este `ORDER BY`, 2-3 lotes ya superan los 30 s
+   * de `statement_timeout` (el fallo real del 08/08 04:11 UTC). Si alguien lo quita
+   * "simplificando" la query, este test lo pilla — el mock no puede medir tiempo,
+   * pero SÍ puede comprobar que la pista que evita el Seq Scan sigue en el SQL.
+   */
+  it('el SELECT de cada lote lleva ORDER BY (evita el Seq Scan 185× más lento, T-613)', async () => {
+    const db = fakeDb({ observable_events: 1000, validation_error_logs: 0 });
+    const service = new TelemetryRetentionService(db as never);
+    await service.run();
+
+    const deletes = db.sentencias.filter(
+      (s) => s.includes('DELETE') && s.includes('observable_events'),
+    );
+    expect(deletes.length).toBeGreaterThan(0);
+    for (const texto of deletes) {
+      expect(texto).toMatch(/ORDER BY/);
+    }
+  });
 });

@@ -183,6 +183,19 @@ export class TelemetryRetentionService {
    * Borra en batches las filas de `table` cuya columna temporal `tsColumn` es más
    * antigua que la retención. `table` y `tsColumn` son literales controlados por el
    * código (nunca input externo) → `sql.raw` es seguro aquí.
+   *
+   * El `ORDER BY tsColumn` del SELECT interno NO es cosmético: sin él, el planificador
+   * elige Seq Scan pese a existir `idx_observable_events_created_at` — la correlación
+   * entre el orden físico de las filas y `created_at` es casi nula (`pg_stats.correlation
+   * ≈ -0.09`), así que sin una pista de orden el coste estimado de un Index/Bitmap Scan
+   * parece peor que barrer la tabla entera. MEDIDO (08/08) con `EXPLAIN (ANALYZE, BUFFERS)`
+   * contra `observable_events` (6,2 M filas), mismo filtro y LIMIT 50.000: sin `ORDER BY`,
+   * Seq Scan, 8.124 ms (145.058 buffers leídos de disco); con `ORDER BY`, Index Scan
+   * usando `idx_observable_events_created_at`, 44 ms — **185× más rápido**, sin forzar
+   * nada (`enable_seqscan` a su valor por defecto). Es la causa más probable de que un
+   * lote supere el `statement_timeout` de 30 s tras 2-3 iteraciones (2-3 × ~8 s de Seq
+   * Scan + la propia DELETE): el fallo reproducido en producción el 08/08 04:11 UTC
+   * (`purgeFailed`, ver arriba) coincide con esa aritmética.
    */
   private async purgeTable(
     table: string,
@@ -198,6 +211,7 @@ export class TelemetryRetentionService {
           WHERE ctid IN (
             SELECT ctid FROM ${sql.raw(table)}
             WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
+            ORDER BY ${sql.raw(tsColumn)}
             LIMIT ${this.batchSize}
           )
         `);
