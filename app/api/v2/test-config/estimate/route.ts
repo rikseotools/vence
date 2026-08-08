@@ -73,6 +73,8 @@ async function _GET(request: NextRequest) {
       // Modo "por leyes" acotado a la oposición del usuario (sin topicNumber): sin esto
       // el conteo sería el de la ley entera y no el de su temario — T-326.
       scopeToPosition: searchParams.get('scopeToPosition') === 'true',
+      // [T-411] Oficiales de OTRAS oposiciones sobre la misma ley — ver schemas.ts.
+      includeSharedOfficials: searchParams.get('includeSharedOfficials') === 'true',
     }
 
     // Mismo cuerpo que el POST: validar y contar viven en un solo sitio (T-623).
