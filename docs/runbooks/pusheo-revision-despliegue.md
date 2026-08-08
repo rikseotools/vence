@@ -464,6 +464,55 @@ Los tests que escribe el autor se agrupan alrededor de lo que el autor cambió y
 
 Con **solo-dev + Claude**, el PR-con-aprobación es teatro (yo aprobando lo mío no es independiente). Lo que aporta valor real: **CI sobre la rama** (vía PR) + **auditoría independiente** (agente fresco) + tu **vistazo de producto (UX)**. Caso real 09/07 (feature "por leyes"): la auditoría cazó que la feature acotaba el *test servido* pero **no la pantalla** que confundía al usuario (conteos + selector) — las 3 capas del autor cubrían el mismo slice. Ver `feedback_worktree_por_sesion_paralela`.
 
+### Juntar N ramas de la flota a `main`: lo que solo se ve al juntarlas (T-696, 08/08/2026)
+
+**Por qué el merge NO se delega a un trabajador.** Cada rama está verde por separado y `origin/main`
+está verde, y aun así al juntarlas sale rojo. Medido en una tarde de 11 merges, tres casos:
+
+1. **Dos ramas arreglando la MISMA avería sin saberlo.** [T-613] y [T-733] diagnosticaron el mismo
+   incidente el mismo día. Al fusionar hay que quedarse con la implementación mejor **y rescatar lo
+   único que solo tiene la otra** (aquí, un `ORDER BY` medido con `EXPLAIN` que convertía un Seq Scan
+   de 8 s en Index Scan). Quedarse con una entera pierde trabajo real.
+2. **Referencia rota que la auto-fusión NO ve.** Un lado renombró `purgeFailed` → `purgaFallida` y el
+   otro añadió una línea que lo usaba: git fusionó sin conflicto y quedó una llamada a un campo
+   inexistente. **Tras cada merge, `grep` del símbolo renombrado.**
+3. **Un guardarraíl rojo por su propia prueba.** El spec de regresión citaba el mensaje de error real
+   (`DELETE FROM observable_events…`) y el guardarraíl buscaba ese literal por `grep`. Al acotarlo,
+   **verificar por MUTACIÓN** que sigue cazando el caso real, nunca solo releerlo.
+
+**Cómo medir que no has roto nada.** Contar suites rojas no vale: hay integración inestable bajo
+carga. Comparar **listas**, no números:
+
+```bash
+git worktree add -d /tmp/base origin/main && ln -s <repo>/node_modules /tmp/base/node_modules
+cd /tmp/base   && npx jest 2>&1 | grep '^FAIL ' | sed 's/ *([0-9.]* s)$//' | sort -u > /tmp/base.txt
+cd <tu-merge>  && npx jest 2>&1 | grep '^FAIL ' | sed 's/ *([0-9.]* s)$//' | sort -u > /tmp/mio.txt
+comm -13 /tmp/base.txt /tmp/mio.txt   # ROJAS NUEVAS: solo esto es tuyo
+```
+Cada roja nueva, **correrla aislada**: si pasa sola, es contención, no regresión.
+
+**⚠️ `docs/roadmap/tareas-pendientes.md` es GENERADO — nunca resuelvas su conflicto a mano.**
+Desde [T-532] lo produce `generarIndice()` desde `docs/roadmap/tareas/*.md`. Editarlo a mano parece
+funcionar y el texto **muere en la siguiente regeneración**. Receta:
+
+```bash
+git checkout --theirs docs/roadmap/tareas-pendientes.md   # da igual el lado: se descarta
+node -e "require('./lib/backlog/fichasDir.cjs').regenerarIndice()"
+node -e "console.log(require('./lib/backlog/fichasDir.cjs').indiceEstaAlDia())"   # tiene que decir true
+```
+Resolviendo así, 6 merges seguidos entraron **sin un solo conflicto**. Las ramas **anteriores a
+[T-532]** escriben su texto DENTRO del generado: hay que **portarlo a la ficha** o se pierde.
+
+**🔴 Un veredicto `ok` no garantiza que la rama siga siendo la buena.** De las revisadas en verde,
+**3 estaban obsoletas** y mergearlas habría hecho RETROCEDER cifras ya corregidas en `main`. Antes de
+mergear una rama docs-only:
+
+```bash
+git diff origin/main...<rama> -- docs/roadmap/tareas-pendientes.md | grep '^+' | grep -v '^+++' | sed 's/^+//' > /tmp/add.txt
+grep -vxFf docs/roadmap/tareas/T-nnn.md /tmp/add.txt      # lo que la rama aporta de verdad
+```
+Si la ficha de `main` es más nueva (dice «corregido», «revisado»), **la rama sobra**.
+
 ## Frontend — arquitectura de assets (CRÍTICO: por qué no se congela al desplegar)
 
 **Problema histórico (05/07/2026):** los chunks `_next/static/*` se servían desde el **contenedor efímero**. Cada deploy reemplazaba el contenedor → chunks viejos 404 → `ChunkLoadError` → **app congelada** para usuarios en el bundle anterior (caso Nila). Ver memoria `project_deploy_freeze_chunks_s3`.
