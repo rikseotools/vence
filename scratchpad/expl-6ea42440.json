@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 85.1 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+    "texto": "Iniciado un procedimiento sancionador, si el infractor reconoce su responsabilidad, se podrá resolver el procedimiento con la imposición de la sanción que proceda."
+  },
+  "intro": "Las cuatro proposiciones combinan dos variables del artículo 85.1: cuándo produce efecto el reconocimiento de responsabilidad (una vez iniciado el procedimiento) y con qué alcance (una facultad, no un deber).",
+  "options": {
+    "0": "Falla en las dos variables: sitúa el reconocimiento antes de iniciarse el procedimiento, momento que el precepto no contempla, y convierte en obligatoria una terminación que la ley formula como posibilidad.",
+    "1": "Reproduce el artículo 85.1: el reconocimiento se produce con el procedimiento ya iniciado y habilita a resolver imponiendo la sanción, sin imponerlo.",
+    "2": "Acierta en que la terminación es potestativa, pero sitúa el reconocimiento antes de iniciarse el procedimiento; el precepto exige que este ya se haya iniciado.",
+    "3": "Acierta en el momento (procedimiento ya iniciado), pero transforma en deber lo que el artículo formula como facultad de la Administración."
+  },
+  "outro": "**Clave:** el reconocimiento de responsabilidad opera con el procedimiento ya iniciado y abre una posibilidad de terminación, no una obligación.",
+  "estilo": "impugnacion"
+}

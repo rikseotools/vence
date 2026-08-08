@@ -1,0 +1,5 @@
+══ vuelta 1/12 — siguiendo aa7322fdc
+   [1] desplegar — desplegando el último verde eb8fc1ffb; quedan 4 commit(s) más nuevos sin veredicto
+→ desplegando frontend en eb8fc1ffb (deja fuera 4 commit(s) más nuevos, irán en el siguiente deploy)
+⏳ Otra sesión está desplegando (lock /tmp/vence-deploy.lock). Esperando a que termine…
+❌ el lock sigue tomado tras 45 min — abortado. ¿Un build largo delante? Usa scripts/deploy-cuando-verde.sh, que reintenta.

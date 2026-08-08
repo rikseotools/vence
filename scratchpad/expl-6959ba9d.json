@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 86.2 de la Ley 1/1986, de 10 de abril, de la Función Pública de la Comunidad de Madrid",
+    "texto": "Las sanciones impuestas por faltas muy graves prescribirán a los seis años, las graves a los dos y las leves a los dos meses."
+  },
+  "intro": "El artículo 86 fija dos series de plazos que conviene no mezclar: la prescripción de las FALTAS (apartado 1: seis años, dos años y dos meses) y la de las SANCIONES ya impuestas (apartado 2), que en esta ley coinciden.",
+  "options": {
+    "0": "No es un plazo del artículo 86. Se corresponde con el TREBEP, donde las sanciones por faltas muy graves prescriben a los tres años, pero la norma aplicable aquí es la autonómica.",
+    "1": "No es el plazo de las sanciones graves en esta ley. En el TREBEP es el plazo de las sanciones por faltas leves; en la Ley 1/1986 las leves prescriben a los dos meses.",
+    "2": "No figura entre los plazos del artículo 86. En el TREBEP seis meses es el plazo de prescripción de las faltas leves, no de las sanciones de esta ley.",
+    "3": "Es el plazo que el artículo 86.2 fija para las sanciones impuestas por faltas graves."
+  },
+  "outro": "**Clave:** en la Ley 1/1986 los plazos son seis años, dos años y dos meses, tanto para las faltas como para las sanciones; los plazos de tres años y un año son del TREBEP.",
+  "estilo": "impugnacion"
+}

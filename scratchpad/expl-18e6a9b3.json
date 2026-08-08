@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 52.3 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+    "texto": "Si el vicio consistiera en incompetencia no determinante de nulidad, la convalidación podrá realizarse por el órgano competente cuando sea superior jerárquico del que dictó el acto viciado."
+  },
+  "intro": "La incompetencia jerárquica es un vicio de anulabilidad, no de nulidad de pleno derecho, y por eso el acto admite convalidación. El artículo 52.3 señala quién puede realizarla.",
+  "options": {
+    "0": "Quien dictó el acto sin ser competente no puede sanarlo: seguiría careciendo de la competencia que le falta, que es justamente el vicio que hay que subsanar.",
+    "1": "Es lo que dispone el artículo 52.3: convalida el órgano al que corresponde la competencia, precisamente porque es superior jerárquico del que dictó el acto viciado.",
+    "2": "El precepto no llama a un superior común situado por encima de ambos, sino al órgano que tiene atribuida la competencia sobre el asunto, siempre que sea superior jerárquico del que actuó.",
+    "3": "La convalidación no está abierta a cualquier órgano de la Administración por el hecho de motivar el acuerdo: el artículo 52.3 la reserva al órgano competente que además sea superior jerárquico."
+  },
+  "outro": "**Clave:** en la incompetencia jerárquica no determinante de nulidad, convalida el titular de la competencia, y solo si es superior jerárquico del que dictó el acto.",
+  "estilo": "impugnacion"
+}

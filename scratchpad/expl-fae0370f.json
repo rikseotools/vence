@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 2.e) de la Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género",
+    "texto": "Garantizar derechos económicos para las mujeres víctimas de violencia de género, con el fin de facilitar su integración social."
+  },
+  "intro": "El artículo 2 enumera los fines de la Ley. Las tres proposiciones que no lo son están tomadas literalmente del artículo 7, que fija los objetivos de la formación inicial y permanente del profesorado: son de esta misma ley, pero de otro artículo y con otra función.",
+  "options": {
+    "0": "Es la letra a) del artículo 7: uno de los objetivos que debe asegurar la formación del profesorado, no un fin de la Ley del artículo 2.",
+    "1": "Es la letra b) del artículo 7, también dentro de la formación del profesorado en materia de igualdad.",
+    "2": "Reproduce la letra e) del artículo 2, que recoge entre los fines de la Ley garantizar derechos económicos a las víctimas para facilitar su integración social.",
+    "3": "Es la letra c) del artículo 7: la detección precoz forma parte de aquello para lo que se capacita al profesorado, y no aparece en la lista de fines del artículo 2."
+  },
+  "outro": "**Clave:** los fines de la Ley están en el artículo 2; lo relativo a la educación en el respeto, la prevención de conflictos y la detección precoz pertenece al artículo 7, sobre la formación del profesorado.",
+  "estilo": "impugnacion"
+}

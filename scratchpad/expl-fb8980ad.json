@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 126.2 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+    "texto": "El órgano al que corresponde conocer del recurso extraordinario de revisión debe pronunciarse no sólo sobre la procedencia del recurso, sino también, en su caso, sobre el fondo de la cuestión resuelta por el acto recurrido."
+  },
+  "intro": "El recurso extraordinario de revisión se reparte entre dos artículos: el 125 fija las causas tasadas y sus plazos, y el 126 regula la resolución y la inadmisión.",
+  "options": {
+    "0": "Es lo que impone el artículo 126.2: quien resuelve no puede quedarse en si el recurso procedía, sino que ha de entrar, cuando corresponda, en el fondo de lo resuelto por el acto recurrido.",
+    "1": "El artículo 125.1 atribuye la resolución al mismo órgano que dictó el acto, no a su superior jerárquico: se interpone ante él y él mismo es el competente para resolverlo.",
+    "2": "Confunde los dos plazos del artículo 125.2. El de cuatro años se reserva a la causa de error de hecho que resulte de los propios documentos del expediente; cuando la causa es que influyeron documentos o testimonios declarados falsos por sentencia judicial firme, el plazo es de tres meses desde que la sentencia quedó firme.",
+    "3": "El artículo 126.1 permite acordar motivadamente la inadmisión a trámite precisamente «sin necesidad de recabar dictamen del Consejo de Estado u órgano consultivo de la Comunidad Autónoma», entre otros supuestos cuando ya se desestimaron en cuanto al fondo otros recursos sustancialmente iguales."
+  },
+  "outro": "**Clave:** los cuatro años son solo para el error de hecho; en las demás causas el plazo es de tres meses.",
+  "estilo": "impugnacion"
+}

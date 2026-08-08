@@ -1,0 +1,15 @@
+{
+  "cita": {
+    "ref": "Art. 6.5 de la Ley 50/1997, de 27 de noviembre, del Gobierno",
+    "texto": "Las deliberaciones de las Comisiones Delegadas del Gobierno serán secretas."
+  },
+  "intro": "El artículo 6 dedica sus cuatro primeros apartados a la creación de las Comisiones Delegadas, a lo que debe especificar su Real Decreto de creación, a quiénes pueden ser convocados y a sus funciones. El carácter de las deliberaciones se resuelve en el último apartado, el 6.5.",
+  "options": {
+    "0": "La ley no califica así las deliberaciones. Decir que no son abiertas al público se queda corto respecto de lo que impone el precepto, que es un deber de sigilo sobre lo deliberado.",
+    "1": "Es el término literal del artículo 6.5, en el mismo sentido que el artículo 5.3 establece para las deliberaciones del Consejo de Ministros.",
+    "2": "El artículo 6.5 no emplea esa categoría: la palabra que utiliza, y la que se pregunta, es «secretas».",
+    "3": "Es justo lo contrario de lo que dispone el artículo 6.5, que sujeta las deliberaciones al secreto."
+  },
+  "outro": "**Clave:** el carácter secreto de las deliberaciones está en el apartado 5 del artículo 6, no entre los contenidos que debe fijar el Real Decreto de creación.",
+  "estilo": "impugnacion"
+}

@@ -314,6 +314,13 @@ export const RUNBOOK_BY_KIND: Record<string, RunbookEntry> = {
     claudeHace:
       'identifica qué oposiciones catalogadas con plazo abierto hoy tienen `familia IS NULL` o `familia=\'otros\'`, y por qué `classifyFamilia()` no las reconoce (nombre atípico, administración sin keyword mapeado). Ampliar el diccionario de keywords en `lib/oposiciones/familia.ts` si el patrón se repite, o corregir la fila a mano si es un caso aislado — y en ambos casos re-correr `scripts/backfill-familia.cjs` para que la BD refleje el cambio.',
   },
+  veredicto_verificacion_rojo: {
+    title: 'Una verificación dejó un flag en falso (opciones/respuesta/enunciado) y nadie lo triajó',
+    triggerPhrase: 'revisa los veredictos de verificación en rojo',
+    runbook: 'docs/runbooks/salud-contenido.md',
+    claudeHace:
+      'lee `detail.sample` (los `question_id`) y va a `ai_verification_results` a leer la ÚLTIMA verificación no descartada de cada uno. Banda `inequivoco` (error): el texto describe opciones que pertenecen a OTRA pregunta o una opción marcada que no responde al enunciado — verificar contra el artículo y, si se confirma, reparar la pregunta (o mandarla a `needs_human` si es oficial) SIN esperar a más señales, cada día que sigue activa es una persona más a la que se le sirve mal. Banda `opinable` (warn, la mayoría): NO actuar en bloque — la propia campaña de calibración de junio (`scripts/answer-review/README.md`) midió que la auditoría ciega que genera la mayoría de estos flags se equivoca MÁS que la pasada que audita (~76% de ruido); adjudicar UNA A UNA contra la fuente antes de tocar nada, y si el flag resulta ser ruido, `discarded=true` con motivo. NUNCA desactivar en bloque ni flipar una clave sin confirmar contra el artículo.',
+  },
   opciones_duplicadas: {
     title: 'Dos opciones IDÉNTICAS dentro de la misma pregunta (se queda en tres alternativas)',
     triggerPhrase: 'revisa las opciones duplicadas',
