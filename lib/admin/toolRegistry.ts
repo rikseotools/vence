@@ -2058,6 +2058,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'trae la explicación de `lib/convocatoria/divergenciaPlazas.js`.',
   },
 
+  // ── purga de la caché ISR de todas las rutas ──────────────────────────────────────────────
+  purgar_toda_la_cache: {
+    titulo: 'Purgar el ISR de TODAS las rutas de la web (landing/test/temario de cada oposición + leyes)',
+    ruta: 'scripts/purge-all-cache.js',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/maintenance/cache-revalidation.md',
+    notas:
+      'Para cambios MASIVOS (varios scopes/temas/leyes); para uno suelto basta el tag por ' +
+      '`POST /api/admin/revalidate`. **Comprueba el destino antes de empezar y falla CERRADO** ' +
+      '(`lib/cache/destinoPurga.cjs`, 9 tests): `.env.local` trae `SITE_URL=http://localhost:3000` ' +
+      'en toda máquina de desarrollo, así que hasta el 08/08/2026 esta herramienta purgaba el ' +
+      'portátil. Sin dev server daba 0 OK de 1.760 sin decir a dónde llamaba; CON dev server ' +
+      'levantado habría cantado «1.760 OK» dejando producción intacta — un verde por apuntar al ' +
+      'sitio equivocado, que es peor que un rojo. Uso: ' +
+      '`SITE_URL=https://www.vence.es node scripts/purge-all-cache.js`.',
+  },
+
   // ── contenido invisible: artículo escopado pero inactivo ──────────────────────────────────
   reanclar_preguntas: {
     titulo: 'Mover preguntas a otro artículo sin dejarlas huérfanas (contenido invisible)',

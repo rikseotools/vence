@@ -10,13 +10,33 @@
 
 require('dotenv').config({ path: '.env.local' })
 
-const BASE_URL = process.env.SITE_URL || 'https://www.vence.es'
+const { puedePurgar } = require('../lib/cache/destinoPurga.cjs')
+
+// El destino se comprueba ANTES de nada: `.env.local` trae SITE_URL=http://localhost:3000
+// en cualquier máquina de desarrollo, y con el dev server levantado esto purgaba el
+// portátil cantando «1760 OK» mientras producción seguía con el HTML viejo.
+const veredicto = puedePurgar(process.env.SITE_URL, {
+  permitirNoProduccion: process.argv.includes('--local'),
+})
+
+if (!veredicto.ok) {
+  console.error(`❌ No purgo: ${veredicto.motivo} → ${veredicto.destino}`)
+  console.error('   Producción:  SITE_URL=https://www.vence.es node scripts/purge-all-cache.js')
+  console.error('   A propósito contra ese destino:  node scripts/purge-all-cache.js --local')
+  process.exit(1)
+}
+
+const BASE_URL = veredicto.destino
 const CRON_SECRET = process.env.CRON_SECRET
 
 if (!CRON_SECRET) {
   console.error('CRON_SECRET no configurado en .env.local')
   process.exit(1)
 }
+
+// El primer fallo se guarda con su motivo: un resumen de «N fallos» sin decir por qué
+// es lo que dejó pasar el destino equivocado durante toda una purga.
+let primerFallo = null
 
 async function purge(path) {
   try {
@@ -28,9 +48,13 @@ async function purge(path) {
       },
       body: JSON.stringify({ path }),
     })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!data.success && !primerFallo) {
+      primerFallo = `${path} → HTTP ${res.status} ${JSON.stringify(data).slice(0, 200)}`
+    }
     return data.success
-  } catch {
+  } catch (e) {
+    if (!primerFallo) primerFallo = `${path} → ${e.message}`
     return false
   }
 }
@@ -88,7 +112,7 @@ async function main() {
   // Actualidad
   routes.push('/actualidad/lo-1-2026-multirreincidencia')
 
-  console.log(`Revalidando ${routes.length} rutas...`)
+  console.log(`Revalidando ${routes.length} rutas en ${BASE_URL}...`)
 
   let ok = 0
   let fail = 0
@@ -102,7 +126,12 @@ async function main() {
     }
   }
 
-  console.log(`\nCompletado: ${ok} OK, ${fail} fallos de ${routes.length} rutas`)
+  console.log(`\nCompletado: ${ok} OK, ${fail} fallos de ${routes.length} rutas en ${BASE_URL}`)
+  if (fail > 0) {
+    console.log(`   primer fallo: ${primerFallo}`)
+    if (ok === 0) console.log('   TODAS fallaron: no es la caché, es el destino o el secreto.')
+    process.exitCode = 1
+  }
 }
 
 main().catch(console.error)
