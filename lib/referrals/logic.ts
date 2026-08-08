@@ -409,3 +409,77 @@ export function estadoIconoRecompensas({
     titulo: 'Recompensas — gana por recomendar Vence, reportar fallos y opinar',
   }
 }
+
+// ============================================
+// Cuándo se DESCUBRE el icono (T-199, 08/08/2026)
+// ============================================
+//
+// Hasta ahora el icono 🎁 se pintaba en `Header.tsx` con `(isPremium || isLegacy)` a secas: en
+// cuanto la suscripción pasa a activa, el mismo minuto del pago. Objeción de Manuel (27/07): quien
+// acaba de pagar y recomienda Vence en un foro, sin querer, delata que la recomendación está
+// incentivada — y una recomendación que huele a pagada vale menos que ninguna. El daño no lo paga
+// el usuario: lo paga la marca.
+//
+// LA MEDICIÓN QUE LA FICHA PEDÍA ANTES DE DECIDIR («cuántos referidos se generan en los primeros
+// 14 días») **no se pudo hacer con la fiabilidad que el método exige**, y hay que decirlo en vez de
+// fingir una cifra:
+//   1. El credencial de lectura (`VENCE_LECTOR_URL`) no tiene permiso sobre `user_subscriptions` ni
+//      `user_profiles` (a propósito — son las tablas con dato personal/de pago) → no se puede
+//      calcular "días desde que se hizo premium" por SQL directo.
+//   2. Y aunque se pudiera: en TODA la vida del programa hay **8 filas en `referrals`, de solo 5
+//      personas distintas** — una muestra así no sostiene un percentil ni un "la mayoría cae en
+//      la ventana X".
+// SOSPECHO que con esta muestra cualquier cifra de "% de referidos en los primeros N días" sería
+// ruido, no señal; hace falta medirlo otra vez con más volumen antes de afinar el plazo.
+//
+// Lo que SÍ se pudo medir, con datos accesibles y sin tocar tablas restringidas (`tests`, que solo
+// tiene UUIDs): de los 5 embajadores que han generado un referido alguna vez, **4 ya llevaban entre
+// 202 y 315 tests completados** cuando lo hicieron (semanas o meses de uso real) y **solo 1** refirió
+// el mismo día de su primer test (5 tests completados). Es la muestra mínima para una cifra, pero
+// apunta en la dirección que predice la intuición del producto: la inmensa mayoría de quien refiere
+// de verdad ya es un usuario asentado, y el caso que un plazo de días habría bloqueado es
+// precisamente el que parece más sospechoso.
+//
+// LA CONDICIÓN, y por qué es TIEMPO y no USO: la ficha proponía dos alternativas —días desde el
+// alta, o nº de tests completados— y apuntaba que la de uso "premia mejor al que de verdad usa la
+// plataforma". Es cierto, pero exige traer un dato nuevo al Header (hoy no se cuentan tests ahí) en
+// cada carga de página, para una señal que la propia medición de arriba no puede calibrar todavía
+// con confianza. `userProfile.created_at` YA está disponible en el cliente (se usa en otras tarjetas
+// de "Registrado"), así que la condición por tiempo no añade ni una consulta nueva. Si más adelante
+// hay volumen para calibrar un umbral de uso con garantías, migrar es cambiar esta función, no la
+// vista — para eso es pura.
+//
+// EL PLAZO: 14 días, el extremo MÁS BAJO del rango 14-30 que la propia ficha proponía (menos
+// agresivo con quien de verdad quiere recomendar pronto) — la muestra de arriba no distingue 14 de
+// 30 (el único caso temprano fue el mismo día, no el día 20), así que no hay dato que obligue al
+// extremo alto. Vive en una constante exportada para poder subir a 30 sin tocar esta función ni la
+// vista si la próxima medición (con más volumen) lo pide.
+export const DIAS_MINIMOS_ANTES_DE_MOSTRAR_ICONO = 14
+
+/**
+ * ¿Debe verse el icono 🎁 de Recompensas? Aparte de poder acceder al programa (que decide el
+ * caller con `isPremium || isLegacy`, igual que hoy), exige una ANTIGÜEDAD mínima desde el alta —
+ * el requisito nuevo de esta ficha. PURA: sin BD ni React, para fijarla en tests.
+ *
+ * @param puedeAccederAlPrograma la condición que YA existía (`isPremium || isLegacy`) — esta
+ *   función no la recalcula, solo añade el requisito de antigüedad encima.
+ * @param createdAt `userProfile.created_at` tal cual llega del cliente. Dato roto o ausente falla
+ *   CERRADO (no se muestra): no hay antigüedad que demostrar, así que no se promete nada.
+ */
+export function debeMostrarIconoRecompensas({
+  puedeAccederAlPrograma,
+  createdAt,
+  now,
+}: {
+  puedeAccederAlPrograma: boolean
+  createdAt: string | null | undefined
+  now?: Date
+}): boolean {
+  if (!puedeAccederAlPrograma) return false
+  if (!createdAt) return false
+  const alta = new Date(createdAt).getTime()
+  if (Number.isNaN(alta)) return false
+  const ahora = (now ?? new Date()).getTime()
+  const diasTranscurridos = (ahora - alta) / DAY_MS
+  return diasTranscurridos >= DIAS_MINIMOS_ANTES_DE_MOSTRAR_ICONO
+}

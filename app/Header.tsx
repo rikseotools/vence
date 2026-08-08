@@ -14,6 +14,7 @@ import QuestionDispute from '@/components/QuestionDispute'
 import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import { useReferralEarningsBadge } from '@/hooks/useReferralEarningsBadge'
 import { RewardsIcon } from '@/components/RewardsIcon'
+import { debeMostrarIconoRecompensas } from '@/lib/referrals/logic'
 
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
@@ -82,6 +83,13 @@ export default function HeaderES() {
   const pathname = usePathname()
 
   const { user, loading: authLoading, isPremium, isLegacy, userProfile } = useAuth()
+  // T-199 (08/08): el icono no se enseña en el mismo instante del pago — exige antigüedad desde
+  // el alta, no solo poder acceder al programa (`isPremium || isLegacy`, la condición de siempre).
+  // Ver `debeMostrarIconoRecompensas` para el porqué. Un solo cálculo, reusado en escritorio y móvil.
+  const mostrarIconoRecompensas = debeMostrarIconoRecompensas({
+    puedeAccederAlPrograma: isPremium || isLegacy,
+    createdAt: userProfile?.created_at,
+  })
   const oposicionContext = useOposicion()
   const { openChat } = useAIChat()
   const isOnAdminPage = pathname?.startsWith('/admin') ?? false
@@ -413,11 +421,13 @@ export default function HeaderES() {
       // Preguntas guardadas con el corazón (T-261). Solo con sesión: sin cuenta no hay
       // nada que guardar, y un enlace que lleva a "inicia sesión" es ruido en el menú.
       ...(user ? [{ href: '/test/favoritas', label: 'Preguntas guardadas', icon: '❤️', title: 'Repasa las preguntas que has marcado con el corazón' }] : []),
-      // Recompensas: SOLO premium/legacy (el programa es solo-premium). El nombre user-facing es
-      // "Recompensas" (no "Embajadores"): cubre las CINCO fuentes —referido, registro activo, bug,
-      // opinión e impugnación aceptada—, mientras que "referidos"/"embajadores" solo nombra una.
-      // La RUTA también es /recompensas; /embajadores queda como 301 por los emails ya enviados.
-      ...((isPremium || isLegacy) ? [{ href: '/recompensas?src=nav', label: 'Recompensas', icon: '🎁', title: 'Gana recompensas por recomendar Vence, reportar fallos y opinar' }] : [])
+      // Recompensas: SOLO premium/legacy (el programa es solo-premium) Y con antigüedad desde el
+      // alta (T-199: no en el mismo instante del pago, ver `debeMostrarIconoRecompensas`). El
+      // nombre user-facing es "Recompensas" (no "Embajadores"): cubre las CINCO fuentes —referido,
+      // registro activo, bug, opinión e impugnación aceptada—, mientras que "referidos"/
+      // "embajadores" solo nombra una. La RUTA también es /recompensas; /embajadores queda como
+      // 301 por los emails ya enviados.
+      ...(mostrarIconoRecompensas ? [{ href: '/recompensas?src=nav', label: 'Recompensas', icon: '🎁', title: 'Gana recompensas por recomendar Vence, reportar fallos y opinar' }] : [])
     ]
 
     // 1) Oposición conocida (resuelta o pre-hidratada) → sus enlaces, aunque siga `loading`.
@@ -678,10 +688,11 @@ export default function HeaderES() {
                   <span className="text-lg">💬</span>
                 </SupportButton>
 
-                {/* 🎁 ICONO DE RECOMPENSAS — solo premium/legacy (el programa es solo-premium).
-                    Tres estados y el punto de novedad: los pinta `RewardsIcon` y los decide el
-                    núcleo puro `estadoIconoRecompensas`. Aquí no hay reglas. */}
-                {(isPremium || isLegacy) && <RewardsIcon icono={iconoRecompensas} />}
+                {/* 🎁 ICONO DE RECOMPENSAS — premium/legacy CON antigüedad desde el alta (T-199:
+                    no en el mismo instante del pago). Tres estados y el punto de novedad: los
+                    pinta `RewardsIcon` y los decide el núcleo puro `estadoIconoRecompensas`; SI se
+                    enseña o no lo decide `debeMostrarIconoRecompensas`. Aquí no hay reglas. */}
+                {mostrarIconoRecompensas && <RewardsIcon icono={iconoRecompensas} />}
 
                 {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
                 {userProfile && !isPremium && !isLegacy && userProfile.plan_type !== 'trial' && (
