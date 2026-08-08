@@ -10,6 +10,11 @@ import { runCampanaFinSuscripcion, anularOfertasCaducadas } from '@/lib/api/prem
 
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { emitFireAndForget } from '@/lib/observability/emit'
+import {
+  campanaNoEnvioNada,
+  mensajeSinEnvios,
+  type ResultadoCampanaEnvios,
+} from '@/lib/api/premium/campanaSinEnvios'
 // GET: Ejecutar campaña de recordatorios (llamado por GitHub Actions)
 async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampaignResponse>> {
   try {
@@ -56,6 +61,24 @@ async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampa
       if (anul.candidatas > 0) {
         console.log(`🔕 [T-448] precios de fidelidad caducados: ${anul.anuladas}/${anul.candidatas}${anul.abortado ? ' (ABORTADO por el tope)' : ''}`)
       }
+
+      // Lo que hace este barrido NO se registraba en ninguna parte: solo `console.log`, que
+      // muere en CloudWatch. Es el mismo modo de fallo de [T-613] («éxito, 0 filas» se lee igual
+      // que «no había nada que hacer») y aquí duele más, porque lo que quita es el PRECIO de una
+      // persona. Se emite siempre, con candidatas y anuladas, para poder contestar en septiembre
+      // —cuando empiece a tener trabajo— si anuló lo que debía o se comió a alguien.
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'info',
+        eventType: 'oferta_fidelidad_anulada',
+        endpoint: '/api/cron/renewal-reminders',
+        metadata: {
+          candidatas: anul.candidatas,
+          anuladas: anul.anuladas,
+          // El tope de 50 saltó: eso no es un trámite, es señal de que el criterio se rompió.
+          abortadoPorTope: Boolean(anul.abortado),
+        },
+      })
     } catch (e) {
       console.error('❌ [T-448] campaña de fin de suscripción falló:', e)
     }
@@ -76,14 +99,30 @@ async function _GET(request: NextRequest): Promise<NextResponse<RunReminderCampa
     // próximas y NO salió NINGÚN recordatorio → fallo silencioso (query mala / dedup roto
     // / Resend caído). El heartbeat NO lo ve (el cron sí disparó). Emitir error a
     // observabilidad para que no pase inadvertido hasta que un usuario pida reembolso.
-    if (result.total > 0 && result.sent === 0) {
+    // «El cron ticó (2xx) pero no envió nada» — para LAS DOS campañas hermanas de este handler.
+    //
+    // Hasta [T-448] solo estaba cubierta la de COBRO. La de fin de suscripción corre aquí mismo,
+    // avisa a quien va a **perder su precio antiguo** (más caro de fallar) y sus resultados solo
+    // iban a `console.log` y al JSON de respuesta: si un día tenía candidatos y no salía ninguno
+    // —consulta rota, dedup pasado de listo, Resend caído— nadie se enteraba hasta que alguien
+    // escribiera preguntando por qué se quedó sin su precio.
+    //
+    // Mismo `eventType` para las dos, con `campana` en la metadata: dos señales distintas para el
+    // mismo hecho se miden por separado y divergen, y obligarían a una regla de alerta nueva para
+    // vigilar exactamente lo mismo. El criterio vive en `campanaSinEnvios`, no en dos `if`.
+    const campanas: Array<{ nombre: string; r: ResultadoCampanaEnvios }> = [
+      { nombre: 'renovacion', r: { total: result.total, sent: result.sent, skipped: result.skipped, failed: result.failed } },
+      { nombre: 'fin_suscripcion', r: { total: finSusc.candidatos, sent: finSusc.enviados, skipped: finSusc.omitidos, failed: finSusc.fallidos } },
+    ]
+    for (const { nombre, r } of campanas) {
+      if (!campanaNoEnvioNada(r)) continue
       emitFireAndForget({
         source: 'vercel',
         severity: 'error',
         eventType: 'renewal_reminders_zero_sent',
         endpoint: '/api/cron/renewal-reminders',
-        errorMessage: `${result.total} renovación(es) próxima(s) pero 0 recordatorios enviados (skipped:${result.skipped}, failed:${result.failed})`,
-        metadata: { total: result.total, sent: result.sent, skipped: result.skipped, failed: result.failed },
+        errorMessage: mensajeSinEnvios(nombre, r),
+        metadata: { campana: nombre, total: r.total, sent: r.sent, skipped: r.skipped, failed: r.failed },
       })
     }
 
