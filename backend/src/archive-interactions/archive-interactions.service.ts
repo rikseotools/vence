@@ -17,6 +17,21 @@ export interface ArchiveInteractionsResult {
    * cómo T-613 estuvo semanas invisible. Lo mira la regla `drenaje_atrasado`.
    */
   remaining: number;
+  /**
+   * `['user_interactions']` si la FASE 1 (archivar) se cortó a mitad de pasada por
+   * un error en un lote; vacío si todo fue bien. Lo ya archivado en lotes previos
+   * se conserva.
+   *
+   * Mismo modo de fallo reproducido en `TelemetryRetentionService` el 08/08 (fichero
+   * gemelo, calcado de este): sin try/catch, un lote que falla propaga la excepción
+   * fuera de `run()` y se pierde `archived`, la FASE 2 no llega a correr, y
+   * `remaining` (que se calcula al final) nunca se calcula — el cron reporta
+   * `status: 'failure'` sin ningún número y la alerta `drenaje_atrasado` se queda
+   * ciega esa noche.
+   */
+  archiveFailed: string[];
+  /** `['user_interactions_archive']` si la FASE 2 (purga del archivo) falló; vacío si todo fue bien. */
+  cleanupFailed: string[];
 }
 
 /**
@@ -62,47 +77,69 @@ export class ArchiveInteractionsService {
       deleted: 0,
       batches: 0,
       remaining: 0,
+      archiveFailed: [],
+      cleanupFailed: [],
     };
 
     // ── FASE 1: archivar ──────────────────────────────────────────────────────
     for (let i = 0; i < this.maxBatches; i++) {
-      const moved = await this.db.execute(sql`
-        WITH to_move AS (
-          SELECT id FROM user_interactions
-          WHERE created_at < now() - interval '${sql.raw(String(this.archiveAfterDays))} days'
-          LIMIT ${this.batchSize}
-        ),
-        inserted AS (
-          INSERT INTO user_interactions_archive
-          SELECT ui.* FROM user_interactions ui
-          WHERE ui.id IN (SELECT id FROM to_move)
-          RETURNING id
-        )
-        DELETE FROM user_interactions
-        WHERE id IN (SELECT id FROM to_move)
-      `);
+      try {
+        const moved = await this.db.execute(sql`
+          WITH to_move AS (
+            SELECT id FROM user_interactions
+            WHERE created_at < now() - interval '${sql.raw(String(this.archiveAfterDays))} days'
+            LIMIT ${this.batchSize}
+          ),
+          inserted AS (
+            INSERT INTO user_interactions_archive
+            SELECT ui.* FROM user_interactions ui
+            WHERE ui.id IN (SELECT id FROM to_move)
+            RETURNING id
+          )
+          DELETE FROM user_interactions
+          WHERE id IN (SELECT id FROM to_move)
+        `);
 
-      // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` ni en
-      // `length` (T-613). Leerlo mal cortaba el bucle en la 1.ª vuelta: 10 k por
-      // noche en vez de 200 k, y reportando 0.
-      const count = filasAfectadas(moved);
-      result.archived += count;
-      result.batches++;
+        // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` ni en
+        // `length` (T-613). Leerlo mal cortaba el bucle en la 1.ª vuelta: 10 k por
+        // noche en vez de 200 k, y reportando 0.
+        const count = filasAfectadas(moved);
+        result.archived += count;
+        result.batches++;
 
-      this.logger.debug(`Batch ${result.batches}: ${count} filas movidas`);
+        this.logger.debug(`Batch ${result.batches}: ${count} filas movidas`);
 
-      if (count < this.batchSize) {
-        // No quedan más filas candidatas — terminar anticipadamente.
+        if (count < this.batchSize) {
+          // No quedan más filas candidatas — terminar anticipadamente.
+          break;
+        }
+      } catch (error) {
+        // No propagar: perderíamos `archived` (lo ya movido en lotes previos), la
+        // FASE 2 y `remaining`. Se corta esta pasada — no se reintenta en el mismo
+        // run — y la próxima noche retoma donde el `WHERE` la deje.
+        result.archiveFailed.push('user_interactions');
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Archivado de user_interactions, lote ${i + 1} falló (no bloqueante, se retoma la próxima noche): ${msg}`,
+        );
         break;
       }
     }
 
     // ── FASE 2: limpiar archivo ───────────────────────────────────────────────
-    const deleted = await this.db.execute(sql`
-      DELETE FROM user_interactions_archive
-      WHERE created_at < now() - interval '${sql.raw(String(this.deleteAfterMonths))} months'
-    `);
-    result.deleted = filasAfectadas(deleted);
+    try {
+      const deleted = await this.db.execute(sql`
+        DELETE FROM user_interactions_archive
+        WHERE created_at < now() - interval '${sql.raw(String(this.deleteAfterMonths))} months'
+      `);
+      result.deleted = filasAfectadas(deleted);
+    } catch (error) {
+      result.cleanupFailed.push('user_interactions_archive');
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Limpieza de user_interactions_archive falló (no bloqueante): ${msg}`,
+      );
+    }
 
     // Lo que queda para la próxima noche, medido DESPUÉS de archivar. Acotado: un
     // `count(*)` sobre 11 M filas es justo lo que no se puede hacer cada noche, y

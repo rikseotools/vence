@@ -29,6 +29,19 @@ export interface TelemetryRetentionResult {
    * es grave, perder la MEDIDA de si se está drenando sí lo es.
    */
   vacuumFailed: string[];
+  /**
+   * Tablas cuyo bucle de borrado se cortó ANTES de tiempo por un error en un lote
+   * (vacío si todo fue bien). Lo ya borrado en lotes anteriores se conserva.
+   *
+   * Reproducido en producción (08/08): un DELETE de `purgeTable` falló a mitad de
+   * pasada (mismo `statement_timeout` del pool que ya tumbaba el VACUUM) y, como el
+   * bucle no tenía try/catch, la excepción se propagó fuera de `purgeTable` — se
+   * perdió el `deleted` acumulado, el VACUUM no llegó a correr y `remaining` (que se
+   * calcula DESPUÉS) nunca se calculó: el cron reportó `status: 'failure'` sin
+   * ningún número, exactamente el mismo modo de fallo que el VACUUM de esta misma
+   * ficha, en el sitio que más importaba y que se había dejado sin blindar.
+   */
+  purgeFailed: string[];
 }
 
 /** Tope del conteo de atraso: por encima solo importa «muchísimo», no el número exacto. */
@@ -77,6 +90,7 @@ export class TelemetryRetentionService {
       batches: 0,
       remaining: {},
       vacuumFailed: [],
+      purgeFailed: [],
     };
 
     // Se poda por `created_at` (hora de INSERCIÓN en BD, fiable y monotónica), NO
@@ -87,11 +101,13 @@ export class TelemetryRetentionService {
       'observable_events',
       'created_at',
       (n) => (result.batches += n),
+      result,
     );
     result.validationErrorLogsDeleted = await this.purgeTable(
       'validation_error_logs',
       'created_at',
       (n) => (result.batches += n),
+      result,
     );
 
     // VACUUM (no FULL) al terminar si borramos algo: marca el espacio reutilizable
@@ -172,25 +188,42 @@ export class TelemetryRetentionService {
     table: string,
     tsColumn: string,
     onBatch: (n: number) => void,
+    result: TelemetryRetentionResult,
   ): Promise<number> {
     let deleted = 0;
     for (let i = 0; i < this.maxBatches; i++) {
-      const res = await this.db.execute(sql`
-        DELETE FROM ${sql.raw(table)}
-        WHERE ctid IN (
-          SELECT ctid FROM ${sql.raw(table)}
-          WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
-          LIMIT ${this.batchSize}
-        )
-      `);
-      // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
-      // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
-      const count = filasAfectadas(res);
-      deleted += count;
-      onBatch(1);
-      if (count < this.batchSize) break; // no quedan más filas candidatas
+      try {
+        const res = await this.db.execute(sql`
+          DELETE FROM ${sql.raw(table)}
+          WHERE ctid IN (
+            SELECT ctid FROM ${sql.raw(table)}
+            WHERE ${sql.raw(tsColumn)} < now() - interval '${sql.raw(String(this.retentionDays))} days'
+            LIMIT ${this.batchSize}
+          )
+        `);
+        // OJO: postgres-js pone las filas afectadas en `count`, no en `rowCount` —
+        // leerlo mal no era un log inexacto, sacaba del bucle en la 1.ª vuelta (T-613).
+        const count = filasAfectadas(res);
+        deleted += count;
+        onBatch(1);
+        if (count < this.batchSize) break; // no quedan más filas candidatas
+      } catch (error) {
+        // No propagar: perderíamos `deleted` (lo ya borrado en lotes previos), el
+        // VACUUM y `remaining` de la tabla. Se corta ESTA tabla por esta pasada —
+        // no se reintenta en el mismo run, para no insistir contra lo que sea que
+        // esté bloqueando— y la próxima noche retoma donde `WHERE` la deje (no hay
+        // estado que llevar: el filtro es siempre "más vieja que la retención").
+        result.purgeFailed.push(table);
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `DELETE ${table} lote ${i + 1} falló (no bloqueante, se retoma la próxima noche): ${msg}`,
+        );
+        break;
+      }
     }
-    this.logger.log(`${table}: ${deleted} filas > ${this.retentionDays}d borradas`);
+    this.logger.log(
+      `${table}: ${deleted} filas > ${this.retentionDays}d borradas`,
+    );
     return deleted;
   }
 }
