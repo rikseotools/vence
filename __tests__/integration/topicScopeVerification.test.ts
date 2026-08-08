@@ -118,7 +118,7 @@ describeIf('topic_scope_verification — invariantes (RDS, escribe tema aislado)
   describe('T-518 — el badge no puede contar un verified_correct sin pipeline como resuelto', () => {
     test('sellado con agent_run_id="--run" (el flag mal pasado) cuenta como pendiente', async () => {
       const antes = await getScopeVerificationCount()
-      if (!antes.success) { console.log('CAUSA>>>', require('util').inspect(antes, {depth:1}).slice(0,300)); throw new Error(antes.error) }
+      if (!antes.success) throw new Error(antes.error)
 
       await c.query(`SELECT record_topic_verification($1,'correct','{}'::jsonb,'--run','claude_direct')`, [topicId])
       const conSelloRoto = await getScopeVerificationCount()

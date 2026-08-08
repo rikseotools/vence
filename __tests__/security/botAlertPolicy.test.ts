@@ -39,6 +39,102 @@ describe('decideBotAlert — bot_detected (huella de automatización)', () => {
   })
 })
 
+describe('decideBotAlert — bot_detected + actividad real (T-303, WebView de Android)', () => {
+  // Las 5 alertas dismissed de T-303 (29-30/07): score EXACTO 90 con solo
+  // no_plugins(0)+zero_dimensions(30)+botd:headless_chrome(60) — el patrón de un
+  // navegador embebido de Android, no de un headless real. mariasoledadparrabaeza
+  // tenía 199 respuestas guardadas cuando se la marcó; cabrerayurely, 25.
+  it('NO alerta con el patrón blando de score 90 si la cuenta ya respondió de verdad', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+      realAnswers: 199,
+    })
+    expect(d.createAlert).toBe(false)
+    expect(d.forceChallenge).toBe(false)
+    expect(d.reason).toContain('actividad_real_confirmada')
+  })
+
+  it('el umbral de respuestas reales es mínimo, no cero (25 respuestas también exime)', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+      realAnswers: 25,
+    })
+    expect(d.createAlert).toBe(false)
+  })
+
+  // f7716a15… (medido 06/08, `scraping_force_challenge_set`): 11 días de actividad,
+  // ~800 preguntas SERVIDAS (`daily_questions_served`), CERO en `test_questions` — la
+  // firma exacta de `harvest_no_answer`. El mismo score/evidencia que el caso de
+  // arriba, pero sin respuestas reales, TIENE que seguir alertando: si no, el arreglo
+  // de los falsos positivos abriría un hueco para la cosecha real.
+  it('SÍ alerta con el mismo patrón blando si la cuenta NUNCA respondió de verdad (cosechador real)', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+      realAnswers: 0,
+    })
+    expect(d.createAlert).toBe(true)
+    expect(d.forceChallenge).toBe(true)
+    expect(d.reason).toBe('huella_de_automatizacion_firme')
+  })
+
+  it('NO exime por debajo del mínimo de respuestas reales (1 respuesta no basta)', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['zero_dimensions', 'botd:headless_chrome'],
+      realAnswers: 1,
+    })
+    expect(d.createAlert).toBe(true)
+  })
+
+  it('sin dato de servidor (consulta fallida), sigue alertando como antes — fail-safe', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['no_plugins', 'zero_dimensions', 'botd:headless_chrome'],
+      realAnswers: null,
+    })
+    expect(d.createAlert).toBe(true)
+  })
+
+  it('sin evidencia (llamada antigua, sin el campo nuevo), sigue alertando como antes', () => {
+    const d = decideBotAlert({ alertType: 'bot_detected', score: 90, realAnswers: 500 })
+    expect(d.createAlert).toBe(true)
+  })
+
+  // La automatización DURA nunca se exime por actividad: un navegador controlado
+  // (Selenium/Puppeteer/Playwright) que además rellena respuestas de verdad es un
+  // caso MÁS grave (granjeo con navegador real), no uno más benigno.
+  it('webdriver_detected NUNCA se exime por actividad, aunque tenga 1000 respuestas', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['webdriver_detected', 'zero_dimensions'],
+      realAnswers: 1000,
+    })
+    expect(d.createAlert).toBe(true)
+    expect(d.forceChallenge).toBe(true)
+  })
+
+  it('automation_framework tampoco se exime', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['automation_framework'],
+      realAnswers: 1000,
+    })
+    expect(d.createAlert).toBe(true)
+  })
+
+  it('puppeteer_detected tampoco se exime', () => {
+    const d = decideBotAlert({
+      alertType: 'bot_detected', score: 90,
+      evidence: ['puppeteer_detected'],
+      realAnswers: 1000,
+    })
+    expect(d.createAlert).toBe(true)
+  })
+})
+
 describe('decideBotAlert — suspicious_behavior (comportamiento)', () => {
   // El caso isidoracarrenosanabrias@: el cliente declaró correctRate 0 cuando la
   // BD decía 28%. Sin datos de servidor no se opina.

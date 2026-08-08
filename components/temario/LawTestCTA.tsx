@@ -11,10 +11,15 @@
 // función pura testeada (buildLawTestLink) y el evento de observabilidad se emite en UN
 // solo punto de choque. Guardarraíl __tests__/guardrails/lawTestCtaNoBareLink.test.ts
 // prohíbe volver a hand-rollear el enlace en cualquier TopicContentView.
+//
+// [T-367] Segundo enlace, mismo componente: "Hacer test de {ley}" arranca YA acotado al
+// tema (rápido, sin pantalla intermedia); "Elegir qué artículos" lleva al configurador
+// visible para que el usuario escoja un subconjunto propio. Antes de esto no había NINGÚN
+// camino desde el temario a esa pantalla — el primer enlace siempre auto-arranca el test.
 import Link from 'next/link'
 import { useLawSlugs } from '@/contexts/LawSlugContext'
 import { emitClientEvent } from '@/lib/observability/client'
-import { buildLawTestLink } from '@/lib/navigation/backToArticleLink'
+import { buildLawTestLink, buildLawFilterLink } from '@/lib/navigation/backToArticleLink'
 
 interface LawTestCTAProps {
   /** shortName de la ley (se resuelve a slug con useLawSlugs, igual que LawSection) */
@@ -30,27 +35,43 @@ export default function LawTestCTA({ lawShortName, articles, source = 'temario' 
   const lawSlug = getSlug(lawShortName)
   const articleNumbers = (articles ?? []).map((a) => a.articleNumber)
   const href = buildLawTestLink(lawSlug, articleNumbers, source)
+  const filterHref = buildLawFilterLink(lawSlug)
 
   return (
-    <Link
-      href={href}
-      onClick={() =>
-        emitClientEvent({
-          severity: 'info',
-          eventType: 'law_test_cta_click',
-          metadata: {
-            source,
-            lawSlug,
-            // nº de artículos con los que se ACOTA el test. 0 = sin scope = regresión a vigilar.
-            scopedArticleCount: new Set(
-              articleNumbers.map(String).filter((s) => s.trim().length > 0),
-            ).size,
-          },
-        })
-      }
-      className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
-    >
-      Hacer test de {lawShortName} →
-    </Link>
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Link
+        href={href}
+        onClick={() =>
+          emitClientEvent({
+            severity: 'info',
+            eventType: 'law_test_cta_click',
+            metadata: {
+              source,
+              lawSlug,
+              // nº de artículos con los que se ACOTA el test. 0 = sin scope = regresión a vigilar.
+              scopedArticleCount: new Set(
+                articleNumbers.map(String).filter((s) => s.trim().length > 0),
+              ).size,
+            },
+          })
+        }
+        className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
+      >
+        Hacer test de {lawShortName} →
+      </Link>
+      <Link
+        href={filterHref}
+        onClick={() =>
+          emitClientEvent({
+            severity: 'info',
+            eventType: 'law_article_filter_cta_click',
+            metadata: { source, lawSlug },
+          })
+        }
+        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline"
+      >
+        🔧 Elegir qué artículos entran
+      </Link>
+    </span>
   )
 }

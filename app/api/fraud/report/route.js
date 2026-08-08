@@ -97,6 +97,10 @@ async function _POST(request) {
     // es que 500 alertas rancias hacen que el panel se deje de mirar.
     //
     // La política vive en `lib/security/botAlertPolicy.ts` (pura y testeada).
+    // T-303 (06/08/2026) añadió una segunda capa a `bot_detected`: score>=90 con solo
+    // señales blandas (sin webdriver/framework/puppeteer) se cruza contra respuestas
+    // REALES guardadas en servidor antes de abrir expediente — ver el comentario
+    // grande al principio de `botAlertPolicy.ts` para el porqué.
     const score = botScore || behaviorScore || 0
 
     // ¿Ya absolvimos a este sujeto por lo mismo hace poco? Un veredicto humano
@@ -135,7 +139,25 @@ async function _POST(request) {
       } catch { /* sin datos de servidor la política NO alerta, que es lo correcto */ }
     }
 
-    const decision = decideBotAlert({ alertType, score, recentlyDismissed, server: serverBehaviour })
+    // Para `bot_detected`, lo mismo pero al revés (T-303): la huella de cliente puede
+    // ser un WebView de Android (Instagram/Facebook/Gmail) mal clasificado como
+    // headless, y la única forma de distinguirlo de un cazador real es mirar si la
+    // cuenta ha respondido de verdad. `realAnswers=null` (consulta fallida) deja la
+    // política SIN ese dato, que es fail-safe: sigue alertando como antes, nunca
+    // exime sin haber mirado.
+    let realAnswers = null
+    if (alertType === 'bot_detected') {
+      try {
+        const filas = await db().execute(sql`
+          SELECT count(*)::int AS n FROM test_questions
+           WHERE user_id = ${authUserId}::uuid
+             AND user_answer IS NOT NULL AND user_answer <> '' AND user_answer <> 'BLANK'`)
+        const f = (Array.isArray(filas) ? filas : filas?.rows || [])[0]
+        if (f) realAnswers = Number(f.n)
+      } catch { /* sin dato de servidor, la política sigue alertando igual que antes */ }
+    }
+
+    const decision = decideBotAlert({ alertType, score, recentlyDismissed, server: serverBehaviour, evidence, realAnswers })
     const severity = decision.severity
 
     // Reto forzado: solo con la confianza con la que además abriríamos expediente.

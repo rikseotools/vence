@@ -51,13 +51,18 @@ function anclasDe(fichero: string): unknown | null {
 
 /**
  * Cuántos detectores NO declaran anclas hoy. Eran 24 al nacer el mecanismo (08/08/2026) y
- * quedan **23** tras calibrar `epigrafeTruncado`, que se hizo el mismo día para demostrar que
- * la convención funciona de extremo a extremo y no es teoría: sus dos anclas se ejercitan
- * contra la BD real en `__tests__/integration/anclasEpigrafeTruncado.integration.test.ts`.
+ * quedan **21** tras calibrar tres, elegidos porque su falso positivo está DOCUMENTADO:
+ *   · `epigrafeTruncado` — el «:» en medio de la frase, que CLAUDE.md ya avisa que es legítimo;
+ *   · `opcionesDuplicadas` — comparar en minúsculas, la «mejora» que ya fabricó 8 preguntas
+ *     rotas inexistentes. Comprobado que el ancla tiene DIENTES: metiendo `lower()`, sus dos
+ *     negativas pasan de 0 a 1 par y saltan;
+ *   · `explicacionTruncada` — sus dos exclusiones (acabar en URL, cerrar con locución) son la
+ *     diferencia entre 112 hallazgos y 8.938, casi todos correctos.
+ * Los tres se ejercitan contra la BD real en `__tests__/integration/anclas*.integration.test.ts`.
  *
  * **Solo puede bajar**: al calibrar uno, se declara y se baja este número.
  */
-const TECHO_SIN_ANCLAS = 23
+const TECHO_SIN_ANCLAS = 21
 
 describe('[T-718] anclas de los detectores', () => {
   it('hay detectores que mirar (si no, esto pasaría en verde sin comprobar nada)', () => {
