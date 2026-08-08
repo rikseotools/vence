@@ -21,6 +21,7 @@
 require('dotenv').config({ path: '.env.local' })
 const Stripe = require('stripe')
 const { Client } = require('pg')
+const { pgConfig } = require('../lib/db/pgSsl.cjs')
 const { execSync } = require('child_process')
 
 // Precios canónicos v2 (2026-07). FUENTE DE VERDAD del canary (no el .env.local,
@@ -121,7 +122,7 @@ async function main() {
   // si el CHECK constraint no lo acepta → sub premium fantasma, usuario cobrado
   // sin acceso. Verificamos que el constraint VIVO en RDS lo admite.
   if (process.env.DATABASE_URL) {
-    const db = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+    const db = new Client(pgConfig(process.env.DATABASE_URL))
     try {
       await db.connect()
       const { rows } = await db.query(`

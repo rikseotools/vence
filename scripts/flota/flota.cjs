@@ -31,6 +31,11 @@ const os = require('os')
 const REPO = path.resolve(__dirname, '..', '..')
 const MAQ = require(path.join(REPO, 'lib', 'flota', 'maquinas.cjs'))
 const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
+// Al nivel del módulo, con sus hermanos: lo usan `repartir` (para EMITIR el dato de la pasada)
+// y `bucle` (para leerlo). Vivía dentro de `bucle`, así que las llamadas de `repartir`
+// reventaban con «BUC is not defined» — y no lo vio ningún test, porque todos miran el TEXTO
+// del fichero y ninguno ejecutaba el comando (T-693).
+const BUC = require(path.join(REPO, 'lib', 'flota', 'bucle.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
@@ -1249,6 +1254,10 @@ async function main() {
         console.log((retomadas || sinCuota)
           ? `✅ ${retomadas} turno(s) retomado(s)${sufijoCuota}; nadie libre a quien dar tarea nueva.`
           : `✅ nada que repartir: ${vivos.length} trabajador(es) vivo(s), todos con tarea.`)
+        // ⚠️ ESTA SALIDA TEMPRANA ERA EL AGUJERO (T-693): se iba sin decir cuántos hay ocupados, y
+        // el bucle —que lo raspaba del texto— leía 0 y espaciaba hasta 60 min con los CUATRO
+        // trabajando. El dato se emite ahora en TODOS los finales, no solo en el de abajo.
+        console.log(BUC.lineaPasada({ repartidos: retomadas, ocupados: vivos.length }))
         return 0
       }
       const candidatas = await sql`
@@ -1363,6 +1372,7 @@ async function main() {
       // media hora en volver. Cuanto mejor iba todo, más tarde se enteraba de que dejó de ir.
       const ocupados = vivos.length - libres.length
       console.log(`\n${n} encargo(s) repartido(s) · ${ocupados} ocupado(s). Míralo con: npm run flota`)
+      console.log(BUC.lineaPasada({ repartidos: n, ocupados }))
       return 0
     }
 
@@ -1378,7 +1388,6 @@ async function main() {
     // fallo de los cinco escritores de `seguimiento_url` [T-130]. Y de regalo, aísla: si una
     // pasada revienta, el bucle sigue vivo.
     if (cmd === 'bucle') {
-      const BUC = require(path.join(REPO, 'lib', 'flota', 'bucle.cjs'))
       const cada = Math.max(60, Number(arg('--cada') || BUC.CADA_S))
       const limiteAtasco = Math.max(10, Number(arg('--atascado') || BUC.ATASCADO_MIN))
       let pausa = cada
@@ -1434,11 +1443,41 @@ async function main() {
         }
       }
       console.log(`🔁 supervisor continuo (${yo}) — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
+      // Una máquina se mide UNA vez por pasada aunque aloje a cuatro trabajadores: lo que se
+      // mide es el host, y sondearlo cuatro veces solo añade cuatro conexiones ssh.
+      const medidas = new Map()
       while (!parar) {
         let repartidos = 0
         let ocupados = 0
         let motivoSalto = null
         let atascados = []
+
+        // ── LA SALUD DE LA MÁQUINA SE MIDE AQUÍ, NO SOLO EN EL PANEL ([T-677]) ──────────────
+        // La primera versión solo medía al pintar el panel, o sea **solo cuando una persona
+        // ejecutaba `npm run flota` a mano**. Eso no es una alerta proactiva: es una alerta que
+        // depende de que alguien pase por delante. Se vio al verificar el despliegue — el
+        // servicio llevaba horas corriendo con la sonda dentro y había UN solo evento.
+        // Aquí corre cada pasada (5 min por defecto), que es lo que da a las reglas material
+        // periódico con el que disparar.
+        for (const w of MAQ.trabajadoresQueReciben()) {
+          const m = MAQ.maquinaDe(w)
+          if (!m || medidas.has(m.nombre)) continue
+          medidas.set(m.nombre, true) // una sola máquina por pasada, aunque tenga 4 trabajadores
+          const medida = medirMaquina(w)
+          if (!medida) continue
+          const v = SALUD.clasificarMaquina(medida)
+          if (v.estado === 'ok') continue
+          console.log(`  ${v.estado === 'ahogada' ? '🔴' : '🟠'} MÁQUINA ${m.nombre}: ${v.motivos[0]}`)
+          try {
+            await sql`
+              INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+              VALUES ('fargate', ${v.estado === 'ahogada' ? 'error' : 'warn'}, 'flota_maquina_salud', 'flota',
+                      ${`máquina ${m.nombre} ${v.estado}: ${v.motivos[0] ?? ''}`},
+                      ${sql.json({ maquina: m.nombre, estado: v.estado, motivos: v.motivos, ...v.señales, medida })})`
+          } catch { /* la telemetría nunca puede parar al supervisor */ }
+        }
+        medidas.clear()
+
         try {
           const puede = BUC.puedeRepartir({
             hayBd: Boolean(url()),
@@ -1459,13 +1498,17 @@ async function main() {
             atascados = BUC.turnosAtascados(turnos, { limiteMin: limiteAtasco })
             const r = execFileSync(process.execPath, [__filename, 'repartir'], { encoding: 'utf8', timeout: 600_000 })
             process.stdout.write(r)
-            const m = r.match(/(\d+)\s+encargo\(s\) repartido/)
-            repartidos = m ? Number(m[1]) : 0
-            // Cuántos están TRABAJANDO, para no confundir «flota llena» con «nada que hacer»
-            // al decidir la espera (T-642). Si la línea no trae el dato —una versión vieja de
-            // `repartir`—, se queda en 0 y el ritmo es el de antes: degradar, no reventar.
-            const mo = r.match(/·\s*(\d+)\s+ocupado/)
-            ocupados = mo ? Number(mo[1]) : 0
+            // El dato del ritmo YA NO se raspa de la prosa (T-693): `repartir` emite una última
+            // línea marcada en todos sus finales y `leerPasada` la lee, con caída al texto viejo
+            // mientras los clones se ponen al día. Antes se leía con dos regex y la frase de
+            // «nada que repartir» no contenía la palabra «ocupado», así que el bucle creía que
+            // nadie trabajaba y espaciaba hasta una hora con los cuatro ocupados.
+            const p = BUC.leerPasada(r)
+            repartidos = p.repartidos
+            ocupados = p.ocupados
+            if (p.fuente !== 'marca') {
+              console.log(`   ⚠️ el dato de la pasada vino por «${p.fuente}», no por la marca — ¿clon sin actualizar?`)
+            }
           }
         } catch (e) {
           // Una pasada que falla NO para el bucle: la flota se quedaría parada por un SSH caído.
@@ -1491,7 +1534,7 @@ async function main() {
                       ${sql.json({ host: yo, ...oom })})`
           }
         } catch { /* la telemetría nunca puede parar al supervisor */ }
-        pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa })
+        pausa = BUC.siguientePausa({ repartidos, ocupados, cada, anterior: pausa, fallo: !!motivoSalto })
         console.log(BUC.resumenPasada({ repartidos, atascados, motivoSalto, pausaS: pausa }))
         // Rastro en la BD: un bucle que no deja huella es indistinguible de uno muerto, y el
         // síntoma de un supervisor muerto es justamente que NO PASA NADA.

@@ -114,10 +114,8 @@ async function recriterio(c: Client): Promise<number> {
 }
 
 async function main() {
-  const c = new Client({
-    connectionString: process.env.DATABASE_URL!.replace(/[?&]sslmode=require/, ''),
-    ssl: { rejectUnauthorized: false },
-  })
+  const { pgConfig } = await import('../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   if (RECRITERIO) {

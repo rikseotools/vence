@@ -1140,6 +1140,76 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
+
+Índice de lo que quedó a medias o esperando decisión, con dónde está cada cosa. **Lo que ya está
+cerrado NO se repite aquí**: [T-657] (cupo/huella), [T-237], [T-671] (los 401) y las doce revisadas
+están cerradas y desplegadas.
+
+**1. ESPERAN DECISIÓN DE MANUEL — nadie más las va a mover**
+- **Las dos aportaciones de Laura Simar del 06/08.** Ella reclamó que no le generaron recompensa y
+  **tiene razón en los hechos**: la impugnación `a1a6e998` es `explicacion_confusa` (motivo
+  subjetivo, no paga sola — evento `reward_skipped_subjective_type`) y el bug `7847ff3e` de una
+  premium **sí puede pagarse pero exige orden explícita** que nadie dio. Ya tiene 2 recompensas
+  cobradas (04 y 05/08), no es alguien que reclame sin fundamento. **Si se conceden, se crean en
+  SILENCIO**: el mensaje ya se le envió y no las menciona, como manda la regla.
+
+**2. ESPERAN EL DESPLIEGUE (se despiertan solas)**
+- **[T-677]** — que el supervisor del VPS emita `flota_maquina_salud` de forma PERIÓDICA.
+- **[T-691]** — que el barrido nocturno emita el kind con el patrón nuevo de figuras rotuladas.
+
+**3. LA CAUSA DEL VPS AHOGADO NO ES MÍA — ya tiene ficha, NO abrir otra**
+[T-682] (crítica, «cuatro `tsc --noEmit` a la vez no caben en el VPS») y [T-647] (20 OOM en 6 h).
+Lo medido, para quien las coja: los cuatro Claude Code ocupan **menos de 1 GB entre todos**; el peso
+son sus **builds** (1.574 + 1.383 + 1.295 + 1.213 MB). Carga 17-19 en 4 núcleos **con la CPU al
+91-98 % ociosa** = esperando disco, no calculando. **Bajar trabajadores NO es el arreglo**
+(conclusión que yo mismo propuse y retiré al medir quién consumía la memoria); serializar los builds
+sí.
+
+**4. ERRATA CONOCIDA**
+El commit del validador de mensajes está pusheado como `feat(T-678)` y **T-678 es una ficha ajena ya
+cerrada**: se eligió el id sin `reserve`. El código y el manual ya citan **[T-695]**, que es la ficha
+buena. Quien busque el origen por el mensaje de commit llegará a la ficha equivocada.
+
+**5. CABO MENOR, SIN FICHA PROPIA**
+El payload de `/api/v2/daily-question/status` se contradice consigo mismo: devuelve `questions_today`
+ya corregido con el cupo del aparato, pero `questions_remaining` e `is_limit_reached` siguen
+calculados solo con las respuestas propias (visto en vivo: `today:25`, `remaining:25`,
+`limit_reached:false`). Viene de [T-418], **no se introdujo aquí**, y la interfaz funciona porque
+decide con `questions_today`. Cerrarlo es barato.
+
+**6. COLAS**
+Las tres contestadas por esta sesión (Diego, y Laura ×2: feedback e impugnación). Lo demás está en
+otras sesiones: los dos bugs de `rbsc87` en `movil-colas`, dos `other` y dos bajas de cuenta en
+`136e28c4` y `movil2`. **No reabrir sin mirar el claim.**
+
+### [T-695] 🟠 [ABIERTO 08/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
+
+**Manuel: «pon guardarraíl porque se te olvida».** Y tenía la prueba delante: en un MISMO borrador
+para Laura Simar se colaron DOS reglas ya escritas — la mención al apartado de recompensas
+(prohibida desde el 24/07) y un «tienes razón» que él acababa de retirar ese mismo día.
+
+**Hecho:**
+- Criterio en UN sitio: `lib/feedback/validarMensaje.cjs`, cada regla con su porqué y su
+  alternativa. Cubre: recompensa mencionada · conceder la razón · proclamar la culpa («no era cosa
+  tuya», «el fallo era nuestro») · disculpas por la espera · afirmar el arreglo en vez del
+  condicional · decir que lo hace una IA.
+- Se hace cumplir en tres sitios: el dossier lo canta antes de redactar (`revisar-feedback.cjs`),
+  un comando para pasarle el borrador, y una puerta que aborta el envío (`responder-*.cjs`).
+- 11 tests (`__tests__/feedback/validarMensaje.test.ts`) con los borradores REALES como casos: los
+  dos que fallaron y los dos aprobados (Diego y Laura, ambos ya enviados).
+- Manual endurecido: el ejemplo ✅ que otra sesión escribió horas antes («Tienes razón: al pulsar
+  para corregir…») **ya no vale**. Memoria actualizada, que decía justo lo contrario.
+
+**⚠️ ERRATA A SABIENDAS:** el commit que lo introduce está pusheado como `feat(T-678)`, y **T-678 es
+otra ficha ajena YA CERRADA** («Puerta de "está vivo"»). Se eligió el id sin `reserve`, que es
+justo lo que CLAUDE.md prohíbe. El código y el manual ya citan T-695; el mensaje de commit no se
+puede reescribir porque está en `main`. Si alguien busca el origen por el commit, llega a la ficha
+equivocada.
+
+**PENDIENTE:** nada funcional. Cerrarla cuando se confirme que el dossier lo imprime en el uso real
+de otra sesión.
+
 ### [T-692] 🔴 [ABIERTO 08/08] La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve días a cero
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
@@ -1199,11 +1269,14 @@ tuvo 238 eventos de 4 usuarios.
   El resto de la app **conserva exactamente el camino de antes** (un intento).
 - **Cableado en el punto ÚNICO** (`getAuthHeaders`), no en los componentes: el guardarraíl
   `bearerTokenSinglePath.test.ts` existe justo para que no haya un segundo camino.
-- **Señal nueva `bearer_ausente`** (`warn`): se emite cuando la petición a una ruta con dueño se
-  queda sin token tras los dos intentos. **No es una alerta nueva** — dos emisores del mismo hecho
-  divergen; es el dato de CAUSA al que ahora apunta la notificación de [T-685], que es la que suena.
-  Solo se emite si el llamante declara `exigeSesion`: en rutas públicas no tener token es lo normal
-  y emitir ahí ahogaría la señal.
+- **NINGUNA señal nueva, a propósito.** Se había escrito una (`bearer_ausente`) y **se retiró al
+  mergear**: la sesión `movil4` había añadido en paralelo `auth_header_sin_token` para este mismo
+  hecho, y su filtro es **mejor** — `hayUsuarioConocido()` cubre también los call-sites que no
+  declaran nada, mientras que el mío dependía de que alguien se acordara de poner `exigeSesion`.
+  Dos emisores de lo mismo no miden el doble: divergen. Lo único que se le suma es el `endpoint` y
+  el `exigeSesion` en la metadata, para poder agrupar. La notificación de [T-685] —la alerta que
+  suena— ahora manda a mirar esa señal ANTES de nada, porque separa «el cliente no manda el token»
+  de «el servidor rechaza uno bueno», que se arreglan en sitios distintos.
 - **7 call-sites declarados** (`exigeSesion` + endpoint): `Header.tsx`, `UserAvatar.tsx` (×2),
   `PendingExams.tsx`, `UserProfileModal.js`, `TemaTestPage.tsx` y la página de tema de AGE.
   `TemaTestPage` **no estaba en el grep inicial** y lo cazó la calibración del guardarraíl.
@@ -1227,7 +1300,7 @@ en `exam/pending`), que es lo correcto: mide el efecto, no la intención. Al des
 volver a correrlo y esperar que `exam/pending` baje hacia su suelo de 0 %.
 
 **La medida de éxito es el porcentaje diario de 401 de esos dos endpoints**, que tiene nueve días
-de línea base limpia. Si aparece `bearer_ausente`, la causa sigue siendo del cliente.
+de línea base limpia. Si aparece `auth_header_sin_token`, la causa sigue siendo del cliente.
 
 **Relacionadas:** [T-565] (metió la exigencia de identidad), [T-671] y [T-675] (los call-sites sin
 token), [T-419] (reintento contra 401), [T-210] (flood de acuñación), [T-685] (la alerta que suena;
@@ -1398,64 +1471,65 @@ escribir después.
 
 **Relacionada:** [T-407] (identidad única de sesión), [T-539] (el fail-open es para personas).
 
-**Lo destapó una usuaria, no la observabilidad.** El 07/08, [T-565] añadió —con razón— guardas de
-propiedad a `exam/*`, `psychometric/*` y `user-stats`, y varios clientes del navegador llamaban SIN
-token. Seis horas de incidente:
+**🙋 RESUELTO — no la causa exacta del 07/08 (esa no se pudo reproducir, no hay rastro de esa
+sesión concreta), sino el HUECO ESTRUCTURAL que hace que CUALQUIER fallo de este escritor sea
+invisible por diseño — que es literalmente «la pregunta de fondo» que la propia ficha pedía
+mirar.** Corrección de ruta primero: el fichero es `scripts/sessions/latir.cjs`, no
+`lib/sessions/latir.cjs` (la ficha se equivocaba, verificado contra el repo).
 
-- **8.085 respuestas 401** en `/api/exam/pending` a **263 usuarios** y **4.151** en
-  `/api/v2/user-stats` a **260**.
-- De **276 usuarios** con algún 401, **136 (49 %) no respondieron ni una pregunta después del
-  primero**: la mitad se quedó sin poder estudiar.
-- **No se encendió nada propio.** `client_error_spike` **excluye 401/403/404/409/429 a propósito**
-  (son esperados en el wrapper de fetch) y `auth_token_mint_waste` mira las acuñaciones, no los
-  rechazos — su propio comentario dice que se hizo *«para no quedar ciegos ante sesiones válidas
-  reciben 401, nadie mintea»*, y ese hueco seguía abierto.
-- Se supo porque **Esther escribió a soporte** (feedback `e523eabc`).
+**Reproducido de verdad, no sospechado:** `scripts/sessions/latir.cjs` con `DATABASE_URL`
+apuntando a un puerto que rechaza la conexión al instante (`127.0.0.1:1`) — el error real es
+`ECONNREFUSED`. Medido: **exit 0, cero salida por stdout, y ANTES de este arreglo cero rastro en
+cualquier sitio** (nada en BD, nada en fichero, nada en log) porque `backlog.cjs` lo invoca
+siempre sin `--verbose` y con `stdio: 'ignore'`. Esto confirma la hipótesis de la ficha
+(«subproceso desacoplado que puede morir sin que el padre se entere») **en su efecto observable**
+— silencio total —, aunque no identifica la causa concreta de ESE día (¿tropiezo de red? ¿la BD
+sin contestar unos segundos? no hay forma de saberlo a toro pasado, y decir que sí lo sería
+justo el error que esta tarea pide no cometer).
 
-#### La señal es NORMALIZADA, y esa es toda la lección
+**El arreglo no quita el fail-open (sigue siendo correcto: la telemetría no puede bloquear un
+push) — añade una marca LOCAL y SÍNCRONA** (`os.tmpdir()/vence-latido/<sid>`, mismo patrón que
+el contador de `recordatorio-hook.cjs`) que puede escribirse aunque la causa del fallo sea
+precisamente que la BD no contesta. El siguiente latido con éxito la lee, la borra, y emite un
+evento `sesion_friccion`/`latido_fallido` (clase nueva en `lib/observability/friccionSesiones.cjs`,
+severidad `warn`) con el número de intentos y los minutos de silencio — verificado en vivo con la
+reproducción de arriba: **3 intentos, evento real en `observable_events`** con
+`"3 intento(s) fallido(s), 0 min sin latir hasta recuperarse (último error: connect ECONNREFUSED
+127.0.0.1:1)"`.
 
-El recuento a pelo **no sirve**: baja solo porque hay menos gente. Durante el incidente se leyó una
-bajada de 401 como «el arreglo está entrando» cuando era la hora valle — y **normalizada, esa hora
-era el pico (339 por 100 respuestas)**. La regla mide **401 por cada 100 respuestas guardadas** en
-la misma ventana.
+**Y el hueco que de verdad costó el incidente:** `heartbeat` (el comando que la sesión SÍ corrió)
+solo renueva `backlog_tasks.lease_until` — un escritor totalmente distinto de
+`worktree_sessions.last_signal_at` (el que mira el hook). «✅ lease renovado» sonaba a «estás
+viva» cuando solo decía que tus TAREAS lo están. Ahora `heartbeat` lee la marca local y, si hay
+una racha activa, lo dice en el momento — verificado en vivo: tras romper la conexión 3 veces,
+`node scripts/backlog.cjs heartbeat` imprimió el aviso junto al lease renovado, distinguiendo
+explícitamente las dos señales para que no se repita la confusión.
 
-#### Umbral medido sobre el incidente entero, no elegido a ojo
+**Construido:**
+- `lib/sessions/latidoFallo.cjs` — núcleo puro (registrarIntento, resumenRecuperacion,
+  lineasAvisoActivo), **8 tests**.
+- `scripts/sessions/latir.cjs` — marca local en el catch de más afuera (nunca puede fallar hacia
+  fuera: es el ÚLTIMO paso) + resolución/aviso en el latido con éxito.
+- `scripts/backlog.cjs` (`heartbeat`) — lee la marca y avisa si sigue activa, best-effort.
+- `lib/observability/friccionSesiones.cjs` — clase `latido_fallido`, `warn`.
+- **3 tests de integración REALES** (`__tests__/sessions/latirFalloSilencioso.integration.test.js`):
+  ejecutan el script de verdad con la conexión rota — silencio sin `--verbose`, acumulación de
+  intentos, visibilidad con `--verbose` sin romper el exit 0.
+- `lib/admin/toolRegistry.ts` actualizado (la entrada ya existía, se le añadió el mecanismo nuevo).
+- 849 tests de `__tests__/sessions` + `__tests__/backlog` + `__tests__/observability` +
+  `__tests__/guardrails` en verde (más los 11 nuevos = 860); typecheck no se pudo correr completo
+  en esta máquina por contención real medida (el propio `tsc --noEmit` sin candado murió
+  `Terminated` — el mismo síntoma que [T-677]/[T-682] ya documentaron en este VPS compartido); el
+  cambio de tipos es una única entrada de string en un objeto ya tipado, y el `pre-push` corre su
+  propio typecheck serializado con candado (`lib/hooks/candadoTypecheck.cjs`) sobre los ficheros
+  que de verdad cambian.
 
-Simulando la ventana real de la regla (15 min) sobre 12 h:
+**Lo que NO se arregló, a propósito:** por qué falló ESE latido concreto el 07/08 sigue sin
+saberse — con la marca ya en producción, la PRÓXIMA vez que pase quedará medido en
+`observable_events` en vez de perderse.
 
-| tramo | por 100 respuestas | usuarios | ¿dispara? |
-|---|---|---|---|
-| antes (09:45-14:45) | **0 – 4,5** | 0-3 | calla en las 20 ventanas |
-| durante (15:00-20:45) | **122 – 1.167** | 19-55 | **dispara en las 24** |
-| tras el deploy (21:00+) | 8,3 → 3,5 | 1-4 | calla |
-
-Corte: **≥25 por 100 respuestas Y ≥15 usuarios distintos** → factor **27** entre el peor tramo sano
-y el más flojo del incidente. Los dos umbrales hacen falta: el ratio solo dispararía con una persona
-y su navegador roto a las 4 de la mañana, y los usuarios solos serían ruido de fondo.
-
-`/api/auth/token` queda **fuera**: su 401 anónimo es contrato conocido y ya está silenciado en
-origen; incluirlo metería miles de eventos sanos y mataría la señal.
-
-#### ✅ Hecho
-
-- `RULE_SESIONES_CON_401_EN_MASA` en `backend/src/alerts/alert-rules.ts`, severidad **critical**
-  (deja a la mitad de los afectados sin estudiar), cooldown 60 min, registrada en la lista activa.
-- El cuerpo del aviso lleva **la causa más probable** (una ruta con guarda de propiedad cuyo cliente
-  no manda token), el guardarraíl que lo cruza y la consulta para ver quién falla — no solo el
-  número.
-- **8 tests** con las cifras REALES del incidente: dispara en el peor tramo (477/100) **y en el más
-  flojo (122/100)**, calla en el peor tramo sano (4,5) y tras el deploy (8,3), y los dos casos
-  degenerados. Más uno que fija por qué no se puede «unificar» con `client_error_spike`.
-- Suite de alertas **636/636** y typecheck del backend en verde.
-
-#### ⏳ NO está viva todavía
-
-Es una regla de **backend**: no vigila nada hasta que se despliegue el backend. Hasta entonces esto
-no protege de nada — y decir lo contrario sería exactamente el error que costó el correo a Esther
-([T-678]).
-
-**Relacionadas:** [T-669] y [T-671] (el incidente), [T-675] (lo que quedó fuera del arreglo),
-[T-678] (la puerta que impide anunciar un arreglo que no está vivo).
+**Rama:** `flota/T-687-latido-fallo-silencioso` (empujada, no mergeada — coordinación compartida
+por toda la flota, pide revisión humana antes de `main`).
 
 ### [T-684] 🟡 [ABIERTO 07/08] Marcar una ley `is_derogated` NO la retira del temario: falta la comprobación nocturna de BD
 
@@ -1514,13 +1588,28 @@ entonces re-anclar o jubilar. La herramienta de re-anclaje ya existe (`tools:bus
 **Relacionadas:** [T-660] (el re-anclaje), [T-679]/[T-680]/[T-681] (la generación de lo que falte
 después de recuperar lo recuperable — conviene hacer ESTA antes, para no generar lo que ya existe).
 
-**🙋 RESUELTO PARCIAL (07/08) — RD 806/2014 y RD 187/2008 verificados y listos para aplicar; las
-otras 4 normas medidas pero sin analizar pregunta a pregunta.** Planes dry-run-validados en
-`scratchpad/t683/plan-rd806-2014.json` (12 re-anclajes + 9 jubilaciones) y
-`plan-rd187-2008.json` (1 jubilación) — detalle completo del método y de cada decisión en
-`scratchpad/t683/RESUMEN.md`. **No los apliqué**: re-anclar/jubilar escribe en `questions`
-(BD de negocio) y mi credencial es solo lectura — el dry-run se hizo puenteando
-`DATABASE_URL` a la de solo-lectura, cero riesgo.
+**✅ APLICADO EN BD (08/08) — los dos planes ya están escritos y comprobados.** Los preparó un
+trabajador de la flota (07/08) y no pudo ejecutarlos porque su credencial es de solo lectura;
+`w4-vence-flota` los revisó con veredicto **ok** (re-verificó por su cuenta 9 de las 12 preguntas
+contra el texto real de los artículos destino y el offset −1 contra las DOS fuentes del BOE) y una
+sesión local con escritura los aplicó:
+
+- `plan-rd806-2014.json` → **12 preguntas re-ancladas** al RD 1125/2024 (arts. 2, 8, 9, 10) y
+  **9 jubiladas** (`retired_irreparable`, `admin_law_derogated`).
+- `plan-rd187-2008.json` → **1 jubilada** (no hay norma vigente que recoja la materia).
+- **Comprobado sobre la BD después, no supuesto:** las 12 salen `is_active=true` y **cada una cae
+  ya en un `topic_scope`** (0 huérfanas: eran invisibles y ahora se sirven en Guardia Civil T17);
+  las 10 jubiladas están las 10 en `is_active=false` + `retired_irreparable`. Vista materializada
+  refrescada y caché de producción purgada (1.760 rutas).
+
+El dry-run reprodujo EXACTO lo que decían entrega y revisión (7 movimientos · 12 preguntas ·
+9 a jubilar · 0 bloqueantes), que es lo que permitió aplicarlos sin rehacer el análisis.
+
+⚠️ **Al purgar salió un defecto de herramienta, ya arreglado aparte** (commit del 08/08):
+`scripts/purge-all-cache.js` leía `SITE_URL`, que en toda máquina de desarrollo vale
+`http://localhost:3000` → purgaba el portátil. Sin dev server daba 0 OK de 1.760 sin decir a dónde
+llamaba; **con dev server levantado habría cantado «1.760 OK» dejando producción intacta**. Ahora
+falla cerrado (`lib/cache/destinoPurga.cjs`).
 
 **Método que dio la talla, caro por pregunta:** el `article_number` viejo NO es de fiar (varias
 preguntas ya estaban mal-etiquetadas ANTES de que la ley se derogase). Comparé las 4 opciones de
@@ -1876,6 +1965,57 @@ ambos admitidos el 06/08, no le generaron recompensa. Comprobado: la impugnació
 `explicacion_confusa`, que por política NO paga sola (evento `reward_skipped_subjective_type`), y el
 bug de premium exige orden explícita de Manuel que nadie dio. **Tiene razón en los hechos**; las dos
 son decisión suya.
+
+**LA CAUSA, CERRADA (08/08, sesión movil-colas) — y el parche anterior NO bastaba:**
+
+El arreglo `4b7b1c42f` (poner `getAuthHeaders()` en tres llamantes) **está vivo desde las 21:00
+UTC del 07/08** en el bundle `a99c08fc`, y se nota: el 401 de `/api/exam/pending` cae del **100%
+al 48%** en esa hora exacta. Pero **no lo cierra**: sobre ese mismo bundle seguían fallando el
+**48% de las lecturas en 28 usuarios**, el último a las 07:12 UTC del 08/08.
+
+**Lo que faltaba, medido:** de esos 28, **18 no acuñaron un solo token** en toda la ventana. No
+es que el acuñado fallara — es que **ni se intentaba**. El adapter aplica `UNAUTH_BACKOFF_MS =
+60_000` tras un 401 de `/api/auth/token` y en esa ventana `getMintedToken()` devuelve
+`unauthenticated` **sin llegar a la red**. El freno estaba puesto para los ANÓNIMOS (que
+martilleaban el endpoint) y se aplicaba a todo el mundo. Un minuto es eterno con un examen a
+medias: `rbsc87` pulsó «Corregir Examen» **ocho veces seguidas** y luego cerró sesión.
+
+**Y la etiqueta mentía.** El 403 de `/api/exam/validate` lo pone `requireDuenoDelRecurso`
+([T-565]) como `auth_identidad_ajena_rechazada` / `motivo: recurso_ajeno`. Contadas las 32 h del
+incidente: **195 rechazos, y los 195 con `user_id` NULL** — o sea, **ni uno** era de otra
+persona. Tres daños de una sola etiqueta: la señal que vigila el abuso quedó inservible durante
+el pico; esta misma ficha **descartó esa pista por «no aparece en user-stats»** cuando era el
+rastro exacto; y al opositor se le dijo que su propio examen no era suyo.
+
+**Y el aviso remataba:** `ExamLayout` tenía UN `alert()` para cualquier fallo — *«Comprueba tu
+conexión»*. Por eso su segundo mensaje dice *«cuando la conexión es perfecta»*: le hicimos
+revisar su router por un fallo nuestro, y sin ofrecerle lo único que lo arreglaba (volver a
+entrar).
+
+**Arreglado en `main`** (pendiente de desplegar): tres núcleos puros nuevos —`propiedadRecurso`
+(401 sin identidad ≠ 403 recurso ajeno, sin ablandar ninguna denegación), `avisoDeCorreccion`
+(el texto sale de la CAUSA; la conexión solo se nombra si el fallo es de red) y `backoffAcunado`
+(60 s al anónimo, 2 s a quien tiene sesión)—, `getAuthHeaders()` deja de callar
+(`auth_header_sin_token`), y dos reglas de alerta (`examen_correccion_fallida` crítica y
+`auth_header_sin_token`). 32 unitarios + journey de vence-sim que inyecta el 403 real y mira lo
+que LEE la persona.
+
+**Datos reparados:** las respuestas se guardaban y hasta corregidas; lo que quedaba a cero era la
+fila de `tests`. `npm run exam:reparar-correcciones -- --email … --aplicar` (llama a
+`completeExam()`, el escritor canónico) le devolvió sus cuatro notas: **18/25, 13/24, 17/23,
+12/23**. El quinto (14 de 25) se deja: eso es abandonar, no entregar — y la línea base de
+abandonos es de 4-13 al día, así que repararlos inventaría notas.
+
+**PENDIENTE:**
+1. **Desplegar frontend + backend** y re-medir el 401 de `/api/exam/pending` y
+   `/api/v2/user-stats` sobre el bundle nuevo: tiene que irse del 48% al suelo histórico (0-7%).
+2. **Barrer el resto de exámenes bloqueados del 07/08** — `--desde 2026-08-07` en simulación da
+   la lista; son de OTROS usuarios y marcarles el examen como terminado **necesita el OK de
+   Manuel**, no se hace de oficio.
+3. **Contestar a rbsc87** (dos hilos, uno cada uno) SOLO cuando (1) esté verificado en producción.
+4. Los 18 que nunca acuñaron: si tras el deploy queda un resto, `auth_header_sin_token` ya lo
+   hace visible — ahí es donde mirar, y ya no habrá que reconstruirlo a mano.
+
 ### [T-672] 🟠 [ABIERTO 07/08] Barrido bajo la PREMISA de literalidad: preguntas activas cuya clave NO está en su artículo vinculado (reformular o desactivar)
 
 **La premisa (Manuel, 07/08/2026), que es de todo el banco y no de un caso:**
@@ -1930,6 +2070,74 @@ texto.
 **Relacionadas:** [T-668] (el detector de notas de auditoría, mismo origen) · `audit:vinculo-vecino` y
 `audit:instrumento-derivado`, que son dos casos particulares de esta misma premisa y conviene mirar
 antes de construir nada.
+
+> **📌 SESIÓN 07/08 (w1) — pasos 1 y 2 hechos: medido sin sesgo, muestra leída, DOS patrones
+> distintos encontrados. Sin tocar nada (pasos 3-4 quedan para quien retome).**
+>
+> **Herramienta:** `npm run audit:literalidad-clave` — reutiliza `esExaminable`/`recall` de
+> `lib/health/vinculoArticuloVecino.cjs` (no un cuarto tokenizador), con el bucketing del
+> histograma en `lib/health/bandasLiteralidad.cjs` (6 tests) aparte del script para poder
+> testearlo sin la conexión a Postgres. Registrada en `toolRegistry.ts`.
+>
+> **✅ Paso 1 — medido sin sesgo, corrido de verdad contra RDS (`VENCE_LECTOR_URL`), no supuesto.**
+> Universo: preguntas activas ancladas a un artículo activo de una ley REAL (`laws.boe_url IS NOT
+> NULL`, mismo filtro que `audit:vinculo-vecino` — excluye psicotécnicos, que viven en otra tabla,
+> y contenedores editoriales sin BOE como los de T-144). **34.571 preguntas examinables** (de un
+> universo bruto de 62.749; **25.980 excluidas**: 7.430 por enunciado de negación, 2.120 por
+> meta-opción, **16.430 por opción demasiado corta** — este último bucket es mucho más grande que
+> en `vinculo-vecino`, esperable porque ahí no importa la longitud de la opción y aquí si la
+> opción es corta el recall no mide nada). Distribución completa:
+>
+> | Banda de recall | Preguntas |
+> |---|---|
+> | 0-10% | 918 |
+> | 10-25% | 464 |
+> | 25-40% | 561 |
+> | 40-55% | 894 |
+> | 55-70% | 1.100 |
+> | 70-85% | 2.452 |
+> | 85-100% | **28.182 (81,5 %)** |
+>
+> El banco, en conjunto, ES mayormente literal — la banda alta domina de largo, que es la
+> comprobación de cordura antes de mirar la cola baja. **1.382 preguntas (4 %) caen bajo el 25 %**
+> (el mismo umbral ya calibrado en `vinculoArticuloVecino.cjs` como «el propio artículo no
+> responde»).
+>
+> **✅ Paso 2 — muestra leída a mano, y la ficha tenía razón en avisar: aparecen DOS patrones, no
+> uno.** Filtrando los candidatos <25% que NO citan explícitamente su propio artículo como
+> respuesta (146 de 1.382 en una muestra de 4 leyes grandes — CE, Ley 39/2015, Ley 40/2015, Ley
+> 7/1985 — el resto sí lo hace, ver abajo), leídos a mano contra la lógica de la pregunta:
+>
+> - **Patrón A — FALSO POSITIVO recurrente, preguntas de ESTRUCTURA.** *"El derecho de huelga… se
+>   reconoce en la Constitución dentro de: → Derechos fundamentales y libertades públicas"*
+>   (CE art.28, 304 exp., 38% fallo). No pregunta por el CONTENIDO del artículo, pregunta por su
+>   UBICACIÓN dentro de la estructura de la ley (sección/título/capítulo) — verificable y correcto,
+>   pero el recall de palabras es bajo porque esa ubicación no está escrita LITERALMENTE dentro del
+>   propio artículo (hay que conocer el índice de la CE, no solo leer el art. 28). Mismo patrón en
+>   *"¿En qué Título del TREBEP está regulado…?"* (RDL 5/2015 art.52) y varias más. **No es lo que
+>   describe la premisa** (no es doctrina ajena ni ambigüedad): es un tipo de pregunta que el
+>   recall de contenido no puede medir bien, y probablemente necesite su propia exención, como
+>   `RE_NEGATIVA`/`RE_META` en su día.
+> - **Patrón B — SÍ encaja con la premisa, mismo mecanismo que `dbc5b602`.** *"…el derecho a la
+>   protección de la salud contemplado en el artículo 43: → Sólo podrá ser alegado ante la
+>   Jurisdicción ordinaria de acuerdo con lo que dispongan las leyes que lo desarrollen"*
+>   (CE art.43, **368 exp., 57% fallo**). La clave es doctrina CORRECTA (la regla de
+>   justiciabilidad limitada de los derechos del Capítulo III) pero es el contenido del
+>   **art. 53.3 CE**, no del art. 43 al que la pregunta cuelga — el opositor que abre el art. 43
+>   nunca encuentra esa frase. Exactamente el mecanismo de Patricia, en un artículo distinto.
+>
+> **No se ha calibrado la proporción exacta entre los dos patrones** (146 leídas de 1.382, no
+> las 1.382) ni se ha confirmado ninguna más allá de estas — **SOSPECHO que el Patrón A es más
+> frecuente de lo que una muestra de 15-20 sugiere, pero no lo he contado**. Falta, antes de tocar
+> nada: (a) clasificar sistemáticamente cuántos de los 1.382 son Patrón A (con una exención
+> nueva, tipo `RE_ESTRUCTURA`, calibrada como las otras dos) vs Patrón B; (b) para los del Patrón
+> B, verificar cada uno contra el BOE antes de decidir reformular/desactivar — **nada de esto se
+> ha tocado, ni una clave, ni una explicación**, consistente con que un trabajador no tiene
+> escritura de negocio de todas formas.
+>
+> **Volcado completo** (los 1.382, ordenados por daño = exposición × %fallo) en
+> `scratchpad/t672/candidatos-recall-bajo25.json`, para que la siguiente sesión no repita la
+> query — es la MISMA que corre `audit:literalidad-clave`, no una copia derivada a mano.
 
 ### [T-668] 🟡 [ABIERTO 07/08] El detector de notas de auditoría no ve la confesión en PROSA: se sirvió una explicación que decía «la pregunta es imprecisa y el artículo vinculado es incorrecto»
 
@@ -1996,6 +2204,25 @@ falso: conviene leerla antes de recalibrar).
 - **Y el arreglo de fondo, que es lo que evita que se repita:** el inventario de merge tiene que mirar **también** las ramas por trabajador, o —mejor— dejar de depender del NOMBRE de la rama y preguntar por lo que de verdad importa: *«¿esta entrega revisada tiene su trabajo en `main`?»*. Hoy se responde buscando `flota/T-nnn`, y por eso una entrega hecha en una rama compartida parece mergeada cuando no lo está.
 - **⚠️ Cuidado al limpiarlo:** una rama compartida de trabajador puede ser lo ÚNICO que guarde ese trabajo (`npm run sesiones:huerfanos` existe por eso). No borrar ninguna sin comprobar qué se perdería.
 - **Relacionadas:** [T-431] (worktrees abandonados con trabajo dentro), [T-628] (el rescate empuja las ramas de los trabajadores), y el reparto revisar/mergear de la sesión del 07/08.
+
+#### TRIAJE (07/08, w4) — 5 ramas rescatadas y verificadas; el resto necesita un método distinto al que usé, dejado escrito
+
+**Método (paso 1, barato y fiable — cruzar T-ids):** por cada uno de los 149 commits varados, comprobar si su `T-nnn` aparece en ALGÚN commit de `origin/main`. Reproducible con un script de 20 líneas sobre `git log --pretty=%s`. Resultado: **132/149 (89%) con su T-id ya presente en main** (probable trabajo rehecho por otra vía) y **17/149 sin ningún rastro** (9 en w3, 2 en w4, 1 en w1, más los 5 ya identificados como duplicados de docs al reconciliar conflictos — ver más abajo).
+
+**⚠️ ESTE MÉTODO TIENE FALSOS NEGATIVOS, MEDIDO, NO SOSPECHADO:** `T-467` (w3) SÍ aparecía como "T-id ya presente en main" — pero al intentar cherry-pickearlo el código dependía de `resolverNivelDecisivo`, una función que **NO EXISTE en main** (`grep` directo, cero resultados). La función la introducía `T-333` (commit `c9f418531`, TAMBIÉN varado en w3), cuyo id SÍ aparece en main pero por una mención NO RELACIONADA (otro commit que cita "T-333" de pasada, no el código real). **Conclusión: la presencia del T-id en el log NO demuestra que el CÓDIGO esté en main — solo que el número se mencionó en algún sitio.** El bucket de 132 "ya en main" está medido con un método que se sabe incompleto; no se ha vuelto a auditar código-por-código por coste (ver barrido del paso 2 de abajo, con sus propios límites).
+
+**Lo rescatado y VERIFICADO de verdad (cherry-pick + tests corridos contra el `main` actual, no solo leído), 5 ramas pusheadas:**
+- **`flota/T-333-T-467-varado-detector-seccion-capitulo`** — T-333 (detector de frontera de scope entiende SECCIÓN/SUBSECCIÓN) + T-467 (mismo detector, nivel CAPÍTULO) apilados en ese orden por la dependencia real de arriba. `lib/laws/scopeTitleBoundary.js`, `lib/laws/parseBoeSections.js`, `scripts/scope/sim-title-boundary.ts` + script nuevo `sim-capitulo-bankwide.cjs`. **112/112 tests verdes** contra el main actual (`scopeTitleBoundary.test.ts` + `parseBoeSections.test.js`). Medido bank-wide en su día: 1013 hallazgos reales (109 en el cubo "1-2 artículos" de T-121).
+- **`flota/T-367-varado-filtro-desde-temario`** — camino desde el temario hasta el filtro por artículos + desambigua "Filtrar por Títulos" (lectura) de "Filtrar por Artículos" (test). **Responde a un compromiso ESCRITO A UN USUARIO PREMIUM** (hilo `6df1e69a`, 31/07) que llevaba una semana sin cumplirse por estar varado. **29/29 tests verdes.** No desplegado nunca — el usuario sigue sin la funcionalidad prometida.
+- **`flota/T-387-varado-mover-ficha-automatico`** — `backlog.cjs done/reopen` mueven solos la ficha entre `## Abiertas`/`## Hechas` (`lib/backlog/moverFicha.cjs` + `escrituraSegura.cjs`, con relectura-antes-de-escribir). Ataca DIRECTAMENTE el problema que este mismo triaje sufrió de primera mano (conflictos de inserción en este fichero, ver abajo). **30/30 tests verdes.** No registrado aún en `toolRegistry.ts` en main (el commit que lo hacía se saltó al cherry-pick por conflicto de cabecera; solo cosmético, pendiente).
+- **`flota/T-492-varado-pgconfig-27-scripts`** — drena los 27 scripts con la receta de conexión `pg` rota contra RDS (deuda de T-377) a `pgConfig()`. **`node --check` limpio en los 27 + guardarraíl `pgConfigUnico.guardrail.test.ts` 7/7.**
+- Los cuatro anteriores tenían **conflictos en `docs/roadmap/tareas-pendientes.md`** al cherry-pickear — todos del mismo tipo (dos commits insertando en el mismo punto de `## Hechas`). Resueltos a mano, con un hallazgo aparte: **el cherry-pick de T-492 arrastró un bloque duplicado de T-377** (la propia rama w3 tenía T-377 cerrado en su historia local, sin relación con T-492) — se detectó comparando contra `origin/main` limpio y se quitó antes de pushear. **Esto es EXACTAMENTE el modo de fallo que motivó T-427/T-428** (cherry-picks que se llevan fichas por delante) — pasó DE NUEVO aquí, en vivo, al intentar rescatar. Ninguna rama pusheada tiene duplicados (verificado: `grep -oE "^### \[T-[0-9]+\]"` sin repetidos en las 5).
+
+**Paso 2, barrido más amplio (INFORMATIVO, no verificado uno a uno) — 46 commits `fix`/`feat` restantes del bucket "ya en main", cherry-pick automático con `-X theirs` + diff contra main tras abortar/resetear:** 26 de 46 dejan cambios de CÓDIGO (no solo el `.md`) al aplicarse sobre el main actual. **⚠️ ESTA CIFRA NO ES FIABLE COMO LISTA DE GAPS REALES — es una señal RUIDOSA, no una medición.** `-X theirs` resuelve CUALQUIER conflicto a favor del commit viejo, así que un resultado con muchas **deleciones netas** (varios de la lista: `-16`, `-49`, `-18`, `-142`…) probablemente refleja que `main` avanzó ESE MISMO fichero por otra vía y mi barrido está pisando lo nuevo con lo viejo, no destapando un hueco real — es el mismo mecanismo que causó el duplicado de T-377 de arriba, a escala. **SOSPECHO que hay más trabajo real ahí dentro (el patrón T-333/T-467 lo demuestra: el único caso investigado a fondo con este perfil SÍ era un hueco real pese a que el filtro de T-ids decía "ya en main")**, pero confirmarlo exige el método caro (cherry-pick limpio, uno a uno, leyendo cada conflicto) que usé en las 5 ramas de arriba — no el atajo con `-X theirs`. Los 25 commits con diff de código real tras el barrido ruidoso (para priorizar, NO para fiarse sin verificar cada uno): `cdc323e6a`(T-319) `93349acad`(T-486) `8d505d4e8`(T-486) `8e421707e`(T-609) `944d77af6`(T-525) `a6e668b4a`(T-611) `69b41c0ac`(T-613) `3c20fdd36`(T-392) `e6abb8860`(T-615) `c1155900b`(T-614) `7d078c7f5`(T-611) `217138bc2`(T-617) `a6f09ae22`(T-617) `f5f0879f6`(T-443) `d38cdb784`(T-619) `df8e5e985`(T-518) `c2e4bc3cd`(T-623) `0d4d4faf5`(T-626) `108a0d9cd`(T-159) `3ae8159d5`(T-240) `7bce7173a`(T-303) `52f092878`(T-313) `1a5f864ef`(T-334) `4572c9399`(T-408) `ef5fe1e58`(T-410) `7df019bd8`(T-271) — todos en `origin/flota/w3` salvo `T-271` en `origin/flota/w1`. Varios T-ids repiten (`T-486`, `T-611`, `T-617`, `T-619`, `T-623`) porque son commits sucesivos del mismo trabajo — priorizar por T-id, no por commit suelto.
+
+**Lo que NO he tocado:** las ramas `flota/w1`, `flota/w3`, `flota/w4` siguen intactas (no se han borrado ni reescrito). El resto de los 6 hallazgos docs-only que identifiqué (`T-255`, `T-348`, `T-634` en w3; `T-347`, `T-153` en w4; `T-164` en w1) tienen contenido verificado y valioso —p.ej. `T-347` (w4, commit `b3e9b7bc0`) documenta con grep exhaustivo que dos funciones de `oep-signals-queries.service.ts` están muertas, pero la propia limpieza de código que el commit AFIRMA haber hecho **nunca se completó** (verificado: los ficheros siguen existiendo en main tal cual) — pero no los he convertido en ramas por el coste/riesgo de repetir la cirugía de conflictos de arriba 6 veces más dentro de este mismo turno. Quedan como candidatos con su hash de commit citado arriba, para quien retome.
+
+**Arreglo de fondo (aún NO hecho):** seguir sin tocar — es una pieza de tooling (el inventario de merge dejando de depender del nombre de rama), no una urgencia de contenido, y este turno se agotó en el rescate mismo.
 ### [T-659] 🟢 [ABIERTO 07/08] Dos migraciones RLS de la era Supabase (rol `authenticated`) llevan desde MAYO sin aplicar: decidir si aplican o se retiran
 
 **De dónde sale:** al poner a correr en CI el detector de migraciones RLS sin aplicar ([T-658]),
@@ -6356,16 +6583,6 @@ ponerse a verificar una por una.
 - **LO QUE FALTA (1 minuto):** el fichero `/etc/systemd/logind.conf.d/99-portatil-servidor.conf` con `HandleLidSwitch=ignore` (+ `ExternalPower` y `Docked`). **Sin él, cerrar la tapa suspende el portátil y se acabó el acceso remoto.** No se creó todavía: hace falta `sudo`, y surte efecto al reiniciar (o al reiniciar `systemd-logind`, que no se tocó por haber sesiones de Claude Code abiertas). Ojo: en Fedora 44 **`/etc/systemd/logind.conf` ya no existe** — la configuración va por drop-ins en `logind.conf.d/`.
 - **Pendiente opcional:** cambiar la contraseña por clave SSH en Termius (más cómodo y más seguro). Hoy va con la contraseña del usuario `manuel`.
 
-### [T-492] 🟠 [ABIERTO 02/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
-
-- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
-- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
-- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
-- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
-- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
-- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
-- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
-
 ### [T-481] 🟡 [ABIERTO 01/08] Completar los exámenes oficiales de Aux. Admin. CAM C2: llamamientos extraordinarios e informática 2023
 
 - **Esfuerzo: sesion_propia.** Importar examen oficial es el flujo largo (`docs/maintenance/importar-examen-oficial-completo.md`): PDF → cuestionario + plantilla → verificación → vinculación de artículos.
@@ -9689,6 +9906,52 @@ cada pasada del canario de navegador** mientras el arreglo no esté desplegado.
   se puede esperar el TTL de 24 h. El 07/08 seis premium recibieron el captcha (575-1.200 servidas en
   2 días; una lo vio 33 veces) — si alguno fuera falso positivo, no tenemos herramienta.
 - Si el umbral de 500/día es el correcto para premium es decisión de producto, sin tocar aquí.
+### [T-492] ✅ [HECHA 07/08] 27 scripts construyen la conexión de `pg` a mano y NO conectan a RDS (la deuda que dejó [T-377])
+
+- **Esfuerzo: larga.** No es un `sed`: cada script hay que EJECUTARLO contra RDS para saber si de verdad conecta, y algunos escriben.
+- **CÓMO SALIÓ (02/08):** montando la oposición de Sevilla ([T-489]), el scaffolder `create-oposicion.cjs` murió con `self-signed certificate in certificate chain`. Es el gotcha que [T-377] midió y cerró **en `lib/db/pgSsl.cjs`**: en node-postgres el `sslmode` de la cadena PISA la opción `ssl`, así que la receta `{ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } }` no conecta NUNCA contra RDS. Aquel arreglo curó los tests y los canarios y **dejó la receta copiada por todo `scripts/`**, donde nadie la miraba.
+- **Medido: 27 ficheros** entre `scripts/**` y `backend/scripts/**`. Hay piezas que importan: **`backend/scripts/clonar-documento.ts`** (el camino canónico para clonar documentos oficiales al hub, citado en CLAUDE.md), **`scripts/sweep-shuffle-safety-drift.ts`** (el detector real que invoca el barrido de salud), `run-migration.cjs`, dos canarios (`canary-planes-precios`, `canary-cobertura-dispositivos`) y varias simulaciones de pagos.
+- **Por qué no se veía:** el fallo es de CONEXIÓN, no de lógica, y varios de estos scripts **imprimen el error y salen con código 0** — verdes sin haber mirado la BD. Es el mismo modo de fallo que [T-377] documentó para los canarios.
+- **Ya hecho en esta sesión:** `create-oposicion.cjs` migrado a `pgConfig()` (comprobado: ahora conecta) y **guardarraíl con trinquete** `__tests__/guardrails/pgConfigUnico.guardrail.test.ts` — el número no puede subir y un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- **Cómo drenarlo:** de uno en uno, `new Client(pgConfig())`, EJECUTARLO, y **bajar `TECHO_RECETA_A_MANO`** en el guardarraíl (el propio test avisa cuando sobra margen). Empezar por `clonar-documento.ts` y `sweep-shuffle-safety-drift.ts`, que son los que sostienen procesos vivos.
+- **Relacionadas:** [T-377] (el arreglo original), [T-489] (la tarea que lo destapó).
+
+**✅ CIERRE (07/08): drenados los 27, `TECHO_RECETA_A_MANO` a 0.**
+
+Migrados los 27 ficheros (17 `.cjs` vía `require('../…/lib/db/pgSsl.cjs')`, 10 `.ts` vía
+`await import('../…/lib/db/pgSsl.cjs')` — el mismo patrón que ya usaba
+`scripts/sim/sim-perfil-roto-se-cura.ts`) a `new Client(pgConfig(process.env.DATABASE_URL))` /
+`new Pool({ ...pgConfig(...), ...opciones })`, incluidos los dos prioritarios
+(`clonar-documento.ts`, `sweep-shuffle-safety-drift.ts`).
+
+**Verificado, en capas (sin escribir a producción):**
+- Guardarraíl `pgConfigUnico.guardrail.test.ts`: **0/0** infractores (era 27), `TECHO_RECETA_A_MANO`
+  bajado a 0. Trinquete cerrado: un script nuevo con la receta a mano pone el CI en rojo el mismo día.
+- Los 17 `.cjs`: `node --check` (sintaxis) + resolución real de la ruta relativa a `pgSsl.cjs`
+  (`fs.existsSync` sobre la ruta calculada) — las 17, correctas.
+- Los 10 `.ts`: la misma resolución de ruta sobre el `await import(...)` — las 11 ocurrencias (10
+  ficheros + las 2 de `admin-token.ts`), correctas. `tsc --noEmit` de proyecto completo revienta por
+  OOM (no es de esta tarea); comprobado archivo a archivo con flags mínimas — los únicos errores que
+  salen son de líneas que esta tarea NO tocó (imports `@/lib/shuffle/...` sin resolver por faltar el
+  `tsconfig.json` del proyecto en el check aislado, y un `@ts-expect-error` preexistente en otra
+  línea), confirmado comparando número de línea contra el diff.
+- **Dos smokes de conexión REAL contra RDS** (con `VENCE_LECTOR_URL`, sin escribir nada):
+  `sweep-shuffle-safety-drift.ts --json` conectó limpio y devolvió su JSON (`{"regressions":0,…}`,
+  sin error de certificado — el bug exacto que esto arregla); `canary-cobertura-dispositivos.cjs`
+  conectó (pasó la capa TLS) y solo entonces topó con `permission denied for table user_profiles`
+  — un hueco de GRANT/RLS de mi credencial de flota restringida, **no** un fallo de esta migración
+  (misma familia que [T-573]/[T-574], fuera de este alcance).
+- Suite `__tests__/guardrails` completa: **125/127 en verde, 2 skip** (sin `DATABASE_URL`) — sin
+  regresión. Un fallo de `shuffleRoundtripBD.test.ts` visto de pasada con `DATABASE_URL` puesta al
+  rol de coordinación (4 tablas) es el mismo hueco de permisos, en un fichero que esta tarea no toca.
+
+**NO hecho, a propósito (fuera de alcance de esta ficha):** no se ha EJECUTADO la lógica de negocio
+completa de los 27 (muchos exigen argumentos concretos, otros escriben, y mi credencial de flota es
+más estrecha que la de un run real) — solo se ha verificado que la CAPA DE CONEXIÓN (el bug que
+[T-377] diagnosticó) queda arreglada en los 27, con dos pruebas end-to-end reales de que el patrón
+funciona. Ejecutar cada script con sus argumentos reales, si hace falta, es trabajo de quien lo use.
+
+
 ### [T-663] ✅ [HECHA 07/08] La resurrección de un trabajador estaba escrita, se invocaba y NO PODÍA EJECUTARSE: dos permisos que faltaban, y w1 seis horas muerto con su tarea cogida
 
 - **Lo que se veía:** `w1` llevaba **6 horas parado** con T-168 reclamada y sin proceso. El supervisor lo contaba como **ocupado**, así que tampoco le mandaba trabajo nuevo — un trabajador de cuatro, invisible. Lo mismo le había pasado a `w3`.

@@ -268,7 +268,7 @@ constara en ninguna parte**.
 -- (1) ¿el cliente se está quedando sin token? Si hay filas, la causa es del CLIENTE.
 SELECT endpoint, count(*), count(DISTINCT user_id)
 FROM observable_events
-WHERE event_type='bearer_ausente' AND created_at > now() - interval '1 hour'
+WHERE event_type='auth_header_sin_token' AND created_at > now() - interval '1 hour'
 GROUP BY 1 ORDER BY 2 DESC;
 ```
 
@@ -277,11 +277,11 @@ GROUP BY 1 ORDER BY 2 DESC;
 npm run sim:bearer-ausente
 ```
 
-- **Con `bearer_ausente` → cliente.** Alguna llamada a una ruta con guarda de propiedad
+- **Con `auth_header_sin_token` → cliente.** Alguna llamada a una ruta con guarda de propiedad
   (`requireDuenoDelRecurso` / `requireUsuarioPropio`) sale sin `Authorization`. El punto único es
   `lib/api/authHeaders.ts` y el cruce lo vigila
   `__tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts`.
-- **Sin `bearer_ausente` y con el paso (1) del sim en rojo → servidor.** Ahí el token sí viaja y lo
+- **Sin `auth_header_sin_token` y con el paso (1) del sim en rojo → servidor.** Ahí el token sí viaja y lo
   que falla es la verificación (mirar `reason`: `remote_verify_failed`, `local_*`).
 
 ⚠️ **NO leas el recuento de 401 a pelo: normalízalo.** Un porcentaje sobre una ventana que incluye

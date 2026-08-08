@@ -51,13 +51,30 @@ describe('requireDuenoDelRecurso — la identidad sale del token, nunca del clie
     if (r.ok) expect(r.callerUserId).toBeNull()
   })
 
-  test('recurso con dueño + caller anónimo → 403 (antes: pasaba si el body no traía userId)', async () => {
+  test('recurso con dueño + caller anónimo → DENIEGA (antes: pasaba si el body no traía userId)', async () => {
+    // La propiedad de seguridad que compró [T-565] —esto NO pasa— se conserva intacta y es
+    // lo primero que se comprueba aquí.
     mockVerifyAuthOptional.mockResolvedValue(null)
     const r = await requireDuenoDelRecurso(req(), ENDPOINT, DUENO)
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.response.status).toBe(403)
-    // La discrepancia deja rastro SIEMPRE, se corte o no.
+
+    // ⚠️ CAMBIO DELIBERADO ([T-671], 08/08/2026): el código pasa de 403 a **401**, y el evento
+    // de `auth_identidad_ajena_rechazada` a `auth_sin_identidad_en_recurso`. No se ha
+    // ablandado nada: sigue denegando. Lo que se corrige es la ETIQUETA.
+    //
+    // Con la de antes, «no sé quién eres» y «no eres el dueño» salían idénticas, y eso costó
+    // caro: en el incidente del 07/08 hubo **195 rechazos por «recurso ajeno» de los que los
+    // 195 llegaron sin identidad** —ni uno era de otra persona—, así que (a) la señal de
+    // seguridad quedó inservible durante el pico, (b) la investigación descartó esa pista
+    // por «no encaja» cuando era el rastro exacto del fallo, y (c) al opositor se le decía
+    // «no tienes acceso a este recurso» sobre SU PROPIO examen, sin ofrecerle volver a
+    // entrar, que era lo único que lo arreglaba.
+    if (!r.ok) expect(r.response.status).toBe(401)
     expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'auth_sin_identidad_en_recurso' })
+    )
+    // Y NO se contamina la señal de acceso ajeno, que es la que vigila el abuso de verdad.
+    expect(mockEmit).not.toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'auth_identidad_ajena_rechazada' })
     )
   })
@@ -70,6 +87,12 @@ describe('requireDuenoDelRecurso — la identidad sale del token, nunca del clie
     const r = await requireDuenoDelRecurso(req(), ENDPOINT, DUENO)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.response.status).toBe(403)
+    // Éste —y solo éste— es acceso a lo ajeno, así que es el único que puede encender esa
+    // señal. Si vuelve a dispararse con llamantes sin identidad, la vigilancia de abuso se
+    // queda otra vez ciega en cuanto haya una caída de sesión.
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'auth_identidad_ajena_rechazada' })
+    )
   })
 
   test('recurso con dueño + caller ES el dueño → pasa', async () => {

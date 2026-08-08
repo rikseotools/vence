@@ -10,7 +10,7 @@
 // Las tres preguntas, en este orden, que son las que exige el manual antes de decir «arreglado»:
 //   1. ¿el servidor acepta un token válido y rechaza su ausencia? (contrato, contra producción)
 //   2. ¿cuál es el porcentaje de 401 HOY frente a la línea base de 9 días? (efecto)
-//   3. ¿está llegando la señal `bearer_ausente`? (que es lo que dice si la causa es el cliente)
+//   3. ¿está llegando la señal `auth_header_sin_token`? (que es lo que dice si la causa es el cliente)
 //
 // Uso:  node scripts/sim/sim-bearer-ausente.cjs          (solo mide, no escribe nada)
 //       AUTH_SECRET=... node scripts/sim/sim-bearer-ausente.cjs --con-token  (añade el paso 1)
@@ -67,12 +67,12 @@ async function paso2Efecto(c) {
 }
 
 async function paso3SenalDeCausa(c) {
-  console.log('\n③ SEÑAL DE CAUSA (`bearer_ausente`: ¿el cliente se queda sin token?)');
+  console.log('\n③ SEÑAL DE CAUSA (`auth_header_sin_token`: ¿el cliente se queda sin token?)');
   const { rows: [s] } = await c.query(`
     SELECT count(*)::int n, count(DISTINCT user_id)::int usuarios,
            to_char(max(created_at),'DD HH24:MI') ultimo
       FROM observable_events
-     WHERE event_type='bearer_ausente' AND created_at > now() - interval '24 hours'`);
+     WHERE event_type='auth_header_sin_token' AND created_at > now() - interval '24 hours'`);
   if (s.n === 0) {
     console.log('   ℹ️  0 en 24 h. Puede ser que el arreglo funcione… o que aún no esté desplegado.');
     console.log('      No cuenta como verde por sí solo: mirar el paso ② y el sha vivo.');

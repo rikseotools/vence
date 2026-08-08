@@ -18,7 +18,7 @@
 import { auth } from '@/lib/auth'
 import { getFingerprintHeader } from '@/lib/security/fingerprint'
 import { obtenerBearerConReintento } from '@/lib/api/bearerConReintento'
-import { emitClientEvent } from '@/lib/observability/client'
+import { emitClientEvent, hayUsuarioConocido } from '@/lib/observability/client'
 
 const DEVICE_ID_KEY = 'vence_device_id'
 
@@ -27,7 +27,7 @@ export interface OpcionesCabeceras {
   /**
    * El llamante va a una ruta que EXIGE identidad (guarda de propiedad, [T-565]). Si aun así
    * no hay token, salir sin cabecera es un 401 garantizado y una pantalla en blanco: se emite
-   * `bearer_ausente` para que quede visible.
+   * `auth_header_sin_token` para que quede visible.
    *
    * No se activa por defecto a propósito: `getAuthHeaders()` lo usan también rutas públicas,
    * donde no tener token es lo NORMAL y emitir ahí ahogaría la señal (misma lección que
@@ -36,17 +36,6 @@ export interface OpcionesCabeceras {
   exigeSesion?: boolean
   /** Ruta destino, solo para poder agrupar la señal por endpoint. */
   endpoint?: string
-}
-
-/** El camino de siempre: un intento y lo que salga. Se conserva tal cual para las rutas que no
- *  exigen sesión — cambiarles el comportamiento sería un efecto lateral sin medición detrás. */
-async function unSoloIntento(): Promise<string | null> {
-  try {
-    const t = await auth.getAccessToken()
-    return typeof t === 'string' && t.trim() ? t : null
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -63,29 +52,49 @@ export async function getAuthHeaders(
 ): Promise<Record<string, string>> {
   const headers: Record<string, string> = {}
 
-  // El reintento se aplica SOLO donde el token es obligatorio. En una página pública no tenerlo
-  // es lo normal, y reintentar ahí añadiría 200 ms a cada llamada anónima para no arreglar nada:
-  // el comportamiento del resto de la app queda EXACTAMENTE como estaba, que es lo que permite
-  // atribuir cualquier cambio en la medición a este arreglo y no a un efecto lateral.
-  const r = opciones.exigeSesion
-    ? await obtenerBearerConReintento({ pedirToken: () => auth.getAccessToken() })
-    : { token: await unSoloIntento(), intentos: 1, loSalvoElReintento: false }
-  if (r.token) {
-    headers['Authorization'] = `Bearer ${r.token}`
+  let motivoSinToken: 'sin_token' | 'excepcion' | null = null
+  try {
+    // [T-692] Donde el token es OBLIGATORIO (ruta con guarda de propiedad) se pide una segunda
+    // vez antes de rendirse: salir sin cabecera ahí es un 401 garantizado y una pantalla vacía
+    // que nadie reintenta (medido: 0 de 29 recuperaciones en `/api/v2/user-stats`).
+    //
+    // En el resto se conserva EXACTAMENTE el camino de antes —un intento— porque en una página
+    // pública no tener token es lo normal: reintentar ahí metería 200 ms a cada llamada anónima
+    // sin arreglar nada, y ese efecto lateral haría inatribuible la mejora que se va a medir.
+    const accessToken = opciones.exigeSesion
+      ? (await obtenerBearerConReintento({ pedirToken: () => auth.getAccessToken() })).token
+      : await auth.getAccessToken()
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
+    } else {
+      motivoSinToken = 'sin_token'
+    }
+  } catch {
+    motivoSinToken = 'excepcion'
   }
 
-  // Se emite SOLO cuando el destino exige sesión: es ahí donde «sin token» significa que la
-  // persona se queda sin ver sus datos. Fire-and-forget y nunca puede tumbar la petición.
-  if (!r.token && opciones.exigeSesion && typeof window !== 'undefined') {
-    try {
-      emitClientEvent({
-        severity: 'warn',
-        eventType: 'bearer_ausente',
-        endpoint: opciones.endpoint,
-        errorMessage: 'petición a ruta con dueño sin Authorization tras dos intentos',
-        metadata: { reintentado: true },
-      })
-    } catch {}
+  // [T-671] EL SILENCIO ERA EL BUG. Estas dos ramas se tragaban el fallo y devolvían las
+  // cabeceras SIN Bearer; el servidor contestaba 401 y en el cliente no quedaba ni una línea
+  // que dijera por qué. El 07/08/2026 eso dejó a 248 usuarios con las estadísticas a 0 y sin
+  // poder corregir sus exámenes, y reconstruir la causa costó dos sesiones cruzando el
+  // `deploy_version` de los 401 con el commit que los arreglaba a medias.
+  //
+  // Sigue devolviendo cabeceras sin Bearer a propósito: hay llamadas legítimas de usuario
+  // anónimo, y romper aquí les rompería a ellos. Lo que cambia es que ahora se VE. Se filtra
+  // por `estaAutenticado()` para no medir a los anónimos, que son el caso normal y ahogarían
+  // la señal.
+  //
+  // [T-692] Aquí NO se añadió un segundo evento propio: `auth_header_sin_token` ya dice este
+  // hecho y su filtro (`hayUsuarioConocido`) es más ancho que cualquier declaración por
+  // call-site, porque cubre también a los que no declaran nada. Dos emisores de lo mismo no
+  // miden el doble: divergen. Lo único que se le suma es el `endpoint`, para poder agrupar.
+  if (motivoSinToken && typeof window !== 'undefined' && hayUsuarioConocido()) {
+    emitClientEvent({
+      severity: 'error',
+      eventType: 'auth_header_sin_token',
+      endpoint: opciones.endpoint,
+      metadata: { motivo: motivoSinToken, exigeSesion: Boolean(opciones.exigeSesion) },
+    })
   }
 
   if (typeof window !== 'undefined') {

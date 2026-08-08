@@ -12,12 +12,20 @@ export const faults = {
   networkDown: (urlPattern: string): SimFault => ({ kind: 'network_down', urlPattern }),
   http500: (urlPattern: string, times = 1): SimFault => ({ kind: 'http_500', urlPattern, times }),
   latency: (urlPattern: string, ms: number): SimFault => ({ kind: 'latency', urlPattern, ms }),
+  /** Un status/cuerpo concretos. Para reproducir rechazos con semántica (403 de identidad). */
+  httpStatus: (urlPattern: string, status: number, body?: unknown, times = 99): SimFault => ({
+    kind: 'http_status',
+    urlPattern,
+    status,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    times,
+  }),
 }
 
 /** Interfaz mínima de una route (subconjunto de Playwright Route) para poder testear. */
 export interface AbstractRoute {
   abort(errorCode?: string): Promise<void> | void
-  fulfill(opts: { status: number; body?: string }): Promise<void> | void
+  fulfill(opts: { status: number; body?: string; contentType?: string }): Promise<void> | void
   continue(): Promise<void> | void
 }
 
@@ -44,6 +52,15 @@ export function faultHandler(
         await route.continue(); return 'passed'
       case 'latency':
         await sleep(fault.ms); await route.continue(); return 'delayed'
+      case 'http_status':
+        if (hits <= fault.times) {
+          // `contentType` importa: el cliente lee el cuerpo con `.json()` para sacar el
+          // `reason`, y sin la cabecera lo descarta — el journey mediría entonces el caso
+          // «403 sin reason», que es otro camino del código.
+          await route.fulfill({ status: fault.status, body: fault.body, contentType: fault.body ? 'application/json' : undefined })
+          return 'fulfilled'
+        }
+        await route.continue(); return 'passed'
     }
   }
 }

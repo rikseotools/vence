@@ -791,7 +791,7 @@ Equipo de Vence
   · ❌ *«Tienes razón: las estadísticas no se te mostraban»* · ❌ *«…y no era cosa tuya»*
   · ✅ *«Las estadísticas no te aparecían, y ya debería estar resuelto»*
   Sale del borrador para Laura Simar (feedback `8bd13f67`, incidente [T-671]).
-- **🚧 Y ESTO YA NO DEPENDE DE QUE TE ACUERDES ([T-678]).** El criterio vive en
+- **🚧 Y ESTO YA NO DEPENDE DE QUE TE ACUERDES ([T-695]).** El criterio vive en
   `lib/feedback/validarMensaje.cjs` y lo canta el dossier (`revisar-feedback.cjs`) antes de que
   escribas. Pásale el borrador antes de enviarlo:
   ```bash

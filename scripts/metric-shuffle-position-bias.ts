@@ -14,10 +14,8 @@ const DAYS = Number((process.argv.find((a) => a.startsWith('--days=')) || '').sp
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`
 
 async function main() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL!.replace(/[?&]sslmode=require/, ''),
-    ssl: { rejectUnauthorized: false },
-  })
+  const { pgConfig } = await import('../lib/db/pgSsl.cjs')
+  const pool = new Pool(pgConfig(process.env.DATABASE_URL))
   pool.on('error', () => {})
   const q = (t: string, p?: unknown[]) => pool.query(t, p)
   const since = `now() - interval '${DAYS} days'`

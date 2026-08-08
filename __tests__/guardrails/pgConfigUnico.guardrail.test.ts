@@ -26,7 +26,7 @@ const RAIZ = join(__dirname, '..', '..')
 const DIRS = ['scripts', join('backend', 'scripts')]
 
 /** Techo actual de deuda. SOLO puede BAJAR (cada bajada = un script migrado y comprobado). */
-const TECHO_RECETA_A_MANO = 27
+const TECHO_RECETA_A_MANO = 0
 
 function ficheros(dir: string): string[] {
   const out: string[] = []

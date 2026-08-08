@@ -23,6 +23,7 @@
 // Solo lectura.
 require('dotenv').config({path:'.env.local'});
 const {Client}=require('pg');
+const {pgConfig}=require('../../lib/db/pgSsl.cjs');
 // SIMULACIÓN: aplicar la nueva regla a los console_error YA registrados.
 // No se puede saber retroactivamente si la página se estaba yendo (el dato no se guardaba),
 // así que se mide la COTA: cuántos son candidatos (mensaje de red) y cuántos son errores de
@@ -31,7 +32,7 @@ const RE_RUIDO_SIEMPRE=/\[GSI_LOGGER\]|FedCM|\b401\b|HTTP 401/i;
 const RE_RED=/failed to fetch|networkerror|load failed|aborterror|operation was aborted|err_network|err_internet_disconnected/i;
 const i=process.argv.indexOf('--dias');
 const DIAS=i>0&&process.argv[i+1]?parseInt(process.argv[i+1],10):3;
-(async()=>{const c=new Client({connectionString:process.env.DATABASE_URL.split('?')[0],ssl:{rejectUnauthorized:false}});await c.connect();
+(async()=>{const c=new Client(pgConfig(process.env.DATABASE_URL));await c.connect();
 const r=await c.query(`SELECT coalesce(error_message,'') m, severity, count(*)::int n
  FROM observable_events WHERE event_type='console_error' AND created_at >= NOW()-INTERVAL '${DIAS} days'
  GROUP BY 1,2`);

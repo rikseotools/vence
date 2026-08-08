@@ -5100,7 +5100,7 @@ export const RULE_SESIONES_CON_401_EN_MASA: AlertRule<{
     const r = rows[0];
     return {
       title: `Sesiones válidas recibiendo 401 — ${r?.usuarios ?? 0} usuarios, ${r?.por100 ?? 0} por cada 100 respuestas`,
-      body: `Usuarios CON sesión están recibiendo 401 en masa: ${r?.err ?? 0} rechazos a ${r?.usuarios ?? 0} personas en 15 min, con solo ${r?.respuestas ?? 0} respuestas guardadas en la plataforma. Endpoint más afectado: ${r?.topEndpoint ?? '(varios)'}.\n\nEsto NO es el 401 anónimo de contrato: son sesiones identificadas a las que el servidor rechaza. Lo normal es 0-4 por cada 100 respuestas; el incidente del 07/08 estuvo entre 122 y 1.167 durante seis horas y dejó a la mitad de los afectados sin poder estudiar.\n\nCAUSA MÁS PROBABLE (es la que ya pasó): una ruta con guarda de propiedad (\`requireDuenoDelRecurso\` / \`requireUsuarioPropio\`) cuyo cliente llama SIN mandar el token. El guardarraíl que lo cruza es __tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts.\n\nEMPIEZA POR AQUÍ ([T-692]): el 401 lo ve el SERVIDOR, pero quien sabe si salió sin cabecera es el CLIENTE. Desde el 08/08 lo dice \`bearer_ausente\`, que se emite cuando la petición a una ruta con dueño se queda sin token tras dos intentos. Si hay \`bearer_ausente\`, el fallo es del cliente (no manda el token) y no del servidor:\n  SELECT endpoint, COUNT(*), COUNT(DISTINCT user_id)\n  FROM observable_events\n  WHERE event_type='bearer_ausente' AND ts > NOW() - INTERVAL '1 hour'\n  GROUP BY 1 ORDER BY 2 DESC;\n\nQuién falla:\n  SELECT endpoint, COUNT(*), COUNT(DISTINCT user_id)\n  FROM observable_events\n  WHERE http_status=401 AND user_id IS NOT NULL AND ts > NOW() - INTERVAL '1 hour'\n  GROUP BY 1 ORDER BY 2 DESC;`,
+      body: `Usuarios CON sesión están recibiendo 401 en masa: ${r?.err ?? 0} rechazos a ${r?.usuarios ?? 0} personas en 15 min, con solo ${r?.respuestas ?? 0} respuestas guardadas en la plataforma. Endpoint más afectado: ${r?.topEndpoint ?? '(varios)'}.\n\nEsto NO es el 401 anónimo de contrato: son sesiones identificadas a las que el servidor rechaza. Lo normal es 0-4 por cada 100 respuestas; el incidente del 07/08 estuvo entre 122 y 1.167 durante seis horas y dejó a la mitad de los afectados sin poder estudiar.\n\nCAUSA MÁS PROBABLE (es la que ya pasó): una ruta con guarda de propiedad (\`requireDuenoDelRecurso\` / \`requireUsuarioPropio\`) cuyo cliente llama SIN mandar el token. El guardarraíl que lo cruza es __tests__/guardrails/identidadEnRutasConDueno.guardrail.test.ts.\n\nEMPIEZA POR AQUÍ ([T-692]): el 401 lo ve el SERVIDOR, pero quien sabe si salió sin cabecera es el CLIENTE. Desde el 08/08 lo dice \`auth_header_sin_token\`, que se emite cuando la petición a una ruta con dueño se queda sin token tras dos intentos. Si hay \`auth_header_sin_token\`, el fallo es del cliente (no manda el token) y no del servidor:\n  SELECT endpoint, COUNT(*), COUNT(DISTINCT user_id)\n  FROM observable_events\n  WHERE event_type='auth_header_sin_token' AND ts > NOW() - INTERVAL '1 hour'\n  GROUP BY 1 ORDER BY 2 DESC;\n\nQuién falla:\n  SELECT endpoint, COUNT(*), COUNT(DISTINCT user_id)\n  FROM observable_events\n  WHERE http_status=401 AND user_id IS NOT NULL AND ts > NOW() - INTERVAL '1 hour'\n  GROUP BY 1 ORDER BY 2 DESC;`,
       metadata: {
         err: r?.err ?? 0,
         usuarios: r?.usuarios ?? 0,
@@ -7143,6 +7143,116 @@ export const RULE_QUESTION_OUT_OF_TOPIC_SCOPE_SERVED: AlertRule<{
   cooldownMin: 120,
 };
 
+
+/**
+ * [T-671] Un examen entero que NO se pudo corregir.
+ *
+ * Nace del incidente del 07/08/2026, en el que un premium de tres días hizo **ocho exámenes de
+ * 25 preguntas** sin poder corregir ninguno y **lo supimos porque escribió**. Ninguna alerta
+ * podía verlo: el único rastro era un `client_error` genérico con el texto «HTTP 403», que en el
+ * panel es indistinguible de la mala cobertura de un móvil.
+ *
+ * Se agrupa por CAUSA a propósito, porque decide a dónde ir a mirar y son sitios distintos:
+ *   · `sesion`  → el token no llega al servidor: `/api/auth/token`, `getAuthHeaders`, el backoff.
+ *   · `red`     → del usuario. Solo alarma si sube MUCHO (podría ser una caída de CDN).
+ *   · `servidor`→ nuestro 5xx: mirar el endpoint de validación.
+ *
+ * Umbral bajo a propósito: esto no es una respuesta suelta, es el final de un examen. Cinco en
+ * media hora sobre dos personas distintas ya es un patrón, y el coste de mirarlo es diez minutos.
+ */
+export const RULE_EXAMEN_CORRECCION_FALLIDA: AlertRule<{
+  causa: string | null;
+  n: number;
+  usuarios: number;
+}> = {
+  name: 'examen_correccion_fallida',
+  severity: 'critical',
+  // Corto: mientras esto siga pasando hay gente terminando exámenes sin nota, y enterarse
+  // treinta minutos tarde ya son varios más.
+  cooldownMin: 15,
+  query: sql`
+    SELECT COALESCE(metadata->>'causa', '(sin causa)') AS causa,
+           COUNT(*)::int                                AS n,
+           COUNT(DISTINCT user_id)::int                 AS usuarios
+      FROM observable_events
+     WHERE event_type = 'examen_correccion_fallida'
+       AND ts > NOW() - INTERVAL '30 minutes'
+     GROUP BY 1
+    HAVING COUNT(*) >= 5 AND COUNT(DISTINCT user_id) >= 2
+     ORDER BY COUNT(*) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const total = rows.reduce((acc, r) => acc + r.n, 0);
+    const usuarios = Math.max(...rows.map((r) => r.usuarios));
+    const sesion = rows.find((r) => r.causa === 'sesion');
+    const lineas = rows.map((r) => `  - ${r.causa}: ${r.n} examen(es), ${r.usuarios} usuario(s)`);
+    return {
+      title: `${total} examen(es) sin poder corregirse (${usuarios} usuarios)`,
+      body:
+        `Han terminado un examen y no han podido ver su nota. Es el peor momento posible para ` +
+        `fallar: la persona ya ha echado la hora.\n\n${lineas.join('\n')}\n\n` +
+        (sesion
+          ? `⚠️ La causa dominante es SESIÓN: el cliente está llamando sin token válido. Mirar\n` +
+            `   el ratio de 401 de /api/exam/pending y /api/v2/user-stats por deploy_version, y\n` +
+            `   los eventos «auth_header_sin_token» y «auth_sin_identidad_en_recurso».\n\n`
+          : ``) +
+        `QUÉ MIRAR:\n` +
+        `  1. «auth_header_sin_token» — peticiones que salieron sin Authorization teniendo sesión.\n` +
+        `  2. «auth_sin_identidad_en_recurso» — el servidor rechazó por no saber quién llamaba.\n` +
+        `  3. Los exámenes quedan con is_completed=false y sus respuestas SÍ guardadas:\n` +
+        `     «npm run exam:reparar-correcciones» los repara (simula por defecto).\n` +
+        `  4. Runbook: docs/runbooks/health-check.md\n`,
+    };
+  },
+};
+
+/**
+ * [T-671] El cliente llamó a un endpoint que exige sesión SIN adjuntar el token, teniendo
+ * usuario dentro. Es la causa un escalón por encima de la anterior, y hasta ahora era invisible:
+ * `getAuthHeaders()` se tragaba el fallo (`catch {}`) y devolvía las cabeceras sin Bearer.
+ *
+ * Vigila un SUELO, no un pico: siempre habrá algún caso (la pestaña que despierta con el token
+ * caducado justo en ese milisegundo). Lo que no puede pasar es que sea sistemático.
+ */
+export const RULE_AUTH_HEADER_SIN_TOKEN: AlertRule<{
+  motivo: string | null;
+  n: number;
+  usuarios: number;
+}> = {
+  name: 'auth_header_sin_token',
+  severity: 'error',
+  // Es la CAUSA, no el síntoma: interesa saber que empezó, no que sigue. Con una hora de
+  // ventana de medida, repetir cada hora es suficiente.
+  cooldownMin: 60,
+  query: sql`
+    SELECT COALESCE(metadata->>'motivo', '(sin motivo)') AS motivo,
+           COUNT(*)::int                                  AS n,
+           COUNT(DISTINCT user_id)::int                   AS usuarios
+      FROM observable_events
+     WHERE event_type = 'auth_header_sin_token'
+       AND ts > NOW() - INTERVAL '1 hour'
+     GROUP BY 1
+    HAVING COUNT(DISTINCT user_id) >= 10
+     ORDER BY COUNT(*) DESC
+  `,
+  shouldFire: (rows) => rows.length > 0,
+  buildNotification: (rows) => {
+    const usuarios = Math.max(...rows.map((r) => r.usuarios));
+    const total = rows.reduce((acc, r) => acc + r.n, 0);
+    return {
+      title: `${usuarios} usuarios llamando SIN token teniendo sesión abierta`,
+      body:
+        `${total} petición(es) en 1 h salieron sin «Authorization» con el usuario dentro. Cada ` +
+        `una vuelve con 401: estadísticas a 0, exámenes pendientes que desaparecen y ` +
+        `correcciones rechazadas.\n\n` +
+        rows.map((r) => `  - motivo «${r.motivo}»: ${r.n} en ${r.usuarios} usuario(s)`).join('\n') +
+        `\n\nQUÉ MIRAR: /api/auth/token (¿401?), el backoff de acuñado ` +
+        `(lib/auth/backoffAcunado.ts) y si algún llamante nuevo se dejó «getAuthHeaders()».\n`,
+    };
+  },
+};
+
 export const ALERT_RULES: AlertRule[] = [
   // Sonda continua de scope (T-607): el EXISTS de SQL ya filtra, esto es la segunda comprobación
   // en memoria del MISMO criterio — si discrepan, es una regresión real, no ruido.
@@ -7237,6 +7347,11 @@ export const ALERT_RULES: AlertRule[] = [
   RULE_FILTERED_VALIDATION_REJECTED_SPIKE as AlertRule,
   // Errores de cliente in-house (2026-07-05, tras retirar Sentry)
   RULE_CLIENT_ERROR_SPIKE as AlertRule,
+  // [T-671] Los dos eslabones del incidente del 07/08: el examen que no se pudo corregir
+  // (lo que sufre el usuario) y la petición que sale sin token (la causa). Van juntos a
+  // propósito: por separado, el primero parece mala cobertura y el segundo parece ruido.
+  RULE_EXAMEN_CORRECCION_FALLIDA as AlertRule,
+  RULE_AUTH_HEADER_SIN_TOKEN as AlertRule,
   RULE_CLIENT_HTTP_4XX_SPIKE as AlertRule,
   // Su hermano SILENCIOSO (2026-07-30, caso Rocío): un 405 significa que nuestro front
   // llama a nuestro endpoint con un método que no existe, y basta UNO para dejar la

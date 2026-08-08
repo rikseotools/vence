@@ -153,9 +153,9 @@ async function classify(q: Q): Promise<{
 async function main() {
   // Pool (no Client): un job de horas contra RDS pierde conexiones ociosas; el Pool
   // reconecta por query. Manejador de 'error' para que un blip NO crashee el proceso.
+  const { pgConfig } = await import('../lib/db/pgSsl.cjs')
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL!.replace(/[?&]sslmode=require/, ''),
-    ssl: { rejectUnauthorized: false },
+    ...pgConfig(process.env.DATABASE_URL),
     max: Math.min(CONCURRENCY + 2, 12),
     idleTimeoutMillis: 30000,
   })

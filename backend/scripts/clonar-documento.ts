@@ -144,7 +144,8 @@ async function main() {
     console.error('faltan --slug y --url. Ver la cabecera del fichero.')
     process.exit(1)
   }
-  const c = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  const { pgConfig } = await import('../../lib/db/pgSsl.cjs')
+  const c = new Client(pgConfig(process.env.DATABASE_URL))
   await c.connect()
 
   // El documento cuelga del CICLO, no de la oposición: un documento pertenece a una convocatoria.

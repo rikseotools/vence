@@ -106,12 +106,6 @@ export type ClientEventType =
   // quedan sin poder guardar preferencias, backups de test o la cola de respuestas— sin que cuente
   // como error de cliente. Colgarlo de 'custom' lo habría enterrado entre todo lo demás.
   | 'storage_unavailable'
-  // La petición a una ruta con guarda de propiedad ([T-565]) salió SIN `Authorization` pese a
-  // haberlo pedido dos veces. Tipo PROPIO por lo mismo que los de arriba: el servidor no puede
-  // distinguirlo de una sesión con credenciales malas (el navegador adjunta la cookie por su
-  // cuenta), así que desde el otro lado se contabiliza como rechazo legítimo y el defecto es
-  // INVISIBLE — 7.000 rechazos en 24 h sin que constara el motivo en ningún sitio ([T-692]).
-  | 'bearer_ausente'
   // Al cerrar un test, la cola de respuestas no drenó dentro de la espera, así que el servidor
   // tuvo que rellenar. Tipo PROPIO por lo mismo que los dos de arriba: interesa CONSERVAR
   // visibilidad —cuánta gente termina un test con el guardado a medias— sin contarlo como error
@@ -215,6 +209,22 @@ export type ClientEventType =
   // Solo se emite cuando la página se abre CON ancla: una visita normal al tema no es una
   // vuelta, y contarla ahogaría la señal. Se compara contra los ~8.385 clics/30d de salida.
   | 'temario_vuelta_articulo'
+  // [T-671] La corrección de un examen NO salió, y con la CAUSA clasificada
+  // (`metadata.causa`: sesion | red | servidor | ajeno | desconocida). Tipo PROPIO, por lo
+  // mismo que `test_cierre_sin_drenar`: es el final de un examen entero y no puede quedar
+  // enterrado bajo `client_error`. Nace de que `rbsc87` (premium de tres días) hiciera OCHO
+  // exámenes sin poder corregir ninguno mientras la única huella era un `client_error`
+  // genérico que decía «HTTP 403» — indistinguible de un fallo de red, que es justo lo que
+  // el aviso le echaba en cara. Si `causa='sesion'` sube, el token no está llegando; si sube
+  // `red`, es del usuario. Sin separarlas no se puede decidir dónde mirar.
+  | 'examen_correccion_fallida'
+  // [T-671] Una petición que EXIGE sesión salió sin el `Authorization`. Lo emite
+  // `getAuthHeaders()`, que hasta ahora se lo tragaba en silencio (`catch {}` + `if (token)`)
+  // y devolvía las cabeceras sin Bearer: el servidor contestaba 401 y en el cliente no
+  // quedaba ni una línea que dijera POR QUÉ. Ese silencio es lo que hizo falta reconstruir a
+  // mano durante el incidente del 07/08 (248 usuarios con las estadísticas a 0 y los exámenes
+  // sin corregir). `metadata`: { endpoint, motivo }.
+  | 'auth_header_sin_token'
   // TTS — taxonomía completa documentada en docs/runbooks/observability.md §TTS
   | 'tts_session_start'
   | 'tts_session_end'
@@ -675,6 +685,20 @@ function recoverFromChunkError(errName: string | undefined, msg: string): boolea
 
 export function setObservabilityUserId(userId: string | null): void {
   currentUserId = userId
+}
+
+/**
+ * ¿La aplicación cree que hay alguien dentro? Lee el MISMO `currentUserId` que ya sella cada
+ * evento, puesto por `ClientObservabilityInstaller` desde el `AuthContext`.
+ *
+ * Existe para [T-671]: `getAuthHeaders()` necesita distinguir «un anónimo llama sin token»
+ * (normal, no se mide) de «alguien con la sesión abierta llama sin token» (el fallo). Se
+ * reutiliza este dato en vez de preguntarle otra vez al puerto de auth —que costaría una
+ * llamada de red en el camino de cada petición— y en vez de montar un segundo registro de
+ * «¿hay sesión?», que es como nacen las dos verdades que luego divergen.
+ */
+export function hayUsuarioConocido(): boolean {
+  return typeof currentUserId === 'string' && currentUserId.length > 0
 }
 
 /**
