@@ -5668,6 +5668,35 @@ esas preguntas no le habrían salido nunca.
 - **Y el «leído» tiene que persistir en BD**, no en el navegador. Si no, el badge nuevo heredará el mismo defecto: bajará en un dispositivo y volverá a subir en el siguiente.
 - **💶 AL DESPLEGAR: recompensar la sugerencia (orden de Manuel, 31/07).** La aportación de Laura (`opoauxilaradminitrativo21junio@gmail.com`, premium) es la que destapa esto, así que **cuando el arreglo esté VIVO** hay que concederle la recompensa por sugerencia **a mano** — el feedback no paga solo, a diferencia de una impugnación aceptada. **No se le menciona en el mensaje** (el badge 🎁 ya se lo comunica), y se le respondió sin prometer nada de dinero. Que sea al desplegar y no ahora es deliberado: se premia la mejora que llega al usuario, no la ficha escrita.
 - **Cuidado al medir el arreglo:** que el número baje no basta. La prueba es la de ella — abrir la campana, despachar lo que hay dentro y **que el contador llegue a cero**; y que las respuestas de soporte se vean en Soporte, con su cuenta propia.
+- **🚨 FALSO VERDE encontrado al intentar verificar en producción (08/08, w3): el `falta` decía "✅
+  DESPLEGADO 3e46c6f5" y es FALSO — el commit nunca llegó a `main`.** `git merge-base --is-ancestor
+  4572299f5 origin/main` da **NO** (tras `git fetch origin main` fresco, no con una ref cacheada).
+  El commit vive solo en `origin/flota/T-378-badge-soporte`, pusheado y sin mergear. Confirmado por
+  triple vía, no solo por el hash:
+  1. `git ls-tree -r origin/main --name-only | grep -i "unread-badge\|badgeSoporte"` → **vacío**: ni
+     `lib/support/badgeSoporte.ts` ni `app/api/support/unread-badge/route.ts` existen en `main`.
+  2. **Telemetría independiente que confirma lo mismo sin mirar git:** `SELECT count(*) FROM
+     observable_events WHERE endpoint = '/api/support/unread-badge'` (VENCE_LECTOR_URL, ventana de
+     **7 días**) → **0 filas**. Con 52.023 `request_completed` solo en las últimas 24h del sitio
+     entero, un endpoint nuevo en el Header (visible en las dos instancias de `SupportButton`,
+     escritorio y móvil) con cero peticiones en una semana no es "poco tráfico", es que **no existe
+     en el bundle servido** — coincide exacto con el hallazgo de git.
+  3. El `deploy_version` `3e46c6f5` (commit `3e46c6f57`, merge de **[T-690]**) sí es un ancestro real
+     de `main` — pero de T-690, no de T-378. Ambas fichas (T-271 y T-378) citaban el MISMO hash como
+     "desplegado"; en T-271 lo verifiqué y era cierto (`7df019bd8` sí es ancestro), aquí no lo es.
+     **SOSPECHO** (sin confirmarlo más allá) que quien escribió el `falta` de T-378 copió la nota de
+     T-271 sin comprobar el merge de esta rama en particular — incluso el número de commit citado
+     (4572299f5) es correcto, así que no es un id equivocado, es un merge que nunca ocurrió.
+  - **No es un problema del código:** los tests (1579 verdes) y el guardarraíl C2 (18/18) citados en
+    el `hecho` siguen siendo válidos como verificación PRE-merge — no se han vuelto a correr aquí
+    porque el código no ha cambiado, solo su estado de integración.
+  - **Qué falta de verdad, y no lo puede hacer un trabajador (nunca push a `main`, nunca deploy):**
+    que una persona decida **mergear `flota/T-378-badge-soporte` (commit `4572299f5`) a `main`** — o
+    diga por qué no, si hay un motivo que esta sesión no ve — y solo TRAS eso, desplegar y repetir
+    la verificación de los 3 puntos que la ficha original pedía (badge sube/baja al leer, campana ya
+    no suma soporte, revisión visual móvil/escritorio) más la comprobación de telemetría de arriba
+    (que `/api/support/unread-badge` empiece a recibir tráfico real). La recompensa a Laura sigue
+    pendiente de ese mismo "vivo".
 
 ### [T-374] 🟠 [ABIERTO 31/07] 7.202 preguntas de enfermería colgadas de artículos VACÍOS: el trinquete volvió de 0 a 7.202
 - **Qué pasa:** hay **7.202 preguntas activas** cuyo artículo de referencia está **vacío** (contenedor virtual con `content` de menos de 120 caracteres). El opositor puede responderlas, pero si pincha para leer la fuente **no hay nada detrás**. Es el problema sistémico del «temario placeholder» que se descubrió el 10/06/2026 y que se había conseguido **bajar a 0**.
