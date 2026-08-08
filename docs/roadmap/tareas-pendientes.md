@@ -19436,6 +19436,16 @@ Cada una se desbloquea importando de fuente oficial (verbatim, verificar contra 
   jubilar, y lo que queda es exactamente la población que ya vive en [T-356] (contenido, no limpieza). No
   he tocado la BD (no hacía falta: no hay nada accionable). Se cierra esta ficha; el trabajo que sigue vivo
   es [T-356].
+- **⚠️ CIFRA CORREGIDA (08/08, revisión de T-356 destapó el mismo problema aquí — mismo origen: la
+  query "reproducida a mano" de arriba tenía el mismo hueco que la de T-356).** Corriendo la herramienta
+  REAL (no una transcripción) con `DATABASE_URL="$VENCE_LECTOR_URL" node scripts/calidad/duplicados-exactos.cjs`:
+  **217 grupos, 202 artículos protegidos** (no 215/216 — la diferencia con lo de arriba no es solo drift,
+  es la misma clase de error de reproducción que T-356 tenía, aunque más pequeña aquí). **La conclusión NO
+  cambia y sigue siendo la que importa: `a jubilar: 0` — TODO lo que hoy parece sobrante está protegido por
+  la guarda del mínimo de 4, 0 accionables.** El cierre de esta ficha sigue siendo correcto; lo que estaba
+  mal era la cifra exacta citada como prueba, no la decisión de cerrarla. Detalle del arreglo y del gotcha
+  de reproducción (extraer un template literal por regex da el texto crudo, no el valor evaluado) en
+  `data/pilotos/t356-articulos-pobres-06ago/README.md` y `regenerar-lista.cjs`.
 
 ### [T-322] 🟡 [ABIERTO 30/07] Oposiciones que nos piden los usuarios y no tenemos montadas
 
