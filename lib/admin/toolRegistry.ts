@@ -3085,6 +3085,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       'daba por NO servida una `app/**/page.js` porque nadie la importa (la sirve Next por su ' +
       'ruta) → `servidoPorConvencion` en `scripts/backlog/verificacion.cjs`.',
   },
+  specs_ejecutados: {
+    titulo: 'Un spec de Playwright que ningún proyecto de CI ejecuta NO cuenta como capa',
+    ruta: 'lib/calidad/specsEjecutados.cjs',
+    estado: 'vivo',
+    escribe: [],
+    runbook: 'docs/runbooks/e2e-playwright.md',
+    notas:
+      'Núcleo puro + guardarraíl `__tests__/guardrails/specsEjecutados.guardrail.test.ts` ' +
+      '(trinquete: los 6 huérfanos medidos el 08/08/2026 quedan declarados y la lista solo ' +
+      'ENCOGE; ninguno nuevo puede entrar). Nace de [T-713]: 6 de 8 specs no se ejecutaban ' +
+      'NUNCA porque ningún workflow invoca el proyecto `authenticated`, y `preview-aws` solo se ' +
+      'dispara en pull_request — un evento que no ocurre en este repo. El daño no es perder esos ' +
+      '6, es que quien escribe el séptimo cree que ha puesto una capa. Lee los proyectos del ' +
+      'config real y los workflows de verdad, así que no se desfasa. Pendiente: DECIDIR dónde ' +
+      'corren (GHA con AUTH_SECRET como secret —firma sesiones— o smoke post-deploy, que alarga ' +
+      'el lock global). El proveedor `own-mint` ya está listo.',
+  },
+
   bearer_con_reintento: {
     titulo: 'El Bearer se pide dos veces antes de rendirse, y si no llega se DICE (`auth_header_sin_token`)',
     ruta: 'lib/api/bearerConReintento.ts',
