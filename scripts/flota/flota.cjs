@@ -1434,11 +1434,41 @@ async function main() {
         }
       }
       console.log(`🔁 supervisor continuo (${yo}) — pasada cada ${Math.round(cada / 60)} min · atasco a los ${limiteAtasco} min`)
+      // Una máquina se mide UNA vez por pasada aunque aloje a cuatro trabajadores: lo que se
+      // mide es el host, y sondearlo cuatro veces solo añade cuatro conexiones ssh.
+      const medidas = new Map()
       while (!parar) {
         let repartidos = 0
         let ocupados = 0
         let motivoSalto = null
         let atascados = []
+
+        // ── LA SALUD DE LA MÁQUINA SE MIDE AQUÍ, NO SOLO EN EL PANEL ([T-677]) ──────────────
+        // La primera versión solo medía al pintar el panel, o sea **solo cuando una persona
+        // ejecutaba `npm run flota` a mano**. Eso no es una alerta proactiva: es una alerta que
+        // depende de que alguien pase por delante. Se vio al verificar el despliegue — el
+        // servicio llevaba horas corriendo con la sonda dentro y había UN solo evento.
+        // Aquí corre cada pasada (5 min por defecto), que es lo que da a las reglas material
+        // periódico con el que disparar.
+        for (const w of MAQ.trabajadoresQueReciben()) {
+          const m = MAQ.maquinaDe(w)
+          if (!m || medidas.has(m.nombre)) continue
+          medidas.set(m.nombre, true) // una sola máquina por pasada, aunque tenga 4 trabajadores
+          const medida = medirMaquina(w)
+          if (!medida) continue
+          const v = SALUD.clasificarMaquina(medida)
+          if (v.estado === 'ok') continue
+          console.log(`  ${v.estado === 'ahogada' ? '🔴' : '🟠'} MÁQUINA ${m.nombre}: ${v.motivos[0]}`)
+          try {
+            await sql`
+              INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
+              VALUES ('fargate', ${v.estado === 'ahogada' ? 'error' : 'warn'}, 'flota_maquina_salud', 'flota',
+                      ${`máquina ${m.nombre} ${v.estado}: ${v.motivos[0] ?? ''}`},
+                      ${sql.json({ maquina: m.nombre, estado: v.estado, motivos: v.motivos, ...v.señales, medida })})`
+          } catch { /* la telemetría nunca puede parar al supervisor */ }
+        }
+        medidas.clear()
+
         try {
           const puede = BUC.puedeRepartir({
             hayBd: Boolean(url()),
