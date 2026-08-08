@@ -1178,7 +1178,31 @@ calculados solo con las respuestas propias (visto en vivo: `today:25`, `remainin
 `limit_reached:false`). Viene de [T-418], **no se introdujo aquí**, y la interfaz funciona porque
 decide con `questions_today`. Cerrarlo es barato.
 
-**6. COLAS**
+**6. CABO NUEVO (08/08, tras el deploy de frontend): UN JOURNEY QUE FALLA SOLO**
+El deploy de frontend (task-def 638, `c5b0af94`) cerró con **«DEPLOY OK» teniendo 3/4 journeys**: falló
+`examen-fallo-de-sesion-no-culpa-a-la-conexion` con *«no se llegó a pulsar Corregir Examen (0 opciones
+respondidas)»*. **NO es un fallo de producción** — comprobado en el momento: 228 respuestas de 23
+usuarios en 20 min y **cero 5xx** —, así que es el journey el que no llegó a interactuar (tiempos o
+selectores). Es de otra sesión (lo creó para [T-669]/[T-315]) y conviene que lo sepa: **un journey que
+falla por su cuenta es una alarma que se aprende a ignorar**, y encima el deploy no gatea por él.
+
+**7. HACE FALTA OTRO DEPLOY DE FRONTEND**
+[T-677] y [T-691] **siguen esperando con razón**: el deploy subió el último commit VERDE EN CI
+(`c5b0af94`) y el que ellas esperan (`29a2d7d1b`, el que mueve la sonda de la máquina al BUCLE del
+supervisor) es posterior — quedaron 5 commits fuera. El mecanismo funciona; su código aún no está
+vivo. Hasta ese deploy, la medición de la máquina solo ocurre cuando alguien ejecuta `npm run flota`
+a mano, o sea que **la alerta todavía no es proactiva del todo**.
+
+**8. SOPORTE DE ESTA TANDA (todo cerrado, nada pendiente)**
+- María José (`d0a3ce35`, racha de días): ya estaba respondida y dio las gracias → **cerrada en
+  silencio**, sin generarle otro aviso.
+- Ricardo Novoa ×2 (`2e705c38` y `ea163bd5`, art. 117 CE): **ambas rechazadas**, verificadas contra el
+  BOE (117.5 dice «estado de sitio», no «excepción»). Ninguna procedía, pero las dos preguntas tenían
+  la explicación apelotonada y **anclada a las letras** (una empezaba con «La respuesta correcta es
+  D»), así que **ninguna podía barajar**: reescritas por opción con cita literal y ahora **las dos
+  nacen barajables**.
+
+**9. COLAS**
 Las tres contestadas por esta sesión (Diego, y Laura ×2: feedback e impugnación). Lo demás está en
 otras sesiones: los dos bugs de `rbsc87` en `movil-colas`, dos `other` y dos bajas de cuenta en
 `136e28c4` y `movil2`. **No reabrir sin mirar el claim.**
@@ -1211,6 +1235,7 @@ equivocada.
 de otra sesión.
 
 ### [T-692] 🔴 [ABIERTO 08/08] La petición sale SIN el token y muere en un 401 invisible: 44 % en una ruta que llevaba nueve días a cero
+### [T-692] 🔴 [ABIERTO 08/08] El token se pide antes de existir: el 63 % de los 401 cae en los 10 primeros segundos y la pantalla se queda vacía sin reintentar
 
 **No es el fallo de ayer, y por eso [T-671]/[T-675] no lo cierran.** Aquellos eran call-sites que
 **no mandaban** el token. Los que llaman a `/api/exam/pending` y `/api/v2/user-stats` **sí** lo
@@ -9358,6 +9383,34 @@ y corregido un error de diseño que tenía.
 `** (en la zona de cerradas) la importa `backlog.cjs sync` como **done**. Pasó con esta misma. Si una ficha nueva aparece cerrada sin haberla trabajado, mirar dónde está en el fichero.
 
 ## Hechas
+
+### [T-695] ✅ [HECHA 07/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
+
+**Manuel: «pon guardarraíl porque se te olvida».** Y tenía la prueba delante: en un MISMO borrador
+para Laura Simar se colaron DOS reglas ya escritas — la mención al apartado de recompensas
+(prohibida desde el 24/07) y un «tienes razón» que él acababa de retirar ese mismo día.
+
+**Hecho:**
+- Criterio en UN sitio: `lib/feedback/validarMensaje.cjs`, cada regla con su porqué y su
+  alternativa. Cubre: recompensa mencionada · conceder la razón · proclamar la culpa («no era cosa
+  tuya», «el fallo era nuestro») · disculpas por la espera · afirmar el arreglo en vez del
+  condicional · decir que lo hace una IA.
+- Se hace cumplir en tres sitios: el dossier lo canta antes de redactar (`revisar-feedback.cjs`),
+  un comando para pasarle el borrador, y una puerta que aborta el envío (`responder-*.cjs`).
+- 11 tests (`__tests__/feedback/validarMensaje.test.ts`) con los borradores REALES como casos: los
+  dos que fallaron y los dos aprobados (Diego y Laura, ambos ya enviados).
+- Manual endurecido: el ejemplo ✅ que otra sesión escribió horas antes («Tienes razón: al pulsar
+  para corregir…») **ya no vale**. Memoria actualizada, que decía justo lo contrario.
+
+**⚠️ ERRATA A SABIENDAS:** el commit que lo introduce está pusheado como `feat(T-678)`, y **T-678 es
+otra ficha ajena YA CERRADA** («Puerta de "está vivo"»). Se eligió el id sin `reserve`, que es
+justo lo que CLAUDE.md prohíbe. El código y el manual ya citan T-695; el mensaje de commit no se
+puede reescribir porque está en `main`. Si alguien busca el origen por el commit, llega a la ficha
+equivocada.
+
+**PENDIENTE:** nada funcional. Cerrarla cuando se confirme que el dossier lo imprime en el uso real
+de otra sesión.
+
 
 ### [T-617] ✅ [HECHA 08/08] El supervisor de la flota existía por duplicado y no corría en ningún sitio: la flota se para en cuanto nadie mira
 
