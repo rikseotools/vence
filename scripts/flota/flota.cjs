@@ -1354,6 +1354,39 @@ async function main() {
             dadas.delete(porRevisar.id)
           } catch (e) { dadas.delete(porRevisar.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
         }
+        // ── Y ANTES DE UNA NUEVA, LA QUE VOLVIÓ CON PROBLEMAS (T-700, 08/08) ─────────────
+        // Este escalón NO EXISTÍA, y la cola no se atascaba: no tenía salida. Una devuelta con
+        // `problemas` quedaba fuera de las TRES ramas del reparto a la vez — de `candidatas` por
+        // partida doble (`status='open'` y `review_requested_at IS NULL`, y ella es `in_progress`
+        // con la entrega puesta), de `porRevisar` porque ya tiene `reviewed_at`, y de las
+        // retomadas porque entregar suelta el claim y esa rama busca `claimed_by = sid`. O sea que
+        // el veredicto más caro de producir —otro trabajador reproduciendo el trabajo— era el
+        // único que no podía llegarle a nadie. Medido al encontrarlo: **20 tareas paradas, la más
+        // vieja 28,5 h**, y creciendo cuanto mejor revisa la flota.
+        // Va DESPUÉS de revisar y ANTES de empezar algo nuevo por lo mismo que la de arriba:
+        // terminar lo que está a medias vale más que abrir otro frente.
+        const devuelta = (await sql`
+          SELECT id, title, review_findings, reviewed_by, claimed_by,
+                 review_requested_at, reviewed_at, review_verdict
+            FROM public.backlog_tasks
+           WHERE review_verdict = 'problemas' AND claimed_by IS NULL AND closed_at IS NULL
+           ORDER BY reviewed_at
+           LIMIT 8`)
+          .filter((t) => ENC.esCorreccionPendiente(t) && !dadas.has(t.id) && !repartidasHacePoco.has(t.id))[0]
+        if (devuelta) {
+          dadas.add(devuelta.id)
+          try {
+            const alDia = ponerAlDia(f.trabajador, { emitir: (v) => { emitirClon(f.trabajador, v) } })
+            const r = mandarEncargo(f.trabajador,
+              ENC.encargoCorreccion({ trabajador: f.trabajador, tarea: devuelta,
+                hallazgos: devuelta.review_findings, revisor: devuelta.reviewed_by,
+                puedeDesplegar: MAQ.puedeDesplegar(f.trabajador).puede }),
+              { alDia, turno: () => emitirTurno(f.trabajador, 'encargado', { tarea: devuelta.id, tipo: 'correccion' }) })
+            if (r.ok) { console.log(`   ↩️  ${f.trabajador.padEnd(4)} → ARREGLAR ${devuelta.id} (devuelta por la revisión)`); n++; continue }
+            dadas.delete(devuelta.id)
+            console.log(`   ⏭️  ${f.trabajador}: ${motivoFallo(r)}`)
+          } catch (e) { dadas.delete(devuelta.id); console.log(`   ❌ ${f.trabajador}: ${String(e.message).slice(0, 60)}`) }
+        }
         const { tarea } = ENC.elegir(candidatas.filter((t) => !dadas.has(t.id) && !repartidasHacePoco.has(t.id)), { puedeDesplegar: true })
         if (!tarea) { console.log(`   ⏭️  ${f.trabajador}: no queda ninguna tarea apta libre`); continue }
         try {

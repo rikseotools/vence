@@ -3211,7 +3211,7 @@ automatizable a ciegas: el boletín no parsea, así que cada epígrafe se copia 
 sellado fuera del pipeline), [T-528] (temarios sin contrastar contra su fuente), [T-634] (defecto
 distinto encontrado de paso en el Tema 20 al hacer el Paso 2).
 
-### [T-628] 🔴 [ABIERTO 06/08] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
+### [T-628] 🟡 [ABIERTO 06/08 · CAUSA RESUELTA 08/08, PENDIENTE DECISIÓN least-privilege] El VPS de la flota no tiene credenciales de git: el trabajo se queda atrapado en la máquina y hay que ir a recogerlo a mano
 
 - **Esfuerzo: rato.** Es una clave de despliegue y un `remote`; lo caro es no tenerla.
 - **ORIGEN.** Manuel preguntó qué desbloquea el cuello de botella, viendo **24 tareas revisadas esperando decisión** (media 9 h). Al mirar de qué estaban hechas apareció que **no todas esperan una decisión**: **6 de las 24** decían literalmente *«CÓDIGO COMPLETO, TESTEADO Y COMITEADO … PERO NO SE HA PODIDO PUSHEAR: este worker no tiene NINGUNA credencial»* — T-525, T-397, T-038, T-543, T-572 y T-573, todas críticas o altas, entre 10 y 12 h paradas.
@@ -3222,6 +3222,13 @@ distinto encontrado de paso en el Tema 20 al hacer el Paso 2).
   - **Y el push-guard bloquea, con razón:** esas ramas traen commits de tareas que quien rescata no tiene reclamadas. Es el caso legítimo del `BACKLOG_GUARD_SKIP` con motivo, que queda registrado. Si esto se automatiza, el escape tiene que ir dentro con su motivo, no fuera.
 - **EL ARREGLO DE RAÍZ:** una **clave de despliegue de solo escritura** para el repo en el VPS, para que `flota -- rescatar` se baste solo. Mientras no la tenga, esto se repite cada día — hoy 11 ramas, y crece con cada trabajador que se añada. Es exactamente el argumento por el que **no** conviene añadir más trabajadores todavía: multiplicarían el lado que ya va sobrado y alimentarían más rápido una cola que sigue drenando a mano.
 - **Alternativa si no se quiere una clave en la máquina:** que el rescate lo dispare el portátil (que ya tiene las dos mitades) desde el propio `flota.cjs`, en vez de intentarlo desde el VPS. Es menos automático pero no mete credenciales nuevas donde hoy no las hay — decisión de Manuel.
+
+**✅ MEDIDO EL 08/08 (w1): la premisa "el VPS no tiene credenciales de git" YA NO es cierta — algo cambió entre el 06/08 y hoy sin que se actualizara esta ficha ni el registro (`lib/flota/maquinas.cjs`).**
+- Reproducido en vivo, no supuesto: `~/.ssh/id_ed25519` existe (usuario `flota`, uid 1000, **compartido por los cuatro trabajadores** — no hay aislamiento de credenciales por trabajador en esta VPS), `ssh -T git@github.com` responde *«Hi rikseotools! You've successfully authenticated»*, y `git fetch origin` desde el clon base (`~/vence`) tiene éxito. Además esta misma sesión llevaba pusheando con éxito a `origin/flota/w1` toda la mañana con esa misma credencial, sin saber que era la misma que se necesitaba aquí.
+- **⚠️ No es la clave de despliegue de solo escritura que pedía "el arreglo de raíz" de arriba: es una clave PERSONAL de usuario, con acceso completo** — el `Hi rikseotools!` es un nombre de cuenta real, no un deploy key con nombre de repo. Es MÁS PODEROSA que lo que se pedía (least privilege pide lo mínimo, esto da lectura+escritura de la cuenta entera) y **compartida por los 4 trabajadores del VPS**, no una credencial por trabajador. Queda para decisión de Manuel si se sustituye por una deploy key de solo escritura del repo (lo pedido originalmente) — no lo he tocado, solo lo dejo escrito porque cambia el análisis de superficie de la ficha.
+- **No se pudo probar un PUSH real desde el clon base compartido específicamente**: el guard de "una sesión por directorio" (pre-commit, T-415) y el push-guard del backlog bloquean cualquier intento de prueba ahí — correctamente, protegen justo contra ese uso. La autorización SSH es por usuario del sistema operativo, no por directorio, así que se infiere del mismo par cuenta/clave que empuja desde los worktrees — pero es una INFERENCIA razonada, no una repetición exacta del escenario real de rescate.
+- **Arreglado en código, con tests:** `lib/flota/maquinas.cjs` (`flota-1.tieneCredencialesGit: true`, con la medición citada en el comentario) + `lib/admin/toolRegistry.ts` (nota de `flota_rescate` actualizada) + `__tests__/flota/rescateSegundaFase.test.ts` (los dos tests que antes fijaban `tieneCredencialesGit:false` para `flota-1` ahora reflejan el estado medido, conservando la distinción `.local` vs `tieneCredencialesGit` con el doble de test `SIN_CREDENCIALES`). 403 tests de `__tests__/flota/` + 16 de `toolRegistry.guardrail` en verde.
+- **Efecto:** `necesitaSegundaFase` ya no dispara para `flota-1` — el rescate se basta con su propio push, que es justo lo que esta ficha pedía como arreglo de raíz. La ruta de segunda fase (portátil) se conserva por si una máquina vuelve a carecer de credenciales.
 - **Relacionadas:** [T-486] (la flota, donde está anotado el hueco), [T-577] (trabajo destruido entre sesiones: mismo terreno), [T-612] (credenciales en los worktrees de trabajador), [T-626] (el bucle sin rastro, encontrado en la misma investigación).
 ### [T-630] 🟡 [ABIERTO 06/08] El enunciado cita un apartado concreto y la clave responde a OTRO del mismo artículo: 25 sospechosas medidas, sin calibrar
 
@@ -3867,6 +3874,31 @@ a tener `~/vence-deploy` dedicado), [T-611] (una de las tareas atrapadas esperan
 - **Relacionadas:** [T-513] (el hueco del tag, que es la OTRA mitad de este caso y sigue esperando decisión), [T-507] y [T-566] (cerraron la brecha de oficiales en el CONTADOR; esta ficha es sobre el SERVE), [T-397].
 
 - **📌 Rescatada el 06/08 de un worktree abandonado.** La ficha se escribió el 05/08 a las 23:01 en `sesion/colas-feedback`, que murió esa noche sin que su rama llegara a `main`; lo medido arriba es de ese día. El claim quedó colgado 17 h con el lease vencido y se soltó con `reap`.
+
+- **✅ REPRODUCIDO Y REMEDIDO el 07/08 (worker w1) — la causa se sostiene entera, no de fiar de la ficha, verificado por mi cuenta.**
+  - **(a) REPRODUCIDO, no solo trazado en el código:** llamé a `buildOfficialExamFilter('personalizada_a92faefaf41b4d36b723c274f90a59f7')` de verdad (sin mockear nada, `npx tsx`) y disparó exactamente el `console.warn` de "Bug real": `[scope] sin mapeo exam_position para "personalizada_a92faefaf41b4d36b723c274f90a59f7" (positionType no reconocido) — bloqueando todas las oficiales.`. Confirmado además que de las **131** entradas de `ALL_POSITION_TYPES` ninguna empieza por `personalizada` (0 de 131) — no hay ningún camino por el que una personalizada pueda caer en las dos ramas silenciosas.
+  - **(b) REMEDIDO contra RDS vivo (07/08), no dado por bueno lo del 05/08:** tema 1 de la misma personalizada, mismos 5 artículos de CE (1,2,137,138,139). Base 112/64/10 (fácil/media/difícil) · sirve 99/27/3 · se pierden por oficial 11/9/6 · por tag PN 2/28/1. Coincide casi exacto con la tabla de la ficha (deriva de 1 en un par de celdas — normal en 2 días de banco vivo, no una discrepancia). El alcance creció un poco: hoy son **8 personalizadas con temas activos (45 temas)**, no 7/43 — no cambia el diagnóstico, solo el tamaño.
+  - **🙋 Pregunta #106 lanzada al embudo con la decisión** (las dos opciones que ya venían pensadas en esta ficha, con mi recomendación y por qué no la tomo yo — afecta a lo que ven usuarios premium pagando).
+
+- **✅ IMPLEMENTADO el 07/08 — respuesta de Manuel en #106: opción (A), adelante.** Sus límites, cumplidos al pie de la letra:
+  - **`lib/api/oposicion-scope/queries.ts`:** `buildOfficialExamFilter` gana un early-return ANTES de tocar `getValidExamPositions`: si `positionType` empieza por `personalizada_` (sin distinguir mayúsculas), devuelve `sql\`true\`` — admite oficiales y no-oficiales sin restricción. El resto de la función, intacto: las 131 oposiciones reales y las entradas de `EXAM_POSITION_MAP` siguen filtrando exactamente igual (caso Laura sin tocar).
+  - **⚠️ HALLAZGO DE PASO, no en la ficha original: hay un GEMELO en el backend** (`backend/src/test-config/test-config.helpers.ts`), y su propio comentario dice que es **"el que producción ejecuta de verdad"** porque `test-config` está enrutado al backend NestJS. Es la MISMA clase de fallo que `__tests__/guardrails/estimateAvailableQuestionsParidad.test.ts` existe para vigilar (T-507/T-551/T-566): arreglar solo el frontend habría dejado el fix INERTE para los contadores que Sergio (el mismo feedback `87e987d8` de esta ficha) realmente ve. Aplicado el mismo early-return ahí, con el mismo criterio (`positionType.toLowerCase().startsWith('personalizada_')` → `sql\`true\``).
+  - **CAPAS, con las DOS mitades que pidió Manuel:** 6 tests nuevos en `buildOfficialExamFilter.test.ts` (frontend) + 5 en `test-config.helpers.spec.ts` (backend, fichero nuevo — no existía ningún test dedicado a este helper) — cada lado comprueba que (1) una personalizada ya no dispara el warn de "Bug real" y su filtro es el `true` sin restricción, (2) el prefijo no distingue mayúsculas, (3) un positionType que solo CONTIENE "personalizada" sin empezar así sigue bloqueado, y (4) una oposición real CON mapeo y una SIN mapeo (caso Laura) siguen exactamente igual que antes. Corrido el guardarraíl de paridad (`estimateAvailableQuestionsParidad.test.ts`) sin tocarlo: sigue en verde, confirma que las dos copias no divergieron.
+  - **(a) REPRODUCIDO tras el fix, no solo los tests:** repetí la llamada directa a `buildOfficialExamFilter('personalizada_a92faefaf41b4d36b723c274f90a59f7')` contra el código real (sin mocks) — ya NO dispara el `console.warn`, y `filter.queryChunks` es `[{"value":["true"]}]`. Repetí también con una oposición real (`auxiliar_administrativo_estado`) y con un `positionType` corrupto (`positiontype_corrupto_xyz`): el primero devuelve la cláusula compleja de siempre (no serializa por la referencia circular a la tabla, justo lo que la distingue del `true` trivial), el segundo SIGUE disparando el warn — el caso Laura demostrado intacto, no solo asumido.
+  - **Verificado que la fuga NO es cosmética:** `lib/api/filtered-questions/queries.ts` (el `getFilteredQuestions` real, lo que de verdad sirve preguntas) llama a `buildOfficialExamFilter(opts.positionType)` directamente en su rama principal — el fix llega al SERVE, no solo al contador.
+  - **1563 tests de la superficie tocada (oposicion-scope, filtered-questions, teoria, lib/api, los dos guardarraíles de paridad de oficiales) + 11 del backend `test-config`, todos verdes. `tsc --noEmit` limpio (frontend con `--max-old-space-size=6144`, el heap por defecto de esta máquina no basta para el repo entero; y backend aparte). `eslint` limpio en los 4 ficheros tocados.**
+  - **NO verificable desde este worker:** `__tests__/integration/topicCountVsServed.integration.test.ts` (el test end-to-end contra RDS que habría sido la prueba más directa) no puede correr desde esta máquina con NINGUNA de las dos credenciales — mismo gotcha ya documentado en otras fichas: el cliente `postgres-js` de la app exige estar dentro de la VPC (`no pg_hba.conf entry ... no encryption`). **Medido, no supuesto:** confirmé que el mismo fallo ocurre exactamente igual en el código SIN mi cambio (`git stash` + re-run), así que no es una regresión mía, es una limitación del puesto. Queda para quien despliegue: correr ese test o mirar `getFilteredQuestions` en vivo contra la personalizada de Sergio tras el deploy.
+  - **Nada aplicado a producción ni desplegado** (regla dura del turno). Rama `flota/T-597-personalizada-oficiales-decision` lista para revisión + deploy de frontend Y backend (los dos tocados).
+
+- **✅ MEDIDO EL EFECTO REAL POST-FIX contra RDS (08/08, worker w3) — lo que la revisión anterior (w2-vence-flota) marcó como el ÚNICO punto que faltaba.** La revisión devolvió la tarea con veredicto "problemas" porque el código está bien (3 de 4 requisitos de Manuel) pero **faltaba la cifra post-fix medida contra datos reales**, no solo verificada a nivel de código — exactamente lo que Manuel pidió en #106 como condición de confianza.
+  - **Consulta directa contra `VENCE_LECTOR_URL`** (no arranca la app — no se puede desde este puesto — pero reproduce la SEMÁNTICA EXACTA de `buildOfficialExamFilter` como SQL a mano: pre-fix = `is_official_exam = false`; post-fix = sin esa condición), con los MISMOS filtros que cita la ficha (CE arts 1,2,137,138,139, tema 1 de `personalizada_a92faefaf41b4d36b723c274f90a59f7`, dificultad `hard`, `exam_case_id IS NULL`, tag `PN` excluido):
+    - **pre-fix (bloqueado): 3**
+    - **post-fix (oficiales admitidas): 8**
+    - Las 5 preguntas que se ganan son oficiales de `auxiliar_administrativo_madrid`, `auxiliar_administrativo_valencia`, `administrativo_carm`, `guardia_civil` y `auxiliar_administrativo_andalucia` (ids verificados en BD).
+  - **Coincide EXACTO con la medición independiente que ya había hecho la propia revisión** (w2-vence-flota, vía query SQL directa con el mismo filtro): "hoy(bloqueado)=3, tras-el-fix(oficiales permitidas)=8". Dos mediciones independientes, mismo resultado — no es una casualidad de redondeo, el efecto es real y de la magnitud que Manuel esperaba (cerca del 9 citado en la decisión original; la diferencia de 1 es de método de descomposición por-oficial/por-tag cuando hay solape entre las preguntas retenidas, no un error).
+  - Repetidos también los tests que ya había corrido la revisión, mismos números: `buildOfficialExamFilter.test.ts` 18/18, `test-config.helpers.spec.ts` 5/5, `estimateAvailableQuestionsParidad.test.ts` 6/6.
+  - **Ahora sí queda cumplido el requisito 4/4 de Manuel.** Lista para mergear y desplegar (frontend + backend, los dos tocados).
+
 ### [T-614] 🔴 [PARCIAL 06/08 — aviso arreglado y verificado contra BD real; queda decidir si se concede GRANT] El embudo no sabe si su impugnación ya se cerró: 10 de 16 preguntas eran fantasmas y casi se envía un segundo correo al mismo usuario
 
 **Lo que pasó (06/08, revisando la flota).** Le presenté a Manuel el borrador de la réplica de
@@ -6655,6 +6687,26 @@ ponerse a verificar una por una.
 - **Por qué merece la pena:** es contenido oficial de la oposición que la usuaria prepara, ya publicado por la propia Comunidad de Madrid, y lo pide quien lo está estudiando. **Ella ya está avisada** de que queda anotado, así que al cerrarla conviene volver a escribirle.
 
 ### [T-486] 🟠 [ABIERTO 02/08] Piloto de flota remota en Koigrid: 2 trabajadores + supervisor de EVIDENCIA, con el mismo reparto que las sesiones locales
+
+- **✅ REVISIÓN (08/08, w4): los dos huecos del último checkpoint estaban RESUELTOS por trabajo posterior, y un tercero se QUEDA cuantificado con cifras reales.** El `resume_check` con el que se retomó esta tarea citaba dos `falta`: (1) el VPS sin credenciales de git, rescate manual con bundle+SSH; (2) w1-w4 compartiendo un checkout con un solo índice de git. Los dos son de una entrega ANTERIOR a rondas de trabajo que ya están en `main` y no se habían volcado a esta ficha.
+  1. **(1) RESUELTO por [T-628], no manual.** `lib/flota/rescate.cjs` (`necesitaSegundaFase`) + el bloque `rescatar` de `scripts/flota/flota.cjs` (líneas ~999-1026) ya hacen la segunda fase automática: el portátil/supervisor (única máquina con SSH a la vez que credenciales de git) trae por SSH las refs que el VPS identificó pero no pudo empujar y las publica como `rescate/<w>-...`, con el mismo generador de nombres que usó el rescate (nunca dos generadores del mismo hecho). Verificado ejecutando, no leyendo: `npx jest __tests__/flota/rescateSegundaFase.test.ts` → **15/15**, incluida la reproducción del bug real que motivó el fix (`VENCE_FLOTA_AQUI=flota-1`, la config real del supervisor, hacía que `maquinaDe('w1').local` diera `true` y el criterio viejo dijera "no hace falta" con commits confirmados fuera de todo remoto); y `npm run sim:rescate-flota` (8 escenarios contra repos git reales) → **0 fallos**.
+  2. **(2) FALSO — refutado empíricamente, no solo leído.** Escribo esto como `w4`, que es EXACTAMENTE uno de los cuatro trabajadores que la ficha decía compartiendo índice. Medido en esta misma máquina:
+     ```
+     $ git rev-parse --git-dir
+     /home/flota/vence/.git/worktrees/w4
+     $ git rev-parse --path-format=absolute --git-path index
+     /home/flota/vence/.git/worktrees/w4/index
+     $ git worktree list   (desde el repo base)
+     /home/flota/vence                            f72815597 [main]
+     /home/flota/vence-sessions/w1                4297821cc [flota/w1]
+     /home/flota/vence-sessions/w2                284c7c4a3 [flota/w2]
+     /home/flota/vence-sessions/w3                3f92396ec [flota/w3]
+     /home/flota/vence-sessions/w4                3f92396ec [flota/w4]
+     ```
+     Cada trabajador tiene su PROPIO `git worktree add` (via `crear-worktree.sh`, invocado por `arrancar-trabajador.sh` §5) con su PROPIO índice bajo `.git/worktrees/<w>/index` — estructuralmente idéntico a como funcionan `l1`-`l6` en el portátil, y exactamente lo que [T-592] (06/08) ya arregló (antes `arbolDe` devolvía el clon base para todos; ahora devuelve `~flota/vence-sessions/<w>`). El único sitio compartido es `~flota/vence` (`.git` común + `npm ci`), y ahí solo corren `fetch`/`clone`, nunca `add`/`commit`. El riesgo que describía el `falta` no existe en el código tal como está desplegado hoy.
+  3. **(3) CUANTIFICADO, no arreglado — necesita acceso que un trabajador no tiene.** El tercer punto de "LO QUE QUEDA" (línea de abajo, 05/08): *"el consumo de LLM de la flota es invisible para `llm:gasto`"*. Medido de verdad, no supuesto: `node scripts/observabilidad/ingest-claude-code-usage.cjs --dry` **desde esta misma máquina VPS** encuentra **261 filas (día×sesión×modelo) · 45.456 respuestas · 28,9 M tokens de salida · 19.796,9 M tokens de caché leída** en los transcripts locales de `~/.claude/projects` — SOLO de este worker, ni un byte de eso llega hoy a `observable_events`. Intenté escribirlos de verdad (sin `--dry`): **`❌ permission denied for table observable_events`**, porque el script hace `DELETE ... WHERE dedupeKey = ...` antes de re-insertar (para que una sesión que sigue acumulando tokens se actualice, no se duplique) y `vence_coordinacion` es **solo INSERT** sobre esa tabla — por diseño (CLAUDE.md, "observable_events solo INSERT — nunca la lee"), no un descuido. **No hay que ampliar el permiso** ("¿meto una credencial de más para que pase? → no. Se acota el permiso."): un trabajador con DELETE sobre observabilidad podría borrar el rastro de otro. El diseño correcto es el MISMO patrón que [T-628]: la máquina que tiene las dos mitades (SSH a cada worker + `DATABASE_URL` con permiso completo) trae los transcripts remotos y corre la ingesta desde allí — el script ya soporta apuntar a un directorio distinto vía `CLAUDE_TRANSCRIPTS_DIR`, así que solo falta el `rsync`/`ssh cat` que traiga `~/.claude/projects` de cada `w1`-`w4` a un sitio donde el portátil pueda apuntar esa variable. No lo construyo yo: necesita SSH a las OTRAS máquinas de la flota (`w1`-`w3`), que un trabajador no tiene ni debe tener.
+  **Nada de esto es código nuevo para T-486 en sí** (es verificación + una cifra), así que no hay rama de producto que revisar — solo esta corrección de ficha.
+
 - **✅ EL CICLO DE UNA TAREA YA GIRA SOLO (06/08, sesión larga).** Al empezar el día la flota entregaba trabajo que se quedaba en su disco; al terminarlo, reparte → trabaja → empuja → entrega → **revisa** → y el rescate recoge lo suelto. Lo que se arregló, en orden de aparición y todo medido:
   1. **El rescate miraba `HEAD`** y daba «nada que salvar» con **22 commits atrapados** en 8 ramas del VPS. Un trabajador entrega en una rama por tarea y vuelve a `main`: lo entregado nunca es `HEAD`.
   2. **`arbolDe` devolvía el clon base**, no el worktree de cada trabajador → la sonda decía SIEMPRE «al día» y nadie actualizaba ni rescataba el árbol real (`w1`: 80 commits por detrás; `w2` llegó a 127). Lo encontró **w2 revisando su propia tarea** [T-592] y lo verifiqué contra el VPS.
@@ -6779,7 +6831,13 @@ ponerse a verificar una por una.
   3. **El cuello de botella no es el cómputo, es la integración.** Con cinco sesiones desde el mismo checkout hubo cuatro conflictos en este mismo fichero en una tarde, y dos fichas se quedaron en una línea con el CI en verde ([T-428]). Más trabajadores = más merge y más revisión de Manuel, que ya es el recurso escaso.
 - **Antes de montar servidores propios, medir la alternativa:** los agentes remotos y las rutinas programadas de Claude Code hacen esto sin administrar VPS, secretos ni actualizaciones. El piloto debería comparar las dos, no dar por hecha la casera.
 - **Cómo se sabe si salió bien** (declarado antes de empezar, para no juzgarlo por la impresión): tareas cerradas y **verificadas** por trabajador, ratio de escape de guardarraíles (`sesiones:friccion` — si sube, la flota está erosionando las protecciones), y horas de revisión de Manuel por tarea entregada. Si esa última sube, el piloto ha fallado aunque produzca más.
-- **Relacionadas:** [T-484] (prerequisito), [T-485] (obligatoria solo si algún día despliegan), [T-089] (Koigrid como hosting — decisión independiente de ésta).
+
+**✅ MEDIDO EL 08/08 (w1): LOS DOS HUECOS DEL ÚLTIMO CIERRE ("falta") ESTABAN DESACTUALIZADOS.**
+
+- **Hueco 1 (credenciales de git en el VPS): RESUELTO, no arreglado por mí — solo medido y reflejado en código.** El registro (`lib/flota/maquinas.cjs`) y la ficha [T-628] seguían diciendo `tieneCredencialesGit:false`, pero hoy el VPS SÍ tiene una clave SSH funcional (`ssh -T git@github.com` autentica como una cuenta personal real, `git fetch` funciona, y esta sesión pusheó con esa misma credencial más de una decena de veces). Detalle completo, incluida la advertencia de que es una clave PERSONAL de acceso completo compartida por los 4 trabajadores —no la deploy key de solo escritura que se pedía— en [T-628]. Corregido `tieneCredencialesGit: true` + tests actualizados (`__tests__/flota/rescateSegundaFase.test.ts`) + `toolRegistry.ts`.
+- **Hueco 2 ("w1/w2/w3/w4 comparten UN checkout... un solo índice de git"): NO es cierto, medido con `git worktree list`.** Los cuatro trabajadores (y una quinta sesión, `t450-examen-cupo`) son worktrees de git PROPIOS y separados (`/home/flota/vence-sessions/{w1,w2,w3,w4,t450-examen-cupo}`, cada uno con su propio `.git` apuntando a `worktrees/<w>` dentro del `.git` compartido de `~flota/vence`) — exactamente el mecanismo nativo de git para "un repo, varios índices". Cada worktree tiene su PROPIO índice/HEAD/working tree; lo único compartido de verdad es la base de objetos (normal y correcto) y `node_modules` (symlink deliberado a `~flota/vence/node_modules`, ahorro de espacio, no un índice de git). Este hueco ya estaba resuelto desde [T-592] (citado en el propio comentario de `maquinas.cjs`) — el texto de "falta" de este cierre no se actualizó cuando T-592 lo arregló.
+- **Lo que SÍ sigue siendo cierto y no toqué:** el clon BASE compartido (`~flota/vence`, sin worktree propio) está correctamente protegido contra commits directos por el guard de "una sesión por directorio" (T-415) — lo comprobé al intentar una prueba de push ahí, que el guard rechazó con razón. Ese guard es el que hace que los 4 índices separados de arriba se respeten en la práctica.
+- **Relacionadas:** [T-484] (prerequisito), [T-485] (obligatoria solo si algún día despliegan), [T-089] (Koigrid como hosting — decisión independiente de ésta), [T-628] (detalle completo del hueco 1), [T-592] (el fix real del hueco 2, de hace días).
 
 ### [T-475] 🟠 [ABIERTO 01/08] `materialized_stats_stale` lleva horas reventando por `statement_timeout`: la vigilancia del rollup es un hueco
 
@@ -9457,7 +9515,6 @@ porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el
 vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
 **Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
 motivo que ya no existe.
-=======
 
 #### RESUELTO parcialmente (07/08, w3) — 1 y 2 hechos, 3 investigado y NO aplicado (razón abajo)
 
@@ -9508,6 +9565,19 @@ que produce el código real.
 (+`actividadDe`, wireado en el panel `estado`, y el volcado del encargo en `mandarEncargo`),
 `__tests__/flota/sesionClaude.test.ts` (+8 tests). 359/359 en verde en toda `__tests__/flota` (10
 suites, sin regresión). Rama `flota/T-653-actividad-visible-log-encargo`.
+### [T-700] ✅ [HECHA 08/08] Una entrega devuelta con PROBLEMAS no se le puede dar a nadie: el reparto la excluye por partida triple
+
+- **NO ERA UN FALLO, ERA UNA AUSENCIA — por eso nadie lo vio.** El reparto de la flota (`scripts/flota/flota.cjs` → `repartir`) tiene tres ramas y una devolución se caía de **las tres a la vez**: de `candidatas` por partida doble (`status = 'open'` y `review_requested_at IS NULL`, y una devuelta es `in_progress` **con** la entrega puesta), de `porRevisar` porque ya tiene `reviewed_at`, y de las retomadas porque entregar **suelta el claim** y esa rama busca `claimed_by = <sid>`. Nada fallaba, nada avisaba: simplemente **el veredicto más caro de producir —otro trabajador reproduciendo el trabajo desde cero— era el único que no podía llegarle a nadie**.
+- **MEDIDO al encontrarlo (08/08):** **25 devoluciones vivas, las 25 sin dueño, las 25 inalcanzables**, la más antigua **37,2 h** desde su veredicto. Y **empeora cuanto mejor revisa la flota**: cada `problemas` que emite entra en un cajón sin salida. Es el mismo modo de fallo que `entregada → revisada` en [T-486] (una cola sin salida, no una cola lenta), un escalón más abajo.
+- **Lo que lo destapó:** una ronda de supervisión en la que `list` las pintaba `in_progress` · 🟢 libre —o sea, correctamente— y aun así llevaban un día entero sin que ningún trabajador las cogiera. El `parte` las enseñaba, `claim` las aceptaba: lo único que no las veía era **quien reparte**.
+- **ARREGLO (estrecho, una rama nueva entre las dos que ya había):** el reparto pregunta ahora por las devueltas **después** de repartir revisiones y **antes** de empezar nada nuevo, por la misma razón que la de arriba — terminar lo que está a medias vale más que abrir otro frente.
+  - El criterio **NO se reescribe**: `ENC.esCorreccionPendiente` delega en `REV.devueltaConProblemas` (`lib/backlog/revision.cjs`), el mismo que ya usan `claim`, `list` y el `parte`. Un cuarto criterio para lo mismo es exactamente cómo nacieron las dos puertas que se contradicen de [T-665]. Lo único propio que añade es «y que no la tenga nadie cogida».
+  - **`ENC.encargoCorreccion` es un encargo DISTINTO al normal, a propósito.** Con «tu tarea es T-nnn» el trabajador **la rehace desde cero** —es lo que pasó con las impugnaciones, cinco borradores del mismo caso— y el veredicto se tira justo cuando sirve para algo. El encargo nuevo dice que ya está hecha, le da los hallazgos **enteros** como lista de trabajo, y le deja discrepar **con la prueba delante** (un desacuerdo demostrado es una respuesta válida; ignorarlo en silencio no, porque el siguiente revisor lo vuelve a encontrar).
+  - Los hallazgos van **sin recortar** por lo mismo que [T-518]: miden 2.400-4.600 caracteres y **terminan** por los problemas, así que cortar por el final es cortar precisamente lo que hay que arreglar.
+- **CAPAS.** Unit: `__tests__/flota/correccionDevuelta.test.ts` (incluye la comprobación de paridad con el criterio compartido, y una que **falla si la consulta nueva copiara el `status = 'open'`** que era la mitad del defecto). Simulación: **`npm run sim:reparto-devueltas`** contra la BD real — porque **ningún unit podía cazar esto**: el criterio puro estaba bien y con sus tests en verde, el hueco vivía ENTRE las consultas, y un test que construye la fila a mano nunca ve la fila que el código real produce (misma lección que `sim:espera-revision`).
+  - **La simulación se autocalifica**, que es lo que la hace fiable: mide también lo que el reparto **anterior** alcanzaba y grita **NO CONCLUYENTE** si no hay devoluciones o si el verde no distingue el arreglo de su ausencia. Primera pasada: *«concluyente: 25 de estas 25 eran inalcanzables antes del arreglo»*. Un verde que no ejercita nada es peor que no tenerlo — la primera versión de `sim:espera-revision` pasaba por la razón equivocada.
+- **⏳ FALTA VERIFICAR EN VIVO:** que el supervisor del VPS reparta una de las 25 y que el trabajador la ARREGLE en vez de rehacerla. Se comprueba en la siguiente pasada del bucle (cadencia 5 min) mirando `↩️  wN → ARREGLAR T-nnn` en `journalctl -u vence-flota-supervisor` y, después, que la entrega nueva hable de los hallazgos.
+- **Relacionadas:** [T-486] (el ciclo entregada→revisada→mergeada y su cola sin salida), [T-665] (dos puertas con criterios opuestos), [T-518] (por qué los hallazgos no se recortan), [T-375] (el criterio de los bloqueos que no se pueden satisfacer).
 
 
 ### [T-695] ✅ [HECHA 07/08] Puerta de lo que NO se le dice a un usuario: `validarMensaje` antes de enviar
@@ -16230,6 +16300,101 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Cómo:** para cada una, abrir su boletín y leer la fórmula. La distinción es literal y no se puede inferir por patrón: *«del total de plazas a cubrir, N se reservarán…»* → el cupo va **dentro**; *«además de las N plazas, se convocan M por el cupo de reserva»* → va **aparte**. Córdoba (28/07) es el ejemplo trabajado: mismo aspecto que Aragón y semántica contraria.
 - **Lista y estado:** `npx tsx scripts/convocatoria/sim-frase-plazas.ts --todas` las agrupa; las de este grupo son las que salen bajo «RESERVA OCULTADA».
 - **NUNCA:** rellenarlo por analogía con una convocatoria parecida ni por lo que dé la suma más redonda. Es una cifra de plazas: se lee en el boletín o se deja sin declarar.
+
+#### Décima tanda (08/08, w1) — 2 listas para declarar, 2 propuestas automáticas descartadas por FALSAS, la cola actual
+
+**Estado real medido hoy (`--proponer` con `VENCE_LECTOR_URL`, no con `DATABASE_URL` — ver GOTCHA
+abajo): quedan 19, no 21/33** — otras sesiones avanzaron entre el 28/07 y hoy. De las 19: **2
+"unánimes" que el proponente automático marcó listas** (ambas resultaron FALSAS al leer el
+documento real, ver abajo) y **17 "mudas"** (forma nueva, hay que leer a mano).
+
+**⚠️ GOTCHA de acceso, para la próxima sesión que lo intente: `npm run reserva:declarar --
+--proponer` falla con «permission denied for table oposiciones» con las credenciales de un
+trabajador.** El script usa `pgConfig()` sin argumento → `DATABASE_URL` por defecto, que para un
+trabajador es la de coordinación (4 tablas). El modo `--proponer` es de solo lectura (no escribe
+nada, ni siquiera con propuesta unánime), así que `DATABASE_URL="$VENCE_LECTOR_URL" node
+scripts/convocatoria/declarar-reserva-discapacidad.cjs --proponer` funciona — pero **el propio
+script hace un JOIN a `user_profiles` para ordenar por usuarios afectados**, y esa tabla SÍ está
+bloqueada para `vence_lector` (PII), así que el barrido completo revienta ahí. Reconstruí la
+misma consulta sin ese JOIN (mismo núcleo `evidenciaReserva.cjs`, sin tocar el original) para
+listar las 19 sin el orden por usuarios.
+
+**✅ 2 LISTAS PARA APLICAR — citas verificadas contra el documento clonado, comando exacto:**
+
+- **`celador-sermas-madrid` → `false` (aparte).** Mismo BOCM-20250704-15 que ya resolvió
+  `tcae-sermas-madrid` (T-682/tanda anterior), fila propia. Leído el documento clonado
+  (`convocatoria_documentos`, tipo `convocatoria`, 101.454 caracteres): Anexo I, columnas
+  `GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP.`, fila `CELADOR/A 740 688 52`.
+  688+52=740, coincide al dígito con `plazas_libres=688`/`plazas_discapacidad=52` en BD.
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=celador-sermas-madrid \
+    --incluidas=false --url=https://www.bocm.es/boletin/CM_Orden_BOCM/2025/07/04/BOCM-20250704-15.PDF \
+    --cita="ANEXO I DESCRIPCION DE PLAZAS Y TITULACION EXIGIDA — GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP. — CELADOR/A 740 688 52" \
+    --motivo="BOCM-20250704-15, Anexo I: fila CELADOR/A trae TOTAL 740, CUPO GRAL. 688, CUPO DISCAP. 52 — 688+52=740, coincide con BD (libres=688, cupo=52). Total impreso confirma que el cupo va APARTE." \
+    --apply
+  ```
+
+- **`administrativo-extremadura` → `false` (aparte, cifra_derivada).** No es una forma nueva: es
+  la TERCERA familia (acumulación de OEP) que ya describe la novena tanda para Asturias/La Rioja.
+  El corpus tiene 3 documentos `convocatoria` (DOE 2024, 2025, 2026). El de 2025 (`fa194909…`,
+  DOE núm. 244, 19/12/2025) dice literal: *«Se convocan… 11 plazas… (10 plazas correspondiente a
+  la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de
+  discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo
+  Público… para los años 2022 y 2023)»* y *«el número total de plazas será de 11»*. Turno libre =
+  8+1 = **9** (coincide con `plazas_libres=9`); turno discapacidad = **2** (coincide con
+  `plazas_discapacidad=2`); total impreso = **11** = 9+2. Nuestra cifra (9) no está impresa como
+  un solo número — es la suma de dos anuncios del mismo expediente (8 de 2021 + 1 de 2022/2023) —
+  así que corresponde firmar primero la derivación en `convocatoria_verification` con
+  `cifra_derivada` (§6/§7 del runbook) citando los dos sumandos, y **entonces** declarar:
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=administrativo-extremadura \
+    --incluidas=false --url=https://doe.juntaex.es/pdfs/doe/2025/2440o/25050191.pdf \
+    --cita="Se convocan pruebas selectivas para cubrir... 11 plazas... (10 plazas correspondiente a la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo Público... para los años 2022 y 2023)... el número total de plazas será de 11." \
+    --motivo="DOE núm. 244 (19/12/2025): turno libre = 8 (OEP 2021) + 1 (OEP 2022/2023) = 9 = plazas_libres BD; turno discapacidad = 2 (OEP 2021) = plazas_discapacidad BD; total impreso 11 = 9+2. Cifra derivada de dos anuncios del mismo expediente, firmar antes en convocatoria_verification con cifra_derivada." \
+    --apply
+  ```
+
+**⛔ 2 PROPUESTAS "UNÁNIMES" DEL AUTOMATISMO, DESCARTADAS TRAS LEER EL DOCUMENTO REAL — no declarar:**
+
+- **`auxiliar-administrativo-diputacion-huelva` (libres=3, cupo=2) — el mismo slug que YA avisaba
+  la novena tanda de falsos positivos.** El proponente volvió a marcarlo unánime (`aparte`), pero
+  el propio `boe_reference` dice *«bases pendientes»* y el documento tipo `convocatoria` clonado
+  (el listado de la sede electrónica, no las bases) muestra que Auxiliar de Administración
+  General en Huelva son en realidad **TRES procesos selectivos SEPARADOS** con Bases Específicas
+  propias (BOP nº138, 20/07/2026): proceso 34 «9 PLAZAS» (turno libre general), proceso 35 «3
+  PLAZAS» (turno libre reservado a discapacidad general) y proceso 36 «1 PLAZA» (discapacidad
+  intelectual). No es un desglose dentro/aparte de una sola convocatoria — es un problema de
+  MODELO DE DATOS (¿qué proceso de los tres representa nuestra fila?) que esta ficha no puede
+  resolver sola. La cita que el automatismo usó como «evidencia» es lenguaje genérico sobre
+  acreditación de discapacidad, no una cifra. **No declarar. SOSPECHO que la fila necesita
+  reconciliarse contra los 3 procesos reales antes de nada — anotado para quien lo retome, no
+  investigado más a fondo por no ser el alcance de esta ficha.**
+- **`auxiliar-administrativo-diputacion-segovia` (libres=2, cupo=2) — CORPUS AJENO, no falso
+  positivo de forma.** Los 6 documentos clonados de esta convocatoria son TODOS del proceso
+  «ENFERMERO/A OPE 2026» (listas de admitidos, notas de examen, propuesta de nombramiento) — CERO
+  documentos de «Auxiliar Administrativo». La cita que el automatismo tomó como evidencia
+  («…certificado oficial que acredite tal condición…») es lenguaje boilerplate de un documento del
+  proceso de Enfermero/a, no de éste. Mismo patrón que `npm run audit:corpus-ajeno` caza (T-654),
+  pero ese comando compara la RUTA del `programa_url` contra la de los documentos y aquí el
+  problema es al revés (documentos de OTRO proceso del mismo portal, sin que el `programa_url`
+  esté mal). **No declarar — hace falta re-clonar el corpus real de Auxiliar Administrativo antes
+  de poder proponer nada.**
+
+**Los 17 restantes siguen "mudos" (forma nueva, sin evidencia automática) y necesitan lectura una
+a una, como ya diagnosticó la séptima/octava tanda.** No los leí todos por alcance de este turno
+(cada uno son varios documentos de cientos de KB): `administrativo-diputacion-valencia`,
+`administrativo-la-rioja`, `administrativo-navarra`, `administrativo-universidad-leon`,
+`auxiliar-administrativo-ayuntamiento-marbella`, `auxiliar-administrativo-diputacion-avila`,
+`auxiliar-administrativo-diputacion-ourense`, `auxiliar-administrativo-diputacion-zamora`,
+`auxiliar-administrativo-la-rioja`, `auxiliar-administrativo-universidad-carlos-iii`,
+`auxiliar-administrativo-universidad-leon`, `celador-murcia`, `cuidador-diputacion-cordoba`,
+`tcae-sescam`, más `administrativo-asturias` (ya diagnosticado en la novena tanda como
+`cifra_derivada` pendiente, con el cabo aparte de su `boe_reference` desalineado).
+
+**No pude aplicar nada yo misma: los dos comandos de arriba necesitan `DATABASE_URL` completo
+(escritura de negocio), que un trabajador de la flota no tiene por diseño.** Quedan como comandos
+listos, con cita y URL verificadas contra el documento real, para que una persona los ejecute.
+
 - **Origen:** [T-214], 28/07.
 
 ### [T-199] 🟡 [ABIERTO 27/07] El icono de Embajadores aparece en el MISMO instante en que el usuario paga: la recomendación queda marcada como incentivada
