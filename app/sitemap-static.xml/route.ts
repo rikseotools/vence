@@ -30,6 +30,8 @@ export async function GET() {
     { loc: '/temarios', priority: 0.9, changefreq: 'weekly' },
     // Comparar temarios
     { loc: '/comparar-temarios', priority: 0.7, changefreq: 'monthly' },
+    // Oposición a medida (T-328) — crear tu propio temario cuando tu oposición no está montada
+    { loc: '/tu-oposicion-a-medida', priority: 0.7, changefreq: 'monthly' },
     // Oposiciones (generado desde config central)
     ...OPOSICIONES.flatMap(o => [
       { loc: `/${o.slug}`, priority: 0.9, changefreq: 'weekly' as const },
