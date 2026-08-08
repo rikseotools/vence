@@ -16081,9 +16081,25 @@ cuadra y es MÁS GRANDE que esta ficha:**
   `content_health_findings` para este slug: solo 2 hallazgos activos, ninguno sobre esto). Queda
   como candidato a ficha propia para quien decida si merece su propio T-id.
 
-**Comandos listos, para quien tenga escritura de negocio** (yo solo tengo `VENCE_LECTOR_URL`, y
-`clonar-documento.ts` escribe con `DATABASE_URL` directo — no hay `--dry-run`, así que no los he
-podido ejecutar; los cuatro se han verificado leyendo la fuente a mano, no adivinados):
+**✅ APLICADO (08/08) — los 4 re-clonados, y comprobado que ahora traen la ficha.** Los ejecutó una
+sesión local con escritura, tras el veredicto **ok** de `w2-vence-flota` (que re-verificó cada cifra
+con `curl` propio al `txt.php` de los 4 BOE-ID). Resultado medido en `convocatoria_documentos`
+después de escribir:
+
+| oposición | antes | después | ¿ANÁLISIS? | ¿«Turno libre»? | ¿su cifra? |
+|---|---|---|---|---|---|
+| `…ayuntamiento-madrid` | 1.246 | **2.442** | ✅ | ✅ | ✅ 256 |
+| `…ayuntamiento-cordoba` | 1.486 | **2.692** | ✅ | ✅ | ✅ 55 |
+| `…diputacion-zaragoza` | 1.890 | **2.414** | ✅ | ✅ | ✅ 26 |
+| `administrativo-diputacion-valencia` | 2.257 | **2.688** | ✅ | ✅ | ✅ 66 |
+
+**Ojo al leer la verificación:** la `url` de las filas sigue siendo la de `/pdfs/` y eso es
+CORRECTO — el hub deduplica por `doc_key` (el BOE-ID), así que re-clonar desde el `txt.php` **actualiza
+el texto de la fila que ya existe** en vez de crear una segunda para el mismo documento. Lo que
+cambia es el `extracted_text`, que es lo que se buscaba.
+
+**Comandos ejecutados** (guardados en `scratchpad/t190-reclonar.sh`; `clonar-documento.ts` escribe con
+`DATABASE_URL` directo y no tiene `--dry-run`):
 ```
 cd backend
 NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
@@ -16110,8 +16126,12 @@ NODE_TLS_REJECT_UNAUTHORIZED=0 npx tsx scripts/clonar-documento.ts \
   --tipo=otro --titulo="Resolución de 17 de abril de 2026, de la Diputación Provincial de Valencia" \
   --boletin=BOE --ref=BOE-A-2026-9387 --fecha=2026-04-30 --refrescar-texto
 ```
-Verificar después con `npm run audit:convocatorias` (antes/después) y confirmando que
-`convocatoria_documentos.extracted_text` de esas 4 filas ya trae la sección «ANÁLISIS».
+Verificado con `scratchpad/verif-t190.cjs` (los 4 traen ya «ANÁLISIS» + «Turno libre» + su cifra).
+
+**Los dos hallazgos de higiene que salieron de aquí están fichados en [T-694]** (Madrid con el
+documento de otro ciclo, y la fila `BOE-A-2099-TESTHUB` de un fixture escribiendo contra la
+convocatoria real de `auxiliar-administrativo-estado`): no son extracción pobre, así que no se
+arreglan con esta ficha.
 
 **Capas:** sin código de producción tocado (es curación de contenido con una herramienta ya
 existente, `clonar-documento.ts`, ya registrada en `toolRegistry.ts`). Verificación = fetch directo

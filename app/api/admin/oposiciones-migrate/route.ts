@@ -4,10 +4,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { invalidateProfileCache } from '@/lib/api/profile'
 import { eq } from 'drizzle-orm'
 
 async function _POST(request: NextRequest) {
+  // Sin esta puerta, un POST anónimo con cualquier `fromUUID` reescribía el
+  // `target_oposicion` de TODOS los usuarios que lo tuvieran, con la credencial
+  // de admin de la BD y sin dejar rastro de quién lo pidió. Lo destapó la
+  // revisión de [T-077] (08/08/2026): la ruta no tiene ningún llamante en la UI,
+  // pero estar huérfana no es estar cerrada.
+  const auth = await requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { fromUUID, toSlug, toData } = await request.json()
 
@@ -48,7 +57,9 @@ async function _POST(request: NextRequest) {
     // raro y N usuarios afectados pueden ser miles).
     invalidateProfileCache()
 
-    console.log(`✅ [Migrate] ${affected.length} usuarios migrados de ${fromUUID} a ${toSlug}`)
+    console.log(
+      `✅ [Migrate] ${affected.length} usuarios migrados de ${fromUUID} a ${toSlug} (por ${auth.user.email})`
+    )
 
     return NextResponse.json({
       success: true,

@@ -328,7 +328,6 @@ const ZONA_CIEGA_PENDIENTE: string[] = [
   'app/api/admin/newsletters/send/route.ts',
   'app/api/admin/newsletters/template-stats/route.ts',
   'app/api/admin/newsletters/users/route.ts',
-  'app/api/admin/oposiciones-migrate/route.ts',
   'app/api/admin/oposiciones-stats/route.ts',
   'app/api/admin/pending-counts/route.ts',
   'app/api/admin/sales-prediction/route.ts',
