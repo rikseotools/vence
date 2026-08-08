@@ -1906,6 +1906,21 @@ abandonos es de 4-13 al día, así que repararlos inventaría notas.
 4. Los 18 que nunca acuñaron: si tras el deploy queda un resto, `auth_header_sin_token` ya lo
    hace visible — ahí es donde mirar, y ya no habrá que reconstruirlo a mano.
 
+**Corroboración independiente (08/08, w3), sin desplegar ni tocar código:** medí el residuo por mi
+cuenta ANTES de leer el diagnóstico de `movil-colas` de arriba, y las dos cifras se sostienen entre
+sí. Sobre la ventana limpia (21:00 UTC 07/08 en adelante, ya sin el pico): `/api/v2/user-stats`
+37/94 `No autorizado` (≈39%) y `/api/exam/pending` 88/211 (≈42%) — encaja con su «48% sobre el
+bundle `a99c08fc`». Y tracé un usuario real (`4ded0300…`) con 5 fallos seguidos en 12 segundos
+**incluyendo uno inmediatamente DESPUÉS de un `auth_token_minted` fresco** — un reintento con
+token nuevo que sigue fallando no cuadra con "cliente sin refrescar", pero sí con un backoff que
+bloquea el SIGUIENTE intento aunque el minteo ya haya funcionado. Mi hipótesis inicial (caché de
+cliente viejo) explicaba una parte pero no esa secuencia; la del backoff sí. **Confirmado también
+lo mismo para T-669** (`/api/exam/validate`): en la misma ventana limpia, 0 `forbidden`/
+`client_error` y las 5 correcciones autenticadas con `rejectedReason:null` — ese endpoint concreto
+no muestra el patrón de backoff (quizás por volumen bajo, 26 eventos en 12h). Dejo la tarea en
+`pause --tras-deploy` (superficie `both`, frontend+backend) tal cual pide el PENDIENTE de arriba:
+no puedo desplegar desde esta máquina.
+
 ### [T-672] 🟠 [ABIERTO 07/08] Barrido bajo la PREMISA de literalidad: preguntas activas cuya clave NO está en su artículo vinculado (reformular o desactivar)
 
 **La premisa (Manuel, 07/08/2026), que es de todo el banco y no de un caso:**
