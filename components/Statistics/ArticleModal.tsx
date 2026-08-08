@@ -1,6 +1,7 @@
 // components/Statistics/ArticleModal.tsx
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ArticleData {
@@ -67,7 +68,7 @@ export default function ArticleModal({ isOpen, onClose, lawSlug, articleNumber, 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: CAPAS.modal }}>
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Overlay */}
         <div

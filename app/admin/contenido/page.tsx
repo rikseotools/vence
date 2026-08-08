@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { epigrafeBadge, EPIGRAFE_TONE_CLS } from '@/lib/api/admin-contenido/epigrafeBadge'
@@ -440,7 +441,7 @@ export default function ContenidoPage() {
 
       {epiSlug && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: CAPAS.modal }}
           onClick={() => setEpiSlug(null)}
         >
           <div
@@ -517,7 +518,7 @@ export default function ContenidoPage() {
 
       {covSlug && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: CAPAS.modal }}
           onClick={() => setCovSlug(null)}
         >
           <div

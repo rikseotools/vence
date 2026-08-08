@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useAuth } from '../contexts/AuthContext'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 
@@ -200,7 +201,7 @@ export default function SharePrompt({
   const content = getPromptContent()
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 animate-fadeIn" style={{ zIndex: CAPAS.modal }}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform animate-slideUp">
 
         {/* Header con gradiente */}

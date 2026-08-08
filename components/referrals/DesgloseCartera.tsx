@@ -26,6 +26,7 @@ import { useState } from 'react'
 import { ETIQUETA_FUENTE, etiquetaEstado, type BreakdownRow } from '@/lib/referrals/breakdown'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { partirMensaje } from '@/lib/referrals/mensajeAdjuntos'
+import { CAPAS } from '@/lib/ui/capas'
 
 /** Qué `kind` del desglose alimenta cada fila del resumen por fuente. */
 const KIND_POR_FUENTE: Record<string, BreakdownRow['kind'][]> = {
@@ -218,7 +219,8 @@ export default function DesgloseCartera({
           está el enlace a Soporte, que es donde vive esa conversación de verdad. */}
       {modal && (
         <div
-          className="fixed inset-0 z-[9998] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          style={{ zIndex: CAPAS.modal }}
           onClick={() => setModal(null)}
         >
           <div

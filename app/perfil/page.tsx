@@ -1,6 +1,7 @@
 // app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
 import { useState, useEffect, useRef, Suspense, useMemo, useCallback, ChangeEvent } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { textoBotonSuscripcion, textoAvisoCancelacion } from '@/lib/api/premium/textoPrecioFidelidad'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -3706,7 +3707,7 @@ function PerfilPageContent() {
 
       {/* 🗑️ Modal de eliminación de cuenta */}
       {showDeleteAccountModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
             {deletionSuccess ? (
               // ✅ ESTADO DE ÉXITO — confirmación inline. Ya NO auto-cierra

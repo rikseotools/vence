@@ -3,6 +3,7 @@
 import { useState, useEffect, type ChangeEvent } from 'react'
 import { auth } from '@/lib/auth' // puerto agnóstico para auth.* (updateUser/getSession)
 import { getAuthHeaders } from '@/lib/api/authHeaders'
+import { CAPAS } from '@/lib/ui/capas'
 
 // Actualiza el avatar en public_user_profiles vía endpoint agnóstico (Drizzle,
 // user_id del token). Reemplaza los UPDATE PostgREST de cliente sobre esa tabla.
@@ -463,16 +464,17 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }: A
 
       {/* Modal CORREGIDO */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{ 
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             position: 'fixed',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 9999
+            // z-index por CAPAS (T-608): con z-[9999] empataba con el banner de cookies.
+            zIndex: CAPAS.modal
           }}
           onClick={() => setIsOpen(false)}
         >

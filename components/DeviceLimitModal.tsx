@@ -4,6 +4,7 @@
 // Lista los dispositivos conectados y permite desconectar uno.
 
 import { useState, useEffect, useCallback } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { getAuthHeaders } from '@/lib/api/authHeaders'
 import { logClientError } from '@/lib/logClientError'
 
@@ -115,7 +116,7 @@ export default function DeviceLimitModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
 

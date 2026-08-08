@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { adminFetch } from '@/lib/api/adminFetch'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -94,7 +95,7 @@ const CompareModal = ({ isOpen, onClose, article, law, lawId }) => {
   const isFullMatch = similarity.title >= 95 && similarity.content >= 95
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: CAPAS.modal }}>
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
         {/* Overlay */}
         <div
@@ -4886,7 +4887,7 @@ export default function VerificarArticulosPage() {
 
       {/* Modal de logs de errores */}
       {showErrorLogs && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 overflow-y-auto" style={{ zIndex: CAPAS.modal }}>
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
             <div
               className="fixed inset-0 bg-black/50 transition-opacity"

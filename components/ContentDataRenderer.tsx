@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import MarkdownExplanation from './MarkdownExplanation'
 import { emitClientEvent } from '@/lib/observability/client'
 
@@ -235,7 +236,7 @@ export default function ContentDataRenderer({ contentData, imageUrl, questionId,
       {/* Modal de zoom para imágenes grandes */}
       {zoomImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-black/70 p-4" style={{ zIndex: CAPAS.modal }}
           onClick={() => setZoomImage(null)}
         >
           <div className="relative max-w-[95vw] max-h-[95vh] overflow-auto" onClick={(e) => e.stopPropagation()}>

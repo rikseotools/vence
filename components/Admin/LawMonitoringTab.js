@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useRouter } from 'next/navigation'
 
 // Componente Spinner
@@ -784,7 +785,7 @@ export default function LawMonitoringTab() {
 
       {/* Modal informativo */}
       {showInfoModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">

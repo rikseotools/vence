@@ -3,6 +3,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { CAPAS } from '@/lib/ui/capas'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { OPOSICIONES } from '@/lib/config/oposiciones'
@@ -157,7 +158,7 @@ export default function OposicionChangeModal({ open, onClose, onSelect }: Props)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: CAPAS.modal }}
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
