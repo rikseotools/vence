@@ -16221,6 +16221,101 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Cómo:** para cada una, abrir su boletín y leer la fórmula. La distinción es literal y no se puede inferir por patrón: *«del total de plazas a cubrir, N se reservarán…»* → el cupo va **dentro**; *«además de las N plazas, se convocan M por el cupo de reserva»* → va **aparte**. Córdoba (28/07) es el ejemplo trabajado: mismo aspecto que Aragón y semántica contraria.
 - **Lista y estado:** `npx tsx scripts/convocatoria/sim-frase-plazas.ts --todas` las agrupa; las de este grupo son las que salen bajo «RESERVA OCULTADA».
 - **NUNCA:** rellenarlo por analogía con una convocatoria parecida ni por lo que dé la suma más redonda. Es una cifra de plazas: se lee en el boletín o se deja sin declarar.
+
+#### Décima tanda (08/08, w1) — 2 listas para declarar, 2 propuestas automáticas descartadas por FALSAS, la cola actual
+
+**Estado real medido hoy (`--proponer` con `VENCE_LECTOR_URL`, no con `DATABASE_URL` — ver GOTCHA
+abajo): quedan 19, no 21/33** — otras sesiones avanzaron entre el 28/07 y hoy. De las 19: **2
+"unánimes" que el proponente automático marcó listas** (ambas resultaron FALSAS al leer el
+documento real, ver abajo) y **17 "mudas"** (forma nueva, hay que leer a mano).
+
+**⚠️ GOTCHA de acceso, para la próxima sesión que lo intente: `npm run reserva:declarar --
+--proponer` falla con «permission denied for table oposiciones» con las credenciales de un
+trabajador.** El script usa `pgConfig()` sin argumento → `DATABASE_URL` por defecto, que para un
+trabajador es la de coordinación (4 tablas). El modo `--proponer` es de solo lectura (no escribe
+nada, ni siquiera con propuesta unánime), así que `DATABASE_URL="$VENCE_LECTOR_URL" node
+scripts/convocatoria/declarar-reserva-discapacidad.cjs --proponer` funciona — pero **el propio
+script hace un JOIN a `user_profiles` para ordenar por usuarios afectados**, y esa tabla SÍ está
+bloqueada para `vence_lector` (PII), así que el barrido completo revienta ahí. Reconstruí la
+misma consulta sin ese JOIN (mismo núcleo `evidenciaReserva.cjs`, sin tocar el original) para
+listar las 19 sin el orden por usuarios.
+
+**✅ 2 LISTAS PARA APLICAR — citas verificadas contra el documento clonado, comando exacto:**
+
+- **`celador-sermas-madrid` → `false` (aparte).** Mismo BOCM-20250704-15 que ya resolvió
+  `tcae-sermas-madrid` (T-682/tanda anterior), fila propia. Leído el documento clonado
+  (`convocatoria_documentos`, tipo `convocatoria`, 101.454 caracteres): Anexo I, columnas
+  `GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP.`, fila `CELADOR/A 740 688 52`.
+  688+52=740, coincide al dígito con `plazas_libres=688`/`plazas_discapacidad=52` en BD.
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=celador-sermas-madrid \
+    --incluidas=false --url=https://www.bocm.es/boletin/CM_Orden_BOCM/2025/07/04/BOCM-20250704-15.PDF \
+    --cita="ANEXO I DESCRIPCION DE PLAZAS Y TITULACION EXIGIDA — GRUPO SUBGRUPO CATEGORÍA TOTAL PLAZAS CUPO GRAL. CUPO DISCAP. — CELADOR/A 740 688 52" \
+    --motivo="BOCM-20250704-15, Anexo I: fila CELADOR/A trae TOTAL 740, CUPO GRAL. 688, CUPO DISCAP. 52 — 688+52=740, coincide con BD (libres=688, cupo=52). Total impreso confirma que el cupo va APARTE." \
+    --apply
+  ```
+
+- **`administrativo-extremadura` → `false` (aparte, cifra_derivada).** No es una forma nueva: es
+  la TERCERA familia (acumulación de OEP) que ya describe la novena tanda para Asturias/La Rioja.
+  El corpus tiene 3 documentos `convocatoria` (DOE 2024, 2025, 2026). El de 2025 (`fa194909…`,
+  DOE núm. 244, 19/12/2025) dice literal: *«Se convocan… 11 plazas… (10 plazas correspondiente a
+  la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de
+  discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo
+  Público… para los años 2022 y 2023)»* y *«el número total de plazas será de 11»*. Turno libre =
+  8+1 = **9** (coincide con `plazas_libres=9`); turno discapacidad = **2** (coincide con
+  `plazas_discapacidad=2`); total impreso = **11** = 9+2. Nuestra cifra (9) no está impresa como
+  un solo número — es la suma de dos anuncios del mismo expediente (8 de 2021 + 1 de 2022/2023) —
+  así que corresponde firmar primero la derivación en `convocatoria_verification` con
+  `cifra_derivada` (§6/§7 del runbook) citando los dos sumandos, y **entonces** declarar:
+  ```
+  node scripts/convocatoria/declarar-reserva-discapacidad.cjs --slug=administrativo-extremadura \
+    --incluidas=false --url=https://doe.juntaex.es/pdfs/doe/2025/2440o/25050191.pdf \
+    --cita="Se convocan pruebas selectivas para cubrir... 11 plazas... (10 plazas correspondiente a la Oferta de Empleo Público para el año 2021 (8 por el turno de acceso libre, 2 por el turno de discapacidad) más 1 plaza por el turno de acceso libre, correspondiente a las Ofertas de Empleo Público... para los años 2022 y 2023)... el número total de plazas será de 11." \
+    --motivo="DOE núm. 244 (19/12/2025): turno libre = 8 (OEP 2021) + 1 (OEP 2022/2023) = 9 = plazas_libres BD; turno discapacidad = 2 (OEP 2021) = plazas_discapacidad BD; total impreso 11 = 9+2. Cifra derivada de dos anuncios del mismo expediente, firmar antes en convocatoria_verification con cifra_derivada." \
+    --apply
+  ```
+
+**⛔ 2 PROPUESTAS "UNÁNIMES" DEL AUTOMATISMO, DESCARTADAS TRAS LEER EL DOCUMENTO REAL — no declarar:**
+
+- **`auxiliar-administrativo-diputacion-huelva` (libres=3, cupo=2) — el mismo slug que YA avisaba
+  la novena tanda de falsos positivos.** El proponente volvió a marcarlo unánime (`aparte`), pero
+  el propio `boe_reference` dice *«bases pendientes»* y el documento tipo `convocatoria` clonado
+  (el listado de la sede electrónica, no las bases) muestra que Auxiliar de Administración
+  General en Huelva son en realidad **TRES procesos selectivos SEPARADOS** con Bases Específicas
+  propias (BOP nº138, 20/07/2026): proceso 34 «9 PLAZAS» (turno libre general), proceso 35 «3
+  PLAZAS» (turno libre reservado a discapacidad general) y proceso 36 «1 PLAZA» (discapacidad
+  intelectual). No es un desglose dentro/aparte de una sola convocatoria — es un problema de
+  MODELO DE DATOS (¿qué proceso de los tres representa nuestra fila?) que esta ficha no puede
+  resolver sola. La cita que el automatismo usó como «evidencia» es lenguaje genérico sobre
+  acreditación de discapacidad, no una cifra. **No declarar. SOSPECHO que la fila necesita
+  reconciliarse contra los 3 procesos reales antes de nada — anotado para quien lo retome, no
+  investigado más a fondo por no ser el alcance de esta ficha.**
+- **`auxiliar-administrativo-diputacion-segovia` (libres=2, cupo=2) — CORPUS AJENO, no falso
+  positivo de forma.** Los 6 documentos clonados de esta convocatoria son TODOS del proceso
+  «ENFERMERO/A OPE 2026» (listas de admitidos, notas de examen, propuesta de nombramiento) — CERO
+  documentos de «Auxiliar Administrativo». La cita que el automatismo tomó como evidencia
+  («…certificado oficial que acredite tal condición…») es lenguaje boilerplate de un documento del
+  proceso de Enfermero/a, no de éste. Mismo patrón que `npm run audit:corpus-ajeno` caza (T-654),
+  pero ese comando compara la RUTA del `programa_url` contra la de los documentos y aquí el
+  problema es al revés (documentos de OTRO proceso del mismo portal, sin que el `programa_url`
+  esté mal). **No declarar — hace falta re-clonar el corpus real de Auxiliar Administrativo antes
+  de poder proponer nada.**
+
+**Los 17 restantes siguen "mudos" (forma nueva, sin evidencia automática) y necesitan lectura una
+a una, como ya diagnosticó la séptima/octava tanda.** No los leí todos por alcance de este turno
+(cada uno son varios documentos de cientos de KB): `administrativo-diputacion-valencia`,
+`administrativo-la-rioja`, `administrativo-navarra`, `administrativo-universidad-leon`,
+`auxiliar-administrativo-ayuntamiento-marbella`, `auxiliar-administrativo-diputacion-avila`,
+`auxiliar-administrativo-diputacion-ourense`, `auxiliar-administrativo-diputacion-zamora`,
+`auxiliar-administrativo-la-rioja`, `auxiliar-administrativo-universidad-carlos-iii`,
+`auxiliar-administrativo-universidad-leon`, `celador-murcia`, `cuidador-diputacion-cordoba`,
+`tcae-sescam`, más `administrativo-asturias` (ya diagnosticado en la novena tanda como
+`cifra_derivada` pendiente, con el cabo aparte de su `boe_reference` desalineado).
+
+**No pude aplicar nada yo misma: los dos comandos de arriba necesitan `DATABASE_URL` completo
+(escritura de negocio), que un trabajador de la flota no tiene por diseño.** Quedan como comandos
+listos, con cita y URL verificadas contra el documento real, para que una persona los ejecute.
+
 - **Origen:** [T-214], 28/07.
 
 ### [T-199] 🟡 [ABIERTO 27/07] El icono de Embajadores aparece en el MISMO instante en que el usuario paga: la recomendación queda marcada como incentivada
