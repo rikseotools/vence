@@ -120,12 +120,28 @@ parseo de límites de partición a mano.
 - **`lib/db/particionadoObservableEvents.cjs`** — núcleo puro: nombres/rangos de partición y el
   DDL exacto (tabla nueva con `PRIMARY KEY (id, created_at)` — obligatorio en Postgres para
   particionar por rango —, los 8 índices reales medidos contra RDS, el `CHECK` de `severity`).
-  14 tests unitarios, `__tests__/lib/db/particionadoObservableEvents.test.ts`.
+  17 tests unitarios, `__tests__/lib/db/particionadoObservableEvents.test.ts`.
 - **`scripts/db/particionar-observable-events.cjs`** — dry-run por defecto, subcomandos `plan`
   (solo lectura, **ejecutado de verdad contra RDS vía `VENCE_LECTOR_URL` el 07/08/2026** — es lo
   único que un rol `trabajador` puede correr), `create`/`backfill`/`swap` (requieren
   `DATABASE_URL` de escritura, **sin ejecutar ni probar contra un Postgres real** — esta máquina
   no tiene `psql` ni Docker) y `verify` (solo lectura, post-swap).
+- **⚠️ Gotcha cazado el 08/08/2026, sin escribir en RDS (auditoría del DDL contra los grants
+  reales):** `CREATE TABLE observable_events_new` **no traía los `GRANT` que la tabla vieja tiene
+  hoy** — `GRANT SELECT ... TO vence_lector` (`20260805_rol_lector_flota.sql`) y `GRANT INSERT ...
+  TO vence_coordinacion` (`20260804_rol_coordinacion_flota.sql:70`). Este proyecto NO usa `ALTER
+  DEFAULT PRIVILEGES` a propósito — el comentario del propio `20260805_rol_lector_flota.sql` lo
+  explica: una tabla nueva nace SIN permisos, así que hay que concederlos explícitamente y no por
+  herencia. Sin este DDL, el `swap` habría dejado `observable_events` sin `SELECT` para la flota
+  (todos los detectores de salud que leen esta tabla se quedarían ciegos, en silencio — 0 filas sin
+  error, el mismo patrón RLS/grants ya visto en `fraud_alerts`/`user_interactions`) y sin `INSERT`
+  para `vence_coordinacion` (el sink `emit()`/`emitFireAndForget()` empezaría a fallar). Arreglado:
+  `GRANTS` + `ddlGrants(tabla)` en el núcleo puro, invocado desde `cmdPlan()` (lo imprime) y
+  `cmdCreate()` (lo ejecuta, entre los índices y las particiones). Aparte, `ddlParticion()` pasó de
+  límites con fecha "bare" (`'2026-08-07'`, que Postgres interpreta según el `TimeZone` de la
+  sesión que corre el DDL) a instantes UTC explícitos vía `instanteUtc()`
+  (`'2026-08-07 00:00:00+00'`) — confirmado que la sesión de RDS usa `TimeZone=UTC` hoy, así que no
+  cambia el comportamiento actual, pero deja de depender en silencio de ese ajuste de sesión.
 - **`backend/src/telemetry-retention/telemetry-retention.service.ts`** — el cron de retención
   ahora comprueba `pg_class.relkind` de `observable_events` EN CADA EJECUCIÓN: si sigue sin
   particionar (el estado de HOY), seguridad total — toma la rama DELETE de siempre, sin cambio de

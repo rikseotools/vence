@@ -53,6 +53,7 @@ const {
   ddlCrearTablaParticionada,
   ddlIndices,
   ddlRenombrarIndicesTrasSwap,
+  ddlGrants,
   ddlParticion,
 } = require('../../lib/db/particionadoObservableEvents.cjs')
 
@@ -144,6 +145,11 @@ async function cmdPlan() {
     console.log('\n=== DDL: índices (8, nombre provisional _new) ===')
     ddlIndices().forEach((i) => console.log(i.sql))
 
+    console.log('\n=== DDL: grants (T-360, imprescindibles — ver el gotcha en particionadoObservableEvents.cjs) ===')
+    console.log('Una tabla nueva NACE SIN permisos en este proyecto (a propósito, ver 20260805_rol_lector_flota.sql).')
+    console.log('Sin esto, el `swap` deja `observable_events` SIN lectura para la flota ni INSERT para el supervisor.')
+    ddlGrants().forEach((s) => console.log(s))
+
     console.log(`\n=== DDL: primeras y últimas 3 particiones (de ${plan.fechas.length} totales) ===`)
     ;[...plan.fechas.slice(0, 3), '…', ...plan.fechas.slice(-3)].forEach((f) =>
       console.log(f === '…' ? '…' : ddlParticion(f)),
@@ -191,6 +197,10 @@ async function cmdCreate() {
     const sentencias = [
       ddlCrearTablaParticionada(),
       ...ddlIndices().map((i) => i.sql),
+      // T-360: sin esto, el swap deja la tabla nueva sin SELECT para vence_lector ni INSERT
+      // para vence_coordinacion — una tabla nueva nace sin permisos en este proyecto, a
+      // propósito (ver el gotcha grande en particionadoObservableEvents.cjs).
+      ...ddlGrants(),
       ...plan.fechas.map((f) => ddlParticion(f)),
     ]
 

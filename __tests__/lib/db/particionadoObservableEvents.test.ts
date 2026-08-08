@@ -26,8 +26,11 @@ const mod = require('@/lib/db/particionadoObservableEvents.cjs') as {
   ddlIndices: (t?: string) => Array<{ nombreOriginal: string; nombreNuevo: string; sql: string }>
   ddlRenombrarIndicesTrasSwap: () => string[]
   ddlParticion: (f: string, t?: string) => string
+  ddlGrants: (t?: string) => string[]
+  instanteUtc: (f: string) => string
   COLUMNAS: Array<{ nombre: string }>
   INDICES: Array<{ nombreOriginal: string }>
+  GRANTS: Array<{ rol: string; privilegio: string }>
 }
 
 describe('particionadoObservableEvents: nombres y fechas', () => {
@@ -130,7 +133,25 @@ describe('particionadoObservableEvents: DDL', () => {
   it('una partición diaria cubre exactamente [fecha, fecha+1) — sin solape con la vecina', () => {
     const hoy = mod.ddlParticion('2026-08-07')
     const manana = mod.ddlParticion('2026-08-08')
-    expect(hoy).toContain("FOR VALUES FROM ('2026-08-07') TO ('2026-08-08')")
-    expect(manana).toContain("FOR VALUES FROM ('2026-08-08') TO ('2026-08-09')")
+    expect(hoy).toContain("FOR VALUES FROM ('2026-08-07 00:00:00+00') TO ('2026-08-08 00:00:00+00')")
+    expect(manana).toContain("FOR VALUES FROM ('2026-08-08 00:00:00+00') TO ('2026-08-09 00:00:00+00')")
+  })
+
+  it('instanteUtc fija el instante como medianoche UTC explícita, no una fecha bare dependiente de session TimeZone', () => {
+    expect(mod.instanteUtc('2026-08-07')).toBe('2026-08-07 00:00:00+00')
+  })
+})
+
+describe('particionadoObservableEvents: ddlGrants (T-360)', () => {
+  it('replica los dos GRANT que la tabla vieja tiene hoy — vence_lector SELECT, vence_coordinacion INSERT', () => {
+    const grants = mod.ddlGrants()
+    expect(mod.GRANTS.length).toBe(2)
+    expect(grants).toContain('GRANT SELECT ON observable_events_new TO vence_lector;')
+    expect(grants).toContain('GRANT INSERT ON observable_events_new TO vence_coordinacion;')
+  })
+
+  it('acepta un nombre de tabla explícito, igual que ddlParticion/ddlIndices', () => {
+    const grants = mod.ddlGrants('observable_events')
+    expect(grants.every((g) => g.includes('observable_events') && !g.includes('_new'))).toBe(true)
   })
 })
