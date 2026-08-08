@@ -96,6 +96,20 @@ describe('[T-624] guardarraíl — la credencial de lectura se elige en un solo 
     expect(typeof mod.urlLecturaNegocioConFuente).toBe('function')
   })
 
+  it('[T-152] audit-landing.cjs sigue usando el punto único, no DATABASE_URL a pelo', () => {
+    // Hasta el 08/08/2026 `conectar()` solo aceptaba `process.env.DATABASE_URL` (rol de
+    // coordinación, sin acceso a `oposiciones_ssot` desde [T-539]) — un trabajador de la flota
+    // con `VENCE_LECTOR_URL` no podía correr esta auditoría, que es justo la PUERTA que su
+    // propia ficha ([T-152]) le pide pasar antes de proponer un envío. Regresión concreta: si
+    // alguien vuelve a leer `process.env.DATABASE_URL` directamente aquí (a mano, «para
+    // simplificar»), este test lo caza sin depender de una credencial real.
+    const ruta = 'scripts/convocatoria/audit-landing.cjs'
+    const txt = readFileSync(join(RAIZ, ruta), 'utf8')
+    expect(txt).toMatch(/require\([^)]*negocioSoloLectura\.cjs['"]?\)/)
+    expect(txt).toMatch(/urlLecturaNegocio\(\)/)
+    expect(sinComentarios(txt)).not.toMatch(/postgres\(\s*process\.env\.DATABASE_URL/)
+  })
+
   it('MENCIONAR las dos variables sigue permitido (avisos y comentarios)', () => {
     // Contraste explícito: si esto empezara a fallar, el guardarraíl se habría vuelto un estorbo
     // y la salida sería borrar los mensajes útiles, que es peor que el problema original.
