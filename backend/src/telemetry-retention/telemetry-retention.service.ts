@@ -276,7 +276,6 @@ export class TelemetryRetentionService {
    * Borra en batches las filas de `table` cuya columna temporal `tsColumn` es más
    * antigua que la retención. `table` y `tsColumn` son literales controlados por el
    * código (nunca input externo) → `sql.raw` es seguro aquí.
-   */
    *
    * [T-613] El `ORDER BY tsColumn` del SELECT interno NO es cosmético, y es lo que
    * hace que el lote quepa en el `statement_timeout` que documenta T-733. Medido con
