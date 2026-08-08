@@ -40,6 +40,13 @@ jest.mock('../../../../lib/db/timeout', () => ({
 const mockEmit = jest.fn().mockResolvedValue(undefined)
 jest.mock('../../../../lib/observability/emit', () => ({
   emit: (...args: unknown[]) => mockEmit(...args),
+  // [T-735] `emitFireAndForget` lo estrenó T-312 en esta MISMA ruta (desglose de fases
+  // auth+antifraude) mientras T-635 vivía en su rama. Cada una pasaba sus tests por separado;
+  // al juntarlas, el mock parcial dejaba la función sin definir y la ruta moría con un
+  // TypeError que el catch traducía a 500 — el test de presupuesto veía un 500 donde esperaba
+  // un 200 y parecía que el arreglo de T-635 no funcionaba. Un mock de módulo tiene que
+  // declarar TODO lo que la ruta importe, o envejece en cuanto otra rama toca el fichero.
+  emitFireAndForget: (...args: unknown[]) => mockEmit(...args),
 }))
 
 jest.mock('../../../../lib/api/dailyLimit', () => ({
