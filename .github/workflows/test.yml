@@ -221,7 +221,15 @@ jobs:
     continue-on-error: true
     needs: unit
     #
-    # Decisión de Manuel (08/08/2026, #122/#123): estas 10 suites de test:integration ESCRIBEN
+    # ⚠️ ATRIBUCIÓN CORREGIDA al fusionar (08/08): la decisión de #122/#123 NO la tomó Manuel, la
+    # tomó la sesión de supervisión aplicando el criterio YA ESCRITO de la casa. Importa quién
+    # decide qué, sobre todo en algo de credenciales: si mañana se revisa, hay que poder saber si
+    # esto lo respalda una regla del repo (revisable, discutible) o una persona (no).
+    # El criterio aplicado, literal: «¿meto una credencial de más para que pase? → no. Se acota el
+    # permiso», más el diseño de la flota (vence_coordinacion sin negocio, vence_lector solo
+    # lectura, ni AWS ni Stripe en esas máquinas). CI es un agente automático más.
+    #
+    # Por ese criterio: estas 10 suites de test:integration ESCRIBEN
     # de verdad (dinero/referidos, borrado GDPR, ciclo de convocatoria, scope/temario) y llevan
     # detrás de INTEGRATION_DB_WRITABLE=1 desde siempre — variable que NINGÚN workflow ponía, así
     # que nunca han corrido en CI (ver docs/roadmap/tareas-pendientes.md, ficha T-644). En vez de
