@@ -15,7 +15,6 @@
     "id": "c7d94af7-3655-4057-8d68-d4b5264b6fe9",
     "article_number": "24",
     "ley": "RDL 5/2015",
-<<<<<<< HEAD
     "n_topic_scope": "71"
   },
   {
@@ -23,15 +22,6 @@
     "article_number": "44",
     "ley": "Ley 40/2015",
     "n_topic_scope": "54"
-=======
-    "n_topic_scope": "70"
-  },
-  {
-    "id": "47be85a2-dfc6-4154-a3f5-d5b5b38921c7",
-    "article_number": "6",
-    "ley": "Ley 19/2013",
-    "n_topic_scope": "44"
->>>>>>> origin/flota/T-356-articulos-pobres-w2
   },
   {
     "id": "93b61922-ac8f-4f12-9843-6ab73f5a9ea1",
@@ -148,15 +138,12 @@
     "n_topic_scope": "4"
   },
   {
-<<<<<<< HEAD
     "id": "75695b64-82a9-420d-927b-54a91a730d64",
     "article_number": "14",
     "ley": "LO 11/1985",
     "n_topic_scope": "4"
   },
   {
-=======
->>>>>>> origin/flota/T-356-articulos-pobres-w2
     "id": "46e74025-e673-469b-906b-79586dbd2a88",
     "article_number": "268",
     "ley": "LECrim",
@@ -277,15 +264,12 @@
     "n_topic_scope": "3"
   },
   {
-<<<<<<< HEAD
     "id": "4b749e91-bd7f-48ff-be17-64cf555fcbd0",
     "article_number": "47",
     "ley": "LO 3/1983",
     "n_topic_scope": "3"
   },
   {
-=======
->>>>>>> origin/flota/T-356-articulos-pobres-w2
     "id": "95482bb2-c36c-48a8-9051-cade1558464d",
     "article_number": "1",
     "ley": "Ley 1/2014 Transparencia Andalucía",
@@ -1227,8 +1211,4 @@
     "ley": "LO 4/2010",
     "n_topic_scope": "0"
   }
-<<<<<<< HEAD
 ]
-=======
-]
->>>>>>> origin/flota/T-356-articulos-pobres-w2
