@@ -42,6 +42,19 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# 1a-bis. El índice del backlog no puede llevar texto que ninguna ficha produce (T-721). Va aquí,
+#     junto a lo barato, porque lo que evita también se pierde EN SILENCIO: desde T-532 la fuente
+#     son los ficheros de docs/roadmap/tareas/ y el índice se GENERA, pero 100 de las 129 ramas
+#     vivas son anteriores a ese cambio y editan el índice. Al mergearlas —a veces SIN conflicto,
+#     que es el caso traicionero— su texto entra en un fichero generado y la siguiente
+#     regeneración lo borra. `indiceEstaAlDia()` ya lo cazaba, pero solo en CI: tarde, y sin decir
+#     qué hacer. Esto lo adelanta al momento en que aún se puede rescatar, y lo explica.
+node scripts/backlog/indice-huerfano-guard.cjs
+if [ $? -ne 0 ]; then
+  echo "❌ Commit cancelado: se perdería texto del backlog (ver arriba)."
+  exit 1
+fi
+
 # 1b. Una sesión por índice de git (T-415). Va aquí arriba, con lo barato, porque lo que evita es
 #     IRREVERSIBLE en la historia: el índice es del REPOSITORIO, así que si dos sesiones trabajan
 #     en el mismo directorio, el `git add` de una entra en el commit de la otra sin que ni ellas
