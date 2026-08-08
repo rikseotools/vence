@@ -38,6 +38,7 @@ const ENC = require(path.join(REPO, 'lib', 'flota', 'encargo.cjs'))
 const BUC = require(path.join(REPO, 'lib', 'flota', 'bucle.cjs'))
 const { sidCorto } = require(path.join(REPO, 'lib', 'sessions', 'sid.cjs'))
 const AUT = require(path.join(REPO, 'lib', 'flota', 'autenticacion.cjs'))
+const CUENTAS = require(path.join(REPO, 'lib', 'flota', 'cuentas.cjs'))
 const ACTU = require(path.join(REPO, 'lib', 'flota', 'actualizacion.cjs'))
 const RESC = require(path.join(REPO, 'lib', 'flota', 'rescate.cjs'))
 // La conversación de un trabajador sobrevive a su turno (T-486): --session-id / --resume.
@@ -1276,7 +1277,17 @@ async function main() {
           // matando en serie (cuota…)" en el panel.
           emitirTurno(trabajador, 'muerto', { tarea: suya.id, motivo: 'turno terminado con la tarea cogida y sin proceso' })
           if (auth.estado === 'cuota_agotada') {
-            emitirTurno(trabajador, 'sin_cuota', { tarea: suya.id, motivo: auth.detalle })
+            // [T-709] La CUENTA va en el evento. Es el único dato real con el que se puede
+            // avisar la próxima vez ANTES de topar: el proveedor no publica cuánta cuota
+            // queda, solo corta, así que `npm run cuota` compara el consumo de ahora con el
+            // que tenía esta cuenta cuando se quedó seca. Se mete en el evento que YA existe
+            // en vez de estrenar uno: dos tipos para el mismo hecho se vigilan con dos reglas
+            // y una acaba sin nadie que la mire.
+            emitirTurno(trabajador, 'sin_cuota', {
+              tarea: suya.id,
+              motivo: auth.detalle,
+              cuenta: CUENTAS.cuentaDe(trabajador, CUENTAS.cuentasDisponibles(process.env)),
+            })
             console.log(`   ⏸️  ${trabajador}: ${auth.detalle} — no se relanza ${suya.id} hasta que se reponga`)
             sinCuota++
             continue
