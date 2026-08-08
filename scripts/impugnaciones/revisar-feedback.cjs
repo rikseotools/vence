@@ -225,6 +225,17 @@ const ago = (d) => {
     console.log('  [ ] 4. Si tiene MÁS hilos abiertos, un borrador por hilo (no junto asuntos).');
     console.log('  [ ] 5. Borrador con OK de Manuel ANTES de enviar (nunca envío directo).');
     console.log('  [ ] 6. Cierro vía /api/v2/feedback/respond (message = responder; sin message = cierre silencioso).');
+    // Lo que NO se puede decir se COMPRUEBA, no se recuerda ([T-678], 07/08/2026): en un mismo
+    // borrador se colaron dos reglas ya escritas (mención a la recompensa y «tienes razón»).
+    // El manual pasa de 2.000 líneas y no se relee antes de cada mensaje.
+    console.log('\n─── LO QUE NO SE PUEDE DECIR (compruébalo, no lo recuerdes) ───');
+    for (const r of require(require('path').join(__dirname, '..', '..', 'lib', 'feedback', 'validarMensaje.cjs')).PROHIBIDO) {
+      console.log(`  ✗ ${r.id.padEnd(24)} → ${r.enVezDe}`);
+    }
+    console.log('  Pásale tu borrador antes de enviarlo:');
+    console.log('    node -e "const{validarMensajeAUsuario,explicar}=require(\'./lib/feedback/validarMensaje.cjs\');' +
+      'const v=validarMensajeAUsuario(require(\'fs\').readFileSync(process.argv[1],\'utf8\'));' +
+      'console.log(v.ok?\'✅ se puede enviar\':explicar(v.incumple))" <fichero-borrador.md>');
   } finally {
     await s.end();
   }

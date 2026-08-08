@@ -783,6 +783,26 @@ Equipo de Vence
   · ❌ *«Tienes razón, y el fallo era nuestro: la corrección devolvía un error»*
   · ✅ *«Tienes razón: al pulsar para corregir el examen te salía un error en lugar de la corrección»*
   Sale del borrador para Emma (feedback `afb8d4ae`, incidente [T-669]/[T-670]).
+- **⬆️ ENDURECIDA horas después, el mismo 07/08/2026: «TIENES RAZÓN» TAMPOCO SE PONE.** El ejemplo
+  ✅ de la línea de arriba **ya no vale**. No se le concede la razón ni se comenta de quién era el
+  fallo: se cuenta **QUÉ le pasaba a ELLA y qué cambia**, y nada más. Conceder la razón sigue siendo
+  un veredicto sobre quién acertaba, y eso no es lo que la persona necesita: necesita saber que su
+  problema está resuelto. Tampoco vale su forma disfrazada, **«no era cosa tuya»**.
+  · ❌ *«Tienes razón: las estadísticas no se te mostraban»* · ❌ *«…y no era cosa tuya»*
+  · ✅ *«Las estadísticas no te aparecían, y ya debería estar resuelto»*
+  Sale del borrador para Laura Simar (feedback `8bd13f67`, incidente [T-671]).
+- **🚧 Y ESTO YA NO DEPENDE DE QUE TE ACUERDES ([T-678]).** El criterio vive en
+  `lib/feedback/validarMensaje.cjs` y lo canta el dossier (`revisar-feedback.cjs`) antes de que
+  escribas. Pásale el borrador antes de enviarlo:
+  ```bash
+  node -e "const{validarMensajeAUsuario,explicar}=require('./lib/feedback/validarMensaje.cjs');\
+  const v=validarMensajeAUsuario(require('fs').readFileSync(process.argv[1],'utf8'));\
+  console.log(v.ok?'✅ se puede enviar':explicar(v.incumple))" borrador.md
+  ```
+  **Por qué es código y no una línea más de este manual:** el 07/08, en un MISMO borrador, se
+  colaron dos reglas que ya estaban escritas — la mención al apartado de recompensas (prohibida
+  desde el 24/07) y el «tienes razón» recién retirado. Este manual pasa de 2.000 líneas y no se
+  relee entero antes de cada mensaje; una comprobación sí corre siempre.
 - Mensajes concisos y aireados (no apelotonados): saltos de línea entre párrafos, frases cortas. El usuario no quiere leer un muro de texto.
 
 ### 6.0.bis Cuando NO tiene razón: enseñarle, no ganarle la discusión (31/07/2026)
