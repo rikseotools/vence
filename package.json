@@ -95,6 +95,7 @@
     "canary:isr-purge": "node scripts/canary-isr-purge-cross-instancia.cjs",
     "canary:served-rollup": "node scripts/canary-served-rollup.cjs",
     "canary:registro-crons": "node scripts/canary-registro-crons.cjs",
+    "canary:oom-flota": "node scripts/flota/canario-oom.cjs",
     "canary:fraud-sweep": "node scripts/canary-fraud-sweep.cjs",
     "canary:temario-pdf-no-render": "node scripts/canary-temario-pdf-no-render.cjs",
     "verify:isr-purge-kv": "node scripts/verify-isr-purge-kv.cjs",

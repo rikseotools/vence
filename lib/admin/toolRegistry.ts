@@ -1039,6 +1039,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '(`lib/health/opcionesDuplicadas.cjs`, kind `opciones_duplicadas`), así que canario y badge ' +
       'no pueden divergir de criterio. Medido al estrenarlo: 0 y 0 sobre 138.115 activas.',
   },
+  canary_oom_flota: {
+    titulo: 'Canario: ¿sigue viva la detección de OOM de la flota, o solo lo parece?',
+    ruta: 'scripts/flota/canario-oom.cjs',
+    estado: 'vivo',
+    runbook: 'docs/runbooks/sistema-sesiones-paralelas.md',
+    notas:
+      '`npm run canary:oom-flota` (o `-- --solo-mirar`, que no provoca nada). **Provoca un OOM ' +
+      'de mentira** en un cgroup transitorio propio (`systemd-run --scope` con `MemoryMax=40M` y ' +
+      'sin swap) y espera a que el supervisor publique `flota_sin_memoria`. Comprueba la cadena ' +
+      'ENTERA: kernel → journal → que el usuario `flota` pueda leerlo → pasada del supervisor → ' +
+      '`observable_events`. **Por qué hace falta provocarlo:** ese detector solo habla cuando el ' +
+      'kernel mata algo, así que mientras la máquina va bien «funciona» y «está roto» se ven ' +
+      'exactamente igual (cero eventos) — el agujero que costó [T-712], donde una sonda llevaba ' +
+      '439 pasadas sin medir nada. Aquí no basta con afirmar el verde, porque el verde correcto ' +
+      'ES la ausencia. **Es seguro:** el kernel elige víctima DENTRO del cgroup del canario; ' +
+      'verificado el 08/08, murió su propio `tail` y los cuatro turnos siguieron. Estrenado con ' +
+      'la cadena en verde: OOM a las 13:59:41, evento publicado a las 14:01:35.',
+  },
   canary_identidad_pago: {
     titulo: 'Comprobar tras cada deploy que la caja no se cierra por un id desincronizado (y que cancelar sigue cortando)',
     ruta: 'backend/src/canary-identidad-pago/canary-identidad-pago.service.ts',

@@ -6739,6 +6739,74 @@ export const RULE_FLOTA_TURNO_SIN_PROGRESO: AlertRule<{
   cooldownMin: 120,
 };
 
+/**
+ * El kernel está matando procesos en la máquina de la flota por falta de memoria. (T-647)
+ *
+ * ── POR QUÉ EXISTE ──────────────────────────────────────────────────────────────────────────
+ * La capa 4 de [T-647] emitía `flota_sin_memoria` desde el 07/08 y **ninguna regla lo miraba**:
+ * un evento `error` publicado para nadie. El catch-all `senal_error_sin_vigilancia` no lo cubre
+ * porque exige ≥150 eventos/h de un mismo tipo, y aquí un puñado de muertes ya es grave — el
+ * 07/08 fueron 12 en un día y se llevaron por delante turnos enteros, con su trabajo sin
+ * commitear. Es decir: el hueco estaba justo en la parte que se construyó para que esto NO
+ * volviera a pasar sin que nadie se enterase.
+ *
+ * ── LA DIFERENCIA CON `flota_maquina_ahogada` ───────────────────────────────────────────────
+ * Aquella dice «la máquina no puede con lo que se le manda» (carga alta, E/S atascada) y aún
+ * hay tiempo de reaccionar. Ésta dice que **ya ha muerto algo**: es el escalón siguiente y no lo
+ * detecta la otra, porque un OOM puede caer sin que la carga se dispare antes.
+ *
+ * ── UMBRAL ──────────────────────────────────────────────────────────────────────────────────
+ * Con UNO basta. Una muerte por OOM no es ruido: cada una se lleva un turno a medias, y el
+ * arreglo del 07/08 dejó la máquina en cero durante 20 h con MÁS carga que cuando caían — así
+ * que volver a ver una es una regresión, no el estado normal. El `cooldown` largo evita repetir
+ * el aviso durante una tormenta: lo que importa es enterarse, no contarlas una a una.
+ */
+export const RULE_FLOTA_SIN_MEMORIA: AlertRule<{
+  n: number;
+  muertes: number | null;
+  ultimo: string | null;
+}> = {
+  name: 'flota_sin_memoria',
+  severity: 'error',
+  query: sql`
+    SELECT COUNT(*)::int AS n,
+           SUM(COALESCE((metadata->>'muertes')::int, (metadata->>'total')::int, 1))::int AS muertes,
+           (ARRAY_AGG(error_message ORDER BY created_at DESC))[1] AS ultimo
+      FROM observable_events
+     WHERE event_type = 'flota_sin_memoria'
+       AND created_at > NOW() - INTERVAL '2 hours'
+  `,
+  shouldFire: (rows) => (rows[0]?.n ?? 0) >= 1,
+  buildNotification: (rows) => {
+    const r = rows[0];
+    return {
+      title: `💀 La flota se está quedando sin memoria (${r?.muertes ?? '?'} proceso(s) muertos)`,
+      body:
+        `El kernel ha matado ${r?.muertes ?? '?'} proceso(s) por falta de memoria en la máquina ` +
+        `de la flota, en ${r?.n ?? '?'} aviso(s) de las últimas 2 h.\n` +
+        `Último: ${r?.ultimo ?? '(sin detalle)'}\n\n` +
+        `QUÉ SIGNIFICA: cada muerte se lleva el turno que estuviera en curso, con su trabajo sin ` +
+        `commitear. No lo repara ningún reinicio — el trabajador vuelve, lo que hacía no.\n\n` +
+        `LO QUE YA SE PROBÓ Y NO FUNCIONÓ (no repetirlo):\n` +
+        `  · Subir el techo por trabajador. Con 4×3 GB sobre 7,7 GB de RAM el que dispara es el ` +
+        `    OOM killer de la MÁQUINA, mucho antes que el tope de nadie.\n` +
+        `  · Añadir swap como arreglo: hace que un proceso desbocado agonice en vez de morir.\n\n` +
+        `LO QUE SÍ FUNCIONÓ (07/08): bajar \`MemoryHigh\` a 1400M por trabajador. Frena en vez de ` +
+        `matar, y dejó la máquina en CERO OOM durante 20 h con más carga que antes.\n\n` +
+        `QUÉ MIRAR, en orden:\n` +
+        `  1. ¿Quién muere? journalctl -k --since '-6h' | grep -i 'killed process'\n` +
+        `  2. ¿Se están respetando los techos? systemctl show -p MemoryHigh,MemoryCurrent vence-flota@w1\n` +
+        `  3. ¿Está actuando el freno? cat memory.events del cgroup: 'high' subiendo y 'oom_kill' en 0 ` +
+        `es la señal de que contiene.\n` +
+        `  4. Si aun así muere: bajar --maxWorkers de jest o quitar un trabajador. NO subir el techo.\n\n` +
+        `Comprobar que esta propia alerta sigue viva: npm run canary:oom-flota`,
+      metadata: { avisos: r?.n ?? 0, muertes: r?.muertes ?? null },
+      fingerprint: 'flota_sin_memoria',
+    };
+  },
+  cooldownMin: 180,
+};
+
 export const RULE_FLOTA_AUTENTICACION: AlertRule<{
   n: number;
   trabajadores: string | null;
@@ -7275,6 +7343,9 @@ export const ALERT_RULES: AlertRule[] = [
   // donde trabaja, ni si su turno vivo estaba avanzando de verdad (T-677).
   RULE_FLOTA_MAQUINA_AHOGADA as AlertRule,
   RULE_FLOTA_TURNO_SIN_PROGRESO as AlertRule,
+  // Y el escalón siguiente al ahogo, que la de arriba no ve: cuando el kernel YA ha matado algo
+  // (T-647). Su evento se emitía desde el 07/08 y no lo miraba ninguna regla.
+  RULE_FLOTA_SIN_MEMORIA as AlertRule,
   // Y el otro modo de «arrancado pero sin poder trabajar»: su clon del repo no se pone al día, así
   // que el supervisor rehúsa darle encargo (T-486).
   RULE_FLOTA_CLON as AlertRule,
