@@ -166,11 +166,13 @@ describe('casos compartidos con cifraEnTexto y con el mirror del backend', () =>
     // Si esta lista se quedara vacía, alguien habría igualado dos reglas que miden cosas distintas:
     // «la cifra está» (lo que puede afirmar el detector) y «la llama plazas» (más exigente, y que
     // simulado sobre las 118 convocatorias vivas producía 56 hallazgos casi todos falsos).
+    // [T-224] amplió el patrón y sacó de aquí el paréntesis (1704) y la forma invertida (1747);
+    // solo queda la «y» que no une un numeral compuesto («…laboral y tres plazas»), deuda conocida
+    // y deliberadamente sin tocar (ver el caso en el fixture).
     const divergen = CASOS.filter((c) => c.apareceLaCifra && c.laLlamaPlazas === false)
-    // `.sort()` a secas ordena como TEXTO: con [3, 1704, 1747] daba [1704, 1747, 3] y el fallo de
-    // añadir un caso legítimo al fixture apuntaba al orden en vez de al cambio. Añadir calibración
-    // tiene que ser barato, o el guardarraíl acaba borrado.
-    expect(divergen.map((c) => c.cifra).sort((a, b) => a - b)).toEqual([3, 1704, 1747])
+    // `.sort()` a secas ordena como TEXTO: con más de un elemento el orden mentiría sobre qué
+    // cambió. Con uno solo no hace falta, pero se deja explícito para el día que crezca.
+    expect(divergen.map((c) => c.cifra).sort((a, b) => a - b)).toEqual([3])
   })
 })
 

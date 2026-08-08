@@ -158,26 +158,31 @@ const CASOS = [
     // DEUDA CONOCIDA de `landingClaims`, no un comportamiento deseado: su normalizador no convierte
     // «y tres» → «3» (lo confunde con la cola de un compuesto tipo «treinta y tres»), así que no la
     // presenta como plazas. Queda fijado aquí para que se vea, con la misma «y» que el detector sí
-    // resuelve. Ver T-224.
+    // resuelve. [T-224] arregló las otras dos formas (paréntesis, «plazas … : N») y dejó ÉSTA fuera
+    // a propósito — el «Cómo» de esa ficha no la pedía y tocar el normalizador de numerales es
+    // cambio de mayor riesgo (se comparte con la conversión general del documento). Sigue abierta.
     laLlamaPlazas: false,
     origen: 'contrapeso de la frontera en letra (28/07)',
   },
 
-  // ── La cifra SÍ está, pero el patrón de concepto no la casa (divergencia DELIBERADA) ────────
+  // ── La cifra SÍ está, y desde [T-224] el patrón de concepto YA la casa (antes divergía) ──────
   {
     nombre: 'la palabra «Plazas» va DELANTE, con dos puntos',
+    // [T-224] Arreglado: el patrón admite la forma invertida «plazas … : N», acotada a una
+    // ventana corta antes de los dos puntos.
     cifra: 1747,
     texto: 'y se dividen en dos cupos: — Plazas del cupo general: 1.747. — Plazas del cupo de reserva',
     apareceLaCifra: true,
-    laLlamaPlazas: false, // el patrón es «N plazas», no «plazas: N» → por eso no sirve de regla
+    laLlamaPlazas: true,
     origen: 'tcae-sermas-madrid (BOCM)',
   },
   {
     nombre: 'un paréntesis se cuela entre el número y la palabra',
+    // [T-224] Arreglado: se admite puntuación de cierre (paréntesis, «.-») entre la cifra y «plazas».
     cifra: 1704,
     texto: 'c) Mil setecientas cuatro (1704) plazas libres. 1.2 Las plazas reservadas',
     apareceLaCifra: true,
-    laLlamaPlazas: false,
+    laLlamaPlazas: true,
     origen: 'guardia-civil (BOE)',
   },
 
