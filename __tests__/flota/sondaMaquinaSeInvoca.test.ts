@@ -76,4 +76,12 @@ describe('[T-712] el bucle del supervisor invoca la sonda con el NOMBRE', () => 
   it('una máquina que no se puede medir deja rastro, no un `continue` mudo', () => {
     expect(fuente).toContain("estado: 'sin_medida'")
   })
+
+  it('el VERDE se afirma en la pasada, para que «sana» y «no se midió» no se vean igual', () => {
+    // Sin esto, la única prueba de que la sonda corre es que la máquina se ahogue: exactamente
+    // el agujero por el que se coló [T-712] y el mismo que midió [T-529].
+    expect(fuente).toContain('saludPasada')
+    const pasada = fuente.slice(fuente.indexOf("'flota_bucle_pasada'"))
+    expect(pasada).toContain('salud: saludPasada')
+  })
 })

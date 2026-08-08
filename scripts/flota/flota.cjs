@@ -1594,6 +1594,11 @@ async function main() {
         // sin medir una sola vez, mientras el panel —que sí desestructuraba— daba el veredicto
         // correcto. Ahora `maquinaDe` LANZA ante un tipo que no sea string, así que el error no
         // puede volver a esconderse detrás de un `continue`.
+        // El verde de la sonda se AFIRMA (va en la metadata de `flota_bucle_pasada`), no se
+        // deduce de que no haya eventos: éste es el defecto que [T-712] acaba de costar, y es el
+        // mismo que ya midió [T-529] — «un cero de un detector no se distingue de un detector
+        // muerto». Sin esto, la única prueba de que la sonda corre es que la máquina se ahogue.
+        const saludPasada = {}
         for (const { trabajador: w } of MAQ.trabajadoresQueReciben()) {
           const m = MAQ.maquinaDe(w)
           if (!m || medidas.has(m.nombre)) continue
@@ -1603,6 +1608,7 @@ async function main() {
           // Antes esto era un `continue` mudo, y por eso «todo bien» y «no he podido mirar» se
           // veían igual: cero eventos. Se emite el hueco para que el silencio sea visible.
           if (!medida) {
+            saludPasada[m.nombre] = 'sin_medida'
             console.log(`  ⚪ MÁQUINA ${m.nombre}: no se pudo medir`)
             try {
               await sql`
@@ -1614,6 +1620,7 @@ async function main() {
             continue
           }
           const v = SALUD.clasificarMaquina(medida)
+          saludPasada[m.nombre] = v.estado
           if (v.estado === 'ok') continue
           console.log(`  ${v.estado === 'ahogada' ? '🔴' : '🟠'} MÁQUINA ${m.nombre}: ${v.motivos[0]}`)
           try {
@@ -1723,7 +1730,7 @@ async function main() {
             INSERT INTO public.observable_events (source, severity, event_type, endpoint, error_message, metadata)
             VALUES ('fargate', ${motivoSalto ? 'warn' : 'info'}, 'flota_bucle_pasada', 'flota',
                     ${motivoSalto || null},
-                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo })})`
+                    ${sql.json({ repartidos, ocupados, atascados, motivoSalto, pausaS: pausa, host: yo, salud: saludPasada })})`
         } catch { /* la telemetría nunca puede parar al supervisor */ }
         if (parar) break
         await dormir(pausa)
