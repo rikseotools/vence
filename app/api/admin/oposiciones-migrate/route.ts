@@ -5,9 +5,16 @@ import { getAdminDb as getDb } from '@/db/client'
 import { userProfiles } from '@/db/schema'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { invalidateProfileCache } from '@/lib/api/profile'
+import { requireAdmin } from '@/lib/api/shared/auth'
 import { eq } from 'drizzle-orm'
 
 async function _POST(request: NextRequest) {
+  // [T-077] Estaba SIN autenticar (fichado en ZONA_CIEGA_PENDIENTE de user-scoping-c2.test.ts):
+  // cualquiera podía disparar un UPDATE masivo de target_oposicion con un POST directo, sin
+  // token. Mismo patrón que sus hermanas bajo /api/admin/ (ej. referrals/payouts).
+  const auth = await requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   try {
     const { fromUUID, toSlug, toData } = await request.json()
 

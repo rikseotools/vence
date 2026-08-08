@@ -13975,6 +13975,26 @@ Si la línea base ya no existe (worktree borrado), se regenera con `--baseline <
 - **Cómo (detalle de diseño a decidir con Manuel):** (1) si el usuario **FREE** debe poder fijar/cambiar su ÚNICA oposición objetivo en el onboarding (para no matar la exploración inicial) o bloqueo total; (2) cómo se comunica el gate (CTA al plan largo). Cablear el gate donde hoy se cambia de oposición (selector del breadcrumb del test — ver `feedback-cambio-oposicion-via-perfil`).
 - **Origen:** 21/07. Nota: ficha **reconstruida el 25/07** desde `backlog_tasks` (vivía en el registro sin ficha en el markdown).
 
+- **🔧 CORRECCIÓN (08/08, w3) — el bloque de arriba dice "tres sitios" y en realidad eran CUATRO
+  (ya cerrado, commit `14a1ed381`), y de paso un quinto punto sin relación directa con
+  `target_oposicion` que apareció al revisar este.**
+  - **El cuarto escritor** era `app/api/v2/oposicion/assign/route.ts` (llamado por
+    `OposicionDetector.tsx` en cada visita autenticada a una landing) — sin el guardarraíl de
+    [T-508] (personalizada sin temario) ni la condición `target_oposicion IS NULL`. Cerrado con
+    el mismo criterio que `profile/target` (núcleo compartido `lib/api/oposicion/buscarPersonalizada.ts`),
+    10 tests nuevos, guardarraíl de las 3 puertas ampliado a 36 tests.
+  - **Hallazgo aparte, encontrado en el barrido de ese cierre:**
+    `app/api/admin/oposiciones-migrate/route.ts` (migración masiva de `target_oposicion` por
+    admin) estaba **sin autenticar del todo** — `ZONA_CIEGA_PENDIENTE` de
+    `user-scoping-c2.test.ts` ya lo fichaba como deuda conocida. El commit que cerró el cuarto
+    escritor lo caracterizó como *"admin-only, categoría distinta"* sin haberlo verificado — no
+    lo era: cero `requireAdmin`/`verifyAuth` en todo el fichero, un POST directo sin token
+    ejecutaba el `UPDATE` masivo igual. **Arreglado ahora** (`requireAdmin`, mismo patrón que sus
+    hermanas bajo `/api/admin/`) y retirado de `ZONA_CIEGA_PENDIENTE`, con trinquete propio en
+    el guardarraíl. No tiene relación con el gate de plan premium (que Manuel descartó arriba) ni
+    con los otros escritores de `target_oposicion` — es una ruta de administración aparte que
+    salió a la luz al barrer el mismo patrón.
+
 ### [T-115] 🔴 [ABIERTO 25/07] Generar preguntas para los artículos huérfanos del temario (`article_no_coverage`, 104)
 - **Qué:** 104 findings de artículos que están en el `topic_scope` con **texto real importado** pero **0 preguntas activas** → al usuario nunca le salen en los tests aunque el tema en conjunto tenga preguntas. Es **la mitad del badge** y la palanca real para bajarlo. **NO es internet:** la fuente es el texto del artículo que YA está en la BD (verbatim del BOE).
 - **Impacto:** 🔴 la mayor bajada posible del badge + cobertura real del temario servido (artículos escopados que hoy sirven 0 preguntas).
