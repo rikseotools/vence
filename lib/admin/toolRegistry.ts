@@ -800,6 +800,24 @@ export const TOOL_REGISTRY: Record<string, Herramienta> = {
       '`audit:vinculo-vecino`): la frontera exige leer. **NUNCA desactivar** lo que marca — cada ' +
       'pregunta es legítima para SU comunidad; la salida es moverla.',
   },
+  autocontener_pregunta: {
+    titulo: 'Anteponer al enunciado la norma/comunidad de la que sale la clave (T-732)',
+    ruta: 'scripts/calidad/autocontener-pregunta.cjs',
+    estado: 'vivo',
+    runbook: 'docs/maintenance/impugnaciones-claude-code.md',
+    notas:
+      '`node scripts/calidad/autocontener-pregunta.cjs <question_id> --prefijo "Seg\u00fan el Decreto X de <comunidad>" [--aplicar]`. ' +
+      'Dry-run por defecto; relee de la BD y compara. **Solo toca el enunciado**: ni la clave, ni las ' +
+      'opciones, ni el scope. Nace de [T-732]: en residuos sanitarios e higiene del paciente **la clave ' +
+      'cambia seg\u00fan la comunidad** y hab\u00eda preguntas que no lo dec\u00edan \u2014 los citost\u00e1ticos son ROJO por el ' +
+      'Decreto 73/2012 de Andaluc\u00eda y AZUL por el Decreto 83/1999 de Madrid, y las dos se serv\u00edan en los ' +
+      'mismos temas. **Dos limpiezas que salieron reparando el banco y est\u00e1n con test:** quita la coletilla ' +
+      'vaga del final («\u2026seg\u00fan la normativa vigente?», que es la que crea el enga\u00f1o) y **sustituye** el ' +
+      'arranque gen\u00e9rico en vez de acumularse («Seg\u00fan la norma para el tratamiento de residuos, \u2026» dejaba ' +
+      'dos «seg\u00fan» seguidos). ⚠️ El prefijo lo escribe una persona **tras verificar la norma en su fuente ' +
+      'oficial**, NUNCA deduci\u00e9ndolo de la explicaci\u00f3n: la explicaci\u00f3n es lo que estaba mal en el caso que ' +
+      'origin\u00f3 esto. Se niega a tocar preguntas de examen oficial.',
+  },
   medir_anexos_faltantes: {
     titulo: '¿A qué leyes que servimos les falta un anexo que su fuente SÍ tiene?',
     ruta: 'scripts/leyes/medir-anexos-faltantes.cjs',

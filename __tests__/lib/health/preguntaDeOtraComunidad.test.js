@@ -144,3 +144,122 @@ describe('excepciones de una norma estatal (calibrado contra datos reales)', () 
     expect(esExcepcion(lejos, 'Andalucía')).toBe(false)
   })
 })
+
+describe('materia ESTATAL: la Constitución nombra comunidades (falso positivo más numeroso)', () => {
+  const { materiaEstatal } = require('../../../lib/health/preguntaDeOtraComunidad.cjs')
+
+  it('CORRECTA: «el Príncipe heredero tendrá la dignidad de Príncipe de Asturias» (art. 57 CE)', () => {
+    expect(clasificar({
+      questionText: 'Conforme a lo dispuesto en el artículo 57 CE, el Príncipe heredero tendrá la dignidad de Príncipe de Asturias',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('CORRECTA: cuántos senadores corresponden a Extremadura — es la composición del Senado', () => {
+    expect(clasificar({
+      questionText: 'Según la Constitución Española, ¿cuántos senadores corresponderán a Extremadura si tiene dos provincias?',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('CORRECTA: «¿cuáles son las Comunidades Autónomas históricas?»', () => {
+    expect(clasificar({
+      questionText: '¿Cuáles son las Comunidades Autónomas históricas de España?',
+      correcta: 'Cataluña, Galicia y País Vasco',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('DEFECTO IGUALMENTE: la «Constitución Federal andaluza» lleva la palabra Constitución y SÍ lo es', () => {
+    expect(materiaEstatal('¿Dónde y en qué año se redactó la Constitución Federal andaluza?')).toBe(false)
+    expect(clasificar({
+      questionText: '¿Dónde y en qué año se redactó la Constitución Federal andaluza?',
+      comunidad: MADRID,
+    }).veredicto).toBe('examina_otra')
+  })
+
+  it('DEFECTO: normativa autonómica propia, sin norma estatal de por medio', () => {
+    expect(clasificar({
+      questionText: 'En Andalucía, la iniciativa autonómica debía ser acordada:',
+      comunidad: MADRID,
+    }).veredicto).toBe('examina_otra')
+  })
+})
+
+describe('«Príncipe de Asturias» es un título, no la comunidad', () => {
+  it('no marca la pregunta de la Corona aunque no cite el artículo de la CE', () => {
+    expect(clasificar({
+      questionText: '¿Desde cuándo tiene el Príncipe de Asturias tal dignidad?',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('pero una pregunta de normativa asturiana de verdad SÍ se marca', () => {
+    expect(clasificar({
+      questionText: 'Según la Ley del Principado de Asturias de residuos, el plazo será:',
+      comunidad: MADRID,
+    }).veredicto).toBe('examina_otra')
+  })
+})
+
+describe('la NORMA examinada manda sobre la comunidad citada (calibrado leyendo la cola)', () => {
+  it('CORRECTA: supuesto del EBEP con un puesto en la Junta de Andalucía — la respuesta es igual en toda España', () => {
+    expect(clasificar({
+      questionText: 'Un funcionario obtiene por concurso un puesto en la Junta de Andalucía. ¿Qué situación administrativa le corresponde conforme al Estatuto Básico del Empleado Público?',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('CORRECTA: art. 2 de la Ley 39/2015, aunque una opción nombre la Comunidad de Madrid', () => {
+    expect(clasificar({
+      questionText: 'De conformidad con el artículo 2 de la Ley 39/2015, el ámbito subjetivo no incluye a:',
+      correcta: 'Las Universidades privadas en el territorio de la Comunidad de Madrid.',
+      comunidad: 'Andalucía',
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('CORRECTA: el «archipiélago balear y canario» es el texto del art. 3 de la Ley 7/1985', () => {
+    expect(clasificar({
+      questionText: 'Son entidades locales territoriales de derecho necesario:',
+      correcta: 'La Isla en los archipiélagos balear y canario.',
+      explanation: 'El artículo 3 de la Ley 7/1985 (LBRL) distingue entre Entidades Locales territoriales y otras.',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('examina_otra')
+  })
+
+  it('DEFECTO: una norma AUTONÓMICA no está en esa lista y se sigue marcando', () => {
+    expect(clasificar({
+      questionText: 'Según el Reglamento de Residuos de Andalucía, los residuos citostáticos se recogerán:',
+      comunidad: MADRID,
+    }).veredicto).toBe('examina_otra')
+  })
+})
+
+describe('clave_autonomica_oculta — el caso que de verdad engaña (impugnación 61b34908)', () => {
+  it('el enunciado NO dice la comunidad y la explicación revela que la norma es autonómica', () => {
+    const r = clasificar({
+      questionText: 'Los residuos sanitarios citostáticos se recogerán:',
+      correcta: 'En contenedores destruibles de color rojo.',
+      explanation: 'En la normativa nacional son de color AZUL. En ANDALUCIA, según el Reglamento de Residuos de Andalucía, se recogerán en contenedores de color Rojo.',
+      comunidad: MADRID,
+    })
+    expect(r.veredicto).toBe('clave_autonomica_oculta')
+    expect(r.motivo).toMatch(/clave puede ser falsa/)
+  })
+
+  it('si el enunciado YA lo dice, es ruido y no engaño', () => {
+    expect(clasificar({
+      questionText: 'Según el Reglamento de Residuos de Andalucía, los residuos citostáticos se recogerán:',
+      explanation: 'Reglamento de Residuos de Andalucía, Grupo IV.',
+      comunidad: MADRID,
+    }).veredicto).toBe('examina_otra')
+  })
+
+  it('una explicación que cita una norma ESTATAL no convierte la pregunta en engañosa', () => {
+    expect(clasificar({
+      questionText: 'El plazo para recurrir en alzada es:',
+      explanation: 'Artículo 122 de la Ley 39/2015; en Andalucía se aplica igual.',
+      comunidad: MADRID,
+    }).veredicto).not.toBe('clave_autonomica_oculta')
+  })
+})
