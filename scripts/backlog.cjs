@@ -1873,7 +1873,13 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                -- (T-539): un verbo nuevo para lo mismo obligaría a saber cuál de las esperas la
                -- tenía parada antes de poder despertarla.
                -- (sin comillas invertidas aquí dentro: esto es una plantilla de JS y las cierra)
-               review_requested_at = NULL, review_note = NULL, review_requested_by = NULL
+               review_requested_at = NULL, review_note = NULL, review_requested_by = NULL,
+               -- Y LA ESPERA DE DEPLOY, que era la unica que wake NO levantaba (T-718). Es
+               -- justo la que puede volverse IMPOSIBLE: si la rama con ese commit no se fusiona
+               -- nunca, el sha no llega a main y ningun deploy puede contenerlo -- 16 tareas asi
+               -- el 08/08, algunas de dos dias. El detector de T-711 las enseñaba y no habia
+               -- ningun comando para desatascarlas: wake decia "despierta" y las dejaba igual.
+               wake_on_deploy_sha = NULL, wake_on_deploy_surface = NULL
          WHERE id = ${id} RETURNING id, title`;
       if (!row) { console.error(`❌ ${id} no existe`); process.exit(1); }
       console.log(`⏰ ${row.id} despierta — ${row.title}`);
