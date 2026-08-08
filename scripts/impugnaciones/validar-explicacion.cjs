@@ -17,50 +17,124 @@ const fs = require('fs');
 // ella el gate de CI, que bloquea el deploy de TODAS las sesiones). El test pasaba en local: por eso
 // coló. Nunca hardcodear rutas del disco propio en algo commiteado.
 const getPg = () => require('postgres');
+// [T-462/T-624] SOLO LEE questions/articles — un trabajador de la flota con únicamente
+// `VENCE_LECTOR_URL` tiene que poder ejecutarlo (es justo el guardarraíl "obligatorio antes de
+// aplicar" del manual §5.1, y aplicar una explicación es trabajo que SÍ puede llegar a un
+// trabajador de lectura). Leía `DATABASE_URL` a pelo (del entorno o de `.env.local` a mano, sin
+// pasar siquiera por `urlLecturaNegocio()`) — mismo gotcha que `sanear-verificacion-cosmetica.cjs`
+// y `audit-verificacion-cosmetica.cjs` (T-465, mismo día).
+const { urlLecturaNegocio } = require('../../lib/db/negocioSoloLectura.cjs');
 function getUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const env = fs.readFileSync(require('path').join(__dirname, '..', '..', '.env.local'), 'utf8');
-  return env.match(/^DATABASE_URL=(.*)$/m)[1].trim();
+  return urlLecturaNegocio();
 }
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+// Carga perezosa de los parsers que YA deciden si una explicación es barajable
+// (lib/shuffle/structuredExplanation.ts) — es el mismo criterio de «¿está bien estructurada, con
+// una razón por opción y la correcta bien marcada?» que este validador quiere, y antes lo
+// reimplementaba en regex sueltas calibradas SOLO contra el formato viejo §5.1 ("La respuesta
+// correcta es…"). El resultado (T-462, medido 08/08): el escritor canónico desde T-080 Fase 2
+// (`aplicar-explicacion.ts`) escribe también el formato §8.1 ("**Por qué X es correcta:**"), y el
+// validador lo rechazaba siempre con los mismos 4 problemas — reproducido contra dos casos reales
+// (`f5f63871`, `9b51a517`). Dos implementaciones del mismo criterio es exactamente cómo empiezan a
+// divergir (la lección repetida en todo `toolRegistry.ts`); esta se apoya en la única que ya existe.
+let _parsers = null;
+function cargarParsers() {
+  if (_parsers !== null) return _parsers;
+  // Bajo Jest, requerir el .ts directamente YA funciona (transform propio) — y registrar
+  // `tsx/cjs` ahí revienta con "your JavaScript environment is broken" (choque con el loader de
+  // esbuild que usa Jest). Bajo `node` plano (el CLI real, `node scripts/impugnaciones/
+  // validar-explicacion.cjs …`) no hay transform y hace falta el loader de `tsx` primero. Se
+  // intenta lo directo y solo se registra `tsx/cjs` si hace falta — así sirve en los dos sitios.
+  try {
+    _parsers = require('../../lib/shuffle/structuredExplanation');
+    return _parsers;
+  } catch (e) { /* sigue abajo */ }
+  try {
+    require('tsx/cjs');
+    _parsers = require('../../lib/shuffle/structuredExplanation');
+  } catch (e) {
+    _parsers = false; // ni transform ni tsx disponibles: el guardarraíl no debe reventar
+  }
+  return _parsers;
+}
+
+// Firma de cabecera del formato §8.1 ("**Por qué X es correcta:**" / "…es incorrecta:**"), la
+// única señal fiable para distinguirlo del §5.1 sin invocar el parser.
+const RE_CABECERA_BOLETIN = /\*\*\s*Por qu[eé]\s+[A-E]\)?\s+(?:es|son|no es)\s+(?:la\s+)?(?:correct[ao]|incorrect[ao]|falsa|verdadera)/i;
 
 function validateFormat(expl, opts, correctLetter) {
   const problems = [];
   const t = expl.trim();
-  // 1. arranca afirmando la clave
-  if (!/^la respuesta correcta es/i.test(t)) problems.push('No empieza con "La respuesta correcta es …".');
-  // 2. análisis por opción: cada opción existente debe aparecer como "**A)" … según nº de opciones
   const letters = ['A', 'B', 'C', 'D'].filter((L) => opts[L] != null && opts[L] !== '');
-  const missing = letters.filter((L) => !new RegExp(`\\*\\*${L}\\)`, 'i').test(t));
-  if (missing.length) problems.push(`Falta el análisis por opción de: ${missing.join(', ')} (formato "**${missing[0]}) …").`);
-  // 3. no apelotonado: al menos 3 bloques separados por línea en blanco
+  const pareceImpugnacion = /^la respuesta correcta es/i.test(t);
+  const pareceBoletin = RE_CABECERA_BOLETIN.test(t);
+
+  if (pareceBoletin && !pareceImpugnacion) {
+    // Formato §8.1 (T-080 Fase 2): lo escribe `aplicar-explicacion.ts` desde que existe, y este
+    // validador siempre lo rechazaba con los mismos 4 problemas porque solo conocía el §5.1
+    // ("La respuesta correcta es…") — reproducido contra dos casos reales (`f5f63871`, `9b51a517`,
+    // T-462). En vez de reimplementar un TERCER criterio de "¿está bien estructurada?", se
+    // reutiliza el MISMO parser que ya decide si la pregunta es barajable
+    // (`parseLetterFormatExplanation`, lib/shuffle/structuredExplanation.ts): si parsea limpio,
+    // cada opción tiene su razón, ninguna se repite, y la cabecera coincide con `correct_option`
+    // por construcción — no hace falta re-derivarlo con regex propias.
+    const parsers = cargarParsers();
+    const ok =
+      parsers &&
+      parsers.parseLetterFormatExplanation(t, {
+        correctOption: correctLetter ? parsers.letterToIndex(correctLetter) : -1,
+        nOptions: letters.length,
+      });
+    if (!ok) {
+      problems.push(
+        'Tiene forma de §8.1 ("Por qué X es correcta:") pero no se estructura limpiamente: revisa ' +
+        'que TODAS las opciones tengan su razón, que ninguna se repita, y que la marcada como ' +
+        'correcta coincida con correct_option.' +
+        (parsers ? '' : ' (parser no disponible para confirmarlo — instala `tsx`)'),
+      );
+    }
+    const missing = letters.filter(
+      (L) => !new RegExp(`\\*\\*${L}\\)`, 'i').test(t) && !new RegExp(`Por qu[eé]\\s+${L}\\)?\\s+(?:es|son)`, 'i').test(t),
+    );
+    if (missing.length) problems.push(`Falta el análisis por opción de: ${missing.join(', ')} (formato "**${missing[0]}) …" o cabecera "**Por qué ${missing[0]} es correcta:**").`);
+  } else {
+    // Formato §5.1 (manual de impugnaciones), o algo que no encaja en ninguno de los dos — chequeo
+    // histórico, sin tocar: ya sabe distinguir los DOS marcos («señale la CORRECTA»/«…la
+    // INCORRECTA») y su coherencia clave↔explicación (T-212).
+    if (!pareceImpugnacion) problems.push('No empieza con "La respuesta correcta es …" (formato §5.1) ni sigue el formato §8.1 ("**Por qué X es correcta:**").');
+    const missing = letters.filter((L) => !new RegExp(`\\*\\*${L}\\)`, 'i').test(t));
+    if (missing.length) problems.push(`Falta el análisis por opción de: ${missing.join(', ')} (formato "**${missing[0]}) …").`);
+    // COHERENCIA clave↔explicación: la opción SEÑALADA debe ser EXACTAMENTE la clave real.
+    //    Caza el error grave de una explicación que da por buena una opción distinta de correct_option.
+    //
+    //    Dos marcos, y las etiquetas están ACORDADAS con `renderEstiloImpugnacion` (T-212):
+    //      · «señale la CORRECTA» (lo normal) → la señalada dice `**X)** CORRECTA`.
+    //      · «señale la INCORRECTA»           → la señalada dice `**X)** ES LA INCORRECTA` y las
+    //        demás `VERDADERA`. Etiquetarlas «CORRECTA» daría aquí tres marcadas y el validador
+    //        tumbaría un texto impecable; y al revés, exigir «CORRECTA» obligaba a escribir
+    //        `**A)** CORRECTA — Afirmación falsa: …`, que se contradice sola.
+    //    El marco se detecta por el TEXTO (aquí no hay `frame`): manda `ES LA INCORRECTA` si aparece.
+    const señaladaFalsa = letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*ES LA INCORRECTA`, 'i').test(t));
+    const marcoIncorrecta = señaladaFalsa.length > 0;
+    const marked = marcoIncorrecta
+      ? señaladaFalsa
+      : letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*CORRECTA`, 'i').test(t));
+    const etiq = marcoIncorrecta ? 'ES LA INCORRECTA' : 'CORRECTA';
+    if (marked.length === 0) problems.push('Ninguna opción marcada como "CORRECTA" en el análisis por opción.');
+    else if (marked.length > 1) problems.push(`Varias opciones marcadas ${etiq} (${marked.join(', ')}) — solo puede haber una.`);
+    else if (correctLetter && marked[0] !== correctLetter) problems.push(`La explicación marca ${etiq} la ${marked[0]}, pero la clave real (correct_option) es la ${correctLetter}. Incoherencia grave.`);
+  }
+
+  // no apelotonado: al menos 3 bloques separados por línea en blanco. Universal a los dos formatos.
   const blocks = t.split(/\n\s*\n/).filter((b) => b.trim());
   if (blocks.length < 3) problems.push(`Apelotonado: solo ${blocks.length} párrafo(s). Separa cada sección/opción con línea en blanco.`);
-  // 4. sin secciones Truco/Consejo/Tip. "truco"/"tip" no salen en texto legal legítimo → se
-  //    marcan en cualquier posición. Pero "consejo" es también un ÓRGANO omnipresente en Derecho
-  //    (Consejo de Gobierno / de Ministros / de Estado / General del Poder Judicial…), así que solo
-  //    se marca cuando es ETIQUETA de sección ("Consejo:" al inicio de línea), no como parte de un
-  //    nombre de órgano — si no, false-positiveaba casi toda explicación legal (caso Jesse, 16/07).
+  // sin secciones Truco/Consejo/Tip. "truco"/"tip" no salen en texto legal legítimo → se
+  // marcan en cualquier posición. Pero "consejo" es también un ÓRGANO omnipresente en Derecho
+  // (Consejo de Gobierno / de Ministros / de Estado / General del Poder Judicial…), así que solo
+  // se marca cuando es ETIQUETA de sección ("Consejo:" al inicio de línea), no como parte de un
+  // nombre de órgano — si no, false-positiveaba casi toda explicación legal (caso Jesse, 16/07).
   if (/\b(truco|tip)\b/i.test(t) || /(^|\n)\s*[>\-*#]*\s*\**\s*consejos?\s*:/i.test(t)) problems.push('Contiene "Truco/Consejo/Tip" (prohibido §5.1).');
-  // 5. COHERENCIA clave↔explicación: la opción SEÑALADA debe ser EXACTAMENTE la clave real.
-  //    Caza el error grave de una explicación que da por buena una opción distinta de correct_option.
-  //
-  //    Dos marcos, y las etiquetas están ACORDADAS con `renderEstiloImpugnacion` (T-212):
-  //      · «señale la CORRECTA» (lo normal) → la señalada dice `**X)** CORRECTA`.
-  //      · «señale la INCORRECTA»           → la señalada dice `**X)** ES LA INCORRECTA` y las
-  //        demás `VERDADERA`. Etiquetarlas «CORRECTA» daría aquí tres marcadas y el validador
-  //        tumbaría un texto impecable; y al revés, exigir «CORRECTA» obligaba a escribir
-  //        `**A)** CORRECTA — Afirmación falsa: …`, que se contradice sola.
-  //    El marco se detecta por el TEXTO (aquí no hay `frame`): manda `ES LA INCORRECTA` si aparece.
-  const señaladaFalsa = letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*ES LA INCORRECTA`, 'i').test(t));
-  const marcoIncorrecta = señaladaFalsa.length > 0;
-  const marked = marcoIncorrecta
-    ? señaladaFalsa
-    : letters.filter((L) => new RegExp(`\\*\\*${L}\\)\\s*(?:\\*\\*)?\\s*CORRECTA`, 'i').test(t));
-  const etiq = marcoIncorrecta ? 'ES LA INCORRECTA' : 'CORRECTA';
-  if (marked.length === 0) problems.push('Ninguna opción marcada como "CORRECTA" en el análisis por opción.');
-  else if (marked.length > 1) problems.push(`Varias opciones marcadas ${etiq} (${marked.join(', ')}) — solo puede haber una.`);
-  else if (correctLetter && marked[0] !== correctLetter) problems.push(`La explicación marca ${etiq} la ${marked[0]}, pero la clave real (correct_option) es la ${correctLetter}. Incoherencia grave.`);
   return problems;
 }
 
@@ -241,20 +315,17 @@ if (require.main !== module) {
     // análisis por opción, así que bloquear hoy convertiría el gate en ruido que se ignora (la
     // lección del gate de cabecera que salía rojo en el 100% de los batches buenos).
     let transcribible = false;
-    try {
-      // El núcleo de la explicación estructurada es TypeScript y este guardarraíl es CommonJS
-      // puro (se invoca con `node`, como dice el manual). En vez de duplicar los parsers en .cjs
-      // —dos copias de un criterio que DEBE ser uno— se registra el cargador de TS que ya trae el
-      // proyecto. Si no estuviera, el catch de abajo lo degrada a aviso y el guardarraíl sigue.
-      require('tsx/cjs');
-      const { parseLetterFormatExplanation, parseImpugnacionFormatExplanation } = require('../../lib/shuffle/structuredExplanation');
+    // Mismo cargador que usa `validateFormat` (cargarParsers, arriba) — antes esto registraba su
+    // propio `require('tsx/cjs')` por separado, una segunda copia de la misma carga perezosa.
+    const parsersCli = cargarParsers();
+    if (parsersCli) {
       const nOptions = ['A', 'B', 'C', 'D'].filter((L) => opts[L]).length;
       transcribible = !!(
-        parseLetterFormatExplanation(expl, { correctOption: q.correct_option, nOptions }) ||
-        parseImpugnacionFormatExplanation(expl, { correctOption: q.correct_option, nOptions })
+        parsersCli.parseLetterFormatExplanation(expl, { correctOption: q.correct_option, nOptions }) ||
+        parsersCli.parseImpugnacionFormatExplanation(expl, { correctOption: q.correct_option, nOptions })
       );
-    } catch (e) {
-      warnings.push(`no se pudo comprobar si es barajable: ${e.message}`);
+    } else {
+      warnings.push('no se pudo comprobar si es barajable: parser no disponible (tsx no instalado).');
     }
     if (q.explanation_data) {
       // La pregunta YA tiene explicación estructurada: es barajable POR CONSTRUCCIÓN y el texto
