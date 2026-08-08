@@ -2355,6 +2355,57 @@ porque **lee el log del turno ANTERIOR** para no gastar cuota, y ahí seguía el
 vieja. Hubo que archivar el log a mano (`~/flota-w3.log.cuenta-b-semanal-agotada`) para desbloquearlo.
 **Al rotar de cuenta hay que invalidar el veredicto de cuota**, o el trabajador queda bloqueado por un
 motivo que ya no existe.
+=======
+
+#### RESUELTO parcialmente (07/08, w3) — 1 y 2 hechos, 3 investigado y NO aplicado (razón abajo)
+
+**1. «Qué está haciendo ahora».** Núcleo puro `SES.resumenActividad` (`lib/flota/sesionClaude.cjs`):
+busca hacia atrás en un TAIL del transcript la última línea `assistant` con un bloque `tool_use` y
+la resume (`Bash: npx tsc --noEmit -p . …`). Verificado dos veces: 15 tests unitarios (fixtures
+fieles al esquema real, confirmado con Python contra el transcript en vivo de esta misma sesión) Y,
+además, ejecutado contra el transcript REAL de w3 en producción (`tail -c 4000` + `resumenActividad`)
+— devolvió exactamente el último comando Bash que yo mismo acababa de correr. Wireado en
+`scripts/flota/flota.cjs` → `actividadDe(trabajador)`, que solo se pregunta cuando `ejecutando` ya es
+`true` (no hay conversación que leer si está libre o caído), e imprime `↳ <resumen>` bajo la línea del
+trabajador en `npm run flota`.
+
+**2. Encargo en el log ANTES de arrancar.** `mandarEncargo` ahora copia `${enc}` (el mismo fichero que
+recibe `claude -p`, no el texto por la línea de órdenes) a la cabecera del log recién rotado, con un
+separador `===== SALIDA DEL TURNO =====`. Probado el fragmento de shell exacto contra un encargo
+sintético con comillas, `$(subshells)` y saltos de línea — pasa íntegro. Y la cadena `&&` completa
+(rotación + volcado + `tmux send-keys`) pasó `bash -n` (sintaxis válida) con las mismas sustituciones
+que produce el código real.
+
+**3. Streaming — NO aplicado, y esto es un «SOSPECHO», no una causa demostrada:**
+- **Confirmado en producción, en vivo:** mi propio log (`~/flota-w3.log`) medido en 0 bytes mientras
+  yo llevaba un buen rato de turno activo — el síntoma es real, no supuesto.
+- **Reproducida la CLASE de fallo** (no en el binario `claude` — no tengo credencial para lanzarlo
+  limpio, ver abajo): un intérprete con buffering de aplicación (python3 sin `-u`) muestra el MISMO
+  síntoma (0 bytes hasta el final) al pipearlo a `tee`, y **ni `stdbuf -oL` lo arregla** (medido:
+  sigue en 0 hasta el final) — solo lo arregla asignar una pseudo-terminal (`script -qec "…" /dev/null`,
+  medido: crece en vivo). Esto descarta `stdbuf` como arreglo válido sin haberlo probado en vano contra
+  el trabajador real.
+- **Lo que SÍ hay documentado**: `claude -p --help` confirma `--output-format stream-json
+  --include-partial-messages` como el mecanismo OFICIAL de streaming — no es una suposición, está en
+  la ayuda del propio binario.
+- **Por qué NO se aplica sin más:** cambiar a `stream-json` cambia el FORMATO del log de texto plano a
+  NDJSON, y `AUT.clasificar` (el guardarraíl de cuota de [T-617]) hace *regex plano* contra el log
+  (`/hit your (weekly|daily|5-hour|usage) limit/i`) — un cambio de formato sin re-verificar esa
+  detección es tocar a ciegas el mecanismo que evitó 27 relanzamientos contra una cuota agotada.
+- **Por qué no lo probé en vivo:** intenté un `claude -p` real y acotado (prompt de 2 `sleep`) para
+  zanjarlo — **no pude autenticar** (`Not logged in`): mi entorno de shell no trae el
+  `CLAUDE_CODE_OAUTH_TOKEN`, que vive en `/etc/vence-flota/w3.env`, propiedad de `root` con 0600 — no
+  legible por `flota`. Ampliar mi propio permiso para esto sería exactamente lo que las reglas de la
+  casa prohíben («¿meto una credencial de más para que pase? → no. Se acota el permiso»).
+- **Lo que falta para cerrarlo (para quien lo retome, con la credencial adecuada):** un turno real y
+  corto con `--output-format stream-json --include-partial-messages`, comprobando (a) que el log crece
+  en vivo, y (b) que un mensaje sintético de cuota agotada embebido en el NDJSON SIGUE casando con el
+  regex de `AUT.clasificar` (o adaptar el clasificador a JSON si no).
+
+**Entregado:** `lib/flota/sesionClaude.cjs` (+`resumenActividad`), `scripts/flota/flota.cjs`
+(+`actividadDe`, wireado en el panel `estado`, y el volcado del encargo en `mandarEncargo`),
+`__tests__/flota/sesionClaude.test.ts` (+8 tests). 359/359 en verde en toda `__tests__/flota` (10
+suites, sin regresión). Rama `flota/T-653-actividad-visible-log-encargo`.
 
 ### [T-652] 🟡 [ABIERTO 07/08] El TREBEP se sirve con CAPÍTULOS PARTIDOS en 24 temas más: el hueco cae dentro de un título que sí está escopado, y ningún detector lo ve
 
