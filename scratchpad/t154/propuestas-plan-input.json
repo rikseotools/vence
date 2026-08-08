@@ -1,0 +1,26 @@
+[
+  {
+    "tema": 2,
+    "title": "LOPS + Estatuto Marco",
+    "veredicto": [
+      {
+        "ley": "Ley 55/2003",
+        "quitar": [],
+        "anadir": ["1","2","3","4","5","6","7","8","9","9 bis","9 quater","9 ter","17","18","19","29","30","31","32","33","34","35","40","62","63","64","65","65 bis","66","67","68","69","70","71","72","73","74","75","76","77"],
+        "razon": "T-154: epigrafe enumera 7 materias que mapean casi palabra por palabra a rubricas de capitulos BOE-A-2003-23101 (arbol-ley-boe.cjs): 'objeto y ambito de aplicacion'=Cap I(1-4), 'clasificacion de personal estatutario'=Cap II(5-9quater, LITERAL), 'derechos y deberes'=Cap IV(17-19, LITERAL), 'seleccion'=parte de Cap VI 'provision de plazas, seleccion...'(29-35), 'modelo de desarrollo profesional'=Cap VIII 'Carrera profesional'(40, mapeo mas debil), 'situaciones'=Cap XI 'Situaciones del personal estatutario'(62-69, LITERAL), 'incompatibilidades'=Cap XIII(76-77, LITERAL), 'regimen disciplinario'=Cap XII(70-75, LITERAL). NO cita Cap III(planificacion,10-16) Cap V(adquisicion/perdida condicion,20-28) Cap VII(movilidad,36-39) Cap IX(retribuciones,41-45) Cap X(jornada/permisos/licencias,46-61 -- el bloque mas grande excluido) Cap XIV(representacion/negociacion,78-80). consenso_banco='insuficiente' (38%, ambiguo entre 34 temas) -- la evidencia es textual/estructural directa, no analogia de pares. Medido: de las 296 preguntas activas de la ley, 98 saldrian de este tema y las 98 siguen sirviendose integras en otros temas del banco que escopan Ley 55/2003 (comprobado articulo a articulo contra topic_scope de esos temas)."
+      }
+    ]
+  },
+  {
+    "tema": 3,
+    "title": "Estructura Sanitaria de la Comunidad de Madrid (LOSCAM + otras)",
+    "veredicto": [
+      {
+        "ley": "Ley 12/2001 LOSCAM",
+        "quitar": [],
+        "anadir": ["3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","26","27","28","29","30","31","32","33","34","35","58","59","60","61","62","63","64","65","66","67","68","69","70","71","72","73","74","75","76","77"],
+        "razon": "T-154: epigrafe cita 3 materias explicitas que mapean a rubricas LITERALES de titulos BOE-A-2002-4375 (arbol-ley-boe.cjs, 13 titulos): 'Las areas Sanitarias. Red Sanitaria Unica de Utilizacion Publica'=Titulo II 'Sistema Sanitario de la Comunidad de Madrid'(3-21), 'Derechos y deberes de los ciudadanos'=Titulo IV(26-39, coincide LITERAL con la rubrica), 'El Servicio Madrileño de Salud'=Titulo VII(58-77, coincide LITERAL). NO cita Titulos I,III,V,VI,VIII-XIII (iniciativa privada sanitaria, participacion social, salud publica, Instituto Madrileño de la Salud, Instituto de Salud Publica, formacion e investigacion, drogodependencias, competencias corporaciones locales, regimen sancionador -- 8 de 13 titulos, materias sin relacion con las 3 citadas). consenso_banco='insuficiente' (solo 4 temas escopan esta ley en todo el banco, sin pares con que comparar) -- evidencia puramente estructural/textual. Medido: de las 55 preguntas activas de la ley, 10 saldrian de este tema y las 10 siguen sirviendose integras en otros temas del banco (comprobado articulo a articulo)."
+      }
+    ]
+  }
+]
