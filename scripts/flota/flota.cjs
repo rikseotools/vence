@@ -284,6 +284,13 @@ function medirMaquina(trabajador) {
  *
  * Cadena vacía si no se puede ver (sin sesión registrada, SSH caído, transcript aún sin líneas
  * de herramienta) — igual que `comandoDelPanel`, «no se pudo ver» no es «no hace nada».
+ *
+ * ⚠️ Con UNA excepción, a propósito ([T-712]): si se llama con algo que no sea el NOMBRE del
+ * trabajador, `maquinaDe` lanza y esto NO degrada a `''`. Es deliberado — meter esa llamada
+ * dentro del `try` se tragaría justo el error que [T-712] existe para hacer visible, que es el
+ * que dejó la sonda de salud 439 pasadas sin medir nada. Un trabajador que no está en el
+ * registro sigue devolviendo `''` por el `if (!m)` de abajo: eso es un estado normal. Lo que
+ * tiene que hacer ruido es el fallo de programación.
  */
 function actividadDe(trabajador) {
   const m = MAQ.maquinaDe(trabajador)
