@@ -15537,6 +15537,64 @@ WHERE event_type='pwa_install_banner' AND metadata->>'motivo'='ya_instalada'
 - **Lo que se pierde, dicho honestamente:** el pico de entusiasmo del recién comprado es real, y retrasar el icono renuncia a él. Merece medirse: hoy hay datos de referidos (`referrals`, `referral_codes`) para ver **cuántos referidos se generan en los primeros 14 días** frente al resto. Si esa ventana concentra la mayoría, el coste de retrasar es alto y habría que buscar otra vía (p. ej. mostrarlo pero sin lenguaje de recompensa hasta pasado el plazo). **Medirlo ANTES de decidir el plazo.**
 - **Ficheros:** `app/Header.tsx:388` y `:609-611` · `components/embajadores/*` · tabla `referrals` / `referral_codes`.
 
+#### ✅ HECHO (08/08, w4) — condición por antigüedad implementada; la medición pedida no dio una cifra fiable, y se dice por qué
+
+**La medición que la ficha pedía ANTES de decidir el plazo se intentó primero, en serio — y no se
+pudo hacer con la fiabilidad que el propio método exige.** Dos topes reales, medidos, no supuestos:
+1. El credencial de lectura (`VENCE_LECTOR_URL`) no tiene permiso sobre `user_subscriptions` ni
+   `user_profiles` (comprobado: `permission denied for table user_subscriptions` /
+   `user_profiles` — es a propósito, son las tablas con dato de pago/personal), así que no se puede
+   calcular "días desde que un usuario se hizo premium" por SQL directo con esta credencial.
+2. Y aunque se pudiera: **en toda la vida del programa hay 8 filas en `referrals`, de solo 5
+   personas distintas** (contado directo: `SELECT count(*) FROM referrals` = 8; `SELECT count(DISTINCT
+   referrer_user_id)` = 5). Con esa N cualquier "% de referidos en los primeros 14 días" sería
+   ruido, no una cifra que sostenga una decisión de plazo. **SOSPECHO que hace falta mucho más
+   volumen para calibrar esto con confianza real** — no lo intenté forzar con 5 puntos.
+
+**Lo que SÍ se pudo medir, con datos accesibles y sin tocar tablas restringidas** (tabla `tests`,
+que solo tiene `user_id` como UUID, sin dato personal): para los 5 embajadores que han generado
+algún referido, cuántos tests llevaban completados en el momento de su PRIMER referido —
+- 4 de 5: **223, 210, 202 y 315 tests completados** (semanas o meses de uso real antes de referir).
+- 1 de 5: **5 tests completados, el mismo día de su primer test** — exactamente el patrón que
+  la objeción de Manuel señala como sospechoso (recomendar recién llegado).
+
+Con esta muestra (pequeña, dicho con la misma honestidad que el punto 2 de arriba) el coste de
+retrasar el icono parece bajo: la inmensa mayoría de quien refiere de verdad ya es un usuario
+asentado, y el único caso temprano es justo el que un plazo habría filtrado.
+
+**Implementado, sin esperar a una medición mejor, porque la objeción de reputación es real HOY y
+un plazo razonable no bloquea a nadie que la propia muestra mostrara como legítimo:**
+- **`lib/referrals/logic.ts` → `debeMostrarIconoRecompensas()`**: núcleo puro (sin BD ni React,
+  como `effectiveBannerVisible`), acepta la condición que YA existía (`isPremium || isLegacy`,
+  la recalcula el caller) y añade el requisito nuevo: `userProfile.created_at` con al menos
+  `DIAS_MINIMOS_ANTES_DE_MOSTRAR_ICONO` días de antigüedad. Dato roto o ausente falla CERRADO
+  (no se enseña) — no hay antigüedad que demostrar, así que no se promete nada.
+- **Por qué TIEMPO y no USO** (la propia ficha decía que la condición de uso "premia mejor"):
+  `userProfile.created_at` YA está disponible en el cliente del Header (se usa en otras tarjetas
+  de "Registrado") — la condición por tiempo no añade ni una consulta nueva. Un conteo de tests
+  exigiría traer un dato nuevo al Header en cada carga de página, para una señal que la medición
+  de arriba no puede calibrar todavía con la N que hay. Migrar a uso, si hay volumen más adelante
+  para calibrar un umbral con garantías, es cambiar esta función — es pura, no exige tocar la vista.
+- **El plazo: 14 días**, el extremo MÁS BAJO del rango 14-30 que la propia ficha proponía — la
+  muestra no distingue 14 de 30 (el único caso temprano fue el día 0, no el día 20), así que no hay
+  dato que obligue al extremo alto. Vive en la constante exportada `DIAS_MINIMOS_ANTES_DE_MOSTRAR_ICONO`
+  para poder subir a 30 sin tocar la función ni la vista si una medición futura (con más volumen) lo pide.
+- **Cableado en `app/Header.tsx`** en los DOS sitios que la pintaban con `(isPremium || isLegacy)` a
+  secas: el link del nav (desktop+móvil, mismo array `commonLinks`) y el icono de la barra
+  (`<RewardsIcon>`). Un solo cálculo (`mostrarIconoRecompensas`), reusado en los dos — no hay un
+  tercer sitio (comprobado con grep: `RewardsIcon`/`isPremium || isLegacy` solo aparecen en
+  `Header.tsx` y en el propio `RewardsIcon.tsx`, que no decide nada).
+- **Capas:** 8 tests unitarios nuevos (`__tests__/referrals/debeMostrarIconoRecompensas.test.ts`,
+  incluido el caso real que motiva la ficha — recién pagado no se enseña el mismo día — y el borde
+  del umbral, dato roto, y fecha en el futuro). Los 15 tests existentes de `estadoIconoRecompensas`
+  (el núcleo que decide el CONTENIDO del icono, no si se enseña) siguen en verde, sin tocar. 281
+  tests de `__tests__/referrals` + `__tests__/components/Header*` en verde. `tsc --noEmit` y
+  `eslint` limpios en los 3 ficheros tocados.
+- **Lo que NO se ha hecho, a propósito:** [T-200] (que la propia ficha original ya señalaba como
+  "la mitad grande del mismo problema" — `/embajadores` público y rastreable) sigue sin tocar, fuera
+  de este alcance. Y no se ha desplegado: el cambio queda en rama para revisión + deploy agrupado.
+- **Entrega:** rama `flota/T-199-icono-embajadores-antiguedad`, pusheada.
+
 ### [T-200] 🟢 [ABIERTO 27/07] `/embajadores` es PÚBLICA y rastreable: cualquiera puede comprobar que recomendamos con recompensa
 - **Comprobado en producción (27/07):** `https://www.vence.es/embajadores` responde **200 sin sesión**, **no** está en `Disallow` de `robots.txt` y **no** lleva `noindex`. No está en el sitemap, así que no la estamos empujando — pero es perfectamente rastreable e indexable.
 - **Por qué es la mitad GRANDE del problema de [T-199]:** da igual cuándo le enseñemos el icono al usuario. Si alguien lee una recomendación de Vence en un foro, busca «vence embajadores» y aterriza en una página que dice *«Gana recompensas recomendando Vence»*, **la sospecha queda confirmada desde fuera**. El icono es una señal privada; la página es pública.
