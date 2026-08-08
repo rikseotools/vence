@@ -5328,62 +5328,6 @@ generar el dossier de NINGÚN feedback, y ahí no hay degradación posible sin r
 - **🔲 PUNTOS 1 y 2 — NO abordados, y por qué no es evasión.** El punto 1 (disciplina: el supervisor no opera en árbol ajeno) no es codeable — es una instrucción de comportamiento, y ya está escrita en varios sitios (comentarios de `lib/flota/actualizacion.cjs`, esta misma ficha) sin que evitara el incidente. El punto 2 (protección real contra un `checkout`/`reset`/`clean` manual desde una sesión con Bash arbitrario) sigue siendo, tal como lo deja la ficha original, "a decidir": interceptar `git` en sí (un wrapper que rechace verbos destructivos fuera del árbol propio) es una intervención de mucho más alcance —afecta a TODO uso de git en la máquina, no solo al de la flota— y con riesgo real de romper flujos legítimos; no es del tamaño de "esfuerzo: rato" y merece su propia ficha con diseño discutido, no una decisión unilateral de un worker. Candidato a ficha propia si Manuel quiere que se aborde.
 - **Relacionada añadida:** [T-615] (el mismo criterio, el hueco gemelo que dejó sin cerrar: aquel arregló "sin BD", este arregla "con BD, latido real, proceso confirmado en 0").
 
-> **✅ RESPUESTA (07/08, w4).** El diagnóstico ya estaba hecho por otra sesión (l2) y fusionado a
-> `main` (`cbcd1c01d`, 06/08 11:29) + desplegado (`15656eef`, 06/08 11:37): raíz = un worktree local
-> apuntando a la RDS de producción (`.env.local`, patrón documentado en CLAUDE.md) escribía
-> `request_completed` con `host=localhost:3210` y `httpStatus=500` directamente en la tabla que
-> alimenta el panel — 89 eventos en 4 minutos, mientras `validation_error_logs` (la fuente real del
-> indicador 1) estaba en CERO en esa ventana. Arreglo: `shouldSkipObservabilityPersistence()`
-> (`lib/observability/runtimeGate.ts`, `NODE_ENV!=='production'`) usado ahora por LAS DOS puertas
-> que escriben observabilidad (`withErrorLogging.ts` y `validation-error-log/queries.ts`), que antes
-> solo la tenía una.
->
-> **Verificado EN VIVO por mí contra RDS (lo que quedaba pendiente de la ficha), no dando el deploy
-> por bueno de oídas:**
-> - `/api/auth/token` desde el deploy (15h): **0 eventos 5xx** (5.797×401 + 1.147×200). Antes eran 89
->   en 4 minutos.
-> - Tráfico `host=localhost` desde el deploy: 1.589 eventos, **todos 200**, y son tráfico interno
->   legítimo (1.565 `/api/health/db-ready` en `localhost:3000` — healthcheck del propio contenedor
->   Fargate — + 12 `/api/internal/isr-apply` en `127.0.0.1:3000`). No es el worktree roto volviendo:
->   puerto distinto (3000 del contenedor vs 3210 del worktree) y sin un solo error.
-> - 5xx reales desde el deploy (`host=www.vence.es`): **13**, todos con `synthetic=null` (no
->   canary) y mensajes de fallo genuino («Database operation exceeded 8000ms timeout», «Servicio
->   saturado momentáneamente») — la «cola larga» que la ficha original ya distinguía del bug
->   (`answer-and-save`×3, `laws-configurator`×2, `stats`×2, `medals`/`profile`/`user-stats`/
->   `pdf`/`random-test/availability`×1). Nada de esto es T-572; una parte encaja con [T-315].
->
-> **HALLAZGO NUEVO al intentar cerrar el segundo punto pendiente** («que el indicador 1 cuadre con
-> `validation_error_logs`»): **no se puede verificar con esta credencial — mismo patrón sistémico de
-> RLS que [T-573]/[T-574].** `validation_error_logs` tiene `relrowsecurity=true` con **una sola
-> política**, `service_role_all` (`roles={service_role}`), y ninguna para `vence_lector` — el GRANT
-> de tabla existe (`has_table_privilege=true`) pero sin política el motor filtra en silencio:
-> `SELECT count(*) FROM validation_error_logs` (sin `WHERE`) da **0**, siempre, aunque la tabla esté
-> llena. Los 13 eventos de arriba deberían tener su espejo en VLE (el código de `withErrorLogging.ts`
-> los escribe con `await` para 5xx no-sintéticos, sin excepción que aplique a ninguno de los 13) y no
-> pude comprobarlo. **No estaba en el catálogo `DEBE_LEER`/`NO_DEBE_LEER` de
-> `scripts/canary-rol-lector.cjs`** — cae en el mismo hueco de catalogación que T-573 ya señala para
-> otras tablas. No abro ficha nueva a propósito (sería la 4ª de la misma familia esta semana);
-> queda anotado aquí y en el `Relacionadas` de abajo para quien retome T-573/T-574.
->
-> **Veredicto: el bug que motivó la ficha está arreglado y verificado con datos reales, no con la
-> palabra del deploy.** Lo que queda («cuadra VLE con obs_events») es un problema de ACCESO de
-> lectura, no del propio fix.
-
-**Relacionadas:** [T-573], [T-574] (mismo bloqueo RLS de `vence_lector`, ahora también en
-`validation_error_logs`) · [T-315] (parte de la «cola larga» de 5xx reales sí es su timeout de
-antifraude).
-
-- **Medido el 05/08** en el chequeo de salud (`observable_events`, ventana 24 h):
-  - **101 eventos con `http_status >= 500`**, o sea **rojo** en el indicador 1 del runbook (umbral: rojo ≥5).
-  - **89 de ellos son `/api/auth/token`** (último a las 09:40 UTC). El resto es cola larga: 6 en `/api/v2/answer-and-save`, 2 en `laws-configurator`, 2 en `random-test/availability`, 2 en `referrals/badge`.
-- **No se queda en un contador: le está costando datos a usuarios.** En la misma ventana hay **193 `console_error` con el texto `❌ [answerSaveQueue] Sin token (intento #1…)`** — la cola que persiste las respuestas de los tests se queda sin token y no puede llamar a `/api/v2/answer-and-save`. El usuario ve su respuesta corregida al instante (validación en cliente), así que **el fallo es invisible para él**, pero el registro en `test_questions`, el score autoritativo y el antifraude se los pierde el servidor. Es exactamente el modo de fallo que el runbook avisa: *«el servidor puede decir 0 5xx y el panel verde mientras los clientes sufren — p.ej. 502 de `/api/auth/token`, que es un error de EDGE»*.
-- **Qué hay que averiguar primero (no está determinado):** si los 89 son 502 de edge (infraestructura, delante de la app) o 500 de la propia ruta. La distinción cambia por completo el arreglo y **no se puede deducir del contador**: hay que mirar el `error_message`/`metadata` de esos eventos y los logs de Fargate/edge de esa franja.
-- **Relación con la cola de respuestas:** comprobar si los 193 «Sin token» caen en las MISMAS franjas que los 89 5xx. Si correlan, es un solo fallo con dos síntomas; si no, son dos.
-- **NO confundir con [T-315]** (el techo de 25 s de `answer-and-save`): ahí el problema es el presupuesto de tiempo del backend, aquí es que no hay token con el que llamar. Los 6 `answer-and-save` de esta ventana sí pueden ser de T-315.
-- **Ruido que NO es esto:** los 1.305 + 604 `console_error` de `[GSI_LOGGER] FedCM …` son del inicio de sesión con Google en el navegador y dominan el volumen; hay que descartarlos antes de mirar nada, o tapan la señal.
-- **Contexto de la medición:** también hay 96 `canary_pdf_queue_failed` (crónico conocido, cola de PDFs sin consumidor) y 85 `ci_integracion_rojo` (es [T-370], ya dormida esperando los secrets de GitHub).
-- **Esfuerzo: rato** (diagnóstico; el arreglo puede ser mayor y saldrá de lo que diga el diagnóstico).
-
 ### [T-569] 🟠 [ABIERTO 05/08] El perfil BORRA en silencio la oposición del usuario si no está en el registro del frontend: 11 cuentas con cadena vacía
 
 **Lo que le pasa a la persona.** Entra en `/perfil`, cambia cualquier cosa (el apodo, la meta
@@ -8382,6 +8326,130 @@ esas preguntas no le habrían salido nunca.
   3. **Cerrar la puerta por la que entraron (lo que evita la próxima vez):** que el camino de importación **se niegue** a colgar preguntas de un artículo placeholder. Hoy nada lo impide; el trinquete solo lo detecta *después*, y encima estaba ciego.
 - **NO tocar a ciegas:** son 7.202 preguntas de 8 oposiciones reales. Desactivarlas en bloque deja esos temas sin contenido, que es otro daño distinto. Decisión de producto antes que `UPDATE`.
 - **Relacionadas:** [T-370] (el gate ciego que dejó pasar esto), memoria `project-placeholder-temario-backlog` (el inventario original de 17.504 y el método que lo bajó a 0).
+
+> **🚧 PARCIAL (07/08, w4). Punto 3 (cerrar la puerta) HECHO y verificado; puntos 1 y 2 son
+> decisión de producto — pregunto, no decido.**
+>
+> **MEDIDO contra RDS, no contra la ficha (coincide exacto con lo escrito arriba):** 7.202
+> confirmado con la query del trinquete. Distribución por fecha de `created_at`: **7.134 el
+> 08/07/2026 + 68 el 15/07/2026** (no es "todo el mismo lote" al 100%, pero sí una sola
+> importación con un rebalse de 68 una semana después). `exam_source='Aula Plus - Enfermería'`
+> en 7.134 de los 7.202; los 68 restantes con `exam_source=NULL`. Contenido literal del
+> artículo en la muestra: `"⏳ Teoría pendiente (contenedor enfermería)."` (44 caracteres).
+> `lifecycle_state='tech_approved'` en la muestra comprobada (de ahí `is_active=true`, columna
+> GENERADA).
+>
+> **Causa raíz de IMPORTACIÓN confirmada leyendo el código (no ejecuté el script contra RDS: mi
+> `DATABASE_URL` de coordinación no lee `articles`/`questions`).** El `exam_source` por defecto
+> de `scripts/import-aulaplus-clinico.cjs` es literalmente `'Aula Plus - Enfermería'` (coincide
+> con el 99% de las 7.202) y su `INSERT` no fija `lifecycle_state` → usa el default `'draft'`.
+> Construye las filas con `primary_article_id = arts[0].id` — el PRIMER artículo del contenedor
+> — **sin leer ni comprobar su `content` en ningún punto del código anterior a mi cambio**: es
+> un hecho verificable leyendo el fichero antes de mi edición (`git show HEAD:...`), no una
+> inferencia. Su gemelo `import-tcae-subject.cjs` tenía el mismo agujero en `pickArticle()`. Lo
+> que SÍ reproduje de verdad: la función pura que ahora usan los dos scripts
+> (`esContenidoPlaceholder`) clasifica el texto exacto del incidente («⏳ Teoría pendiente
+> (contenedor enfermería).») como placeholder (test unitario, ver abajo) — la pieza que decide
+> si se aborta o no está probada; el script completo end-to-end no lo pude ejecutar por falta de
+> credencial.
+>
+> **SOSPECHO, sin poder confirmarlo, cómo pasó de `draft` (lo que este script inserta) a
+> `tech_approved` (lo que hay activo).** `question_lifecycle_history` de la muestra comprobada
+> da **0 filas** — pero antes de leerlo como «se saltó la función `transition_question_state`»
+> hay que decir la trampa: **esa tabla tiene `relrowsecurity=true` y CERO políticas para
+> `vence_lector`** (mismo patrón sistémico que [T-573]/[T-572] en `validation_error_logs`),
+> comprobado con `pg_policies` + `has_table_privilege`. O sea que mi «0 filas» es un LEER
+> BLOQUEADO, no una prueba de que el historial esté vacío de verdad. No encontré en el repo
+> ningún script que promueva a `tech_approved` mencionando "aula plus" o "enfermer" — lo más
+> parecido que hay (`clinical_double_pass_adjudicate.cjs`) es de OTRA ola (ola 20) y no toca
+> estos ids. Lo más probable, sin poder probarlo, es un script ad-hoc corrido fuera del repo
+> (patrón ya visto en otros scripts de Manuel con rutas `/home/manuel/...` hardcodeadas). No lo
+> afirmo como causa.
+>
+> **✅ HECHO — punto 3, «cerrar la puerta por la que entraron»:**
+> - `lib/generacion/articuloPlaceholder.js`: fuente ÚNICA del umbral (120 car., el mismo que ya
+>   usaba el trinquete) — `esContenidoPlaceholder(content)`. El trinquete
+>   (`placeholderTemarioGuard.test.ts`) ahora IMPORTA esta constante en vez de tener el `120`
+>   repetido a mano (para que detector y puerta de entrada no puedan discrepar).
+> - `import-aulaplus-clinico.cjs` e `import-tcae-subject.cjs`: comprueban el/los artículo(s) que
+>   el run va a usar de verdad ANTES de construir las filas, y **abortan** (`process.exit(1)`)
+>   si alguno sigue en placeholder. Escape explícito con motivo: `--permitir-placeholder "<por
+>   qué>"` (avisa por consola, no lo hace en silencio).
+> - Manual `docs/maintenance/importar-preguntas-scrapeadas.md` §11: nuevo aviso citando T-374,
+>   dejando claro que el paso 3 (redactar contenido) es OBLIGATORIO y ahora se hace cumplir, no
+>   solo se pide.
+> - **Capas:** `__tests__/lib/generacion/articuloPlaceholder.test.js` (5, incluida la
+>   REPRODUCCIÓN con el texto verbatim real `"⏳ Teoría pendiente (contenedor enfermería)."`) +
+>   `__tests__/guardrails/importPreguntasPlaceholderGuard.test.ts` (9, mira el código fuente de
+>   los dos importadores: usan el criterio único, tienen el escape con motivo, abortan cerca de
+>   la comprobación, citan T-374, y el manual documenta el orden). Typecheck limpio. No pude
+>   ejecutar el trinquete en sí con mi credencial (`DATABASE_URL` de coordinación no lee
+>   `questions`/`articles`/`topics` — `permission denied`, esperado); confirmado que mi cambio
+>   solo interpola una constante en la query (byte a byte igual una vez sustituida) y que la
+>   query en sí ya la verifiqué manualmente contra `VENCE_LECTOR_URL` (da 7.202).
+> - **NO subí `BASELINE_PLACEHOLDER_QUESTIONS`** (sigue en 0): el propio mensaje de error del
+>   trinquete lo prohíbe («si has migrado/añadido temario, BAJA el baseline; nunca lo subas para
+>   tapar esto») y yo no he escrito temario ni desactivado nada. El gate se queda en ROJO hasta
+>   que el punto 1/2 se resuelva — es el comportamiento correcto, no un cabo suelto.
+>
+> **⬜ NO HECHO a propósito — puntos 1 y 2 (qué son estas 7.202 y si se sirven mientras tanto):
+> decisión de producto, la ficha ya lo decía y lo confirmo.** No he tocado ni una fila de
+> `questions`. Pregunto con `backlog.cjs preguntar` (ver abajo) en vez de decidir por mi cuenta:
+> las dos opciones razonables son (a) dejarlas activas mientras se escribe temario de verdad
+> (bajo riesgo hoy: solo 16 respuestas de 5 usuarios) o (b) sacarlas del scope hasta tener
+> contenido, para no exponerlas «respondibles pero no estudiables» a las 8 oposiciones reales
+> que las escopan. No elijo yo cuál.
+
+> **🔧 CORRECCIÓN (08/08, w3) — la revisión (w1) tenía razón: los 68 NO son un rebalse del mismo
+> lote, y además puedo cerrar la pregunta que el bloque de arriba dejaba en SOSPECHO.**
+>
+> **Los 68 (Museología) son un incidente DISTINTO, confirmado con la misma medida que ya venía
+> escrita arriba pero mirando SOLO esos 68 (no el resto de la ley "Museología (editorial)", que
+> tiene miles de preguntas sanas — filtrar solo por ley da un número inflado y falso):**
+> `exam_source=NULL` en los 68/68 (`import-aulaplus-clinico.cjs` SIEMPRE fija un `exam_source`
+> no-nulo, así que estructuralmente no pueden venir de ese script), misma ley (`Museología
+> (editorial)`, `auxiliar_museos_estado`, sin relación con enfermería), mismo artículo único
+> (#219, `content`="Concepto de museo y sus funciones..." — 73 car., el TÍTULO del tema copiado,
+> no el marcador "⏳ Teoría pendiente…" que persigue el guard nuevo), y creados el **15/07**, una
+> semana antes de que `auxiliar_museos_estado` se construyera formalmente (commit `32d7d4acc`,
+> 16/07, el que trae el scaffold + ~10.130 preguntas reales). **Busqué en el repo el script que
+> los insertó y no lo encontré** (`git log --all` sin ningún commit que mencione
+> "museo"/"Museología"; grep en `scripts/`+`lib/` sin resultado; el scaffolder
+> `create-oposicion.cjs` no inserta preguntas) — coincide con lo que la revisión ya había
+> comprobado. **El guard de este fix (los 2 scripts parcheados) NO cubre esta vía**, sea cual sea.
+>
+> **PERO la pregunta que quedaba en SOSPECHO — cómo pasaron de `draft` a `tech_approved` sin
+> registro — sí tiene respuesta ahora: [T-638] arregló la RLS de `question_lifecycle_history`
+> para `vence_lector` y ya está en vivo** (comprobado en directo: la consulta que aquí arriba
+> daba `permission denied` ahora devuelve filas). Con eso:
+> - **Las 68 de Museología:** su historial son EXACTAMENTE 2 filas por pregunta —
+>   `null→draft` (`created`) y **`draft→tech_approved` (`reason_code='ai_verified_tech_perfect'`)**
+>   — 68/68. Ningún salto sin registrar, ningún `bypass_detected`. Pasaron por la función legítima
+>   `transition_question_state`, con un veredicto de un pase de verificación IA.
+> - **Y las 7.134 de Aula Plus, el MISMO patrón:** de sus 21.202 filas `created→draft`, **17.594
+>   pasan a `tech_approved` con el mismo `reason_code='ai_verified_tech_perfect'`**. La "sospecha
+>   de script ad-hoc" para explicar el salto draft→tech_approved queda descartada por los datos:
+>   no fue un salto sin registrar, fue el verificador estándar aprobándolas.
+>
+> **La causa real de la PROMOCIÓN (para los dos incidentes, no solo Museología): el pase de
+> verificación IA que asigna `ai_verified_tech_perfect` no comprueba si el artículo primario
+> tiene contenido real** — evalúa la pregunta (enunciado/opciones/clave/explicación) pero no la
+> fuente a la que cuelga. Es la misma familia que [T-465] (*"quien reescribe no puede firmar que
+> ha verificado"*). Esto importa más que localizar el script fantasma de Museología: aunque se
+> parcheen TODOS los importadores conocidos, un futuro script (o uno ya olvidado, como el de
+> estos 68) volvería a colgar preguntas de un artículo vacío sin que el verificador lo pare,
+> porque el filtro real está en la promoción, no en cada puerta de entrada. **Abierta ficha
+> propia — [T-703]** — con el diagnóstico completo y una propuesta (comprobar
+> `esContenidoPlaceholder` en `transition_question_state` mismo, el único camino legítimo de
+> cambio de estado). No la resuelvo aquí: es un cambio de mayor alcance que esta ficha y decisión
+> de producto igual que los puntos 1/2 de arriba.
+>
+> **Resumen del estado real de T-374, para quien decida:** el 99% (7.134, Aula Plus) tiene causa
+> de ENTRADA demostrada y CERRADA (el fix de los 2 scripts). El 1% (68, Museología) tiene causa de
+> entrada **sin diagnosticar** (búsqueda agotada, sin resultado — queda como riesgo conocido, no
+> como cerrado) pero causa de PROMOCIÓN ahora demostrada e igual para los dos incidentes (ver
+> [T-703]). Nada de esto cambia los puntos 1 y 2 (qué hacer con las 7.202 activas), que siguen
+> siendo decisión de Manuel.
 
 ### [T-391] 🟠 [ABIERTO 31/07] etgoa está PUBLICADA con el 17% del temario, y es grupo A: no toca construirla
 
