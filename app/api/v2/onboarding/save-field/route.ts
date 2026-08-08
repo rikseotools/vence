@@ -15,6 +15,13 @@ import { sql } from 'drizzle-orm'
 import { verifyAuth } from '@/lib/api/auth/verifyAuth'
 import { withErrorLogging } from '@/lib/api/withErrorLogging'
 import { getAdminDb } from '@/db/client'
+import {
+  esObjetivoPersonalizado,
+  personalizadaUtilizable,
+  ERROR_PERSONALIZADA_SIN_TEMARIO,
+} from '@/lib/oposicion/objetivoPersonalizado'
+import { buscarPersonalizada } from '@/lib/api/oposicionPersonalizada/consultas'
+import { emitFireAndForget } from '@/lib/observability/emit'
 
 export const maxDuration = 15
 
@@ -39,6 +46,30 @@ async function _POST(request: NextRequest): Promise<NextResponse> {
   const { field, value } = parsed.data
   const uid = auth.userId
   const db = getAdminDb()
+
+  // [T-339] Misma comprobación que `/api/profile/target` (PUT), la SEGUNDA puerta de escritura
+  // de `target_oposicion`. Sin esto, el onboarding fijaba como objetivo una personalizada sin
+  // un solo tema — medido el 07/08: las 10 "más populares" que el propio onboarding ofrece
+  // tienen las 10 cero temas — y el usuario aterrizaba después en un temario vacío sin ningún
+  // aviso en el momento en que eligió. `esObjetivoPersonalizado`/`buscarPersonalizada` son
+  // FAIL-OPEN: si la personalizada no existe, no es pública/tuya, o la consulta falla, esto no
+  // bloquea nada — solo corta cuando SÍ se sabe que está vacía.
+  if (field === 'target_oposicion' && typeof value === 'string' && esObjetivoPersonalizado(value)) {
+    const personalizada = await buscarPersonalizada(value, uid)
+    if (personalizada && !personalizadaUtilizable(personalizada.temas)) {
+      emitFireAndForget({
+        source: 'vercel',
+        severity: 'warn',
+        eventType: 'objetivo_personalizado_vacio',
+        endpoint: '/api/v2/onboarding/save-field',
+        metadata: { oposicionId: value, temas: personalizada.temas, bloqueado: true },
+      })
+      return NextResponse.json(
+        { success: false, ...ERROR_PERSONALIZADA_SIN_TEMARIO },
+        { status: 409 },
+      )
+    }
+  }
 
   // Switch con columnas LITERALES (nunca interpoladas) + cast por tipo real.
   switch (field) {

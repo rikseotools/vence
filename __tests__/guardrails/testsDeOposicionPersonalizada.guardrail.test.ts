@@ -110,6 +110,12 @@ describe('una personalizada vacía no es un 404', () => {
   const rutaTests = leer('app/oposicion-personalizada/[id]/test/page.tsx')
   const boton = leer('components/oposicionPersonalizada/MisOposiciones.tsx')
   const endpoint = leer('app/api/profile/target/route.ts')
+  // [T-339] TERCERA puerta: el guardado progresivo del onboarding escribía `target_oposicion`
+  // directo, sin pasar por `personalizadaUtilizable` — la misma forma en que esto se rompió la
+  // primera vez, un escalón más abajo (dos puertas con criterios distintos no protegen: se
+  // contradicen). Medido el 07/08/2026: las 10 personalizadas "más populares" que el propio
+  // onboarding ofrece (`get_popular_custom_oposiciones`) tienen las 10 CERO temas.
+  const onboarding = leer('app/api/v2/onboarding/save-field/route.ts')
 
   it('la ruta del temario decide ELLA si está vacía, en vez de heredar el 404 del componente', () => {
     expect(rutaTemario).toContain('personalizadaUtilizable')
@@ -132,17 +138,35 @@ describe('una personalizada vacía no es un 404', () => {
   const sinComentarios = (src: string) =>
     src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '')
 
-  it('las DOS puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
-    for (const [nombre, fuente] of [['botón', boton], ['endpoint', endpoint]] as const) {
+  it('las TRES puertas del objetivo comparten el criterio puro (ninguna lo reescribe a mano)', () => {
+    for (const [nombre, fuente] of [
+      ['botón', boton],
+      ['endpoint', endpoint],
+      ['onboarding', onboarding],
+    ] as const) {
       const codigo = sinComentarios(fuente)
       expect(`${nombre}:${codigo.includes('personalizadaUtilizable')}`).toBe(`${nombre}:true`)
       expect(`${nombre}:${/\.temas\s*>\s*0/.test(codigo)}`).toBe(`${nombre}:false`)
     }
   })
 
+  it('las DOS puertas de escritura server-side comparten la MISMA consulta, no una copia', () => {
+    // `buscarPersonalizada` vive en un solo sitio (lib/api/oposicionPersonalizada/consultas.ts).
+    // Si alguna de las dos la reescribe con su propio SELECT, vuelven a poder divergir.
+    for (const [nombre, fuente] of [
+      ['endpoint', endpoint],
+      ['onboarding', onboarding],
+    ] as const) {
+      expect(`${nombre}:${fuente.includes("from '@/lib/api/oposicionPersonalizada/consultas'")}`).toBe(
+        `${nombre}:true`,
+      )
+    }
+  })
+
   it('el rechazo del servidor deja rastro: sin evento no nos enteraríamos otra vez', () => {
     expect(endpoint).toContain('objetivo_personalizado_vacio')
     expect(rutaTemario).toContain('objetivo_personalizado_vacio')
+    expect(onboarding).toContain('objetivo_personalizado_vacio')
   })
 })
 
