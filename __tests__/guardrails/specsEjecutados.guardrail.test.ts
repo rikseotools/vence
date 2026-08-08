@@ -75,15 +75,18 @@ function proyectos() {
  *
  * **Esta lista solo puede ENCOGER.** Ninguno nuevo puede entrar: para eso está el guardarraíl.
  *
- * ⏳ Ejecutarlos de verdad es una DECISIÓN pendiente, con coste en las dos salidas:
- *   (a) invocar el proyecto `authenticated` desde `e2e-smoke.yml` → exige `AUTH_SECRET` como
- *       secret de GitHub, y ese secreto FIRMA sesiones: quien lo tenga puede acuñar la de
- *       cualquier usuario. No es un secret más.
- *   (b) correrlos en el smoke post-deploy (`scripts/deploy-frontend.sh` [6/6]), donde el secreto
- *       ya sale de SSM y no se expone → pero añade minutos a un deploy que mantiene el lock
- *       global, y con varias sesiones desplegando eso lo paga todo el mundo.
- * El proveedor de sesión que hace falta ya está listo (`own-mint`, [T-713]); lo que falta es
- * elegir dónde corren.
+ * ✅ DECIDIDO (Manuel, 08/08/2026): la salida (b) — corren en el paso [7/7] de
+ * `scripts/deploy-frontend.sh`, contra el código recién desplegado. El secreto sale de SSM y no
+ * se expone; llevarlo a GitHub Actions se descartó porque `AUTH_SECRET` **firma sesiones** y ahí
+ * quedaría al alcance de cualquiera con acceso al repo. Guardarraíl del paso:
+ * `e2ePostDeploy.guardrail.test.ts`.
+ *
+ * ⏳ **Siguen declarados a propósito**, y esto NO es un descuido: el paso está cableado pero
+ * **apagado** hasta que exista una cuenta DESECHABLE (`E2E_USER_ID`). Una de las 6 pruebas
+ * RESPONDE una pregunta, así que correrlas contra la cuenta de un usuario real le ensuciaría las
+ * estadísticas. Darlos por cubiertos ahora sería justo el falso verde que este fichero persigue.
+ *
+ * **Cuándo vaciar esta lista:** cuando haya cuenta y un deploy los haya ejecutado de verdad.
  */
 const HUERFANOS_DECLARADOS = [
   'authed/bearer-en-rutas-con-dueno.spec.ts',
