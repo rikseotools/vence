@@ -23,7 +23,7 @@ const SWEEP_KINDS = [
   'visual_deixis_no_image', 'enunciado_norma_sin_nombrar', 'cita_no_literal',
   'epigrafe_provenance_no_doc', 'temario_revision_pendiente', 'scope_sin_verificar',
   'explicacion_yuxtaposicion', 'article_audit_note', 'epigrafe_truncado',
-  'notas_convocatoria_sin_vigilancia', 'pregunta_duplicada',
+  'notas_convocatoria_sin_vigilancia', 'pregunta_duplicada', 'seguimiento_fuente_error',
   'topic_sin_description',
 ]
 
