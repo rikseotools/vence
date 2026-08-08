@@ -15,13 +15,13 @@
     "id": "c7d94af7-3655-4057-8d68-d4b5264b6fe9",
     "article_number": "24",
     "ley": "RDL 5/2015",
-    "n_topic_scope": "70"
+    "n_topic_scope": "71"
   },
   {
-    "id": "47be85a2-dfc6-4154-a3f5-d5b5b38921c7",
-    "article_number": "6",
-    "ley": "Ley 19/2013",
-    "n_topic_scope": "44"
+    "id": "67c75874-ebae-4bfb-9623-8e7d7f14cbfc",
+    "article_number": "44",
+    "ley": "Ley 40/2015",
+    "n_topic_scope": "54"
   },
   {
     "id": "93b61922-ac8f-4f12-9843-6ab73f5a9ea1",
@@ -135,6 +135,12 @@
     "id": "639cafe0-228e-4afb-b985-f3c292e4fe3b",
     "article_number": "106",
     "ley": "CP",
+    "n_topic_scope": "4"
+  },
+  {
+    "id": "75695b64-82a9-420d-927b-54a91a730d64",
+    "article_number": "14",
+    "ley": "LO 11/1985",
     "n_topic_scope": "4"
   },
   {
@@ -255,6 +261,12 @@
     "id": "edfe72c7-8cc8-4837-8a30-77c98c060c08",
     "article_number": "5",
     "ley": "Decreto 204/1995 Atención Ciudadana JA",
+    "n_topic_scope": "3"
+  },
+  {
+    "id": "4b749e91-bd7f-48ff-be17-64cf555fcbd0",
+    "article_number": "47",
+    "ley": "LO 3/1983",
     "n_topic_scope": "3"
   },
   {

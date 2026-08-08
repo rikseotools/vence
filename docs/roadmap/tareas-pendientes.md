@@ -14478,18 +14478,39 @@ y eso solo ocurre donde las dos se sirven.
 - **📦 PRIMERA PIEZA (06/08/2026, w2) — priorización + una pregunta nueva verificada, en `data/pilotos/t356-articulos-pobres-06ago/`.**
   Sin `DATABASE_URL` de escritura no se pudo correr `huerfanos:plan` (permission denied);
   reproducido su espíritu con `VENCE_LECTOR_URL` usando nº de `topic_scope` que referencian
-  cada artículo como proxy de alcance. **Reconté 200 artículos protegidos hoy** (204 el
-  31/07, drift normal — ver [T-321]). Top del ranking: **Ley 39/2015 art.49 (86 topic_scope)**,
-  **art.120 (85)**, **RDL 5/2015 art.24 (70)**, **Ley 19/2013 art.6 (44)**. Escrita y
-  verificada una pregunta NUEVA para el art. 49 (leídas antes las 4 activas para no duplicar:
-  3 tocan el apartado 1 y ninguna pregunta por la EXCEPCIÓN del apartado 2 — el hueco real).
-  Validada contra los 4 gates reales de la campaña de calidad (`isStructuredExplanation`,
+  cada artículo como proxy de alcance. Escrita y verificada una pregunta NUEVA para el
+  art. 49 de Ley 39/2015 (leídas antes las 4 activas para no duplicar: 3 tocan el apartado 1
+  y ninguna pregunta por la EXCEPCIÓN del apartado 2 — el hueco real). Validada contra los 4
+  gates reales de la campaña de calidad (`isStructuredExplanation`,
   `structuredNarrativeStaleLetters`, `explanationReferencesLetters`, `citaNoLiteral`) + una
   comprobación de no-duplicado contra las 4 activas: las 5 en verde
   (`data/pilotos/t356-articulos-pobres-06ago/validar.ts`). **No aplicado** (sin escritura en
-  BD de negocio). Quedan 199 artículos con el mismo tratamiento pendiente — no es un
-  checklist rápido, cada uno exige leer sus preguntas existentes + el artículo + escribir el
-  hueco real. Detalle en el README de esa carpeta.
+  BD de negocio).
+- **⚠️ CORRECCIÓN (08/08/2026, revisión de w4 + arreglo de w2) — la cifra "200 protegidos (204
+  el 31/07, drift normal)" estaba mal.** La lista se había generado transcribiendo A MANO la
+  query de `scripts/calidad/duplicados-exactos.cjs` contra `VENCE_LECTOR_URL`, en vez de
+  correr la herramienta canónica sobrescribiendo `DATABASE_URL` (que sí funciona). La
+  transcripción perdió **3 artículos genuinamente protegidos** — no era solo drift, una
+  parte del descenso 204→200 era un hueco de la propia reproducción. **Regenerada corriendo
+  la herramienta real** (con un `--limite` que faltaba en su listado de críticos, arreglado:
+  antes hardcodeaba `slice(0,8)` sin mirar el flag) + un script que extrae `SQL_GRUPOS` del
+  propio fichero fuente y usa `decidirSuperviviente` real, sin retipear la query — con un
+  gotcha real documentado ahí (extraer un template literal por regex da el texto CRUDO, no
+  el valor evaluado; `\\s+` con dos backslashes ≠ `\s+` con uno, y esa diferencia de un
+  carácter cambiaba la normalización de Postgres lo bastante para perder grupos enteros).
+  **Cifra correcta, verificada contra la herramienta canónica dos veces: 202 artículos**
+  (no 200, no 204; ni el número original ni el "203" que citó la revisión — éste es el medido
+  hoy con la query real, y coincide exacto con lo que reporta `duplicados-exactos.cjs` por su
+  cuenta). Recuperados los 3 que faltaban, uno de ellos (Ley 40/2015 art.44, 54 `topic_scope`)
+  entra en el **top 4** del ranking. De paso, un falso positivo NUEVO detectado (mismo origen,
+  la transcripción a mano): `Ley 19/2013 art.6` estaba en la lista pero sus 2 preguntas
+  activas no son duplicados entre sí — no debía estar, ya no está. Top actualizado: **Ley
+  39/2015 art.49 (86)**, **art.120 (85)**, **RDL 5/2015 art.24 (71)**, **Ley 40/2015 art.44
+  (54)**, Excel 365 Escritorio art.30 (22). El art.49 sigue siendo el nº1 — la pregunta nueva
+  ya escrita para él sigue siendo la prioridad correcta, no hay que rehacerla. Quedan 201
+  artículos con el mismo tratamiento pendiente — no es un checklist rápido, cada uno exige
+  leer sus preguntas existentes + el artículo + escribir el hueco real. Detalle en el README
+  de esa carpeta.
 
 ## Hechas
 
