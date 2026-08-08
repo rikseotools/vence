@@ -1140,6 +1140,35 @@ asignación de fuentes que el manual manda tras cada tanda de catalogación.
 > orden lo da la herramienta y aquí solo vive lo que la herramienta no puede saber.
 ## Abiertas
 
+### [T-699] 🔴 [ABIERTO 08/08] El gate audit:oposicion se puede declarar en verde sin pasarse — 6 oposiciones más con topics pero sin fila en catálogo
+
+- **Esfuerzo: rato.**
+- **ORIGEN.** Al cerrar [T-503] (Agente de la Hacienda Pública), medí que la oposición NO estaba "construida" como decía su ficha: `topics` tenía 32 filas para `position_type='agente_hacienda'` pero `oposiciones` tenía CERO filas para ese slug — y el commit que lo mergeó a `main` (`aa7f8e6f2`) afirmaba en su mensaje *"GATES: audit:oposicion 0❌/0🟡"*, algo que no pudo haber pasado nunca con esa fila ausente. Pregunté a Manuel (#112) si esto era un caso aislado o un patrón; su respuesta: *"mide cuántas oposiciones más tienen topics y rutas pero les falta la fila... si son varias, es ficha propia y vale más que los 6 temas de impuestos: un gate que se puede declarar verde sin haberse pasado deja de proteger para todas las altas siguientes, no solo para esta."* Esta ficha es esa medida.
+- **🔬 MEDIDO (08/08), no supuesto — tres pasos, cada uno reproducible:**
+  1. **Barrido determinista:** `topics.position_type` vs `oposiciones.slug` (con la transformación `_` → `-`, la convención real del repo, confirmada muestreando slugs existentes como `subalterno-gva`, `auxilio-judicial`). Da **17 `position_type` sin fila** en `oposiciones`.
+  2. **Filtro de falsos positivos:** de esos 17, **10 son `personalizada_<uuid>`** — configuraciones de test PERSONALIZADAS de un usuario (per-usuario, no catálogo; **no cuentan**, es su diseño no tener fila). Quedan **7 candidatos reales**.
+  3. **Verificación con el gate oficial** (`npx tsx scripts/audit-oposicion-completa.ts <slug>`, con `VENCE_LECTOR_URL` — solo lectura): **los 7 dan `❌ fila oposiciones NO existe`**, el mismo fallo exacto que agente_hacienda.
+- **Los 7 candidatos, con lo que cada uno tiene construido alrededor** (medido: `lib/config/oposiciones.ts` + rutas en `app/<slug>/`):
+
+  | `position_type` | temas | config (`oposiciones.ts`) | rutas `app/<slug>/` | Estado |
+  |---|---|---|---|---|
+  | `etgoa_sanidad_consumo` | 120 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** |
+  | `auxiliar_archivos_bibliotecas_museos_madrid` | 50 | ❌ | ❌ | huérfana de verdad (ni config ni rutas) |
+  | `auxiliar_museos_estado` | 48 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** |
+  | `administrativo_agencia_tributaria_canaria` | 40 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** |
+  | `agente_hacienda` | 32 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** — es [T-503], ya en la ficha |
+  | `celador_ibsalut` | 20 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** |
+  | `celador_ics` | 17 | ✅ | ✅ (3 páginas) | **construida a medias, invisible** |
+
+  - **6 de los 7 replican EXACTAMENTE el patrón de agente_hacienda**: scaffold de frontend completo (config + 3 rutas: temario, test, test/tema/[numero]) + topics reales en BD, pero sin la fila de catálogo — o sea, servibles por la app (el test funcionaría) pero **invisibles para salud-contenido, rollover, OEP, SEO y cualquier detector de los ~70 que este mismo CLAUDE.md documenta, porque TODOS iteran `FROM oposiciones`**.
+  - **`auxiliar_archivos_bibliotecas_museos_madrid` es distinto**: no tiene ni config ni rutas, solo 50 filas de `topics` sueltas en la BD sin nada más construido alrededor — probablemente un import de datos abandonado a medio camino, no una "oposición construida sin catalogar". Hay una oposición YA REAL y activa con nombre parecido (`auxiliar-archivos-estado`, nacional) que NO es la misma (esta es de Madrid) — no confundir ni fusionar.
+  - **No until encontré el commit de origen para ninguno de los 6** (`git log --all` no tiene ningún commit cuyo mensaje mencione estos `position_type`) — a diferencia de agente_hacienda, cuyo commit `aa7f8e6f2` SÍ existe y SÍ mintió sobre el gate. Sin el commit no puedo repetir la misma demostración de "gate falso" letra por letra en los otros 5, pero el SÍNTOMA final (fila ausente pese a scaffold completo) es idéntico, así que **SOSPECHO** (no demostrado) que nacieron por el mismo camino — falta encontrar quién/qué los generó para confirmarlo.
+  - **user_theme_stats da 0 usuarios para los 7** (incluido agente_hacienda, que la ficha de T-503 decía con 16 usuarios/2 premium por otra vía) — esta tabla solo se puebla cuando alguien COMPLETA preguntas, así que 0 aquí no contradice que haya usuarios con la oposición como objetivo; solo dice que nadie ha podido usarla de verdad. No crucé la fuente real de los "16 usuarios" de T-503 para los otros 6 — falta esa medida si se quiere priorizar por impacto.
+- **CONSECUENCIA:** el gate `audit-oposicion-completa.ts` (que SÍ falla correctamente cuando se corre — comprobado en los 7) parece no haberse corrido, o haberse corrido y ANUNCIADO en verde sin serlo, en al menos 6 altas de oposición. Es un fallo del PROCEDIMIENTO de alta (el manual `crear-nueva-oposicion.md` exige el gate ANTES de dar por construida una oposición), no de esta oposición en particular — por eso Manuel pide ficha propia.
+- **Lo que NO puedo hacer yo:** crear las 6 filas — es `INSERT` en `oposiciones` (+ `convocatorias` SSOT + hitos), escritura de negocio fuera del alcance de un worker (`VENCE_LECTOR_URL` es solo lectura). Tampoco puedo confirmar la causa raíz exacta de cómo nacieron sin el commit (sospecha, no demostrado).
+- **Siguiente paso propuesto (para quien tenga escritura):** por cada una de las 6, verificar contra fuente oficial (BOE/boletín correspondiente) los datos de convocatoria igual que se hizo para agente_hacienda en [T-503], y aplicar el INSERT + gate hasta 0❌. `auxiliar_archivos_bibliotecas_museos_madrid` necesita antes decidir si se completa (config+rutas) o se retira (los datos huérfanos no sirven a nadie tal cual).
+- **Relacionadas:** [T-503] (el caso que destapó el patrón), [T-397] (usuarios en oposiciones sin temario — puede solaparse).
+
 ### [T-696] 🟠 [ABIERTO 08/08] Cabos sueltos de la sesión movil4 del 07-08/08 (para que no se pierdan al compactar)
 
 Índice de lo que quedó a medias o esperando decisión, con dónde está cada cosa. **Lo que ya está
