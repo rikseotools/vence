@@ -34,13 +34,15 @@ async function main() {
   let filas
   try {
     filas = await s`
-      SELECT metadata, created_at FROM public.observable_events
+      SELECT metadata, error_message, created_at FROM public.observable_events
        WHERE event_type = ${EVENT_TYPE}
          AND created_at > now() - (${DIAS} || ' days')::interval
        ORDER BY created_at DESC`
   } finally { try { await s.end({ timeout: 5 }) } catch {} }
 
-  const eventos = filas.map((f) => ({ ...(f.metadata || {}), created_at: f.created_at }))
+  // El MOTIVO del escape se guarda en `error_message`, no en metadata: sin traerlo, la cuenta
+  // no puede agrupar repeticiones de la misma decisión y las cobra como rodeos distintos (T-702).
+  const eventos = filas.map((f) => ({ ...(f.metadata || {}), motivo: f.error_message, created_at: f.created_at }))
   const guards = ratioEscape(eventos)
   const espera = esperaDeploy(eventos)
   const porClase = {}
@@ -65,6 +67,13 @@ async function main() {
   if (guards.length) {
     console.log(`\nGUARDARRAÍLES — ¿cuántas veces se rodean?  (es lo que dice si están vivos)\n`)
     for (const g of guards) console.log('   ' + diagnostico(g))
+    const ciegos = guards.filter((g) => g.veredicto === 'no_medible')
+    if (ciegos.length) {
+      // Va ANTES de los muertos a propósito: si una puerta no cuenta sus bloqueos, lo que hay que
+      // arreglar es la medición, no la puerta — y confundirlos lleva a borrar la que funcionaba.
+      console.log(`\n   ⚪ ${ciegos.length} guardarraíl(es) NO SE PUEDEN JUZGAR: registran escapes y ningún bloqueo.`)
+      console.log('       Antes de tocarlos, comprueba que emiten `guard_bloqueo` cuando paran a alguien (T-702).')
+    }
     const muertos = guards.filter((g) => g.veredicto === 'muerto')
     if (muertos.length) {
       console.log(`\n   ⚠️  ${muertos.length} guardarraíl(es) ya no protegen: se rodean más de lo que paran.`)

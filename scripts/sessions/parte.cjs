@@ -60,7 +60,11 @@ async function main() {
              reviewed_at, reviewed_by, review_verdict
         FROM public.backlog_tasks WHERE status <> 'done' AND resume_check IS NOT NULL`.catch(() => [])
     friccion = await sql`
-      SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid
+      SELECT metadata->>'clase' AS clase, metadata->>'guard' AS guard, metadata->>'sid' AS sid,
+             -- El motivo vive en error_message y el veredicto medido en evitoBloqueo: sin los
+             -- dos, la cuenta agrupa mal y tiene que INFERIR restando bloqueos (T-702).
+             error_message AS motivo,
+             (metadata->>'evitoBloqueo')::boolean AS "evitoBloqueo"
         FROM public.observable_events
        WHERE event_type = ${EVENT_TYPE} AND ts > now() - interval '7 days'`.catch(() => [])
     // Entregadas y esperando revisión (T-539). Consulta propia porque una entrega NO tiene por
@@ -180,8 +184,20 @@ async function main() {
     for (const g of malos) {
       console.log(`   ${diagnostico(g)}`)
       const p = prev.get(g.guard)
-      if (p && p.preventivos) {
-        console.log(`      ↳ ${p.preventivos} de ${p.escapes} escapes NO respondían a ningún bloqueo: el escape se usa de prefijo, no por estorbo`)
+      if (!p) continue
+      // Repetir una decisión no son varias decisiones (T-702): 9 escapes de la puerta de temario
+      // eran 2 motivos, uno aplicado 7 veces en 6 minutos a impugnaciones hermanas del mismo caso.
+      if (p.decisiones && p.escapes > p.decisiones) {
+        console.log(`      ↳ ${p.escapes} escapes son ${p.decisiones} decisión(es) distinta(s): el resto son repeticiones del mismo motivo`)
+      }
+      if (p.preventivos) {
+        console.log(`      ↳ ${p.preventivos} de ${p.escapes} escapes NO tenían nada que rodear: el escape se usa de prefijo, no por estorbo`)
+      }
+      // Decir CÓMO se sabe. Sin esto se borra una puerta creyendo medido lo que era una resta —
+      // y una resta da 100% forzoso en las puertas que no emiten bloqueo al saltárselas.
+      if (p.fuente === 'inferida') {
+        console.log('      ↳ ⚠️  cifra INFERIDA (escapes − bloqueos), no medida: si este guardarraíl no emite')
+        console.log('           `guard_bloqueo` al saltárselo, saldrá 100% haga lo que haga. Compruébalo antes de quitarlo.')
       }
     }
     console.log('')
