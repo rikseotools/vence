@@ -96,10 +96,11 @@ retitulado normal — un guardarraíl que grita por cualquier cambio de redacci�
 
 | Vive en | Qué | Por qué ahí |
 |---|---|---|
-| **`docs/roadmap/tareas-pendientes.md`** | CONTENIDO: título, por qué, cómo, hallazgos, links | Narrativa larga + historia de git |
+| **`docs/roadmap/tareas/T-nnn.md`** (uno por ficha, desde [T-532]) | CONTENIDO: título, por qué, cómo, hallazgos, links | Dos sesiones creando/editando fichas DISTINTAS nunca tocan el mismo fichero — el conflicto de git desaparece por construcción |
+| **`docs/roadmap/tareas-pendientes.md`** | **ÍNDICE GENERADO** desde lo de arriba (`generarIndice()`) | Vista legible de siempre (preámbulo + `## Abiertas` + `## Hechas`), pero calculada, no editada a mano. Editarlo directamente se pierde en la próxima regeneración |
 | **Tabla `backlog_tasks` (RDS)** | ESTADO: quién la tiene, desde cuándo, en qué acabó | Un fichero de texto **no admite claim atómico**: dos sesiones leen "libre", ambas escriben, gana la última |
 
-El join es el **id `T-xxx`** de la cabecera del markdown (`### [T-042] 🔴 Título`). Es estable aunque cambie el título.
+El join es el **id `T-xxx`** de la cabecera de la ficha (`### [T-042] 🔴 Título`). Es estable aunque cambie el título. La SECCIÓN (`Abiertas`/`Hechas`) la decide la propia cabecera (`✅` = hecha), no dónde vive el fichero ni su posición.
 
 ## Flujo de trabajo
 
@@ -129,7 +130,7 @@ El **session-id se resuelve solo** (`--sid` > fichero `.session-id` > `CLAUDE_CO
 
 1. **Coge ANTES de trabajar.** Si no está cogida en la tabla, para el resto de sesiones está libre — aunque tú ya lleves una hora con ella. **Y no depende de que te acuerdes:** el hook **`.husky/pre-push`** (`scripts/backlog-push-guard.cjs`) **bloquea el push** si un commit que empujas menciona un `T-NNN` vivo que no tienes reclamado (o lo tiene otra sesión). Fail-open si la BD no responde; escape legítimo con `BACKLOG_GUARD_SKIP="por qué" git push …` (pide MOTIVO desde T-497). Además `claim` **imprime la ficha entera** → reclamar y leer son el mismo acto.
 2. **Renueva el lease** (`heartbeat`) si la tarea dura más de 90 min. Si no, otra sesión la considerará abandonada y la cogerá, con razón.
-3. **Al cerrar, `done --outcome` Y mueve la entrada a `## Hechas` en el markdown.** Las dos cosas. Si solo haces una, el guardarraíl de CI te lo tira.
+3. **Al cerrar, `done --outcome` basta.** Desde [T-532] («una ficha = un fichero») `done`/`reopen` marcan la cabecera de `docs/roadmap/tareas/T-nnn.md` y regeneran `tareas-pendientes.md` ellos solos — **NO edites el markdown grande a mano**, es un ÍNDICE GENERADO. Si quieres tocar el CONTENIDO de una ficha viva (añadir un hallazgo, corregir una cifra), edita `docs/roadmap/tareas/T-nnn.md` directamente; el índice se regenera solo al cerrar/reabrir, o a mano con `node scripts/backlog.cjs sync`.
 4. **`next` sugiere, no coge.** Está pensado para que elijas por encaje: si acabas de construir una oposición, la siguiente oposición te cuesta la mitad.
 
 ## Al cerrar, SIEMPRE se sugiere lo siguiente (T-498)
@@ -717,9 +718,9 @@ grep -ni "<palabra clave>" docs/roadmap/tareas-pendientes.md   # ¿hay ficha ya?
 node scripts/backlog.cjs list | grep -i "<palabra clave>"      # ¿la tiene alguien cogida?
 ```
 
-- **Si YA hay ficha** → trabájala ahí: `claim`, y al cerrar `done --outcome "…"` + mover la
-  entrada a `## Hechas`. No abras una segunda: el mismo fallo con dos fichas es peor que sin
-  ninguna.
+- **Si YA hay ficha** → trabájala ahí: `claim`, y al cerrar `done --outcome "…"` (marca la
+  cabecera y regenera el índice solo, desde [T-532]). No abras una segunda: el mismo fallo con
+  dos fichas es peor que sin ninguna.
 - **Si NO hay** → `reserve` y escríbela **aunque ya lo hayas arreglado**. Nace y muere en el
   mismo commit, y está bien: lo que importa es que quede el rastro.
 

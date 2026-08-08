@@ -71,6 +71,15 @@ const GIT_FICHAS = { cwd: REPO, mdRel: MD_REL };
 // que sigue siendo agnóstico a dónde vive el contenido (el nombre del índice generado, y las
 // funciones `gitFichas` de historia PRE-migración).
 const FD = require(path.join(__dirname, '..', 'lib', 'backlog', 'fichasDir.cjs'));
+// Cierra/reabre la CABECERA de una ficha (T-532) — lo usan `done`/`reopen` para no depender de
+// que alguien siga a mano una instrucción impresa contra un fichero que ya no se edita directo.
+const MF = require(path.join(__dirname, '..', 'lib', 'backlog', 'marcarFicha.cjs'));
+
+/** `dd/mm`, el formato que ya usan las 603 cabeceras del backlog. */
+function hoyDDMM() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 /** Envoltorio del historial LOCAL. Se conserva el nombre porque hay otros llamadores (T-441). */
 function estuvoEnElHistorial(id) {
@@ -1032,8 +1041,25 @@ async function despertarPorDeploy(s, shas, opts = {}) {
           console.log(`   ⏱ ${dur} — declaraste «${row.effort}» y salió MÁS CORTA de lo previsto.`);
         }
       }
-      console.log(`   ⚠️ AHORA mueve su entrada a "## Hechas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si sigue en "Abiertas")`);
+      // Marcar la cabecera y regenerar el índice — ya no hace falta el paso manual (T-532): con
+      // «una ficha = un fichero» no hay dos sitios entre los que mover nada, hay una cabecera que
+      // editar, y con `estaCerrada()` leyendo esa misma cabecera para decidir la sección, dejarlo
+      // en manos de una instrucción impresa es justo la CAUSA que esta migración vino a quitar
+      // (la instrucción vieja, además, apuntaba al monolito que ahora es generado — seguirla podía
+      // perderse en silencio si algo regeneraba el índice antes de comitear, o tardar en cazarse
+      // hasta CI, que no corre en pre-push). Fail-open a propósito: si el fichero de la ficha no
+      // existe en este checkout (clon desactualizado, o la ficha nació antes de la migración y
+      // nadie ha corrido `migrar-a-ficheros`), no se aborta el cierre — la BD ya quedó bien — pero
+      // se avisa para que alguien lo revise, en vez de fallar silenciosamente o reventar el done.
+      const textoFicha = FD.leerFicha(id);
+      if (textoFicha) {
+        FD.escribirFicha(id, MF.cerrarCabecera(textoFicha, hoyDDMM()));
+        FD.regenerarIndice();
+        console.log('   📄 cabecera marcada ✅ y docs/roadmap/tareas-pendientes.md regenerado.');
+      } else {
+        console.log(`   ⚠️ no encuentro docs/roadmap/tareas/${id}.md en este checkout — la BD ya está cerrada,`);
+        console.log('      pero la ficha no se ha podido marcar. Revísalo a mano (¿clon desactualizado?).');
+      }
       // Cerrar es el momento en que el contexto está más cargado y a punto de tirarse (T-498).
       await sugerirSiguiente(s, id, sid);
     }
@@ -1079,11 +1105,22 @@ async function despertarPorDeploy(s, shas, opts = {}) {
                  ${'REABIERTA: ' + motivo}::text,
                  ${'(cierre anterior decía: ' + String(prev.outcome || '—').slice(0, 400) + ')'}::text,
                  progress_note)
-         WHERE id = ${id} RETURNING id, title`;
+         WHERE id = ${id} RETURNING id, title, priority`;
       console.log(`♻️  ${row.id} REABIERTA — ${row.title}`);
       console.log(`   motivo: ${motivo}`);
-      console.log(`   ⚠️ AHORA devuelve su entrada a "## Abiertas" en docs/roadmap/tareas-pendientes.md`);
-      console.log(`      (el guardarraíl de CI falla si se queda en "Hechas")`);
+      // Mismo cierre de la CAUSA que en `done` (T-532): marcar la cabecera y regenerar el índice
+      // aquí mismo, en vez de imprimir una instrucción para que alguien la siga a mano contra un
+      // fichero que ya no se edita directamente. La prioridad no sobrevive en la propia cabecera
+      // tras cerrarla (el cierre la sustituye por ✅), así que se restaura desde la BD.
+      const textoFicha2 = FD.leerFicha(id);
+      if (textoFicha2) {
+        FD.escribirFicha(id, MF.reabrirCabecera(textoFicha2, hoyDDMM(), EMOJI[row.priority] || null));
+        FD.regenerarIndice();
+        console.log('   📄 cabecera marcada de nuevo abierta y docs/roadmap/tareas-pendientes.md regenerado.');
+      } else {
+        console.log(`   ⚠️ no encuentro docs/roadmap/tareas/${id}.md en este checkout — la BD ya está reabierta,`);
+        console.log('      pero la ficha no se ha podido marcar. Revísalo a mano (¿clon desactualizado?).');
+      }
     }
 
     else if (cmd === 'release') {
