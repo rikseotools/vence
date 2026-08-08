@@ -135,10 +135,36 @@ describe('cuentaDeSesion — de quién es este consumo', () => {
     // Es justo el caso de un panel ya rotado: sin mirar esto se le atribuiría el gasto a la
     // cuenta que NO está gastando.
     const v = cuentaDeSesion({
-      env: { CLAUDE_CODE_OAUTH_TOKEN_SECUNDARIA: 'sk-ant-oat01-' + 'x'.repeat(30) },
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat01-' + 'x'.repeat(30),
+        CLAUDE_CODE_CUENTA: 'secundaria',
+      },
       global: { email: 'mcasadocano@gmail.com', accountUuid: null },
     })
     expect(v).toEqual({ cuenta: 'secundaria', via: 'env' })
+  })
+
+  it('REGRESIÓN: tener guardada la credencial secundaria NO es estar usándola', () => {
+    // Cazado al ir a poner esa variable en el perfil de la máquina, que es lo que hay que
+    // hacer para poder rotar: la versión anterior habría etiquetado como «secundaria» TODAS
+    // las sesiones locales aunque corrieran en la principal, y la medida por cuenta habría
+    // nacido mintiendo. Tener la llave de un coche no es conducirlo.
+    const v = cuentaDeSesion({
+      env: {
+        CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat01-' + 'p'.repeat(30),
+        CLAUDE_CODE_OAUTH_TOKEN_SECUNDARIA: 'sk-ant-oat01-' + 's'.repeat(30),
+      },
+      global: { email: 'mcasadocano@gmail.com', accountUuid: null },
+    })
+    expect(v).toEqual({ cuenta: 'principal', via: 'env' })
+  })
+
+  it('y el almacén SOLO, sin credencial en uso, no atribuye nada por sí mismo', () => {
+    const v = cuentaDeSesion({
+      env: { CLAUDE_CODE_OAUTH_TOKEN_SECUNDARIA: 'sk-ant-oat01-' + 's'.repeat(30) },
+      global: { email: 'mcasadocano@gmail.com', accountUuid: null },
+    })
+    expect(v).toEqual({ cuenta: 'mcasadocano@gmail.com', via: 'global' })
   })
 
   it('sin token propio, la cuenta global de la máquina, identificada por email', () => {
