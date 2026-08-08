@@ -202,6 +202,101 @@ jobs:
         if: ${{ always() && (steps.preflight.outcome == 'failure' || steps.tests.outcome == 'failure' || steps.landings.outcome == 'failure' || steps.rlspend.outcome == 'failure') }}
         run: exit 1
 
+  integration-efimera:
+    name: Integration (BD efímera)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: unit
+    # ⚠️ [T-644] JOB NUEVO, NUNCA CORRIDO — este worker no tiene docker ni gh en su máquina y no
+    # pudo verlo ejecutar ni una vez (comprobado: `which docker`/`which gh` sin salida). Por eso
+    # `continue-on-error: true` a nivel de JOB, igual que `integration` de arriba cuando tenía
+    # fallos sin triar: NO lo quites hasta que alguien con esas herramientas confirme un run
+    # limpio en GHA real. Mientras tanto es un dato, no un gate.
+    #
+    # Decisión de Manuel (08/08/2026, #122/#123): estas 10 suites de test:integration ESCRIBEN
+    # de verdad (dinero/referidos, borrado GDPR, ciclo de convocatoria, scope/temario) y llevan
+    # detrás de INTEGRATION_DB_WRITABLE=1 desde siempre — variable que NINGÚN workflow ponía, así
+    # que nunca han corrido en CI (ver docs/roadmap/tareas-pendientes.md, ficha T-644). En vez de
+    # una credencial de escritura sobre producción en los secrets del repo (contradice el diseño
+    # entero de la flota: vence_coordinacion sin negocio, vence_lector solo lectura, ni AWS ni
+    # Stripe en esas máquinas — CI es un agente automático más), este job levanta un Postgres
+    # EFÍMERO propio y restaura en él un dump de SOLO ESQUEMA de la BD real — cero riesgo sobre
+    # datos de producción.
+    #
+    # Empieza SOLO por las 6 suites que Manuel señaló como no-dinero/no-GDPR (su condición 1:
+    # "te dan la mitad del valor en un día"). Las otras 4 (referidos ×2, deleteUserData,
+    # deletionLogRow) se añaden en una vuelta aparte, con más cuidado, cuando este job ya se haya
+    # visto correr limpio de verdad.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vence_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Sin sslmode: el contenedor del propio job no tiene certificado — no aplica el gotcha de
+      # RDS (lib/db/pgSsl.cjs, T-377), que es SOLO para conectar a la BD real.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vence_ci
+      INTEGRATION_DB_WRITABLE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+
+      # Redundante a propósito con el guardarraíl del job `unit` (que ya para el merge si el
+      # dump está viejo o ausente): si alguien dispara este job solo (workflow_dispatch) sin que
+      # `unit` haya corrido, este step es la única red. Falla con el MISMO criterio —
+      # lib/ci/schemaDumpFreshness.js es la fuente única, aquí no se reimplementa el umbral.
+      - name: Preflight — el dump de esquema está fresco
+        id: dump_fresco
+        continue-on-error: true
+        run: node -e "
+          const { veredictoFrescura } = require('./lib/ci/schemaDumpFreshness');
+          const fs = require('fs');
+          let contenido;
+          try { contenido = fs.readFileSync('supabase/schema-ci/schema.sql', 'utf8'); }
+          catch { console.error('::error::No existe supabase/schema-ci/schema.sql — generarlo con scripts/ci/generar-dump-esquema.cjs'); process.exit(1); }
+          const v = veredictoFrescura(contenido, new Date());
+          if (!v.fresco) { console.error('::error::' + v.motivo); process.exit(1); }
+          console.log('✅ ' + v.motivo);
+          "
+
+      - name: Restaurar el esquema en el Postgres efímero
+        id: restore
+        if: steps.dump_fresco.outcome == 'success'
+        continue-on-error: true
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d vence_ci -f supabase/schema-ci/schema.sql
+
+      - name: Correr las 6 suites de escritura sin dinero ni GDPR
+        id: tests
+        if: steps.restore.outcome == 'success'
+        continue-on-error: true
+        run: |
+          npx jest --watchAll=false --passWithNoTests \
+            __tests__/integration/convocatoriaCiclo.test.ts \
+            __tests__/integration/convocatoriaVerification.test.ts \
+            __tests__/integration/topicScopeAudit.integration.test.ts \
+            __tests__/integration/topicEpigrafeVerification.test.ts \
+            __tests__/integration/topicScopeVerification.test.ts \
+            __tests__/integration/testPositionTypePersistence.integration.test.ts
+
+      - name: Reflejar el rojo en el job
+        if: ${{ always() && (steps.dump_fresco.outcome == 'failure' || steps.restore.outcome == 'failure' || steps.tests.outcome == 'failure') }}
+        run: exit 1
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -253,7 +348,7 @@ jobs:
   notify-failure:
     name: Notify failure to observable_events
     if: ${{ failure() && !cancelled() }}
-    needs: [unit, integration, lint, typecheck]
+    needs: [unit, integration, integration-efimera, lint, typecheck]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
