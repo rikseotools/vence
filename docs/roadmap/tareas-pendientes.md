@@ -1618,7 +1618,16 @@ de la medición: builds 1.213-1.574 MB frente a Claude Code 81-330 MB, dos pobla
 **Verificado contra `flota-1`**: la sonda lee los seis campos y el veredicto sale `ahogada` con los
 cuatro motivos.
 
-**PENDIENTE:** serializar los builds entre trabajadores (la causa), y desplegar el backend para que
+**⚠️ LA CAUSA YA TIENE FICHA — NO LA ABRAS OTRA VEZ (comprobado el 08/08):** [T-682] («cuatro
+`tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos», **crítica**) y
+[T-647] («el VPS se queda sin memoria: 20 OOM en 6 h matando turnos»). Esta ficha es la MITAD
+COMPLEMENTARIA: ellas arreglan la causa, esta puso la vigilancia que no existía. Quien coja T-682
+**ya tiene alerta**, no necesita construirla — y lo medido aquí le sirve de partida: los cuatro
+Claude Code ocupan menos de 1 GB entre todos, y el peso son sus builds (1.574 + 1.383 + 1.295 +
+1.213 MB), con la carga a 19,7 en 4 núcleos y la CPU al 97,7 % ociosa (esperando disco, no
+calculando). Bajar el número de trabajadores NO es el arreglo; serializar los builds sí.
+
+**PENDIENTE:** desplegar el backend para que
 las dos reglas empiecen a avisar.
 ### [T-682] 🔴 [ABIERTO 07/08] Cuatro `tsc --noEmit` a la vez no caben en el VPS: 3,8 GB en typechecks simultáneos dejan la máquina haciendo *thrashing*
 
