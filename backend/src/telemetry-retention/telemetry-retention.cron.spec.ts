@@ -24,6 +24,7 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     vacuumFailed: [],
     observableEventsPorParticion: false,
     observableEventsParticionesDropeadas: 0,
+    purgeFailed: [],
   };
 
   function montar(resultado: TelemetryRetentionResult) {
@@ -44,7 +45,9 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
   const exito = (emit: jest.Mock) =>
     emit.mock.calls
       .map((c) => c[0])
-      .find((e) => e?.eventType === 'cron_run' && e?.metadata?.status === 'success');
+      .find(
+        (e) => e?.eventType === 'cron_run' && e?.metadata?.status === 'success',
+      );
 
   it('hoy (sin particionar) emite los dos campos, aunque valgan false/0', async () => {
     const { cron, emit } = montar(resultadoBase);
@@ -53,7 +56,10 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     const ev = exito(emit);
     expect(ev).toBeDefined();
     expect(ev.metadata).toHaveProperty('observableEventsPorParticion', false);
-    expect(ev.metadata).toHaveProperty('observableEventsParticionesDropeadas', 0);
+    expect(ev.metadata).toHaveProperty(
+      'observableEventsParticionesDropeadas',
+      0,
+    );
   });
 
   it('el día del swap, «0 borradas» viene acompañado de las particiones dropeadas', async () => {
@@ -83,5 +89,20 @@ describe('TelemetryRetentionCron — el evento que emite', () => {
     const ev = exito(emit);
     expect(ev.metadata.remaining).toEqual({ observable_events: 4321 });
     expect(ev.metadata.vacuumFailed).toEqual(['observable_events']);
+  });
+
+  it('[T-613] un DELETE que se cortó a mitad de pasada se ve en purgeFailed, no oculto', async () => {
+    const { cron, emit } = montar({
+      ...resultadoBase,
+      observableEventsDeleted: 100_000,
+      purgeFailed: ['observable_events'],
+    });
+    await cron.handle();
+
+    const ev = exito(emit);
+    // Sigue siendo `status: 'success'`: lo borrado antes del corte es real y no se pierde.
+    expect(ev.metadata.status).toBe('success');
+    expect(ev.metadata.observableEventsDeleted).toBe(100_000);
+    expect(ev.metadata.purgeFailed).toEqual(['observable_events']);
   });
 });

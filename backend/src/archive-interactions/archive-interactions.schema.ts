@@ -25,7 +25,10 @@ export const userInteractions = pgTable('user_interactions', {
   responseTimeMs: text('response_time_ms'), // integer en BD, text aquí basta para ignorarlo
   deviceInfo: jsonb('device_info').default({}),
   deployVersion: text('deploy_version'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+    mode: 'string',
+  }).defaultNow(),
 });
 
 /**
@@ -49,5 +52,8 @@ export const userInteractionsArchive = pgTable('user_interactions_archive', {
   responseTimeMs: text('response_time_ms'),
   deviceInfo: jsonb('device_info').default({}),
   deployVersion: text('deploy_version'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  createdAt: timestamp('created_at', {
+    withTimezone: true,
+    mode: 'string',
+  }).defaultNow(),
 });
