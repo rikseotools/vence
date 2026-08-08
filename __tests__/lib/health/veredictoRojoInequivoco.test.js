@@ -34,6 +34,30 @@ describe('esVeredictoInequivoco (T-405: el caso Estela — 12 días sirviéndose
     expect(esVeredictoInequivoco('Posible discrepancia en la opción D, no confirmado.')).toBe(false)
   })
 
+  // Calibración 08/08/2026: corrida la query real contra los 223.064 registros de
+  // ai_verification_results (VENCE_LECTOR_URL, tras arreglarse el RLS-sin-política que bloqueaba
+  // al rol de la flota). Sobre el histórico completo, la versión anterior de PATRON_NO_RESPONDE
+  // enganchaba estas 5 filas ADEMÁS de la de Estela — las 5 eran notas normales de verificación
+  // (explican por qué una opción no es la mejor respuesta), no el defecto estructural que este
+  // patrón existe para cazar. Paráfrasis de las 5, sin copiar contenido real de BD.
+  describe('NO marca notas normales de verificación con fraseo parecido a "no responde" (calibración 08/08)', () => {
+    it('con adverbio de matiz "adecuadamente"', () => {
+      expect(esVeredictoInequivoco('Esta opción no responde adecuadamente a la pregunta específica.')).toBe(false)
+    })
+    it('con adverbio de matiz "lógicamente"', () => {
+      expect(esVeredictoInequivoco('Proporciona una definición, pero no responde lógicamente a la pregunta.')).toBe(false)
+    })
+    it('hablando del "contenido principal", no de la opción marcada', () => {
+      expect(esVeredictoInequivoco('Esta opción no responde al contenido principal de la pregunta.')).toBe(false)
+    })
+    it('describiendo una redacción confusa, sin decir que es LA MARCADA', () => {
+      expect(esVeredictoInequivoco('Es una redacción confusa que no responde adecuadamente a la pregunta.')).toBe(false)
+    })
+    it('respuesta parcial ("solo una parte"), sin la palabra "marcada"', () => {
+      expect(esVeredictoInequivoco('Esta opción es solo una parte del régimen, no responde a la pregunta sobre la duración total.')).toBe(false)
+    })
+  })
+
   it('es total: no revienta con null/undefined/vacío', () => {
     expect(esVeredictoInequivoco(null)).toBe(false)
     expect(esVeredictoInequivoco(undefined)).toBe(false)

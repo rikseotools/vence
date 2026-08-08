@@ -1855,8 +1855,12 @@ export class ContentHealthSweepService {
     // resto: el pool de ~400 `options_ok=false` activas es MAYORMENTE ruido de auditoría ciega
     // (~76% según la campaña de calibración de junio, `scripts/answer-review/README.md`) —
     // convertirlo todo en alarma repetiría el error de [T-317].
+    // PATRON_NO_RESPONDE ajustado el 08/08/2026 (T-405, calibración contra los 223.064 registros
+    // reales de ai_verification_results): la versión anterior enganchaba notas normales de
+    // verificación ("no responde ADECUADAMENTE/LÓGICAMENTE a la pregunta") además del defecto
+    // estructural real. Ver el detalle completo en lib/health/veredictoRojoInequivoco.cjs.
     const PATRON_ETIQUETA = /\bopciones?\s+corruptas?\b/i;
-    const PATRON_NO_RESPONDE = /\bopci[oó]n(?:es)?\b[^.]{0,80}\bno\s+responde\b[^.]{0,30}\bpregunta\b/i;
+    const PATRON_NO_RESPONDE = /\bopci[oó]n(?:es)?\b[^.]{0,30}\bmarcada\b[^.]{0,20}\bno\s+responde\b\s*(?:en\s+absoluto\s+)?(?:a\s+(?:la|esta|dicha)\s+|al\s+)?pregunta\b/i;
     const PATRON_OTRA_PREGUNTA = /\bopciones?\b[^.]{0,60}\b(?:de|son de|pertenecen a)\s+otra\s+pregunta\b/i;
     const esVeredictoInequivoco = (explanation: string | null): boolean => {
       const texto = explanation ?? '';
