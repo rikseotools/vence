@@ -25,11 +25,56 @@ const { Client } = require('pg')
 const ROT = require('../../lib/sessions/rotacionCuenta.cjs')
 const CS = require('../../lib/observability/cuentaDeSesion.cjs')
 const CUENTAS = require('../../lib/flota/cuentas.cjs')
+const CUOTA = require('../../lib/observability/cuotaProveedor.cjs')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
 
 const args = process.argv.slice(2)
 const val = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null }
 const ROTAR = val('--rotar')
 const APLICAR = args.includes('--aplicar')
+
+/**
+ * Pregunta al PROVEEDOR cuánta cuota le queda a una credencial.
+ *
+ * No hay endpoint de cuota: se hace la petición más pequeña posible (1 token del modelo más
+ * barato) y se leen SUS cabeceras. Cuesta calderilla y es el ÚNICO dato autoritativo — el mismo
+ * con el que el proveedor decide cortarte. Devuelve null si no se puede preguntar: «no lo sé»
+ * tiene que poder decirse, y un fallo de red no puede pintarse como «vas holgado».
+ */
+async function sondear(token) {
+  if (!token || token.length < 20) return null
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'oauth-2025-04-20',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1, messages: [{ role: 'user', content: 'x' }] }),
+      signal: AbortSignal.timeout(20_000),
+    })
+    return CUOTA.leerCuota(Object.fromEntries(r.headers.entries()))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * La credencial de ESTA máquina, que es con la que corren los paneles de una persona. No está
+ * en ninguna variable: Claude Code la guarda en `~/.claude/.credentials.json`.
+ */
+function credencialLocal() {
+  try {
+    const p = path.join(os.homedir(), '.claude', '.credentials.json')
+    return JSON.parse(fs.readFileSync(p, 'utf8'))?.claudeAiOauth?.accessToken || null
+  } catch {
+    return null
+  }
+}
 
 /** Paneles de tmux vivos, con su directorio (que es lo que identifica la sesión). */
 function paneles() {
@@ -100,16 +145,44 @@ function paneles() {
   const disponibles = CUENTAS.cuentasDisponibles(process.env)
   console.log(`🔑 cuentas con credencial en este entorno: ${disponibles.join(', ') || '(ninguna)'}\n`)
 
+  // Se sondea CADA credencial que tengamos a mano: la de la máquina (con la que corren los
+  // paneles de Manuel) y las del registro. Es lo que convierte esto de una estimación nuestra
+  // en el número del proveedor.
+  const sondas = new Map()
+  const local = credencialLocal()
+  if (local) {
+    const c = await sondear(local)
+    const cta = CS.cuentaDeSesion({ env: {}, global: CS.cuentaGlobal() }).cuenta
+    if (c) sondas.set(cta, c)
+  }
+  for (const nombre of disponibles) {
+    const c = await sondear(process.env[CUENTAS.CUENTA_ENV[nombre]])
+    if (c) sondas.set(nombre, c)
+  }
+
   const estados = []
-  for (const [cuenta, tokens] of [...porCuenta.entries()].sort((a, b) => b[1] - a[1])) {
-    const v = ROT.estadoDeCuota({ consumido: tokens, referencia: referencia.get(cuenta) ?? null })
+  const vistas = new Set([...porCuenta.keys(), ...sondas.keys()])
+  for (const cuenta of [...vistas].sort((a, b) => (porCuenta.get(b) || 0) - (porCuenta.get(a) || 0))) {
+    const tokens = porCuenta.get(cuenta) || 0
+    const sonda = sondas.get(cuenta)
+    const v = ROT.estadoDeCuota({
+      consumido: tokens,
+      referencia: referencia.get(cuenta) ?? null,
+      utilizacion: CUOTA.utilizacionQueManda(sonda),
+    })
     estados.push({ cuenta, estado: v.estado })
     const M = (n) => `${(n / 1e6).toFixed(1)}M`
-    const pct = v.fraccion === null ? 'sin referencia' : `${Math.round(v.fraccion * 100)}% de lo que gastó al topar`
+    const pct = v.fraccion === null
+      ? 'sin dato'
+      : `${Math.round(v.fraccion * 100)}%` + (v.fuente === 'proveedor' ? ' (dato del proveedor)' : ' de lo que gastó al topar')
     const icono = { holgado: '🟢', avisar: '🟠', rotar_ya: '🔴', desconocido: '⚪' }[v.estado]
-    console.log(`   ${icono} ${cuenta} — ${M(tokens)} tokens esta semana · ${pct}`)
-    if (v.sinReferencia) {
-      console.log('      ℹ️ esta cuenta no ha topado nunca desde que se mide: no se puede avisar todavía')
+    console.log(`   ${icono} ${cuenta} — ${M(tokens)} tokens medidos · ${pct}`)
+    if (sonda) {
+      const f = (t) => (t ? new Date(t * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) : '?')
+      console.log(`      5 h: ${Math.round((sonda.utilizacion5h ?? 0) * 100)}% (repone ${f(sonda.reset5h)})` +
+        ` · 7 d: ${Math.round((sonda.utilizacion7d ?? 0) * 100)}% (repone ${f(sonda.reset7d)})`)
+    } else if (v.sinReferencia) {
+      console.log('      ℹ️ no se ha podido preguntar al proveedor y esta cuenta no ha topado nunca: no se sabe')
     }
   }
   if (porCuenta.has(CS.DESCONOCIDA)) {
