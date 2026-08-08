@@ -95,6 +95,35 @@ export function requestHadCredentials(request: Request): boolean {
   }
 }
 
+/**
+ * El CÓDIGO de por qué se rechazó una petición, tal como lo pone el propio guard en el cuerpo
+ * (`{ error, reason }`). [T-714]
+ *
+ * ── Por qué hacía falta ─────────────────────────────────────────────────────
+ * `verifyAuth` distingue `no_bearer_token` (el cliente no lo mandó) de `remote_verify_failed` /
+ * `local_*` (lo mandó y no vale), y esas dos cosas **se arreglan en sitios distintos**: una es
+ * del navegador y otra del servidor. Ese dato viajaba al usuario en el JSON y **no se guardaba
+ * en ninguna parte**: el 08/08/2026 hubo **7.000 rechazos en 24 h** sin que constara el motivo de
+ * uno solo, y distinguirlos costó media jornada de rodeos (medir por horas, acuñar un token a
+ * mano y llamar a producción, cruzar con una señal de cliente…) para acabar sabiendo lo que esta
+ * línea contesta en una consulta.
+ *
+ * ── Por qué acotado y no el texto tal cual ──────────────────────────────────
+ * `reason` lo escribe cada guard, y mañana alguien puede meter ahí una frase con datos de una
+ * persona. Solo se acepta lo que TIENE FORMA DE CÓDIGO (minúsculas, dígitos, `_ . : -`) y hasta
+ * 64 caracteres; cualquier otra cosa se descarta. Guardar de menos es recuperable; publicar un
+ * dato personal en la telemetría, no.
+ */
+export function extractRejectionReason(
+  responseBody: Record<string, unknown> | null | undefined,
+): string | null {
+  const raw = responseBody?.reason
+  if (typeof raw !== 'string') return null
+  const s = raw.trim()
+  if (!s || s.length > 64) return null
+  return /^[a-zA-Z0-9_.:-]+$/.test(s) ? s : null
+}
+
 export function extractTraceIds(body: Record<string, unknown> | undefined): {
   userId?: string | null
   testId?: string
@@ -283,6 +312,8 @@ export function withErrorLogging(
           errorMessage = `HTTP ${response.status}`
         }
       }
+      // Se calcula una sola vez: lo consumen el emit de `request_completed` y el log de 4xx.
+      const motivoRechazo = extractRejectionReason(responseBody)
       // errorRef se genera ANTES del emit para incluirlo en obs_events.
       // Solo para 5xx (VLE-equivalente). Permite cruzar obs_events ↔ VLE
       // por mismo ID. Excluye statuses esperados por contrato (ej. el 503
@@ -375,6 +406,10 @@ export function withErrorLogging(
               method: request?.method ?? 'GET',
               sampled: isError ? 'false' : 'true',
               errorRef: errorRef || null,
+              // [T-714] El CÓDIGO del rechazo (`no_bearer_token` vs `remote_verify_failed`…).
+              // Es lo que separa «el cliente no manda el token» de «el token no vale», que se
+              // arreglan en sitios distintos. Sin esto, un 401 solo dice que hubo un 401.
+              ...(motivoRechazo ? { reason: motivoRechazo } : {}),
               ...(synthetic ? { synthetic: true } : {}),
               ...identityMetadata(identity),
               ...(traceIds.testId ? { testId: traceIds.testId } : {}),
@@ -452,7 +487,10 @@ export function withErrorLogging(
           id: errorRef,
           endpoint,
           errorType: response.status >= 500 ? 'unknown' : classifyHttpStatus(response.status),
-          errorMessage,
+          // [T-714] El motivo va PEGADO al mensaje: `validation_error_logs` no tiene columna de
+          // metadata y, sin esto, el registro de un 401 dice literalmente «No autorizado» — que
+          // es lo mismo tanto si el cliente no mandó el token como si el token no vale.
+          errorMessage: motivoRechazo ? `${errorMessage} [reason=${motivoRechazo}]` : errorMessage,
           questionId: (body?.questionId as string) || undefined,
           userId: identity.userId,
           requestBody: identity.identityMismatch
